@@ -29,6 +29,7 @@ interface ScoreEntryRow {
   studentId: string;
   studentName: string;
   rollNumber: string | null;
+  sectionName: string | null;
   score: number | null;
   isAbsent: boolean;
   remarks: string | null;
@@ -71,14 +72,18 @@ export default function AssessmentScoreEntryPage() {
       setLoading(true);
       const response = await assessmentsAPI.getScoreEntry(assessmentSubjectId);
       const data = response.data as ScoreEntryPayload;
+      if (!data) {
+        throw new Error("No data in response");
+      }
       setPayload(data);
+      const students = data.students || [];
       const mapped = Object.fromEntries(
-        data.students.map((student) => [student.studentId, student]),
+        students.map((student: any) => [student.studentId, student]),
       );
       setRows(mapped);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load score entry sheet");
+    } catch (error: any) {
+      console.error('Error loading score entry:', error);
+      toast.error(error?.response?.data?.message || "Failed to load score entry sheet");
     } finally {
       setLoading(false);
     }
@@ -147,7 +152,7 @@ export default function AssessmentScoreEntryPage() {
   const isLocked = payload.assessment.status === "LOCKED";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4 md:space-y-6 p-3 md:p-6">
+    <div className="mx-auto max-w-full space-y-4 md:space-y-6 p-3 md:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
         <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-9" onClick={() => router.back()}>
           <ArrowLeft className="h-3 w-3 md:h-4 md:w-4" />
@@ -156,7 +161,7 @@ export default function AssessmentScoreEntryPage() {
           <h1 className="text-lg md:text-2xl font-bold text-[#e35336]">
             {payload.assessment.title}
           </h1>
-          <p className="text-xs md:text-sm text-slate-500">
+          <p className="text-xs md:text-sm text-slate-500 dark:text-gray-400">
             {payload.subject.name} • {payload.class.name}
             {payload.section?.name ? ` - ${payload.section.name}` : ""} • Max{" "}
             {payload.maxScore}
@@ -164,11 +169,11 @@ export default function AssessmentScoreEntryPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <Card className="w-full dark:bg-slate-800 dark:border-slate-700">
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b dark:border-slate-700">
           <div>
-            <CardTitle className="text-base md:text-lg">Score Entry</CardTitle>
-            <CardDescription className="text-xs md:text-sm">
+            <CardTitle className="text-base md:text-lg dark:text-white">Score Entry</CardTitle>
+            <CardDescription className="text-xs md:text-sm dark:text-gray-400">
               Save draft marks while working, then submit final when complete.
             </CardDescription>
           </div>
@@ -199,35 +204,39 @@ export default function AssessmentScoreEntryPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
+        <CardContent className="p-4 md:p-6">
+          <div className="w-full overflow-x-auto rounded-lg border dark:border-slate-700">
+            <Table className="w-full min-w-[900px]">
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="text-xs md:text-sm w-24 md:w-32">Student ID</TableHead>
-                  <TableHead className="text-xs md:text-sm">Student Name</TableHead>
-                  <TableHead className="text-xs md:text-sm w-20 md:w-32">Score</TableHead>
-                  <TableHead className="text-xs md:text-sm w-16 md:w-24">Absent</TableHead>
-                  <TableHead className="text-xs md:text-sm w-32 md:w-48">Remarks</TableHead>
+                <TableRow className="bg-muted/50 dark:bg-slate-800 border-b dark:border-slate-700">
+                  <TableHead className="text-xs md:text-sm dark:text-gray-200 px-3 md:px-4 text-left">Student ID</TableHead>
+                  <TableHead className="text-xs md:text-sm dark:text-gray-200 px-3 md:px-4 text-left">Student Name</TableHead>
+                  <TableHead className="text-xs md:text-sm dark:text-gray-200 px-3 md:px-4 text-center w-20">Section</TableHead>
+                  <TableHead className="text-xs md:text-sm dark:text-gray-200 px-3 md:px-4 text-center w-24">Score</TableHead>
+                  <TableHead className="text-xs md:text-sm dark:text-gray-200 px-3 md:px-4 text-center w-16">Absent</TableHead>
+                  <TableHead className="text-xs md:text-sm dark:text-gray-200 px-3 md:px-4 text-left">Remarks</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Object.values(rows).map((row) => (
-                  <TableRow key={row.studentId} className="h-10 md:h-12">
-                    <TableCell className="py-1 md:py-2 text-xs md:text-sm">
+                  <TableRow key={row.studentId} className="h-10 md:h-12 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b dark:border-slate-700">
+                    <TableCell className="py-2 md:py-3 text-xs md:text-sm dark:text-gray-300 px-3 md:px-4">
                       {row.rollNumber || row.studentId.slice(0, 8)}
                     </TableCell>
-                    <TableCell className="py-1 md:py-2 text-xs md:text-sm font-medium">
+                    <TableCell className="py-2 md:py-3 text-xs md:text-sm font-medium dark:text-white px-3 md:px-4">
                       {row.studentName}
                     </TableCell>
-                    <TableCell className="py-1 md:py-2">
+                    <TableCell className="py-2 md:py-3 text-xs md:text-sm dark:text-gray-300 px-3 md:px-4 text-center">
+                      {row.sectionName || '-'}
+                    </TableCell>
+                    <TableCell className="py-2 md:py-3 px-3 md:px-4 text-center">
                       <Input
                         type="number"
                         min={0}
                         max={payload.maxScore}
                         value={row.score ?? ""}
                         disabled={saving || isLocked || row.isAbsent}
-                        className="h-7 md:h-9 text-xs md:text-sm w-full"
+                        className="h-8 md:h-9 text-xs md:text-sm w-20 mx-auto dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                         onChange={(event) =>
                           updateRow(
                             row.studentId,
@@ -242,22 +251,23 @@ export default function AssessmentScoreEntryPage() {
                         }
                       />
                     </TableCell>
-                    <TableCell className="py-1 md:py-2">
+                    <TableCell className="py-2 md:py-3 px-3 md:px-4 text-center">
                       <input
                         type="checkbox"
                         checked={row.isAbsent}
                         disabled={saving || isLocked}
-                        className="w-3 h-3 md:w-4 md:h-4"
+                        className="w-4 h-4 rounded border-gray-300 dark:border-slate-500 dark:bg-slate-700 accent-[#e35336]"
                         onChange={(event) =>
                           updateRow(row.studentId, "isAbsent", event.target.checked)
                         }
                       />
                     </TableCell>
-                    <TableCell className="py-1 md:py-2">
+                    <TableCell className="py-2 md:py-3 px-3 md:px-4">
                       <Input
                         value={row.remarks ?? ""}
                         disabled={saving || isLocked}
-                        className="h-7 md:h-9 text-xs md:text-sm w-full"
+                        placeholder="Add remark..."
+                        className="h-8 md:h-9 text-xs md:text-sm w-full dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:placeholder:text-slate-400"
                         onChange={(event) =>
                           updateRow(row.studentId, "remarks", event.target.value)
                         }
