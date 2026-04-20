@@ -1,0 +1,311 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0;font-family:var(--font-sans)}
+.role-tabs{display:flex;gap:0;margin-bottom:1.5rem;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);overflow:hidden}
+.rtab{flex:1;padding:10px 8px;font-size:12px;font-weight:500;border:none;cursor:pointer;background:transparent;color:var(--color-text-secondary);transition:all .15s;border-right:0.5px solid var(--color-border-secondary)}
+.rtab:last-child{border-right:none}
+.rtab.active{color:#fff}
+.flow{display:flex;flex-direction:column;gap:0}
+.step{display:flex;gap:12px;align-items:stretch;margin-bottom:0}
+.step-left{display:flex;flex-direction:column;align-items:center;width:36px;flex-shrink:0}
+.step-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#fff;flex-shrink:0}
+.step-line{width:2px;flex:1;min-height:16px;margin:4px 0}
+.step-body{flex:1;padding-bottom:20px}
+.step-title{font-size:14px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.step-desc{font-size:12px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:8px}
+.step-details{display:flex;flex-direction:column;gap:4px}
+.detail{font-size:11px;color:var(--color-text-secondary);padding:5px 10px;background:var(--color-background-secondary);border-radius:6px;border-left:2px solid var(--color-border-secondary);line-height:1.5}
+.detail b{font-weight:500;color:var(--color-text-primary)}
+.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:500;margin-left:6px;vertical-align:middle}
+.flow-link{font-size:11px;padding:6px 10px;border-radius:6px;border:0.5px dashed var(--color-border-secondary);color:var(--color-text-tertiary);margin-top:4px;line-height:1.5}
+.section-bar{font-size:11px;font-weight:500;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 12px 48px}
+</style>
+
+<div class="wrap">
+<h2 class="sr-only">Assessment workflow by role — admin, teacher, student, parent</h2>
+<div class="role-tabs" id="tabs"></div>
+<div id="content"></div>
+</div>
+
+<script>
+const roles = [
+  {
+    id:"admin", label:"Admin", color:"#534AB7",
+    steps:[
+      {
+        title:"Set up grading system",
+        desc:"Before any assessment can happen, admin defines the rules once for the whole school year.",
+        details:[
+          "<b>Grade scale</b> — define A=90–100, B=80–89, C=70–79, F below 50. Applied automatically to all marks.",
+          "<b>Assessment types</b> — create Quiz (10%), Assignment (20%), Mid-term (30%), Final exam (40%). Weights must add up to 100%.",
+          "<b>Academic year & terms</b> — set Term 1, Term 2, Term 3 dates. All assessments are locked to a term.",
+          "<b>Passing threshold</b> — e.g. 50% overall to pass. Drives promotion/demotion logic automatically.",
+        ],
+        tag:"Do once per year", tagColor:"#185FA5"
+      },
+      {
+        title:"Create assessments for each subject",
+        desc:"Admin creates the assessment shell — teachers will fill in the marks later.",
+        details:[
+          "<b>Assessment name</b> — e.g. 'Term 1 Maths Quiz 1'.",
+          "<b>Subject + class + section</b> — scopes which teacher and students are involved.",
+          "<b>Max marks</b> — e.g. 100. System uses this to calculate percentage.",
+          "<b>Due date for entry</b> — deadline by which teacher must submit marks.",
+          "<b>Publish to students</b> — toggle: marks visible to students/parents only after admin publishes.",
+        ],
+        tag:"Repeated per assessment", tagColor:"#1D9E75"
+      },
+      {
+        title:"Monitor mark entry progress",
+        desc:"Admin tracks which teachers have submitted marks and chases pending ones.",
+        details:[
+          "<b>Entry status dashboard</b> — green = submitted, amber = partial, red = not started.",
+          "<b>Deadline reminder</b> — auto-sends SMS/email to teacher if marks not entered 24h before deadline.",
+          "<b>Override any mark</b> — admin can correct a mark with a mandatory reason log.",
+        ],
+        tag:"Ongoing", tagColor:"#BA7517"
+      },
+      {
+        title:"Publish results",
+        desc:"Once all marks are verified, admin publishes — making results visible to students and parents.",
+        details:[
+          "<b>Bulk publish</b> — publish all results for a class in one click.",
+          "<b>Pre-publish check</b> — system flags missing marks before allowing publish.",
+          "<b>Notification trigger</b> — auto-SMS/email to all parents: 'Term 1 results are now available'.",
+        ],
+        tag:"End of term", tagColor:"#534AB7"
+      },
+      {
+        title:"Generate report cards",
+        desc:"System auto-computes final grades and produces formatted report cards.",
+        details:[
+          "<b>Auto-compute GPA</b> — weighted average of all assessment types per subject.",
+          "<b>Bulk PDF generation</b> — one PDF per student, all classes, in one batch job.",
+          "<b>Principal signature</b> — digital signature block on template.",
+          "<b>Distribute</b> — parent portal download OR physical print.",
+        ],
+        tag:"End of term", tagColor:"#534AB7"
+      },
+      {
+        title:"Run promotion / demotion",
+        desc:"Based on final grades, admin runs the promotion engine to move students to the next grade.",
+        details:[
+          "<b>Promotion rules</b> — pass all subjects = promoted. Fail 1 subject = conditional. Fail 2+ = demoted.",
+          "<b>Review list</b> — admin sees borderline students before confirming.",
+          "<b>Manual override</b> — admin can promote/demote manually with a reason (e.g. medical).",
+          "<b>Bulk confirm</b> — one click promotes the entire passing class to next grade.",
+          "<b>Parent notification</b> — auto-sends promotion/demotion result to parent.",
+        ],
+        tag:"End of year", tagColor:"#A32D2D"
+      },
+    ]
+  },
+  {
+    id:"teacher", label:"Teacher", color:"#0F6E56",
+    steps:[
+      {
+        title:"View assigned assessments",
+        desc:"Teacher logs in and sees only the assessments assigned to their subjects and classes.",
+        details:[
+          "<b>My assessments list</b> — filtered to teacher's subjects automatically. No setup needed.",
+          "<b>Status indicator</b> — Not started / In progress / Submitted / Published.",
+          "<b>Deadline countdown</b> — shows days remaining to enter marks.",
+        ],
+        tag:"Daily view", tagColor:"#185FA5"
+      },
+      {
+        title:"Enter marks",
+        desc:"Teacher opens the marks grid and fills in each student's score — the most critical step.",
+        details:[
+          "<b>Marks grid</b> — rows = students, columns = assessments. Fast keyboard navigation.",
+          "<b>Auto-grade display</b> — as teacher types 85, system instantly shows 'B' next to it.",
+          "<b>Out-of-range alert</b> — if teacher enters 110 on a 100-mark exam, system flags it.",
+          "<b>Save as draft</b> — teacher can save progress and come back — marks not visible yet.",
+          "<b>Absent / exempt flag</b> — mark student as absent (AB) or exempt (EX) instead of a number.",
+          "<b>Bulk CSV upload</b> — for teachers who prefer marking in Excel, upload a spreadsheet.",
+        ],
+        tag:"Core task", tagColor:"#1D9E75"
+      },
+      {
+        title:"Add remarks per student",
+        desc:"Optional but important — short comment that appears on the report card.",
+        details:[
+          "<b>Per-subject remark</b> — e.g. 'Shows strong improvement in algebra this term'.",
+          "<b>Character limit</b> — typically 200 chars to keep report cards clean.",
+          "<b>Template remarks</b> — pre-written options teacher can select and customise.",
+        ],
+        tag:"Optional", tagColor:"#888780"
+      },
+      {
+        title:"Submit marks for review",
+        desc:"Teacher clicks Submit — marks are locked and sent to admin/HoD for approval.",
+        details:[
+          "<b>Submit button</b> — triggers a confirmation dialog: 'Are you sure? You cannot edit after submit.'",
+          "<b>HoD notification</b> — Head of Dept receives alert to review submitted marks.",
+          "<b>Post-submit edit</b> — teacher must request admin to unlock if a correction is needed.",
+        ],
+        tag:"Finalise", tagColor:"#534AB7"
+      },
+      {
+        title:"View class analytics",
+        desc:"After marks are published, teacher can see how the class performed overall.",
+        details:[
+          "<b>Class average</b> — mean score per assessment and per subject.",
+          "<b>Grade distribution chart</b> — bar chart: how many A, B, C, D, F.",
+          "<b>At-risk students</b> — list of students below passing threshold.",
+          "<b>Compare to school average</b> — see if class is above or below school benchmark.",
+        ],
+        tag:"After publish", tagColor:"#BA7517"
+      },
+    ]
+  },
+  {
+    id:"student", label:"Student", color:"#1D9E75",
+    steps:[
+      {
+        title:"View upcoming assessments",
+        desc:"Student sees what exams or assignments are coming up so they can prepare.",
+        details:[
+          "<b>Assessment calendar</b> — list of upcoming quizzes, assignments, exams with dates.",
+          "<b>Subject filter</b> — filter by subject to focus on one area.",
+          "<b>Weightage shown</b> — student can see this quiz is worth 10% of their total grade.",
+        ],
+        tag:"Before assessment", tagColor:"#185FA5"
+      },
+      {
+        title:"Check marks after teacher submits",
+        desc:"Once admin publishes, student can see their marks. Not before — prevents pressure on teachers.",
+        details:[
+          "<b>Marks card</b> — each assessment with marks obtained / max marks and letter grade.",
+          "<b>Subject summary</b> — running total: current weighted score per subject.",
+          "<b>Pass/fail indicator</b> — green tick or red flag next to each subject.",
+          "<b>Notification</b> — student gets push/SMS when results are published.",
+        ],
+        tag:"After publish", tagColor:"#1D9E75"
+      },
+      {
+        title:"View progress over time",
+        desc:"Student can track their own improvement term by term.",
+        details:[
+          "<b>Line chart</b> — marks trend across Term 1, Term 2, Term 3 per subject.",
+          "<b>Strong vs weak subjects</b> — visual comparison across all subjects.",
+          "<b>Class rank</b> — where they stand among peers (optional, school can disable).",
+        ],
+        tag:"Self-improvement", tagColor:"#0F6E56"
+      },
+      {
+        title:"Download report card",
+        desc:"At end of term, student downloads their official report card PDF.",
+        details:[
+          "<b>Report card page</b> — one card per term, shows all subjects, GPA, remarks, grades.",
+          "<b>PDF download</b> — formatted with school logo, principal signature.",
+          "<b>Promotion status</b> — visible at end of year: 'Promoted to Grade 6' or 'See counsellor'.",
+        ],
+        tag:"End of term", tagColor:"#534AB7"
+      },
+    ]
+  },
+  {
+    id:"parent", label:"Parent", color:"#BA7517",
+    steps:[
+      {
+        title:"Receive result notification",
+        desc:"Parent is notified the moment admin publishes results — no need to log in and check manually.",
+        details:[
+          "<b>SMS</b> — 'Dear Parent, Term 1 results for Aisha are now available. Login to view.'",
+          "<b>Email</b> — same message with a direct link to the portal.",
+          "<b>In-app push</b> — if parent has the mobile app installed.",
+        ],
+        tag:"Auto-triggered", tagColor:"#185FA5"
+      },
+      {
+        title:"View child's marks on parent portal",
+        desc:"Parent logs in and sees a clean summary of their child's performance.",
+        details:[
+          "<b>Subject-wise marks table</b> — each subject with marks, grade, and teacher remark.",
+          "<b>Overall GPA</b> — single number summarising the term performance.",
+          "<b>Attendance link</b> — marks and attendance shown together — poor attendance explains low marks.",
+          "<b>Multi-child switch</b> — parent with 2 children switches between them in one tap.",
+        ],
+        tag:"Main view", tagColor:"#1D9E75"
+      },
+      {
+        title:"Download report card",
+        desc:"Parent can download and save the official report card PDF anytime.",
+        details:[
+          "<b>Report card tab</b> — term selector dropdown, then download PDF button.",
+          "<b>Historical cards</b> — all past terms accessible, not just current.",
+          "<b>Share</b> — parent can share PDF directly from portal for scholarship applications etc.",
+        ],
+        tag:"On demand", tagColor:"#888780"
+      },
+      {
+        title:"Check promotion / demotion result",
+        desc:"At year end, parent sees whether their child has been promoted — with clear explanation.",
+        details:[
+          "<b>Promotion banner</b> — 'Aisha has been promoted to Grade 6 starting September 2025. Congratulations!'",
+          "<b>Demotion notice</b> — 'Ravi did not meet the passing criteria in 2 subjects. Please contact the school.'",
+          "<b>Subject breakdown</b> — shows which subjects passed and which failed — transparent reasoning.",
+          "<b>Appeal link</b> — if school allows, parent can submit an appeal via the portal.",
+        ],
+        tag:"End of year", tagColor:"#A32D2D"
+      },
+      {
+        title:"Message teacher about results",
+        desc:"If parent has questions, they message the teacher directly through the portal.",
+        details:[
+          "<b>Message thread</b> — parent taps 'Ask teacher' on any subject result.",
+          "<b>Appointment booking</b> — if it's a serious concern, parent books a parent-teacher meeting slot.",
+          "<b>All logged</b> — no WhatsApp, everything is in the system for accountability.",
+        ],
+        tag:"Communication", tagColor:"#534AB7"
+      },
+    ]
+  },
+];
+
+const tabs = document.getElementById('tabs');
+const content = document.getElementById('content');
+
+function render(role) {
+  tabs.querySelectorAll('.rtab').forEach((t,j)=>{
+    t.classList.toggle('active', roles[j].id===role.id);
+    t.style.background = roles[j].id===role.id ? role.color : '';
+  });
+  let html = '<div class="flow">';
+  role.steps.forEach((s,i) => {
+    const isLast = i === role.steps.length - 1;
+    html += `<div class="step">
+      <div class="step-left">
+        <div class="step-num" style="background:${role.color}">${i+1}</div>
+        ${!isLast ? `<div class="step-line" style="background:${role.color}33"></div>` : ''}
+      </div>
+      <div class="step-body">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div class="step-title">${s.title}</div>
+          <span class="tag" style="background:${s.tagColor}22;color:${s.tagColor}">${s.tag}</span>
+        </div>
+        <div class="step-desc">${s.desc}</div>
+        <div class="step-details">
+          ${s.details.map(d=>`<div class="detail">${d}</div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  content.innerHTML = html;
+}
+
+roles.forEach((r,i) => {
+  const btn = document.createElement('button');
+  btn.className = 'rtab' + (i===0?' active':'');
+  btn.textContent = r.label;
+  btn.style.background = i===0 ? r.color : '';
+  btn.style.color = i===0 ? '#fff' : '';
+  btn.onclick = () => render(r);
+  tabs.appendChild(btn);
+});
+
+render(roles[0]);
+</script>
