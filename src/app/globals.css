@@ -1,0 +1,514 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.react-calendar {
+  width: 100% !important;
+  border: none !important;
+  font-family: "Inter", sans-serif !important;
+}
+
+.dark .react-calendar {
+  background-color: #1E293B;
+  color: white;
+}
+
+.dark .react-calendar__tile {
+  color: white;
+}
+
+.dark .react-calendar__tile:enabled:hover {
+  background-color: #334155;
+}
+
+.dark .react-calendar__navigation__label {
+  color: white;
+}
+
+.dark .react-calendar__navigation__arrow {
+  color: white;
+}
+
+.dark .react-calendar__month-view__weekdays {
+  color: #94A3B8;
+}
+
+.dark .react-calendar__month-view__days__day--neighboringMonth {
+  color: #64748B;
+}
+
+.react-calendar__navigation__label__labelText {
+  font-weight: 600;
+}
+
+h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, textarea {
+  font-family: 'Inter', sans-serif;
+}
+
+.react-calendar__tile--active {
+  background-color: #c3ebfa !important;
+  color: black !important;
+}
+
+.rbc-btn-group:first-child {
+  display: none !important;
+}
+
+.rbc-toolbar-label {
+  text-align: right !important;
+  padding: 0px 20px !important;
+}
+
+.rbc-btn-group:last-child {
+  font-size: 13px !important;
+}
+
+.rbc-btn-group:last-child button {
+  border: none !important;
+  background-color: #f1f0ff !important;
+  margin-left: 2px !important;
+}
+
+.rbc-toolbar button.rbc-active {
+  background-color: #dbdafe !important;
+  box-shadow: none !important;
+}
+
+.rbc-time-view {
+  border-color: #eee !important;
+}
+
+.rbc-time-header {
+  display: none !important;
+}
+
+.rbc-time-content {
+  border: none !important;
+}
+
+.rbc-time-gutter.rbc-time-column {
+  font-size: 12px !important;
+}
+
+.rbc-time-gutter.rbc-time-column .rbc-timeslot-group {
+  padding: 0px 20px !important;
+}
+
+.rbc-timeslot-group {
+  background-color: #f7fdff !important;
+}
+
+.rbc-day-slot {
+  font-size: 14px !important;
+}
+
+.rbc-event {
+  border: none !important;
+  color: black !important;
+  padding: 10px !important;
+  margin: 10px !important;
+  width: 99% !important;
+}
+
+.dark .rbc-event {
+  color: white !important;
+  background-color: #e35336 !important;
+}
+
+.dark .rbc-calendar {
+  background-color: #1E293B;
+  color: white;
+}
+
+.dark .rbc-toolbar {
+  color: white;
+}
+
+.dark .rbc-toolbar button {
+  color: white;
+  background-color: #334155;
+}
+
+.dark .rbc-toolbar button.rbc-active {
+  background-color: #e35336;
+}
+
+.dark .rbc-time-content {
+  border-color: #334155 !important;
+}
+
+.dark .rbc-timeslot-group {
+  background-color: #1E293B !important;
+  color: white;
+}
+
+.dark .rbc-day-slot {
+  color: white;
+}
+
+.dark .rbc-time-gutter {
+  color: white;
+}
+
+.rbc-event:nth-child(1) {
+  background-color: #e2f8ff !important;
+}
+.rbc-event:nth-child(2) {
+  background-color: #fefce8 !important;
+}
+.rbc-event:nth-child(3) {
+  background-color: #f2f1ff !important;
+}
+.rbc-event:nth-child(4) {
+  background-color: #fdf2fb !important;
+}
+.rbc-event:nth-child(5) {
+  background-color: #e2f8ff !important;
+}
+.rbc-event:nth-child(6) {
+  background-color: #fefce8 !important;
+}
+.rbc-event:nth-child(7) {
+  background-color: #f2f1ff !important;
+}
+.rbc-event:nth-child(8) {
+  background-color: #fdf2fb !important;
+}
+
+.rbc-event-label{
+  color: gray !important;
+  margin-bottom: 5px;
+}
+
+@layer base {
+  :root {
+    /* Light Mode - Clean Modern School SaaS */
+    --background: 210 20% 98%; /* #F8FAFC - Very soft gray */
+    --foreground: 222.2 84% 4.9%;
+    
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 222.2 84% 4.9%;
+    
+    --popover: 0 0% 100%; /* #FFFFFF */
+    --popover-foreground: 222.2 84% 4.9%;
+    
+    --primary: 10 75% 55%; /* #e35336 - Primary Orange-Red */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    
+    --destructive: 0 84.2% 60.2%; /* #EF4444 - Danger Red */
+    --destructive-foreground: 210 40% 98%;
+    
+    --success: 142.1 76.2% 36.3%; /* #22C55E - Success Green */
+    --success-foreground: 210 40% 98%;
+    
+    --warning: 38 92.5% 52.6%; /* #F59E0B - Warning Amber */
+    --warning-foreground: 222.2 47.4% 11.2%;
+    
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 10 75% 55%;
+    
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 142.1 76.2% 36.3%;
+    --chart-3: 38 92.5% 52.6%;
+    --chart-4: 0 84.2% 60.2%;
+    --chart-5: 270 65% 60%;
+    
+    --radius: 0.5rem;
+  }
+  
+  .dark {
+    /* Dark Mode - Professional SaaS Style (Slate 900) */
+    --background: 222.2 47% 11.2%; /* #0F172A - Dark slate blue-gray */
+    --foreground: 210 40% 98%; /* #F1F5F9 - Primary Text */
+    
+    --card: 217 33% 17%; /* #1E293B - Cards */
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 217 33% 17%; /* #1E293B - Cards */
+    --popover-foreground: 210 40% 98%;
+    
+    --sidebar: 222 47% 9%; /* #111827 - Sidebar */
+    --sidebar-foreground: 210 40% 98%;
+    
+    --primary: 10 75% 55%; /* #e35336 - Primary Orange-Red */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 217 33% 17%; /* #1E293B */
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 217 33% 17%; /* #1E293B */
+    --muted-foreground: 215 20% 65%; /* #94A3B8 - Muted Text */
+    
+    --accent: 217 33% 17%; /* #1E293B */
+    --accent-foreground: 210 40% 98%;
+    
+    --destructive: 0 62.8% 50.6%; /* #EF4444 - Danger Red */
+    --destructive-foreground: 210 40% 98%;
+    
+    --success: 142.1 70.6% 45.3%; /* #22C55E - Success Green */
+    --success-foreground: 210 40% 98%;
+    
+    --warning: 38 92.5% 52.6%; /* #F59E0B - Warning Amber */
+    --warning-foreground: 222.2 47.4% 11.2%;
+    
+    --border: 217 33% 25%; /* #334155 - Borders */
+    --input: 217 33% 25%;
+    --ring: 221.2 83.2% 53.3%;
+    
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 142.1 70.6% 45.3%;
+    --chart-3: 38 92.5% 52.6%;
+    --chart-4: 0 62.8% 50.6%;
+    --chart-5: 270 65% 60%;
+    
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  
+  /* Dark mode text colors */
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6 {
+    color: white;
+  }
+  
+  .dark p,
+  .dark span,
+  .dark div,
+  .dark li,
+  .dark td,
+  .dark th,
+  .dark label {
+    color: #F1F5F9;
+  }
+}
+
+/* Custom Scrollbar - Cross-browser compatible */
+/* Firefox */
+html, body {
+  scrollbar-width: thin;
+  scrollbar-color: #374151 #F3F4F6;
+  overflow-y: scroll; /* Force vertical scrollbar always visible */
+}
+
+/* Chrome, Edge, Safari */
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0;
+  transition: width 0.2s, height 0.2s, opacity 0.2s;
+}
+
+html:hover::-webkit-scrollbar, body:hover::-webkit-scrollbar {
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 1;
+}
+
+html::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+html::-webkit-scrollbar-track:hover, body::-webkit-scrollbar-track:hover {
+  background: transparent !important;
+}
+
+html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
+  background: #374151 !important;
+  border-radius: 0 !important;
+  transition: background 0.2s ease;
+  min-height: 10px;
+  width: 1px !important;
+}
+
+html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
+  background: #1F2937;
+}
+
+html::-webkit-scrollbar-thumb:active, body::-webkit-scrollbar-thumb:active {
+  background: #111827;
+}
+
+/* Scrollbar corner */
+html::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* Global scrollbar for all scrollable elements */
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-y-scroll::-webkit-scrollbar {
+  width: 1px !important;
+}
+
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-x-scroll::-webkit-scrollbar {
+  height: 1px !important;
+}
+
+/* Dark mode scrollbar - Black background with #e35336 thumb */
+.dark html, .dark body {
+  scrollbar-color: #e35336 transparent;
+}
+
+.dark html::-webkit-scrollbar-track, .dark body::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+.dark html::-webkit-scrollbar-track:hover, .dark body::-webkit-scrollbar-track:hover {
+  background: transparent !important;
+}
+
+.dark html::-webkit-scrollbar-thumb, .dark body::-webkit-scrollbar-thumb {
+  background: #e35336 !important;
+  border-radius: 0 !important;
+  width: 0 !important;
+  transition: width 0.2s, opacity 0.2s, background 0.2s;
+}
+
+.dark html:hover::-webkit-scrollbar-thumb, .dark body:hover::-webkit-scrollbar-thumb {
+  width: 1px !important;
+}
+
+.dark html::-webkit-scrollbar-thumb:hover, .dark body::-webkit-scrollbar-thumb:hover {
+  background: #c74428 !important;
+  width: 1px !important;
+}
+
+.dark html::-webkit-scrollbar-thumb:active, .dark body::-webkit-scrollbar-thumb:active {
+  background: #b33a1f !important;
+}
+
+.dark html::-webkit-scrollbar-corner, .dark body::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* Override React Big Calendar hidden scrollbars */
+.rbc-row-content-scrollable .rbc-row-content-scroll-container {
+  -ms-overflow-style: auto !important;
+  scrollbar-width: thin !important;
+}
+
+.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar {
+  display: block !important;
+  width: 1px !important;
+  height: 1px !important;
+}
+
+.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
+  background: #374151 !important;
+  border-radius: 0 !important;
+  min-height: 10px;
+  width: 1px !important;
+}
+
+/* Dark mode */
+.dark .rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-track {
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+.dark .rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
+  background: #e35336 !important;
+}
+
+/* Pagination Button Styles with #e35336 */
+.pagination-button {
+  background-color: #e35336 !important;
+  border-color: #e35336 !important;
+  color: white !important;
+}
+
+.pagination-button:hover {
+  background-color: #c74428 !important;
+  border-color: #c74428 !important;
+}
+
+.pagination-button:disabled {
+  background-color: #94a3b8 !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Active page */
+.pagination-active {
+  background-color: #e35336 !important;
+  border-color: #e35336 !important;
+}
+
+/* ULTRA SPECIFIC SCROLLBAR OVERRIDES - Maximum priority */
+html body *::-webkit-scrollbar {
+  width: 1px !important;
+  height: 1px !important;
+}
+
+html body *::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+html body *::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+html body *::-webkit-scrollbar-thumb {
+  background: #374151 !important;
+  border-radius: 0 !important;
+  width: 1px !important;
+  min-width: 1px !important;
+}
+
+/* Dark mode ultra specific */
+.dark html body *::-webkit-scrollbar-thumb {
+  background: #e35336 !important;
+}
+
+.dark html body *::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.dark html body *::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* All overflow containers */
+[class*="overflow-y-auto"],
+[class*="overflow-y-scroll"],
+[class*="overflow-x-auto"],
+[class*="overflow-x-scroll"] {
+  scrollbar-width: thin !important;
+}
+
+[class*="overflow-y-auto"]::-webkit-scrollbar,
+[class*="overflow-y-scroll"]::-webkit-scrollbar {
+  width: 1px !important;
+}
+
+[class*="overflow-x-auto"]::-webkit-scrollbar,
+[class*="overflow-x-scroll"]::-webkit-scrollbar {
+  height: 1px !important;
+}
