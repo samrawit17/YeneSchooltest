@@ -1,0 +1,459 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { classesAPI, academicYearsAPI } from "@/lib/api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+export interface FilterConfig {
+  academicYear?: boolean;
+  term?: boolean;
+  grade?: boolean;
+  section?: boolean;
+  status?: boolean;
+  curriculum?: boolean;
+}
+
+export interface FilterOptions {
+  statusOptions?: { value: string; label: string }[];
+  curriculumOptions?: { value: string; label: string }[];
+}
+
+export interface FiltersProps {
+  config: FilterConfig;
+  options?: FilterOptions;
+  
+  selectedYear: string;
+  onYearChange: (year: string) => void;
+  
+  selectedTerm?: string;
+  onTermChange?: (term: string) => void;
+  termOptions?: { id: string; name: string }[];
+  
+  selectedGrade?: string;
+  onGradeChange?: (grade: string) => void;
+  
+selectedSection?: string;
+  onSectionChange?: (section: string) => void;
+  sectionMode?: "id" | "name";
+
+  selectedStatus?: string;
+  onStatusChange?: (status: string) => void;
+
+  selectedCurriculum?: string;
+  onCurriculumChange?: (curriculum: string) => void;
+
+  disabled?: boolean;
+  className?: string;
+}
+
+interface AcademicYear {
+  id: string;
+  name: string;
+  isActive?: boolean;
+  curriculumType?: string;
+}
+
+interface SectionData {
+  id: string;
+  name: string;
+}
+
+interface ClassData {
+  id: string;
+  grade: number;
+  name?: string;
+  sections?: SectionData[];
+}
+
+export function Filters({
+  config,
+  options,
+  selectedYear = "",
+  onYearChange,
+  selectedTerm = "",
+  onTermChange,
+  termOptions = [],
+  selectedGrade = "",
+  onGradeChange,
+  selectedSection = "",
+  onSectionChange,
+  sectionMode = "id",
+  selectedStatus = "",
+  onStatusChange,
+  selectedCurriculum = "",
+  onCurriculumChange,
+  
+  disabled = false,
+  className = "",
+}: FiltersProps) {
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const [classes, setClasses] = useState<ClassData[]>([]);
+  const [grades, setGrades] = useState<{ id: string; grade: number }[]>([]);
+  const [sections, setSections] = useState<SectionData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [curriculums, setCurriculums] = useState<{ value: string; label: string }[]>([]);
+
+  const fetchAcademicYears = useCallback(async () => {
+    try {
+      const res = await academicYearsAPI.getAll();
+      const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setAcademicYears(data);
+      
+      const uniqueCurriculums = new Map<string, string>();
+      data.forEach((y: AcademicYear) => {
+        if (y.curriculumType && !uniqueCurriculums.has(y.curriculumType)) {
+          uniqueCurriculums.set(y.curriculumType, y.curriculumType);
+        }
+      });
+      setCurriculums(
+        Array.from(uniqueCurriculums.entries()).map(([value, label]) => ({ value, label }))
+      );
+      
+      if (data.length > 0 && !selectedYear) {
+        const activeYear = data.find((y: AcademicYear) => y.isActive) || data[0];
+        onYearChange(activeYear.id);
+      }
+    } catch (error) {
+      console.error("Error fetching academic years:", error);
+    } finally {
+      setInitialLoading(false);
+    }
+  }, [selectedYear, onYearChange]);
+
+  const fetchClasses = useCallback(async (yearId: string) => {
+    if (!yearId) return;
+    
+    setLoading(true);
+    try {
+      const res = await classesAPI.getAll({ academicYearId: yearId });
+      const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setClasses(data);
+
+      const uniqueGrades = new Map<number, { id: string; grade: number }>();
+      data.forEach((c: ClassData) => {
+        if (!uniqueGrades.has(c.grade)) {
+          uniqueGrades.set(c.grade, { id: c.id, grade: c.grade });
+        }
+      });
+      setGrades(
+        Array.from(uniqueGrades.values()).sort((a, b) => a.grade - b.grade)
+      );
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchSections = useCallback(async () => {
+    if (classes.length === 0) {
+      setSections([]);
+      return;
+    }
+
+    try {
+      let filteredClasses = classes;
+      
+      // If grade is selected, filter by grade
+      if (selectedGrade) {
+        filteredClasses = classes.filter(
+          (c) => c.grade === parseInt(selectedGrade)
+        );
+      }
+      
+      const uniqueSections = new Map<string, SectionData>();
+      
+      filteredClasses.forEach((c) => {
+        if (c.sections && Array.isArray(c.sections)) {
+          c.sections.forEach((s) => {
+            if (!uniqueSections.has(s.id)) {
+              uniqueSections.set(s.id, s);
+            }
+          });
+        }
+      });
+      
+      setSections(
+        Array.from(uniqueSections.values()).sort((a, b) =>
+          a.name.localeCompare(b.name)
+        )
+      );
+    } catch (error) {
+      console.error("Error fetching sections:", error);
+    }
+  }, [selectedGrade, classes]);
+
+  useEffect(() => {
+    fetchAcademicYears();
+  }, [fetchAcademicYears]);
+
+  useEffect(() => {
+    if (selectedYear) {
+      fetchClasses(selectedYear);
+    } else {
+      setClasses([]);
+      setGrades([]);
+      setSections([]);
+    }
+  }, [selectedYear, fetchClasses]);
+
+  useEffect(() => {
+    fetchSections();
+  }, [fetchSections]);
+
+  const handleYearChange = (year: string) => {
+    if (year && year !== selectedYear) {
+      onYearChange(year);
+      if (onGradeChange) onGradeChange("");
+      if (onSectionChange) onSectionChange("");
+    }
+  };
+
+  const handleGradeChange = (grade: string) => {
+    if (onGradeChange) {
+      if (grade !== selectedGrade) {
+        onGradeChange(grade);
+        if (onSectionChange) onSectionChange("");
+      }
+    }
+  };
+
+  const defaultStatusOptions = [
+    { value: "SUBMITTED", label: "Submitted" },
+    { value: "APPROVED", label: "Approved" },
+    { value: "REJECTED", label: "Rejected" },
+    { value: "DRAFT", label: "Draft" },
+  ];
+
+  const statusOptions = options?.statusOptions || defaultStatusOptions;
+  const curriculumOptions = options?.curriculumOptions || curriculums;
+
+  if (initialLoading) {
+    return (
+      <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full ${className}`}>
+        {config.academicYear && <Skeleton className="h-9 w-full" />}
+        {config.term && <Skeleton className="h-9 w-full" />}
+        {config.curriculum && <Skeleton className="h-9 w-full" />}
+        {config.grade && <Skeleton className="h-9 w-full" />}
+        {config.section && <Skeleton className="h-9 w-full" />}
+        {config.status && <Skeleton className="h-9 w-full" />}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full ${className}`}>
+      {config.academicYear && (
+        <Select
+          value={selectedYear || ""}
+          onValueChange={handleYearChange}
+          disabled={disabled}
+        >
+          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectValue placeholder="Academic Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {academicYears.length === 0 ? (
+              <SelectItem value="no-data" disabled>
+                No academic years
+              </SelectItem>
+            ) : (
+              academicYears.map((year) => (
+                <SelectItem key={year.id} value={year.id}>
+                  {year.name} {year.isActive && "(Active)"}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      )}
+
+      {config.term && (
+        <Select
+          value={selectedTerm || ""}
+          onValueChange={(val) => onTermChange?.(val)}
+          disabled={disabled}
+        >
+          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectValue placeholder="Term" />
+          </SelectTrigger>
+          <SelectContent>
+            {!termOptions || termOptions.length === 0 ? (
+              <SelectItem value="no-data" disabled>
+                No terms
+              </SelectItem>
+            ) : (
+              termOptions.map((term) => (
+                <SelectItem key={term.id} value={term.id}>
+                  {term.name}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      )}
+
+      {config.curriculum && (
+        <Select
+          value={selectedCurriculum || ""}
+          onValueChange={(val) => onCurriculumChange?.(val)}
+          disabled={disabled}
+        >
+          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectValue placeholder="Curriculum" />
+          </SelectTrigger>
+          <SelectContent>
+            {curriculumOptions.length === 0 ? (
+              <SelectItem value="no-data" disabled>
+                No curriculum
+              </SelectItem>
+            ) : (
+              curriculumOptions.map((curr) => (
+                <SelectItem key={curr.value} value={curr.value}>
+                  {curr.label}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      )}
+
+      {config.grade && (
+        <Select
+          value={selectedGrade || ""}
+          onValueChange={handleGradeChange}
+          disabled={disabled || !selectedYear || loading}
+        >
+          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <SelectValue placeholder="Grade" />
+            )}
+          </SelectTrigger>
+          <SelectContent>
+            {grades.length === 0 ? (
+              <SelectItem value="no-data" disabled>
+                No grades
+              </SelectItem>
+            ) : (
+              grades.map((grade) => (
+                <SelectItem key={grade.id} value={String(grade.grade)}>
+                  Grade {grade.grade}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      )}
+
+      {config.section && onSectionChange && (
+        <Select
+          value={selectedSection || ""}
+          onValueChange={(val) => { 
+            console.log("Filters: Section changed to:", val); 
+            onSectionChange(val); 
+          }}
+          disabled={disabled || !selectedYear || loading}
+        >
+          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectValue placeholder="Section" />
+          </SelectTrigger>
+          <SelectContent>
+            {sections.length === 0 ? (
+              <SelectItem value="no-data" disabled>
+                No sections
+              </SelectItem>
+            ) : (
+              sections.map((section) => (
+                <SelectItem 
+                  key={section.id} 
+                  value={sectionMode === "name" ? section.name : section.id}
+                >
+                  {section.name}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      )}
+
+      {config.status && (
+        <Select
+          value={selectedStatus || ""}
+          onValueChange={(val) => onStatusChange?.(val)}
+          disabled={disabled}
+        >
+          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {statusOptions.map((status) => (
+              <SelectItem key={status.value} value={status.value}>
+                {status.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+}
+
+// Helper hook for managing filter state
+export function useFilters(initialConfig: FilterConfig = {}) {
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedTerm, setSelectedTerm] = useState("");
+  const [selectedGrade, setSelectedGrade] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedCurriculum, setSelectedCurriculum] = useState("");
+
+  const resetFilters = useCallback(() => {
+    setSelectedYear("");
+    setSelectedTerm("");
+    setSelectedGrade("");
+    setSelectedSection("");
+    setSelectedStatus("");
+    setSelectedCurriculum("");
+  }, []);
+
+  const getActiveFilters = useCallback(() => {
+    const filters: Record<string, string> = {};
+    if (selectedYear) filters.academicYear = selectedYear;
+    if (selectedTerm) filters.termId = selectedTerm;
+    if (selectedGrade) filters.grade = selectedGrade;
+    if (selectedSection) filters.sectionId = selectedSection;
+    if (selectedStatus) filters.status = selectedStatus;
+    if (selectedCurriculum) filters.curriculum = selectedCurriculum;
+    return filters;
+  }, [selectedYear, selectedTerm, selectedGrade, selectedSection, selectedStatus, selectedCurriculum]);
+
+  return {
+    selectedYear,
+    setSelectedYear,
+    selectedTerm,
+    setSelectedTerm,
+    selectedGrade,
+    setSelectedGrade,
+    selectedSection,
+    setSelectedSection,
+    selectedStatus,
+    setSelectedStatus,
+    selectedCurriculum,
+    setSelectedCurriculum,
+    resetFilters,
+    getActiveFilters,
+  };
+}
+
+export default Filters;
