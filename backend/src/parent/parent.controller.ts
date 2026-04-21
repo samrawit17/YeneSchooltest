@@ -1,0 +1,186 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import { ParentService } from './parent.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import {
+  CreateParentDto,
+  UpdateParentDto,
+  LinkParentToStudentDto,
+  CreateParentAndLinkDto,
+} from './dto/parent.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../auth/types/role.enum';
+
+@Controller('parents')
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+export class ParentController {
+  constructor(private readonly parentService: ParentService) {}
+
+  // ==================== PARENT ENDPOINTS (for own profile) ====================
+
+  /**
+   * Get current parent's profile with children
+   * Parent can only view their own profile
+   */
+  @Get('me/profile')
+  @Roles(Role.PARENT)
+  async getMyProfile(@Request() req) {
+    return this.parentService.getParentByUserId(req.user.id);
+  }
+
+  /**
+   * Get current parent's children
+   * Parent can only view their own children
+   */
+  @Get('me/children')
+  @Roles(Role.PARENT)
+  async getMyChildren(@Request() req) {
+    const children = await this.parentService.getChildrenByParentUserId(
+      req.user.id,
+    );
+    return { children };
+  }
+
+  /**
+   * Get a specific child details for current parent
+   * Parent can only view their own children's details
+   */
+  @Get('me/children/:childId')
+  @Roles(Role.PARENT)
+  async getMyChildById(@Param('childId') childId: string, @Request() req) {
+    return this.parentService.getChildByIdForParent(req.user.id, childId);
+  }
+
+  // ==================== ADMIN ONLY ENDPOINTS ====================
+
+  /**
+   * Get all parents for a school
+   * Only ADMIN can view all parents
+   */
+  @Get()
+  @Roles(Role.ADMIN)
+  @Permissions('parent:read')
+  async getParents(
+    @Request() req,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.parentService.getParents(req.user.schoolId, {
+      search,
+      page: pageNum,
+      limit: limitNum,
+    });
+  }
+
+  /**
+   * Get parent by ID
+   * Only ADMIN can view any parent profile
+   */
+  @Get(':id')
+  @Roles(Role.ADMIN)
+  @Permissions('parent:read')
+  async getParentById(@Param('id') parentId: string, @Request() req) {
+    return this.parentService.getParentById(parentId, req.user.schoolId);
+  }
+
+  /**
+   * Update parent profile
+   * Only ADMIN can update parent profiles
+   */
+  @Put(':id')
+  @Roles(Role.ADMIN)
+  @Permissions('parent:update')
+  async updateParent(
+    @Param('id') parentId: string,
+    @Body() updateDto: UpdateParentDto,
+    @Request() req,
+  ) {
+    return this.parentService.updateParent(
+      parentId,
+      req.user.schoolId,
+      updateDto,
+    );
+  }
+
+  /**
+   * Create a new parent (without linking to student)
+   * Only ADMIN can create parents
+   */
+  @Post()
+  @Roles(Role.ADMIN)
+  @Permissions('parent:create')
+  async createParent(@Body() createParentDto: CreateParentDto, @Request() req) {
+    return this.parentService.createParent(createParentDto, req.user.id);
+  }
+
+  /**
+   * Create parent and link to student in one operation
+   * This is the recommended flow for adding parents
+   * Only ADMIN can perform this action
+   */
+  @Post('create-and-link')
+  @Roles(Role.ADMIN)
+  @Permissions('parent:create', 'parent:link_student')
+  async createParentAndLink(
+    @Body() createParentAndLinkDto: CreateParentAndLinkDto,
+    @Request() req,
+  ) {
+    return this.parentService.createParentAndLink(
+      createParentAndLinkDto,
+      req.user.id,
+      req.user.schoolId,
+    );
+  }
+
+  /**
+   * Link existing parent to student
+   * Only ADMIN can perform this action
+   */
+  @Post('link')
+  @Roles(Role.ADMIN)
+  @Permissions('parent:link_student')
+  async linkParentToStudent(
+    @Body() linkDto: LinkParentToStudentDto,
+    @Request() req,
+  ) {
+    return this.parentService.linkParentToStudent(linkDto, req.user.schoolId);
+  }
+
+  /**
+   * Unlink parent from student
+   * Only ADMIN can perform this action
+   */
+  @Delete('unlink/:parentId/:studentId')
+  @Roles(Role.ADMIN)
+  @Permissions('parent:unlink_student')
+  async unlinkParentFromStudent(
+    @Param('parentId') parentId: string,
+    @Param('studentId') studentId: string,
+    @Request() req,
+  ) {
+    return this.parentService.unlinkParentFromStudent(
+      parentId,
+      studentId,
+      req.user.schoolId,
+    );
+  }
+}

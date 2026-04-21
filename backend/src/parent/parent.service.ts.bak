@@ -1,0 +1,1272 @@
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { Prisma, ParentProfile, EnrollmentStatus } from '@prisma/client';
+import { Role } from '../auth/types/role.enum';
+import { CredentialService } from '../credential/credential.service';
+
+// DTOs for Parent operations
+export interface CreateParentDto {
+  email: string;
+  name: string;
+  phone?: string;
+  address?: string;
+  occupation?: string;
+  schoolId?: string;
+}
+
+export interface UpdateParentDto {
+  name?: string;
+  phone?: string;
+  address?: string;
+  occupation?: string;
+}
+
+export interface LinkParentToStudentDto {
+  parentProfileId: string;
+  studentProfileId: string;
+  relation: string; // FATHER, MOTHER, GUARDIAN, OTHER
+  isPrimary?: boolean;
+  emergencyContact?: boolean;
+}
+
+export interface CreateParentAndLinkDto {
+  email: string;
+  name: string;
+  phone?: string;
+  address?: string;
+  occupation?: string;
+  studentProfileId: string;
+  relation: string;
+  isPrimary?: boolean;
+  emergencyContact?: boolean;
+}
+
+// Valid relation types
+const VALID_RELATIONS = ['FATHER', 'MOTHER', 'GUARDIAN', 'OTHER'];
+
+@Injectable()
+export class ParentService {
+  constructor(
+    private prismaService: PrismaService,
+    private credentialService: CredentialService,
+  ) {}
+
+  /**
+   * Create a new parent user and profile
+   * Used when admin creates a parent account
+   */
+  async createParent(createParentDto: CreateParentDto, createdById: string) {
+    const { email, name, phone, address, occupation, schoolId } = createParentDto;
+    const targetSchoolId = schoolId || (
+      await this.prismaService.user.findUnique({
+        where: { id: createdById },
+        select: { schoolId: true },
+      })
+    )?.schoolId;
+
+    if (!targetSchoolId) {
+      throw new BadRequestException('School ID is required');
+    }
+
+    // Verify school exists
+    const school = await this.prismaService.school.findUnique({
+      where: { id: targetSchoolId },
+    });
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
+
+    // Check if email already exists
+    const existingUser = await this.prismaService.user.findUnique({
+      where: { email },
+    });
+    if (existingUser) {
+      throw new BadRequestException('Email already exists');
+    }
+
+    const credentials = await this.credentialService.generateStaffCredentials(
+      targetSchoolId,
+      Role.TEACHER,
+    );
+
+    // Create user and parent profile in transaction
+    const result = await this.prismaService.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          email,
+          name,
+          username: credentials.username,
+          password: credentials.hashedPassword,
+          role: Role.PARENT,
+          schoolId: targetSchoolId,
+          phone,
+          mustChangePassword: true,
+        },
+      });
+
+      // Create parent profile
+      const parentProfile = await tx.parentProfile.create({
+        data: {
+          userId: user.id,
+          schoolId: targetSchoolId,
+          phone,
+          address,
+          occupation,
+        },
+      });
+
+      await this.credentialService.createPendingCredential({
+        schoolId: targetSchoolId,
+        userId: user.id,
+        name,
+        email,
+        username: credentials.username,
+        temporaryPassword: credentials.temporaryPassword,
+        role: Role.PARENT.toString(),
+      }, tx);
+
+      return { user, parentProfile };
+    });
+
+    await this.credentialService.logCredentialGeneration(
+      targetSchoolId,
+      createdById,
+      'PARENT',
+      1,
+      null,
+      [result.user.username ?? ''],
+    );
+
+    return {
+      id: result.parentProfile.id,
+      userId: result.user.id,
+      email: result.user.email,
+      name: result.user.name,
+      username: result.user.username,
+      temporaryPassword: credentials.temporaryPassword,
+    };
+  }
+
+  /**
+   * Create parent and link to student in one operation
+   * This is the main flow for admin-created parents
+   */
+  async createParentAndLink(
+    createParentAndLinkDto: CreateParentAndLinkDto,
+    adminId: string,
+    adminSchoolId: string,
+  ) {
+    const {
+      email,
+      name,
+      phone,
+      address,
+      occupation,
+      studentProfileId,
+      relation,
+      isPrimary = false,
+      emergencyContact = false,
+    } = createParentAndLinkDto;
+
+    // Validate relation
+    if (!VALID_RELATIONS.includes(relation.toUpperCase())) {
+      throw new BadRequestException(
+        `Invalid relation. Must be one of: ${VALID_RELATIONS.join(', ')}`,
+      );
+    }
+
+    // Verify student exists and is approved
+    const studentProfile = await this.prismaService.studentProfile.findUnique({
+      where: { id: studentProfileId },
+      include: { user: true },
+    });
+
+    if (!studentProfile) {
+      throw new NotFoundException('Student profile not found');
+    }
+
+    // Security: Verify student belongs to admin's school
+    if (studentProfile.schoolId !== adminSchoolId) {
+      throw new ForbiddenException('Student does not belong to your school');
+    }
+
+    // Security: Verify student enrollment is APPROVED
+    if (studentProfile.enrollmentStatus !== EnrollmentStatus.APPROVED) {
+      throw new BadRequestException(
+        'Cannot link parent to student with non-approved enrollment',
+      );
+    }
+
+    // Check if email already exists
+    const existingUser = await this.prismaService.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      // If user exists, try to link existing parent
+      return this.linkExistingParentToStudent(
+        existingUser.id,
+        studentProfileId,
+        adminSchoolId,
+        {
+          relation,
+          isPrimary,
+          emergencyContact,
+        },
+      );
+    }
+
+    const credentials = await this.credentialService.generateStaffCredentials(
+      adminSchoolId,
+      Role.TEACHER,
+    );
+
+    // Create everything in transaction
+    const result = await this.prismaService.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          email,
+          name,
+          username: credentials.username,
+          password: credentials.hashedPassword,
+          role: Role.PARENT,
+          schoolId: adminSchoolId,
+          phone,
+          mustChangePassword: true,
+        },
+      });
+
+      // Create parent profile
+      const parentProfile = await tx.parentProfile.create({
+        data: {
+          userId: user.id,
+          schoolId: adminSchoolId,
+          phone,
+          address,
+          occupation,
+        },
+      });
+
+      // Create parent-student link
+      const parentStudent = await tx.parentStudent.create({
+        data: {
+          parentId: parentProfile.id,
+          studentId: studentProfileId,
+          schoolId: adminSchoolId,
+          relation: relation.toUpperCase(),
+          isVerified: true, // Admin created, so verified
+          isPrimary,
+          emergencyContact,
+        },
+      });
+
+      await this.credentialService.createPendingCredential({
+        schoolId: adminSchoolId,
+        userId: user.id,
+        name,
+        email,
+        username: credentials.username,
+        temporaryPassword: credentials.temporaryPassword,
+        role: Role.PARENT.toString(),
+      }, tx);
+
+      return { user, parentProfile, parentStudent };
+    });
+
+    await this.credentialService.logCredentialGeneration(
+      adminSchoolId,
+      adminId,
+      'PARENT',
+      1,
+      null,
+      [result.user.username ?? ''],
+    );
+
+    return {
+      parent: {
+        id: result.parentProfile.id,
+        userId: result.user.id,
+        email: result.user.email,
+        name: result.user.name,
+        username: result.user.username,
+      },
+      student: {
+        id: studentProfile.id,
+        name: studentProfile.user.name,
+        studentCode: studentProfile.studentCode,
+      },
+      link: {
+        relation: result.parentStudent.relation,
+        isPrimary: result.parentStudent.isPrimary,
+        emergencyContact: result.parentStudent.emergencyContact,
+      },
+      temporaryPassword: credentials.temporaryPassword,
+    };
+  }
+
+  /**
+   * Link an existing parent to a student
+   * Only ADMIN can perform this action
+   */
+  async linkParentToStudent(
+    linkDto: LinkParentToStudentDto,
+    adminSchoolId: string,
+  ) {
+    const {
+      parentProfileId,
+      studentProfileId,
+      relation,
+      isPrimary = false,
+      emergencyContact = false,
+    } = linkDto;
+
+    // Validate relation
+    if (!VALID_RELATIONS.includes(relation.toUpperCase())) {
+      throw new BadRequestException(
+        `Invalid relation. Must be one of: ${VALID_RELATIONS.join(', ')}`,
+      );
+    }
+
+    // Verify parent profile exists
+    const parentProfile = await this.prismaService.parentProfile.findUnique({
+      where: { id: parentProfileId },
+      include: { user: true },
+    });
+
+    if (!parentProfile) {
+      throw new NotFoundException('Parent profile not found');
+    }
+
+    // Security: Verify parent belongs to admin's school
+    if (parentProfile.schoolId !== adminSchoolId) {
+      throw new ForbiddenException('Parent does not belong to your school');
+    }
+
+    // Verify student exists and is approved
+    const studentProfile = await this.prismaService.studentProfile.findUnique({
+      where: { id: studentProfileId },
+      include: { user: true },
+    });
+
+    if (!studentProfile) {
+      throw new NotFoundException('Student profile not found');
+    }
+
+    // Security: Verify student belongs to admin's school
+    if (studentProfile.schoolId !== adminSchoolId) {
+      throw new ForbiddenException('Student does not belong to your school');
+    }
+
+    // Security: Verify student enrollment is APPROVED
+    if (studentProfile.enrollmentStatus !== EnrollmentStatus.APPROVED) {
+      throw new BadRequestException(
+        'Cannot link parent to student with non-approved enrollment',
+      );
+    }
+
+    // Check if link already exists and create in transaction to prevent race conditions
+    const parentStudent = await this.prismaService.$transaction(async (tx) => {
+      const existingLink = await tx.parentStudent.findUnique({
+        where: {
+          parentId_studentId: {
+            parentId: parentProfileId,
+            studentId: studentProfileId,
+          },
+        },
+      });
+
+      if (existingLink) {
+        throw new BadRequestException('Parent is already linked to this student');
+      }
+
+      // Create the link
+      return tx.parentStudent.create({
+        data: {
+          parentId: parentProfileId,
+          studentId: studentProfileId,
+          schoolId: adminSchoolId,
+          relation: relation.toUpperCase(),
+          isVerified: true, // Admin created, so verified
+          isPrimary,
+          emergencyContact,
+        },
+      });
+    });
+
+    return {
+      message: 'Parent linked to student successfully',
+      link: {
+        id: parentStudent.id,
+        parentId: parentProfileId,
+        parentName: parentProfile.user.name,
+        studentId: studentProfileId,
+        studentName: studentProfile.user.name,
+        relation: parentStudent.relation,
+        isPrimary: parentStudent.isPrimary,
+      },
+    };
+  }
+
+  /**
+   * Internal method to link existing parent user to student
+   */
+  private async linkExistingParentToStudent(
+    userId: string,
+    studentProfileId: string,
+    schoolId: string,
+    options: {
+      relation: string;
+      isPrimary: boolean;
+      emergencyContact: boolean;
+    },
+  ) {
+    // Get parent profile
+    const parentProfile = await this.prismaService.parentProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!parentProfile) {
+      throw new NotFoundException('Parent profile not found for existing user');
+    }
+
+    // Verify same school
+    if (parentProfile.schoolId !== schoolId) {
+      throw new ForbiddenException(
+        'Parent belongs to a different school. Cannot link.',
+      );
+    }
+
+    // Check if link already exists
+    const existingLink = await this.prismaService.parentStudent.findUnique({
+      where: {
+        parentId_studentId: {
+          parentId: parentProfile.id,
+          studentId: studentProfileId,
+        },
+      },
+    });
+
+    if (existingLink) {
+      throw new BadRequestException('Parent is already linked to this student');
+    }
+
+    // Create the link
+    const parentStudent = await this.prismaService.parentStudent.create({
+      data: {
+        parentId: parentProfile.id,
+        studentId: studentProfileId,
+        schoolId,
+        relation: options.relation.toUpperCase(),
+        isVerified: true,
+        isPrimary: options.isPrimary,
+        emergencyContact: options.emergencyContact,
+      },
+    });
+
+    return {
+      message: 'Existing parent linked to student successfully',
+      link: {
+        id: parentStudent.id,
+        parentId: parentProfile.id,
+        studentId: studentProfileId,
+        relation: parentStudent.relation,
+        isPrimary: parentStudent.isPrimary,
+      },
+    };
+  }
+
+  /**
+   * Unlink parent from student
+   * Only ADMIN can perform this action
+   */
+  async unlinkParentFromStudent(
+    parentProfileId: string,
+    studentProfileId: string,
+    adminSchoolId: string,
+  ) {
+    // Verify the link exists and belongs to admin's school
+    const link = await this.prismaService.parentStudent.findUnique({
+      where: {
+        parentId_studentId: {
+          parentId: parentProfileId,
+          studentId: studentProfileId,
+        },
+      },
+    });
+
+    if (!link) {
+      throw new NotFoundException('Parent-student link not found');
+    }
+
+    if (link.schoolId !== adminSchoolId) {
+      throw new ForbiddenException('Link does not belong to your school');
+    }
+
+    // Delete the link
+    await this.prismaService.parentStudent.delete({
+      where: { id: link.id },
+    });
+
+    return { message: 'Parent unlinked from student successfully' };
+  }
+
+  /**
+   * Get all parents for a school
+   */
+  async getParents(
+    schoolId: string, 
+    filters?: { search?: string; page?: number; limit?: number }
+  ) {
+    const where: Prisma.ParentProfileWhereInput = { schoolId };
+
+    if (filters?.search) {
+      // Search by name or email
+      where.OR = [
+        { user: { name: { contains: filters.search } } },
+        { user: { email: { contains: filters.search } } },
+      ];
+    }
+
+    // Pagination defaults
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // Get total count for pagination
+    const total = await this.prismaService.parentProfile.count({ where });
+
+    const parents = await this.prismaService.parentProfile.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            name: true,
+            isActive: true,
+            phone: true,
+          },
+        },
+        children: {
+          include: {
+            student: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      data: parents.map((parent) => ({
+        ...parent,
+        children: parent.children.map((child) => ({
+          id: child.id,
+          studentId: child.studentId,
+          studentName: child.student.user.name,
+          relation: child.relation,
+          isPrimary: child.isPrimary,
+          emergencyContact: child.emergencyContact,
+        })),
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Get parent by ID
+   */
+  async getParentById(parentId: string, schoolId: string) {
+    const parent = await this.prismaService.parentProfile.findFirst({
+      where: {
+        id: parentId,
+        schoolId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            isActive: true,
+            phone: true,
+          },
+        },
+        children: {
+          include: {
+            student: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!parent) {
+      throw new NotFoundException('Parent not found');
+    }
+
+    return {
+      ...parent,
+      children: parent.children.map((child) => ({
+        id: child.id,
+        studentId: child.studentId,
+        studentName: child.student.user.name,
+        studentCode: child.student.studentCode,
+        relation: child.relation,
+        isPrimary: child.isPrimary,
+        emergencyContact: child.emergencyContact,
+      })),
+    };
+  }
+
+  /**
+   * Get parent profile by user ID (for parent's own profile)
+   */
+  async getParentByUserId(userId: string) {
+    const parent = await this.prismaService.parentProfile.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            isActive: true,
+            phone: true,
+          },
+        },
+        children: {
+          include: {
+            student: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!parent) {
+      throw new NotFoundException('Parent profile not found');
+    }
+
+    return {
+      ...parent,
+      children: parent.children.map((child) => ({
+        id: child.id,
+        studentId: child.studentId,
+        studentName: child.student.user.name,
+        studentCode: child.student.studentCode,
+        relation: child.relation,
+        isPrimary: child.isPrimary,
+        emergencyContact: child.emergencyContact,
+      })),
+    };
+  }
+
+  /**
+   * Update parent profile
+   */
+  async updateParent(
+    parentId: string,
+    schoolId: string,
+    updateDto: UpdateParentDto,
+  ) {
+    const parent = await this.prismaService.parentProfile.findFirst({
+      where: { id: parentId, schoolId },
+    });
+
+    if (!parent) {
+      throw new NotFoundException('Parent not found');
+    }
+
+    // Update user name if provided
+    if (updateDto.name) {
+      await this.prismaService.user.update({
+        where: { id: parent.userId },
+        data: { name: updateDto.name },
+      });
+    }
+
+    // Update parent profile
+    return this.prismaService.parentProfile.update({
+      where: { id: parentId },
+      data: {
+        phone: updateDto.phone,
+        address: updateDto.address,
+        occupation: updateDto.occupation,
+      },
+    });
+  }
+
+  /**
+   * Get children (students) for a parent
+   * This is used by parent dashboard to scope data
+   */
+  async getChildrenByParentUserId(parentUserId: string) {
+    // Logging removed for production
+    
+    // First try to find parent profile by userId
+    let parentProfile = await this.prismaService.parentProfile.findUnique({
+      where: { userId: parentUserId },
+    });
+    
+    // Logging removed for production
+
+    // Fallback: if parentProfile not found, try to find by looking up through ParentStudent links
+    // This handles cases where the user has a parent role but no direct ParentProfile
+    if (!parentProfile) {
+      // Logging removed for production
+      // Get the user to get their email for matching
+      const user = await this.prismaService.user.findUnique({
+        where: { id: parentUserId },
+      });
+
+      if (user) {
+        // Logging removed for production
+        // Find parent profiles with matching email
+        const potentialProfiles = await this.prismaService.parentProfile.findMany({
+          where: {
+            schoolId: user.schoolId || undefined,
+          },
+          take: 100,
+        });
+
+        // Logging removed for production
+
+        // Match by email
+        const foundProfile = potentialProfiles.find(p => {
+          // We need to check if any parent profile's user has this email
+          return false; // This approach won't work without joining
+        });
+
+        // Alternative: Find parent profile through direct user lookup
+        const profileByEmail = await this.prismaService.parentProfile.findFirst({
+          where: {
+            user: { email: user.email },
+          },
+        });
+        
+        // Logging removed for production
+
+        if (profileByEmail) {
+          parentProfile = profileByEmail;
+        }
+      }
+    }
+
+    if (!parentProfile) {
+      // Logging removed for production
+      throw new NotFoundException('Parent profile not found');
+    }
+
+    const children = await this.prismaService.parentStudent.findMany({
+      where: {
+        parentId: parentProfile.id,
+      },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    
+    // Now get the class assignments for all children
+    const studentUserIds = children.map(c => c.student.userId);
+    const studentClasses = await this.prismaService.studentClass.findMany({
+      where: {
+        studentId: { in: studentUserIds },
+      },
+      include: {
+        class: {
+          include: {
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Get academic year for fee calculation
+    const academicYear = await this.prismaService.academicYear.findFirst({
+      where: { isActive: true },
+    });
+
+    // Get school curriculum type for grouping fees
+    const schoolSettings = await this.prismaService.schoolSetting.findFirst({
+      where: { schoolId: parentProfile.schoolId, key: 'curriculumType' },
+    });
+    const curriculumMode = schoolSettings?.value || 'TERM';
+
+    // Get student fees for all children - ALWAYS load regardless of academicYear
+    let studentFeesMap = new Map();
+    let feesByStudent: Map<string, any[]> = new Map();
+    
+    // Get ALL student fees for these students
+    const studentFees = await this.prismaService.studentFee.findMany({
+      where: {
+        studentId: { in: studentUserIds },
+      },
+      include: {
+        payments: true,
+        feeStructure: true,
+      },
+    });
+    console.log('Found student fees:', studentFees.length);
+
+    // Process each student fee
+    for (const sf of studentFees) {
+      const paidAmount = sf.payments ? sf.payments.reduce((sum, p) => sum + p.amountPaid, 0) : 0;
+      
+      // Use curriculum mode label
+      const modeLabel = curriculumMode === 'MONTHLY' ? 'Monthly' 
+        : curriculumMode === 'QUARTERLY' ? 'Quarter' 
+        : curriculumMode === 'SEMESTER' ? 'Semester' 
+        : curriculumMode === 'TERM' ? 'Term' : 'Annual';
+      
+      // Get term number from term.termId or generate from index
+      const termNum = sf.termId || '1';
+      const termLabel = !isNaN(Number(termNum)) 
+        ? `${modeLabel} ${termNum}` 
+          : modeLabel;
+        
+        // Initialize array for student if needed
+        if (!feesByStudent.has(sf.studentId)) {
+          feesByStudent.set(sf.studentId, []);
+        }
+        
+        // Get and push fee item
+        const feeList = feesByStudent.get(sf.studentId);
+        if (feeList) {
+          feeList.push({
+            feeId: sf.id,
+            feeType: sf.feeStructure?.feeType || 'Tuition',
+            amount: sf.totalAmount || 0,
+            discount: sf.discount || 0,
+            finalAmount: sf.finalAmount || 0,
+            paid: paidAmount,
+            balance: Math.max(0, (sf.finalAmount || 0) - paidAmount),
+            status: sf.status,
+            termId: sf.termId || null,
+            termName: termLabel,
+          });
+        }
+        
+        // Update totals
+        const existingTotals = studentFeesMap.get(sf.studentId);
+        if (existingTotals) {
+          studentFeesMap.set(sf.studentId, {
+            total: existingTotals.total + (sf.finalAmount || 0),
+            paid: existingTotals.paid + paidAmount,
+          });
+        } else {
+          studentFeesMap.set(sf.studentId, { total: sf.finalAmount || 0, paid: paidAmount });
+        }
+      }
+      // End of student fees processing
+    }
+
+    // For students without student fees, calculate from fee structure based on their grade
+    for (const child of children) {
+      if (!studentFeesMap.has(child.student.userId)) {
+        studentFeesMap.set(child.student.userId, {
+          total: 0,
+          paid: 0,
+          fromFeeStructure: true,
+        });
+      }
+    }
+
+    // Group classes by studentId
+    const classesByStudentId = new Map();
+    for (const sc of studentClasses) {
+      if (!classesByStudentId.has(sc.studentId)) {
+        classesByStudentId.set(sc.studentId, sc);
+      }
+    }
+
+    // Get attendance stats for all children in bulk (current academic year)
+    const today = new Date();
+    const yearStart = new Date(today.getFullYear(), 0, 1);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    // Get all attendance records for these students
+    const allAttendanceRecords = await this.prismaService.attendanceRecord.findMany({
+      where: {
+        studentId: { in: studentUserIds },
+        session: {
+          date: {
+            gte: yearStart,
+            lte: todayEnd,
+          },
+        },
+      },
+    });
+
+    // Calculate attendance stats per student
+    const attendanceMap = new Map();
+    for (const studentId of studentUserIds) {
+      const studentRecords = allAttendanceRecords.filter(r => r.studentId === studentId);
+      const totalDays = studentRecords.length;
+      const presentDays = studentRecords.filter(r => r.status === 'PRESENT').length;
+      const rate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+      attendanceMap.set(studentId, {
+        presentDays,
+        totalDays,
+        rate,
+      });
+    }
+    
+    // Logging removed for production
+
+    return children.map((child) => {
+      // Get the most recent class for this student
+      const currentClass = classesByStudentId.get(child.student.userId);
+      const teacher = currentClass?.class?.homeroomTeacher;
+
+      // Get fee info
+      const feeInfo = studentFeesMap.get(child.student.userId) || { total: 0, paid: 0 };
+      const balance = Math.max(0, feeInfo.total - feeInfo.paid);
+      const paidPercentage = feeInfo.total > 0 ? Math.round((feeInfo.paid / feeInfo.total) * 100) : 0;
+
+      // Get attendance stats from pre-computed map
+      const attendance = attendanceMap.get(child.student.userId) || { presentDays: 0, totalDays: 0, rate: 0 };
+
+      return {
+        id: child.student.id,
+        userId: child.student.userId,
+        name: child.student.user.name,
+        studentCode: child.student.studentCode,
+        className: child.student.className,
+        classId: currentClass?.classId || null,
+        section: child.student.section,
+        relation: child.relation,
+        isPrimary: child.isPrimary,
+        homeroomTeacher: teacher ? {
+          id: teacher.id,
+          name: teacher.name,
+          email: teacher.email,
+        } : null,
+        attendance: {
+          presentDays: attendance.presentDays,
+          totalDays: attendance.totalDays,
+          rate: attendance.rate,
+        },
+        academics: {
+          average: 0,
+          grade: 'N/A',
+        },
+        fees: {
+          total: feeInfo.total,
+          paid: feeInfo.paid,
+          balance,
+          paidPercentage,
+          nextDueDate: null,
+          breakdown: feesByStudent.get(child.student.userId) || [],
+        },
+      };
+    });
+  }
+
+  /**
+   * Get a specific child by ID for a parent
+   * Only returns the child if the parent is linked to this student
+   */
+  async getChildByIdForParent(parentUserId: string, childId: string) {
+    const parentProfile = await this.prismaService.parentProfile.findUnique({
+      where: { userId: parentUserId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!parentProfile) {
+      throw new NotFoundException('Parent profile not found');
+    }
+
+    // Check if parent is linked to this child
+    const parentStudent = await this.prismaService.parentStudent.findFirst({
+      where: {
+        parentId: parentProfile.id,
+        studentId: childId,
+      },
+      include: {
+        student: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!parentStudent) {
+      throw new ForbiddenException('You do not have permission to view this student\'s details');
+    }
+
+    const studentProfile = parentStudent.student;
+    const studentUser = studentProfile.user;
+
+    // Get attendance stats
+    const today = new Date();
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const totalAttendance = await this.prismaService.attendanceRecord.count({
+      where: {
+        studentId: studentProfile.userId,
+        session: {
+          date: {
+            gte: new Date(today.getFullYear(), 0, 1),
+            lte: todayEnd,
+          },
+        },
+      },
+    });
+
+    const presentAttendance = await this.prismaService.attendanceRecord.count({
+      where: {
+        studentId: studentProfile.userId,
+        status: 'PRESENT',
+        session: {
+          date: {
+            gte: new Date(today.getFullYear(), 0, 1),
+            lte: todayEnd,
+          },
+        },
+      },
+    });
+
+    const attendanceRate = totalAttendance > 0
+      ? Math.round((presentAttendance / totalAttendance) * 100)
+      : 0;
+
+    // Get latest grade
+    const latestGrade = await this.prismaService.grade.findFirst({
+      where: {
+        studentId: studentProfile.userId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Get published report card
+    const reportCard = await this.prismaService.reportCard.findFirst({
+      where: {
+        studentId: studentProfile.userId,
+        status: 'PUBLISHED',
+      },
+      orderBy: {
+        publishedAt: 'desc',
+      },
+    });
+
+    const currentClass = await this.prismaService.studentClass.findFirst({
+      where: {
+        studentId: studentProfile.userId,
+      },
+      include: {
+        section: {
+          select: {
+            id: true,
+            name: true,
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+        class: {
+          select: {
+            id: true,
+            name: true,
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    const homeroomTeacher =
+      currentClass?.section?.homeroomTeacher || currentClass?.class?.homeroomTeacher;
+
+    return {
+      child: {
+        id: studentProfile.id,
+        userId: studentUser.id,
+        name: studentUser.name,
+        email: studentUser.email,
+        phone: studentUser.phone,
+        studentCode: studentProfile.studentCode,
+        className: studentProfile.className,
+        section: studentProfile.section,
+        enrollmentStatus: studentProfile.enrollmentStatus,
+        dateOfBirth: null, // Not available in StudentProfile schema
+        gender: studentProfile.gender,
+        bloodGroup: null, // Not available in StudentProfile schema
+        address: studentProfile.address,
+        admissionDate: studentProfile.createdAt,
+        academicYear: studentProfile.academicYear,
+        relation: parentStudent.relation,
+        parentName: parentProfile?.user?.name || null,
+        homeroomTeacher: homeroomTeacher
+          ? {
+              id: homeroomTeacher.id,
+              name: homeroomTeacher.name,
+              email: homeroomTeacher.email,
+              phone: homeroomTeacher.phone || null,
+            }
+          : null,
+      },
+      stats: {
+        attendance: {
+          presentDays: presentAttendance,
+          totalDays: totalAttendance,
+          rate: attendanceRate,
+        },
+        academics: {
+          average: latestGrade?.percentage || 0,
+          grade: latestGrade?.grade || 'N/A',
+          ranking: reportCard?.rank || 0,
+          totalSubjects: 0,
+        },
+        fees: {
+          total: 0,
+          paid: 0,
+          balance: 0,
+        },
+        behavior: {
+          score: 0,
+          rating: 'Good',
+        },
+      },
+    };
+  }
+
+  /**
+   * Get student IDs for a parent (for dashboard scoping)
+   */
+  async getChildStudentIds(parentUserId: string): Promise<string[]> {
+    const parentProfile = await this.prismaService.parentProfile.findUnique({
+      where: { userId: parentUserId },
+    });
+
+    if (!parentProfile) {
+      return [];
+    }
+
+    const children = await this.prismaService.parentStudent.findMany({
+      where: {
+        parentId: parentProfile.id,
+      },
+      select: {
+        student: {
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+
+    return children.map((child) => child.student.userId);
+  }
+
+  /**
+   * Delete parent (soft delete by deactivating user)
+   */
+  async deleteParent(parentId: string, schoolId: string) {
+    const parent = await this.prismaService.parentProfile.findFirst({
+      where: { id: parentId, schoolId },
+    });
+
+    if (!parent) {
+      throw new NotFoundException('Parent not found');
+    }
+
+    // Deactivate user instead of deleting
+    await this.prismaService.user.update({
+      where: { id: parent.userId },
+      data: { isActive: false },
+    });
+
+    return { message: 'Parent deactivated successfully' };
+  }
+}
