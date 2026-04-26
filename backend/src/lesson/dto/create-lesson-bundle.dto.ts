@@ -146,6 +146,12 @@ export class CreateLessonBundleDto {
   @Max(8) // Ethiopian period schedule (1-8 periods)
   periodNumber: number;
 
+  // Embedded Homework (optional)
+  @ValidateNested()
+  @Type(() => CreateHomeworkDto)
+  @IsOptional()
+  homework?: CreateHomeworkDto;
+
   // Ethiopian Curriculum tag
   @IsNumber()
   @IsOptional()
@@ -174,12 +180,6 @@ export class CreateLessonBundleDto {
   @IsString()
   @IsOptional()
   syllabusMappingId?: string;
-
-  // Integrated Homework (optional embedded homework)
-  @ValidateNested()
-  @Type(() => CreateHomeworkDto)
-  @IsOptional()
-  homework?: CreateHomeworkDto;
 
   // Worksheets/Resources (Array of resources)
   @IsArray()

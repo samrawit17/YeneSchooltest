@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { disciplineAPI, parentsAPI } from "@/lib/api";
-import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, AlertTriangle, User, Clock, CheckCircle, Shield } from "lucide-react";
 
@@ -55,21 +54,25 @@ export default function ParentDisciplinePage() {
   async function loadChildIncidents() {
     setLoading(true);
     try {
-      const resp = await parentsAPI.getChildren(user!.id);
-      const children = resp.data?.data || resp.data || [];
+      const resp = await parentsAPI.getChildren();
+      const children = resp.data?.children || resp.data || [];
 
       const allIncidents: ChildDiscipline[] = [];
 
       for (const child of children) {
         try {
-          const incidentResp = await disciplineAPI.getStudentIncidents(child.studentId);
+          const studentId =
+            child.studentId || child.student?.id || child.student?.userId;
+          if (!studentId) continue;
+          const incidentResp = await disciplineAPI.getStudentIncidents(studentId);
           const childIncidents = (incidentResp.data || []).map((i: any) => ({
             ...i,
-            childName: child.name,
+            childName:
+              child.name || child.student?.user?.name || child.studentName || "Unknown",
           }));
           allIncidents.push(...childIncidents);
         } catch (e) {
-          console.log("No incidents for child", child.studentId);
+          console.log("No incidents for child", child.studentId || child.student?.id);
         }
       }
 

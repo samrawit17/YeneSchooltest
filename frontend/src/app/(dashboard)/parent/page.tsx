@@ -124,6 +124,54 @@ interface DashboardData {
   }[];
 }
 
+// Skeleton component for initial load
+const ParentDashboardSkeleton = () => (
+  <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="p-4 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <Skeleton className="h-8 w-48" />
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2">
+            <CardContent className="p-6">
+              <Skeleton className="h-6 w-32 mb-4" />
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <Skeleton className="h-6 w-32 mb-4" />
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardContent className="p-6">
+            <Skeleton className="h-6 w-32 mb-4" />
+            <Skeleton className="h-48 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+);
+
 // Custom tooltip for the chart
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -174,6 +222,7 @@ const getGradeStatus = (avg: number): { text: string; color: string } => {
 const ParentDashboard = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [studentDropdownOpen, setStudentDropdownOpen] = useState(false);
   
@@ -301,29 +350,15 @@ const ParentDashboard = () => {
         console.error("Failed to fetch dashboard:", error);
       } finally {
         setLoading(false);
+        setInitialLoad(false);
       }
     };
 
     fetchDashboard();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="p-6 min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
-        <div className="max-w-7xl mx-auto space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i}>
-                <CardContent className="pt-6">
-                  <Skeleton className="h-20 w-full" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+  if (loading || initialLoad) {
+    return <ParentDashboardSkeleton />;
   }
 
   const children = dashboardData?.stats?.children || [];
@@ -617,160 +652,6 @@ const ParentDashboard = () => {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Grades Overview Table */}
-              <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
-                    Grades Overview
-                  </CardTitle>
-                  {hasGrades && (
-                    <Badge variant="outline" className="text-xs">
-                      {grades.length} Subjects
-                    </Badge>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  {gradesLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : hasGrades ? (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-b border-gray-100 dark:border-slate-700">
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              Subject
-                            </TableHead>
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              CA
-                            </TableHead>
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              Mid
-                            </TableHead>
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              Final
-                            </TableHead>
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              Total
-                            </TableHead>
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              Grade
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {grades.slice(0, 5).map((grade) => (
-                            <TableRow key={grade.id} className="border-b border-gray-50 dark:border-slate-700/50 last:border-0">
-                              <TableCell className="py-3 text-sm text-gray-900 dark:text-gray-100">
-                                {grade.subject.name}
-                              </TableCell>
-                              <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-400">
-                                {grade.caScore ?? "-"}
-                              </TableCell>
-                              <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-400">
-                                {grade.midScore ?? "-"}
-                              </TableCell>
-                              <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-400">
-                                {grade.finalScore ?? "-"}
-                              </TableCell>
-                              <TableCell className="py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {grade.totalScore ?? "-"}
-                              </TableCell>
-                              <TableCell className="py-3">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${
-                                    grade.gradeLetter === "A"
-                                      ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
-                                      : grade.gradeLetter === "B"
-                                      ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-                                      : grade.gradeLetter === "C"
-                                      ? "bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800"
-                                      : grade.gradeLetter === "D"
-                                      ? "bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
-                                      : grade.gradeLetter === "F"
-                                      ? "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800"
-                                      : "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700"
-                                  }`}
-                                >
-                                  {grade.gradeLetter || "N/A"}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      {grades.length > 5 && (
-                        <div className="mt-4 text-center">
-                          <Button variant="link" asChild>
-                            <a href="/parent/grades">View all {grades.length} subjects</a>
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ) : selectedChild?.grades && selectedChild.grades.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-b border-gray-100 dark:border-slate-700">
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              Subject
-                            </TableHead>
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              Current Grade
-                            </TableHead>
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              Average
-                            </TableHead>
-                            <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
-                              Status
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {selectedChild.grades.map((grade, index) => (
-                            <TableRow key={index} className="border-b border-gray-50 dark:border-slate-700/50 last:border-0">
-                              <TableCell className="py-3 text-sm text-gray-900 dark:text-gray-100">
-                                {grade.subject}
-                              </TableCell>
-                              <TableCell className="py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {grade.currentGrade}
-                              </TableCell>
-                              <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-400">
-                                {grade.average}
-                              </TableCell>
-                              <TableCell className="py-3">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${
-                                    grade.status === "Excellent"
-                                      ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
-                                      : grade.status === "Good"
-                                      ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-                                      : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800"
-                                  }`}
-                                >
-                                  {grade.status}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No grades available yet</p>
-                      <Button variant="link" asChild className="mt-2">
-                        <a href="/parent/grades">View Grades</a>
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </div>
 
             {/* Right Column */}
@@ -877,6 +758,85 @@ const ParentDashboard = () => {
               </Card>
             </div>
           </div>
+
+          {/* Grades Overview - Full Width */}
+          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 w-full">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+                Grades Overview
+              </CardTitle>
+              {hasGrades && (
+                <Badge variant="outline" className="text-xs">
+                  {grades.length} Subjects
+                </Badge>
+              )}
+            </CardHeader>
+            <CardContent>
+              {gradesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : selectedChild?.grades && selectedChild.grades.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
+                          Subject
+                        </TableHead>
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
+                          Current Grade
+                        </TableHead>
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
+                          Average
+                        </TableHead>
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
+                          Status
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedChild.grades.map((grade, index) => (
+                        <TableRow key={index} className="border-b border-gray-50 dark:border-slate-700/50 last:border-0">
+                          <TableCell className="py-3 text-sm text-gray-900 dark:text-gray-100">
+                            {grade.subject}
+                          </TableCell>
+                          <TableCell className="py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {grade.currentGrade}
+                          </TableCell>
+                          <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-400">
+                            {grade.average}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${
+                                grade.status === "Excellent"
+                                  ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800"
+                                  : grade.status === "Good"
+                                  ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                                  : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800"
+                              }`}
+                            >
+                              {grade.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No grades available yet</p>
+                  <Button variant="link" asChild className="mt-2">
+                    <a href="/parent/grades">View Grades</a>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Bottom Section - Recent Activity Feed */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">

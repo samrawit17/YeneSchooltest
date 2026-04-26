@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { Event } from "@/lib/api";
 import { useCalendar } from "@/context/CalendarContext";
 import { convertToEthiopian, ETHIOPIAN_MONTH_NAMES } from "@/lib/calendar-utils";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, Grid, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const localizer = momentLocalizer(moment);
 
@@ -54,13 +54,13 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
     }
   };
 
-  // Get visible views based on screen size
+  // Get visible views - show only Month
   const getVisibleViews = (): View[] => {
-    if (screenSize === 'xs' || screenSize === 'sm') {
-      return [Views.DAY, Views.MONTH];
-    }
-    return [Views.DAY, Views.WEEK, Views.WORK_WEEK, Views.MONTH];
+    return [Views.MONTH];
   };
+
+  // Month navigation state
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   // Transform API events to calendar format
   const calendarEvents = events?.map((event) => ({
@@ -74,11 +74,29 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
     setView(selectedView);
   };
 
+  // Navigate to previous month
+  const goToPrevious = () => {
+    const prevMonth = new Date(currentDate);
+    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    setCurrentDate(prevMonth);
+  };
+
+  // Navigate to next month
+  const goToNext = () => {
+    const nextMonth = new Date(currentDate);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    setCurrentDate(nextMonth);
+  };
+
+  // Navigate to today
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
   // Format date based on calendar type
   const formatDateHeader = (date: Date) => {
     if (calendarType === 'ETHIOPIAN') {
       const ethiopian = convertToEthiopian(date);
-      // Shorten further for very small screens
       if (screenSize === 'xs') {
         return `${ETHIOPIAN_MONTH_NAMES[ethiopian.month - 1]?.slice(0, 2)} ${ethiopian.day}`;
       }
@@ -90,58 +108,71 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
     return moment(date).format('MMM D');
   };
 
+  // Day style getter for today highlight
+  const getDayStyle = (date: Date) => {
+    const isToday = new Date().toDateString() === date.toDateString();
+    const isDark = document.documentElement.classList.contains('dark');
+    return {
+      style: isToday ? {
+        backgroundColor: isDark ? "rgba(227, 83, 54, 0.2)" : "#fce8e6",
+      } : {
+        backgroundColor: isDark ? "transparent" : "transparent"
+      }
+    };
+  };
+
+  // Event styling for light/dark mode
+  const getEventStyle = () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    return {
+      style: {
+        backgroundColor: "#e35336",
+        borderRadius: screenSize === 'xs' ? "2px" : "4px",
+        color: "white",
+        border: "none",
+        fontSize: screenSize === 'xs' ? "10px" : "12px",
+        padding: screenSize === 'xs' ? "0 2px" : "0 4px",
+        opacity: isDark ? 0.9 : 1,
+      },
+    };
+  };
+
   return (
     <div className="h-full w-full dark:bg-gray-800 dark:rounded-lg flex flex-col">
       {/* Custom Responsive Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
         <div className="flex items-center gap-1">
           <button
-            className="p-1.5 sm:p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            title="Previous"
+            onClick={goToPrevious}
+            className="p-1.5 sm:p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
+            title="Previous Month"
           >
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           
           <button
-            className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            onClick={goToToday}
+            className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
           >
             Today
           </button>
           
           <button
-            className="p-1.5 sm:p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            title="Next"
+            onClick={goToNext}
+            className="p-1.5 sm:p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
+            title="Next Month"
           >
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
         
-        {/* Current Month/Week Label */}
-        <div className="text-sm sm:text-base font-semibold dark:text-white order-first sm:order-none w-full sm:w-auto text-center sm:text-left">
-          {/* This will be replaced by the calendar's label */}
+        {/* Current Month Label - Hidden since calendar provides its own */}
+        <div className="text-sm sm:text-base font-semibold text-gray-800 dark:text-white order-first sm:order-none w-full sm:w-auto text-center sm:text-left">
+          {/* Calendar provides its own header */}
         </div>
         
-        {/* View Switcher */}
-        <div className="flex items-center gap-1">
-          {getVisibleViews().map((v) => (
-            <button
-              key={v}
-              onClick={() => handleOnChangeView(v as View)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                view === v
-                  ? 'bg-[#e35336] text-white'
-                  : 'hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-              title={v === 'work_week' ? 'Work Week' : v.charAt(0).toUpperCase() + v.slice(1)}
-            >
-              {screenSize === 'xs' ? (
-                v === 'month' ? <Grid className="w-3 h-3" /> : v === 'day' ? <CalendarIcon className="w-3 h-3" /> : <List className="w-3 h-3" />
-              ) : (
-                v === 'work_week' ? 'Work' : v.charAt(0).toUpperCase() + v.slice(1)
-              )}
-            </button>
-          ))}
-        </div>
+        {/* Spacer for alignment */}
+        <div className="w-16" />
       </div>
 
       <div className="flex-1 min-h-0">
@@ -152,30 +183,12 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
           endAccessor="end"
           view={view}
           onView={handleOnChangeView}
+          date={currentDate}
+          onNavigate={setCurrentDate}
           views={getVisibleViews()}
           style={{ height: getHeight() }}
-          min={new Date(new Date().setHours(7, 0, 0, 0))}
-          max={new Date(new Date().setHours(20, 0, 0, 0))}
-          step={screenSize === 'xs' ? 60 : 30}
-          timeslots={screenSize === 'xs' ? 1 : 2}
-          eventPropGetter={() => ({
-            style: {
-              backgroundColor: "#e35336",
-              borderRadius: screenSize === 'xs' ? "2px" : "4px",
-              color: "white",
-              border: "none",
-              fontSize: screenSize === 'xs' ? "10px" : "12px",
-              padding: screenSize === 'xs' ? "0 2px" : "0 4px",
-            },
-          })}
-          dayPropGetter={(date) => {
-            const isToday = new Date().toDateString() === date.toDateString();
-            return {
-              style: isToday ? {
-                backgroundColor: "#fce8e6",
-              } : {}
-            };
-          }}
+          eventPropGetter={getEventStyle}
+          dayPropGetter={getDayStyle}
           popup={screenSize !== 'xs'}
           selectable
           longPressThreshold={10}

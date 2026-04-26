@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import api, { academicYearsAPI, gradingAPI } from "@/lib/api";
@@ -47,6 +47,7 @@ interface AcademicYear {
 
 interface Child {
   id: string;
+  profileId?: string;
   userId?: string;
   name: string;
   studentCode: string;
@@ -98,21 +99,7 @@ export default function ParentGradesPage() {
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/sign-in");
-      return;
-    }
-
-    if (user?.role !== "PARENT") {
-      router.push("/");
-      return;
-    }
-
-    fetchInitialData();
-  }, [user, authLoading, router]);
-
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const [childrenResult, yearsResult] = await Promise.allSettled([
         api.get("/parents/me/children"),
@@ -121,14 +108,22 @@ export default function ParentGradesPage() {
 
       if (childrenResult.status === "fulfilled") {
         const childrenData = childrenResult.value?.data?.children || [];
-        console.log('Children data:', childrenData);
-        setChildren(childrenData);
+        const normalizedChildren = Array.isArray(childrenData)
+          ? childrenData.map((child: any) => ({
+              id: child.studentId || child.id,
+              profileId: child.studentId || child.id,
+              userId: child.student?.userId || child.student?.id || child.userId,
+              name: child.name || child.student?.user?.name || "Unknown",
+              studentCode: child.student?.studentCode || child.studentCode || "",
+              className: child.className || child.student?.className || "N/A",
+              section: child.section || child.student?.section || "N/A",
+            }))
+          : [];
+        setChildren(normalizedChildren);
 
-        if (childrenData.length > 0) {
-          // Use userId for the grading API (student's user ID)
-          const firstChild = childrenData[0];
-          setSelectedChildId(firstChild.userId || firstChild.id);
-          console.log('Selected child ID:', firstChild.userId || firstChild.id, 'name:', firstChild.name);
+        if (normalizedChildren.length > 0) {
+          const firstChild = normalizedChildren[0];
+          setSelectedChildId(firstChild.profileId || firstChild.userId || firstChild.id);
         }
       }
 
@@ -169,15 +164,23 @@ export default function ParentGradesPage() {
     } finally {
       setInitialLoad(false);
     }
-  };
+  }, [user?.schoolId]);
 
   useEffect(() => {
-    if (selectedChildId && selectedYear) {
-      fetchGrades();
+    if (!authLoading && !user) {
+      router.push("/sign-in");
+      return;
     }
-  }, [selectedChildId, selectedYear]);
 
-  const fetchGrades = async () => {
+    if (user?.role !== "PARENT") {
+      router.push("/");
+      return;
+    }
+
+    fetchInitialData();
+  }, [user, authLoading, router, fetchInitialData]);
+
+  const fetchGrades = useCallback(async () => {
     setLoading(true);
     try {
       const res = await gradingAPI.getChildGrades(selectedChildId, {
@@ -185,10 +188,14 @@ export default function ParentGradesPage() {
       });
       
       const data = res.data;
-      console.log('Grades API response:', data);
-      
-      if (data.grades) {
-        setGrades(data.grades as SubjectGrade[]);
+      const gradeRows = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.grades)
+          ? data.grades
+          : [];
+
+      if (gradeRows.length > 0 || data?.grades) {
+        setGrades(gradeRows as SubjectGrade[]);
         
         // Set curriculum type from API
         if (data.curriculumType) {
@@ -217,7 +224,13 @@ export default function ParentGradesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedChildId, selectedYear]);
+
+  useEffect(() => {
+    if (selectedChildId && selectedYear) {
+      fetchGrades();
+    }
+  }, [fetchGrades, selectedChildId, selectedYear]);
 
   const getGradeColor = (grade: string | null) => {
     if (!grade) return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
@@ -328,7 +341,9 @@ export default function ParentGradesPage() {
   const overallGPA = calculateGPA(overallAverage);
   const scores = grades.filter(g => g.totalScore !== null).map(g => g.totalScore!);
   const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
-  const selectedChild = children.find(c => (c.userId || c.id) === selectedChildId);
+  const selectedChild = children.find(
+    (c) => (c.profileId || c.userId || c.id) === selectedChildId,
+  );
 
   if (authLoading || initialLoad) {
     return (
@@ -367,7 +382,10 @@ export default function ParentGradesPage() {
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-800">
                   {children.map(child => (
-                    <SelectItem key={child.id} value={child.userId || child.id}>
+                    <SelectItem
+                      key={child.profileId || child.id}
+                      value={child.profileId || child.userId || child.id}
+                    >
                       {child.name} - {child.className}
                     </SelectItem>
                   ))}

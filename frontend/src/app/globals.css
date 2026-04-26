@@ -175,9 +175,44 @@ h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, 
   background-color: #fdf2fb !important;
 }
 
+/* Dark mode - single color events */
+.dark .rbc-event:nth-child(n) {
+  background-color: #e35336 !important;
+}
+
 .rbc-event-label{
   color: gray !important;
   margin-bottom: 5px;
+}
+
+/* Dark mode event label */
+.dark .rbc-event-label {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Dark mode event colors - ensure red theme */
+.dark .rbc-event,
+.dark .rbc-event:nth-child(n),
+.dark .rbc-event[style] {
+  background-color: #e35336 !important;
+  border-color: #e35336 !important;
+  color: white !important;
+}
+
+.dark .rbc-event-content {
+  color: white !important;
+}
+
+/* Remove nth-child color overrides in dark mode */
+.dark .rbc-event:nth-child(1),
+.dark .rbc-event:nth-child(2),
+.dark .rbc-event:nth-child(3),
+.dark .rbc-event:nth-child(4),
+.dark .rbc-event:nth-child(5),
+.dark .rbc-event:nth-child(6),
+.dark .rbc-event:nth-child(7),
+.dark .rbc-event:nth-child(8) {
+  background-color: #e35336 !important;
 }
 
 @layer base {
@@ -493,6 +528,260 @@ html body *::-webkit-scrollbar-thumb {
 
 .dark html body *::-webkit-scrollbar-corner {
   background: transparent !important;
+}
+
+/* React Big Calendar Dark Mode - Month View */
+.dark .rbc-calendar {
+  background-color: #1E293B;
+  color: white;
+}
+
+.dark .rbc-month-view {
+  border-color: #334155;
+  background-color: #1E293B;
+}
+
+.dark .rbc-month-row {
+  background-color: #1E293B;
+}
+
+.dark .rbc-day-bg {
+  background-color: #1E293B;
+  border-color: #334155;
+}
+
+.dark .rbc-day-bg:hover {
+  background-color: #334155;
+}
+
+.dark .rbc-off-range-bg {
+  background-color: #0F172A;
+}
+
+.dark .rbc-today {
+  background-color: rgba(227, 83, 54, 0.15) !important;
+}
+
+.dark .rbc-header {
+  background-color: #1E293B;
+  border-color: #334155 !important;
+  color: #94A3B8;
+  padding: 8px 4px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.dark .rbc-header + .rbc-header {
+  border-color: #334155;
+}
+
+.dark .rbc-date-cell {
+  color: #F1F5F9;
+  padding: 4px;
+  font-size: 13px;
+}
+
+.dark .rbc-date-cell:hover {
+  background-color: #334155;
+}
+
+.dark .rbc-date-cell.rbc-now {
+  color: #e35336;
+  font-weight: 600;
+}
+
+.dark .rbc-day-bg + .rbc-day-bg {
+  border-color: #334155;
+}
+
+.dark .rbc-month-row + .rbc-month-row {
+  border-color: #334155;
+}
+
+.dark .rbc-overlay {
+  background-color: #1E293B;
+  border: 1px solid #334155;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.dark .rbc-overlay-header {
+  border-color: #334155;
+  color: #F1F5F9;
+}
+
+.dark .rbc-event {
+  background-color: #e35336;
+  border-color: #e35336;
+  color: white;
+}
+
+.dark .rbc-event:hover {
+  background-color: #c74428;
+}
+
+.dark .rbc-event-content {
+  color: white;
+}
+
+.dark .rbc-show-more {
+  color: #e35336;
+  background-color: transparent;
+  font-weight: 500;
+}
+
+.dark .rbc-show-more:hover {
+  color: #c74428;
+}
+
+/* React Big Calendar - Month row and day backgrounds in dark mode */
+.dark .rbc-month-row {
+  border-color: #334155;
+}
+
+.dark .rbc-month-row:last-child {
+  border-bottom: none;
+}
+
+/* Month view date cells */
+.dark .rbc-date-cell {
+  color: #E2E8F0;
+}
+
+.dark .rbc-date-cell.rbc-off-range {
+  color: #64748B;
+}
+
+/* Today cell in dark mode */
+.dark .rbc-day-bg.rbc-today {
+  background-color: rgba(227, 83, 54, 0.15) !important;
+}
+
+/* Selected day */
+.dark .rbc-day-bg.rbc-selected {
+  background-color: rgba(227, 83, 54, 0.3) !important;
+}
+
+.dark .rbc-day-bg.rbc-selected:hover {
+  background-color: rgba(227, 83, 54, 0.4) !important;
+}
+
+/* Cell borders */
+.dark .rbc-month-view .rbc-row {
+  border-color: #334155;
+}
+
+/* Weekday headers in dark mode */
+.dark .rbc-month-view .rbc-row .rbc-alarm {
+  color: #94A3B8;
+}
+
+/* Calendar scrollbar in dark mode */
+.dark .rbc-calendar ::-webkit-scrollbar {
+  width: 1px;
+  height: 1px;
+}
+
+.dark .rbc-calendar ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dark .rbc-calendar ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 2px;
+}
+
+/* Month header label */
+.dark .rbc-toolbar {
+  color: white;
+}
+
+.dark .rbc-toolbar button {
+  color: #E2E8F0;
+  background-color: #334155;
+  border-color: #475569;
+}
+
+.dark .rbc-toolbar button:hover {
+  background-color: #475569;
+}
+
+.dark .rbc-toolbar button.rbc-active {
+  background-color: #e35336;
+  border-color: #e35336;
+  color: white;
+}
+
+/* Time grid (if visible) */
+.dark .rbc-time-view {
+  border-color: #334155;
+  background-color: #1E293B;
+}
+
+.dark .rbc-time-header-content {
+  border-color: #334155;
+}
+
+.dark .rbc-time-content {
+  border-color: #334155;
+}
+
+.dark .rbc-time-gutter {
+  background-color: #1E293B;
+}
+
+.dark .rbc-timeslot-group {
+  background-color: #1E293B;
+  border-color: #334155;
+  color: #E2E8F0;
+}
+
+.dark .rbc-day-slot {
+  background-color: #1E293B;
+  color: #E2E8F0;
+}
+
+.dark .rbc-time-column {
+  color: #E2E8F0;
+}
+
+.dark .rbc-day-column {
+  border-color: #334155;
+}
+
+/* Agenda view */
+.dark .rbc-agenda-view {
+  background-color: #1E293B;
+}
+
+.dark .rbc-agenda-table {
+  border-color: #334155;
+}
+
+.dark .rbc-agenda-date-cell,
+.dark .rbc-agenda-time-cell {
+  color: #E2E8F0;
+}
+
+.dark .rbc-agenda-event-cell {
+  color: white;
+}
+
+.dark .rbc-agenda-table thead {
+  background-color: #1E293B;
+  border-color: #334155;
+}
+
+.dark .rbc-agenda-table thead th {
+  border-color: #334155;
+  color: #94A3B8;
+}
+
+.dark .rbc-agenda-table tbody tr {
+  border-color: #334155;
+}
+
+.dark .rbc-agenda-table tbody tr:hover {
+  background-color: #334155;
 }
 
 /* All overflow containers */

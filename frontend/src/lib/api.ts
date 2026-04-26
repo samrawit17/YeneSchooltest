@@ -44,8 +44,9 @@ api.interceptors.response.use(
     }
     
     // Handle 403 Forbidden - redirect to access denied page (skip if skipAuthErrorRedirect is set)
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+    
     if (error.response?.status === 403 && typeof window !== 'undefined') {
-      const currentPath = window.location.pathname;
       // Prevent infinite redirects and skip if flag is set
       const skipAuthRedirect = (error.config as any)?.skipAuthErrorRedirect === true;
       if (!currentPath.includes('/access-denied') && !currentPath.includes('/sign-in') && !skipAuthRedirect) {
@@ -54,17 +55,28 @@ api.interceptors.response.use(
         // Store the exact error message from backend
         const errorMessage = error.response?.data?.message || 'You do not have the required permissions to access this resource.';
         sessionStorage.setItem('accessDeniedMessage', errorMessage);
+        
+        const requiredPermission = error.response?.data?.requiredPermission || error.response?.headers?.['x-required-permission'];
+        if (requiredPermission) {
+          sessionStorage.setItem('accessDeniedPermission', requiredPermission);
+        }
+        
         window.location.href = '/access-denied?type=403';
       }
     }
+
+    // Handle 404 Not Found - only redirect for protected admin routes, not general API 404s
+    // Some API endpoints return 404 when resources don't exist (not access denials)
+    const protectedAdminRoutes = ['/admin', '/hr/', '/finance/', '/superadmin', '/registrar'];
+    const isProtectedRoute = protectedAdminRoutes.some(route => currentPath.includes(route));
     
-    // Handle 404 Not Found (skip if skipAuthErrorRedirect is set)
-    if (error.response?.status === 404 && typeof window !== 'undefined') {
-      const currentPath = window.location.pathname;
+    if (error.response?.status === 404 && typeof window !== 'undefined' && isProtectedRoute && !currentPath.includes('/access-denied') && !currentPath.includes('/sign-in')) {
       const skipAuthRedirect = (error.config as any)?.skipAuthErrorRedirect === true;
-      if (!currentPath.includes('/access-denied') && !currentPath.includes('/sign-in') && !skipAuthRedirect) {
+      if (!skipAuthRedirect) {
         sessionStorage.setItem('accessDeniedUrl', currentPath);
         sessionStorage.setItem('accessDeniedCode', '404');
+        const notFoundMessage = error.response?.data?.message || 'Resource not found or you do not have permission to access this page.';
+        sessionStorage.setItem('accessDeniedMessage', notFoundMessage);
         window.location.href = '/access-denied?type=404';
       }
     }
@@ -143,6 +155,9 @@ export const studentsAPI = {
   getById: (id: string) =>
     api.get(`/students/${id}`),
 
+  getChildren: () =>
+    api.get('/parents/me/children'),
+
   update: (id: string, data: any) =>
     api.put(`/students/${id}`, data),
 
@@ -163,9 +178,6 @@ export const studentsAPI = {
 
   uploadDocuments: (id: string, documents: any[]) =>
     api.post(`/students/${id}/documents`, { documents }),
-
-  getChildren: () =>
-    api.get('/parents/me/children'),
 
   getForIdCards: (params?: { grade?: string; section?: string; academicYear?: string; search?: string; studentIds?: string }) =>
     api.get('/students/id-cards', { params }),
@@ -558,6 +570,12 @@ export const assessmentsAPI = {
 export const examsAPI = {
   getTeacherExams: (params?: { academicYearId?: string; termId?: string }) =>
     api.get('/exams/teacher/me', { params }),
+
+  getAll: (params?: { academicYearId?: string; termId?: string; classId?: string }) =>
+    api.get('/exams', { params }),
+
+  publishResults: (data: { academicYear: string; termId: string; classId: string }) =>
+    api.post('/exams/publish', data),
 };
 
 // ==================== GRADING API ====================
@@ -605,15 +623,19 @@ export const gradingAPI = {
 
   // Admin - Get grading components
   getGradingComponents: () =>
-    api.get('/api/grading/admin/grading-components', { skipAuthErrorRedirect: true }),
+    api.get('/grading/admin/grading-components', { skipAuthErrorRedirect: true }),
 
   // Admin - Get assessment types
   getAssessmentTypes: () =>
     api.get('/grading/admin/assessment-types', { skipAuthErrorRedirect: true }),
 
+  // Teacher - Get assessment types
+  getTeacherAssessmentTypes: () =>
+    api.get('/grading/teacher/assessment-types', { skipAuthErrorRedirect: true }),
+
   // Admin - Save assessment types
   saveAssessmentTypes: (data: { code: string; name: string; percentage: number }[]) =>
-    api.post('/api/grading/admin/assessment-types', data),
+    api.post('/grading/admin/assessment-types', data),
 
   // Registrar - review grades
   getGradesForReview: (params: { academicYear: string; termId?: string; classId?: string }) =>
@@ -625,28 +647,57 @@ export const gradingAPI = {
 
   bulkRejectGrades: (gradeIds: string[], comment: string) =>
     api.post('/grading/registrar/grades/bulk-reject', { gradeIds, comment }),
+
+  // Admin - Get publish checklist
+  getPublishChecklist: (params: { academicYear: string; termId?: string; classId?: string; sectionId?: string }) =>
+    api.get('/grading/admin/publish-checklist', { params }),
+
+  // Admin - Calculate rankings
+  calculateRankings: (params: { academicYearId: string; termId?: string; classId?: string }) =>
+    api.post('/grading/admin/calculate-rankings', {
+      academicYearId: params.academicYearId,
+      termId: params.termId,
+    }),
+
+  // Admin - Publish results
+  publishResults: (data: { academicYear: string; termId: string; classId: string }) =>
+    api.post('/exams/publish', data),
 };
 
-// ==================== TERMS API ====================
+// ==================== TERMS API (Consolidated into Academic Years) ====================
 
 export const termsAPI = {
-  create: (data: { academicYearId: string; name: string; startDate: string; endDate: string; order: number }) =>
-    api.post('/terms', data),
+  create: (arg1: any, arg2?: any) => {
+    // Support both:
+    // 1. create(academicYearId, data)
+    // 2. create(data) where data contains academicYearId
+    if (arg2) {
+      return api.post(`/academic-years/${arg1}/terms`, arg2);
+    }
+    return api.post(`/academic-years/${arg1.academicYearId}/terms`, arg1);
+  },
 
-  getAll: (params?: { academicYearId?: string }) =>
-    api.get('/terms', { params }),
+  getAll: (params?: { academicYearId?: string }) => {
+    if (params?.academicYearId) {
+      return api.get(`/academic-years/${params.academicYearId}/terms`);
+    }
+    return api.get('/academic-years/terms/current'); // Fallback for list
+  },
 
   getById: (id: string) =>
-    api.get(`/terms/${id}`),
+    api.get(`/academic-years/terms/${id}`),
 
   getCurrent: (params?: { schoolId?: string }) =>
-    api.get('/terms/current', { params }),
+    api.get('/academic-years/terms/current', { params }),
 
-  update: (id: string, data: { name?: string; startDate?: string; endDate?: string; order?: number }) =>
-    api.put(`/terms/${id}`, data),
+  update: (id: string, data: { name?: string; startDate?: string; endDate?: string; order?: number; percentageWeight?: number }) =>
+    api.put(`/academic-years/terms/${id}`, data),
 
   delete: (id: string) =>
-    api.delete(`/terms/${id}`),
+    api.delete(`/academic-years/terms/${id}`),
+
+  lock: (id: string, isLocked: boolean) =>
+    api.put(`/academic-years/terms/${id}/lock`, { isLocked }),
 };
 
 // ==================== TIMETABLE SLOTS API ====================
@@ -1029,6 +1080,12 @@ export const dashboardAPI = {
 // ==================== PARENTS API ====================
 
 export const parentsAPI = {
+  getChildren: () =>
+    api.get('/parents/me/children'),
+
+  getChildById: (childId: string) =>
+    api.get(`/parents/me/children/${childId}`),
+
   createAndLink: (data: {
     email: string;
     name: string;
@@ -1216,7 +1273,7 @@ export const attendanceAPI = {
   // ==================== PARENT ENDPOINTS ====================
 
   // Parent: Get child's attendance
-  getStudentAttendance: (studentId: string, params?: { startDate?: string; endDate?: string; month?: string }) =>
+  getStudentAttendance: (studentId: string, params?: { startDate?: string; endDate?: string; month?: string; academicYear?: string }) =>
     api.get(`/attendance/student/${studentId}`, { params }),
 
   // Parent: Get child's attendance summary
@@ -1508,6 +1565,7 @@ export interface CreateAnnouncementDto {
   startDate: string;
   endDate?: string;
   priority?: 'HIGH' | 'MEDIUM' | 'LOW';
+  location?: string;
 }
 
 export interface UpdateAnnouncementDto {
@@ -1517,6 +1575,7 @@ export interface UpdateAnnouncementDto {
   startDate?: string;
   endDate?: string;
   priority?: 'HIGH' | 'MEDIUM' | 'LOW';
+  location?: string;
 }
 
 export const announcementsAPI = {
@@ -1680,10 +1739,12 @@ export interface CreateLessonDto {
   title: string;
   objective?: string;
   lessonContent?: string;
-  homework?: string;
+  homework?: {
+    title: string;
+    description?: string;
+  };
   grade: number;
   section: string;
-  stream?: string;
   academicYearId: string;
   semesterId?: string;
   subjectId: string;
@@ -1765,7 +1826,8 @@ export const lessonsAPI = {
     api.delete(`/lessons/${id}`),
 
   publish: (id: string) =>
-    api.patch<Lesson>(`/lessons/${id}/publish`),
+    // Publish flow now goes through HoD review: teacher should submit for review.
+    api.patch<Lesson>(`/lessons/${id}/submit-review`),
 
   getCoverageReport: (academicYearId: string, semesterId?: string) =>
     api.get<LessonCoverageReport>('/lessons/coverage', { params: { academicYearId, semesterId } }),
@@ -1825,12 +1887,6 @@ export const hrAPI = {
   submitPayrollToFinance: (payrollId: string) =>
     api.post(`/hr/payroll/${payrollId}/submit`),
 
-  calculatePayroll: (payrollId: string, items: any[]) =>
-    api.post(`/hr/payroll/${payrollId}/calculate`, { items }),
-
-  submitPayrollToFinance: (payrollId: string) =>
-    api.post(`/hr/payroll/${payrollId}/submit`),
-
   getPayrolls: (params?: { academicYear?: string; month?: number; year?: number; status?: string; page?: number; limit?: number }) =>
     api.get('/hr/payroll', { params }),
 
@@ -1863,7 +1919,6 @@ export const hrAPI = {
     position: string;
     baseSalary: number;
     houseAllowance?: number;
-    transportAllowance?: number;
     medicalAllowance?: number;
     otherAllowances?: number;
     pensionRate?: number;

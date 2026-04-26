@@ -158,7 +158,7 @@ export default function TeacherGradingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setItems } = useBreadcrumb();
-  const { currentAcademicYear, getAllAcademicYears, getTermsForYear } = useAcademicYear();
+  const { currentAcademicYear, getAllAcademicYears, getTermsForYear, formatDate } = useAcademicYear();
 
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
@@ -223,6 +223,10 @@ export default function TeacherGradingPage() {
     });
   }, [assignments, selectedSubjectId]);
 
+  const selectedTermObj = useMemo(() => {
+    return terms.find((t) => t.id === selectedTerm) || null;
+  }, [terms, selectedTerm]);
+
   const selectedAssignmentData = assignments.find((a) => {
     if (selectedClassSectionId) {
       return a.id === selectedClassSectionId;
@@ -274,7 +278,7 @@ export default function TeacherGradingPage() {
 
       // Fetch assessment types from admin config (QUIZ, TEST, MID, FINAL, ATTENDANCE)
       try {
-        const typesRes = await gradingAPI.getAssessmentTypes();
+        const typesRes = await gradingAPI.getTeacherAssessmentTypes();
         if (typesRes.status === 200 && typesRes.data && Array.isArray(typesRes.data) && typesRes.data.length > 0) {
           setGradingComponents(typesRes.data);
         }
@@ -294,10 +298,13 @@ export default function TeacherGradingPage() {
         // Fetch terms for selected year using centralized context
         const termsData = await getTermsForYear(activeYear.id);
         setTerms(termsData);
-        const preferredTerm =
-          queryAssignment.termId && termsData.find((term: Term) => term.id === queryAssignment.termId)
-            ? queryAssignment.termId
-            : termsData[0]?.id || "";
+        // Prefer URL param term if valid, otherwise pick the term that contains today's date, else default to the first term
+        const now = new Date();
+        const urlTermValid = queryAssignment.termId && termsData.find((term: Term) => term.id === queryAssignment.termId);
+        const currentPeriod = termsData.find((term: Term) => term.startDate && term.endDate && new Date(term.startDate) <= now && new Date(term.endDate) >= now);
+        const preferredTerm = urlTermValid
+          ? queryAssignment.termId
+          : currentPeriod?.id || termsData[0]?.id || "";
         setSelectedTerm(preferredTerm);
 
         // Fetch teacher's subject assignments using the selected academic year
@@ -378,7 +385,10 @@ export default function TeacherGradingPage() {
       const termsData = await getTermsForYear(yearId);
       setTerms(termsData);
       if (termsData.length > 0) {
-        setSelectedTerm(termsData[0].id);
+        // Default to the term that contains today's date when available
+        const now = new Date();
+        const currentPeriod = termsData.find((term: Term) => term.startDate && term.endDate && new Date(term.startDate) <= now && new Date(term.endDate) >= now);
+        setSelectedTerm(currentPeriod?.id || termsData[0].id);
       } else {
         setSelectedTerm("");
       }
@@ -489,6 +499,14 @@ export default function TeacherGradingPage() {
 
   // Map assessment types for display
   const assessmentColumns = useMemo(() => {
+    const codeMapping: Record<string, string> = {
+      'QUIZ': 'caScore',
+      'TEST': 'caScore',
+      'MID': 'midScore',
+      'FINAL': 'finalScore',
+      'ATTENDANCE': 'midScore',
+    };
+    
     if (gradingComponents.length === 0) {
       return [
         { code: 'CA', label: 'Quiz', dbField: 'caScore' as const, weight: 15 },
@@ -497,22 +515,12 @@ export default function TeacherGradingPage() {
       ];
     }
     
-    const codeMapping: Record<string, string> = {
-      'QUIZ': 'CA',
-      'TEST': 'CA',
-      'MID': 'MID',
-      'FINAL': 'FINAL',
-      'ATTENDANCE': 'CA',
-    };
-    
     return gradingComponents.map(c => ({
       code: c.code,
       label: c.name,
       dbField: (codeMapping[c.code] || 'caScore') as 'caScore' | 'midScore' | 'finalScore',
       weight: c.percentage,
-    })).filter((item, index, self) => 
-      index === self.findIndex(t => t.dbField === item.dbField)
-    );
+    }));
   }, [gradingComponents]);
 
   const calculateGrade = (total: number | null): string => {
@@ -527,9 +535,13 @@ export default function TeacherGradingPage() {
   const handleScoreChange = (studentId: string, field: "caScore" | "midScore" | "finalScore", value: string) => {
     const numValue = value === "" ? null : parseFloat(value);
     
-    // Validate score range
-    if (numValue !== null && (numValue < 0 || numValue > 100)) {
-      toast.error("Score must be between 0 and 100");
+    // Get the max weight for this specific field
+    const col = assessmentColumns.find(c => c.dbField === field);
+    const maxWeight = col ? col.weight : 100;
+    
+    // Validate score range based on the specific weight for this assessment type
+    if (numValue !== null && (numValue < 0 || numValue > maxWeight)) {
+      toast.error(`${col?.label || field} max score is ${maxWeight}`);
       return;
     }
     
@@ -679,8 +691,8 @@ export default function TeacherGradingPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2 text-[#e35336]">
-            
+<h1 className="text-2xl font-bold flex items-center gap-2 text-[#e35336]">
+            <BookOpen className="h-6 w-6" />
             Grade Entry
           </h1>
           <p className="text-muted-foreground text-gray-500 dark:text-gray-400">
@@ -726,6 +738,7 @@ export default function TeacherGradingPage() {
                   ))}
                 </SelectContent>
               </Select>
+              
             </div>
 
             <div>
@@ -806,8 +819,8 @@ export default function TeacherGradingPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <div className="overflow-x-auto w-full">
-              <Table className="w-full">
+<div className="overflow-y-auto max-h-[500px] w-full">
+                <Table className="w-full">
                 <TableHeader>
                   <TableRow className="bg-slate-100 dark:bg-gray-700 hover:bg-slate-100 dark:hover:bg-gray-700">
                     <TableHead className="w-12 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-gray-200">#</TableHead>
@@ -826,7 +839,7 @@ export default function TeacherGradingPage() {
                 <TableBody>
                   {students.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-10 text-muted-foreground dark:text-gray-400">
+                      <TableCell colSpan={3 + assessmentColumns.length} className="text-center py-10 text-muted-foreground dark:text-gray-400">
                         No students found for the selected criteria
                       </TableCell>
                     </TableRow>
@@ -836,42 +849,20 @@ export default function TeacherGradingPage() {
                         <TableCell className="px-4 py-3 text-sm dark:text-gray-300">{index + 1}</TableCell>
                         <TableCell className="px-4 py-3 font-medium text-sm text-slate-800 dark:text-white">{student.studentName}</TableCell>
                         <TableCell className="px-4 py-3 text-sm dark:text-gray-300">{student.rollNumber || "-"}</TableCell>
-                        <TableCell className="text-center px-4 py-3">
-                          <Input
-                            type="number"
-                            className="w-20 text-center dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                            min="0"
-                            max="100"
-                            value={student.caScore ?? ""}
-                            onChange={(e) => handleScoreChange(student.studentId, "caScore", e.target.value)}
-                            disabled={student.status === "SUBMITTED" || student.status === "APPROVED" || student.isLocked || isTermLocked}
-                            placeholder="0-100"
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Input
-                            type="number"
-                            className="w-20 text-center dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                            min="0"
-                            max="100"
-                            value={student.midScore ?? ""}
-                            onChange={(e) => handleScoreChange(student.studentId, "midScore", e.target.value)}
-                            disabled={student.status === "SUBMITTED" || student.status === "APPROVED" || student.isLocked || isTermLocked}
-                            placeholder="0-100"
-                          />
-                        </TableCell>
-                        <TableCell className="text-center px-4 py-3">
-                          <Input
-                            type="number"
-                            className="w-20 text-center dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                            min="0"
-                            max="100"
-                            value={student.finalScore ?? ""}
-                            onChange={(e) => handleScoreChange(student.studentId, "finalScore", e.target.value)}
-                            disabled={student.status === "SUBMITTED" || student.status === "APPROVED" || student.isLocked || isTermLocked}
-                            placeholder="0-100"
-                          />
-                        </TableCell>
+                        {assessmentColumns.map(col => (
+                          <TableCell key={col.code} className="text-center px-4 py-3">
+                            <Input
+                              type="number"
+                              className="w-20 text-center dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                              min="0"
+                              max={col.weight}
+                              value={student[col.dbField] ?? ""}
+                              onChange={(e) => handleScoreChange(student.studentId, col.dbField, e.target.value)}
+                              disabled={student.isLocked || isTermLocked}
+                              placeholder={`0-${col.weight}`}
+                            />
+                          </TableCell>
+                        ))}
                         <TableCell className="text-center px-4 py-3 font-semibold text-slate-800 dark:text-white">
                           {student.totalScore ?? "-"}
                         </TableCell>

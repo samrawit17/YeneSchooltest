@@ -11,6 +11,7 @@ import {
   Save,
   Upload,
 } from "lucide-react";
+import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
 
 // Shadcn/ui Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -64,6 +65,8 @@ interface Subject {
   id: string;
   name: string;
   code?: string;
+  grade?: number;
+  section?: string;
 }
 
 interface Period {
@@ -125,14 +128,34 @@ const CreateLessonPage = () => {
         
         // Set default values from fetched data
         const data = response.data;
+        const today = new Date();
         
         // Set active academic year as default (ensure it's a string)
         const academicYearId = data.activeAcademicYearId || (data.academicYears && data.academicYears.length > 0 ? data.academicYears[0].id : "") || "";
         setFormData(prev => ({ ...prev, academicYearId }));
         
+        // Find current term based on today's date
+        if (data.terms && data.terms.length > 0) {
+          const currentTerm = data.terms.find((term: Term & { startDate?: string; endDate?: string }) => {
+            const start = term.startDate ? new Date(term.startDate) : null;
+            const end = term.endDate ? new Date(term.endDate) : null;
+            return start && end && today >= start && today <= end;
+          });
+          if (currentTerm) {
+            setFormData(prev => ({ ...prev, semesterId: currentTerm.id }));
+          } else {
+            setFormData(prev => ({ ...prev, semesterId: data.terms[0].id }));
+          }
+        }
+        
         // Set first grade as default if available
         if (data.grades && data.grades.length > 0) {
           setFormData(prev => ({ ...prev, grade: data.grades[0] }));
+        }
+        
+        // Auto-select subject if only one available
+        if (data.teacherSubjects && data.teacherSubjects.length === 1) {
+          setFormData(prev => ({ ...prev, subjectId: data.teacherSubjects[0].id, grade: data.teacherSubjects[0].grade, section: data.teacherSubjects[0].section }));
         }
         
         // Set first period as default
@@ -185,16 +208,15 @@ const CreateLessonPage = () => {
         title: formData.title,
         objective: formData.objective || undefined,
         lessonContent: formData.lessonContent || undefined,
-        homework: formData.homework || undefined,
         grade: formData.grade as number,
         section: formData.section,
-        stream: formData.stream || undefined,
         academicYearId: formData.academicYearId,
         semesterId: formData.semesterId || undefined,
         subjectId: formData.subjectId,
         lessonDate: new Date(formData.lessonDate).toISOString(),
         periodNumber: formData.periodNumber || 1,
         status: publish ? "PUBLISHED" : "DRAFT",
+        homework: formData.homework ? { title: formData.title, description: formData.homework } : undefined,
       };
       
       await lessonsAPI.create(lessonData);
@@ -364,7 +386,36 @@ const CreateLessonPage = () => {
                 </Select>
               </div>
 
-              {/* Grade */}
+              {/* Subject */}
+              <div className="space-y-2">
+                <Label>Subject *</Label>
+                <Select
+                  value={formData.subjectId}
+                  onValueChange={(value) => {
+                    handleChange("subjectId", value);
+                    const subjectAssignment = formDataResponse?.teacherSubjects?.find(s => s.id === value);
+                    if (subjectAssignment?.grade) {
+                      handleChange("grade", subjectAssignment.grade);
+                    }
+                    if (subjectAssignment?.section) {
+                      handleChange("section", subjectAssignment.section);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(formDataResponse?.teacherSubjects || []).map((subject: Subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name} {subject.code && `(${subject.code})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Grade (auto-filled from subject) */}
               <div className="space-y-2">
                 <Label>Grade *</Label>
                 <Select
@@ -384,7 +435,7 @@ const CreateLessonPage = () => {
                 </Select>
               </div>
 
-              {/* Section */}
+              {/* Section (auto-filled from subject) */}
               <div className="space-y-2">
                 <Label>Section *</Label>
                 <Select
@@ -398,45 +449,6 @@ const CreateLessonPage = () => {
                     {(currentGradeSections || []).map((s: Section) => (
                       <SelectItem key={s.id} value={s.name}>
                         Section {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Stream (for Grade 11-12) */}
-              {formData.grade && formData.grade >= 11 && (
-                <div className="space-y-2">
-                  <Label>Stream</Label>
-                  <Select
-                    value={formData.stream}
-                    onValueChange={(value) => handleChange("stream", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select stream" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Natural">Natural</SelectItem>
-                      <SelectItem value="Social">Social</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Subject */}
-              <div className="space-y-2">
-                <Label>Subject *</Label>
-                <Select
-                  value={formData.subjectId}
-                  onValueChange={(value) => handleChange("subjectId", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(displaySubjects || []).map((subject: Subject) => (
-                      <SelectItem key={subject.id} value={subject.id}>
-                        {subject.name} {subject.code && `(${subject.code})`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -474,10 +486,10 @@ const CreateLessonPage = () => {
               {/* Date */}
               <div className="space-y-2">
                 <Label>Lesson Date</Label>
-                <Input
-                  type="date"
-                  value={formData.lessonDate}
-                  onChange={(e) => handleChange("lessonDate", e.target.value)}
+                <CalendarDatePicker
+                  value={formData.lessonDate ? new Date(formData.lessonDate) : undefined}
+                  onChange={(date) => handleChange("lessonDate", date ? date.toISOString().split("T")[0] : "")}
+                  placeholder="Select lesson date"
                 />
               </div>
 

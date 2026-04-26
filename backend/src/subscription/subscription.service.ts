@@ -136,6 +136,7 @@ export class SubscriptionService {
       CUSTOM_INTEGRATIONS: 'ULTIMATE',
       ADVANCED_REPORTING: 'ULTIMATE',
       DATA_EXPORT: 'ULTIMATE',
+      SIREN_ALERT: 'ULTIMATE',
     };
 
     return Object.entries(featureTiers)

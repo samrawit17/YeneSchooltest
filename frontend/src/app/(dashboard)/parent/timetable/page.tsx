@@ -36,7 +36,15 @@ export default function ParentTimetablePage() {
       const response = await studentsAPI.getChildren();
       const rows = response.data?.children || response.data || [];
       const childrenWithEnrollment = await Promise.all(
-        (Array.isArray(rows) ? rows : []).map(async (child: Child) => {
+        (Array.isArray(rows) ? rows : []).map(async (rawChild: any) => {
+          const child: ChildEnrollment = {
+            id: rawChild.studentId || rawChild.id,
+            userId:
+              rawChild.student?.userId || rawChild.student?.id || rawChild.userId,
+            name: rawChild.name || rawChild.student?.user?.name || "Unknown",
+            className: rawChild.className || rawChild.student?.className,
+            section: rawChild.section || rawChild.student?.section,
+          };
           try {
             const enrollmentResponse = await api.get(`/enrollments/student/${child.userId}`);
             return {

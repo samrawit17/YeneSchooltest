@@ -36,7 +36,7 @@ export class LessonController {
    * Create Lesson Bundle - All-in-One lesson creation
    * Includes: Lesson + Homework + Resources + Ethiopian curriculum tags
    */
-  @Post('bundle')
+  @Post()
   @Roles(Role.ADMIN, Role.TEACHER)
   async createBundle(
     @Body() createLessonBundleDto: CreateLessonBundleDto,
@@ -191,15 +191,7 @@ export class LessonController {
 
   // ===== Original Endpoints (Backward Compatible) =====
 
-  @Post()
-  @Roles(Role.ADMIN, Role.TEACHER)
-  async create(@Body() createLessonDto: CreateLessonDto, @Request() req) {
-    return this.lessonService.create(
-      createLessonDto,
-      req.user.id,
-      req.user.schoolId,
-    );
-  }
+  // NOTE: legacy simple create removed. Use POST /lessons with the bundle payload.
 
   @Get()
   async findAll(@Query() query: LessonQueryDto, @Request() req) {
@@ -211,12 +203,7 @@ export class LessonController {
   @Roles(Role.ADMIN, Role.TEACHER)
   async getFormData(@Request() req) {
     const { id: teacherId, schoolId } = req.user;
-    // Return basic form data - can be extended
-    return {
-      schoolId,
-      teacherId,
-      message: 'Use /lessons/bundle endpoint for comprehensive lesson creation',
-    };
+    return this.lessonService.getFormData(teacherId, schoolId);
   }
 
   @Get(':id')
@@ -247,11 +234,6 @@ export class LessonController {
     return this.lessonService.remove(id, userId, schoolId);
   }
 
-  @Patch(':id/publish')
-  @Roles(Role.ADMIN, Role.TEACHER)
-  async publish(@Param('id') id: string, @Request() req) {
-    const { id: userId, schoolId } = req.user;
-    // Direct publish - bypasses HoD review
-    return this.lessonService.approveLesson(id, userId, schoolId);
-  }
+  // Direct publish endpoint removed to enforce HoD review workflow.
+  // Teachers should call PATCH /lessons/:id/submit-review and HoD calls PATCH /lessons/:id/approve.
 }

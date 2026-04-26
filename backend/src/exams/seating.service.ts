@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import {
@@ -18,6 +19,8 @@ import { Response } from 'express';
 
 @Injectable()
 export class SeatingService {
+  private readonly logger = new Logger(SeatingService.name);
+
   constructor(private prisma: PrismaService) {}
 
   /**
@@ -182,6 +185,7 @@ export class SeatingService {
   }
 
   /**
+   * @deprecated This method is deprecated. Use createSeatingPlanByExamType instead.
    * Create a new seating plan configuration (legacy - not used in new flow)
    */
   async createSeatingPlan(
@@ -345,7 +349,15 @@ export class SeatingService {
     }
 
     const students = Array.from(uniqueStudents.values());
-    const totalStudents = students.length;
+
+    // Apply score threshold filter if enabled
+    let filteredStudents = students;
+    if (plan.useScoreThresholdFilter && plan.scoreThreshold > 0) {
+      const qualifiedIds = await this.getStudentsAboveThreshold(schoolId, plan.scoreThreshold);
+      filteredStudents = students.filter((s) => qualifiedIds.has(s.studentId));
+    }
+
+    const totalStudents = filteredStudents.length;
     const examCapacity = plan.examCapacity || 30;
 
     // Calculate how many sections needed
@@ -419,20 +431,29 @@ export class SeatingService {
     }
 
     // Shuffle students if required
-    let studentsToAssign = [...students];
+    let studentsToAssign = [...filteredStudents];
     if (plan.shuffle) {
       studentsToAssign = this.shuffleArray(studentsToAssign);
     }
 
-    // Distribute students into sections
+    // Distribute students into sections by examCapacity
     const sectionStudents: Map<string, typeof students> = new Map();
     sections.forEach((s) => sectionStudents.set(s.id, []));
 
-    studentsToAssign.forEach((student, index) => {
-      const sectionIndex = index % sections.length;
-      const sectionId = sections[sectionIndex].id;
-      sectionStudents.get(sectionId)!.push(student);
-    });
+    let sectionIndex = 0;
+    let countInSection = 0;
+
+    for (const student of studentsToAssign) {
+      sectionStudents.get(sections[sectionIndex].id)!.push(student);
+      countInSection++;
+      if (countInSection >= examCapacity) {
+        sectionIndex++;
+        countInSection = 0;
+        if (sectionIndex >= sections.length) {
+          break;
+        }
+      }
+    }
 
     // Create assignments and student assignments in a transaction
     await this.prisma.$transaction(async (tx) => {
@@ -762,15 +783,9 @@ export class SeatingService {
   ): Promise<void> {
     const overview = await this.getSeatingOverview(schoolId, planId);
 
-    console.log('=== EXCEL GENERATION DEBUG ===');
-    console.log('Plan ID:', planId);
-    console.log('Sections count:', overview.sections.length);
-    console.log('Total students:', overview.totalStudents);
-    console.log('Sections:');
-    for (const s of overview.sections) {
-      console.log('  -', s.sectionName, '| Students:', s.students?.length || 0);
-    }
-    console.log('=== END DEBUG ===');
+    this.logger.debug(`Plan ID: ${planId}`);
+    this.logger.debug(`Sections count: ${overview.sections.length}`);
+    this.logger.debug(`Total students: ${overview.totalStudents}`);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'SMS System';
@@ -805,10 +820,10 @@ export class SeatingService {
     ]);
 
     // Sheet for each section
-    console.log('Creating section sheets for', overview.sections.length, 'sections');
+    this.logger.debug(`Creating section sheets for ${overview.sections.length} sections`);
     for (let i = 0; i < overview.sections.length; i++) {
       const section = overview.sections[i];
-      console.log(`Section ${i}: ${section.sectionName}, students: ${section.students?.length || 0}`);
+      this.logger.debug(`Section ${i}: ${section.sectionName}, students: ${section.students?.length || 0}`);
       
       const sectionName = section.sectionName
         .replace(/[^a-zA-Z0-9]/g, '_')
@@ -849,11 +864,10 @@ export class SeatingService {
           originalSection: student.originalSection || 'N/A',
           grade: student.originalGrade || 'N/A',
         });
-      }
-      
-      console.log(`Added ${students.length} students to section sheet`);
+}
+    this.logger.log(`Excel report generated successfully`);
 
-      // Style header row
+    // Style header row
       if (students.length > 0) {
         sheet.getRow(4).font = { bold: true };
         sheet.getRow(4).fill = {
@@ -874,14 +888,13 @@ export class SeatingService {
     );
 
     const buffer = await workbook.xlsx.writeBuffer();
-    console.log('Excel buffer size:', buffer.length, 'bytes');
-    console.log('Workbook has', workbook.worksheets.length, 'worksheets');
-    console.log('Worksheet names:', workbook.worksheets.map(ws => ws.name).join(', '));
+    this.logger.debug(`Excel buffer size: ${(buffer as any).length} bytes`);
+    this.logger.debug(`Workbook has ${workbook.worksheets.length} worksheets`);
     
     // Verify the first section sheet has rows
     const firstSectionSheet = workbook.worksheets.find(ws => !ws.name.includes('Summary'));
     if (firstSectionSheet) {
-      console.log('First section sheet row count:', firstSectionSheet.rowCount);
+      this.logger.debug(`First section sheet row count: ${firstSectionSheet.rowCount}`);
     }
     
     res.send(buffer);
@@ -890,67 +903,6 @@ export class SeatingService {
   /**
    * Fetch students based on seating plan criteria
    */
-  private async fetchStudentsForSeating(
-    schoolId: string,
-    plan: {
-      mode: SeatingMode;
-      fromGrade: number;
-      toGrade: number | null;
-      assignments: {
-        section: {
-          class: { grade: number | null };
-        };
-      }[];
-    },
-  ): Promise<{ studentId: string; name: string; email: string | null }[]> {
-    // Get all grades from the selected sections
-    const grades = plan.assignments
-      .map((a) => a.section.class.grade)
-      .filter((g): g is number => g !== null);
-
-    if (grades.length === 0) {
-      return [];
-    }
-
-    // Fetch students enrolled in classes with matching grades
-    const studentClasses = await this.prisma.studentClass.findMany({
-      where: {
-        schoolId,
-        class: {
-          schoolId,
-          grade: { in: grades },
-        },
-      },
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    // Deduplicate students (a student might be in multiple classes)
-    const uniqueStudents = new Map<
-      string,
-      { studentId: string; name: string; email: string | null }
-    >();
-
-    for (const sc of studentClasses) {
-      if (!uniqueStudents.has(sc.studentId)) {
-        uniqueStudents.set(sc.studentId, {
-          studentId: sc.student.id,
-          name: sc.student.name,
-          email: sc.student.email,
-        });
-      }
-    }
-
-    return Array.from(uniqueStudents.values());
-  }
-
   /**
    * Shuffle array using Fisher-Yates algorithm
    */
@@ -1002,5 +954,48 @@ export class SeatingService {
     }
 
     return result;
+  }
+
+  /**
+   * Get student IDs whose latest exam score meets or exceeds the threshold
+   */
+  private async getStudentsAboveThreshold(
+    schoolId: string,
+    threshold: number,
+  ): Promise<Set<string>> {
+    const results = await this.prisma.examResult.findMany({
+      where: {
+        exam: { schoolId },
+        marks: { gte: threshold },
+      },
+      select: {
+        studentId: true,
+        marks: true,
+        exam: {
+          select: { date: true },
+        },
+      },
+      orderBy: {
+        exam: { date: 'desc' },
+      },
+    });
+
+    // Keep only the latest result per student
+    const latestByStudent = new Map<string, number>();
+    for (const r of results) {
+      if (!latestByStudent.has(r.studentId)) {
+        latestByStudent.set(r.studentId, r.marks);
+      }
+    }
+
+    // Return students whose latest score meets threshold
+    const qualified = new Set<string>();
+    for (const [studentId, marks] of latestByStudent) {
+      if (marks >= threshold) {
+        qualified.add(studentId);
+      }
+    }
+
+    return qualified;
   }
 }

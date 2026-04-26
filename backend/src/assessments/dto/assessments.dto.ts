@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -13,7 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { AssessmentScoreStatus, AssessmentType } from '@prisma/client';
+import { AssessmentScoreStatus, AssessmentType, AssessmentStatus } from '@prisma/client';
 
 export class CreateAssessmentSubjectDto {
   @IsString()
@@ -141,4 +142,35 @@ export class UpdateAssessmentWeightsDto {
   @ValidateNested({ each: true })
   @Type(() => AssessmentWeightDto)
   weights: AssessmentWeightDto[];
+}
+
+export class ListAssessmentsFilterDto {
+  @IsOptional()
+  @IsString()
+  academicYearId?: string;
+
+  @IsOptional()
+  @IsString()
+  termId?: string;
+
+  @IsOptional()
+  @IsEnum(AssessmentType)
+  type?: AssessmentType;
+
+  @IsOptional()
+  @IsEnum(AssessmentStatus)
+  status?: AssessmentStatus;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  page?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  @Type(() => Number)
+  limit?: number;
 }

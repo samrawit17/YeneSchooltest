@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
-import { schoolsAPI, announcementsAPI, communicationsAPI, platformSettingsAPI } from "@/lib/api";
+import { schoolsAPI, announcementsAPI, platformSettingsAPI } from "@/lib/api";
 import api, { eventsAPI } from "@/lib/api";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -102,6 +101,7 @@ interface Notification {
   title: string;
   message: string;
   isRead: boolean;
+  userId?: string | null;
   actionUrl?: string;
   createdAt: string;
 }
@@ -110,15 +110,28 @@ interface NavbarProps {
   sidebarCollapsed?: boolean;
 }
 
+const COMMUNICATION_NOTIFICATION_TYPES = ["COMMUNICATION", "MESSAGE_RECEIVED"];
+const GLOBAL_NOTIFICATION_READS_KEY = "global_notification_reads";
+
 const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { formattedYearLabel, currentTerm, periodLabel, displayTermName, formatDate: formatSchoolDate } = useAcademicYear();
+  
+  // Format period dates for display
+  const periodDateRange = useMemo(() => {
+    if (!currentTerm?.startDate || !currentTerm?.endDate) return null;
+    const start = formatSchoolDate(new Date(currentTerm.startDate));
+    const end = formatSchoolDate(new Date(currentTerm.endDate));
+    return { start, end };
+  }, [currentTerm, formatSchoolDate]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [communicationsOpen, setCommunicationsOpen] = useState(false);
 
   // Fetch events for calendar popover
   const { data: eventsData } = useQuery({
@@ -162,15 +175,14 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
   const { data: notificationsData, isLoading: notificationsLoading } = useQuery({
     queryKey: ["notifications", user?.id, user?.schoolId],
     queryFn: async () => {
-      const [notificationsRes, countRes, categoriesRes] = await Promise.all([
+      const communicationTypes = COMMUNICATION_NOTIFICATION_TYPES.join(",");
+      const [bellNotificationsRes, communicationNotificationsRes] = await Promise.all([
         api.get('/notifications', { params: { limit: 10 } }),
-        api.get('/notifications/unread-count'),
-        api.get('/notifications/categories'),
+        api.get('/notifications', { params: { limit: 10, types: communicationTypes } }),
       ]);
       return {
-        notifications: notificationsRes.data || [],
-        unreadCount: countRes.data?.count || 0,
-        categories: categoriesRes.data?.categories || null,
+        bellNotifications: bellNotificationsRes.data || [],
+        communicationNotifications: communicationNotificationsRes.data || [],
       };
     },
     enabled: !!user?.id && !!user?.schoolId,
@@ -179,43 +191,56 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
     refetchInterval: 60 * 1000, // Refetch every minute
   });
 
-  const notifications = notificationsData?.notifications || [];
-  // Filter out communication-book notifications from the main notification dropdown
-  // Communication-book items are shown in the MessageSquare (Communications) dropdown.
-  const filteredNotifications = notifications.filter((n: Notification) => n.type !== 'COMMUNICATION');
-  const unreadCount = filteredNotifications.filter((n: Notification) => !n.isRead).length;
-
-  // Use React Query for communications - get user's unread count (user-specific cache)
-  const { data: unreadCommCount } = useQuery({
-    queryKey: ["communications-unread-count", user?.id, user?.schoolId],
-    queryFn: async () => {
-      // Use user-specific count endpoint
-      const response = await communicationsAPI.getMyCount('OPEN');
-      return response.data?.count || 0;
-    },
-    enabled: !!user?.id && !!user?.schoolId,
-    staleTime: 30 * 1000,
-    gcTime: 60 * 1000,
-    refetchInterval: 60 * 1000,
+  const bellNotifications = (notificationsData?.bellNotifications || []).filter((n: Notification) => {
+    if (COMMUNICATION_NOTIFICATION_TYPES.includes(n.type)) return false;
+    // Filter out notifications older than 1 week
+    const createdAt = new Date(n.createdAt);
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return createdAt > oneWeekAgo;
   });
+  const communicationNotifications = (notificationsData?.communicationNotifications || []).filter(
+    (n: Notification) => {
+      const createdAt = new Date(n.createdAt);
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      return createdAt > oneWeekAgo;
+    }
+  );
 
-  const unreadCommunicationsCount = unreadCommCount || 0;
+  const getSeenGlobalNotificationIds = (): string[] => {
+    if (typeof window === "undefined" || !user?.id) return [];
 
-  // Use React Query for communications - get recent communications for the dropdown (user-specific)
-  const { data: communicationsData } = useQuery({
-    queryKey: ["communications-navbar", user?.id, user?.schoolId],
-    queryFn: async () => {
-      // Use getAll which already has role-based filtering
-      const response = await communicationsAPI.getAll({ limit: 5, status: 'OPEN' });
-      return response.data?.data || [];
-    },
-    enabled: !!user?.id && !!user?.schoolId,
-    staleTime: 30 * 1000,
-    gcTime: 60 * 1000,
-    refetchInterval: 60 * 1000,
-  });
+    try {
+      const raw = localStorage.getItem(`${GLOBAL_NOTIFICATION_READS_KEY}:${user.id}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
 
-  const communications = communicationsData || [];
+  const rememberSeenGlobalNotifications = (notificationIds: string[]) => {
+    if (typeof window === "undefined" || !user?.id || notificationIds.length === 0) return;
+
+    const current = new Set(getSeenGlobalNotificationIds());
+    notificationIds.forEach((id) => current.add(id));
+    localStorage.setItem(
+      `${GLOBAL_NOTIFICATION_READS_KEY}:${user.id}`,
+      JSON.stringify(Array.from(current))
+    );
+  };
+
+  const isNotificationRead = (notification: Notification) => {
+    if (notification.userId === null) {
+      return getSeenGlobalNotificationIds().includes(notification.id);
+    }
+
+    return notification.isRead;
+  };
+
+  const unreadCount = bellNotifications.filter((notification: Notification) => !isNotificationRead(notification)).length;
+  const unreadCommunicationsCount = communicationNotifications.filter((notification: Notification) => !isNotificationRead(notification)).length;
 
   // Fetch active announcements count (user-specific)
   const { data: announcementCount } = useQuery({
@@ -262,57 +287,113 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
 
   const markAsRead = async (id: string) => {
     try {
-      await api.post(`/notifications/${id}/read`);
+      const targetNotification =
+        [...bellNotifications, ...communicationNotifications].find(
+          (notification) => notification.id === id
+        ) || null;
+
+      if (targetNotification?.userId === null) {
+        rememberSeenGlobalNotifications([id]);
+      } else {
+        await api.post(`/notifications/${id}/read`);
+      }
       // Update cache optimistically - include user ID in query key
       queryClient.setQueryData(["notifications", user?.id, user?.schoolId], (old: any) => {
         if (!old) return old;
+        const markCollection = (items: Notification[] = []) =>
+          items.map((notification) =>
+            notification.id === id ? { ...notification, isRead: true } : notification
+          );
+        const wasBellUnread = (old.bellNotifications || []).some(
+          (notification: Notification) => notification.id === id && !notification.isRead
+        );
+        const wasCommunicationUnread = (old.communicationNotifications || []).some(
+          (notification: Notification) => notification.id === id && !notification.isRead
+        );
+
         return {
           ...old,
-          notifications: old.notifications.map((n: Notification) =>
-            n.id === id ? { ...n, isRead: true } : n
-          ),
-          unreadCount: Math.max(0, old.unreadCount - 1),
+          bellNotifications: markCollection(old.bellNotifications),
+          communicationNotifications: markCollection(old.communicationNotifications),
+          bellUnreadCount: wasBellUnread
+            ? Math.max(0, (old.bellUnreadCount || 0) - 1)
+            : old.bellUnreadCount || 0,
+          communicationUnreadCount: wasCommunicationUnread
+            ? Math.max(0, (old.communicationUnreadCount || 0) - 1)
+            : old.communicationUnreadCount || 0,
         };
       });
-      // Force full page notifications list invalidation
-      queryClient.invalidateQueries({ queryKey: ["notification-categories"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "all"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "attendance"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "enrollment"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "academic"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "schedule"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "communication"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "event"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "finance"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "system"] });
+      invalidateNotificationQueries();
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
   };
 
-  const markAllAsRead = async () => {
+  const invalidateNotificationQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: ["notification-categories"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "all"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "attendance"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "enrollment"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "academic"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "schedule"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "communication"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "event"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "finance"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "system"] });
+  };
+
+  const markAllAsRead = async (types?: string[]) => {
     try {
-      await api.post('/notifications/mark-all-read');
+      const collections = [
+        ...(notificationsData?.bellNotifications || []),
+        ...(notificationsData?.communicationNotifications || []),
+      ] as Notification[];
+      const matchingNotifications = collections.filter((notification) =>
+        !types?.length || types.includes(notification.type)
+      );
+      const globalIds = matchingNotifications
+        .filter((notification) => notification.userId === null)
+        .map((notification) => notification.id);
+      const userScopedTypes = matchingNotifications.some(
+        (notification) => notification.userId !== null
+      );
+
+      if (globalIds.length) {
+        rememberSeenGlobalNotifications(globalIds);
+      }
+
+      if (userScopedTypes) {
+        await api.post('/notifications/mark-all-read', types?.length ? { types } : {});
+      }
+
       // Update cache optimistically - include user ID in query key
       queryClient.setQueryData(["notifications", user?.id, user?.schoolId], (old: any) => {
         if (!old) return old;
+        const shouldMark = (notification: Notification) =>
+          !types?.length || types.includes(notification.type);
+
         return {
           ...old,
-          notifications: old.notifications.map((n: Notification) => ({ ...n, isRead: true })),
-          unreadCount: 0,
+          bellNotifications: (old.bellNotifications || []).map((n: Notification) =>
+            shouldMark(n) ? { ...n, isRead: true } : n
+          ),
+          communicationNotifications: (old.communicationNotifications || []).map((n: Notification) =>
+            shouldMark(n) ? { ...n, isRead: true } : n
+          ),
+          bellUnreadCount: types?.length
+            ? (types.some((type) => COMMUNICATION_NOTIFICATION_TYPES.includes(type))
+                ? old.bellUnreadCount
+                : 0)
+            : 0,
+          communicationUnreadCount: types?.length
+            ? (types.some((type) => COMMUNICATION_NOTIFICATION_TYPES.includes(type))
+                ? 0
+                : old.communicationUnreadCount)
+            : 0,
         };
       });
-      // Force full page notifications list invalidation
-      queryClient.invalidateQueries({ queryKey: ["notification-categories"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "all"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "attendance"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "enrollment"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "academic"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "schedule"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "communication"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "event"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "finance"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications", "system"] });
+      invalidateNotificationQueries();
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
     }
@@ -483,43 +564,43 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-[#F1F5F9] dark:bg-[#111827] backdrop-blur supports-[backdrop-filter]:bg-[#F1F5F9]/60 dark:supports-[backdrop-filter]:bg-[#111827]/60 transition-all duration-300">
-      <div className="w-full h-18">
-        <div className="flex items-center justify-between h-full gap-2 sm:gap-4 px-2 sm:px-4 overflow-hidden">
+      <div className="w-full h-14 sm:h-16 md:h-18">
+        <div className="flex items-center justify-between h-full gap-1 sm:gap-2 md:gap-4 px-2 sm:px-3 md:px-4 overflow-hidden">
           {/* Left: Mobile Menu Button and Logo */}
-          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-[#e35336] hover:text-white transition-all duration-200 shadow-sm"
+                  className="lg:hidden rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-[#e35336] hover:text-white transition-all duration-200 shadow-sm h-8 w-8 sm:h-9 sm:w-9"
                   aria-label="Toggle menu"
                 >
-                  <HamburgerMenuIcon className="h-5 w-5" />
+                  <HamburgerMenuIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-80 sm:w-96 p-0 bg-white dark:bg-[#111827] border-r border-gray-200 dark:border-gray-700 max-w-[90vw]">
-                <SheetHeader className="p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 bg-white/95 dark:bg-[#111827]/95 backdrop-blur flex flex-row items-center justify-between">
-                  <SheetTitle className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <School className="h-6 w-6 text-[#e35336] flex-shrink-0" />
+              <SheetContent side="left" className="w-72 sm:w-80 md:w-96 p-0 bg-white dark:bg-[#111827] border-r border-gray-200 dark:border-gray-700 max-w-[85vw]">
+                <SheetHeader className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 bg-white/95 dark:bg-[#111827]/95 backdrop-blur flex flex-row items-center justify-between">
+                  <SheetTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <School className="h-5 w-5 sm:h-6 sm:w-6 text-[#e35336] flex-shrink-0" />
                     {schoolLoading ? (
-                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-5 sm:h-6 w-24" />
                     ) : (
-                      <span className="truncate max-w-[120px] sm:max-w-none">{school?.name || 'SMS Portal'}</span>
+                      <span className="truncate max-w-[120px] sm:max-w-[160px]">{school?.name || 'SMS Portal'}</span>
                     )}
                   </SheetTitle>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="absolute right-4 top-4 h-8 w-8"
+                    className="absolute right-3 sm:right-4 top-3 sm:top-4 h-7 w-7 sm:h-8 sm:w-8"
                     onClick={() => setMobileMenuOpen(false)}
                     aria-label="Close menu"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                 </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-120px)] flex-1">
-                  <div className="p-4">
+                <ScrollArea className="h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] flex-1">
+                  <div className="p-3 sm:p-4">
                     <Menu collapsed={false} onItemClick={() => setMobileMenuOpen(false)} />
                   </div>
                 </ScrollArea>
@@ -529,34 +610,33 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
 
           </div>
 
-          {/* Right Section: Clock and User Menu */}
-          {/* Central: Real-time Clock Display */}
-          <div className="hidden sm:flex items-center gap-1 sm:gap-3 py-1 rounded-lg text-sm ml-2">
+          {/* Center: Real-time Clock Display - Hidden on small mobile, visible on sm+ */}
+          <div className="hidden sm:flex items-center gap-1 sm:gap-2 md:gap-3 py-1 rounded-lg text-sm ml-2 flex-shrink-0">
             {isLoading ? (
               <div className="flex items-center gap-2">
-                <Skeleton className="h-5 w-16" />
-                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
+                <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
               </div>
             ) : (
               <div className="flex items-center gap-1 sm:gap-2">
                 <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                   <PopoverTrigger asChild>
                     <div className="flex items-center gap-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <div className="flex flex-col text-left hidden lg:flex">
-                        <span className="text-gray-600 dark:text-gray-300 text-xs font-semibold truncate max-w-[150px]">Today: {currentDate || '--'}</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-[10px] truncate max-w-[200px]">
-                          {formattedYearLabel}{periodLabel ? ` | ${periodLabel}` : ""}
-                        </span>
-                      </div>
+                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+<div className="flex flex-col text-left hidden lg:flex">
+                          <span className="text-gray-600 dark:text-gray-300 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">Today: {currentDate || '--'}</span>
+                          <span className="text-gray-500 dark:text-gray-400 text-[10px] truncate max-w-[160px] sm:max-w-[200px]">
+                            {formattedYearLabel}{displayTermName ? ` | ${displayTermName}` : ""}
+                          </span>
+                        </div>
                     </div>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-2 sm:p-3 bg-white dark:bg-gray-800" align="center">
-                    <WeeklyCalendar events={events} onEventClick={() => { setCalendarOpen(false); router.push('/list/events'); }} />
+                    <WeeklyCalendar events={events} onEventClick={() => { setCalendarOpen(false); router.push('/list/calendar'); }} />
                   </PopoverContent>
                 </Popover>
                 <div className="hidden md:flex items-center gap-1">
-                  <Clock className="h-4 w-4 text-gray-500" />
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
                   <span className="font-bold text-gray-800 dark:text-gray-100 text-xs sm:text-sm">{currentTime || '--:--:--'}</span>
                 </div>
               </div>
@@ -564,107 +644,104 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
           </div>
 
           {/* Right Section: Search and User Menu */}
-          <div className="flex flex-1 items-center gap-2 sm:gap-4 min-w-0">
-            {/* Desktop Search */}
+          <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2 md:gap-4 min-w-0">
+            {/* Desktop Search - Fluid width that expands/shrinks with available space */}
             {isLoading ? (
-              <div className="hidden sm:flex flex-1 max-w-5xl min-w-0">
-                <Skeleton className="h-10 w-full rounded-full" />
+              <div className="hidden sm:flex flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl">
+                <Skeleton className="h-9 sm:h-10 w-full rounded-full" />
               </div>
             ) : user && (
-              <div className="hidden sm:flex flex-1 max-w-5xl min-w-0">
+              <div className="hidden sm:flex flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl transition-all duration-300 ease-in-out">
                 <GlobalSearch />
               </div>
             )}
 
-          {/* Mobile Search - visible xs only */}
+          {/* Mobile Search - Compact on xs, expands on focus if needed */}
           {isLoading ? (
-            <div className="sm:hidden flex-1 min-w-0">
-              <Skeleton className="h-10 w-full" />
+            <div className="sm:hidden flex-1 min-w-0 max-w-[100px]">
+              <Skeleton className="h-8 w-full" />
             </div>
           ) : user && (
-            <div className="sm:hidden flex-1 min-w-0">
+            <div className="sm:hidden flex-1 min-w-0 max-w-[100px]">
               <GlobalSearch />
             </div>
           )}
 
 
           {/* Right: Icons and User Menu */}
-          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-auto">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {/* Enroll Button (for unauthenticated users) */}
             {!user && (
               <Button
                 variant="default"
                 size="sm"
-                className="hidden sm:flex gap-2"
+                className="hidden sm:flex gap-2 text-xs sm:text-sm h-8 sm:h-9"
                 asChild
               >
                 <Link href="/enroll">
-                  <UserPlus className="h-4 w-4" />
-                  <span>Enroll Now</span>
+                  <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Enroll Now</span>
                 </Link>
               </Button>
             )}
 
             {/* Notification and Message Icons */}
             {isLoading ? (
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-9 w-9 rounded-lg" />
-                <Skeleton className="h-9 w-9 rounded-lg" />
-                <Skeleton className="h-9 w-9 rounded-lg" />
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Skeleton className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg" />
+                <Skeleton className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg" />
+                <Skeleton className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg" />
               </div>
             ) : user && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2">
 
 
                 {/* Notifications Dropdown */}
-                <DropdownMenu>
+                <DropdownMenu
+                  open={notificationsOpen}
+                  onOpenChange={(open) => {
+                    setNotificationsOpen(open);
+                    if (open) {
+                      void markAllAsRead();
+                    }
+                  }}
+                >
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="relative"
+                      className="relative h-8 w-8 sm:h-9 sm:w-9"
                       aria-label="Notifications"
                     >
-                      <Bell className="h-8 w-8 font-bold " />
+                      <Bell className="h-5 w-5 sm:h-6 sm:w-6 font-bold" />
                       {unreadCount > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-md flex items-center justify-center px-1">
+                        <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                       )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-96 dark:bg-slate-900">
-
+                  <DropdownMenuContent align="end" className="w-80 sm:w-96 dark:bg-slate-900 max-w-[95vw]">
                     <DropdownMenuLabel className="flex items-center justify-between dark:text-white">
                       <a href="/notifications" className="flex items-center justify-between w-full hover:text-[#e35336]">
-                        <span>Alerts & Notifications</span>
+                        <span className="text-sm sm:text-base">Alerts & Notifications</span>
                       </a>
-                      {unreadCount > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-1 text-xs text-[#e35336] hover:text-blue-700"
-                          onClick={markAllAsRead}
-                        >
-                          Mark all as read
-                        </Button>
-                      )}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <ScrollArea className="h-[300px]">
+                    <ScrollArea className="h-[250px] sm:h-[300px]">
                       {notificationsLoading ? (
                         <div className="p-4 flex items-center justify-center">
                           <Loader2 className="h-5 w-5 animate-spin text-[#e35336]" />
                         </div>
-                      ) : filteredNotifications.length === 0 ? (
+                      ) : bellNotifications.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 dark:text-slate-400 text-sm">
                           No notifications
                         </div>
                       ) : (
-                        filteredNotifications.map((notification: any) => (
+                        bellNotifications.map((notification: any) => (
                           <div
                             key={notification.id}
-                            className={`p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${!notification.isRead ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
+                            className={`p-2 sm:p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${!isNotificationRead(notification) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
                             onClick={() => {
                               markAsRead(notification.id);
                               if (notification.actionUrl) {
@@ -672,16 +749,16 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                               }
                             }}
                           >
-                            <div className="flex gap-3">
+                            <div className="flex gap-2 sm:gap-3">
                               <div className="flex-shrink-0 mt-0.5">
                                 {getNotificationIcon(notification.type)}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className={`text-sm ${!notification.isRead ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
+                                  <p className={`text-xs sm:text-sm ${!isNotificationRead(notification) ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
                                     {notification.title}
                                   </p>
-                                  {!notification.isRead && (
+                                  {!isNotificationRead(notification) && (
                                     <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                                   )}
                                 </div>
@@ -702,76 +779,85 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                     </ScrollArea>
                     <DropdownMenuSeparator />
                     <div className="p-2">
-                      <Button
-                        variant="ghost"
-                        className="w-full text-sm text-white bg-[#e35336] hover:bg-[#c94429] dark:bg-slate-700 dark:hover:bg-slate-600"
-                        onClick={() => router.push('/list/communications')}
-                      >
-                        View all notifications
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full text-sm text-white bg-[#e35336] hover:bg-[#c94429] dark:bg-slate-700 dark:hover:bg-slate-600"
+                          onClick={() => router.push('/notifications')}
+                        >
+                          View all notifications
+                        </Button>
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
                 {/* Communications Dropdown - Only show if feature is enabled */}
                 {isCommunicationEnabled && (
-                  <DropdownMenu>
+                  <DropdownMenu
+                    open={communicationsOpen}
+                    onOpenChange={(open) => {
+                      setCommunicationsOpen(open);
+                      if (open) {
+                        void markAllAsRead(COMMUNICATION_NOTIFICATION_TYPES);
+                      }
+                    }}
+                  >
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="relative"
+                        className="relative h-8 w-8 sm:h-9 sm:w-9"
                         aria-label="Communications"
                       >
-                        <MessageSquare className="h-6 w-6 font-bold text-dark dark:text-white" />
+                        <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 font-bold text-dark dark:text-white" />
                         {unreadCommunicationsCount > 0 && (
-                          <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-md flex items-center justify-center px-1">
+                          <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-blue-500 text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
                             {unreadCommunicationsCount > 99 ? '99+' : unreadCommunicationsCount}
                           </span>
                         )}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[500px] max-h-[500px] dark:bg-slate-900">
+                    <DropdownMenuContent align="end" className="w-[340px] sm:w-[450px] md:w-[500px] max-h-[400px] sm:max-h-[500px] dark:bg-slate-900 max-w-[95vw]">
 
                       <DropdownMenuLabel className="flex items-center justify-between dark:text-white">
-                        <span>Communications ({unreadCommunicationsCount} open)</span>
+                        <span className="text-sm sm:text-base">Communication Book</span>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <ScrollArea className="h-[300px]">
-                        {communications.length === 0 ? (
+                      <ScrollArea className="h-[250px] sm:h-[300px]">
+                        {communicationNotifications.length === 0 ? (
                           <div className="p-4 text-center text-gray-500 dark:text-slate-400 text-sm">
-                            No open communications
+                            No communication notifications
                           </div>
                         ) : (
-                          communications.map((comm: any) => (
+                          communicationNotifications.map((notification: any) => (
                             <div
-                              key={comm.id}
-                              className="p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-                              onClick={() => router.push(`/list/communications?conversationId=${comm.id}`)}
+                              key={notification.id}
+                              className={`p-2 sm:p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${!isNotificationRead(notification) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
+                              onClick={() => {
+                                markAsRead(notification.id);
+                                router.push(notification.actionUrl || '/list/communications');
+                              }}
                             >
-                              <div className="flex gap-3">
+                              <div className="flex gap-2 sm:gap-3">
                                 <div className="flex-shrink-0 mt-0.5">
-                                  <MessageSquare className="h-5 w-5 text-[#1E3A8A]" />
+                                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-[#1E3A8A]" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                                      {comm.subject}
+                                    <p className={`text-xs sm:text-sm ${!isNotificationRead(notification) ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
+                                      {notification.title}
                                     </p>
+                                    {!isNotificationRead(notification) && (
+                                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                                    )}
                                   </div>
-                                  {comm.message && (
-<p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                                      {comm.message}
+                                  {notification.message && (
+                                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                                      {notification.message}
                                     </p>
                                   )}
-                                  <div className="flex items-center justify-between mt-1">
-                                    <p className="text-xs text-gray-400 dark:text-slate-500">
-                                      {comm.createdBy?.name || 'Unknown'}
-                                    </p>
-                                    <p className="text-xs text-gray-400 dark:text-slate-500">
-                                      {comm.createdAt ? formatTimeAgo(comm.createdAt) : ''}
-                                    </p>
-                                  </div>
+                                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                                    {formatTimeAgo(notification.createdAt)}
+                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -797,10 +883,10 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
             {/* User Menu */}
             {isLoading ? (
               <div className="flex items-center gap-2">
-                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" />
                 <div className="hidden md:block space-y-1">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 sm:h-4 w-20 sm:w-24" />
+                  <Skeleton className="h-2 sm:h-3 w-14 sm:w-16" />
                 </div>
               </div>
             ) : user ? (
@@ -808,46 +894,46 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="relative h-auto p-2 outline-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent hover:text-inherit active:bg-transparent group"
+                    className="relative h-auto p-1 sm:p-2 outline-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent hover:text-inherit active:bg-transparent group"
                   >
-                    <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
                       <div className="hidden md:block text-right min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate max-w-[80px] sm:max-w-[100px]">
+                        <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate max-w-[60px] sm:max-w-[80px] lg:max-w-[100px]">
                           {user.name}
                         </p>
-                        <p className="text-xs text-gray-500 capitalize truncate max-w-[100px] sm:max-w-[120px]">
+                        <p className="text-[10px] sm:text-xs text-gray-500 capitalize truncate max-w-[60px] sm:max-w-[100px] lg:max-w-[120px]">
                           {user.role?.toLowerCase().replace("_", " ") || "User"}
                         </p>
                       </div>
-                      <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border-2 border-white shadow flex-shrink-0">
+                      <Avatar className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 border-2 border-white shadow flex-shrink-0">
                         {user.avatarUrl ? (
                           <AvatarImage src={user.avatarUrl} alt={user.name} />
                         ) : (
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold text-xs sm:text-sm">
                             {user.name?.charAt(0).toUpperCase() || "U"}
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      <ChevronDown className="h-4 w-4 text-gray-500 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      <ChevronDown className="hidden sm:block h-3 w-3 sm:h-4 sm:w-4 text-gray-500 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[320px] dark:bg-slate-900" align="end" forceMount>
+                <DropdownMenuContent className="w-[280px] sm:w-[320px] dark:bg-slate-900" align="end" forceMount>
 
                   {/* Compact User Info */}
-                  <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700">
+                  <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12 border-2 border-white dark:border-slate-600 shadow">
+                      <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-white dark:border-slate-600 shadow">
                         {user.avatarUrl ? (
                           <AvatarImage src={user.avatarUrl} alt={user.name} />
                         ) : (
-                          <AvatarFallback className="bg-gradient-to-br from-[#e35336] to-[#c94429] text-white font-bold text-lg">
+                          <AvatarFallback className="bg-gradient-to-br from-[#e35336] to-[#c94429] text-white font-bold text-base sm:text-lg">
                             {user.name?.charAt(0).toUpperCase() || "U"}
                           </AvatarFallback>
                         )}
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-base font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
+                        <p className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
                         <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{user.email}</p>
                         <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#e35336]/10 text-[#e35336] dark:bg-[#e35336]/20">
                           {user.role?.toLowerCase().replace("_", " ")}
@@ -907,11 +993,11 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3" asChild>
                   <Link href="/sign-in">Sign In</Link>
                 </Button>
-                <Button variant="default" size="sm" asChild>
+                <Button variant="default" size="sm" className="text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3" asChild>
                   <Link href="/sign-up">Sign Up</Link>
                 </Button>
               </div>

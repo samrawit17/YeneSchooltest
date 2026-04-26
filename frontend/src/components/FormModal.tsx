@@ -475,42 +475,68 @@ const FormModal = ({
       </div>
     );
   };
+    
+  // Table label mapping
+  const getTableLabel = (table: string) => {
+    const labels: Record<string, string> = {
+      event: "Activity",
+    };
+    return labels[table] || table;
+  };
+
+  // Table description mapping
+  const getTableDescription = (table: string, type: string) => {
+    const descriptions: Record<string, Record<string, string>> = {
+      event: {
+        create: "Enter activity details below",
+        update: "Edit existing information",
+      },
+    };
+    return descriptions[table]?.[type] || 
+      (type === "create" ? "Fill in the details below" : "Edit existing information");
+  };
 
   // If title is provided, render as modal directly
   if (title) {
-    return (
-      <>
-        {open && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden font-sans border dark:border-slate-700">
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-gradient-to-br from-[#e35336] to-[#c94429] rounded-xl flex items-center justify-center shadow-md">
-                    {getTableIcon()}
-                  </div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
-                </div>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                  aria-label="Close modal"
-                >
-                  <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                </button>
-              </div>
-              {/* Content */}
-              <div className="max-h-[calc(90vh-120px)] overflow-y-auto">
-                <div className="p-5">
-                  <FormContent />
-                </div>
-              </div>
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open && onClose) onClose();
+      setIsOpen?.(open);
+    }}>
+      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden" customCloseButton={false}>
+        <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-[#e35336] to-[#c94429] rounded-xl flex items-center justify-center shadow-md">
+              {getTableIcon()}
             </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {type === "create" ? "Create New" : type === "update" ? "Update" : "Delete"} {getTableLabel(table)}
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {getTableDescription(table, type)}
+              </p>
+            </div>
+</div>
+          <button
+            onClick={() => setOpen(false)}
+            className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            aria-label="Close modal"
+          >
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          </button>
+        </div>
+        {/* Content */}
+        <div className="max-h-[calc(90vh-120px)] overflow-y-auto">
+          <div className="p-5">
+            <FormContent />
           </div>
-        )}
-      </>
-    );
-  }
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
   // Otherwise, render as button that opens modal
   return (
@@ -534,10 +560,10 @@ const FormModal = ({
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {type === "create" ? "Create New" : type === "update" ? "Update" : "Delete"} {table}
+                    {type === "create" ? "Create New" : type === "update" ? "Update" : "Delete"} {getTableLabel(table)}
                   </h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                    {type === "create" ? "Fill in the details below" : "Edit existing information"}
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {getTableDescription(table, type)}
                   </p>
                 </div>
               </div>

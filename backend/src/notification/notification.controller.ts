@@ -27,12 +27,19 @@ export class NotificationController {
     @Query('unreadOnly') unreadOnly?: string,
     @Query('limit') limit?: string,
     @Query('type') type?: string,
+    @Query('types') types?: string,
     @Query('category') category?: string,
   ) {
     const options = {
       unreadOnly: unreadOnly === 'true',
       limit: limit ? parseInt(limit) : 20,
       type,
+      types: types
+        ? types
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : undefined,
       category,
       schoolId: req.user.schoolId, // Include schoolId to filter notifications by school
     };
@@ -57,11 +64,20 @@ export class NotificationController {
   }
 
   @Get('unread-count')
-  async getUnreadCount(@Request() req: any) {
+  async getUnreadCount(
+    @Request() req: any,
+    @Query('types') types?: string,
+  ) {
     const count = await this.notificationService.getUnreadCount(
       req.user.id,
       req.user.role,
       req.user.schoolId,
+      types
+        ? types
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : undefined,
     );
     return { count };
   }
@@ -104,7 +120,10 @@ export class NotificationController {
   }
 
   @Post('mark-all-read')
-  async markAllAsRead(@Request() req: any) {
-    return this.notificationService.markAllAsRead(req.user.id);
+  async markAllAsRead(
+    @Request() req: any,
+    @Body() body?: { types?: string[] },
+  ) {
+    return this.notificationService.markAllAsRead(req.user.id, body?.types);
   }
 }

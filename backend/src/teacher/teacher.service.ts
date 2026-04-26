@@ -92,6 +92,11 @@ export class TeacherService {
             class: true,
           },
         },
+        classSubjects: {
+          include: {
+            subject: true,
+          },
+        },
       },
       skip,
       take: limit,
@@ -99,29 +104,36 @@ export class TeacherService {
     });
 
     // Transform the data to include teacher-specific fields
-    const transformedTeachers = teachers.map((teacher) => ({
-      id: teacher.id,
-      userId: teacher.id,
-      email: teacher.email,
-      name: teacher.name,
-      staffId:
-        teacher.teacherProfile?.employeeId ||
-        `TCH-${teacher.id.slice(0, 6).toUpperCase()}`,
-      phone: teacher.phone || '',
-      isActive: teacher.isActive,
-      employmentStatus: teacher.isActive ? 'Active' : 'Inactive',
-      designation: teacher.teacherProfile?.designation || 'Teacher',
-      specialization: teacher.teacherProfile?.specialization || '',
-      hireDate: teacher.teacherProfile?.hireDate,
-      createdAt: teacher.createdAt,
-      assignedClasses:
-        teacher.homeroomSections?.map((section) => {
-          const gradeStr = section.class?.grade
-            ? `Grade ${section.class.grade}`
-            : section.class?.name || 'Unknown';
-          return `${gradeStr} - ${section.name}`;
-        }) || [],
-    }));
+    const transformedTeachers = teachers.map((teacher) => {
+      // Get unique subjects taught by this teacher
+      const subjects = [...new Set(teacher.classSubjects?.map(cs => cs.subject?.name).filter(Boolean) || [])];
+      
+      return {
+        id: teacher.id,
+        userId: teacher.id,
+        email: teacher.email,
+        name: teacher.name,
+        staffId:
+          teacher.teacherProfile?.employeeId ||
+          `TCH-${teacher.id.slice(0, 6).toUpperCase()}`,
+        phone: teacher.phone || '',
+        isActive: teacher.isActive,
+        employmentStatus: teacher.isActive ? 'Active' : 'Inactive',
+        designation: teacher.teacherProfile?.designation || 'Teacher',
+        specialization: teacher.teacherProfile?.specialization || '',
+        subjects: subjects,
+        hireDate: teacher.teacherProfile?.hireDate,
+        createdAt: teacher.createdAt,
+        avatarUrl: teacher.avatarUrl || '',
+        assignedClasses:
+          teacher.homeroomSections?.map((section) => {
+            const gradeStr = section.class?.grade
+              ? `Grade ${section.class.grade}`
+              : section.class?.name || 'Unknown';
+            return `${gradeStr} - ${section.name}`;
+          }) || [],
+      };
+    });
 
     return {
       data: transformedTeachers,
@@ -166,6 +178,7 @@ export class TeacherService {
       hireDate: teacher.teacherProfile?.hireDate,
       department: teacher.teacherProfile?.department?.name || '',
       createdAt: teacher.createdAt,
+      avatarUrl: teacher.avatarUrl || '',
     };
   }
 

@@ -3,15 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import api from "@/lib/api";
+import { gradingAPI } from "@/lib/api";
+import { Filters, useFilters } from "@/components/filters/Filters";
+import { termsAPI } from "@/lib/api";
 import { toast } from "sonner";
 import {
-  Trophy,
   Download,
-  AlertCircle,
   TrendingUp,
+  Loader2,
+  FileText,
   Award,
-  Loader2
+  Trophy
 } from "lucide-react";
 
 // Shadcn components
@@ -25,29 +27,49 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+interface RankingsResult {
+  results: { rank: number; studentName: string; rollNumber: string; className: string; average: number; gradeLetter: string }[];
+  classAverage: number;
+  passRate: number;
+  totalStudents: number;
+  topStudents: Array<{ id: string; name: string; rank: number; average: number; attendance: number }>;
+  calculated: string;
+}
 
 export default function ExamReportsPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
-  const [classes, setClasses] = useState<{id: string, name: string}[]>([]);
-  const [academicYears, setAcademicYears] = useState<{id: string, name: string}[]>([]);
   const [terms, setTerms] = useState<{id: string, name: string}[]>([]);
-
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedTerm, setSelectedTerm] = useState('');
-  const [selectedClass, setSelectedClass] = useState('');
   
-  const [reportData, setReportData] = useState<any>(null);
-  const [rankingsResult, setRankingsResult] = useState<any>(null);
+  const [reportData, setReportData] = useState<RankingsResult | null>(null);
+
+  const {
+    selectedYear,
+    setSelectedYear,
+    selectedTerm,
+    setSelectedTerm,
+    selectedGrade,
+    setSelectedGrade,
+    selectedSection,
+    setSelectedSection,
+  } = useFilters({
+    academicYear: true,
+    grade: true,
+    section: true,
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -55,35 +77,18 @@ export default function ExamReportsPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
+  // Fetch terms when year changes
   useEffect(() => {
-    if (isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')) {
-      fetchFilters();
+    if (selectedYear) {
+      fetchTerms();
     }
-  }, [isAuthenticated, user]);
+  }, [selectedYear]);
 
-  const fetchFilters = async () => {
+  const fetchTerms = async () => {
     try {
-      const [clsRes, yrsRes] = await Promise.all([
-        api.get('/classes'),
-        api.get('/academic-years')
-      ]);
-      setClasses(clsRes.data);
-      setAcademicYears(yrsRes.data);
-      
-      const activeYear = yrsRes.data.find((y: any) => y.isActive);
-      if (activeYear) {
-        setSelectedYear(activeYear.id);
-        fetchTerms(activeYear.id);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const fetchTerms = async (yearId: string) => {
-    try {
-      const res = await api.get(`/terms?academicYearId=${yearId}`);
-      setTerms(res.data);
+      const res = await termsAPI.getAll({ academicYearId: selectedYear });
+      const termData = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      setTerms(termData);
     } catch (error) {
       console.error(error);
     }
@@ -97,67 +102,58 @@ export default function ExamReportsPage() {
     
     setLoading(true);
     try {
-      const res = await api.post('/grading/admin/calculate-rankings', {
+      const res = await gradingAPI.calculateRankings({
         academicYearId: selectedYear,
         termId: selectedTerm || undefined,
       });
       
-      setRankingsResult(res.data);
-      toast.success(`Rankings calculated for ${res.data.results?.length || 0} student records`);
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to calculate rankings');
+      setReportData(res.data);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to calculate rankings');
     } finally {
       setLoading(false);
     }
   };
 
-  const generateReport = async () => {
-    if (!selectedYear || !selectedTerm || !selectedClass) {
-      toast.error('Please select Year, Term, and Class');
+const generateReport = async () => {
+    if (!selectedYear || !selectedTerm) {
+      toast.error('Please select Academic Year and Term');
       return;
     }
+    
     setLoading(true);
+    setReportData(null);
     try {
-      // Assuming a generic report endpoint exists or will be added extending the current reports
-      // Here we stub with a hypothetical standard shape returning rankings
-      const response = await api.get(`/grading/registrar/reports/class`, {
-        params: {
-          academicYear: selectedYear,
-          termId: selectedTerm,
-          classId: selectedClass,
-        }
+      const res = await gradingAPI.calculateRankings({
+        academicYearId: selectedYear,
+        termId: selectedTerm,
+        classId: selectedGrade || undefined,
       });
-      setReportData(response.data);
+      
+      setReportData(res.data);
+      toast.success(`Generated report for ${res.data.results?.length || 0} student records`);
     } catch (error: any) {
       console.error(error);
-      // Fallback to mock data for presentation as requested in the task context
-      setReportData({
-        topStudents: [
-          { id: 1, name: "Alice Johnson", average: 95.5, rank: 1, attendance: "98%" },
-          { id: 2, name: "Bob Smith", average: 92.0, rank: 2, attendance: "95%" },
-          { id: 3, name: "Charlie Davis", average: 88.5, rank: 3, attendance: "100%" },
-        ],
-        classAverage: 82.4,
-        totalStudents: 30,
-        passRate: "90%"
-      });
-      toast.warning('Using simulated report data');
+      toast.error(error?.response?.data?.message || 'Failed to generate report');
     } finally {
       setLoading(false);
     }
   };
 
   const publishResults = async () => {
+    if (!selectedYear || !selectedTerm) {
+      toast.error('Please select Academic Year and Term');
+      return;
+    }
     try {
-      await api.post('/exams/publish', {
+      const res = await gradingAPI.publishResults({
         academicYear: selectedYear,
         termId: selectedTerm,
-        classId: selectedClass
+        classId: selectedGrade || undefined,
       });
       toast.success('Results published and notifications sent successfully!');
-    } catch (error) {
-      toast.error('Failed to publish results');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to publish results');
     }
   };
 
@@ -170,10 +166,28 @@ export default function ExamReportsPage() {
           <h1 className="text-2xl font-bold text-[#e35336]">Exam Reports & Rankings</h1>
           <p className="text-gray-500">Generate class rankings and publish term results</p>
         </div>
-        <Button onClick={publishResults} disabled={!reportData} className="bg-green-600 hover:bg-green-700">
-          <TrendingUp className="w-4 h-4 mr-2" />
-          Publish Results & Notify
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button disabled={!selectedYear || !selectedTerm || !reportData} className="bg-green-600 hover:bg-green-700">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Publish Results & Notify
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Publish Results</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will publish results and send notifications to all parents. This action cannot be undone. Are you sure you want to continue?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={publishResults} className="bg-green-600 hover:bg-green-700">
+                Publish & Notify
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <Card>
@@ -182,39 +196,28 @@ export default function ExamReportsPage() {
           <CardDescription>Select parameters to generate the ranking report</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="space-y-2 flex-1">
-              <Label>Academic Year</Label>
-              <Select value={selectedYear} onValueChange={(val) => {
-                setSelectedYear(val);
-                fetchTerms(val);
-              }}>
-                <SelectTrigger><SelectValue placeholder="Select Year" /></SelectTrigger>
-                <SelectContent>
-                  {academicYears.map(y => <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 flex-1">
-              <Label>Term/Semester</Label>
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger><SelectValue placeholder="Select Term" /></SelectTrigger>
-                <SelectContent>
-                  {terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 flex-1">
-              <Label>Class</Label>
-              <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger><SelectValue placeholder="Select Class" /></SelectTrigger>
-                <SelectContent>
-                  {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={generateReport} disabled={loading}>
-              {loading ? 'Generating...' : 'Generate Format'}
+          <Filters
+            config={{
+              academicYear: true,
+              grade: true,
+              term: true,
+              section: true,
+            }}
+            selectedYear={selectedYear}
+            onYearChange={(val) => { setSelectedYear(val); setSelectedTerm(""); }}
+            selectedTerm={selectedTerm}
+            onTermChange={setSelectedTerm}
+            termOptions={terms}
+            selectedGrade={selectedGrade}
+            onGradeChange={(val) => { setSelectedGrade(val); if (!val) setSelectedSection(""); }}
+            selectedSection={selectedSection}
+            onSectionChange={setSelectedSection}
+            className="w-full"
+          />
+          <div className="mt-4 flex justify-end">
+            <Button onClick={generateReport} disabled={loading || !selectedYear || !selectedTerm}>
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileText className="w-4 h-4 mr-2" />}
+              {loading ? 'Generating...' : 'Generate Report'}
             </Button>
           </div>
         </CardContent>
@@ -244,7 +247,7 @@ export default function ExamReportsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Pass Rate</p>
-                    <p className="text-2xl font-bold">{reportData.passRate}</p>
+                    <p className="text-2xl font-bold">{reportData.passRate}%</p>
                   </div>
                 </div>
               </CardContent>
@@ -270,7 +273,7 @@ export default function ExamReportsPage() {
                 <CardTitle>Top Students Ranking</CardTitle>
                 <CardDescription>Highest performing students in the selected class and term</CardDescription>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" disabled title="Export PDF coming soon">
                 <Download className="w-4 h-4 mr-2" />
                 Export PDF
               </Button>
@@ -308,130 +311,7 @@ export default function ExamReportsPage() {
             </CardContent>
           </Card>
         </div>
-      )}
-
-      {/* Calculate Rankings Section */}
-      <Card className="mt-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-600" />
-                Calculate Student Rankings
-              </CardTitle>
-              <CardDescription>
-                Calculate rankings for students based on grades when a curriculum period ends
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">Academic Year</label>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYears.map(year => (
-                    <SelectItem key={year.id} value={year.id}>{year.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1">
-              <label className="text-sm font-medium mb-2 block">Term/Period</label>
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Terms" />
-                </SelectTrigger>
-                <SelectContent>
-                  {terms.map(term => (
-                    <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button 
-              onClick={calculateRankings}
-              disabled={loading || !selectedYear}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trophy className="w-4 h-4 mr-2" />}
-              Calculate Rankings
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Rankings Results */}
-      {rankingsResult && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              Rankings Results
-            </CardTitle>
-            <CardDescription>
-              Calculated on: {new Date(rankingsResult.calculated).toLocaleString()}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-gray-500 mb-4">
-              Total student records: {rankingsResult.results?.length || 0}
-            </div>
-            
-            {rankingsResult.results && rankingsResult.results.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-medium">Rank</th>
-                      <th className="text-left py-3 px-4 font-medium">Student Name</th>
-                      <th className="text-left py-3 px-4 font-medium">Admission No</th>
-                      <th className="text-left py-3 px-4 font-medium">Class</th>
-                      <th className="text-right py-3 px-4 font-medium">Average</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rankingsResult.results.slice(0, 30).map((result: any, idx: number) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          {result.rank === 1 ? (
-                            <Badge className="bg-yellow-100 text-yellow-800">🥇 1st</Badge>
-                          ) : result.rank === 2 ? (
-                            <Badge className="bg-gray-100 text-gray-800">🥈 2nd</Badge>
-                          ) : result.rank === 3 ? (
-                            <Badge className="bg-orange-100 text-orange-800">🥉 3rd</Badge>
-                          ) : (
-                            <Badge variant="outline">#{result.rank}</Badge>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 font-medium">{result.studentName}</td>
-                        <td className="py-3 px-4 text-gray-500">{result.admissionNo || '-'}</td>
-                        <td className="py-3 px-4 text-gray-500">
-                          {result.className}{result.sectionName ? ` - ${result.sectionName}` : ''}
-                        </td>
-                        <td className="py-3 px-4 text-right font-medium">{result.average?.toFixed(1)}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {rankingsResult.results.length > 30 && (
-                  <div className="text-center py-4 text-gray-500">
-                    ... and {rankingsResult.results.length - 30} more students
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                No ranking data available. Make sure grades are entered.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+)}
     </div>
   );
 }

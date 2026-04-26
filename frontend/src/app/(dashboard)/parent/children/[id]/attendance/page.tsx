@@ -45,25 +45,21 @@ const ChildAttendancePage = () => {
 
   useEffect(() => {
     const fetchAttendance = async () => {
-      if (!childId || !childId.startsWith('sp')) {
-        // childId is likely a userId, use it directly
-        fetchWithUserId(childId);
-      } else {
-        // childId is a StudentProfile id, need to get userId first
-        fetchUserIdAndThen(childId);
-      }
-    };
-
-    const fetchWithUserId = async (userId: string) => {
       try {
-        // Format month as YYYY-MM
+        const childResponse = await api.get(`/parents/me/children/${childId}`);
+        const childData = childResponse.data?.child || childResponse.data;
+        const userId =
+          childData?.student?.userId ||
+          childData?.student?.user?.id ||
+          childData?.userId ||
+          childId;
         const monthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
         const response = await api.get(`/attendance/student/${userId}?month=${monthStr}`);
         const data = response.data;
         setAttendance(data.records || []);
         setStats(data.summary || null);
         setChild(data.student ? { 
-          id: data.student.id, 
+          id: childData?.studentId || childId,
           userId: data.student.id,
           name: data.student.name, 
           studentCode: data.student.studentCode || '',
@@ -73,25 +69,6 @@ const ChildAttendancePage = () => {
       } catch (error) {
         console.error("Failed to fetch attendance:", error);
       } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchUserIdAndThen = async (profileId: string) => {
-      try {
-        // First get the child's userId from parent API
-        const childResponse = await api.get(`/parents/me/children/${profileId}`);
-        const childData = childResponse.data?.child || childResponse.data;
-        
-        if (childData?.userId) {
-          // Now fetch attendance using userId
-          await fetchWithUserId(childData.userId);
-        } else {
-          console.error("No userId found for child");
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Failed to fetch child details:", error);
         setLoading(false);
       }
     };
@@ -187,9 +164,10 @@ const ChildAttendancePage = () => {
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
             className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {[2023, 2024, 2025, 2026].map((year) => (
-              <option key={year} value={year}>{year}</option>
-            ))}
+            {Array.from({ length: 6 }).map((_, i) => {
+              const year = new Date().getFullYear() - 2 + i;
+              return <option key={year} value={year}>{year}</option>;
+            })}
           </select>
         </div>
       </div>

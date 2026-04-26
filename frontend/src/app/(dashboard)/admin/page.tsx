@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { dashboardAPI } from "@/lib/api";
 import { toast } from "sonner";
 import DynamicChart from "@/components/charts/DynamicChart";
@@ -130,6 +131,7 @@ const iconColorMap: Record<string, { bg: string; icon: string }> = {
 const AdminPage = () => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const { formattedYearLabel, displayTermName, currentTerm, formatDate: formatSchoolDate } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
@@ -274,11 +276,15 @@ const AdminPage = () => {
               </p>
               {metadata?.generatedAt && (
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  Last updated: {new Date(metadata.generatedAt).toLocaleString()}
+                  Last updated: {formatSchoolDate(new Date(metadata.generatedAt))}
                 </p>
               )}
             </div>
-
+            {displayTermName && (
+              <div className="text-right">
+                <p className="text-xl font-bold text-[#e35336]">{displayTermName}</p>
+              </div>
+            )}
 
           </div>
 
@@ -403,36 +409,7 @@ const AdminPage = () => {
           </div>
 
           {/* Secondary Stats Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Fees Collected */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Fees Collected (This Month)</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
-                      {formatCurrency(stats?.feesCollected ?? 0)}
-                    </p>
-                    <div className="mt-2">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          of {formatCurrency(stats?.expectedFees ?? 0)}
-                        </span>
-                        <span className="font-medium text-gray-700 dark:text-gray-300">
-                          {stats?.feesCollectedPercentage ?? 0}%
-                        </span>
-                      </div>
-                      <Progress value={stats?.feesCollectedPercentage ?? 0} className="h-1.5" />
-                    </div>
-                  </div>
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg ml-3">
-                    <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Pending Enrollments */}
             <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
               <CardContent className="p-4">
@@ -474,27 +451,9 @@ const AdminPage = () => {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Total Revenue */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Total Revenue</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
-                      {formatCurrency(stats?.totalRevenue ?? 0)}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">This month</p>
-                  </div>
-                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
-                    <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
-          {/* Charts Section - 2 Column Layout */}
+          {/* Charts Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Weekly Attendance Chart */}
 
@@ -502,15 +461,6 @@ const AdminPage = () => {
               <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                 <CardContent className="p-4">
                   <DynamicChart chartData={charts.attendance} height={280} />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Monthly Fee Collection Chart */}
-            {charts.finance && (
-              <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                <CardContent className="p-4">
-                  <DynamicChart chartData={charts.finance} height={280} />
                 </CardContent>
               </Card>
             )}
@@ -523,59 +473,19 @@ const AdminPage = () => {
                 </CardContent>
               </Card>
             )}
-
-            {/* Sections per Class */}
-            {charts.classDistribution && (
-              <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                <CardContent className="p-4">
-                  <DynamicChart chartData={charts.classDistribution} height={280} />
-                </CardContent>
-              </Card>
-            )}
           </div>
 
-          {/* Bottom Section - Quick Actions + School Overview */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Quick Actions */}
+          {/* Sections per Class - Full Width */}
+          {charts.classDistribution && (
             <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
-                  Quick Actions
-                </CardTitle>
-                <CardDescription className="dark:text-gray-400">
-                  Common tasks at your fingertips
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {quickActions.map((action, index) => {
-
-                    const IconComponent = iconMap[action.icon || ""] || Settings;
-                    const colors = iconColorMap[action.icon || ""] || iconColorMap.settings;
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => !action.disabled && router.push(action.url)}
-                        disabled={action.disabled}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-colors ${
-                          action.disabled
-                            ? "bg-gray-100 dark:bg-slate-700/30 opacity-50 cursor-not-allowed"
-                            : "bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer"
-                        }`}
-                      >
-                        <div className={`p-2 rounded-lg ${colors.bg}`}>
-                          <IconComponent className={`w-5 h-5 ${colors.icon}`} />
-                        </div>
-                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 text-center">
-                          {action.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+              <CardContent className="p-4">
+                <DynamicChart chartData={charts.classDistribution} height={280} />
               </CardContent>
             </Card>
+          )}
 
+          {/* Bottom Section - School Overview */}
+          <div className="grid grid-cols-1 gap-6">
             {/* School Overview Pie Chart */}
             {charts.overview && (
               <Card className="lg:col-span-2 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">

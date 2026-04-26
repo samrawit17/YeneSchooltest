@@ -392,19 +392,16 @@ export class GradingController {
   }
 
   /**
-   * Create grading components
+   * Get assessment types config (for teachers - lightweight version)
    */
-  @Post('admin/grading-components')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  async createGradingComponents(
-    @Request() req: AuthRequest,
-    @Body() dto: { code: string; name: string; percentage: number }[],
-  ) {
-    return this.gradingService.createGradingComponents(req.user.schoolId, dto);
+  @Get('teacher/assessment-types')
+  @Roles(Role.TEACHER)
+  async getTeacherAssessmentTypes(@Request() req: AuthRequest) {
+    return this.gradingService.getAssessmentTypes(req.user.schoolId);
   }
 
   /**
-   * Get assessment types config
+   * Get assessment types config (admin only)
    */
   @Get('admin/assessment-types')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
@@ -413,7 +410,7 @@ export class GradingController {
   }
 
   /**
-   * Create assessment types config
+   * Create assessment types config (admin only)
    */
   @Post('admin/assessment-types')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)

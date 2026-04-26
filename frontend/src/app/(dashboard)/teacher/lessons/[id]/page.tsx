@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
@@ -29,7 +29,6 @@ const LessonDetailPage = () => {
   const router = useRouter();
   const params = useParams();
   const { setItems } = useBreadcrumb();
-  const breadcrumbSetRef = useRef(false);
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -41,17 +40,13 @@ const LessonDetailPage = () => {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Set breadcrumbs with lesson title
+// Set breadcrumbs with lesson title
   useEffect(() => {
-    const lessonTitle = lesson?.title || "Lesson Details";
-    if (!breadcrumbSetRef.current) {
-      breadcrumbSetRef.current = true;
-      setItems([
-        { label: "Dashboard", href: "/dashboard", isCurrent: false },
-        { label: "Lesson Plans", href: "/teacher/lessons", isCurrent: false },
-        { label: lessonTitle, isCurrent: true },
-      ]);
-    }
+    setItems([
+      { label: "Dashboard", href: "/dashboard", isCurrent: false },
+      { label: "Lesson Plans", href: "/teacher/lessons", isCurrent: false },
+      { label: lesson?.title || "Lesson Details", isCurrent: true },
+    ]);
     return () => setItems(null);
   }, [lesson?.title, setItems]);
 

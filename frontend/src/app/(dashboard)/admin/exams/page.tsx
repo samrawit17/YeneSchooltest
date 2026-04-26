@@ -1,30 +1,41 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { useAcademicYear } from "@/context/AcademicYearContext";
-import api, { termsAPI, gradingAPI } from "@/lib/api";
-import { academicYearsAPI, assessmentsAPI, sectionsAPI } from "@/lib/api";
+import { assessmentsAPI, termsAPI, classesAPI, subjectsAPI, teachersAPI } from "@/lib/api";
+import { toast } from "sonner";
+import {
+  Plus,
+  Loader2,
+  ClipboardList,
+  ChevronRight,
+  ChevronDown,
+  Trash2,
+  Lock,
+  BookOpen,
+  FileText,
+  GraduationCap,
+  BarChart3,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  X,
+  Users,
+  CalendarDays,
+  Pencil,
+} from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -33,739 +44,1034 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type AssessmentType = "QUIZ" | "TEST" | "MID" | "FINAL" | "ATTENDANCE";
+type AssessmentStatus = "ACTIVE" | "LOCKED" | "COMPLETED" | "DRAFT";
 
-interface LookupItem {
+interface Term {
   id: string;
   name: string;
+}
+interface ClassItem {
+  id: string;
+  name: string;
+  grade: number | null;
+}
+interface Section {
+  id: string;
+  name: string;
+  classId: string;
+}
+interface Subject {
+  id: string;
+  name: string;
+  code?: string;
+}
+interface Teacher {
+  id: string;
+  name: string;
+}
+
+interface SubjectEntry {
+  id: string; // local uuid for key
+  subjectId: string;
+  classId: string;
+  sectionId: string;
+  teacherId: string;
+  maxScore: number;
+  passMark: number;
 }
 
 interface Assessment {
   id: string;
   title: string;
   type: AssessmentType;
-  status: string;
-  academicYear?: { id: string; name: string };
-  term?: { id: string; name: string } | null;
-  subjects: Array<{
+  status: AssessmentStatus;
+  startDate: string;
+  endDate: string;
+  academicYear: { id: string; name: string };
+  term?: { id: string; name: string };
+  subjects: {
     id: string;
+    subject: { id: string; name: string };
+    class: { id: string; name: string };
+    section?: { id: string; name: string };
+    teacher?: { id: string; name: string };
     maxScore: number;
-    class?: { name: string };
-    section?: { name: string } | null;
-    subject?: { name: string };
-  }>;
+    _count: { scores: number };
+  }[];
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const DEFAULT_WEIGHTS = {
-  QUIZ: 15,
-  TEST: 25,
-  MID: 20,
-  FINAL: 30,
-  ATTENDANCE: 10,
+const TYPE_META: Record<
+  AssessmentType,
+  { label: string; color: string; bg: string; border: string; icon: React.ReactNode; description: string; weight: string }
+> = {
+  QUIZ: {
+    label: "Quiz",
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-50 dark:bg-blue-950/30",
+    border: "border-blue-200 dark:border-blue-800",
+    icon: <BookOpen className="w-4 h-4" />,
+    description: "Short knowledge checks",
+    weight: "15%",
+  },
+  TEST: {
+    label: "Test",
+    color: "text-purple-600 dark:text-purple-400",
+    bg: "bg-purple-50 dark:bg-purple-950/30",
+    border: "border-purple-200 dark:border-purple-800",
+    icon: <FileText className="w-4 h-4" />,
+    description: "Chapter or unit tests",
+    weight: "25%",
+  },
+  MID: {
+    label: "Mid Exam",
+    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-50 dark:bg-amber-950/30",
+    border: "border-amber-200 dark:border-amber-800",
+    icon: <GraduationCap className="w-4 h-4" />,
+    description: "Semester midpoint exam",
+    weight: "20%",
+  },
+  FINAL: {
+    label: "Final Exam",
+    color: "text-red-600 dark:text-red-400",
+    bg: "bg-red-50 dark:bg-red-950/30",
+    border: "border-red-200 dark:border-red-800",
+    icon: <BarChart3 className="w-4 h-4" />,
+    description: "End-of-term assessment",
+    weight: "30%",
+  },
+  ATTENDANCE: {
+    label: "Attendance",
+    color: "text-green-600 dark:text-green-400",
+    bg: "bg-green-50 dark:bg-green-950/30",
+    border: "border-green-200 dark:border-green-800",
+    icon: <Users className="w-4 h-4" />,
+    description: "Participation score",
+    weight: "10%",
+  },
 };
 
-export default function AdminAssessmentsPage() {
+const STATUS_META: Record<
+  AssessmentStatus,
+  { label: string; color: string; icon: React.ReactNode }
+> = {
+  DRAFT: { label: "Draft", color: "text-gray-500 dark:text-gray-400", icon: <Clock className="w-3 h-3" /> },
+  ACTIVE: { label: "Active", color: "text-green-600 dark:text-green-400", icon: <CheckCircle2 className="w-3 h-3" /> },
+  LOCKED: { label: "Locked", color: "text-red-500 dark:text-red-400", icon: <Lock className="w-3 h-3" /> },
+  COMPLETED: { label: "Completed", color: "text-blue-500 dark:text-blue-400", icon: <CheckCircle2 className="w-3 h-3" /> },
+};
+
+function uid() {
+  return Math.random().toString(36).slice(2);
+}
+
+// ─── Sub-Components ───────────────────────────────────────────────────────────
+
+function SubjectRow({
+  entry,
+  index,
+  classes,
+  sections,
+  subjects,
+  teachers,
+  onChange,
+  onRemove,
+  canRemove,
+}: {
+  entry: SubjectEntry;
+  index: number;
+  classes: ClassItem[];
+  sections: Section[];
+  subjects: Subject[];
+  teachers: Teacher[];
+  onChange: (id: string, field: keyof SubjectEntry, value: string | number) => void;
+  onRemove: (id: string) => void;
+  canRemove: boolean;
+}) {
+  const filteredSections = sections.filter((s) => s.classId === entry.classId);
+
+  return (
+    <div className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg border border-gray-200 dark:border-slate-700">
+      <div className="col-span-1 text-center">
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{index + 1}</span>
+      </div>
+
+      {/* Subject */}
+      <div className="col-span-2">
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Subject</Label>
+        <Select
+          value={entry.subjectId}
+          onValueChange={(v) => onChange(entry.id, "subjectId", v)}
+        >
+          <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
+            <SelectValue placeholder="Subject" />
+          </SelectTrigger>
+          <SelectContent>
+            {subjects.map((s) => (
+              <SelectItem key={s.id} value={s.id} className="text-xs">
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Class */}
+      <div className="col-span-2">
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Class</Label>
+        <Select
+          value={entry.classId}
+          onValueChange={(v) => {
+            onChange(entry.id, "classId", v);
+            onChange(entry.id, "sectionId", "");
+          }}
+        >
+          <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
+            <SelectValue placeholder="Class" />
+          </SelectTrigger>
+          <SelectContent>
+            {classes.map((c) => (
+              <SelectItem key={c.id} value={c.id} className="text-xs">
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Section */}
+      <div className="col-span-2">
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Section</Label>
+        <Select
+          value={entry.sectionId}
+          onValueChange={(v) => onChange(entry.id, "sectionId", v)}
+          disabled={!entry.classId || filteredSections.length === 0}
+        >
+          <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
+            <SelectValue placeholder={filteredSections.length === 0 ? "No sections" : "Section"} />
+          </SelectTrigger>
+          <SelectContent>
+            {filteredSections.map((s) => (
+              <SelectItem key={s.id} value={s.id} className="text-xs">
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Teacher */}
+      <div className="col-span-2">
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Teacher</Label>
+        <Select
+          value={entry.teacherId}
+          onValueChange={(v) => onChange(entry.id, "teacherId", v)}
+        >
+          <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
+            <SelectValue placeholder="Teacher" />
+          </SelectTrigger>
+          <SelectContent>
+            {teachers.map((t) => (
+              <SelectItem key={t.id} value={t.id} className="text-xs">
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Max Score */}
+      <div className="col-span-1">
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Max</Label>
+        <Input
+          type="number"
+          min={1}
+          max={100}
+          value={entry.maxScore}
+          onChange={(e) => onChange(entry.id, "maxScore", Number(e.target.value))}
+          className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:placeholder:text-gray-500"
+        />
+      </div>
+
+      {/* Pass Mark */}
+      <div className="col-span-1">
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Pass</Label>
+        <Input
+          type="number"
+          min={0}
+          max={entry.maxScore}
+          value={entry.passMark}
+          onChange={(e) => onChange(entry.id, "passMark", Number(e.target.value))}
+          className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:placeholder:text-gray-500"
+        />
+      </div>
+
+      {/* Remove */}
+      <div className="col-span-1 flex justify-center">
+        <button
+          type="button"
+          onClick={() => onRemove(entry.id)}
+          disabled={!canRemove}
+          className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AssessmentCard({
+  assessment,
+  onLock,
+  expanded,
+  onToggle,
+}: {
+  assessment: Assessment;
+  onLock: (id: string) => void;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const type = TYPE_META[assessment.type];
+  const status = STATUS_META[assessment.status];
+  const totalScored = assessment.subjects.reduce((sum, s) => sum + s._count.scores, 0);
+  const totalExpected = assessment.subjects.length;
+
+  return (
+    <Card className="overflow-hidden transition-shadow hover:shadow-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+      <div
+        className="flex items-center justify-between px-4 py-3 cursor-pointer select-none bg-white dark:bg-slate-900"
+        onClick={onToggle}
+      >
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg ${type.bg} ${type.color}`}>{type.icon}</div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm text-gray-900 dark:text-white">
+                {assessment.title}
+              </span>
+              <Badge
+                variant="outline"
+                className={`text-xs px-1.5 py-0 ${type.bg} ${type.color} ${type.border}`}
+              >
+                {type.label}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-3 mt-0.5">
+              <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                <CalendarDays className="w-3 h-3" />
+                {new Date(assessment.startDate).toLocaleDateString()} –{" "}
+                {new Date(assessment.endDate).toLocaleDateString()}
+              </span>
+              {assessment.term && (
+                <span className="text-xs text-gray-400 dark:text-gray-500">{assessment.term.name}</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <span>{assessment.subjects.length} subjects</span>
+            <span className="text-gray-300 dark:text-gray-600">·</span>
+            <span>{totalScored} scores entered</span>
+          </div>
+          <div className={`flex items-center gap-1 text-xs font-medium ${status.color}`}>
+            {status.icon}
+            {status.label}
+          </div>
+          {assessment.status === "ACTIVE" && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onLock(assessment.id);
+              }}
+              className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+              title="Lock assessment"
+            >
+              <Lock className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {expanded ? (
+            <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          )}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-gray-100 dark:border-slate-800 px-4 py-3 bg-gray-50 dark:bg-slate-800/50">
+          {assessment.subjects.length === 0 ? (
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-2">
+              No subjects assigned yet.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-5 gap-2 px-2">
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">Subject</span>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">Class</span>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">Section</span>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">Teacher</span>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500 text-right">Scores</span>
+              </div>
+              {assessment.subjects.map((sub) => (
+                <div
+                  key={sub.id}
+                  className="grid grid-cols-5 gap-2 px-2 py-1.5 rounded bg-gray-50 dark:bg-slate-800"
+                >
+                  <span className="text-xs text-gray-700 dark:text-gray-300">
+                    {sub.subject.name}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{sub.class.name}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {sub.section?.name ?? <span className="text-gray-300 dark:text-gray-600">—</span>}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {sub.teacher?.name ?? <span className="text-gray-300 dark:text-gray-600">—</span>}
+                  </span>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{sub._count.scores}</span>
+                    {sub._count.scores > 0 ? (
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                    ) : (
+                      <AlertCircle className="w-3 h-3 text-amber-400" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function AssessmentManagementPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const { currentAcademicYear, curriculumType, getAllAcademicYears, getTermsForYear } = useAcademicYear();
 
+  // List state
   const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [academicYears, setAcademicYears] = useState<LookupItem[]>([]);
-  const [terms, setTerms] = useState<LookupItem[]>([]);
-  const [classes, setClasses] = useState<LookupItem[]>([]);
-  const [subjects, setSubjects] = useState<LookupItem[]>([]);
-  const [sectionsByClass, setSectionsByClass] = useState<Record<string, LookupItem[]>>({});
-  const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
-  const [assessmentTypes, setAssessmentTypes] = useState<{ code: string; name: string; percentage: number }[]>([
-    { code: 'QUIZ', name: 'Quiz', percentage: 15 },
-    { code: 'TEST', name: 'Test', percentage: 25 },
-    { code: 'MID', name: 'Mid Exam', percentage: 20 },
-    { code: 'FINAL', name: 'Final Exam', percentage: 30 },
-    { code: 'ATTENDANCE', name: 'Attendance', percentage: 10 },
-  ]);
-  const [loading, setLoading] = useState(true);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<string>("all");
-  const [selectedTerm, setSelectedTerm] = useState<string>("all");
-  const [selectedType, setSelectedType] = useState<string>("all");
-  const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
-  const [form, setForm] = useState({
+  const [listLoading, setListLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string>("ALL");
+  const [filterStatus, setFilterStatus] = useState<string>("ALL");
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Lock confirm
+  const [lockTarget, setLockTarget] = useState<string | null>(null);
+  const [locking, setLocking] = useState(false);
+
+  // Form data
+  const [formData, setFormData] = useState({
     title: "",
-    type: "MID" as AssessmentType,
+    type: "" as AssessmentType | "",
     academicYearId: "",
     termId: "",
     startDate: "",
     endDate: "",
   });
-  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [globalMaxScore, setGlobalMaxScore] = useState<number>(100);
-  const [gradeRange, setGradeRange] = useState<string>("");
+  const [subjectEntries, setSubjectEntries] = useState<SubjectEntry[]>([
+    { id: uid(), subjectId: "", classId: "", sectionId: "", teacherId: "", maxScore: 100, passMark: 50 },
+  ]);
 
+  // Lookup data
+  const [terms, setTerms] = useState<Term[]>([]);
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+
+  // ── Auth guard
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/sign-in");
-    }
+    if (!isLoading && !isAuthenticated) router.push("/sign-in");
   }, [isAuthenticated, isLoading, router]);
 
-  const loadAcademicYears = useCallback(async () => {
-    try {
-      const years = await getAllAcademicYears();
-      setAcademicYears(years);
-      return years;
-    } catch (error) {
-      console.error("Failed to load academic years:", error);
-      return [];
-    }
-  }, [getAllAcademicYears]);
-
+  // ── Initial data load
   useEffect(() => {
-    if (!isLoading && isAuthenticated && ["ADMIN", "SUPER_ADMIN"].includes(user?.role || "")) {
-      initialize();
-    }
-  }, [isLoading, isAuthenticated, user?.role]);
+    if (!isAuthenticated) return;
+    loadAssessments();
+    loadLookups();
+  }, [isAuthenticated]);
 
-  const initialize = async () => {
+  // ── Load terms when year changes
+  useEffect(() => {
+    if (formData.academicYearId) {
+      termsAPI
+        .getAll({ academicYearId: formData.academicYearId })
+        .then((res) => {
+          const data = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+          setTerms(data);
+        })
+        .catch(() => {});
+    }
+  }, [formData.academicYearId]);
+
+  const loadAssessments = async () => {
+    setListLoading(true);
     try {
-      setLoading(true);
-      
-      // Load academic years using centralized context
-      const yearData = await loadAcademicYears();
-      
-      const [classRes, subjectRes, weightRes] = await Promise.all([
-        api.get("/classes"),
-        api.get("/subjects"),
-        assessmentsAPI.getWeights(),
+      const res = await assessmentsAPI.list({});
+      const data = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+      setAssessments(data);
+    } catch {
+      toast.error("Failed to load assessments");
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  const loadLookups = async () => {
+    try {
+      const [yearsRes, classesRes, sectionsRes, subjectsRes, teachersRes] = await Promise.all([
+        assessmentsAPI.getAcademicYears?.() ?? Promise.resolve({ data: [] }),
+        classesAPI.getAll(),
+        classesAPI.getSections?.() ?? Promise.resolve({ data: [] }),
+        subjectsAPI.getAll(),
+        teachersAPI.getAll?.() ?? Promise.resolve({ data: [] }),
       ]);
 
-      const classData = Array.isArray(classRes.data) ? classRes.data : classRes.data?.data || [];
-      const subjectData = Array.isArray(subjectRes.data) ? subjectRes.data : subjectRes.data?.data || [];
-
-      setClasses(classData);
-      setSubjects(subjectData);
-
-      // Fetch assessment types from grading service (admin configured)
-      try {
-        const typesRes = await gradingAPI.getAssessmentTypes();
-        if (typesRes.data && Array.isArray(typesRes.data) && typesRes.data.length > 0) {
-          setAssessmentTypes(typesRes.data);
-          const normalizedWeights = { ...DEFAULT_WEIGHTS };
-          for (const item of typesRes.data) {
-            normalizedWeights[item.code as AssessmentType] = item.percentage;
-          }
-          setWeights(normalizedWeights);
-        } else {
-          setWeights(DEFAULT_WEIGHTS);
-        }
-      } catch (err) {
-        setWeights(DEFAULT_WEIGHTS);
-      }
-
-      const normalizedWeights = { ...DEFAULT_WEIGHTS };
-      for (const item of weightRes.data || []) {
-        normalizedWeights[item.type as AssessmentType] = item.percentage;
-      }
-      if (weightRes.data?.length > 0) {
-        setWeights(normalizedWeights);
-      }
-
-      // Use current academic year from context as default
-      const defaultYear = currentAcademicYear?.id || yearData.find((row: any) => row.isActive)?.id || yearData[0]?.id || "";
-      setSelectedYear(defaultYear || "all");
-      setForm((current) => ({ ...current, academicYearId: defaultYear, termId: "" }));
-
-      if (defaultYear) {
-        await loadTerms(defaultYear);
-      }
-      await loadAssessments(defaultYear, "", "all");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load assessment module");
-    } finally {
-      setLoading(false);
+      const normalize = (d: any) => (Array.isArray(d) ? d : d?.data ?? []);
+      setAcademicYears(normalize(yearsRes.data));
+      setClasses(normalize(classesRes.data));
+      setSections(normalize(sectionsRes.data));
+      setSubjects(normalize(subjectsRes.data));
+      setTeachers(normalize(teachersRes.data));
+    } catch {
+      toast.error("Failed to load form data");
     }
   };
 
-  const loadTerms = async (academicYearId: string) => {
-    // Use centralized context to get terms
-    const termData = await getTermsForYear(academicYearId);
-    setTerms(termData);
-    return termData;
-  };
-
-  const loadAssessments = async (academicYearId?: string, termId?: string, type?: string) => {
-    const response = await assessmentsAPI.list({
-      academicYearId: academicYearId || undefined,
-      termId: termId || undefined,
-      type: type && type !== "all" ? type : undefined,
-    });
-    setAssessments(response.data || []);
-  };
-
-  const ensureSections = async (classId: string) => {
-    if (!classId || sectionsByClass[classId]) return;
-    const response = await sectionsAPI.getAll({ classId });
-    const sectionData = Array.isArray(response.data) ? response.data : response.data?.data || [];
-    setSectionsByClass((current) => ({ ...current, [classId]: sectionData }));
-  };
-
-  const filteredAssessments = useMemo(
-    () =>
-      assessments.filter((assessment) => {
-        if (selectedTerm !== "all" && assessment.term?.id !== selectedTerm) return false;
-        if (selectedType !== "all" && assessment.type !== selectedType) return false;
-        return true;
-      }),
-    [assessments, selectedTerm, selectedType],
-  );
-
-  const createAssessment = async () => {
-    if (selectedClasses.length === 0 || selectedSubjects.length === 0) {
-      toast.error("Please select at least one class and one subject.");
-      return;
-    }
-
-    try {
-      const generatedSubjects = selectedClasses.flatMap((classId) =>
-        selectedSubjects.map((subjectId) => ({
-          classId: classId,
-          subjectId: subjectId,
-          maxScore: Number(globalMaxScore),
-        }))
-      );
-
-      const payload = {
-        title: form.title,
-        type: form.type,
-        academicYearId: form.academicYearId,
-        termId: form.termId || undefined,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        subjects: generatedSubjects,
-      };
-
-      await assessmentsAPI.create(payload);
-      toast.success("Assessment created");
-      setIsCreateOpen(false);
-      setForm((current) => ({
-        ...current,
-        title: "",
-        startDate: "",
-        endDate: "",
-      }));
-      setSelectedClasses([]);
-      setSelectedSubjects([]);
-      setGlobalMaxScore(100);
-      setGradeRange("");
-      await loadAssessments(selectedYear === "all" ? undefined : selectedYear, selectedTerm === "all" ? undefined : selectedTerm, selectedType);
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to create assessment");
-    }
-  };
-
-  const saveWeights = async () => {
-    try {
-      await assessmentsAPI.updateWeights(
-        Object.entries(weights).map(([type, percentage]) => ({
-          type,
-          percentage,
-        })),
-      );
-      toast.success("Assessment weights updated");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to save weights");
-    }
-  };
-
-  const saveAssessmentTypesConfig = async () => {
-    try {
-      const typesToSave = assessmentTypes.map((type) => ({
-        code: type.code,
-        name: type.name,
-        percentage: weights[type.code as AssessmentType] || type.percentage,
-      }));
-      await gradingAPI.saveAssessmentTypes(typesToSave);
-      toast.success("Assessment types saved");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to save assessment types");
-    }
-  };
-
-  const lockAssessment = async (assessmentId: string) => {
-    try {
-      await assessmentsAPI.lock(assessmentId);
-      toast.success("Assessment locked");
-      await loadAssessments(selectedYear === "all" ? undefined : selectedYear, selectedTerm === "all" ? undefined : selectedTerm, selectedType);
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to lock assessment");
-    }
-  };
-
-  if (loading || isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
+  // ── Subject entry handlers
+  const updateSubjectEntry = (id: string, field: keyof SubjectEntry, value: string | number) => {
+    setSubjectEntries((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e))
     );
-  }
+  };
+
+  const addSubjectEntry = () => {
+    setSubjectEntries((prev) => [
+      ...prev,
+      { id: uid(), subjectId: "", classId: "", sectionId: "", teacherId: "", maxScore: 100, passMark: 50 },
+    ]);
+  };
+
+  const removeSubjectEntry = (id: string) => {
+    setSubjectEntries((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  // ── Submit
+  const handleSubmit = async () => {
+    if (!formData.title.trim()) return toast.error("Title is required");
+    if (!formData.type) return toast.error("Assessment type is required");
+    if (!formData.academicYearId) return toast.error("Academic year is required");
+    if (!formData.startDate || !formData.endDate) return toast.error("Start and end dates are required");
+    if (new Date(formData.endDate) < new Date(formData.startDate))
+      return toast.error("End date cannot be before start date");
+
+    const validSubjects = subjectEntries.filter(
+      (e) => e.subjectId && e.classId && e.maxScore > 0
+    );
+
+    setSubmitting(true);
+    try {
+      await assessmentsAPI.create({
+        title: formData.title,
+        type: formData.type,
+        academicYearId: formData.academicYearId,
+        termId: formData.termId || undefined,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        subjects: validSubjects.map((e) => ({
+          subjectId: e.subjectId,
+          classId: e.classId,
+          sectionId: e.sectionId || undefined,
+          teacherId: e.teacherId || undefined,
+          maxScore: e.maxScore,
+          passMark: e.passMark || undefined,
+        })),
+      });
+
+      toast.success("Assessment created successfully");
+      setModalOpen(false);
+      resetForm();
+      loadAssessments();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? "Failed to create assessment");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({ title: "", type: "", academicYearId: "", termId: "", startDate: "", endDate: "" });
+    setSubjectEntries([
+      { id: uid(), subjectId: "", classId: "", sectionId: "", teacherId: "", maxScore: 100, passMark: 50 },
+    ]);
+  };
+
+  // ── Lock
+  const handleLock = async () => {
+    if (!lockTarget) return;
+    setLocking(true);
+    try {
+      await assessmentsAPI.lock(lockTarget);
+      toast.success("Assessment locked successfully");
+      setLockTarget(null);
+      loadAssessments();
+    } catch {
+      toast.error("Failed to lock assessment");
+    } finally {
+      setLocking(false);
+    }
+  };
+
+  // ── Filtered list
+  const filtered = assessments.filter((a) => {
+    if (filterType !== "ALL" && a.type !== filterType) return false;
+    if (filterStatus !== "ALL" && a.status !== filterStatus) return false;
+    return true;
+  });
+
+  // ── Stats
+  const stats = {
+    total: assessments.length,
+    active: assessments.filter((a) => a.status === "ACTIVE").length,
+    locked: assessments.filter((a) => a.status === "LOCKED").length,
+    subjects: assessments.reduce((sum, a) => sum + a.subjects.length, 0),
+  };
+
+  if (isLoading || !isAuthenticated) return null;
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A] min-h-screen">
+      {/* ── Header ── */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#e35336]">Assessment Management</h1>
-          <p className="text-sm text-slate-500">
-            One unified workflow for quizzes, tests, mid exams, and final exams.
+          <p className="text-gray-500 text-sm mt-0.5">
+            One unified workflow for quizzes, tests, mid exams, and final exams
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>Create Assessment</Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl dark:bg-slate-900">
-            <DialogHeader className="dark:bg-slate-800/50">
-              <DialogTitle className="dark:text-white">Create Assessment</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="dark:text-gray-200">Title</Label>
-                  <Input value={form.title} onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))} className="dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="dark:text-gray-200">Type</Label>
-                  <Select value={form.type} onValueChange={(value: AssessmentType) => setForm((current) => ({ ...current, type: value }))}>
-                    <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {assessmentTypes.map((type) => (
-                        <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="dark:text-gray-200">Academic Year</Label>
-                  <Select
-                    value={form.academicYearId}
-                    onValueChange={async (value) => {
-                      setForm((current) => ({ ...current, academicYearId: value, termId: "" }));
-                      await loadTerms(value);
-                    }}
-                  >
-                    <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"><SelectValue placeholder="Select academic year" /></SelectTrigger>
-                    <SelectContent>
-                      {academicYears.map((year) => (
-                        <SelectItem key={year.id} value={year.id}>{year.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="dark:text-gray-200">Term</Label>
-                  <Select value={form.termId} onValueChange={(value) => setForm((current) => ({ ...current, termId: value }))}>
-                    <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"><SelectValue placeholder="Select term" /></SelectTrigger>
-                    <SelectContent>
-                      {terms.map((term) => (
-                        <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="dark:text-gray-200">Start Date</Label>
-                  <Input type="datetime-local" value={form.startDate} onChange={(e) => setForm((current) => ({ ...current, startDate: e.target.value }))} className="dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="dark:text-gray-200">End Date</Label>
-                  <Input type="datetime-local" value={form.endDate} onChange={(e) => setForm((current) => ({ ...current, endDate: e.target.value }))} className="dark:bg-slate-700 dark:border-slate-600 dark:text-white" />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-lg border p-4 space-y-4 dark:border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold dark:text-white">Classes & Grades</h3>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        placeholder="Range (e.g. 5-12)"
-                        value={gradeRange}
-                        onChange={(e) => setGradeRange(e.target.value)}
-                        className="w-36 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                      />
-                      <Button variant="outline" size="sm" onClick={() => {
-                        const match = gradeRange.match(/(\d+)\s*-\s*(\d+)/);
-                        if (match) {
-                          const min = parseInt(match[1]);
-                          const max = parseInt(match[2]);
-                          const matchedClasses = classes.filter(c => {
-                            const numMatch = c.name.match(/\d+/);
-                            if (numMatch) {
-                              const num = parseInt(numMatch[0]);
-                              return num >= min && num <= max;
-                            }
-                            return false;
-                          }).map(c => c.id);
-                          setSelectedClasses(Array.from(new Set([...selectedClasses, ...matchedClasses])));
-                        } else {
-                          toast.error("Invalid range format. Use e.g. 5-12");
-                        }
-                      }}>Apply</Button>
-                      <Button variant="outline" size="sm" onClick={() => {
-                        if (selectedClasses.length === classes.length && classes.length > 0) {
-                          setSelectedClasses([]);
-                        } else {
-                          setSelectedClasses(classes.map(c => c.id));
-                        }
-                      }}>
-                        {selectedClasses.length === classes.length && classes.length > 0 ? "Deselect All" : "Select All"}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-40 overflow-y-auto">
-                    {classes.map(c => (
-                      <label key={c.id} className="flex items-center gap-2 border p-2 rounded cursor-pointer hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">
-                        <input
-                          type="checkbox"
-                          checked={selectedClasses.includes(c.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) setSelectedClasses([...selectedClasses, c.id]);
-                            else setSelectedClasses(selectedClasses.filter(id => id !== c.id));
-                          }}
-                        />
-                        <span className="text-sm truncate dark:text-gray-200" title={c.name}>{c.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-lg border p-4 space-y-4 dark:border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold dark:text-white">Subjects</h3>
-                    <Button variant="outline" size="sm" onClick={() => {
-                      if (selectedSubjects.length === subjects.length && subjects.length > 0) {
-                        setSelectedSubjects([]);
-                      } else {
-                        setSelectedSubjects(subjects.map(s => s.id));
-                      }
-                    }}>
-                      {selectedSubjects.length === subjects.length && subjects.length > 0 ? "Deselect All" : "Select All"}
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-40 overflow-y-auto">
-                    {subjects.map(s => (
-                      <label key={s.id} className="flex items-center gap-2 border p-2 rounded cursor-pointer hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">
-                        <input
-                          type="checkbox"
-                          checked={selectedSubjects.includes(s.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) setSelectedSubjects([...selectedSubjects, s.id]);
-                            else setSelectedSubjects(selectedSubjects.filter(id => id !== s.id));
-                          }}
-                        />
-                        <span className="text-sm truncate dark:text-gray-200" title={s.name}>{s.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <div className="pt-2 flex items-center gap-4">
-                    <Label className="font-semibold dark:text-gray-200">Global Max Score</Label>
-                    <Input
-                      type="number"
-                      className="w-24 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                      value={globalMaxScore}
-                      onChange={(e) => setGlobalMaxScore(Number(e.target.value) || 0)}
-                      min={1}
-                      max={100}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button onClick={createAssessment}>Create</Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button
+          onClick={() => setModalOpen(true)}
+          className="bg-[#e35336] hover:bg-[#c94526] text-white self-start md:self-auto"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          New Assessment
+        </Button>
       </div>
 
-        <div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
-        <Card className="overflow-hidden">
-          <CardHeader className="border-b pb-6 dark:bg-slate-800/50">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e35336] text-white shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                  <path d="M8 7h8"></path>
-                  <path d="M8 11h6"></path>
-                </svg>
+      {/* ── Stats ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Total", value: stats.total, color: "text-gray-700 dark:text-gray-300", bg: "bg-white dark:bg-slate-800", icon: <ClipboardList className="w-4 h-4 text-gray-400" /> },
+          { label: "Active", value: stats.active, color: "text-green-700 dark:text-green-400", bg: "bg-green-50 dark:bg-green-950/30", icon: <CheckCircle2 className="w-4 h-4 text-green-500" /> },
+          { label: "Locked", value: stats.locked, color: "text-red-700 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/30", icon: <Lock className="w-4 h-4 text-red-400" /> },
+          { label: "Subjects Assigned", value: stats.subjects, color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30", icon: <BookOpen className="w-4 h-4 text-blue-400" /> },
+        ].map((s) => (
+          <Card key={s.label} className={`${s.bg} border border-gray-200 dark:border-slate-700 shadow-sm`}>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{s.label}</p>
+                  <p className={`text-2xl font-bold mt-0.5 ${s.color}`}>{s.value}</p>
+                </div>
+                {s.icon}
               </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-slate-800 dark:text-white">Assessment List</CardTitle>
-                <CardDescription className="text-sm text-slate-500 dark:text-gray-400 mt-1">
-                  Filter by academic year, term, and assessment type.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-6">
-            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-2 mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-[#e35336]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                </svg>
-                <span className="text-sm font-semibold text-slate-700 dark:text-gray-200">Filter Assessments</span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Select
-                  value={selectedYear}
-                  onValueChange={async (value) => {
-                    setSelectedYear(value);
-                    if (value !== "all") await loadTerms(value);
-                    await loadAssessments(value === "all" ? undefined : value, selectedTerm === "all" ? undefined : selectedTerm, selectedType);
-                  }}
-                  >
-                  <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"><SelectValue placeholder="Academic Year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Years</SelectItem>
-                    {academicYears.map((year) => (
-                      <SelectItem key={year.id} value={year.id}>{year.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={selectedTerm}
-                  onValueChange={async (value) => {
-                    setSelectedTerm(value);
-                    await loadAssessments(selectedYear === "all" ? undefined : selectedYear, value === "all" ? undefined : value, selectedType);
-                  }}
-                >
-                  <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"><SelectValue placeholder="Term" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Terms</SelectItem>
-                    {terms.map((term) => (
-                      <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={selectedType}
-                  onValueChange={async (value) => {
-                    setSelectedType(value);
-                    await loadAssessments(selectedYear === "all" ? undefined : selectedYear, selectedTerm === "all" ? undefined : selectedTerm, value);
-                  }}
-                >
-                  <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"><SelectValue placeholder="Type" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    {assessmentTypes.map((type) => (
-                      <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <Table className="w-full">
-                <TableHeader>
-                  <TableRow className="bg-slate-50 dark:bg-slate-800">
-                    <TableHead className="font-semibold dark:text-gray-200">Title</TableHead>
-                    <TableHead className="font-semibold dark:text-gray-200">Type</TableHead>
-                    <TableHead className="font-semibold hidden md:table-cell dark:text-gray-200">Grade / Class</TableHead>
-                    <TableHead className="font-semibold hidden sm:table-cell dark:text-gray-200">Subjects</TableHead>
-                    <TableHead className="font-semibold dark:text-gray-200">Status</TableHead>
-                    <TableHead className="font-semibold dark:text-gray-200">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAssessments.map((assessment) => (
-                    <TableRow key={assessment.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                      <TableCell>
-                        <div className="font-medium dark:text-white">{assessment.title}</div>
-                        <div className="text-xs text-slate-500 dark:text-gray-400">
-                          {assessment.academicYear?.name} {assessment.term?.name ? `• ${assessment.term.name}` : ""}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={assessment.type === 'FINAL' ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-400 dark:border-purple-800' : assessment.type === 'MID' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800' : assessment.type === 'TEST' ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800' : 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800'}
-                        >
-                          {assessment.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell dark:text-gray-300">
-                        {assessment.subjects[0]?.class?.name || "-"}
-                        {assessment.subjects[0]?.section?.name ? ` - ${assessment.subjects[0]?.section?.name}` : ""}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-slate-100 text-sm font-medium">
-                          {assessment.subjects.length}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={assessment.status === "LOCKED" ? "destructive" : "secondary"}>
-                          {assessment.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs"
-                            onClick={() => setSelectedAssessment(assessment)}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                              <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                            View
-                          </Button>
-                          <Button
-                            size="sm"
-                            disabled={assessment.status === "LOCKED"}
-                            onClick={() => lockAssessment(assessment.id)}
-                            className="text-xs"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                            </svg>
-                            Lock
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden">
-          <CardHeader className="border-b pb-6 dark:bg-slate-800/50">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e35336] text-white shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="20" x2="18" y2="10"></line>
-                  <line x1="12" y1="20" x2="12" y2="4"></line>
-                  <line x1="6" y1="20" x2="6" y2="14"></line>
-                </svg>
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-slate-800 dark:text-white">Term Weighting</CardTitle>
-                <CardDescription className="text-sm text-slate-500 dark:text-gray-400 mt-1">
-                  Configure how quizzes, tests, mid, and final exams contribute to the term result.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {assessmentTypes.map((type) => (
-              <div key={type.code} className="space-y-2">
-                <Label className="dark:text-gray-200">{type.name}</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={weights[type.code as AssessmentType] || 0}
-                  onChange={(e) =>
-                    setWeights((current) => ({
-                      ...current,
-                      [type.code]: Number(e.target.value),
-                    }))
-                  }
-                  className="dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                />
-              </div>
-            ))}
-            <Button className="w-full" onClick={saveAssessmentTypesConfig}>
-              Save Assessment Types
-            </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Dialog open={Boolean(selectedAssessment)} onOpenChange={(open) => !open && setSelectedAssessment(null)}>
-        <DialogContent className="max-h-[80vh] overflow-hidden">
-          <DialogHeader className="-mx-6 -mt-6 px-6 py-4 border-b dark:bg-slate-800/50">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#e35336] text-white shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                  <path d="M8 7h8"></path>
-                  <path d="M8 11h6"></path>
-                </svg>
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-bold text-slate-800 dark:text-white">{selectedAssessment?.title}</DialogTitle>
-                <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
-                  {selectedAssessment?.academicYear?.name} • {selectedAssessment?.term?.name || "All Terms"} • {selectedAssessment?.type}
-                </p>
-              </div>
-            </div>
+      {/* ── Type pills ── */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setFilterType("ALL")}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+            filterType === "ALL"
+              ? "bg-[#e35336] text-white border-[#e35336]"
+              : "bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600"
+          }`}
+        >
+          All types
+        </button>
+        {(Object.keys(TYPE_META) as AssessmentType[]).map((t) => {
+          const m = TYPE_META[t];
+          const active = filterType === t;
+          return (
+            <button
+              key={t}
+              onClick={() => setFilterType(t)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border flex items-center gap-1.5 ${
+                active
+                  ? `${m.bg} ${m.color} ${m.border}`
+                  : "bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600"
+              }`}
+            >
+              {m.icon}
+              {m.label}
+              <span className="opacity-60">{m.weight}</span>
+            </button>
+          );
+        })}
+
+        <div className="ml-auto">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="h-8 text-xs w-32 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL" className="text-xs">All statuses</SelectItem>
+              <SelectItem value="ACTIVE" className="text-xs">Active</SelectItem>
+              <SelectItem value="LOCKED" className="text-xs">Locked</SelectItem>
+              <SelectItem value="DRAFT" className="text-xs">Draft</SelectItem>
+              <SelectItem value="COMPLETED" className="text-xs">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* ── Assessment List ── */}
+      {listLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card className="border-dashed border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+          <CardContent className="py-14 text-center">
+            <ClipboardList className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500">No assessments found</p>
+            <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
+              {assessments.length === 0
+                ? "Create your first assessment to get started"
+                : "Try adjusting the filters above"}
+            </p>
+            {assessments.length === 0 && (
+              <Button
+                size="sm"
+                className="mt-4 bg-[#e35336] hover:bg-[#c94526] text-white"
+                onClick={() => setModalOpen(true)}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Create Assessment
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((a) => (
+            <AssessmentCard
+              key={a.id}
+              assessment={a}
+              onLock={(id) => setLockTarget(id)}
+              expanded={expandedId === a.id}
+              onToggle={() => setExpandedId((prev) => (prev === a.id ? null : a.id))}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ── Create Assessment Modal ── */}
+      <Dialog open={modalOpen} onOpenChange={(o) => { setModalOpen(o); if (!o) resetForm(); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#e35336] dark:text-[#e35336]">
+              <Plus className="w-5 h-5" />
+              New Assessment
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              Fill in the details below. Subjects can be added now or after creation.
+            </DialogDescription>
           </DialogHeader>
-          <div className="mt-4 space-y-3 overflow-y-auto max-h-[50vh] pr-2">
-            <div className="flex items-center justify-between pb-2 border-b dark:border-slate-700">
-              <span className="text-sm font-semibold text-slate-700 dark:text-gray-200">Subjects ({selectedAssessment?.subjects.length || 0})</span>
-            </div>
-            {selectedAssessment?.subjects.map((subject, index) => (
-              <div key={subject.id} className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow bg-white dark:bg-slate-800">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e35336]/10 text-[#e35336] text-sm font-bold">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-slate-800 dark:text-white">{subject.subject?.name}</div>
-                      <div className="text-sm text-slate-500 dark:text-gray-400">
-                        <span className="inline-flex items-center gap-1">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                          </svg>
-                          {subject.class?.name}
-                        </span>
-                        {subject.section?.name && (
-                          <span className="inline-flex items-center gap-1 ml-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                              <circle cx="9" cy="7" r="4"></circle>
-                              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
-                            {subject.section.name}
+
+          <div className="space-y-6 py-2">
+            {/* ── Step 1: Basic Info ── */}
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+                1 · Basic information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Title */}
+                <div className="md:col-span-2">
+                  <Label htmlFor="title" className="text-sm text-gray-700 dark:text-gray-300">
+                    Assessment title <span className="text-red-400">*</span>
+                  </Label>
+                  <Input
+                    id="title"
+                    placeholder="e.g. Grade 10 — Mathematics Mid Exam, Semester 1"
+                    value={formData.title}
+                    onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
+                    className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  />
+                </div>
+
+                {/* Type */}
+                <div>
+                  <Label className="text-sm text-gray-700 dark:text-gray-300">
+                    Assessment type <span className="text-red-400">*</span>
+                  </Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                    {(Object.keys(TYPE_META) as AssessmentType[]).map((t) => {
+                      const m = TYPE_META[t];
+                      const selected = formData.type === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setFormData((p) => ({ ...p, type: t }))}
+                          className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition-all ${
+                            selected
+                              ? `${m.bg} ${m.border} ${m.color} ring-1 ring-offset-1 ring-current`
+                              : "border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            {m.icon}
+                            <span className="text-xs font-semibold">{m.label}</span>
+                            <span className={`text-xs ml-auto ${selected ? "opacity-70" : "text-gray-300 dark:text-gray-600"}`}>
+                              {m.weight}
+                            </span>
+                          </div>
+                          <span className={`text-xs ${selected ? "opacity-70" : "text-gray-400 dark:text-gray-500"}`}>
+                            {m.description}
                           </span>
-                        )}
-                      </div>
-                    </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <Badge variant="outline" className="bg-[#e35336]/10 text-[#e35336] border-[#e35336]/20">
-                    Max: {subject.maxScore}
-                  </Badge>
+                </div>
+
+                {/* Academic Year */}
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <Label className="text-sm text-gray-700 dark:text-gray-300">
+                      Academic year <span className="text-red-400">*</span>
+                    </Label>
+                    <Select
+                      value={formData.academicYearId}
+                      onValueChange={(v) =>
+                        setFormData((p) => ({ ...p, academicYearId: v, termId: "" }))
+                      }
+                    >
+                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100">
+                        <SelectValue placeholder="Select academic year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {academicYears.map((y) => (
+                          <SelectItem key={y.id} value={y.id}>
+                            {y.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Term */}
+                  <div>
+                    <Label className="text-sm text-gray-700 dark:text-gray-300">Term / Semester</Label>
+                    <Select
+                      value={formData.termId}
+                      onValueChange={(v) => setFormData((p) => ({ ...p, termId: v }))}
+                      disabled={!formData.academicYearId || terms.length === 0}
+                    >
+                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100">
+                        <SelectValue
+                          placeholder={
+                            !formData.academicYearId
+                              ? "Select year first"
+                              : terms.length === 0
+                              ? "No terms found"
+                              : "Select term"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {terms.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
-            ))}
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Label htmlFor="startDate" className="text-sm text-gray-700 dark:text-gray-300">
+                    Start date <span className="text-red-400">*</span>
+                  </Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
+                    className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="endDate" className="text-sm text-gray-700 dark:text-gray-300">
+                    End date <span className="text-red-400">*</span>
+                  </Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={formData.endDate}
+                    min={formData.startDate}
+                    onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
+                    className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ── Step 2: Subjects ── */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                  2 · Subject assignments{" "}
+                  <span className="normal-case font-normal text-gray-300 dark:text-gray-600">(optional now)</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={addSubjectEntry}
+                  className="text-xs text-[#e35336] hover:text-[#c94526] flex items-center gap-1 font-medium"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add row
+                </button>
+              </div>
+
+              {/* Column labels */}
+              <div className="grid grid-cols-12 gap-2 px-3 mb-1">
+                {["#", "Subject", "Class", "Section", "Teacher", "Max", "Pass", ""].map(
+                  (h, i) => (
+                    <span
+                      key={i}
+                      className={`text-xs font-medium text-gray-400 dark:text-gray-500 ${
+                        i === 0 || i === 7 ? "col-span-1 text-center" : "col-span-2"
+                      }`}
+                    >
+                      {h}
+                    </span>
+                  )
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {subjectEntries.map((entry, idx) => (
+                  <SubjectRow
+                    key={entry.id}
+                    entry={entry}
+                    index={idx}
+                    classes={classes}
+                    sections={sections}
+                    subjects={subjects}
+                    teachers={teachers}
+                    onChange={updateSubjectEntry}
+                    onRemove={removeSubjectEntry}
+                    canRemove={subjectEntries.length > 1}
+                  />
+                ))}
+              </div>
+
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                Rows with no subject or class selected will be skipped.
+              </p>
+            </div>
           </div>
+
+          <DialogFooter className="gap-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+            <Button
+              variant="outline"
+              onClick={() => { setModalOpen(false); resetForm(); }}
+              disabled={submitting}
+              className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="bg-[#e35336] hover:bg-[#c94526] text-white min-w-[120px]"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Create Assessment
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Lock Confirm Dialog ── */}
+      <AlertDialog open={!!lockTarget} onOpenChange={(o) => { if (!o) setLockTarget(null); }}>
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <Lock className="w-4 h-4 text-red-500" />
+              Lock assessment?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-500 dark:text-gray-400">
+              Locking will prevent teachers from entering or editing scores. Only registrars
+              and admins can override a locked assessment. This action cannot be undone without
+              manual intervention.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={locking} className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLock}
+              disabled={locking}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {locking ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Lock assessment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

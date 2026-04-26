@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { Volume2 } from "lucide-react";
+import { playSirenAudio, unlockSirenAudio } from "@/lib/siren-audio";
 import {
   PUSH_NOTIFICATIONS_DISABLED_KEY,
   getBrowserNotificationPermission,
@@ -15,21 +17,56 @@ import {
 } from "@/lib/push-notifications";
 
 const PUSH_PROMPT_STORAGE_KEY = "push_notifications_prompted";
+const SIREN_AUDIO_ENABLED_KEY = "sirenAudioEnabled";
 
 export default function PushNotificationManager() {
   const { isAuthenticated, user } = useAuth();
   const { isOnline } = useNetworkStatus();
   const syncingRef = useRef(false);
   const queryClient = useQueryClient();
+  const [audioEnabled, setAudioEnabled] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setAudioEnabled(localStorage.getItem(SIREN_AUDIO_ENABLED_KEY) === "true");
+  }, []);
+
+  const unlockAudio = async () => {
+    try {
+      await unlockSirenAudio();
+      localStorage.setItem(SIREN_AUDIO_ENABLED_KEY, "true");
+      setAudioEnabled(true);
+      toast.success("Siren audio enabled");
+    } catch {
+      toast.error("Unable to enable siren audio in this browser");
+    }
+  };
 
   useEffect(() => {
     const handleServiceWorkerMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'PUSH_NOTIFICATION_RECEIVED') {
         const payload = event.data.payload;
-        
-        toast(payload.title, {
-          description: payload.body,
-        });
+
+        if (payload.type === "SIREN_ALERT") {
+          if (audioEnabled) {
+            void (async () => {
+              try {
+                await playSirenAudio();
+              } catch (error) {
+                console.error("Failed to play siren audio", error);
+              }
+            })();
+          }
+
+          toast.error(payload.title || "School Siren Alert", {
+            description: payload.body,
+            duration: 10000,
+          });
+        } else {
+          toast(payload.title, {
+            description: payload.body,
+          });
+        }
 
         queryClient.invalidateQueries({ queryKey: ["notifications"] });
         queryClient.invalidateQueries({ queryKey: ["communications-unread-count"] });
@@ -53,7 +90,7 @@ export default function PushNotificationManager() {
         navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
       }
     };
-  }, [queryClient]);
+  }, [audioEnabled, queryClient]);
 
   useEffect(() => {
     if (!isAuthenticated || !user || !isOnline || !isPushSupported()) {
@@ -105,5 +142,21 @@ export default function PushNotificationManager() {
     void syncSubscription();
   }, [isAuthenticated, isOnline, user]);
 
-  return null;
+  const canEnableAudio =
+    isAuthenticated &&
+    (user?.role === "TEACHER" || user?.role === "ADMIN");
+
+  return (
+    <>
+      {canEnableAudio && !audioEnabled && (
+        <button
+          onClick={unlockAudio}
+          className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-primary-foreground shadow-lg transition-opacity hover:opacity-90"
+        >
+          <Volume2 className="h-4 w-4" />
+          Enable Siren Audio
+        </button>
+      )}
+    </>
+  );
 }

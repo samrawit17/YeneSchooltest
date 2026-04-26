@@ -107,9 +107,9 @@ const ParentListPage = () => {
           ? raw.map((p: any) => ({
               id: p.id,
               userId: p.userId ?? p.user?.id,
-              name: p.user?.name ?? p.name ?? "",
+              name: p.user?.name ?? p.user?.email ?? "",
               email: p.user?.email ?? p.email ?? "",
-              username: p.user?.username ?? p.username ?? "",
+              username: p.user?.email?.split('@')[0] ?? p.username ?? "",
               phone: p.user?.phone ?? p.phone ?? "",
               address: p.address ?? p.user?.address ?? "",
               occupation: p.occupation ?? "",
@@ -117,8 +117,8 @@ const ParentListPage = () => {
               children: (p.children || []).map((c: any) => ({
                 id: c.id,
                 studentId: c.studentId,
-                studentName: c.student?.user?.name ?? c.studentName ?? "",
-                studentCode: c.student?.studentCode ?? c.studentCode ?? "",
+                studentName: c.student?.className ?? c.student?.studentCode ?? "Unknown",
+                studentCode: c.student?.studentCode ?? "",
                 relation: c.relation,
                 isPrimary: c.isPrimary,
                 emergencyContact: c.emergencyContact,
@@ -196,7 +196,7 @@ const ParentListPage = () => {
   if (loading) {
     return (
       <div className="p-6 min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full">
           <Skeleton className="h-8 w-48 mb-6" />
           <Card>
             <CardContent className="p-0">
@@ -212,18 +212,18 @@ const ParentListPage = () => {
   const endItem = Math.min(currentPage * limit, total);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
-      <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors w-full">
+      <div className="p-4 md:p-6 w-full min-w-0 max-w-full">
+        <div className="space-y-6 w-full min-w-0">
           {/* Top Section - Title and Buttons */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full min-w-0">
             <h1 className="text-2xl font-bold text-[#e35336]">Parents</h1>
             <div className="flex items-center gap-3">
             </div>
           </div>
 
           {/* Filters Section */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 w-full">
             <CardContent className="p-4">
               <div className="flex flex-col lg:flex-row gap-4">
                 {/* Search Bar */}
@@ -263,8 +263,8 @@ const ParentListPage = () => {
           </Card>
 
           {/* Main Data Table */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
-            <div className="overflow-x-auto">
+          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden w-full">
+            <div className="overflow-x-auto w-full">
               {filteredParents.length === 0 ? (
                 <div className="p-8 text-center">
                   <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
@@ -276,7 +276,7 @@ const ParentListPage = () => {
                   </p>
                 </div>
               ) : (
-                <Table>
+                <Table className="w-full">
                   <TableHeader className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
                     <TableRow className="border-b border-gray-100 dark:border-slate-700">
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Photo</TableHead>
@@ -288,7 +288,7 @@ const ParentListPage = () => {
                       <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody className="w-full">
                     {filteredParents.map((parent) => (
                       <TableRow
                         key={parent.id}

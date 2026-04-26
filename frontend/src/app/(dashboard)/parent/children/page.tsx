@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface Child {
   id: string;
+  studentId?: string;
   name: string;
   studentCode: string;
   className: string;
@@ -53,23 +54,52 @@ const ParentChildrenPage = () => {
   useEffect(() => {
     const fetchChildren = async () => {
       try {
-        const response = await api.get("/parents/me/children");
+        const [childrenResponse, dashboardResponse] = await Promise.allSettled([
+          api.get("/parents/me/children"),
+          api.get("/dashboard/parent"),
+        ]);
         
-        if (response.status === 200) {
-          const childrenData = response.data.children || [];
+        if (childrenResponse.status === "fulfilled" && childrenResponse.value.status === 200) {
+          const childrenData = childrenResponse.value.data.children || [];
+          const dashboardChildren =
+            dashboardResponse.status === "fulfilled"
+              ? dashboardResponse.value.data?.stats?.children || []
+              : [];
+          const dashboardMap = new Map(
+            dashboardChildren.map((child: any) => [child.id, child]),
+          );
           
           const childrenWithInfo = await Promise.all(
             childrenData.map(async (child: any) => {
+              const childUserId =
+                child.student?.userId || child.student?.id || child.userId;
+              const dashboardChild = childUserId
+                ? dashboardMap.get(childUserId)
+                : null;
               try {
-                const enrollmentResponse = await api.get(`/enrollments/student/${child.userId}`);
-                if (enrollmentResponse.data?.classId) {
+                const enrollmentResponse = childUserId
+                  ? await api.get(`/enrollments/student/${childUserId}`)
+                  : null;
+                if (enrollmentResponse?.data?.classId) {
                   const classResponse = await api.get(`/classes/${enrollmentResponse.data.classId}`);
                   return {
                     ...child,
+                    id: child.studentId || child.id,
+                    userId: childUserId,
                     classId: enrollmentResponse.data.classId,
                     homeroomTeacher: classResponse.data?.homeroomTeacher || null,
-                    attendance: child.attendance || { presentDays: 0, totalDays: 0, rate: 0 },
-                    academics: child.academics || { average: 0, grade: "N/A" },
+                    name: child.name || child.student?.user?.name || "Unknown",
+                    className: child.className || child.student?.className || "N/A",
+                    section: child.section || child.student?.section || "N/A",
+                    attendance: dashboardChild ? {
+                      presentDays: dashboardChild.presentDays || 0,
+                      totalDays: dashboardChild.totalDays || 0,
+                      rate: parseFloat(dashboardChild.attendance || "0"),
+                    } : { presentDays: 0, totalDays: 0, rate: 0 },
+                    academics: dashboardChild ? {
+                      average: Number.parseFloat(dashboardChild.grades?.[0]?.average || "0") || 0,
+                      grade: dashboardChild.overallGrade || dashboardChild.latestGrade || "N/A",
+                    } : { average: 0, grade: "N/A" },
                   };
                 }
               } catch (e) {
@@ -77,8 +107,20 @@ const ParentChildrenPage = () => {
               }
               return {
                 ...child,
-                attendance: child.attendance || { presentDays: 0, totalDays: 0, rate: 0 },
-                academics: child.academics || { average: 0, grade: "N/A" },
+                id: child.studentId || child.id,
+                userId: childUserId,
+                name: child.name || child.student?.user?.name || "Unknown",
+                className: child.className || child.student?.className || "N/A",
+                section: child.section || child.student?.section || "N/A",
+                attendance: dashboardChild ? {
+                  presentDays: dashboardChild.presentDays || 0,
+                  totalDays: dashboardChild.totalDays || 0,
+                  rate: parseFloat(dashboardChild.attendance || "0"),
+                } : { presentDays: 0, totalDays: 0, rate: 0 },
+                academics: dashboardChild ? {
+                  average: Number.parseFloat(dashboardChild.grades?.[0]?.average || "0") || 0,
+                  grade: dashboardChild.overallGrade || dashboardChild.latestGrade || "N/A",
+                } : { average: 0, grade: "N/A" },
               };
             })
           );
@@ -297,7 +339,7 @@ const ParentChildrenPage = () => {
                     <Button 
                       variant="outline" 
                       className="w-full group/btn border-[#e35336] text-[#e35336] hover:bg-[#e35336] hover:text-white transition-all duration-300"
-                      onClick={() => router.push(`/parent/children/${child.id}`)}
+                      onClick={() => router.push(`/parent/children/${child.studentId || child.id}`)}
                     >
                       <Eye className="w-4 h-4 mr-2 group-hover/btn:animate-pulse" />
                       View Detailed Report

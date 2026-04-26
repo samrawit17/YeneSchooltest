@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -62,6 +62,9 @@ interface Teacher {
   isActive?: boolean;
   designation?: string;
   specialization?: string;
+  subjects?: string[];
+  img?: string;
+  avatarUrl?: string;
 }
 
 // Types for paginated response
@@ -104,12 +107,20 @@ const TeachersListPage = () => {
   const [assigningClass, setAssigningClass] = useState(false);
   const [assignType, setAssignType] = useState<'class' | 'section' | 'subject'>('class');
 
-  // Fetch classes for dropdown
+  // Fetch classes for dropdown and deduplicate by unique grade
   const { data: classesData } = useQuery({
     queryKey: ["classes"],
     queryFn: async () => {
       const response = await api.get('/classes');
-      return response.data;
+      const classes = response.data || [];
+      // Deduplicate by grade
+      const uniqueGrades = classes.reduce((acc: any[], cls: any) => {
+        if (!acc.find(c => c.grade === cls.grade)) {
+          acc.push(cls);
+        }
+        return acc;
+      }, []);
+      return uniqueGrades;
     },
   });
 
@@ -340,9 +351,9 @@ const TeachersListPage = () => {
           {/* Filters Section */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
                 {/* Search Bar */}
-                <div className="flex-1">
+                <div className="w-full lg:flex-1">
                   <TableSearch
                     search={searchInput}
                     setSearch={setSearchInput}
@@ -352,64 +363,66 @@ const TeachersListPage = () => {
                 </div>
 
                 {/* Filter Dropdowns */}
-                <div className="flex flex-wrap gap-3">
-                  <select
-                    value={subjectFilter}
-                    onChange={(e) => setSubjectFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  >
-                    <option value="">All Subjects</option>
-                    {(subjectsData || [])?.map((subject: any) => (
-                      <option key={subject.id} value={subject.name}>
-                        {subject.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={classFilter}
-                    onChange={(e) => {
-                      setClassFilter(e.target.value);
-                      setSectionFilter(""); // Reset section when class changes
-                    }}
-                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  >
-                    <option value="">All Classes</option>
-                    {(classesData || [])?.map((cls: any) => {
-                      const gradeStr = cls.grade ? `Grade ${cls.grade}` : cls.name;
-                      return (
-                        <option key={cls.id} value={cls.id}>
-                          {gradeStr}
-                        </option>
-                      );
-                    })}
-                  </select>
-
-                  {classFilter && (
+                <div className="w-full lg:w-auto lg:min-w-[60%]">
+                  <div className="flex flex-wrap gap-3">
                     <select
-                      value={sectionFilter}
-                      onChange={(e) => setSectionFilter(e.target.value)}
-                      className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                      value={subjectFilter}
+                      onChange={(e) => setSubjectFilter(e.target.value)}
+                      className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
                     >
-                      <option value="">All Sections</option>
-                      {(filterSectionsData || [])?.map((section: any) => (
-                        <option key={section.id} value={section.id}>
-                          Section {section.name}
+                      <option value="">All Subjects</option>
+                      {(subjectsData || [])?.map((subject: any) => (
+                        <option key={subject.id} value={subject.name}>
+                          {subject.name}
                         </option>
                       ))}
                     </select>
-                  )}
 
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
-                  >
-                    <option value="">All Status</option>
-                    <option value="Active">Active</option>
-                    <option value="On Leave">On Leave</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                    <select
+                      value={classFilter}
+                      onChange={(e) => {
+                        setClassFilter(e.target.value);
+                        setSectionFilter("");
+                      }}
+                      className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
+                    >
+                      <option value="">All Classes</option>
+                      {(classesData || [])?.map((cls: any) => {
+                        const gradeStr = cls.grade ? `Grade ${cls.grade}` : cls.name;
+                        return (
+                          <option key={cls.id} value={cls.id}>
+                            {gradeStr}
+                          </option>
+                        );
+                      })}
+                    </select>
+
+                    {classFilter && (
+                      <select
+                        value={sectionFilter}
+                        onChange={(e) => setSectionFilter(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
+                      >
+                        <option value="">All Sections</option>
+                        {(filterSectionsData || [])?.map((section: any) => (
+                          <option key={section.id} value={section.id}>
+                            Section {section.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
+                    >
+                      <option value="">All Status</option>
+                      <option value="Active">Active</option>
+                      <option value="On Leave">On Leave</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -436,6 +449,9 @@ const TeachersListPage = () => {
                     <tr key={teacher.id} className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                       <td className="px-4 py-3">
                         <Avatar className="w-10 h-10">
+                          {(teacher.img || teacher.avatarUrl) ? (
+                            <AvatarImage src={teacher.img || teacher.avatarUrl} alt={teacher.name} />
+                          ) : null}
                           <AvatarFallback className="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-sm">
                             {getInitials(teacher.name)}
                           </AvatarFallback>
@@ -451,9 +467,24 @@ const TeachersListPage = () => {
                         {teacher.staffId}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">{teacher.designation || teacher.specialization || "Teacher"}</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          {teacher.subjects && teacher.subjects.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {teacher.subjects.slice(0, 2).map((subject, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {subject}
+                                </Badge>
+                              ))}
+                              {teacher.subjects.length > 2 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{teacher.subjects.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-500">-</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3">

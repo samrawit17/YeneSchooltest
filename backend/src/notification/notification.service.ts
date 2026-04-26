@@ -60,6 +60,10 @@ export enum NotificationType {
   EVENT_UPDATED = 'EVENT_UPDATED',
   EVENT_DELETED = 'EVENT_DELETED',
 
+  // Lesson notifications
+  LESSON_PUBLISHED = 'LESSON_PUBLISHED',
+  LESSON = 'LESSON',
+
   // Finance notifications
   FEE_DUE = 'FEE_DUE',
   FEE_PAID = 'FEE_PAID',
@@ -67,6 +71,7 @@ export enum NotificationType {
 
   // System notifications
   SYSTEM_ALERT = 'SYSTEM_ALERT',
+  SIREN_ALERT = 'SIREN_ALERT',
   ACCOUNT_CREATED = 'ACCOUNT_CREATED',
   PASSWORD_RESET = 'PASSWORD_RESET',
 
@@ -116,6 +121,7 @@ export class NotificationService {
       unreadOnly?: boolean;
       limit?: number;
       type?: string;
+      types?: string[];
       category?: string;
       schoolId?: string;
     },
@@ -146,6 +152,10 @@ export class NotificationService {
     // Filter by specific type
     if (options?.type) {
       where.type = options.type;
+    }
+
+    if (options?.types?.length) {
+      where.type = { in: options.types };
     }
 
     // Filter by category
@@ -194,6 +204,7 @@ export class NotificationService {
       finance: ['FEE_DUE', 'FEE_PAID', 'PAYMENT_RECEIVED'],
       system: [
         'SYSTEM_ALERT',
+        'SIREN_ALERT',
         'ACCOUNT_CREATED',
         'PASSWORD_RESET',
         'INFO',
@@ -307,6 +318,7 @@ export class NotificationService {
       } else if (
         [
           'SYSTEM_ALERT',
+          'SIREN_ALERT',
           'ACCOUNT_CREATED',
           'PASSWORD_RESET',
           'INFO',
@@ -322,7 +334,12 @@ export class NotificationService {
     return categories;
   }
 
-  async getUnreadCount(userId: string, userRole: string, schoolId?: string) {
+  async getUnreadCount(
+    userId: string,
+    userRole: string,
+    schoolId?: string,
+    types?: string[],
+  ) {
     // SUPER_ADMIN is a global SaaS admin - can see all global notifications but not school-specific notifications
     // Only school ADMIN can see school-specific notifications
     const isSchoolAdmin = userRole === 'ADMIN';
@@ -344,6 +361,10 @@ export class NotificationService {
     // Filter by schoolId for school-specific notifications
     if (schoolId) {
       where.schoolId = schoolId;
+    }
+
+    if (types?.length) {
+      where.type = { in: types };
     }
 
     const count = await this.prisma.notification.count({
@@ -378,12 +399,13 @@ export class NotificationService {
     return null;
   }
 
-  async markAllAsRead(userId: string) {
+  async markAllAsRead(userId: string, types?: string[]) {
     // Mark all user-specific notifications as read
     await this.prisma.notification.updateMany({
       where: {
         userId,
         isRead: false,
+        ...(types?.length ? { type: { in: types } } : {}),
       },
       data: {
         isRead: true,
@@ -1311,5 +1333,51 @@ export class NotificationService {
       actionUrl: '/login',
       metadata: {},
     });
+  }
+
+  async notifyTeachersOfSiren(
+    schoolId: string,
+    type: string,
+    triggerType: string,
+  ) {
+    const teachers = await this.prisma.user.findMany({
+      where: {
+        schoolId,
+        role: 'TEACHER',
+      },
+      select: { id: true },
+    });
+
+    if (teachers.length === 0) return;
+
+    const sirenLabel = this.formatSirenLabel(type);
+    const source =
+      triggerType === 'DYNAMIC'
+        ? 'automatic timetable bell'
+        : triggerType === 'STATIC'
+          ? 'scheduled bell'
+          : 'manual bell';
+
+    return this.createBulkNotifications({
+      schoolId,
+      userIds: teachers.map((teacher) => teacher.id),
+      title: 'School Siren Alert',
+      message: `${sirenLabel} triggered via ${source}.`,
+      type: NotificationType.SIREN_ALERT,
+      actionUrl: '/teacher',
+      metadata: {
+        source: 'siren',
+        sirenType: type,
+        triggerType,
+      },
+    });
+  }
+
+  private formatSirenLabel(type: string) {
+    return type
+      .toLowerCase()
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
   }
 }

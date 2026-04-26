@@ -43,6 +43,10 @@ export class LessonQueryDto {
   status?: LessonStatus;
 
   @IsOptional()
+  @IsString()
+  studentId?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   page?: number = 1;

@@ -62,6 +62,8 @@ interface TermResult {
 
 interface ChildInfo {
   id: string;
+  profileId?: string;
+  userId?: string;
   name: string;
   studentCode: string;
   className: string;
@@ -93,14 +95,23 @@ const ChildResultsPage = () => {
         ]);
 
         const children = childrenRes.data?.children || [];
-        const selectedChild = children.find((item: any) => item.id === childId);
+        const selectedChild = children.find(
+          (item: any) =>
+            item.studentId === childId ||
+            item.id === childId ||
+            item.student?.id === childId ||
+            item.userId === childId ||
+            item.student?.userId === childId,
+        );
         if (selectedChild) {
           setChild({
-            id: selectedChild.id,
-            name: selectedChild.name,
-            studentCode: selectedChild.studentCode || "N/A",
-            className: selectedChild.className || "N/A",
-            section: selectedChild.section || "N/A",
+            id: selectedChild.studentId || selectedChild.id,
+            profileId: selectedChild.studentId || selectedChild.id,
+            userId: selectedChild.student?.userId || selectedChild.student?.id || selectedChild.userId,
+            name: selectedChild.name || selectedChild.student?.user?.name || "Unknown",
+            studentCode: selectedChild.student?.studentCode || selectedChild.studentCode || "N/A",
+            className: selectedChild.className || selectedChild.student?.className || "N/A",
+            section: selectedChild.section || selectedChild.student?.section || "N/A",
           });
         }
 
@@ -114,11 +125,18 @@ const ChildResultsPage = () => {
         const termRows = Array.isArray(termsRes.data) ? termsRes.data : (termsRes.data?.data || []);
         setTerms(termRows.map((term: any) => ({ id: term.id, name: term.name })));
 
-        const gradeRes = await gradingAPI.getChildGrades(childId, {
+        const gradeRes = await gradingAPI.getChildGrades(
+          selectedChild?.studentId || selectedChild?.userId || childId,
+          {
           academicYear: activeYear.id,
           ...(selectedTerm !== "all" ? { termId: selectedTerm } : {}),
-        });
-        const gradeRows = Array.isArray(gradeRes.data) ? gradeRes.data : (gradeRes.data?.data || []);
+          },
+        );
+        const gradeRows = Array.isArray(gradeRes.data)
+          ? gradeRes.data
+          : Array.isArray(gradeRes.data?.grades)
+            ? gradeRes.data.grades
+            : [];
 
         const subjectRows: SubjectResult[] = gradeRows.map((grade: any) => ({
           id: grade.id,
@@ -149,11 +167,11 @@ const ChildResultsPage = () => {
           academicYear: activeYear.name,
           results: subjectRows,
           summary: {
-            gpa,
-            rank: 0,
+            gpa: gradeRes.data?.summary?.gpa || gpa,
+            rank: gradeRes.data?.summary?.rank || 0,
             totalSubjects: subjectRows.length,
             overallPerformance,
-            average,
+            average: gradeRes.data?.summary?.average || average,
           },
         });
       } catch (error) {

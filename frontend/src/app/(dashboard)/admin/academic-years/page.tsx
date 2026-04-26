@@ -86,7 +86,7 @@ export default function AcademicYearsPage() {
     name: '',
     startDate: '',
     endDate: '',
-    curriculumType: 'QUARTER',
+    curriculumType: 'SEMESTER',
   });
 
   const [newTerm, setNewTerm] = useState({
@@ -291,6 +291,35 @@ export default function AcademicYearsPage() {
     return selectedYear.terms.reduce((sum, term) => sum + term.percentageWeight, 0);
   };
 
+  const getYearStatus = (year: AcademicYear) => {
+    if (year.isActive) return 'Active';
+    const now = new Date();
+    const start = new Date(year.startDate);
+    const end = new Date(year.endDate);
+    if (now >= start && now <= end) return 'Current';
+    if (now < start) return 'Upcoming';
+    return 'Past';
+  };
+
+  const getTermStatus = (term: Term) => {
+    const now = new Date();
+    const start = new Date(term.startDate);
+    const end = new Date(term.endDate);
+    if (term.isLocked) return 'Locked';
+    if (now >= start && now <= end) return 'Active';
+    if (now < start) return 'Upcoming';
+    return 'Completed';
+  };
+
+  const getTermStatusColor = (status: string) => {
+    switch (status) {
+      case 'Active': return 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400';
+      case 'Locked': return 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400';
+      case 'Completed': return 'bg-gray-100 dark:bg-gray-900/50 text-gray-700 dark:text-gray-400';
+      default: return 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -328,11 +357,14 @@ export default function AcademicYearsPage() {
           }}
           className="w-full max-w-md px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
         >
-          {academicYears.map(year => (
-            <option key={year.id} value={year.id}>
-              {year.name} ({year.calendarType || 'ETHIOPIAN'}) {year.isActive && '(Active)'}
-            </option>
-          ))}
+          {academicYears.map(year => {
+              const status = getYearStatus(year);
+              return (
+                <option key={year.id} value={year.id}>
+                  {year.name} ({year.calendarType || 'ETHIOPIAN'}) - {status}
+                </option>
+              );
+            })}
         </select>
       </div>
 
@@ -370,46 +402,55 @@ export default function AcademicYearsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-200 dark:divide-slate-700">
-                  {selectedYear.terms.sort((a, b) => a.order - b.order).map(term => (
-                    <TableRow key={term.id} className={term.isLocked ? 'bg-gray-50 dark:bg-slate-800' : 'dark:hover:bg-slate-800/50'}>
-                      <TableCell className="px-4 py-3 font-medium dark:text-white">{term.name}</TableCell>
-                      <TableCell className="px-4 py-3 dark:text-gray-300">{term.order}</TableCell>
-                      <TableCell className="px-4 py-3 dark:text-gray-300">{term.percentageWeight}%</TableCell>
-                      <TableCell className="px-4 py-3 dark:text-gray-300"><FormattedDate date={term.startDate} /></TableCell>
-                      <TableCell className="px-4 py-3 dark:text-gray-300"><FormattedDate date={term.endDate} /></TableCell>
-                      <TableCell className="px-4 py-3">
-                        {term.isLocked ? (
-                          <span className="px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded text-xs">Locked</span>
-                        ) : (
-                          <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded text-xs">Active</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openEditTerm(term)}
-                            disabled={term.isLocked}
-                            className="text-[#e35336] hover:text-[#d14830] disabled:opacity-50"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleLockTerm(term.id, term.isLocked)}
-                            className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                          >
-                            {term.isLocked ? 'Unlock' : 'Lock'}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTerm(term.id)}
-                            disabled={term.isLocked}
-                            className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {selectedYear.terms.sort((a, b) => a.order - b.order).map(term => {
+                    const status = getTermStatus(term);
+                    const isCurrent = status === 'Active';
+                    return (
+                      <TableRow key={term.id} className={`${term.isLocked ? 'bg-gray-50 dark:bg-slate-800' : 'dark:hover:bg-slate-800/50'} ${isCurrent ? 'ring-2 ring-inset ring-green-500' : ''}`}>
+                        <TableCell className="px-4 py-3 font-medium dark:text-white">
+                          <div className="flex items-center gap-2">
+                            {term.name}
+                            {isCurrent && (
+                              <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3 dark:text-gray-300">{term.order}</TableCell>
+                        <TableCell className="px-4 py-3 dark:text-gray-300">{term.percentageWeight}%</TableCell>
+                        <TableCell className="px-4 py-3 dark:text-gray-300"><FormattedDate date={term.startDate} /></TableCell>
+                        <TableCell className="px-4 py-3 dark:text-gray-300"><FormattedDate date={term.endDate} /></TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs ${getTermStatusColor(status)}`}>
+                            {status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openEditTerm(term)}
+                              disabled={term.isLocked}
+                              className="text-[#e35336] hover:text-[#d14830] disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleLockTerm(term.id, term.isLocked)}
+                              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                            >
+                              {term.isLocked ? 'Unlock' : 'Lock'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTerm(term.id)}
+                              disabled={term.isLocked}
+                              className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

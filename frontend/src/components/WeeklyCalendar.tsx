@@ -205,13 +205,13 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
         })}
       </div>
 
-      {/* Events list for selected day (optional) */}
+      {/* Calendar link for selected day */}
       <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
         <button
-          onClick={() => window.location.href = '/list/events'}
+          onClick={() => window.location.href = '/list/calendar'}
           className="w-full text-center text-xs text-[#e35336] hover:text-[#c74428] hover:underline transition-colors"
         >
-          View All Events
+          View Calendar
         </button>
       </div>
     </div>

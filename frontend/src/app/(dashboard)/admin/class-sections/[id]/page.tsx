@@ -382,24 +382,12 @@ export default function ClassDetailPage() {
           />
         </div>
 
-        <Select value={sectionFilter || "all"} onValueChange={handleSectionChange}>
+        <Select value={sectionFilter || "all"} onValueChange={handleSectionChange} disabled>
           <SelectTrigger className="w-[250px]">
             <SelectValue placeholder="All Sections" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Sections</SelectItem>
-            {sectionsData?.map((section: any) => (
-              <SelectItem key={section.id} value={section.id}>
-                <div className="flex flex-col">
-                  <span>Section {section.name}</span>
-                  {section.homeroomTeacher && (
-                    <span className="text-xs text-muted-foreground">
-                      Teacher: {section.homeroomTeacher.name}
-                    </span>
-                  )}
-                </div>
-              </SelectItem>
-            ))}
           </SelectContent>
         </Select>
       </div>

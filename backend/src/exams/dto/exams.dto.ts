@@ -5,9 +5,11 @@ import {
   IsEnum,
   IsDateString,
   IsNumber,
+  IsArray,
+  ValidateNested,
   Min,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ExamType } from '@prisma/client';
 
 export class CreateExamDto {
@@ -97,6 +99,30 @@ export class ExamResultEntryDto {
 }
 
 export class BulkExamResultDto {
-  @IsNotEmpty()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ExamResultEntryDto)
   results: ExamResultEntryDto[];
+}
+
+export class GetExamsFilterDto {
+  @IsString()
+  @IsOptional()
+  classId?: string;
+
+  @IsString()
+  @IsOptional()
+  sectionId?: string;
+
+  @IsString()
+  @IsOptional()
+  subjectId?: string;
+
+  @IsEnum(ExamType)
+  @IsOptional()
+  type?: ExamType;
+
+  @IsString()
+  @IsOptional()
+  academicYearId?: string;
 }

@@ -1649,10 +1649,18 @@ export class AttendanceService {
         }
       }
 
-      // OPTIMIZATION: Batch fetch all parent-student relations in ONE query
-      const absentStudentProfileIds = absentRecords
-        .map((r) => r.student.studentProfile?.id)
-        .filter((id): id is string => Boolean(id));
+      // Resolve student profile ids reliably from attendance records saved against user ids.
+      const absentStudentUserIds = absentRecords.map((r) => r.student.id);
+      const absentStudentProfiles = await this.prisma.studentProfile.findMany({
+        where: { userId: { in: absentStudentUserIds } },
+        select: { id: true, userId: true },
+      });
+      const studentProfileIdByUserId = new Map(
+        absentStudentProfiles.map((profile) => [profile.userId, profile.id]),
+      );
+      const absentStudentProfileIds = absentStudentProfiles.map(
+        (profile) => profile.id,
+      );
 
       const allParentRelations = await this.prisma.parentStudent.findMany({
         where: { studentId: { in: absentStudentProfileIds } },
@@ -1691,7 +1699,7 @@ export class AttendanceService {
 
       for (const record of absentRecords) {
         const studentName = record.student.name;
-        const studentProfileId = record.student.studentProfile?.id;
+        const studentProfileId = studentProfileIdByUserId.get(record.student.id);
         if (!studentProfileId) continue;
 
         // Get parents for this specific student from the batched result
@@ -1815,43 +1823,64 @@ export class AttendanceService {
     startDate?: string,
     endDate?: string,
   ) {
+    let resolvedStudentId = studentId;
+
     // Verify access: student viewing themselves, parent viewing their child, or admin
-    if (user.role === Role.STUDENT && user.id !== studentId) {
-      throw new ForbiddenException('You can only view your own attendance');
+    if (user.role === Role.STUDENT) {
+      if (user.id !== studentId) {
+        throw new ForbiddenException('You can only view your own attendance');
+      }
+      resolvedStudentId = user.id;
     }
 
     if (user.role === Role.PARENT) {
       const parentProfile = await this.prisma.parentProfile.findUnique({
         where: { userId: user.id },
-        include: {
-          children: {
-            include: {
-              student: {
-                include: { user: true },
-              },
-            },
-          },
-        },
+        select: { id: true },
       });
 
-      // Check if studentId matches either userId or studentProfile id
-      const isLinkedChild = parentProfile?.children.some(
-        (c) => c.student.user.id === studentId || c.studentId === studentId,
-      );
+      if (!parentProfile) {
+        throw new NotFoundException('Parent profile not found');
+      }
 
-      if (!isLinkedChild) {
+      const studentProfile = await this.prisma.studentProfile.findFirst({
+        where: {
+          OR: [{ id: studentId }, { userId: studentId }],
+        },
+        select: { id: true, userId: true },
+      });
+
+      if (!studentProfile) {
+        throw new NotFoundException('Student not found');
+      }
+
+      const relation = await this.prisma.parentStudent.findFirst({
+        where: {
+          parentId: parentProfile.id,
+          studentId: studentProfile.id,
+        },
+        select: { id: true },
+      });
+
+      if (!relation) {
         throw new ForbiddenException(
           "You can only view your linked children's attendance",
         );
       }
+
+      resolvedStudentId = studentProfile.userId;
     }
 
     const whereClause: any = {
-      studentId,
+      studentId: resolvedStudentId,
+      session: {
+        status: 'SUBMITTED',
+      },
     };
 
     if (startDate || endDate) {
       whereClause.session = {
+        ...whereClause.session,
         date: {
           ...(startDate && { gte: new Date(startDate) }),
           ...(endDate && { lte: new Date(endDate) }),
@@ -1870,7 +1899,7 @@ export class AttendanceService {
     const excusedDays = records.filter((r) => r.status === 'EXCUSED').length;
 
     return {
-      studentId,
+      studentId: resolvedStudentId,
       totalDays,
       presentDays,
       absentDays,
@@ -1889,6 +1918,53 @@ export class AttendanceService {
     studentId: string,
     query: AttendanceQueryDto,
   ) {
+    let resolvedStudentId = studentId;
+
+    if (user.role === Role.STUDENT) {
+      if (user.id !== studentId) {
+        throw new ForbiddenException('You can only view your own attendance');
+      }
+      resolvedStudentId = user.id;
+    }
+
+    if (user.role === Role.PARENT) {
+      const parentProfile = await this.prisma.parentProfile.findUnique({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+
+      if (!parentProfile) {
+        throw new NotFoundException('Parent profile not found');
+      }
+
+      const studentProfile = await this.prisma.studentProfile.findFirst({
+        where: {
+          OR: [{ id: studentId }, { userId: studentId }],
+        },
+        select: { id: true, userId: true },
+      });
+
+      if (!studentProfile) {
+        throw new NotFoundException('Student not found');
+      }
+
+      const relation = await this.prisma.parentStudent.findFirst({
+        where: {
+          parentId: parentProfile.id,
+          studentId: studentProfile.id,
+        },
+        select: { id: true },
+      });
+
+      if (!relation) {
+        throw new ForbiddenException(
+          "You can only view your linked children's attendance",
+        );
+      }
+
+      resolvedStudentId = studentProfile.userId;
+    }
+
     const { startDate, endDate, month } = query;
 
     // Build date filter - try string format first for better compatibility
@@ -1920,12 +1996,16 @@ export class AttendanceService {
 
     // Build the where clause
     const whereClause: any = {
-      studentId,
+      studentId: resolvedStudentId,
+      session: {
+        status: 'SUBMITTED',
+      },
     };
 
     // Add date filter if present
     if (Object.keys(dateFilter).length > 0) {
       whereClause.session = {
+        ...whereClause.session,
         date: dateFilter,
       };
     }
@@ -1964,7 +2044,7 @@ export class AttendanceService {
 
     // Get student info - studentId here should be the userId
     const student = await this.prisma.user.findUnique({
-      where: { id: studentId },
+      where: { id: resolvedStudentId },
       select: {
         id: true,
         name: true,
@@ -1982,7 +2062,7 @@ export class AttendanceService {
     // If student not found by userId, try finding by studentProfile id
     if (!student) {
       const studentProfile = await this.prisma.studentProfile.findUnique({
-        where: { id: studentId },
+        where: { id: resolvedStudentId },
         include: {
           user: {
             select: {
