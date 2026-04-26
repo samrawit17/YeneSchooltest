@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 
 export interface FilterConfig {
   academicYear?: boolean;
@@ -359,10 +360,7 @@ export function Filters({
       {config.section && onSectionChange && (
         <Select
           value={selectedSection || ""}
-          onValueChange={(val) => { 
-            console.log("Filters: Section changed to:", val); 
-            onSectionChange(val); 
-          }}
+          onValueChange={(val) => onSectionChange(val)}
           disabled={disabled || !selectedYear || loading}
         >
           <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
@@ -374,14 +372,19 @@ export function Filters({
                 No sections
               </SelectItem>
             ) : (
-              sections.map((section) => (
-                <SelectItem 
-                  key={section.id} 
-                  value={sectionMode === "name" ? section.name : section.id}
-                >
-                  {section.name}
+              <>
+                <SelectItem value="all">
+                  All Sections
                 </SelectItem>
-              ))
+                {sections.map((section) => (
+                  <SelectItem 
+                    key={section.id} 
+                    value={sectionMode === "name" ? section.name : section.id}
+                  >
+                    {section.name}
+                  </SelectItem>
+                ))}
+              </>
             )}
           </SelectContent>
         </Select>
@@ -411,21 +414,36 @@ export function Filters({
 
 // Helper hook for managing filter state
 export function useFilters(initialConfig: FilterConfig = {}) {
-  const [selectedYear, setSelectedYear] = useState("");
-  const [selectedTerm, setSelectedTerm] = useState("");
+  const { currentAcademicYear, currentTerm } = useAcademicYear();
+  
+  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [selectedTerm, setSelectedTerm] = useState<string>("");
   const [selectedGrade, setSelectedGrade] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedCurriculum, setSelectedCurriculum] = useState("");
 
+  // Set initial values when currentAcademicYear/currentTerm are available
+  useEffect(() => {
+    if (!selectedYear && currentAcademicYear?.id) {
+      setSelectedYear(currentAcademicYear.id);
+    }
+  }, [currentAcademicYear, selectedYear]);
+
+  useEffect(() => {
+    if (!selectedTerm && currentTerm?.id) {
+      setSelectedTerm(currentTerm.id);
+    }
+  }, [currentTerm, selectedTerm]);
+
   const resetFilters = useCallback(() => {
-    setSelectedYear("");
-    setSelectedTerm("");
+    setSelectedYear(currentAcademicYear?.id || "");
+    setSelectedTerm(currentTerm?.id || "");
     setSelectedGrade("");
     setSelectedSection("");
     setSelectedStatus("");
     setSelectedCurriculum("");
-  }, []);
+  }, [currentAcademicYear, currentTerm]);
 
   const getActiveFilters = useCallback(() => {
     const filters: Record<string, string> = {};

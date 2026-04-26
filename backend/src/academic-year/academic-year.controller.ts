@@ -96,6 +96,16 @@ export class AcademicYearController {
     return this.academicYearService.activateAcademicYear(id);
   }
 
+  @Put(':id/curriculum-type')
+  @Roles(Role.ADMIN)
+  @Permissions('academic_year:update')
+  async updateCurriculumType(
+    @Param('id') id: string,
+    @Body() dto: { curriculumType: any },
+  ) {
+    return this.academicYearService.updateCurriculumType(id, dto);
+  }
+
   @Delete(':id')
   @Roles(Role.ADMIN)
   @Permissions('academic_year:delete')
@@ -104,6 +114,38 @@ export class AcademicYearController {
   }
 
   // ==================== TERM/PERIOD MANAGEMENT ====================
+
+  /**
+   * Get the current term for a school
+   */
+  @Get('terms/current')
+  @Roles(
+    Role.ADMIN,
+    Role.REGISTRAR,
+    Role.TEACHER,
+    Role.STUDENT,
+    Role.PARENT,
+    Role.FINANCE,
+    Role.HR,
+    Role.SUPER_ADMIN,
+  )
+  async getCurrentTerm(
+    @Query('schoolId') schoolId: string,
+    @Request() req: any,
+  ) {
+    const effectiveSchoolId = schoolId || req.user.schoolId;
+    return this.academicYearService.getCurrentTerm(effectiveSchoolId);
+  }
+
+  /**
+   * Get all terms for a specific academic year
+   */
+  @Get(':id/terms')
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER)
+  async getTermsByAcademicYear(@Param('id') id: string) {
+    const academicYear = await this.academicYearService.getAcademicYearById(id);
+    return academicYear.terms;
+  }
 
   /**
    * Create a custom term/period for an academic year
@@ -176,7 +218,7 @@ export class AcademicYearController {
    * Validate period weights (check if they sum to 100%)
    */
   @Get(':id/validate-weights')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR)
   async validatePeriodWeights(@Param('id') id: string) {
     const isValid = await this.academicYearService.validatePeriodWeights(id);
     return {

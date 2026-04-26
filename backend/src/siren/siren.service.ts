@@ -1,0 +1,261 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
+
+@Injectable()
+export class SirenService {
+  private readonly logger = new Logger(SirenService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+  ) {}
+
+  @Cron('0 * * * * *')
+  async evaluateSchedules() {
+    try {
+      const now = new Date();
+      const currentTime = this.toHHMM(now);
+      const day = now.getDay();
+
+      await this.evaluateDynamicSirens(currentTime, day);
+      await this.evaluateStaticSchedules(currentTime, day);
+    } catch (error) {
+      this.logger.error('Error evaluating schedules:', error);
+    }
+  }
+
+  private async evaluateDynamicSirens(currentTime: string, day: number) {
+    // Get all schools with active sirens
+    const schools = await this.prisma.school.findMany({
+      where: { isActive: true },
+    });
+
+    for (const school of schools) {
+      const periods = await this.prisma.periodTime.findMany({
+        where: { schoolId: school.id },
+      });
+
+      for (const period of periods) {
+        const isStart = currentTime === period.startTime;
+        const isEnd = currentTime === period.endTime;
+
+        if (!isStart && !isEnd) continue;
+
+        // Core Logic: Only trigger if TimetableSlot exists for same time AND same dayOfWeek
+        // Since TimetableSlot doesn't have periodNumber, we match by school and time
+        const slots = await this.prisma.timetableSlot.findMany({
+          where: {
+            schoolId: school.id,
+            dayOfWeek: day,
+            startTime: period.startTime,
+            endTime: period.endTime,
+          },
+          take: 1,
+        });
+
+        if (slots.length > 0) {
+          await this.fireSiren(
+            school.id,
+            isStart ? 'PERIOD_START' : 'PERIOD_END',
+            'DYNAMIC',
+            period.periodNumber,
+            null,
+          );
+        }
+      }
+    }
+  }
+
+  private async evaluateStaticSchedules(currentTime: string, day: number) {
+    const schedules = await this.prisma.sirenSchedule.findMany({
+      where: {
+        isActive: true,
+        ringTime: currentTime,
+        daysOfWeek: {
+          has: day,
+        },
+      },
+    });
+
+    await Promise.all(
+      schedules.map((schedule) =>
+        this.fireSiren(
+          schedule.schoolId,
+          schedule.type,
+          'STATIC',
+          null,
+          schedule.id,
+        ),
+      ),
+    );
+  }
+
+  // ==================== CRUD & UTILS ====================
+
+  async getSchedules(schoolId: string) {
+    return this.prisma.sirenSchedule.findMany({
+      where: { schoolId },
+      orderBy: { ringTime: 'asc' },
+    });
+  }
+
+  async createSchedule(data: any) {
+    return this.prisma.sirenSchedule.create({ data });
+  }
+
+  async updateSchedule(id: string, data: any) {
+    return this.prisma.sirenSchedule.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async deleteSchedule(id: string) {
+    return this.prisma.sirenSchedule.delete({ where: { id } });
+  }
+
+  async getEvents(schoolId: string, limit: number) {
+    return this.prisma.sirenEvent.findMany({
+      where: { schoolId },
+      orderBy: { firedAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async getHardwareConfig(schoolId: string) {
+    return this.prisma.sirenHardwareConfig.findUnique({
+      where: { schoolId },
+    });
+  }
+
+  async saveHardwareConfig(data: any) {
+    return this.prisma.sirenHardwareConfig.upsert({
+      where: { schoolId: data.schoolId },
+      update: data,
+      create: data,
+    });
+  }
+
+  async updateHardwareConfig(id: string, data: any) {
+    return this.prisma.sirenHardwareConfig.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async manualTrigger(schoolId: string, type: string) {
+    return this.fireSiren(schoolId, type, 'MANUAL', null, null);
+  }
+
+  async testWebhook(webhookUrl: string, timeout: number) {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+
+      await fetch(`${webhookUrl}/on`, {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      clearTimeout(id);
+
+      setTimeout(async () => {
+        try {
+          const offController = new AbortController();
+          const offId = setTimeout(() => offController.abort(), 1000);
+          await fetch(`${webhookUrl}/off`, {
+            method: 'POST',
+            signal: offController.signal,
+          });
+          clearTimeout(offId);
+        } catch (e) {
+          this.logger.error('Error turning off test siren:', e.message);
+        }
+      }, 2000);
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  // ==================== CORE FIRE LOGIC ====================
+
+  private async fireSiren(
+    schoolId: string,
+    type: string,
+    triggerType: string,
+    periodNumber: number | null,
+    scheduleId: string | null,
+  ) {
+    const event = await this.prisma.sirenEvent.create({
+      data: {
+        schoolId,
+        type,
+        triggerType,
+        periodNumber,
+        scheduleId,
+      },
+    });
+
+    this.logger.log(
+      `Siren fired: ${type} (${triggerType}) for school ${schoolId}`,
+    );
+
+    // Hardware integration
+    const config = await this.getHardwareConfig(schoolId);
+    if (config && config.isEnabled && config.webhookUrl) {
+      this.triggerHardware(config.webhookUrl, config.timeout);
+    }
+
+    try {
+      await this.notificationService.notifyTeachersOfSiren(
+        schoolId,
+        type,
+        triggerType,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to notify teachers of siren: ${error.message}`);
+    }
+
+    return event;
+  }
+
+  private async triggerHardware(webhookUrl: string, timeout: number) {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+
+      await fetch(`${webhookUrl}/on`, {
+        method: 'POST',
+        signal: controller.signal,
+      });
+      clearTimeout(id);
+
+      // Off signal after 3 seconds
+      setTimeout(async () => {
+        try {
+          const offController = new AbortController();
+          const offId = setTimeout(() => offController.abort(), 1000);
+          await fetch(`${webhookUrl}/off`, {
+            method: 'POST',
+            signal: offController.signal,
+          });
+          clearTimeout(offId);
+        } catch (e) {
+          this.logger.error('Error turning off siren:', e.message);
+        }
+      }, 3000);
+    } catch (error) {
+      this.logger.error(`Hardware trigger failed: ${error.message}`);
+    }
+  }
+
+  private toHHMM(date: Date): string {
+    return date.toLocaleString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -30,7 +30,13 @@ import {
   AlertCircle,
   AlertTriangle,
   Calendar,
+  ChevronRight,
+  Filter,
+  GraduationCap,
+  FileText,
+  Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface TeacherExamRow {
   id: string;
@@ -90,7 +96,7 @@ export default function TeacherExamsPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const { setItems } = useBreadcrumb();
-  const { currentAcademicYear, getAllAcademicYears, getTermsForYear } = useAcademicYear();
+  const { currentAcademicYear, getAllAcademicYears, getTermsForYear, formatDate } = useAcademicYear();
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<TeacherExamRow[]>([]);
@@ -98,6 +104,8 @@ export default function TeacherExamsPage() {
   const [terms, setTerms] = useState<Term[]>([]);
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -124,20 +132,19 @@ export default function TeacherExamsPage() {
   const initialize = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Use centralized context to get academic years
       const years = await getAllAcademicYears();
       setAcademicYears(years);
 
-      // Use current academic year from context as default
       const activeYear = currentAcademicYear?.id || years.find((row: AcademicYear) => row.isActive)?.id || years[0]?.id || "";
       setSelectedYear(activeYear);
 
       if (activeYear) {
-        // Use centralized context to get terms
         const termData = await getTermsForYear(activeYear);
         setTerms(termData);
-        setSelectedTerm("all");
+        // Default to the term that contains today's date, otherwise leave as "all"
+        const now = new Date();
+        const currentPeriod = termData.find((t: any) => t?.startDate && t?.endDate && new Date(t.startDate) <= now && new Date(t.endDate) >= now);
+        setSelectedTerm(currentPeriod?.id || "all");
       } else {
         setTerms([]);
       }
@@ -172,55 +179,75 @@ export default function TeacherExamsPage() {
     return "ongoing";
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
       case "upcoming":
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400">Upcoming</Badge>;
+        return { color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400", icon: Clock, label: "Upcoming" };
       case "ongoing":
-        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400">Ongoing</Badge>;
+        return { color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400", icon: AlertCircle, label: "Ongoing" };
       case "completed":
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400">Completed</Badge>;
+        return { color: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400", icon: CheckCircle, label: "Completed" };
       case "overdue":
-        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400">Overdue</Badge>;
+        return { color: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400", icon: AlertTriangle, label: "Overdue" };
       default:
-        return <Badge variant="outline" className="dark:text-gray-300">{status}</Badge>;
+        return { color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400", icon: AlertCircle, label: status };
     }
   };
 
-  const summary = {
-    total: rows.length,
-    completed: rows.filter((r) => getExamStatus(r) === "completed").length,
-    pending: rows.filter((r) => getExamStatus(r) === "ongoing").length,
-    overdue: rows.filter((r) => getExamStatus(r) === "overdue").length,
-  };
+  const filteredRows = useMemo(() => {
+    let filtered = rows;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.subject.toLowerCase().includes(q) ||
+          r.className.toLowerCase().includes(q) ||
+          r.type.toLowerCase().includes(q)
+      );
+    }
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((r) => getExamStatus(r) === statusFilter);
+    }
+    return filtered;
+  }, [rows, searchQuery, statusFilter]);
 
-  const upcomingExams = rows
-    .filter((r) => getExamStatus(r) === "upcoming" || getExamStatus(r) === "ongoing")
-    .slice(0, 4);
+  const summary = useMemo(() => {
+    const total = filteredRows.length;
+    const completed = filteredRows.filter((r) => getExamStatus(r) === "completed").length;
+    const ongoing = filteredRows.filter((r) => getExamStatus(r) === "ongoing").length;
+    const overdue = filteredRows.filter((r) => getExamStatus(r) === "overdue").length;
+    const upcoming = filteredRows.filter((r) => getExamStatus(r) === "upcoming").length;
+    return { total, completed, ongoing, overdue, upcoming };
+  }, [filteredRows]);
 
-  const notifications = [
-    ...rows
-      .filter((r) => getExamStatus(r) === "overdue")
-      .map((r) => ({
-        type: "error" as const,
-        message: `${r.title} for ${r.className} is overdue`,
-      })),
-    ...rows
-      .filter((r) => getExamStatus(r) === "upcoming")
-      .slice(0, 3)
-      .map((r) => ({
-        type: "warning" as const,
-        message: `${r.title} is scheduled for ${r.className}`,
-      })),
-  ];
+  const upcomingExams = useMemo(
+    () =>
+      rows
+        .filter((r) => getExamStatus(r) === "upcoming" || getExamStatus(r) === "ongoing")
+        .slice(0, 5),
+    [rows]
+  );
 
-  if (loading || isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
+  const notifications = useMemo(() => {
+    const notifs = [];
+    const overdue = rows.filter((r) => getExamStatus(r) === "overdue");
+    if (overdue.length > 0) {
+      notifs.push({ type: "error" as const, count: overdue.length, message: `${overdue.length} exam(s) overdue` });
+    }
+    const upcomingSoon = rows.filter((r) => {
+      const status = getExamStatus(r);
+      if (status !== "upcoming") return false;
+      const date = r.startDate ? new Date(r.startDate) : null;
+      if (!date) return false;
+      const days = Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return days >= 0 && days <= 3;
+    });
+    if (upcomingSoon.length > 0) {
+      notifs.push({ type: "warning" as const, count: upcomingSoon.length, message: `${upcomingSoon.length} exam(s) in next 3 days` });
+    }
+    return notifs;
+  }, [rows]);
 
   const activeYear = academicYears.find((y) => y.isActive) || academicYears[0];
   const activeTerm = terms[0];
@@ -229,227 +256,270 @@ export default function TeacherExamsPage() {
     router.push(`/teacher/exams/${exam.id}/results`);
   };
 
+  if (loading || isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-3 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold text-[#e35336]">My Exams</h1>
-        <p className="text-slate-600 dark:text-gray-400">
-          {activeYear?.name} Academic Year {activeTerm ? `| ${activeTerm.name}` : ""}
-        </p>
+    <div className="container mx-auto px-3 md:px-4 lg:px-6 py-4 md:py-6 space-y-4 md:space-y-6 max-w-7xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-[#e35336]">My Exams</h1>
+          <p className="text-xs md:text-sm text-slate-500 dark:text-gray-400 mt-0.5">
+            {activeYear?.name} {activeTerm ? `• ${activeTerm.name}` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs dark:border-slate-600 dark:text-gray-300">
+            <GraduationCap className="h-3 w-3 mr-1" />
+            {user?.name || "Teacher"}
+          </Badge>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="text-black dark:text-white dark:bg-slate-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90 dark:text-gray-300">Total Assigned</p>
-                <p className="text-2xl font-bold">{summary.total}</p>
+      {/* Stats - Compact Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
+        {[
+          { label: "Total", value: summary.total, icon: BookOpen, color: "text-slate-600 dark:text-slate-300" },
+          { label: "Upcoming", value: summary.upcoming, icon: Calendar, color: "text-blue-600 dark:text-blue-400" },
+          { label: "Ongoing", value: summary.ongoing, icon: Clock, color: "text-yellow-600 dark:text-yellow-400" },
+          { label: "Completed", value: summary.completed, icon: CheckCircle, color: "text-green-600 dark:text-green-400" },
+          { label: "Overdue", value: summary.overdue, icon: AlertTriangle, color: "text-red-600 dark:text-red-400" },
+        ].map((stat) => (
+          <Card key={stat.label} className="dark:bg-slate-800 dark:border-slate-700 hover:shadow-sm transition-shadow">
+            <CardContent className="p-2.5 md:p-3 flex items-center gap-2.5">
+              <stat.icon className={`h-4 w-4 md:h-5 md:w-5 shrink-0 ${stat.color}`} />
+              <div className="min-w-0">
+                <p className="text-lg md:text-xl font-bold leading-tight dark:text-white">{stat.value}</p>
+                <p className="text-[10px] md:text-xs text-slate-500 dark:text-gray-400 truncate">{stat.label}</p>
               </div>
-              <BookOpen className="h-8 w-8 opacity-70" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="text-black dark:text-white dark:bg-slate-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90 dark:text-gray-300">Completed</p>
-                <p className="text-2xl font-bold">{summary.completed}</p>
-              </div>
-              <CheckCircle className="h-8 w-8 opacity-70" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="text-black dark:text-white dark:bg-slate-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90 dark:text-gray-300">Pending</p>
-                <p className="text-2xl font-bold">{summary.pending}</p>
-              </div>
-              <Clock className="h-8 w-8 opacity-70" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="text-black dark:text-white dark:bg-slate-800">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90 dark:text-gray-300">Overdue</p>
-                <p className="text-2xl font-bold">{summary.overdue}</p>
-              </div>
-              <AlertTriangle className="h-8 w-8 opacity-70" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      {/* Main Content */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Exam List */}
+        <div className="lg:col-span-2 space-y-3">
           <Card className="dark:bg-slate-800 dark:border-slate-700">
-            <CardHeader className="dark:bg-slate-800/50">
-              <CardTitle className="dark:text-white">Official Exam List</CardTitle>
-              <CardDescription className="dark:text-gray-400">
-                Exams assigned to your teaching subjects and classes
-              </CardDescription>
+            <CardHeader className="pb-2 px-4 pt-3 md:px-5 md:pt-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base md:text-lg dark:text-white flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-[#e35336]" />
+                    Exam List
+                  </CardTitle>
+                  <CardDescription className="text-xs md:text-sm dark:text-gray-400">
+                    {filteredRows.length} of {rows.length} exams
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <Select
-                  value={selectedYear}
-                  onValueChange={async (value) => {
+            <CardContent className="px-3 md:px-4 pb-3 md:pb-4 space-y-3">
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    placeholder="Search exams..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 h-8 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Select value={selectedYear} onValueChange={async (value) => {
                     setSelectedYear(value);
                     const termRes = await termsAPI.getAll({ academicYearId: value });
                     const termData = Array.isArray(termRes.data) ? termRes.data : termRes.data?.data || [];
                     setTerms(termData);
                     setSelectedTerm("all");
                     await loadRows(value, undefined);
-                  }}
-                >
-                  <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                    <SelectValue placeholder="Academic Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {academicYears.map((year) => (
-                      <SelectItem key={year.id} value={year.id}>
-                        {year.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={selectedTerm}
-                  onValueChange={async (value) => {
+                  }}>
+                    <SelectTrigger className="w-[130px] h-8 text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {academicYears.map((year) => (
+                        <SelectItem key={year.id} value={year.id} className="text-xs">{year.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedTerm} onValueChange={async (value) => {
                     setSelectedTerm(value);
                     await loadRows(selectedYear, value !== "all" ? value : undefined);
-                  }}
-                >
-                  <SelectTrigger className="dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                    <SelectValue placeholder="Term" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Terms</SelectItem>
-                    {terms.map((term) => (
-                      <SelectItem key={term.id} value={term.id}>
-                        {term.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  }}>
+                    <SelectTrigger className="w-[120px] h-8 text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                      <SelectValue placeholder="Term" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs">All Terms</SelectItem>
+                      {terms.map((term) => (
+                        <SelectItem key={term.id} value={term.id} className="text-xs">{term.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {/* Show selected term date range when available */}
+              
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[110px] h-8 text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                      <Filter className="h-3 w-3 mr-1" />
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs">All Status</SelectItem>
+                      <SelectItem value="upcoming" className="text-xs">Upcoming</SelectItem>
+                      <SelectItem value="ongoing" className="text-xs">Ongoing</SelectItem>
+                      <SelectItem value="completed" className="text-xs">Completed</SelectItem>
+                      <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b dark:bg-slate-800 dark:border-slate-700">
-                    <tr>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-slate-600 dark:text-gray-300">Exam</th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-slate-600 dark:text-gray-300">Subject</th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-slate-600 dark:text-gray-300">Class</th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-slate-600 dark:text-gray-300">Date</th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-slate-600 dark:text-gray-300">Status</th>
-                      <th className="px-3 py-3 text-left text-sm font-medium text-slate-600 dark:text-gray-300">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y dark:divide-slate-700">
-                    {rows.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-3 py-8 text-center text-slate-500 dark:text-gray-400">
-                          No exams found for your class and subject assignments
-                        </td>
-                      </tr>
-                    ) : (
-                      rows.map((row) => (
-                        <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
-                          <td className="px-3 py-3">
-                            <div className="font-medium dark:text-white">{row.title}</div>
-                            <div className="text-xs text-slate-500 dark:text-gray-400">{row.type}</div>
-                          </td>
-                          <td className="px-3 py-3 text-slate-600 dark:text-gray-300">{row.subject}</td>
-                          <td className="px-3 py-3 text-slate-600 dark:text-gray-300">
-                            {row.className}
-                            {row.sectionName ? ` - ${row.sectionName}` : ""}
-                          </td>
-                          <td className="px-3 py-3 text-slate-600 dark:text-gray-300">
-                            {row.startDate ? new Date(row.startDate).toLocaleDateString() : "TBD"}
-                          </td>
-                          <td className="px-3 py-3">{getStatusBadge(getExamStatus(row))}</td>
-                          <td className="px-3 py-3">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => goToGradeEntry(row)}
-                            >
-                              Grade Entry
-                            </Button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              {/* Exams */}
+              {filteredRows.length === 0 ? (
+                <div className="text-center py-8 md:py-12">
+                  <BookOpen className="h-8 w-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                  <p className="text-sm text-slate-500 dark:text-gray-400">No exams found</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredRows.map((row) => {
+                    const status = getExamStatus(row);
+                    const config = getStatusConfig(status);
+                    const StatusIcon = config.icon;
+                    return (
+                      <div
+                        key={row.id}
+                        className="group flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 md:p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                        onClick={() => goToGradeEntry(row)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold dark:text-white truncate">{row.title}</h3>
+                            <Badge className={`text-[10px] px-1.5 py-0 h-5 ${config.color}`}>
+                              <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
+                              {config.label}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-slate-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <BookOpen className="h-3 w-3" />
+                              {row.subject}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <GraduationCap className="h-3 w-3" />
+                              {row.className}{row.sectionName ? ` - ${row.sectionName}` : ""}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {row.startDate ? new Date(row.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBD"}
+                            </span>
+                            <span>{row.totalMarks} marks</span>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs px-2 self-start sm:self-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            goToGradeEntry(row);
+                          }}
+                        >
+                          Grade
+                          <ChevronRight className="h-3 w-3 ml-0.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
+        {/* Sidebar */}
+        <div className="space-y-3">
+          {/* Quick Actions / Notifications */}
           <Card className="dark:bg-slate-800 dark:border-slate-700">
-            <CardHeader className="dark:bg-slate-800/50">
-              <CardTitle className="flex items-center gap-2 dark:text-white">
-                <Calendar className="h-5 w-5" />
-                Upcoming Exams
+            <CardHeader className="pb-2 px-4 pt-3">
+              <CardTitle className="text-sm dark:text-white flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-[#e35336]" />
+                Alerts
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {upcomingExams.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-gray-400">No upcoming exams</p>
+            <CardContent className="px-4 pb-3 space-y-2">
+              {notifications.length === 0 ? (
+                <p className="text-xs text-slate-500 dark:text-gray-400 py-2">No alerts</p>
               ) : (
-                upcomingExams.map((exam) => (
-                  <div key={exam.id} className="p-3 border rounded-lg space-y-1 dark:border-slate-600 dark:bg-slate-700/30">
-                    <div className="font-medium text-sm dark:text-white">{exam.title}</div>
-                    <div className="text-xs text-slate-500 dark:text-gray-400">
-                      {exam.subject} • {exam.className}
-                    </div>
-                      <div className="text-xs text-slate-400 dark:text-gray-500">
-                      {exam.startDate ? new Date(exam.startDate).toLocaleDateString() : "TBD"}
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      {getStatusBadge(getExamStatus(exam))}
-                      <Button size="sm" variant="outline" onClick={() => goToGradeEntry(exam)}>
-                        Grade Entry
-                      </Button>
-                    </div>
+                notifications.map((notif, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex items-start gap-2 p-2 rounded-md text-xs ${
+                      notif.type === "error"
+                        ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                        : "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400"
+                    }`}
+                  >
+                    {notif.type === "error" ? (
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    ) : (
+                      <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    )}
+                    <span>{notif.message}</span>
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
 
+          {/* Upcoming Exams */}
           <Card className="dark:bg-slate-800 dark:border-slate-700">
-            <CardHeader className="dark:bg-slate-800/50">
-              <CardTitle className="flex items-center gap-2 dark:text-white">
-                <AlertCircle className="h-5 w-5" />
-                Notifications
+            <CardHeader className="pb-2 px-4 pt-3">
+              <CardTitle className="text-sm dark:text-white flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-blue-500" />
+                Upcoming ({upcomingExams.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {notifications.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-gray-400">No notifications</p>
+            <CardContent className="px-4 pb-3 space-y-2">
+              {upcomingExams.length === 0 ? (
+                <p className="text-xs text-slate-500 dark:text-gray-400 py-2">No upcoming exams</p>
               ) : (
-                notifications.map((notif, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3 rounded-lg text-sm ${
-                      notif.type === "error"
-                        ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
-                        : "bg-yellow-50 text-yellow-700 border border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800"
-                    }`}
-                  >
-                    {notif.message}
-                  </div>
-                ))
+                upcomingExams.map((exam) => {
+                  const daysLeft = exam.startDate
+                    ? Math.ceil((new Date(exam.startDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                    : null;
+                  return (
+                    <div
+                      key={exam.id}
+                      className="p-2 rounded-md border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                      onClick={() => goToGradeEntry(exam)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium dark:text-white truncate pr-2">{exam.title}</p>
+                        {daysLeft !== null && daysLeft >= 0 && (
+                          <Badge variant="outline" className="text-[10px] h-5 shrink-0 dark:border-slate-600">
+                            {daysLeft === 0 ? "Today" : `${daysLeft}d`}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">
+                        {exam.subject} • {exam.className}
+                      </p>
+                      <p className="text-[10px] text-slate-400 dark:text-gray-500">
+                        {exam.startDate ? new Date(exam.startDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "TBD"}
+                      </p>
+                    </div>
+                  );
+                })
               )}
             </CardContent>
           </Card>

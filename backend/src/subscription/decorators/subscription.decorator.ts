@@ -27,7 +27,6 @@ export const STANDARD_FEATURES = [
   'MESSAGING',
   'ANNOUNCEMENTS',
   'DOCUMENT_MANAGEMENT',
-  'TRANSPORT_MANAGEMENT',
 ];
 
 export const ULTIMATE_FEATURES = [
@@ -59,7 +58,6 @@ export const FEATURE_DESCRIPTIONS: Record<string, string> = {
   MESSAGING: 'Internal messaging system',
   ANNOUNCEMENTS: 'School announcements',
   DOCUMENT_MANAGEMENT: 'Document upload and management',
-  TRANSPORT_MANAGEMENT: 'Transport and route management',
   ADVANCED_ANALYTICS: 'Advanced analytics and insights',
   CUSTOM_BRANDING: 'Custom branding and white-labeling',
   API_ACCESS: 'API access for integrations',

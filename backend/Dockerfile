@@ -17,7 +17,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including dev)
-RUN npm install --prefer-offline --no-audit --loglevel=error
+RUN npm install --legacy-peer-deps --prefer-offline --no-audit --loglevel=error
 
 # Copy source code
 COPY . .
@@ -34,7 +34,7 @@ EXPOSE 5000 9229
 
 # Use entrypoint instead of direct CMD
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:watch"]
+CMD ["npm", "run", "start:dev"]
 
 # ===========================================
 # PRODUCTION BUILD
@@ -54,7 +54,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies
-RUN npm ci --prefer-offline --no-audit --loglevel=error
+RUN npm ci --legacy-peer-deps --prefer-offline --no-audit --loglevel=error
 
 # Copy source code
 COPY . .
@@ -75,19 +75,20 @@ FROM node:20-slim AS production
 # Install dependencies for Prisma
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl3 \
+    adduser \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 --ingroup nodejs nodejs
 
 # Copy package files
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --omit=dev
+RUN npm ci --legacy-peer-deps --omit=dev
 
 # Copy Prisma schema and generated client
 COPY prisma ./prisma/

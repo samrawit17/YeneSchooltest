@@ -9,7 +9,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install --prefer-offline --no-audit --loglevel=error || npm install --no-audit --loglevel=error
+RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts
 
 # Development stage
 FROM node:20-alpine AS development
@@ -35,7 +35,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install --prefer-offline --no-audit --loglevel=error || npm install --no-audit --loglevel=error
+RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts
 
 COPY . .
 
@@ -46,12 +46,12 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 --ingroup nodejs nodejs
 
 COPY package*.json ./
 
-RUN npm ci --omit=dev --prefer-offline --no-audit --loglevel=error
+RUN npm install --legacy-peer-deps --omit=dev --no-audit --loglevel=error --ignore-scripts
 
 COPY --from=builder /app/.next/standalone ./.next/standalone
 COPY --from=builder /app/.next/static ./.next/static

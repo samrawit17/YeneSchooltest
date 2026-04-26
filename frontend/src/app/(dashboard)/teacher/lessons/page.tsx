@@ -18,7 +18,8 @@ import {
   Edit,
   Trash2,
   Eye,
-  Clock
+  Clock,
+  CheckCircle
 } from "lucide-react";
 
 // Shadcn/ui Components
@@ -140,6 +141,8 @@ const TeacherLessonsPage = () => {
     return matchesSearch && matchesStatus && matchesClass;
   });
 
+  const classOptions = [...new Set(lessons.map((l) => getClassName(l.className)))].filter(Boolean);
+
   const stats = {
     total: lessons.length,
     draft: lessons.filter(l => l.status === 'DRAFT').length,
@@ -259,10 +262,9 @@ const TeacherLessonsPage = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Classes</SelectItem>
-            <SelectItem value="5A">5A</SelectItem>
-            <SelectItem value="5B">5B</SelectItem>
-            <SelectItem value="6A">6A</SelectItem>
-            <SelectItem value="6B">6B</SelectItem>
+            {classOptions.map((cls) => (
+              <SelectItem key={cls} value={cls}>{cls}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -352,14 +354,5 @@ const TeacherLessonsPage = () => {
     </div>
   );
 };
-
-// Helper function for Badge component
-function CheckCircle({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <polyline points="20 6 9 17 4 12"></polyline>
-    </svg>
-  );
-}
 
 export default TeacherLessonsPage;

@@ -217,13 +217,17 @@ export class AdminDashboardService {
       }
 
       if (attendanceRate < 80) {
-        alerts.push({
-          message: `Today's attendance rate is ${attendanceRate}%`,
-          type: 'warning',
-          priority: 'medium',
-          actionUrl: '/attendance',
-          actionLabel: 'View Details',
-        });
+        const todayDay = today.getDay();
+        const isWeekend = todayDay === 0 || todayDay === 6;
+        if (!isWeekend) {
+          alerts.push({
+            message: `Today's attendance rate is ${attendanceRate}%`,
+            type: 'warning',
+            priority: 'medium',
+            actionUrl: '/attendance',
+            actionLabel: 'View Details',
+          });
+        }
       }
 
       if (upcomingExams > 0) {
@@ -284,12 +288,16 @@ export class AdminDashboardService {
         },
       ];
 
-      // Get attendance data for the last 7 days
+      // Get attendance data for the last 7 days (excluding weekends)
       const last7Days: Date[] = [];
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        last7Days.push(date);
+        // Skip weekends (Sunday = 0, Saturday = 6)
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          last7Days.push(date);
+        }
       }
 
       const attendanceByDay = await Promise.all(

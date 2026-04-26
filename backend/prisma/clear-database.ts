@@ -182,11 +182,11 @@ async function main() {
     console.log('  ✓ Department cleared');
 
     // Transport
-    await prisma.transportAssignment.deleteMany();
-    console.log('  ✓ TransportAssignment cleared');
+    // await prisma.transportAssignment.deleteMany();
+    // console.log('  ✓ TransportAssignment cleared');
     
-    await prisma.transport.deleteMany();
-    console.log('  ✓ Transport cleared');
+    // await prisma.transport.deleteMany();
+    // console.log('  ✓ Transport cleared');
 
     // Documents
     await prisma.document.deleteMany();

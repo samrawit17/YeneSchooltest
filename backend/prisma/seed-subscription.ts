@@ -33,7 +33,6 @@ const defaultPlans = [
       'MESSAGING',
       'ANNOUNCEMENTS',
       'DOCUMENT_MANAGEMENT',
-      'TRANSPORT_MANAGEMENT',
     ],
   },
   {
@@ -55,7 +54,6 @@ const defaultPlans = [
       'MESSAGING',
       'ANNOUNCEMENTS',
       'DOCUMENT_MANAGEMENT',
-      'TRANSPORT_MANAGEMENT',
       'ADVANCED_ANALYTICS',
       'CUSTOM_BRANDING',
       'API_ACCESS',
@@ -92,6 +90,22 @@ async function main() {
         data: plan,
       });
     }
+  }
+
+  console.log('Assigning ULTIMATE plan to school-001...');
+  const ultimatePlan = await prisma.plan.findUnique({
+    where: { tier: PlanTier.ULTIMATE },
+  });
+
+  if (ultimatePlan) {
+    await prisma.school.update({
+      where: { id: 'school-001' },
+      data: {
+        planId: ultimatePlan.id,
+        planAssignedAt: new Date(),
+      },
+    });
+    console.log('Successfully assigned ULTIMATE plan to school-001.');
   }
 
   console.log('Subscription seed completed successfully!');

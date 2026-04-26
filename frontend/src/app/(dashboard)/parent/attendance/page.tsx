@@ -1,22 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { attendanceAPI, studentsAPI } from "@/lib/api";
+import { attendanceAPI, parentsAPI } from "@/lib/api";
 import { Calendar, User, AlertCircle } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { academicYearsAPI } from "@/lib/api";
+
+const AttendanceSkeleton = () => (
+  <div className="p-6 space-y-6">
+    <Skeleton className="h-8 w-48" />
+    <Skeleton className="h-12 w-full max-w-md" />
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i}>
+          <CardContent className="p-6">
+            <Skeleton className="h-4 w-24 mb-2" />
+            <Skeleton className="h-8 w-16" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+    <Card>
+      <CardContent className="p-6">
+        <Skeleton className="h-6 w-32 mb-4" />
+        <Skeleton className="h-64 w-full" />
+      </CardContent>
+    </Card>
+  </div>
+);
 
 interface Child {
   id: string;
+  profileId: string;
   userId: string;
   name: string;
   studentCode: string;
@@ -41,85 +61,164 @@ interface AttendanceRecord {
   };
 }
 
+interface AttendanceSummary {
+  totalDays: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused?: number;
+  attendancePercentage: number;
+}
+
 export default function ParentAttendancePage() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const router = useRouter();
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-  const [summary, setSummary] = useState<any>(null);
+  const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(
-    new Date().toISOString().slice(0, 7)
-  );
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; startDate?: string; endDate?: string }[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/sign-in");
-    } else if (!isLoading && isAuthenticated && user?.role !== "PARENT") {
-      router.push("/");
-    }
-  }, [isAuthenticated, isLoading, user, router]);
-
-  useEffect(() => {
-    if (isAuthenticated && user?.role === "PARENT") {
-      fetchChildren();
-    }
-  }, [isAuthenticated, user]);
-
-  useEffect(() => {
-    if (selectedChild) {
-      fetchAttendance();
-    }
-  }, [selectedChild, selectedMonth]);
-
-  const fetchChildren = async () => {
+  const fetchChildren = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await studentsAPI.getChildren();
-      const childrenData = response.data?.children || response.data || [];
-      setChildren(Array.isArray(childrenData) ? childrenData : []);
-      if (Array.isArray(childrenData) && childrenData.length > 0) {
-        setSelectedChild(childrenData[0]);
+      const [childrenRes, yearsRes] = await Promise.allSettled([
+        parentsAPI.getChildren(),
+        academicYearsAPI.getAll(),
+      ]);
+
+      const childrenData = childrenRes.status === "fulfilled" 
+        ? (childrenRes.value.data?.children || childrenRes.value.data || [])
+        : [];
+      const normalizedChildren = Array.isArray(childrenData)
+        ? childrenData.map((child: any) => ({
+            id: child.studentId || child.id,
+            profileId: child.studentId || child.id,
+            userId: child.student?.userId || child.student?.user?.id || child.student?.id || child.userId,
+            name: child.name || child.student?.user?.name || child.studentName || "Unknown",
+            studentCode: child.student?.studentCode || child.studentCode || "",
+            className: child.className || child.student?.className || "N/A",
+            section: child.section || child.student?.section || "N/A",
+          }))
+        : [];
+      setChildren(normalizedChildren);
+      if (normalizedChildren.length > 0) {
+        setSelectedChild(normalizedChildren[0]);
+      }
+
+      let years: { id: string; name: string; startDate?: string; endDate?: string }[] = [];
+      if (yearsRes.status === "fulfilled") {
+        years = Array.isArray(yearsRes.value.data)
+          ? yearsRes.value.data
+          : (yearsRes.value.data?.data || []);
+        setAcademicYears(years);
+      }
+
+      try {
+        const activeYearRes = await academicYearsAPI.getActive();
+        const activeYear = activeYearRes.data?.data || activeYearRes.data;
+        if (activeYear?.id) {
+          setSelectedYear(activeYear.id);
+          if (!activeYear.startDate) {
+            const currentDate = new Date();
+            const defaultMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+            setSelectedMonth(defaultMonth);
+          } else {
+            const startDate = new Date(activeYear.startDate);
+            const currentDate = new Date();
+            const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+            const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+            setSelectedMonth(currentMonth >= startMonth ? currentMonth : startMonth);
+          }
+          if (years.length === 0) {
+            setAcademicYears([{ id: activeYear.id, name: activeYear.name, startDate: activeYear.startDate, endDate: activeYear.endDate }]);
+          }
+        } else if (years.length > 0) {
+          setSelectedYear(years[0].id);
+          const currentDate = new Date();
+          const defaultMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+          setSelectedMonth(defaultMonth);
+        }
+      } catch (error) {
+        const currentDate = new Date();
+        const defaultMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+        setSelectedMonth(defaultMonth);
       }
     } catch (err: any) {
       console.error("Error fetching children:", err);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
-  };
+  }, []);
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     if (!selectedChild) return;
 
     try {
       setLoading(true);
-      // Use userId (User.id) instead of id (StudentProfile.id) for attendance
-      const response = await attendanceAPI.getStudentAttendance(selectedChild.userId, {
-        month: selectedMonth,
-      });
-      const attendanceData = response.data?.records || response.data || [];
+      const studentIdentifier = selectedChild.userId || selectedChild.profileId || selectedChild.id;
+      
+      const params: { month?: string; academicYear?: string; startDate?: string; endDate?: string } = {};
+      
+      if (selectedYear && academicYears.length > 0) {
+        const yearConfig = academicYears.find(y => y.id === selectedYear);
+        if (yearConfig?.startDate && yearConfig?.endDate) {
+          const startDate = new Date(yearConfig.startDate);
+          const endDate = new Date(yearConfig.endDate);
+          params.startDate = startDate.toISOString().split('T')[0];
+          params.endDate = endDate.toISOString().split('T')[0];
+        } else {
+          params.academicYear = selectedYear;
+        }
+      }
+      
+      if (selectedMonth) {
+        params.month = selectedMonth;
+      }
+      
+      const response = await attendanceAPI.getStudentAttendance(studentIdentifier, params);
+      const attendanceData = response.data?.records || [];
       setAttendance(Array.isArray(attendanceData) ? attendanceData : []);
-      
-      const records = Array.isArray(attendanceData) ? attendanceData : [];
-      const total = records.length;
-      const present = records.filter((r: any) => r.status === "PRESENT").length;
-      const absent = records.filter((r: any) => r.status === "ABSENT").length;
-      const late = records.filter((r: any) => r.status === "LATE").length;
-      
-      setSummary({
-        total,
-        present,
-        absent,
-        late,
-        attendancePercentage: total > 0 ? Math.round((present / total) * 100) : 0,
-      });
+      setSummary(
+        response.data?.summary || {
+          totalDays: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          attendancePercentage: 0,
+        },
+      );
     } catch (err: any) {
       console.error("Error fetching attendance:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedChild, selectedYear, academicYears]);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/sign-in");
+    } else if (!authLoading && isAuthenticated && user?.role !== "PARENT") {
+      router.push("/");
+    }
+  }, [isAuthenticated, authLoading, user, router]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.role === "PARENT") {
+      fetchChildren();
+    }
+  }, [fetchChildren, isAuthenticated, user]);
+
+  useEffect(() => {
+    if (selectedChild) {
+      fetchAttendance();
+    }
+  }, [fetchAttendance, selectedChild]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -130,13 +229,12 @@ export default function ParentAttendancePage() {
     }
   };
 
-  if (isLoading || !isAuthenticated || user?.role !== "PARENT") {
-    return (
-      <div className="p-6">
-        <Skeleton className="h-8 w-48 mb-6" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
+  if (authLoading || !isAuthenticated || user?.role !== "PARENT") {
+    return <AttendanceSkeleton />;
+  }
+
+  if (initialLoad || loading) {
+    return <AttendanceSkeleton />;
   }
 
   return (
@@ -148,17 +246,17 @@ export default function ParentAttendancePage() {
           <p className="text-gray-500 mt-1">View your children's attendance records</p>
         </div>
 
-        {/* Child and Month Selector */}
+        {/* Child, Year and Month Selector */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Child</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Child</label>
             <select
               value={selectedChild?.id || ""}
               onChange={(e) => {
                 const child = children.find((c) => c.id === e.target.value);
                 setSelectedChild(child || null);
               }}
-              className="border rounded-lg px-4 py-2 w-full"
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 w-full bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
             >
               {children.map((child) => (
                 <option key={child.id} value={child.id}>
@@ -168,14 +266,47 @@ export default function ParentAttendancePage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
-            <input
-              type="month"
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Academic Year</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+                const year = academicYears.find(y => y.id === e.target.value);
+                if (year?.startDate) {
+                  const startDate = new Date(year.startDate);
+                  const currentDate = new Date();
+                  const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+                  const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+                  setSelectedMonth(currentMonth >= startMonth ? currentMonth : startMonth);
+                }
+              }}
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
+            >
+              {academicYears.map((year) => (
+                <option key={year.id} value={year.id}>
+                  {year.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Month</label>
+            <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="border rounded-lg px-4 py-2"
-              max={new Date().toISOString().slice(0, 7)}
-            />
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
+            >
+              {Array.from({ length: 12 }, (_, i) => {
+                const month = new Date(2024, i, 1);
+                const monthValue = `${month.getFullYear()}-${String(i + 1).padStart(2, '0')}`;
+                const monthLabel = month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                return (
+                  <option key={monthValue} value={monthValue}>
+                    {monthLabel}
+                  </option>
+                );
+              })}
+            </select>
           </div>
         </div>
 
@@ -184,34 +315,34 @@ export default function ParentAttendancePage() {
             {/* Summary Cards */}
             {summary && (
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                <Card>
+                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
-                    <p className="text-sm text-gray-500">Attendance</p>
-                    <p className="text-2xl font-bold text-blue-600">{summary.attendancePercentage}%</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Attendance</p>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{summary.attendancePercentage}%</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
-                    <p className="text-sm text-gray-500">Total Days</p>
-                    <p className="text-2xl font-bold">{summary.total}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Total Days</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{summary.totalDays}</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
-                    <p className="text-sm text-gray-500">Present</p>
-                    <p className="text-2xl font-bold text-green-600">{summary.present}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Present</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{summary.present}</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
-                    <p className="text-sm text-gray-500">Absent</p>
-                    <p className="text-2xl font-bold text-red-600">{summary.absent}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Absent</p>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{summary.absent}</p>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
-                    <p className="text-sm text-gray-500">Late</p>
-                    <p className="text-2xl font-bold text-yellow-600">{summary.late}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Late</p>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{summary.late}</p>
                   </CardContent>
                 </Card>
               </div>

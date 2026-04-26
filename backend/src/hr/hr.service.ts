@@ -638,7 +638,6 @@ export class HrService {
         employeeRole: (dto.position as Role) || 'TEACHER',
         grade: undefined, // Not used in basic creation
         baseSalary: dto.baseSalary,
-        transportAllowance: dto.transportAllowance || 0,
         housingAllowance: dto.houseAllowance || 0,
         foodAllowance: 0,
         medicalAllowance: dto.medicalAllowance || 0,
@@ -674,7 +673,6 @@ export class HrService {
       where: { id: structureId },
       data: {
         baseSalary: dto.baseSalary,
-        transportAllowance: dto.transportAllowance || 0,
         housingAllowance: dto.houseAllowance || 0,
         medicalAllowance: dto.medicalAllowance || 0,
         otherAllowances: dto.otherAllowances || 0,

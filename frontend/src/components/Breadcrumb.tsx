@@ -82,7 +82,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   // Academic Years Module
   "academic-years": { label: "Academic Years", href: "/list/academic-years", parent: "dashboard" },
 
-  "attendance": { label: "Attendance", href: "/list/attendance", parent: "dashboard" },
+  "attendance": { label: "Attendance", href: "/admin/attendance", parent: "dashboard" },
   "attendance-admin": { label: "Attendance", href: "/admin/attendance", parent: "admin" },
   "attendance-teacher": { label: "My Attendance", href: "/teacher/attendance", parent: "teacher" },
   "attendance-student": { label: "My Attendance", href: "/student/attendance", parent: "student" },
@@ -132,7 +132,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   "announcements-detail": { label: "Announcement Detail", parent: "announcements" },
 
   // Events Module
-  "events": { label: "Events", href: "/list/events", parent: "dashboard" },
+  "events": { label: "Calendar", href: "/list/calendar", parent: "dashboard" },
 
   // Exams Module
   "exams": { label: "Exams", href: "/list/exams", parent: "dashboard" },
@@ -219,9 +219,6 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   "superadmin-subscription": { label: "Subscriptions", href: "/superadmin/subscription", parent: "superadmin" },
   "superadmin-subscription-plans": { label: "Plans", href: "/superadmin/subscription/plans", parent: "superadmin-subscription" },
   "superadmin-subscription-schools": { label: "Schools", href: "/superadmin/subscription/schools", parent: "superadmin-subscription" },
-
-  // Analytics
-  "analytics": { label: "Analytics", href: "/analytics", parent: "dashboard" },
 };
 
 // ============================================
@@ -270,7 +267,7 @@ function shouldHideBreadcrumb(pathname: string): boolean {
   const isAdminSubRoute = adminSubRoutes.some(route => pathname.startsWith(route)) || pathname === "/admin/timetable";
 
   // Routes that should show breadcrumbs even if they're single-segment
-  const showBreadcrumbRoutes = ["/analytics", "/settings", "/profile", "/notifications", "/messages", "/platform-settings"];
+  const showBreadcrumbRoutes = ["/settings", "/profile", "/notifications", "/messages", "/platform-settings"];
   const shouldShowBreadcrumb = showBreadcrumbRoutes.some(route => pathname.startsWith(route));
 
   // Check exact matches
@@ -321,7 +318,6 @@ function getParentRouteKey(routeKey: string): string | undefined {
 const NON_LINK_PATHS = [
   "/list",
   "/settings",
-  "/analytics",
   "/enrollments",
   "/list/schools",
   "/list/schools/:id",
@@ -372,7 +368,7 @@ function getDashboardHref(pathname: string): string {
   // Admin and list paths (for admin/registrar users viewing admin pages)
   if (pathname.startsWith('/admin/') || pathname === '/admin' ||
     pathname.startsWith('/list/') || pathname.startsWith('/settings') ||
-    pathname.startsWith('/analytics') || pathname.startsWith('/enrollments')) {
+    pathname.startsWith('/enrollments')) {
     return '/admin';
   }
 

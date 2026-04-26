@@ -26,10 +26,12 @@ self.addEventListener('push', function (event) {
         body: data.body,
         icon: data.icon || '/avatar.svg',
         badge: data.badge || '/avatar.svg',
-        vibrate: [100, 50, 100],
+        vibrate: data.type === 'SIREN_ALERT' ? [300, 150, 300, 150, 300] : [100, 50, 100],
+        requireInteraction: data.type === 'SIREN_ALERT',
         data: {
           dateOfArrival: Date.now(),
           url: data.url || '/',
+          type: data.type || 'INFO',
         },
       };
 

@@ -309,6 +309,18 @@ export class ParentService {
         user: {
           select: { id: true, name: true, email: true, phone: true, isActive: true },
         },
+        children: {
+          include: {
+            student: {
+              select: {
+                user: {
+                  select: { name: true },
+                },
+                className: true,
+              },
+            },
+          },
+        },
       },
       skip,
       take: limit,

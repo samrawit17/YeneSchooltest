@@ -5,7 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { RbacModule } from './rbac/rbac.module';
-import { PrismaService } from './prisma/prisma.service';
+import { PrismaModule } from './prisma/prisma.module';
 import { SchoolModule } from './school/school.module';
 import { StudentModule } from './student/student.module';
 import { RegistrarModule } from './registrar/registrar.module';
@@ -14,7 +14,6 @@ import { SchoolSettingsModule } from './school-settings/school-settings.module';
 import { ClassModule } from './class/class.module';
 import { SectionModule } from './section/section.module';
 import { AcademicYearModule } from './academic-year/academic-year.module';
-import { TermModule } from './term/term.module';
 import { TimetableSlotModule } from './timetable-slot/timetable-slot.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { ClassSubjectModule } from './class-subject/class-subject.module';
@@ -43,12 +42,15 @@ import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { ReportCardModule } from './report-card/report-card.module';
 import { DisciplineModule } from './discipline/discipline.module';
+import { SirenModule } from './siren/siren.module';
+import { PeriodTimeModule } from './period-time/period-time.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     InfrastructureModule,
+    PrismaModule,
     AuthModule,
     RbacModule,
     SchoolModule,
@@ -59,7 +61,6 @@ import { DisciplineModule } from './discipline/discipline.module';
     ClassModule,
     SectionModule,
     AcademicYearModule,
-    TermModule,
     TimetableSlotModule,
     SubjectsModule,
     ClassSubjectModule,
@@ -87,8 +88,10 @@ import { DisciplineModule } from './discipline/discipline.module';
     SubscriptionModule,
     ReportCardModule,
     DisciplineModule,
+    SirenModule,
+    PeriodTimeModule,
   ],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [AppService],
 })
 export class AppModule {}

@@ -270,7 +270,16 @@ export default function AttendanceManagementPage() {
           // Get terms for the active year
           const terms = await getTermsForYear(activeYear?.id);
           setPeriods(terms);
-          if (terms.length > 0 && terms[0]?.id) {
+          
+          // Use current term from context as default, fallback to first term
+          if (currentTerm?.id) {
+            const termExists = terms.some((t: any) => t.id === currentTerm.id);
+            if (termExists) {
+              setSelectedPeriod(currentTerm.id);
+            } else if (terms.length > 0 && terms[0]?.id) {
+              setSelectedPeriod(terms[0].id);
+            }
+          } else if (terms.length > 0 && terms[0]?.id) {
             setSelectedPeriod(terms[0].id);
           }
         }
@@ -279,7 +288,7 @@ export default function AttendanceManagementPage() {
       }
     };
     fetchAcademicData();
-  }, [currentAcademicYear, getAllAcademicYears, getTermsForYear]);
+  }, [currentAcademicYear, currentTerm, getAllAcademicYears, getTermsForYear]);
 
   // Fetch classes
   useEffect(() => {

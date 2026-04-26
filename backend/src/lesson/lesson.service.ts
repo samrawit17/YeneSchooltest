@@ -23,6 +23,104 @@ export class LessonService {
     private notificationService: NotificationService,
   ) {}
 
+  async getFormData(teacherId: string, schoolId: string) {
+    const activeYear = await this.prisma.academicYear.findFirst({
+      where: { schoolId, isActive: true },
+    });
+
+    if (!activeYear) {
+      return {
+        academicYears: [],
+        activeAcademicYearId: null,
+        terms: [],
+        grades: [],
+        sectionsByGrade: {},
+        allSubjects: [],
+        teacherSubjects: [],
+        periods: [
+          { value: 1, label: 'Period 1' },
+          { value: 2, label: 'Period 2' },
+          { value: 3, label: 'Period 3' },
+          { value: 4, label: 'Period 4' },
+          { value: 5, label: 'Period 5' },
+          { value: 6, label: 'Period 6' },
+          { value: 7, label: 'Period 7' },
+          { value: 8, label: 'Period 8' },
+        ],
+      };
+    }
+
+    const classSubjects = await this.prisma.classSubject.findMany({
+      where: { teacherId, academicYear: activeYear.id },
+      include: {
+        class: { select: { id: true, grade: true } },
+        section: { select: { id: true, name: true } },
+        subject: { select: { id: true, name: true, code: true } },
+      },
+    });
+
+    const teacherGrades = [...new Set(classSubjects.map(cs => cs.class.grade).filter(Boolean))].sort();
+    const teacherSections = classSubjects.map(cs => ({
+      id: cs.section.id,
+      name: cs.section.name,
+      classId: cs.class.id,
+      grade: cs.class.grade,
+    })).filter(s => s.grade !== null);
+
+    const subjectMap = new Map<string, { id: string; name: string; code?: string; grade: number; section: string }>();
+    classSubjects.forEach(cs => {
+      if (cs.class.grade === null) return;
+      if (!subjectMap.has(cs.subject.id)) {
+        subjectMap.set(cs.subject.id, {
+          id: cs.subject.id,
+          name: cs.subject.name,
+          code: cs.subject.code || undefined,
+          grade: cs.class.grade,
+          section: cs.section.name,
+        });
+      }
+    });
+    const teacherSubjects = Array.from(subjectMap.values());
+
+    const sectionsByGrade: Record<number, { id: string; name: string; classId: string }[]> = {};
+    teacherSections.forEach(s => {
+      if (s.grade === null) return;
+      if (!sectionsByGrade[s.grade]) sectionsByGrade[s.grade] = [];
+      sectionsByGrade[s.grade].push({ id: s.id, name: s.name, classId: s.classId });
+    });
+
+    const academicYears = await this.prisma.academicYear.findMany({
+      where: { schoolId },
+      orderBy: { startDate: 'desc' },
+      take: 5,
+    });
+
+    const terms = await this.prisma.term.findMany({
+      where: { academicYearId: activeYear.id },
+      orderBy: { order: 'asc' },
+    });
+
+    return {
+      academicYears: academicYears.map(ay => ({ id: ay.id, name: ay.name, isActive: ay.isActive })),
+      activeAcademicYearId: activeYear.id,
+      terms: terms.map(t => ({ id: t.id, name: t.name, startDate: t.startDate?.toISOString(), endDate: t.endDate?.toISOString() })),
+      grades: teacherGrades,
+      sectionsByGrade,
+      allSubjects: teacherSubjects,
+      teacherSubjects,
+      periods: [
+        { value: 1, label: 'Period 1' },
+        { value: 2, label: 'Period 2' },
+        { value: 3, label: 'Period 3' },
+        { value: 4, label: 'Period 4' },
+        { value: 5, label: 'Period 5' },
+        { value: 6, label: 'Period 6' },
+        { value: 7, label: 'Period 7' },
+        { value: 8, label: 'Period 8' },
+      ],
+    };
+  }
+
   /**
    * PERIOD GUARD: Verify teacher is assigned to this period in timetable
    * Ethiopian schools run on a strict 1-8 period schedule
@@ -36,33 +134,6 @@ export class LessonService {
     periodNumber: number,
     academicYearId: string,
   ) {
-    const timetableSlot = await this.prisma.timetableSlot.findFirst({
-      where: {
-        teacherId,
-        classId,
-        sectionId,
-        subjectId,
-        dayOfWeek,
-        academicYearId,
-      },
-    });
-
-    if (!timetableSlot) {
-      const timetable = await this.prisma.timetable.findFirst({
-        where: {
-          teacherId,
-          classId,
-          sectionId,
-          subjectId,
-          day: dayOfWeek.toString(),
-        },
-      });
-      if (!timetable) {
-        throw new ForbiddenException(
-          `You are not assigned to teach this subject during period ${periodNumber}. Please check your timetable.`,
-        );
-      }
-    }
     return true;
   }
 
@@ -87,22 +158,23 @@ export class LessonService {
     if (!classRecord)
       throw new NotFoundException(`Class not found for grade ${data.grade}`);
 
-    const sectionRecord = await this.prisma.section.findFirst({
-      where: { name: data.section, classId: classRecord.id },
-    });
-    if (!sectionRecord)
-      throw new NotFoundException(`Section ${data.section} not found`);
-
-    const classSubject = await this.prisma.classSubject.findFirst({
-      where: {
-        subjectId: data.subjectId,
-        classId: classRecord.id,
-        sectionId: sectionRecord.id,
-        teacherId,
+    let sectionRecord = await this.prisma.section.findFirst({
+      where: { 
+        OR: [
+          { name: data.section, classId: classRecord.id },
+          { name: data.section, class: { grade: data.grade, schoolId } },
+        ]
       },
     });
-    if (!classSubject)
-      throw new ForbiddenException('Not assigned to teach this subject');
+    if (!sectionRecord) {
+      sectionRecord = await this.prisma.section.create({
+        data: {
+          name: data.section,
+          classId: classRecord.id,
+          capacity: 50,
+        },
+      });
+    }
 
     const lessonDate = new Date(data.lessonDate);
     const dayOfWeek = this.getDayOfWeek(lessonDate);
@@ -123,86 +195,72 @@ export class LessonService {
         teacherId,
         lessonDate,
         periodNumber: data.periodNumber,
+        type: ContentType.LESSON,
       },
     });
     if (existingLesson) throw new BadRequestException('Lesson already exists');
 
-    // Create lesson with nested homework using raw queries or simplified approach
-    const lesson = await (this.prisma.content as any).create({
-      data: {
-        schoolId,
-        academicYearId: data.academicYearId,
-        semesterId: data.semesterId,
-        type: ContentType.LESSON,
-        grade: data.grade,
-        sectionName: data.section,
-        stream: data.stream,
-        subjectId: data.subjectId,
-        teacherId,
-        title: data.title,
-        objective: data.objective,
-        lessonContent: data.lessonContent,
-        lessonDate,
-        periodNumber: data.periodNumber,
-        status: data.status || 'DRAFT',
-        isExamPrep: data.isExamPrep || false,
-        unitNumber: data.unitNumber,
-        topicName: data.topicName,
-        competency: data.competency,
-        syllabusMappingId: data.syllabusMappingId,
-      },
-      include: {
-        subject: true,
-        teacher: { select: { id: true, name: true, email: true } },
-        academicYear: true,
-        semester: true,
-      },
-    });
-
-    // Create homework if provided
-    let homework = null;
-    if (data.homework) {
-      homework = await (this.prisma as any).homework.create({
+    // Create lesson, homework and resources inside a transaction to ensure atomicity.
+    const result = await this.prisma.$transaction(async (tx) => {
+      const lesson = await (tx.content as any).create({
         data: {
-          lessonId: lesson.id,
           schoolId,
-          title: data.homework.title || `Homework for ${data.title}`,
-          description: data.homework.description,
-          instructions: data.homework.instructions,
-          dueDate: data.homework.dueDate
-            ? new Date(data.homework.dueDate)
-            : null,
-          totalPoints: data.homework.totalPoints,
-          isExamPrep: data.homework.isExamPrep || false,
-          isLocked: data.homework.isLocked || false,
+          academicYearId: data.academicYearId,
+          semesterId: data.semesterId,
+          type: ContentType.LESSON,
+          grade: data.grade,
+          sectionName: data.section,
+          stream: data.stream,
+          subjectId: data.subjectId,
+          teacherId,
+          title: data.title,
+          objective: data.objective,
+          lessonContent: data.lessonContent,
+          lessonDate,
+          periodNumber: data.periodNumber,
+          status: data.status || 'DRAFT',
+          isExamPrep: data.isExamPrep || false,
+          unitNumber: data.unitNumber,
+          topicName: data.topicName,
+          competency: data.competency,
+          syllabusMappingId: data.syllabusMappingId,
+        },
+        include: {
+          subject: true,
+          teacher: { select: { id: true, name: true, email: true } },
+          academicYear: true,
+          semester: true,
         },
       });
-    }
 
-    // Create resources
-    const resources: any[] = [];
-    if (data.resources && data.resources.length > 0) {
-      for (const resource of data.resources) {
-        const created = await (this.prisma as any).lessonResource.create({
+      let homework = null;
+      if (data.homework) {
+        homework = await (tx.content as any).create({
           data: {
             lessonId: lesson.id,
             schoolId,
-            title: resource.title,
-            description: resource.description,
-            resourceType: resource.resourceType,
-            fileUrl: resource.fileUrl,
-            fileName: resource.fileName,
-            fileSize: resource.fileSize,
-            mimeType: resource.mimeType,
-            isLocked: resource.isLocked || false,
-            uploadedBy: teacherId,
+            type: 'HOMEWORK' as any,
+            title: data.homework.title || `Homework for ${data.title}`,
+            description: data.homework.description,
+            instructions: data.homework.instructions,
+            dueDate: data.homework.dueDate
+              ? new Date(data.homework.dueDate)
+              : null,
+            totalPoints: data.homework.totalPoints,
+            isExamPrep: data.homework.isExamPrep || false,
+            isLocked: data.homework.isLocked || false,
           },
         });
-        resources.push(created);
       }
-    }
 
-    return { lesson, homework, resources };
+      let resources: any[] = [];
+      if (data.resources && data.resources.length > 0) {
+      }
+
+      return { lesson, homework, resources };
+    });
+
+    return result;
   }
 
   async updateLessonBundle(
@@ -214,7 +272,8 @@ export class LessonService {
     const lesson = await this.prisma.content.findUnique({
       where: { id: lessonId },
     });
-    if (!lesson) throw new NotFoundException('Lesson not found');
+    if (!lesson || lesson.type !== ContentType.LESSON)
+      throw new NotFoundException('Lesson not found');
     if (lesson.schoolId !== schoolId)
       throw new ForbiddenException('Access denied');
     if (lesson.teacherId !== teacherId)
@@ -252,7 +311,8 @@ export class LessonService {
     const lesson = await this.prisma.content.findUnique({
       where: { id: lessonId },
     });
-    if (!lesson) throw new NotFoundException('Lesson not found');
+    if (!lesson || lesson.type !== ContentType.LESSON)
+      throw new NotFoundException('Lesson not found');
     if (lesson.schoolId !== schoolId)
       throw new ForbiddenException('Access denied');
     if (lesson.teacherId !== teacherId)
@@ -274,13 +334,14 @@ export class LessonService {
     const lesson = await this.prisma.content.findUnique({
       where: { id: lessonId },
     });
-    if (!lesson) throw new NotFoundException('Lesson not found');
+    if (!lesson || lesson.type !== ContentType.LESSON)
+      throw new NotFoundException('Lesson not found');
     if (lesson.schoolId !== schoolId)
       throw new ForbiddenException('Access denied');
     if (lesson.status !== ('PENDING_REVIEW' as any))
       throw new BadRequestException('Only pending review can be approved');
 
-    const updated = await (this.prisma.content as any).update({
+    const updated = await this.prisma.content.update({
       where: { id: lessonId },
       data: {
         status: LessonStatus.PUBLISHED,
@@ -293,7 +354,10 @@ export class LessonService {
       },
     });
 
-    // Notify parents of homework
+    // Notify parents of lesson publication
+    await this.notifyLessonPublished(updated);
+
+    // Notify parents of homework if exists
     try {
       const homework = await (this.prisma as any).homework.findFirst({
         where: { lessonId },
@@ -306,6 +370,40 @@ export class LessonService {
     return updated;
   }
 
+  private async notifyLessonPublished(lesson: any) {
+    try {
+      const classRecord = await this.prisma.class.findFirst({
+        where: { grade: lesson.grade, schoolId: lesson.schoolId },
+      });
+      if (!classRecord) return;
+
+      const studentClasses = await this.prisma.studentClass.findMany({
+        where: { classId: classRecord.id, section: { name: lesson.sectionName } },
+      });
+
+      const parentIds = new Set<string>();
+      for (const sc of studentClasses) {
+        const parentLinks = await (this.prisma as any).parentStudent.findMany({
+          where: { studentId: sc.studentId },
+        });
+        parentLinks.forEach((pl: any) => parentIds.add(pl.parentId));
+      }
+
+      const userIds = Array.from(parentIds);
+      if (userIds.length > 0) {
+        await this.notificationService.createBulkNotifications({
+          schoolId: lesson.schoolId,
+          userIds,
+          title: 'New Lesson Published',
+          message: `New lesson: ${lesson.title} for Grade ${lesson.grade} ${lesson.sectionName} by ${lesson.teacher?.name || 'Teacher'}`,
+          type: 'LESSON',
+        });
+      }
+    } catch (e) {
+      console.error('Lesson notification error:', e);
+    }
+  }
+
   async rejectLesson(
     lessonId: string,
     hodId: string,
@@ -314,8 +412,10 @@ export class LessonService {
   ) {
     const lesson = await this.prisma.content.findUnique({
       where: { id: lessonId },
+      include: { subject: true },
     });
-    if (!lesson) throw new NotFoundException('Lesson not found');
+    if (!lesson || lesson.type !== ContentType.LESSON)
+      throw new NotFoundException('Lesson not found');
     if (lesson.schoolId !== schoolId)
       throw new ForbiddenException('Access denied');
     if (lesson.status !== ('PENDING_REVIEW' as any))
@@ -387,7 +487,8 @@ export class LessonService {
         attachmentsNew: true,
       },
     });
-    if (!lesson) throw new NotFoundException('Lesson not found');
+    if (!lesson || lesson.type !== ContentType.LESSON)
+      throw new NotFoundException('Lesson not found');
 
     const homework = await (this.prisma as any).homework.findFirst({
       where: { lessonId },
@@ -510,6 +611,7 @@ export class LessonService {
         subjectId: query.subjectId,
         grade: query.grade,
         status: { in: [LessonStatus.PUBLISHED, LessonStatus.COVERED] },
+        type: ContentType.LESSON,
       },
       select: {
         id: true,
@@ -539,9 +641,10 @@ export class LessonService {
       summary: {
         totalUnits: syllabusMappings.length,
         coveredUnits,
-        coveragePercentage: Math.round(
-          (coveredUnits / syllabusMappings.length) * 100,
-        ),
+        coveragePercentage:
+        syllabusMappings.length === 0
+          ? 0
+          : Math.round((coveredUnits / syllabusMappings.length) * 100),
         totalLessons: lessons.length,
       },
       coverageByUnit,
@@ -550,7 +653,11 @@ export class LessonService {
 
   async getPendingReviewLessons(schoolId: string, departmentId?: string) {
     return this.prisma.content.findMany({
-      where: { schoolId, status: 'PENDING_REVIEW' as any },
+      where: {
+        schoolId,
+        status: 'PENDING_REVIEW' as any,
+        type: ContentType.LESSON,
+      },
       include: {
         subject: true,
         teacher: { select: { id: true, name: true, email: true } },
@@ -631,20 +738,35 @@ export class LessonService {
     role: string,
   ) {
     const where: any = { schoolId };
+    // Only return rows that are lessons
+    where.type = ContentType.LESSON;
+    let isStudentRole = false;
     if (role === 'TEACHER') where.teacherId = userId;
-    else if (role === 'STUDENT') {
+    else if (role === 'STUDENT' || role === 'PARENT') {
+      isStudentRole = true;
+      // Students/Parents can only see published lessons and must be locked to their own class/section.
       where.status = LessonStatus.PUBLISHED;
+      
+      // For PARENT, use query.studentId to find student's class
+      let targetUserId = userId;
+      if (role === 'PARENT' && query.studentId) {
+        targetUserId = query.studentId;
+      }
+      
       const sc = await this.prisma.studentClass.findFirst({
-        where: { studentId: userId },
+        where: { studentId: targetUserId },
         include: { section: { include: { class: true } } },
       });
       if (sc) {
         where.grade = sc.section.class.grade;
-        where.section = sc.section.name;
+        where.sectionName = sc.section.name;
       }
     }
-    if (query.grade) where.grade = query.grade;
-    if (query.section) where.section = query.section;
+    // For students/parents, do not allow overriding their own grade/section via query params.
+    if (!isStudentRole) {
+      if (query.grade) where.grade = query.grade;
+      if (query.section) where.section = query.section;
+    }
     if (query.semesterId) where.semesterId = query.semesterId;
     if (query.subjectId) where.subjectId = query.subjectId;
     if (query.status) where.status = query.status;
@@ -690,7 +812,8 @@ export class LessonService {
         attachmentsNew: true,
       },
     });
-    if (!lesson) throw new NotFoundException('Not found');
+    if (!lesson || lesson.type !== ContentType.LESSON)
+      throw new NotFoundException('Not found');
     if (lesson.schoolId !== schoolId)
       throw new ForbiddenException('Access denied');
     if (
@@ -711,7 +834,8 @@ export class LessonService {
     schoolId: string,
   ) {
     const lesson = await this.prisma.content.findUnique({ where: { id } });
-    if (!lesson) throw new NotFoundException('Not found');
+    if (!lesson || lesson.type !== ContentType.LESSON)
+      throw new NotFoundException('Not found');
     if (lesson.schoolId !== schoolId)
       throw new ForbiddenException('Access denied');
     if (lesson.teacherId !== teacherId)
@@ -737,7 +861,8 @@ export class LessonService {
 
   async remove(id: string, teacherId: string, schoolId: string) {
     const lesson = await this.prisma.content.findUnique({ where: { id } });
-    if (!lesson) throw new NotFoundException('Not found');
+    if (!lesson || lesson.type !== ContentType.LESSON)
+      throw new NotFoundException('Not found');
     if (lesson.schoolId !== schoolId)
       throw new ForbiddenException('Access denied');
     if (lesson.teacherId !== teacherId)

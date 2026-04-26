@@ -131,11 +131,6 @@ export class CreateSalaryStructureDto {
   @IsNumber()
   @Min(0)
   @IsOptional()
-  transportAllowance?: number = 0;
-
-  @IsNumber()
-  @Min(0)
-  @IsOptional()
   medicalAllowance?: number = 0;
 
   @IsNumber()

@@ -17,7 +17,6 @@ interface SalaryStructure {
   employeeRole: string;
   grade?: number;
   baseSalary: number;
-  transportAllowance: number;
   housingAllowance: number;
   foodAllowance: number;
   medicalAllowance: number;
@@ -36,7 +35,6 @@ export default function SalaryStructurePage() {
     position: 'TEACHER',
     baseSalary: 0,
     houseAllowance: 0,
-    transportAllowance: 0,
     medicalAllowance: 0,
     otherAllowances: 0,
     pensionRate: 0,
@@ -69,7 +67,6 @@ export default function SalaryStructurePage() {
         position: 'TEACHER',
         baseSalary: 0,
         houseAllowance: 0,
-        transportAllowance: 0,
         medicalAllowance: 0,
         otherAllowances: 0,
         pensionRate: 0,
@@ -95,7 +92,7 @@ export default function SalaryStructurePage() {
   };
 
   const calculateTotal = (s: SalaryStructure) => {
-    return s.baseSalary + s.transportAllowance + s.housingAllowance + 
+    return s.baseSalary + s.housingAllowance + 
            s.foodAllowance + s.medicalAllowance + s.otherAllowances;
   };
 
@@ -151,14 +148,6 @@ export default function SalaryStructurePage() {
                     type="number"
                     value={formData.houseAllowance}
                     onChange={(e) => setFormData({ ...formData, houseAllowance: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Transport Allowance</Label>
-                  <Input
-                    type="number"
-                    value={formData.transportAllowance}
-                    onChange={(e) => setFormData({ ...formData, transportAllowance: Number(e.target.value) })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -228,7 +217,6 @@ export default function SalaryStructurePage() {
                   <TableHead>Position</TableHead>
                   <TableHead>Base Salary</TableHead>
                   <TableHead>Housing</TableHead>
-                  <TableHead>Transport</TableHead>
                   <TableHead>Medical</TableHead>
                   <TableHead>Other</TableHead>
                   <TableHead>Tax %</TableHead>
@@ -244,7 +232,6 @@ export default function SalaryStructurePage() {
                     </TableCell>
                     <TableCell>{formatCurrency(structure.baseSalary)}</TableCell>
                     <TableCell>{formatCurrency(structure.housingAllowance)}</TableCell>
-                    <TableCell>{formatCurrency(structure.transportAllowance)}</TableCell>
                     <TableCell>{formatCurrency(structure.medicalAllowance)}</TableCell>
                     <TableCell>{formatCurrency(structure.otherAllowances)}</TableCell>
                     <TableCell>{structure.taxRate}%</TableCell>

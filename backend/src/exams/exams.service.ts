@@ -9,7 +9,7 @@ import {
   CreateExamDto,
   UpdateExamDto,
   BulkExamResultDto,
-  ExamResultEntryDto,
+  GetExamsFilterDto,
 } from './dto/exams.dto';
 import { ExamType, Role } from '@prisma/client';
 
@@ -47,20 +47,23 @@ export class ExamsService {
     });
   }
 
-  async getExams(schoolId: string, query: any) {
-    const { classId, sectionId, subjectId, type } = query;
+  async getExams(schoolId: string, query: GetExamsFilterDto) {
+    const { classId, sectionId, subjectId, type, academicYearId } = query;
     const where: any = { schoolId };
 
     if (classId) where.classId = classId;
     if (sectionId) where.sectionId = sectionId;
     if (subjectId) where.subjectId = subjectId;
     if (type) where.type = type;
+    if (academicYearId) {
+      where.class = { academicYearId };
+    }
 
     return this.prisma.exam.findMany({
       where,
       include: {
         subject: { select: { name: true } },
-        class: { select: { name: true, academicYearId: true } },
+        class: { select: { name: true, grade: true, academicYearId: true } },
         section: { select: { name: true } },
       },
       orderBy: { date: 'desc' },
@@ -72,7 +75,7 @@ export class ExamsService {
       where: { id: examId, schoolId },
       include: {
         subject: { select: { name: true } },
-        class: { select: { name: true } },
+        class: { select: { name: true, grade: true } },
         section: { select: { name: true } },
         results: {
           include: {
@@ -282,13 +285,17 @@ export class ExamsService {
       exam.results.map((r) => [r.studentId, r.id]),
     );
 
-    const operations = results.map((r) => {
+    // Validate ALL results first before building operations
+    for (const r of results) {
       if (r.marks > exam.maxMarks) {
         throw new BadRequestException(
-          `Marks cannot exceed maximum marks (${exam.maxMarks})`,
+          `Marks for student ${r.studentId} exceed max marks (${exam.maxMarks})`,
         );
       }
+    }
 
+    // Build operations after validation
+    const operations = results.map((r) => {
       const existingId = existingResultMap.get(r.studentId);
       if (existingId) {
         return this.prisma.examResult.update({
@@ -404,5 +411,60 @@ export class ExamsService {
       subjects,
       sections,
     };
+  }
+
+  // ==================== PUBLISH RESULTS ====================
+  async publishTermResults(
+    schoolId: string,
+    body: { academicYear: string; termId: string; classId: string },
+  ) {
+    // 1. Verify term belongs to school
+    const term = await this.prisma.term.findFirst({
+      where: { id: body.termId, academicYear: { schoolId } },
+    });
+    if (!term) {
+      throw new NotFoundException('Term not found');
+    }
+
+    // 2. Lock all exams for this term/class
+    const exams = await this.prisma.exam.findMany({
+      where: {
+        schoolId,
+        classId: body.classId,
+      },
+    });
+
+    if (exams.length === 0) {
+      throw new NotFoundException('No exams found for this class');
+    }
+
+    // 3. Update published to true
+    await this.prisma.exam.updateMany({
+      where: {
+        schoolId,
+        classId: body.classId,
+      },
+      data: { published: true },
+    });
+
+    return {
+      success: true,
+      message: `Results published for ${exams.length} exam(s). Grades are now locked.`,
+    };
+  }
+
+  // ==================== PARENT-CHILD VERIFICATION ====================
+  async verifyParentChild(parentId: string, childId: string, schoolId: string) {
+    const link = await this.prisma.parentStudent.findFirst({
+      where: {
+        parentId,
+        studentId: childId,
+        schoolId,
+      },
+    });
+    if (!link) {
+      throw new ForbiddenException('You are not linked to this student');
+    }
+    return link;
   }
 }

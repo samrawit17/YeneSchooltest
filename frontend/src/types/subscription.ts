@@ -101,6 +101,7 @@ export const FEATURE_LIST = [
   { key: 'CUSTOM_INTEGRATIONS', name: 'Custom Integrations', description: 'Third-party integrations', tier: 'ULTIMATE' },
   { key: 'ADVANCED_REPORTING', name: 'Advanced Reporting', description: 'Advanced custom reports', tier: 'ULTIMATE' },
   { key: 'DATA_EXPORT', name: 'Data Export', description: 'Full data export capabilities', tier: 'ULTIMATE' },
+  { key: 'SIREN_ALERT', name: 'Siren Alert System', description: 'Emergency siren management and scheduling', tier: 'ULTIMATE' },
 ];
 
 export const getFeaturesByTier = (tier: PlanTier): typeof FEATURE_LIST => {

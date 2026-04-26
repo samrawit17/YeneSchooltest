@@ -7,10 +7,26 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { SchoolSettingsService } from '../school-settings/school-settings.service';
+import { toEthiopian } from 'ethiopian-calendar-new';
 
 // Curriculum type enum - matches schema.prisma
 type CurriculumType = 'SEMESTER' | 'QUARTER' | 'TERM' | 'CUSTOM';
 type CalendarType = 'GREGORIAN' | 'ETHIOPIAN';
+
+/**
+ * Utility to get Ethiopian year from Gregorian date
+ */
+const getEthiopianYear = (date: Date): number => {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const year = date.getFullYear();
+
+  // Ethiopian New Year is Sep 11 or 12
+  if (month < 9 || (month === 9 && day < 11)) {
+    return year - 8;
+  }
+  return year - 7;
+};
 
 export interface CreateAcademicYearDto {
   name: string; // "2025–2026"
@@ -25,6 +41,8 @@ export interface UpdateAcademicYearDto {
   name?: string;
   startDate?: Date;
   endDate?: Date;
+  curriculumType?: CurriculumType;
+  calendarType?: CalendarType;
 }
 
 export interface UpdateCurriculumTypeDto {
@@ -206,7 +224,7 @@ export class AcademicYearService {
     }
 
     // Get curriculum type from school settings if not provided
-    let finalCurriculumType = curriculumType || 'QUARTER';
+    let finalCurriculumType = curriculumType || 'SEMESTER';
     if (!curriculumType) {
       const schoolSetting = await this.schoolSettingsService.getSetting(
         schoolId,
@@ -217,7 +235,7 @@ export class AcademicYearService {
       }
     }
 
-    // Create academic year with curriculum type
+    // Create academic year with curriculum type and ethiopian year
     const academicYear = await this.prismaService.academicYear.create({
       data: {
         name,
@@ -226,6 +244,7 @@ export class AcademicYearService {
         schoolId,
         curriculumType: finalCurriculumType as any,
         calendarType: calendarType as any,
+        ethiopianYear: getEthiopianYear(new Date(startDate)),
       } as any,
       include: {
         terms: {
@@ -408,14 +427,28 @@ export class AcademicYearService {
       }
     }
 
+    // If curriculumType is being updated, use the specialized method for validation and term regeneration
+    if (
+      updateDto.curriculumType &&
+      updateDto.curriculumType !== academicYear.curriculumType
+    ) {
+      await this.updateCurriculumType(id, {
+        curriculumType: updateDto.curriculumType,
+      });
+    }
+
     return this.prismaService.academicYear.update({
       where: { id },
       data: {
-        ...updateDto,
+        ...(updateDto.name && { name: updateDto.name }),
         ...(updateDto.startDate && {
           startDate: new Date(updateDto.startDate),
+          ethiopianYear: getEthiopianYear(new Date(updateDto.startDate)),
         }),
         ...(updateDto.endDate && { endDate: new Date(updateDto.endDate) }),
+        ...(updateDto.calendarType && {
+          calendarType: updateDto.calendarType as any,
+        }),
       },
       include: {
         terms: {
@@ -532,10 +565,98 @@ export class AcademicYearService {
   }
 
   async deleteAcademicYear(id: string) {
-    await this.getAcademicYearById(id); // Verify exists
+    const academicYear = await this.getAcademicYearById(id);
+
+    // Guard: Check for enrollments, enrollment requests, classes, and grades
+    const [enrollments, enrollmentRequests, classes, grades] =
+      await Promise.all([
+        this.prismaService.enrollment.count({
+          where: {
+            academicYear: academicYear.name,
+            schoolId: academicYear.schoolId,
+          },
+        }),
+        this.prismaService.enrollmentRequest.count({
+          where: { academicYearId: id },
+        }),
+        this.prismaService.class.count({
+          where: { academicYearId: id },
+        }),
+        this.prismaService.subjectGrade.count({
+          where: { term: { academicYearId: id } },
+        }),
+      ]);
+
+    if (
+      enrollments > 0 ||
+      enrollmentRequests > 0 ||
+      classes > 0 ||
+      grades > 0
+    ) {
+      throw new ForbiddenException(
+        'Cannot delete an academic year that has student enrollments, requests, classes, or grades.',
+      );
+    }
 
     return this.prismaService.academicYear.delete({
       where: { id },
+    });
+  }
+
+  async getCurrentTerm(schoolId: string) {
+    const now = new Date();
+
+    const schoolSettings = await this.prismaService.schoolSettings.findUnique({
+      where: { schoolId },
+    });
+
+    const activeYear = schoolSettings?.defaultAcademicYearId
+      ? await this.prismaService.academicYear.findUnique({
+          where: { id: schoolSettings.defaultAcademicYearId },
+        })
+      : await this.prismaService.academicYear.findFirst({
+          where: {
+            schoolId,
+            isActive: true,
+          },
+          orderBy: { startDate: 'desc' },
+        });
+
+    const fallbackYear =
+      activeYear ||
+      (await this.prismaService.academicYear.findFirst({
+        where: { schoolId },
+        orderBy: { startDate: 'desc' },
+      }));
+
+    if (!fallbackYear) {
+      return null;
+    }
+
+    const currentTerm = await this.prismaService.term.findFirst({
+      where: {
+        academicYearId: fallbackYear.id,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      orderBy: { order: 'asc' },
+      include: {
+        academicYear: true,
+      },
+    });
+
+    if (currentTerm) {
+      return currentTerm;
+    }
+
+    return this.prismaService.term.findFirst({
+      where: {
+        academicYearId: fallbackYear.id,
+      },
+      orderBy: { order: 'asc' },
+      include: {
+        academicYear: true,
+      },
     });
   }
 

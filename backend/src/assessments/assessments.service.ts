@@ -8,6 +8,7 @@ import {
   AssessmentScoreStatus,
   AssessmentStatus,
   AssessmentType,
+  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
@@ -15,16 +16,17 @@ import {
   AddAssessmentSubjectsDto,
   CreateAssessmentDto,
   CreateAssessmentSubjectDto,
+  ListAssessmentsFilterDto,
   SaveAssessmentScoresDto,
   UpdateAssessmentWeightsDto,
 } from './dto/assessments.dto';
 
 const DEFAULT_ASSESSMENT_WEIGHTS: Record<AssessmentType, number> = {
-  QUIZ: 15,
-  TEST: 25,
-  MID: 20,
+  QUIZ: 20,
+  TEST: 20,
+  MID: 30,
   FINAL: 30,
-  ATTENDANCE: 10,
+  ATTENDANCE: 0,
 };
 
 @Injectable()
@@ -63,10 +65,10 @@ export class AssessmentsService {
       };
     }
 
-    if (score >= 90) return { gradeLetter: 'A', gradePoint: 4.0 };
-    if (score >= 80) return { gradeLetter: 'B', gradePoint: 3.5 };
-    if (score >= 70) return { gradeLetter: 'C', gradePoint: 3.0 };
-    if (score >= 60) return { gradeLetter: 'D', gradePoint: 2.5 };
+    if (score >= 85) return { gradeLetter: 'A', gradePoint: 4.0 };
+    if (score >= 75) return { gradeLetter: 'B', gradePoint: 3.0 };
+    if (score >= 60) return { gradeLetter: 'C', gradePoint: 2.0 };
+    if (score >= 50) return { gradeLetter: 'D', gradePoint: 1.0 };
     return { gradeLetter: 'F', gradePoint: 0 };
   }
 
@@ -193,7 +195,7 @@ export class AssessmentsService {
       throw new ForbiddenException('Assessment is locked');
     }
 
-    if (
+if (
       role === 'TEACHER' &&
       (assessment.createdBy !== userId ||
         ![AssessmentType.QUIZ, AssessmentType.TEST].some(
@@ -447,58 +449,96 @@ export class AssessmentsService {
     actorId: string,
     role: string,
   ) {
-    const created: Array<
-      ReturnType<typeof this.prisma.assessmentSubject.create>
-    > = [];
+    const subjectIds = subjects.map((s) => s.subjectId);
+    const classIds = subjects.map((s) => s.classId);
+    const sectionIds = subjects.filter((s) => s.sectionId).map((s) => s.sectionId!);
+
+    const [subjectsFound, classesFound] = await Promise.all([
+      this.prisma.subject.findMany({
+        where: { id: { in: subjectIds } },
+        select: { id: true },
+      }),
+      this.prisma.class.findMany({
+        where: { id: { in: classIds } },
+        select: { id: true, gradeId: true },
+      }),
+    ]);
+
+    const subjectSet = new Set(subjectsFound.map((s) => s.id));
+    const classMap = new Map(classesFound.map((c) => [c.id, c]));
 
     for (const item of subjects) {
-      const subject = await this.prisma.subject.findUnique({
-        where: { id: item.subjectId },
-        select: { id: true },
-      });
-
-      const classRecord = await this.prisma.class.findUnique({
-        where: { id: item.classId },
-        select: { id: true, gradeId: true },
-      });
-
-      if (!subject) throw new NotFoundException('Subject not found');
-      if (!classRecord) throw new NotFoundException('Class not found');
-
-      if (item.sectionId) {
-        const section = await this.prisma.section.findFirst({
-          where: { id: item.sectionId, classId: item.classId },
-          select: { id: true },
-        });
-        if (!section) {
-          throw new NotFoundException('Section not found for class');
-        }
+      if (!subjectSet.has(item.subjectId)) {
+        throw new NotFoundException('Subject not found');
       }
+      const classRecord = classMap.get(item.classId);
+      if (!classRecord) {
+        throw new NotFoundException('Class not found');
+      }
+    }
 
-      const teacherId =
-        role === 'TEACHER'
-          ? await this.resolveTeacherAssignment(actorId, academicYearId, item)
-          : item.teacherId;
+    let sectionsFound: { id: string; classId: string }[] = [];
+    if (sectionIds.length > 0) {
+      sectionsFound = await this.prisma.section.findMany({
+        where: { id: { in: sectionIds } },
+        select: { id: true, classId: true },
+      });
+    }
+    const sectionMap = new Map(sectionsFound.map((s) => [s.id, s]));
 
-      created.push(
-        this.prisma.assessmentSubject.create({
+    const classNamesMap = new Map<string, string>();
+    const subjectNamesMap = new Map<string, string>();
+
+    if (role === 'TEACHER') {
+      for (const item of subjects) {
+        await this.resolveTeacherAssignment(actorId, academicYearId, item);
+      }
+    }
+
+    const [subjectsWithNames, classesWithNames] = await Promise.all([
+      this.prisma.subject.findMany({
+        where: { id: { in: subjectIds } },
+        select: { id: true, name: true },
+      }),
+      this.prisma.class.findMany({
+        where: { id: { in: classIds } },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    for (const s of subjectsWithNames) {
+      subjectNamesMap.set(s.id, s.name);
+    }
+    for (const c of classesWithNames) {
+      classNamesMap.set(c.id, c.name);
+    }
+
+    const createdRecords = await this.prisma.$transaction(
+      subjects.map((item) => {
+        const classRecord = classMap.get(item.classId)!;
+        return this.prisma.assessmentSubject.create({
           data: {
             assessmentId,
             subjectId: item.subjectId,
             classId: item.classId,
             sectionId: item.sectionId,
             gradeLevelId: item.gradeLevelId ?? classRecord.gradeId ?? undefined,
-            teacherId,
+            teacherId: role === 'TEACHER' ? actorId : item.teacherId,
             maxScore: item.maxScore,
             passMark: item.passMark,
           },
-        }),
-      );
-    }
+        });
+      })
+    );
 
-    await this.prisma.$transaction(created);
-
-    return created;
+    return createdRecords.map((c) => ({
+      id: c.id,
+      classId: c.classId,
+      subjectId: c.subjectId,
+      teacherId: c.teacherId,
+      className: classNamesMap.get(c.classId) ?? 'Unknown Class',
+      subjectName: subjectNamesMap.get(c.subjectId) ?? 'Unknown Subject',
+    }));
   }
 
   async createAssessment(
@@ -541,21 +581,17 @@ export class AssessmentsService {
         role,
       );
 
-      // Get unique teacher IDs and send notifications
       const teacherMap = new Map<string, { className: string; subjectName: string }>();
-      for (const item of dto.subjects) {
+      for (const item of createdSubjects) {
         const teacherId = item.teacherId;
         if (teacherId && !teacherMap.has(teacherId)) {
-          const classRec = await this.prisma.class.findUnique({ where: { id: item.classId }, select: { name: true } });
-          const subjectRec = await this.prisma.subject.findUnique({ where: { id: item.subjectId }, select: { name: true } });
-          teacherMap.set(teacherId, { 
-            className: classRec?.name || 'Unknown Class', 
-            subjectName: subjectRec?.name || 'Unknown Subject' 
+          teacherMap.set(teacherId, {
+            className: item.className,
+            subjectName: item.subjectName,
           });
         }
       }
 
-      // Send notifications to all assigned teachers
       for (const [teacherId, data] of teacherMap) {
         await this.notificationService.notifyAssessmentCreated(
           schoolId,
@@ -593,21 +629,17 @@ export class AssessmentsService {
       role,
     );
 
-    // Get unique teacher IDs and send notifications
     const teacherMap = new Map<string, { className: string; subjectName: string }>();
-    for (const item of dto.subjects) {
+    for (const item of createdSubjects) {
       const teacherId = item.teacherId;
       if (teacherId && !teacherMap.has(teacherId)) {
-        const classRec = await this.prisma.class.findUnique({ where: { id: item.classId }, select: { name: true } });
-        const subjectRec = await this.prisma.subject.findUnique({ where: { id: item.subjectId }, select: { name: true } });
-        teacherMap.set(teacherId, { 
-          className: classRec?.name || 'Unknown Class', 
-          subjectName: subjectRec?.name || 'Unknown Subject' 
+        teacherMap.set(teacherId, {
+          className: item.className,
+          subjectName: item.subjectName,
         });
       }
     }
 
-    // Send notifications to all newly assigned teachers
     for (const [teacherId, data] of teacherMap) {
       await this.notificationService.notifyAssessmentCreated(
         schoolId,
@@ -648,8 +680,8 @@ export class AssessmentsService {
     return assessment;
   }
 
-  async listAssessments(schoolId: string, query: Record<string, string>) {
-    const where: any = { schoolId };
+  async listAssessments(schoolId: string, query: ListAssessmentsFilterDto) {
+    const where: Prisma.AssessmentWhereInput = { schoolId };
     if (query.academicYearId) where.academicYearId = query.academicYearId;
     if (query.termId) where.termId = query.termId;
     if (query.type) where.type = query.type;
@@ -676,7 +708,7 @@ export class AssessmentsService {
   async getTeacherAssessments(
     teacherId: string,
     schoolId: string,
-    query: Record<string, string>,
+    query: ListAssessmentsFilterDto,
   ) {
     const assignments = await this.prisma.teacherSubjectAssignment.findMany({
       where: { teacherId, schoolId, isActive: true },
@@ -879,16 +911,6 @@ export class AssessmentsService {
       orderBy: { createdAt: 'asc' },
     });
 
-    // Debug: Check studentClass records
-    const allRecords = await this.prisma.studentClass.findMany({
-      where: { classId: assessmentSubject.classId },
-      take: 10,
-      include: {
-        student: { select: { name: true } },
-        section: { select: { name: true } },
-      },
-    });
-
     const existing = await this.prisma.studentAssessmentScore.findMany({
       where: { assessmentSubjectId },
     });
@@ -1013,9 +1035,11 @@ export class AssessmentsService {
       ),
     );
 
-    for (const row of dto.scores) {
-      await this.syncSubjectGradeForStudent(assessmentSubjectId, row.studentId);
-    }
+    await Promise.all(
+      dto.scores.map((row) =>
+        this.syncSubjectGradeForStudent(assessmentSubjectId, row.studentId)
+      )
+    );
 
     return this.getScoreEntry(userId, role, schoolId, assessmentSubjectId);
   }
@@ -1039,50 +1063,67 @@ export class AssessmentsService {
     });
   }
 
-  async getMissingMarks(schoolId: string, query: Record<string, string>) {
-    const assessmentSubjects = await this.prisma.assessmentSubject.findMany({
-      where: {
-        assessment: {
-          schoolId,
-          ...(query.academicYearId
-            ? { academicYearId: query.academicYearId }
-            : {}),
-          ...(query.termId ? { termId: query.termId } : {}),
-        },
-      },
-      include: {
-        assessment: true,
-        subject: { select: { name: true } },
-        class: { select: { name: true } },
-        section: { select: { name: true } },
-        _count: { select: { scores: true } },
-      },
-      orderBy: [{ assessment: { startDate: 'desc' } }],
-    });
+  async getMissingMarks(schoolId: string, query: ListAssessmentsFilterDto & { page?: number; limit?: number }) {
+    const page = query.page || 1;
+    const limit = query.limit || 20;
+    const skip = (page - 1) * limit;
 
-    const results: Array<{
-      assessmentSubjectId: string;
-      assessmentId: string;
-      title: string;
-      type: AssessmentType;
-      subject: string;
-      className: string;
-      sectionName: string | null;
-      expectedEntries: number;
-      enteredEntries: number;
-      missingEntries: number;
-      isLocked: boolean;
-    }> = [];
-    for (const item of assessmentSubjects) {
-      const studentCount = await this.prisma.studentClass.count({
+    const [assessmentSubjects, total] = await Promise.all([
+      this.prisma.assessmentSubject.findMany({
         where: {
-          academicYear: item.assessment.academicYearId,
-          classId: item.classId,
-          ...(item.sectionId ? { sectionId: item.sectionId } : {}),
+          assessment: {
+            schoolId,
+            ...(query.academicYearId
+              ? { academicYearId: query.academicYearId }
+              : {}),
+            ...(query.termId ? { termId: query.termId } : {}),
+          },
         },
-      });
+        include: {
+          assessment: true,
+          subject: { select: { name: true } },
+          class: { select: { name: true } },
+          section: { select: { name: true } },
+          _count: { select: { scores: true } },
+        },
+        orderBy: [{ assessment: { startDate: 'desc' } }],
+        skip,
+        take: limit,
+      }),
+      this.prisma.assessmentSubject.count({
+        where: {
+          assessment: {
+            schoolId,
+            ...(query.academicYearId
+              ? { academicYearId: query.academicYearId }
+              : {}),
+            ...(query.termId ? { termId: query.termId } : {}),
+          },
+        },
+      }),
+    ]);
 
-      results.push({
+    const studentCounts = await this.prisma.studentClass.groupBy({
+      by: ['classId', 'sectionId'],
+      where: {
+        schoolId,
+        ...(query.academicYearId
+          ? { academicYear: query.academicYearId }
+          : {}),
+      },
+      _count: { studentId: true },
+    });
+    const countMap = new Map(
+      studentCounts.map((r) => [
+        `${r.classId}:${r.sectionId ?? 'null'}`,
+        r._count.studentId,
+      ])
+    );
+
+    const data = assessmentSubjects.map((item) => {
+      const studentCount =
+        countMap.get(`${item.classId}:${item.sectionId ?? 'null'}`) ?? 0;
+      return {
         assessmentSubjectId: item.id,
         assessmentId: item.assessmentId,
         title: item.assessment.title,
@@ -1094,10 +1135,16 @@ export class AssessmentsService {
         enteredEntries: item._count.scores,
         missingEntries: Math.max(studentCount - item._count.scores, 0),
         isLocked: item.assessment.status === AssessmentStatus.LOCKED,
-      });
-    }
+      };
+    });
 
-    return results;
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getWeights(schoolId: string) {

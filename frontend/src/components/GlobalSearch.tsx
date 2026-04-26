@@ -143,7 +143,7 @@ const typeLabels: Record<string, string> = {
     exam: "Exams",
     lesson: "Lessons",
     announcement: "Announcements",
-    event: "Events",
+    event: "Calendar",
     class: "Classes",
     section: "Sections",
     subject: "Subjects",
@@ -170,6 +170,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     const router = useRouter();
     const inputRef = useRef<HTMLInputElement>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
 
     // Needed for portal to work
@@ -209,7 +210,11 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     // Handle click outside to close dropdown
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            const clickedInsideWrapper = wrapperRef.current?.contains(target);
+            const clickedInsideDropdown = dropdownRef.current?.contains(target);
+
+            if (!clickedInsideWrapper && !clickedInsideDropdown) {
                 setOpen(false);
             }
         };
@@ -334,7 +339,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         { key: 'grades', icon: <BarChart3 className="h-3 w-3" />, label: 'Grades' },
         { key: 'attendance', icon: <Clock className="h-3 w-3" />, label: 'Attendance' },
         { key: 'announcements', icon: <Megaphone className="h-3 w-3" />, label: 'Announcements' },
-        { key: 'events', icon: <Calendar className="h-3 w-3" />, label: 'Events' },
+        { key: 'events', icon: <Calendar className="h-3 w-3" />, label: 'Calendar' },
         { key: 'payments', icon: <CreditCard className="h-3 w-3" />, label: 'Payments' },
         { key: 'messages', icon: <MessageSquare className="h-3 w-3" />, label: 'Messages' },
         { key: 'finance', icon: <DollarSign className="h-3 w-3" />, label: 'Finance' },
@@ -400,7 +405,11 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                 </div>
 
                 {open && mounted && createPortal(
-                    <div className="fixed left-0 right-0 mx-auto w-full max-w-2xl z-[9999] bg-white dark:bg-[#111827] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200" style={{ top: '60px' }}>
+                    <div
+                        ref={dropdownRef}
+                        className="fixed left-0 right-0 mx-auto w-full max-w-2xl z-[9999] bg-white dark:bg-[#111827] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200"
+                        style={{ top: '60px' }}
+                    >
                         <CommandList className="max-h-[60vh] overflow-y-auto">
                             {/* Empty state - show quick links and search hints */}
                             {!query && (

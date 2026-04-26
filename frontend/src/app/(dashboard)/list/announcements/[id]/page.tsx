@@ -21,8 +21,7 @@ import {
   CheckCircle,
   Eye,
   Bell,
-  Send,
-  MessageSquare
+  Send
 } from "lucide-react";
 import Link from "next/link";
 import { format, parseISO, isAfter, isBefore } from "date-fns";
@@ -30,7 +29,6 @@ import { formatDateByCalendarType, formatDateTimeByCalendarType } from "@/lib/ca
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Select, 
@@ -59,11 +57,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'REGISTRAR';
-  const [comment, setComment] = useState("");
   const [hasRead, setHasRead] = useState(false);
-  const [comments, setComments] = useState<{ id: string; userName: string; content: string; createdAt: string }[]>([
-    { id: "1", userName: "Parent User", content: "Thank you for the update. Will this affect the upcoming exams?", createdAt: "2024-01-15T09:30:00Z" }
-  ]);
 
   const { data: announcement, isLoading } = useQuery({
     queryKey: ["announcement", id],
@@ -128,21 +122,6 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
     showToast.success("Marked as read");
   };
 
-  const handlePostComment = () => {
-    if (!comment.trim()) return;
-    
-    const newComment = {
-      id: Date.now().toString(),
-      userName: user?.name || "Anonymous",
-      content: comment.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    
-    setComments([newComment, ...comments]);
-    setComment("");
-    showToast.success("Comment posted");
-  };
-
   // Loading state with skeletons matching the exact structure
   if (isLoading) {
     return (
@@ -169,7 +148,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
               {/* Main Content */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Announcement Card Skeleton */}
-                <div className="bg-white rounded-lg border border-[#E2E8F0] p-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-center gap-2">
                       <Skeleton className="h-6 w-16 rounded-full" />
@@ -203,7 +182,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
                 </div>
 
                 {/* Comments Section Skeleton */}
-                <div className="bg-white rounded-lg border border-[#E2E8F0] p-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <Skeleton className="h-5 w-5" />
                     <Skeleton className="h-6 w-32" />
@@ -216,7 +195,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
                   </div>
                   <div className="space-y-4">
                     {[1, 2].map((i) => (
-                      <div key={i} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div key={i} className="flex gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <Skeleton className="h-10 w-10 rounded-full" />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -235,7 +214,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
               {/* Sidebar Skeleton */}
               <div className="space-y-6">
                 {/* Quick Info Skeleton */}
-                <div className="bg-white rounded-lg border border-[#E2E8F0] p-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
                   <Skeleton className="h-5 w-24 mb-4" />
                   <div className="space-y-4">
                     <div>
@@ -264,7 +243,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
                 </div>
 
                 {/* Related Actions Skeleton */}
-                <div className="bg-white rounded-lg border border-[#E2E8F0] p-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
                   <Skeleton className="h-5 w-16 mb-4" />
                   <div className="space-y-2">
                     <Skeleton className="h-9 w-full" />
@@ -281,10 +260,10 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
 
   if (!announcement) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-        <Bell className="w-16 h-16 text-gray-300 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Announcement not found</h2>
-        <p className="text-gray-500 mb-4">The announcement you're looking for doesn't exist or has been deleted.</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center bg-gray-50 dark:bg-gray-900">
+        <Bell className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Announcement not found</h2>
+        <p className="text-gray-500 dark:text-gray-400 mb-4">The announcement you're looking for doesn't exist or has been deleted.</p>
         <Link href="/list/announcements">
           <Button className="bg-[#e35336] hover:bg-[#1e3a8a]/90">
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -298,34 +277,34 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
   const statusInfo = getStatusBadge(announcement);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-900">
       {/* Main Content - Full Width */}
       <div className="w-full">
         {/* Header */}
-        <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-6 py-4">
+        <div className="bg-white dark:bg-gray-900 border-b border-[#E2E8F0] dark:border-gray-700 px-4 md:px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link 
                 href="/list/announcements" 
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
                 <span className="hidden sm:inline">Back</span>
               </Link>
               <div className="h-6 w-px bg-gray-300" />
-              <h1 className="text-xl font-semibold text-gray-900">Announcement Details</h1>
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Announcement Details</h1>
             </div>
             
             {isAdmin && (
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="border-[#e35336] text-[#e35336]">
+                <Button variant="outline" size="sm" className="border-[#e35336] text-[#e35336] dark:border-[#e35336] dark:text-[#e35336]">
                   <Edit2 className="w-4 h-4 mr-1" />
                   Edit
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="text-red-600 border-red-600 hover:bg-red-50"
+                  className="text-red-600 border-red-600 hover:bg-red-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-950"
                   onClick={() => deleteMutation.mutate()}
                   disabled={deleteMutation.isPending}
                 >
@@ -347,7 +326,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Announcement Card */}
-              <div className="bg-white rounded-lg border border-[#E2E8F0] p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -357,7 +336,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusInfo.className}`}>
                       {statusInfo.label}
                     </span>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-50 text-gray-700 border-gray-200">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600">
                       <Users className="w-3 h-3" />
                       {getAudienceBadge(announcement.visibleTo)}
                     </span>
@@ -370,7 +349,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
                 </h1>
 
                 {/* Meta Info */}
-                <div className="flex items-center gap-4 text-sm text-gray-500 mb-6 pb-6 border-b border-[#E2E8F0]">
+                <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
                   <span className="flex items-center gap-1">
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={(announcement.createdBy as any)?.avatarUrl || ''} />
@@ -392,70 +371,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
 
                 {/* Content */}
                 <div className="prose prose-sm max-w-none">
-                  <p className="text-gray-700 whitespace-pre-wrap">{announcement.content}</p>
-                </div>
-
-                {/* Mark as Read Button */}
-                {!hasRead && (
-                  <div className="mt-6 pt-6 border-t border-[#E2E8F0]">
-                    <Button 
-                      onClick={handleMarkAsRead}
-                      className="bg-[#e35336] hover:bg-[#1e3a8a]/90"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      Mark as Read
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Comments Section */}
-              <div className="bg-white rounded-lg border border-[#E2E8F0] p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" />
-                  Comments ({comments.length})
-                </h2>
-
-                {/* Add Comment */}
-                <div className="mb-6">
-                  <Textarea
-                    placeholder="Write a comment..."
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    rows={3}
-                    className="mb-2"
-                  />
-                  <div className="flex justify-end">
-                    <Button 
-                      onClick={handlePostComment}
-                      disabled={!comment.trim()}
-                      className="bg-[#e35336] hover:bg-[#1e3a8a]/90"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Post Comment
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Comments List */}
-                <div className="space-y-4">
-                  {comments.map((c) => (
-                    <div key={c.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
-                      <Avatar>
-                        <AvatarImage src={c.userName.charAt(0)} />
-                        <AvatarFallback>{c.userName.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-gray-900">{c.userName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDateTimeByCalendarType(c.createdAt, user?.calendarType || 'ETHIOPIAN')}
-                          </span>
-                        </div>
-                        <p className="text-gray-700">{c.content}</p>
-                      </div>
-                    </div>
-                  ))}
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{announcement.content}</p>
                 </div>
               </div>
             </div>
@@ -463,27 +379,27 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Quick Info */}
-              <div className="bg-white rounded-lg border border-[#E2E8F0] p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Quick Info</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Quick Info</h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs text-gray-500 uppercase tracking-wide">Priority</label>
+                    <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Priority</label>
                     <p className={`mt-1 inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border ${getPriorityColor(announcement.priority)}`}>
                       {announcement.priority === 'HIGH' ? 'Urgent' : announcement.priority === 'MEDIUM' ? 'Important' : 'Normal'}
                     </p>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 uppercase tracking-wide">Status</label>
+                    <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</label>
                     <p className={`mt-1 inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium border ${statusInfo.className}`}>
                       {statusInfo.label}
                     </p>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 uppercase tracking-wide">Audience</label>
-                    <p className="mt-1 text-gray-900">{getAudienceBadge(announcement.visibleTo)}</p>
+                    <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Audience</label>
+                    <p className="mt-1 text-gray-900 dark:text-white">{getAudienceBadge(announcement.visibleTo)}</p>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 uppercase tracking-wide">Created By</label>
+                    <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Created By</label>
                     <div className="mt-1 flex items-center gap-2">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={(announcement.createdBy as any)?.avatarUrl || ''} />
@@ -492,8 +408,8 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{announcement.createdBy?.name || "Unknown"}</p>
-                        <p className="text-xs text-gray-500">{announcement.createdBy?.email}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{announcement.createdBy?.name || "Unknown"}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{announcement.createdBy?.email}</p>
                       </div>
                     </div>
                   </div>
@@ -501,14 +417,14 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
               </div>
 
               {/* Related Actions */}
-              <div className="bg-white rounded-lg border border-[#E2E8F0] p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Actions</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Actions</h3>
                 <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button variant="outline" className="w-full justify-start dark:border-gray-600 dark:text-gray-300">
                     <Download className="w-4 h-4 mr-2" />
                     Download as PDF
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button variant="outline" className="w-full justify-start dark:border-gray-600 dark:text-gray-300">
                     <Bell className="w-4 h-4 mr-2" />
                     Get Notifications
                   </Button>

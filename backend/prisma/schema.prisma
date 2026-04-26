@@ -76,7 +76,6 @@ model School {
   teacherSubjectAssignments  TeacherSubjectAssignment[]
   timetables                 Timetable[]
   timetableSlots             TimetableSlot[]
-  transports                 Transport[]
   users                      User[]
   schoolSettings             SchoolSetting[]
   DiscountPolicy             DiscountPolicy[]
@@ -84,6 +83,10 @@ model School {
   contents                   Content[]
   contentResources           ContentResource[]
   DisciplineIncident         DisciplineIncident[]
+  periodTimes                PeriodTime[]
+  sirenSchedules             SirenSchedule[]
+  sirenEvents                SirenEvent[]
+  sirenHardwareConfig        SirenHardwareConfig?
 }
 
 model PlatformSetting {
@@ -148,7 +151,7 @@ model SchoolSettings {
   schoolId              String       @unique
   calendarType          CalendarType @default(GREGORIAN)
   defaultAcademicYearId String?
-  assessmentTypes      Json?        // Custom assessment types config per school
+  assessmentTypes       Json? // Custom assessment types config per school
 
   school              School        @relation(map: "schoolId_fk_2", fields: [schoolId], references: [id], onDelete: Cascade)
   defaultAcademicYear AcademicYear? @relation("DefaultAcademicYear", fields: [defaultAcademicYearId], references: [id])
@@ -251,14 +254,14 @@ model User {
   teacherAssignments          TeacherSubjectAssignment[]
   timetables                  Timetable[]
   timetableSlots              TimetableSlot[]
-  transportAssignments        TransportAssignment?
   school                      School?                    @relation(map: "schoolId_fk_3", fields: [schoolId], references: [id])
-  userPermissions             UserPermission[]
-  contents                    Content[]                  @relation("ContentTeacher")
-  createdContents             Content[]                  @relation("ContentCreatedBy")
-  contentSubmissions          ContentSubmission[]
-  gradedContentSubmissions    ContentSubmission[]        @relation("GradedByUser")
-  DisciplineIncident          DisciplineIncident[]
+
+  userPermissions          UserPermission[]
+  contents                 Content[]            @relation("ContentTeacher")
+  createdContents          Content[]            @relation("ContentCreatedBy")
+  contentSubmissions       ContentSubmission[]
+  gradedContentSubmissions ContentSubmission[]  @relation("GradedByUser")
+  DisciplineIncident       DisciplineIncident[]
 
   @@index([email])
   @@index([username])
@@ -570,6 +573,7 @@ model Section {
   capacity               Int
   roomNumber             String?
   homeroomTeacherId      String?
+  isExamRoom             Boolean                    @default(false)
   attendances            Attendance[]
   classSubjects          ClassSubject[]
   assessmentSubjects     AssessmentSubject[]
@@ -656,6 +660,7 @@ model Exam {
   maxMarks     Float
   weightage    Float             @default(1)
   description  String?
+  published    Boolean           @default(false)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   class        Class             @relation(map: "classId_fk_34", fields: [classId], references: [id])
@@ -1199,23 +1204,22 @@ model PayrollItem {
 }
 
 model SalaryStructure {
-  id                 String    @id @default(cuid())
-  schoolId           String
-  employeeRole       Role
-  grade              Int?
-  baseSalary         Float
-  transportAllowance Float     @default(0)
-  housingAllowance   Float     @default(0)
-  foodAllowance      Float     @default(0)
-  medicalAllowance   Float     @default(0)
-  otherAllowances    Float     @default(0)
-  taxRate            Float     @default(0)
-  pensionRate        Float     @default(0)
-  effectiveFrom      DateTime
-  effectiveTo        DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  school             School    @relation(map: "schoolId_fk_91", fields: [schoolId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  schoolId         String
+  employeeRole     Role
+  grade            Int?
+  baseSalary       Float
+  housingAllowance Float     @default(0)
+  foodAllowance    Float     @default(0)
+  medicalAllowance Float     @default(0)
+  otherAllowances  Float     @default(0)
+  taxRate          Float     @default(0)
+  pensionRate      Float     @default(0)
+  effectiveFrom    DateTime
+  effectiveTo      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  school           School    @relation(map: "schoolId_fk_91", fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, employeeRole, grade, effectiveFrom])
   @@index([schoolId])
@@ -1714,6 +1718,70 @@ model TimetableSlot {
   @@index([subjectId], map: "TimetableSlot_subjectId_fkey")
 }
 
+model PeriodTime {
+  id           String   @id @default(cuid())
+  schoolId     String
+  periodNumber Int
+  startTime    String
+  endTime      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, periodNumber])
+  @@index([schoolId])
+}
+
+model SirenSchedule {
+  id         String   @id @default(cuid())
+  schoolId   String
+  name       String
+  type       String
+  ringTime   String
+  daysOfWeek Int[]
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, isActive])
+  @@index([schoolId, ringTime])
+}
+
+model SirenEvent {
+  id           String   @id @default(cuid())
+  schoolId     String
+  type         String
+  triggerType  String
+  periodNumber Int?
+  scheduleId   String?
+  firedAt      DateTime @default(now())
+  webhookSent  Boolean  @default(false)
+  pushSent     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, firedAt])
+  @@index([schoolId, createdAt])
+}
+
+model SirenHardwareConfig {
+  id         String   @id @default(cuid())
+  schoolId   String   @unique
+  webhookUrl String
+  isEnabled  Boolean  @default(false)
+  timeout    Int      @default(5000)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
 model Document {
   id          String   @id @default(cuid())
   ownerId     String
@@ -1732,39 +1800,6 @@ model Document {
 
   @@index([ownerId, type])
   @@index([schoolId, category])
-}
-
-model Transport {
-  id          String                @id @default(cuid())
-  schoolId    String
-  vehicleNo   String
-  driver      String
-  driverPhone String?
-  capacity    Int
-  route       String
-  startTime   DateTime?
-  endTime     DateTime?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  school      School                @relation(map: "schoolId_fk_148", fields: [schoolId], references: [id], onDelete: Cascade)
-  assignments TransportAssignment[]
-
-  @@unique([schoolId, vehicleNo])
-}
-
-model TransportAssignment {
-  id          String    @id @default(cuid())
-  transportId String
-  studentId   String    @unique
-  pickupPoint String?
-  dropPoint   String?
-  fare        Float?
-  assignedAt  DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  student     User      @relation(map: "studentId_fk_149", fields: [studentId], references: [id], onDelete: Cascade)
-  transport   Transport @relation(map: "transportId_fk_150", fields: [transportId], references: [id], onDelete: Cascade)
-
-  @@index([transportId])
 }
 
 model SchoolEvent {
@@ -2196,20 +2231,20 @@ enum SeatingMode {
 }
 
 model ExamSeatingPlan {
-  id           String      @id @default(cuid())
-  examId       String?
-  examType     String      @default("MID_TERM")
-  schoolId     String
-  mode         SeatingMode
-  fromGrade    Int
-  toGrade      Int
-  examCapacity          Int         @default(30)
-  shuffle               Boolean     @default(true)
-  useScoreThresholdFilter Boolean   @default(false)
-  scoreThreshold        Int         @default(0)
-  createdBy             String
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id                      String      @id @default(cuid())
+  examId                  String?
+  examType                String      @default("MID_TERM")
+  schoolId                String
+  mode                    SeatingMode
+  fromGrade               Int
+  toGrade                 Int
+  examCapacity            Int         @default(30)
+  shuffle                 Boolean     @default(true)
+  useScoreThresholdFilter Boolean     @default(false)
+  scoreThreshold          Int         @default(0)
+  createdBy               String
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
 
   exam        Exam?                   @relation(map: "examId_fk_164", fields: [examId], references: [id], onDelete: Cascade)
   school      School                  @relation(map: "schoolId_fk_165", fields: [schoolId], references: [id], onDelete: Cascade)

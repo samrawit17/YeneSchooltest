@@ -18,6 +18,7 @@ import {
   CreateExamDto,
   UpdateExamDto,
   BulkExamResultDto,
+  GetExamsFilterDto,
 } from './dto/exams.dto';
 import { Role } from '../auth/types/role.enum';
 
@@ -43,10 +44,96 @@ export class ExamsController {
 
   @Get()
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.REGISTRAR)
-  async getExams(@Request() req: AuthRequest, @Query() query: any) {
+  async getExams(@Request() req: AuthRequest, @Query() query: GetExamsFilterDto) {
     return this.examsService.getExams(req.user.schoolId, query);
   }
 
+  // ==================== TEACHER ENDPOINTS (static routes before :id) ====================
+  @Get('teacher/me')
+  @Roles(Role.TEACHER)
+  async getTeacherExams(
+    @Request() req: AuthRequest,
+    @Query('academicYearId') academicYearId?: string,
+    @Query('termId') termId?: string,
+  ) {
+    return this.examsService.getTeacherExams(req.user.id, req.user.schoolId, {
+      academicYearId,
+      termId,
+    });
+  }
+
+  // ==================== STUDENT ENDPOINTS (static routes before :id) ====================
+  @Get('student/upcoming')
+  @Roles(Role.STUDENT)
+  async getMyUpcomingExams(@Request() req: AuthRequest) {
+    return this.examsService.getStudentExams(req.user.id, req.user.schoolId);
+  }
+
+  @Get('student/results')
+  @Roles(Role.STUDENT)
+  async getMyResults(@Request() req: AuthRequest) {
+    return this.examsService.getStudentResults(req.user.id, req.user.schoolId);
+  }
+
+  // ==================== PARENT ENDPOINTS (static routes before :id) ====================
+  @Get('parent/child/:childId/upcoming')
+  @Roles(Role.PARENT)
+  async getChildUpcomingExams(
+    @Request() req: AuthRequest,
+    @Param('childId') childId: string,
+  ) {
+    await this.examsService.verifyParentChild(req.user.id, childId, req.user.schoolId);
+    return this.examsService.getStudentExams(childId, req.user.schoolId);
+  }
+
+  @Get('parent/child/:childId/results')
+  @Roles(Role.PARENT)
+  async getChildResults(
+    @Request() req: AuthRequest,
+    @Param('childId') childId: string,
+  ) {
+    await this.examsService.verifyParentChild(req.user.id, childId, req.user.schoolId);
+    return this.examsService.getStudentResults(childId, req.user.schoolId);
+  }
+
+  // ==================== FORM DATA ENDPOINTS (static routes before :id) ====================
+  @Get('form-data/assessment')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  async getAssessmentFormData(
+    @Request() req: AuthRequest,
+    @Query() query: any,
+  ) {
+    return this.examsService.getFormData(
+      req.user.schoolId,
+      query.academicYearId,
+    );
+  }
+
+  @Post('publish')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  async publishTermResults(
+    @Request() req: AuthRequest,
+    @Body() body: { academicYear: string; termId: string; classId: string },
+  ) {
+    return this.examsService.publishTermResults(req.user.schoolId, body);
+  }
+
+  @Post(':id/results')
+  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  async enterExamResults(
+    @Request() req: AuthRequest,
+    @Param('id') examId: string,
+    @Body() dto: BulkExamResultDto,
+  ) {
+    return this.examsService.enterExamResults(
+      req.user.id,
+      req.user.schoolId,
+      examId,
+      dto,
+    );
+  }
+
+  // ==================== PARAMETERIZED ROUTES (after static ones) ====================
   @Get(':id')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER, Role.STUDENT, Role.PARENT)
   async getExamById(@Request() req: AuthRequest, @Param('id') id: string) {
@@ -67,95 +154,5 @@ export class ExamsController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   async deleteExam(@Request() req: AuthRequest, @Param('id') id: string) {
     return this.examsService.deleteExam(req.user.schoolId, id);
-  }
-
-  @Post('publish')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  async publishTermResults(
-    @Request() req: AuthRequest,
-    @Body() body: { academicYear: string; termId: string; classId: string },
-  ) {
-    // In a real application, this would lock grades, generate report cards,
-    // and use the NotificationService to email/push to students & parents.
-    // Here we just return success acknowledging the notification trigger.
-    return {
-      success: true,
-      message: 'Results published successfully and notifications sent.',
-    };
-  }
-
-  // ==================== TEACHER ENDPOINTS ====================
-  @Get('teacher/me')
-  @Roles(Role.TEACHER)
-  async getTeacherExams(
-    @Request() req: AuthRequest,
-    @Query('academicYearId') academicYearId?: string,
-    @Query('termId') termId?: string,
-  ) {
-    return this.examsService.getTeacherExams(req.user.id, req.user.schoolId, {
-      academicYearId,
-      termId,
-    });
-  }
-
-  @Post(':id/results')
-  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
-  async enterExamResults(
-    @Request() req: AuthRequest,
-    @Param('id') examId: string,
-    @Body() dto: BulkExamResultDto,
-  ) {
-    return this.examsService.enterExamResults(
-      req.user.id,
-      req.user.schoolId,
-      examId,
-      dto,
-    );
-  }
-
-  // ==================== STUDENT/PARENT ENDPOINTS ====================
-  @Get('student/upcoming')
-  @Roles(Role.STUDENT)
-  async getMyUpcomingExams(@Request() req: AuthRequest) {
-    return this.examsService.getStudentExams(req.user.id, req.user.schoolId);
-  }
-
-  @Get('student/results')
-  @Roles(Role.STUDENT)
-  async getMyResults(@Request() req: AuthRequest) {
-    return this.examsService.getStudentResults(req.user.id, req.user.schoolId);
-  }
-
-  @Get('parent/child/:childId/upcoming')
-  @Roles(Role.PARENT)
-  async getChildUpcomingExams(
-    @Request() req: AuthRequest,
-    @Param('childId') childId: string,
-  ) {
-    // In a real scenario, we should verify parent-child relationship here
-    return this.examsService.getStudentExams(childId, req.user.schoolId);
-  }
-
-  @Get('parent/child/:childId/results')
-  @Roles(Role.PARENT)
-  async getChildResults(
-    @Request() req: AuthRequest,
-    @Param('childId') childId: string,
-  ) {
-    // Similarly, verifying parent-child relationship
-    return this.examsService.getStudentResults(childId, req.user.schoolId);
-  }
-
-  // ==================== FORM DATA ENDPOINTS ====================
-  @Get('form-data/assessment')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  async getAssessmentFormData(
-    @Request() req: AuthRequest,
-    @Query() query: any,
-  ) {
-    return this.examsService.getFormData(
-      req.user.schoolId,
-      query.academicYearId,
-    );
   }
 }

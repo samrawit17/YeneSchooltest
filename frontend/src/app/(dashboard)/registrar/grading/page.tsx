@@ -76,9 +76,9 @@ export default function RegistrarGradingPage() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [filterLoading, setFilterLoading] = useState(false);
 
-  // Set default status
+  // Set default status to show all (empty = all statuses)
   useEffect(() => {
-    setSelectedStatus("SUBMITTED");
+    setSelectedStatus(""); // Show all by default
   }, []);
 
   // Fetch academic years and terms on mount
@@ -132,10 +132,10 @@ export default function RegistrarGradingPage() {
       const params: any = {
         academicYear: selectedYear,
         termId: selectedTerm,
-        status: selectedStatus,
       };
 
-      if (selectedGrade) params.grade = selectedGrade;
+      if (selectedStatus) params.status = selectedStatus;
+      if (selectedGrade) params.classId = selectedGrade;
       if (selectedSection) params.sectionId = selectedSection;
 
       const res = await gradingAPI.getGradesForReview(params);

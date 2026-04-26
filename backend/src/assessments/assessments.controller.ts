@@ -17,6 +17,7 @@ import { AssessmentsService } from './assessments.service';
 import {
   AddAssessmentSubjectsDto,
   CreateAssessmentDto,
+  ListAssessmentsFilterDto,
   SaveAssessmentScoresDto,
   UpdateAssessmentWeightsDto,
 } from './dto/assessments.dto';
@@ -38,7 +39,7 @@ export class AssessmentsController {
   @Roles(Role.TEACHER)
   async getTeacherAssessments(
     @Request() req: AuthRequest,
-    @Query() query: Record<string, string>,
+    @Query() query: ListAssessmentsFilterDto,
   ) {
     return this.assessmentsService.getTeacherAssessments(
       req.user.id,
@@ -138,7 +139,7 @@ export class AssessmentsController {
   @Roles(Role.REGISTRAR, Role.ADMIN, Role.SUPER_ADMIN)
   async getMissingMarks(
     @Request() req: AuthRequest,
-    @Query() query: Record<string, string>,
+    @Query() query: ListAssessmentsFilterDto,
   ) {
     return this.assessmentsService.getMissingMarks(req.user.schoolId, query);
   }
@@ -176,7 +177,7 @@ export class AssessmentsController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.REGISTRAR)
   async listAssessments(
     @Request() req: AuthRequest,
-    @Query() query: Record<string, string>,
+    @Query() query: ListAssessmentsFilterDto,
   ) {
     return this.assessmentsService.listAssessments(req.user.schoolId, query);
   }

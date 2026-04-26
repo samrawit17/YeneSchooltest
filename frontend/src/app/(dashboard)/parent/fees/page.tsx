@@ -116,7 +116,27 @@ const getPeriodCount = (curriculumType: string): number => {
 
 const ParentFeesPage = () => {
   const [children, setChildren] = useState<Child[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+
+  const FeesSkeleton = () => (
+    <div className="p-6 space-y-6">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <Skeleton className="h-6 w-32" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+            <Skeleton className="h-48 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 
   useEffect(() => {
     const fetchChildren = async () => {
@@ -144,6 +164,7 @@ const ParentFeesPage = () => {
         console.error("Failed to fetch children:", error);
       } finally {
         setLoading(false);
+        setInitialLoad(false);
       }
     };
 
@@ -175,21 +196,8 @@ const ParentFeesPage = () => {
     return feeType.replace(/_ANNUAL$/, "").replace(/_/g, " ");
   };
 
-  if (loading) {
-    return (
-      <div className="p-6">
-        <Skeleton className="h-8 w-48 mb-6" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2].map((i) => (
-            <Card key={i}>
-              <CardContent className="pt-6">
-                <Skeleton className="h-32 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+  if (loading || initialLoad) {
+    return <FeesSkeleton />;
   }
 
   return (
@@ -244,29 +252,25 @@ const ParentFeesPage = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="p-3 bg-slate-100 dark:bg-slate-700 rounded-lg text-center">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Annual Total</p>
-                        <p className="font-bold text-lg text-slate-900 dark:text-white">{formatCurrency(fees.total)}</p>
+                      <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Annual Total</p>
+                        <p className="font-bold text-lg text-gray-900 dark:text-white">{formatCurrency(fees.total)}</p>
                       </div>
-                      <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-center">
-                        <p className="text-xs text-green-600 dark:text-green-400">Total Paid</p>
-                        <p className="font-bold text-lg text-green-600 dark:text-green-400">
+                      <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Total Paid</p>
+                        <p className="font-bold text-lg text-gray-900 dark:text-white">
                           {formatCurrency(fees.paid)}
                         </p>
                       </div>
-                      <div className={`p-3 rounded-lg text-center ${
-                        fees.balance > 0 ? "bg-red-100 dark:bg-red-900/30" : "bg-green-100 dark:bg-green-900/30"
-                      }`}>
-                        <p className={`text-xs ${fees.balance > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>Balance</p>
-                        <p className={`font-bold text-lg ${
-                          fees.balance > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"
-                        }`}>
+                      <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Balance</p>
+                        <p className="font-bold text-lg text-gray-900 dark:text-white">
                           {formatCurrency(fees.balance)}
                         </p>
                       </div>
-                      <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-center">
-                        <p className="text-xs text-blue-600 dark:text-blue-400">Paid</p>
-                        <p className="font-bold text-lg text-blue-600 dark:text-blue-400">
+                      <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Paid</p>
+                        <p className="font-bold text-lg text-gray-900 dark:text-white">
                           {fees.paidPercentage}%
                         </p>
                       </div>
@@ -320,27 +324,13 @@ const ParentFeesPage = () => {
                                     return (
                                       <div
                                         key={periodIdx}
-                                        className={`relative p-3 rounded-lg border-2 ${
-                                          isFullPaid
-                                            ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                                            : hasPayment && !isFullPaid
-                                            ? "border-orange-500 bg-orange-50 dark:bg-orange-900/20"
-                                            : balance > 0
-                                            ? "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20"
-                                            : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                                        }`}
+                                        className="relative p-3 rounded-lg border border-gray-200 dark:border-gray-700"
                                       >
-                                        {isFullPaid && (
-                                          <div className="absolute top-2 right-2">
-                                            <CheckCircle className="w-4 h-4 text-green-600" />
-                                          </div>
-                                        )}
-                                        
-                                        <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                                        <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
                                           {title}
                                         </div>
                                         
-                                        <div className="text-base font-bold text-slate-900 dark:text-white">
+                                        <div className="text-base font-bold text-gray-900 dark:text-white">
                                           {formatCurrency(periodAmount)}
                                         </div>
                                         
@@ -349,15 +339,15 @@ const ParentFeesPage = () => {
                                             Paid
                                           </div>
                                         ) : hasPayment && !isFullPaid ? (
-                                          <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             Paid: {formatCurrency(paid)} | Due: {formatCurrency(balance)}
                                           </div>
                                         ) : balance > 0 ? (
-                                          <div className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             Due: {formatCurrency(balance)}
                                           </div>
                                         ) : (
-                                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             Due
                                           </div>
                                         )}
@@ -372,11 +362,11 @@ const ParentFeesPage = () => {
                                 </div>
                               </div>
 
-                              <div className="bg-slate-50 dark:bg-slate-700/50 p-3 flex justify-between text-sm">
-                                <span className="text-green-600 dark:text-green-400">
+                              <div className="bg-gray-50 dark:bg-gray-800 p-3 flex justify-between text-sm">
+                                <span className="text-gray-600 dark:text-gray-400">
                                   Total Paid: {formatCurrency(group.paidAmount)}
                                 </span>
-                                <span className="text-red-600 dark:text-red-400">
+                                <span className="text-gray-600 dark:text-gray-400">
                                   Balance: {formatCurrency(group.balanceAmount)}
                                 </span>
                               </div>
@@ -385,12 +375,12 @@ const ParentFeesPage = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center">
-                        <Receipt className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                        <p className="text-slate-600 dark:text-slate-300">
+                      <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-center">
+                        <Receipt className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                        <p className="text-gray-600 dark:text-gray-300">
                           No tuition fees generated yet.
                         </p>
-                        <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+                        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                           The school will generate annual tuition fees split by {periodLabel}s.
                         </p>
                       </div>

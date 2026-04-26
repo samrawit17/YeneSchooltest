@@ -175,8 +175,8 @@ const AnnouncementListPage = () => {
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create Announcement</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-gray-900 dark:text-white">Create Announcement</DialogTitle>
+                <DialogDescription className="text-gray-500 dark:text-gray-400">
                   Create an announcement visible to selected users
                 </DialogDescription>
               </DialogHeader>
@@ -322,24 +322,24 @@ const AnnouncementListPage = () => {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1 sm:flex-col sm:items-end">
+                  <div className="flex items-center gap-2">
                     <Link
                       href={`/list/announcements/${announcement.id}`}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-sm text-primary hover:bg-primary/5 rounded transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded transition-colors"
                     >
                       <Eye className="h-4 w-4" />
-                      <span className="hidden sm:inline">View</span>
+                      <span>View</span>
                     </Link>
                     
                     {isAdmin && (
                       <>
-                        <button className="inline-flex items-center gap-1 px-2 py-1 text-sm text-muted-foreground hover:bg-muted rounded transition-colors">
+                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded transition-colors">
                           <Edit2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Edit</span>
+                          <span>Edit</span>
                         </button>
-                        <button className="inline-flex items-center gap-1 px-2 py-1 text-sm text-destructive hover:bg-destructive/5 rounded transition-colors">
+                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded transition-colors">
                           <Trash2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Delete</span>
+                          <span>Delete</span>
                         </button>
                       </>
                     )}

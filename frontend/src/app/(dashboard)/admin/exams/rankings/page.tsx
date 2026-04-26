@@ -3,12 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import api from "@/lib/api";
+import { gradingAPI, termsAPI } from "@/lib/api";
+import { Filters, useFilters } from "@/components/filters/Filters";
 import { toast } from "sonner";
 import {
   Trophy,
   TrendingUp,
-  Loader2
+  Loader2,
+  Download,
+  Award,
+  Medal
 } from "lucide-react";
 
 // Shadcn components
@@ -21,26 +25,43 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+
+interface RankingsResult {
+  results: Array<{
+    rank: number;
+    studentName: string;
+    rollNumber: string;
+    className: string;
+    average: number;
+    gradeLetter: string;
+  }>;
+  classAverage: number;
+  passRate: number;
+  calculated: string;
+}
 
 export default function StudentRankingsPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
-  const [academicYears, setAcademicYears] = useState<{id: string, name: string}[]>([]);
   const [terms, setTerms] = useState<{id: string, name: string}[]>([]);
+  const [rankingsResult, setRankingsResult] = useState<RankingsResult | null>(null);
 
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedTerm, setSelectedTerm] = useState('');
-  const [rankingsResult, setRankingsResult] = useState<any>(null);
+  const {
+    selectedYear,
+    setSelectedYear,
+    selectedTerm,
+    setSelectedTerm,
+    selectedGrade,
+    setSelectedGrade,
+    selectedSection,
+    setSelectedSection,
+  } = useFilters({
+    academicYear: true,
+    grade: true,
+    section: true,
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -48,81 +69,24 @@ export default function StudentRankingsPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
+  // Fetch terms when year changes
   useEffect(() => {
-    if (isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')) {
-      fetchFilters();
+    if (selectedYear) {
+      fetchTerms();
     }
-  }, [isAuthenticated, user]);
+  }, [selectedYear]);
 
-  const fetchFilters = async () => {
+  const fetchTerms = async () => {
     try {
-      const yrsRes = await api.get('/academic-years');
-      setAcademicYears(yrsRes.data);
-      
-      const activeYear = yrsRes.data.find((y: any) => y.isActive);
-      if (activeYear) {
-        setSelectedYear(activeYear.id);
-        fetchTerms(activeYear.id);
+      const res = await termsAPI.getAll({ academicYearId: selectedYear });
+      const termData = Array.isArray(res.data) ? res.data : (res.data.data || []);
+      setTerms(termData);
+      if (termData.length > 0 && !selectedTerm) {
+        setSelectedTerm(termData[0].id);
       }
     } catch (error) {
       console.error(error);
     }
-  };
-
-  const fetchTerms = async (yearId: string) => {
-    try {
-      const res = await api.get(`/terms?academicYearId=${yearId}`);
-      setTerms(res.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedSection, setSelectedSection] = useState('');
-  const [classes, setClasses] = useState<{id: string, name: string}[]>([]);
-  const [sections, setSections] = useState<{id: string, name: string}[]>([]);
-
-  useEffect(() => {
-    if (isAuthenticated && (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')) {
-      fetchFilters();
-      fetchClasses();
-    }
-  }, [isAuthenticated, user]);
-
-  const fetchClasses = async () => {
-    try {
-      const res = await api.get('/classes');
-      // Store all classes as is, but filter only for unique display names if needed
-      // Actually, to get all sections for a class name, we need to know all IDs associated with that name.
-      setClasses(res.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const fetchSections = async (className: string) => {
-    try {
-      // Find all class IDs that share the same name
-      const targetClasses = classes.filter(c => c.name === className);
-      const classIds = targetClasses.map(c => c.id).join(',');
-      
-      if (classIds) {
-        console.log("Fetching sections for classIds:", classIds);
-        const res = await api.get(`/sections?classIds=${classIds}`);
-        console.log("Sections response:", res.data);
-        setSections(res.data);
-      } else {
-        setSections([]);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const getUniqueClassNames = () => {
-    const names = new Set(classes.map(c => c.name));
-    return Array.from(names);
   };
 
   const calculateRankings = async () => {
@@ -133,24 +97,27 @@ export default function StudentRankingsPage() {
     
     setLoading(true);
     try {
-      // Find all IDs associated with the selected class name
-      const targetClassIds = selectedClass ? classes.filter(c => c.name === selectedClass).map(c => c.id).join(',') : undefined;
-
-      const res = await api.post('/grading/admin/calculate-rankings', {
+      const res = await gradingAPI.calculateRankings({
         academicYearId: selectedYear,
         termId: selectedTerm || undefined,
-        classIds: targetClassIds, // Changed to plural to handle multiple IDs
-        sectionId: selectedSection || undefined,
+        classId: selectedGrade || undefined,
       });
       
       setRankingsResult(res.data);
       toast.success(`Rankings calculated for ${res.data.results?.length || 0} student records`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Failed to calculate rankings');
+      toast.error(error?.response?.data?.message || 'Failed to calculate rankings');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getRankBadge = (rank: number) => {
+    if (rank === 1) return { icon: '🥇', bg: 'bg-yellow-100 text-yellow-800', label: 'Gold' };
+    if (rank === 2) return { icon: '🥈', bg: 'bg-gray-100 text-gray-800', label: 'Silver' };
+    if (rank === 3) return { icon: '🥉', bg: 'bg-amber-100 text-amber-800', label: 'Bronze' };
+    return { icon: `#${rank}`, bg: 'bg-slate-100 text-slate-800', label: '' };
   };
 
   if (isLoading || !isAuthenticated) return null;
@@ -170,52 +137,25 @@ export default function StudentRankingsPage() {
           <CardDescription>Select parameters to calculate student rankings</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="space-y-2 flex-1">
-              <Label>Academic Year</Label>
-              <Select value={selectedYear} onValueChange={(val) => {
-                setSelectedYear(val);
-                fetchTerms(val);
-              }}>
-                <SelectTrigger><SelectValue placeholder="Select Year" /></SelectTrigger>
-                <SelectContent>
-                  {academicYears.map(y => <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 flex-1">
-              <Label>Term/Semester</Label>
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger><SelectValue placeholder="All Terms" /></SelectTrigger>
-                <SelectContent>
-                  {terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 flex-1">
-              <Label>Grade/Class</Label>
-              <Select value={selectedClass} onValueChange={(val) => {
-                setSelectedClass(val);
-                fetchSections(val);
-                setSelectedSection("");
-              }}>
-                <SelectTrigger><SelectValue placeholder="All Classes" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Classes</SelectItem>
-                  {getUniqueClassNames().map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 flex-1">
-              <Label>Section</Label>
-              <Select value={selectedSection || "all"} onValueChange={(val) => setSelectedSection(val === "all" ? "" : val)} disabled={!selectedClass}>
-                <SelectTrigger><SelectValue placeholder="All Sections" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sections</SelectItem>
-                  {sections.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+          <Filters
+            config={{
+              academicYear: true,
+              term: true,
+              grade: true,
+              section: true,
+            }}
+            selectedYear={selectedYear}
+            onYearChange={(val) => { setSelectedYear(val); setSelectedTerm(""); }}
+            selectedTerm={selectedTerm}
+            onTermChange={setSelectedTerm}
+            termOptions={terms}
+            selectedGrade={selectedGrade}
+            onGradeChange={(val) => { setSelectedGrade(val); if (!val) setSelectedSection(""); }}
+            selectedSection={selectedSection}
+            onSectionChange={setSelectedSection}
+            className="w-full"
+          />
+          <div className="mt-4 flex justify-end">
             <Button onClick={calculateRankings} disabled={loading || !selectedYear} className="bg-amber-600 hover:bg-amber-700">
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trophy className="w-4 h-4 mr-2" />}
               Calculate Rankings
@@ -227,17 +167,36 @@ export default function StudentRankingsPage() {
       {rankingsResult && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              Rankings Results
-            </CardTitle>
-            <CardDescription>
-              Calculated on: {new Date(rankingsResult.calculated).toLocaleString()}
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  Rankings Results
+                </CardTitle>
+                <CardDescription>
+                  {rankingsResult.calculated ? `Calculated on: ${new Date(rankingsResult.calculated).toLocaleString()}` : 'Rankings calculated'}
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-gray-500 mb-4">
-              Total student records: {rankingsResult.results?.length || 0}
+            <div className="flex items-center gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{rankingsResult.results?.length || 0}</div>
+                <div className="text-sm text-gray-500">Total Students</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{rankingsResult.classAverage?.toFixed(1) || '-'}%</div>
+                <div className="text-sm text-gray-500">Class Average</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-amber-600">{rankingsResult.passRate || '-'}%</div>
+                <div className="text-sm text-gray-500">Pass Rate</div>
+              </div>
             </div>
             
             {rankingsResult.results && rankingsResult.results.length > 0 ? (
@@ -247,39 +206,40 @@ export default function StudentRankingsPage() {
                     <tr className="border-b">
                       <th className="text-left py-3 px-4 font-medium">Rank</th>
                       <th className="text-left py-3 px-4 font-medium">Student Name</th>
-                      <th className="text-left py-3 px-4 font-medium">Subject Results</th>
-                      <th className="text-right py-3 px-4 font-medium">GPA</th>
+                      <th className="text-left py-3 px-4 font-medium">Roll No.</th>
+                      <th className="text-left py-3 px-4 font-medium">Class</th>
                       <th className="text-right py-3 px-4 font-medium">Average</th>
-                      <th className="text-right py-3 px-4 font-medium">Range</th>
+                      <th className="text-right py-3 px-4 font-medium">Grade</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rankingsResult.results.map((result: any, idx: number) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <Badge variant={result.rank <= 3 ? "default" : "outline"}>#{result.rank}</Badge>
-                        </td>
-                        <td className="py-3 px-4 font-medium">{result.studentName}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-wrap gap-1">
-                            {result.subjects?.map((s: any, i: number) => (
-                              <Badge key={i} variant="secondary" className="text-xs">
-                                {s.name}: {s.score}
-                              </Badge>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">{result.gpa?.toFixed(2) || '-'}</td>
-                        <td className="py-3 px-4 text-right font-medium">{result.average?.toFixed(1)}%</td>
-                        <td className="py-3 px-4 text-right">{result.performanceRange || '-'}</td>
-                      </tr>
-                    ))}
+                    {rankingsResult.results.map((result: any, idx: number) => {
+                      const badge = getRankBadge(result.rank);
+                      return (
+                        <tr key={idx} className="border-b hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${badge.bg}`}>
+                              {badge.icon}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-medium">{result.studentName}</td>
+                          <td className="py-3 px-4 text-gray-500">{result.rollNumber || '-'}</td>
+                          <td className="py-3 px-4 text-gray-500">{result.className || '-'}</td>
+                          <td className="py-3 px-4 text-right font-medium">{result.average?.toFixed(1) || '-'}%</td>
+                          <td className="py-3 px-4 text-right">
+                            <Badge variant={result.rank <= 3 ? "default" : "outline"}>
+                              {result.gradeLetter || '-'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
-                No ranking data available.
+                No ranking data available. Make sure grades are entered.
               </div>
             )}
           </CardContent>

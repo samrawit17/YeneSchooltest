@@ -107,11 +107,107 @@ const ChildDetailPage = () => {
   useEffect(() => {
     const fetchChildDetail = async () => {
       try {
-        const response = await api.get(`/parents/me/children/${childId}`);
-        const data = response.data;
-        setChild(data.child);
-        setStats(data.stats);
-        setRecentActivity(Array.isArray(data.recentActivity) ? data.recentActivity : []);
+        const [childResponse, dashboardResponse, activeYearResponse] =
+          await Promise.allSettled([
+            api.get(`/parents/me/children/${childId}`),
+            api.get("/dashboard/parent"),
+            api.get("/academic-years/active"),
+          ]);
+
+        if (childResponse.status !== "fulfilled") {
+          throw new Error("Child details could not be loaded");
+        }
+
+        const childData = childResponse.value.data?.child || childResponse.value.data;
+        const studentProfile = childData?.student || {};
+        const studentUser = studentProfile?.user || {};
+        const studentUserId = studentProfile.userId || studentUser.id;
+
+        const dashboardChild =
+          dashboardResponse.status === "fulfilled"
+            ? (dashboardResponse.value.data?.stats?.children || []).find(
+                (item: any) => item.id === studentUserId,
+              )
+            : null;
+
+        let feeSummary = { total: 0, paid: 0, balance: 0 };
+        const schoolId = dashboardResponse.status === "fulfilled"
+          ? dashboardResponse.value.data?.metadata?.schoolId
+          : null;
+        const academicYearId =
+          activeYearResponse.status === "fulfilled"
+            ? activeYearResponse.value.data?.data?.id || activeYearResponse.value.data?.id
+            : null;
+
+        if (schoolId && academicYearId && (childData?.studentId || studentUserId)) {
+          try {
+            const feeResponse = await api.get(
+              `/finance/student-fees/${childData?.studentId || studentUserId}`,
+              { params: { schoolId, academicYearId } },
+            );
+            feeSummary = {
+              total: feeResponse.data?.summary?.totalFees || 0,
+              paid: feeResponse.data?.summary?.totalPaid || 0,
+              balance: feeResponse.data?.summary?.totalBalance || 0,
+            };
+          } catch (feeError) {
+            console.error("Failed to fetch fee summary:", feeError);
+          }
+        }
+
+        setChild({
+          id: childData?.studentId || childData?.id,
+          name: childData?.name || studentUser?.name || "Unknown",
+          studentCode: studentProfile?.studentCode || childData?.studentCode || "N/A",
+          className: childData?.className || studentProfile?.className || "N/A",
+          section: childData?.section || studentProfile?.section || "N/A",
+          enrollmentStatus: studentProfile?.status || "ACTIVE",
+          dateOfBirth: studentProfile?.dob || "",
+          gender: studentProfile?.gender || "N/A",
+          bloodGroup: studentProfile?.bloodType || null,
+          address: studentProfile?.address || null,
+          phone: studentProfile?.phone || studentUser?.phone || null,
+          email: studentUser?.email || null,
+          admissionDate: studentProfile?.createdAt || "",
+          academicYear: studentProfile?.academicYear || undefined,
+          parentName: childData?.parent?.user?.name || undefined,
+          homeroomTeacher: null,
+        });
+
+        setStats({
+          attendance: {
+            presentDays: dashboardChild?.presentDays || 0,
+            totalDays: dashboardChild?.totalDays || 0,
+            rate: parseFloat(dashboardChild?.attendance || "0") || 0,
+          },
+          academics: {
+            average: Number.parseFloat(dashboardChild?.grades?.[0]?.average || "0") || 0,
+            grade: dashboardChild?.overallGrade || dashboardChild?.latestGrade || "N/A",
+          },
+          fees: feeSummary,
+        });
+
+        const activity = [
+          ...(dashboardChild?.recentAbsences || []).map((absence: any, index: number) => ({
+            id: `absence-${index}`,
+            type: "attendance",
+            message: absence.reason
+              ? `Absent: ${absence.reason}`
+              : "Marked absent",
+            date: absence.date,
+            icon: "alert",
+          })),
+          ...(dashboardChild?.reportCard?.publishedAt
+            ? [{
+                id: "report-card",
+                type: "report",
+                message: "Latest report card published",
+                date: dashboardChild.reportCard.publishedAt,
+                icon: "file",
+              }]
+            : []),
+        ];
+        setRecentActivity(activity);
       } catch (error) {
         console.error("Failed to fetch child details:", error);
         setError(true);

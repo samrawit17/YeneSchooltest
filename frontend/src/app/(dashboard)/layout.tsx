@@ -10,6 +10,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { schoolsAPI } from "@/lib/api";
+import { APP_VERSION } from "@/lib/version";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -164,7 +165,7 @@ export default function DashboardLayout({
 
         {/* Page Content */}
         <div className="flex-1 overflow-y-auto p-0 bg-[#F8FAFC] dark:bg-[#0F172A]">
-          <div className="max-w-7xl mx-auto overflow-visible">
+          <div className="w-full overflow-visible">
             {children}
           </div>
         </div>
@@ -175,7 +176,7 @@ export default function DashboardLayout({
             <div className="flex items-center gap-1 sm:gap-2">
               <span className="font-medium">SMS</span>
               <span className="text-gray-300 dark:text-gray-600">|</span>
-              <span>v1.0.0</span>
+              <span>v{APP_VERSION}</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
               <span>© {new Date().getFullYear()}</span>

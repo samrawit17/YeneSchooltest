@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Calendar } from 'lucide-react';
+import { CalendarDatePicker } from '@/components/ui/CalendarDatePicker';
+import { Loader2 } from 'lucide-react';
 
 interface EventFormProps {
   initialData?: Event;
@@ -37,8 +38,8 @@ const EventForm = ({ initialData, onSuccess, onCancel }: EventFormProps) => {
     title: initialData?.title || '',
     description: initialData?.description || '',
     location: initialData?.location || '',
-    startDate: initialData?.startDate ? new Date(initialData.startDate).toISOString().slice(0, 16) : '',
-    endDate: initialData?.endDate ? new Date(initialData.endDate).toISOString().slice(0, 16) : '',
+    startDate: initialData?.startDate ? new Date(initialData.startDate).toISOString() : '',
+    endDate: initialData?.endDate ? new Date(initialData.endDate).toISOString() : '',
     allDay: initialData?.allDay || false,
     eventType: initialData?.eventType || 'ACADEMIC',
   });
@@ -118,7 +119,7 @@ const EventForm = ({ initialData, onSuccess, onCancel }: EventFormProps) => {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="eventType">Event Type *</Label>
+        <Label htmlFor="eventType">Activity Type *</Label>
         <Select
           value={formData.eventType}
           onValueChange={(value: any) => setFormData({ ...formData, eventType: value })}
@@ -136,56 +137,32 @@ const EventForm = ({ initialData, onSuccess, onCancel }: EventFormProps) => {
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="location">Location</Label>
-        <Input
-          id="location"
-          value={formData.location || ''}
-          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-          placeholder="Enter event location"
-        />
-      </div>
-
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="startDate">Start Date & Time *</Label>
-          <div className="relative">
-            <Input
-              id="startDate"
-              type="datetime-local"
-              value={formData.startDate}
-              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-              required
-            />
-            <Calendar className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-          </div>
+          <Label>Start Date *</Label>
+          <CalendarDatePicker
+            value={formData.startDate ? new Date(formData.startDate) : undefined}
+            onChange={(date) => {
+              if (date) {
+                setFormData({ ...formData, startDate: date.toISOString() });
+              }
+            }}
+            placeholder="Select start date"
+          />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="endDate">End Date & Time</Label>
-          <div className="relative">
-            <Input
-              id="endDate"
-              type="datetime-local"
-              value={formData.endDate || ''}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-            />
-            <Calendar className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-          </div>
+          <Label>End Date</Label>
+          <CalendarDatePicker
+            value={formData.endDate ? new Date(formData.endDate) : undefined}
+            onChange={(date) => {
+              if (date) {
+                setFormData({ ...formData, endDate: date.toISOString() });
+              }
+            }}
+            placeholder="Select end date"
+          />
         </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="allDay"
-          checked={formData.allDay}
-          onChange={(e) => setFormData({ ...formData, allDay: e.target.checked })}
-          className="w-4 h-4"
-        />
-        <Label htmlFor="allDay" className="cursor-pointer">
-          All Day Event
-        </Label>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
@@ -194,7 +171,7 @@ const EventForm = ({ initialData, onSuccess, onCancel }: EventFormProps) => {
         </Button>
         <Button type="submit" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isEditing ? 'Update Event' : 'Create Event'}
+          {isEditing ? 'Update Activity' : 'Create Activity'}
         </Button>
       </div>
     </form>

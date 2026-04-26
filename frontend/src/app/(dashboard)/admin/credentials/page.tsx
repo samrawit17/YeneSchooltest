@@ -167,44 +167,44 @@ export default function CredentialsPage() {
         {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">Total Credentials</p>
-                    <p className="text-2xl font-bold">{stats.total}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Total Credentials</p>
+                    <p className="text-2xl font-bold dark:text-white">{stats.total}</p>
                   </div>
                   <Key className="w-8 h-8 text-gray-400" />
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-yellow-600">Pending</p>
-                    <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">Pending</p>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</p>
                   </div>
                   <Clock className="w-8 h-8 text-yellow-400" />
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-green-600">Sent</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.sent}</p>
+                    <p className="text-sm text-green-600 dark:text-green-400">Sent</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.sent}</p>
                   </div>
                   <Send className="w-8 h-8 text-green-400" />
                 </div>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="dark:bg-slate-900 dark:border-slate-800">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-blue-600">By Role</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">By Role</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {stats.byRole.map((r) => (
                         <Badge key={r.role} variant="outline" className="text-xs">
@@ -221,17 +221,18 @@ export default function CredentialsPage() {
         )}
 
         {/* Filters */}
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardContent className="pt-4">
             <div className="flex flex-wrap gap-4">
               <div className="flex-1 min-w-[200px]">
-                <Label>Search</Label>
+                <Label className="dark:text-gray-200">Search</Label>
                 <div className="flex gap-2 mt-1">
                   <Input
                     placeholder="Search by name, username, or email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                   />
                   <Button onClick={handleSearch} variant="secondary">
                     <Search className="w-4 h-4" />
@@ -239,9 +240,9 @@ export default function CredentialsPage() {
                 </div>
               </div>
               <div className="w-[150px]">
-                <Label>Status</Label>
+                <Label className="dark:text-gray-200">Status</Label>
                 <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as any); setCurrentPage(1); }}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 dark:bg-slate-800 dark:border-slate-700">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -252,9 +253,9 @@ export default function CredentialsPage() {
                 </Select>
               </div>
               <div className="w-[150px]">
-                <Label>Role</Label>
+                <Label className="dark:text-gray-200">Role</Label>
                 <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 dark:bg-slate-800 dark:border-slate-700">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -271,9 +272,9 @@ export default function CredentialsPage() {
         </Card>
 
         {/* Credentials Table */}
-        <Card>
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
-            <CardTitle className="text-lg">
+            <CardTitle className="text-lg dark:text-white">
               Credentials List ({totalItems} total)
             </CardTitle>
           </CardHeader>
@@ -285,7 +286,7 @@ export default function CredentialsPage() {
             ) : credentials.length === 0 ? (
               <div className="text-center py-12">
                 <Key className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No credentials found</p>
+                <p className="text-gray-500 dark:text-gray-400">No credentials found</p>
               </div>
             ) : (
               <>
@@ -385,29 +386,29 @@ export default function CredentialsPage() {
 
       {/* View Credential Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md dark:bg-slate-900">
           <DialogHeader>
-            <DialogTitle>Credential Details</DialogTitle>
+            <DialogTitle className="dark:text-white">Credential Details</DialogTitle>
           </DialogHeader>
           {selectedCredential && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
                   {roleIcons[selectedCredential.role]}
                 </div>
                 <div>
-                  <p className="font-semibold">{selectedCredential.name}</p>
+                  <p className="font-semibold dark:text-white">{selectedCredential.name}</p>
                   <Badge className={roleColors[selectedCredential.role]}>
                     {selectedCredential.role}
                   </Badge>
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4 space-y-3">
                 <div>
-                  <Label className="text-gray-500">Username</Label>
+                  <Label className="text-gray-500 dark:text-gray-400">Username</Label>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-white px-3 py-2 rounded border">
+                    <code className="flex-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white">
                       {selectedCredential.username}
                     </code>
                     <Button 
@@ -421,9 +422,9 @@ export default function CredentialsPage() {
                 </div>
 
                 <div>
-                  <Label className="text-gray-500">Temporary Password</Label>
+                  <Label className="text-gray-500 dark:text-gray-400">Temporary Password</Label>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-white px-3 py-2 rounded border">
+                    <code className="flex-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white">
                       {selectedCredential.temporaryPassword}
                     </code>
                     <Button 
@@ -438,24 +439,24 @@ export default function CredentialsPage() {
 
                 {selectedCredential.email && (
                   <div>
-                    <Label className="text-gray-500">Email</Label>
-                    <p className="font-medium">{selectedCredential.email}</p>
+                    <Label className="text-gray-500 dark:text-gray-400">Email</Label>
+                    <p className="font-medium dark:text-white">{selectedCredential.email}</p>
                   </div>
                 )}
 
                 <div>
-                  <Label className="text-gray-500">Created</Label>
-                  <p className="text-sm">{formatDate(selectedCredential.createdAt)}</p>
+                  <Label className="text-gray-500 dark:text-gray-400">Created</Label>
+                  <p className="text-sm dark:text-gray-300">{formatDate(selectedCredential.createdAt)}</p>
                 </div>
 
                 <div>
-                  <Label className="text-gray-500">Expires</Label>
-                  <p className="text-sm">{formatDate(selectedCredential.expiresAt)}</p>
+                  <Label className="text-gray-500 dark:text-gray-400">Expires</Label>
+                  <p className="text-sm dark:text-gray-300">{formatDate(selectedCredential.expiresAt)}</p>
                 </div>
 
                 {selectedCredential.isSent && (
-                  <div className="pt-2 border-t">
-                    <Badge className="bg-green-100 text-green-700">
+                  <div className="pt-2 border-t dark:border-slate-600">
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
                       <CheckCircle className="w-3 h-3 mr-1" />
                       Sent via {selectedCredential.sentVia}
                       {selectedCredential.sentAt && ` on ${formatDate(selectedCredential.sentAt)}`}

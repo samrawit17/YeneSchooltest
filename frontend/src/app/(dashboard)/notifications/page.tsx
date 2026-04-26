@@ -8,37 +8,12 @@ import { useAuth } from "@/context/AuthContext";
 import {
   Bell,
   BellRing,
-  ClipboardCheck,
-  GraduationCap,
-  CalendarClock,
-  MessageSquare,
-  Megaphone,
-  DollarSign,
-  CreditCard,
-  ShieldAlert,
-  UserCog,
-  Lock,
-  FileText,
-  FileCheck,
-  FileX,
-  Clock,
-  BookMarked,
-  Calendar,
-  ClipboardList,
-  AlertTriangle,
-  Info,
-  Check,
-  CheckCheck,
-  Filter,
   Loader2,
-  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -51,118 +26,11 @@ import {
 
 interface Notification {
   id: string;
-  type: string;
   title: string;
   message: string;
   isRead: boolean;
-  actionUrl?: string;
   createdAt: string;
-  metadata?: Record<string, any>;
 }
-
-interface CategoryCount {
-  total: number;
-  unread: number;
-}
-
-interface Categories {
-  all: CategoryCount;
-  attendance: CategoryCount;
-  enrollment: CategoryCount;
-  academic: CategoryCount;
-  schedule: CategoryCount;
-  communication: CategoryCount;
-  event: CategoryCount;
-  finance: CategoryCount;
-  system: CategoryCount;
-}
-
-const categoryInfo = [
-  { id: "all", label: "All", icon: Bell, color: "text-gray-600 dark:text-gray-400" },
-  { id: "attendance", label: "Attendance", icon: ClipboardCheck, color: "text-blue-500 dark:text-blue-400" },
-  { id: "enrollment", label: "Enrollment", icon: FileText, color: "text-amber-500 dark:text-amber-400" },
-  { id: "academic", label: "Academic", icon: BookMarked, color: "text-purple-500 dark:text-purple-400" },
-  { id: "schedule", label: "Schedule", icon: Calendar, color: "text-indigo-500 dark:text-indigo-400" },
-  { id: "communication", label: "Communication", icon: MessageSquare, color: "text-green-500 dark:text-green-400" },
-  { id: "event", label: "Events", icon: CalendarClock, color: "text-pink-500 dark:text-pink-400" },
-  { id: "finance", label: "Finance", icon: DollarSign, color: "text-red-500 dark:text-red-400" },
-  { id: "system", label: "System", icon: ShieldAlert, color: "text-gray-600 dark:text-gray-400" },
-];
-
-const getNotificationIcon = (type: string | undefined) => {
-  switch (type?.toUpperCase()) {
-    // Attendance notifications
-    case 'ATTENDANCE_MARKED':
-    case 'ATTENDANCE_ABSENT':
-    case 'ATTENDANCE_LATE':
-    case 'ATTENDANCE_SESSION_OPENED':
-    case 'ATTENDANCE_SESSION_SUBMITTED':
-      return <ClipboardCheck className="w-5 h-5 text-blue-500 dark:text-blue-400" />;
-    
-    // Enrollment notifications
-    case 'ENROLLMENT_SUBMITTED':
-      return <FileText className="w-5 h-5 text-amber-500 dark:text-amber-400" />;
-    case 'ENROLLMENT_APPROVED':
-      return <FileCheck className="w-5 h-5 text-green-500 dark:text-green-400" />;
-    case 'ENROLLMENT_REJECTED':
-      return <FileX className="w-5 h-5 text-red-500 dark:text-red-400" />;
-    case 'ENROLLMENT_PENDING':
-      return <Clock className="w-5 h-5 text-amber-500 dark:text-amber-400" />;
-    
-    // Academic notifications
-    case 'ASSIGNMENT_CREATED':
-      return <BookMarked className="w-5 h-5 text-purple-500 dark:text-purple-400" />;
-    case 'ASSIGNMENT_DUE':
-      return <CalendarClock className="w-5 h-5 text-orange-500 dark:text-orange-400" />;
-    case 'ASSIGNMENT_GRADED':
-    case 'RESULT_PUBLISHED':
-    case 'GRADE_UPDATED':
-      return <GraduationCap className="w-5 h-5 text-green-600 dark:text-green-500" />;
-    
-    // Schedule notifications
-    case 'SCHEDULE_CHANGED':
-    case 'CLASS_CANCELLED':
-    case 'TIMETABLE_UPDATED':
-      return <Calendar className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />;
-    
-    // Communication notifications
-    case 'MESSAGE_RECEIVED':
-      return <MessageSquare className="w-5 h-5 text-green-500 dark:text-green-400" />;
-    case 'ANNOUNCEMENT':
-      return <Megaphone className="w-5 h-5 text-blue-500 dark:text-blue-400" />;
-    case 'COMMUNICATION':
-      return <ClipboardList className="w-5 h-5 text-teal-500 dark:text-teal-400" />;
-    
-    // Event notifications
-    case 'EVENT':
-    case 'EVENT_UPDATED':
-    case 'EVENT_DELETED':
-      return <CalendarClock className="w-5 h-5 text-pink-500 dark:text-pink-400" />;
-    
-    // Finance notifications
-    case 'FEE_DUE':
-      return <DollarSign className="w-5 h-5 text-red-500 dark:text-red-400" />;
-    case 'FEE_PAID':
-    case 'PAYMENT_RECEIVED':
-      return <CreditCard className="w-5 h-5 text-green-600 dark:text-green-500" />;
-    
-    // System notifications
-    case 'SYSTEM_ALERT':
-      return <ShieldAlert className="w-5 h-5 text-red-500 dark:text-red-400" />;
-    case 'ACCOUNT_CREATED':
-      return <UserCog className="w-5 h-5 text-blue-500 dark:text-blue-400" />;
-    case 'PASSWORD_RESET':
-      return <Lock className="w-5 h-5 text-amber-500 dark:text-amber-400" />;
-    
-    // General
-    case 'ALERT':
-    case 'WARNING':
-      return <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400" />;
-    case 'INFO':
-    default:
-      return <Info className="w-5 h-5 text-gray-500 dark:text-gray-400" />;
-  }
-};
 
 const formatTimeAgo = (dateString: string) => {
   const date = new Date(dateString);
@@ -183,7 +51,6 @@ const NotificationsPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [activeCategory, setActiveCategory] = useState("all");
   const [pushPermission, setPushPermission] = useState<
     NotificationPermission | "unsupported"
   >("unsupported");
@@ -193,31 +60,19 @@ const NotificationsPage = () => {
     setPushPermission(getBrowserNotificationPermission());
   }, []);
 
-  // Fetch categories with counts
-  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
-    queryKey: ["notification-categories"],
-    queryFn: async () => {
-      const response = await api.get('/notifications/categories');
-      return response.data.categories as Categories;
-    },
-    enabled: !!user,
-    refetchInterval: 30000,
-  });
-
-  // Fetch notifications based on category
+  // Fetch notifications
   const { data: notificationsData, isLoading: notificationsLoading, refetch } = useQuery({
-    queryKey: ["notifications", activeCategory],
+    queryKey: ["notifications-all"],
     queryFn: async () => {
-      const params: Record<string, string> = { limit: "50" };
-      if (activeCategory !== "all") {
-        params.category = activeCategory;
-      }
-      const response = await api.get('/notifications', { params });
+      const response = await api.get('/notifications', { params: { limit: "100" } });
       return response.data as Notification[];
     },
     enabled: !!user,
     refetchInterval: 30000,
   });
+
+  // Get unread count
+  const unreadCount = notificationsData?.filter(n => !n.isRead).length || 0;
 
   // Mark as read mutation
   const markAsReadMutation = useMutation({
@@ -226,7 +81,7 @@ const NotificationsPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notification-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-all"] });
     },
   });
 
@@ -237,7 +92,7 @@ const NotificationsPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notification-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications-all"] });
     },
   });
 
@@ -256,18 +111,6 @@ const NotificationsPage = () => {
     if (notification.actionUrl) {
       router.push(notification.actionUrl);
     }
-  };
-
-  const categories = categoriesData || {
-    all: { total: 0, unread: 0 },
-    attendance: { total: 0, unread: 0 },
-    enrollment: { total: 0, unread: 0 },
-    academic: { total: 0, unread: 0 },
-    schedule: { total: 0, unread: 0 },
-    communication: { total: 0, unread: 0 },
-    event: { total: 0, unread: 0 },
-    finance: { total: 0, unread: 0 },
-    system: { total: 0, unread: 0 },
   };
 
   const notifications = notificationsData || [];
@@ -327,24 +170,11 @@ const NotificationsPage = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#e35336]">Notifications</h1>
           <p className="text-muted-foreground">View and manage all your notifications</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleMarkAllAsRead}
-          disabled={categories.all.unread === 0 || markAllAsReadMutation.isPending}
-          className="gap-2"
-        >
-          {markAllAsReadMutation.isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <CheckCheck className="w-4 h-4" />
-          )}
-          Mark all as read
-        </Button>
       </div>
 
       {isPushSupported() && (
@@ -392,133 +222,67 @@ const NotificationsPage = () => {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Categories Sidebar */}
-        <Card className="md:col-span-1 h-fit">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              Categories
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-300px)]">
-              <div className="space-y-1 p-2">
-                {categoryInfo.map((category) => {
-                  const Icon = category.icon;
-                  const count = categories[category.id as keyof Categories] as CategoryCount | undefined;
-                  const unreadCount = count?.unread || 0;
-                  const totalCount = count?.total || 0;
-
-                  return (
-                    <button
-                      key={category.id}
-                      onClick={() => setActiveCategory(category.id)}
-                      className={`w-full flex items-center justify-between p-3 rounded-lg transition-colors ${
-                        activeCategory === category.id
-                          ? "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300"
-                          : "hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className={`w-4 h-4 ${category.color}`} />
-                        <span className="text-sm font-medium">{category.label}</span>
+      {/* Notifications List */}
+      <Card>
+        <CardContent className="p-6">
+          {notificationsLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="text-center py-12">
+              <Bell className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <p className="text-muted-foreground">You have no notifications</p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[calc(100vh-350px)]">
+              <div className="space-y-2">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`p-4 rounded-lg border ${
+                      notification.isRead
+                        ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                        : "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
+                    }`}
+                  >
+                    <div className="flex items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className={`text-sm ${!notification.isRead ? "font-semibold" : "font-medium"} text-gray-900 dark:text-gray-100`}>
+                            {notification.title}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {!notification.isRead && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                            )}
+                            <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                              {formatTimeAgo(notification.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                        {notification.message && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                            {notification.message}
+                          </p>
+                        )}
                       </div>
-                      {unreadCount > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          {unreadCount}
-                        </Badge>
-                      )}
-                      {unreadCount === 0 && totalCount > 0 && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">{totalCount}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* Notifications List */}
-        <Card className="md:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {categoryInfo.find((c) => c.id === activeCategory)?.label} Notifications
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {notificationsLoading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
                     </div>
                   </div>
                 ))}
               </div>
-            ) : notifications.length === 0 ? (
-              <div className="text-center py-12">
-                <Bell className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                <p className="text-muted-foreground">No notifications in this category</p>
-              </div>
-            ) : (
-              <ScrollArea className="h-[calc(100vh-350px)]">
-                <div className="space-y-2">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      onClick={() => handleNotificationClick(notification)}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
-                        notification.isRead
-                          ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
-                          : "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-1">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className={`text-sm ${!notification.isRead ? "font-semibold" : "font-medium"} text-gray-900 dark:text-gray-100`}>
-                              {notification.title}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              {!notification.isRead && (
-                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-                              )}
-                              <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
-                                {formatTimeAgo(notification.createdAt)}
-                              </span>
-                            </div>
-                          </div>
-                          {notification.message && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                              {notification.message}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="outline" className="text-xs">
-                              {notification.type}
-                            </Badge>
-                            {notification.actionUrl && (
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
