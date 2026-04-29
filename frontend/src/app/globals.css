@@ -5,7 +5,7 @@
 .react-calendar {
   width: 100% !important;
   border: none !important;
-  font-family: "Inter", sans-serif !important;
+  font-family: inherit !important;
 }
 
 .dark .react-calendar {
@@ -42,7 +42,7 @@
 }
 
 h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, textarea {
-  font-family: 'Inter', sans-serif;
+  font-family: inherit;
 }
 
 .react-calendar__tile--active {

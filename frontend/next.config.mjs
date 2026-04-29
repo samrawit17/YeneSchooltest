@@ -2,6 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   experimental: {
+    externalDir: true,
     skipFontDownload: true,
   },
   images: {
@@ -19,8 +20,6 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
-  },
-  experimental: {
   },
   reactStrictMode: true,
   poweredByHeader: false,

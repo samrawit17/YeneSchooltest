@@ -1,13 +1,14 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
 import { CalendarProvider } from "@/context/CalendarContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import RouteTransition from "@/components/RouteTransition";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguageStore } from "@/lib/languageStore";
 
 function SubscriptionWrapper({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ function SubscriptionWrapper({ children }: { children: ReactNode }) {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
+  const initializeLanguage = useLanguageStore((state) => state.initializeLanguage);
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -32,6 +34,10 @@ export function Providers({ children }: { children: ReactNode }) {
         },
       })
   );
+
+  useEffect(() => {
+    initializeLanguage();
+  }, [initializeLanguage]);
 
   return (
     <QueryClientProvider client={queryClient}>
