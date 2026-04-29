@@ -397,20 +397,20 @@ export class BulkUploadService {
     if (record.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.email))
       return `Row ${index + 1}: Invalid email format`;
 
-    // For student imports, validate student-specific fields are present
-    if (!record.full_name && record.first_name && !record.current_class) {
-      return `Row ${index + 1}: Missing required field 'current_class' for student import`;
-    }
-
     // For staff imports, validate role is provided
     if (
-      record.full_name &&
       record.role &&
-      !['teacher', 'admin', 'finance', 'hr', 'registrar'].includes(
+      !['student', 'teacher', 'admin', 'finance', 'hr', 'registrar', 'parent'].includes(
         record.role.toLowerCase(),
       )
     ) {
-      return `Row ${index + 1}: Invalid role '${record.role}'. Valid roles: teacher, admin, finance, hr, registrar`;
+      return `Row ${index + 1}: Invalid role '${record.role}'. Valid roles: student, teacher, admin, finance, hr, registrar, parent`;
+    }
+
+    // For student imports, validate student-specific fields are present if it's explicitly a student role or has student fields
+    const isStudent = record.role?.toLowerCase() === 'student' || (!record.full_name && record.first_name);
+    if (isStudent && !record.current_class) {
+      return `Row ${index + 1}: Missing required field 'current_class' for student import`;
     }
 
     return null;

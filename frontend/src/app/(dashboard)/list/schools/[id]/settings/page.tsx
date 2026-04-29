@@ -18,7 +18,6 @@ import {
   Settings as SettingsIcon,
   BookOpen,
   MessageSquare,
-  Lock,
   RefreshCw,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -48,8 +47,6 @@ interface SettingItem {
   options?: { value: string; label: string }[] | string[];
   requiredFeature?: string;
   requiredTier?: PlanTier;
-  locked?: boolean;
-  lockedMessage?: string;
   validation?: {
     min?: number;
     max?: number;
@@ -461,17 +458,6 @@ export default function SchoolSettingsPage() {
     }
   }, [settings['calendar_type'], fetchAcademicYears]);
 
-  // Check if setting is locked - for locked settings with defaults, always show lock
-  const isSettingLocked = (setting: SettingItem): boolean => {
-    // For locked settings with systemDefault, always show as locked (active)
-    if (setting.locked && setting.systemDefault !== undefined) {
-      return true;
-    }
-    // For other locked settings, check if value is saved in database
-    const value = settings[setting.key];
-    return value !== undefined && value !== null && value !== '';
-  };
-
   const handleLogoSave = async () => {
     try {
       setSavingLogo(true);
@@ -528,12 +514,6 @@ export default function SchoolSettingsPage() {
   };
 
   const handleSettingChange = async (key: string, value: any, setting: SettingItem) => {
-    // Check if setting is locked
-    if (isSettingLocked(setting)) {
-      toast.error(setting.lockedMessage || 'This setting is locked and cannot be changed.');
-      return;
-    }
-
     // Validate number inputs
     if (setting.type === 'number') {
       if (setting.validation) {
@@ -593,14 +573,12 @@ export default function SchoolSettingsPage() {
   const renderSettingInput = (setting: SettingItem) => {
     const value = getSettingValue(setting.key, setting);
     const isSaving = saving === setting.key;
-    const isLocked = isSettingLocked(setting);
 
     // Render upgrade badge for hidden features
     if (!isSettingVisible(setting)) {
       return (
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
-            <Lock className="w-3 h-3 mr-1" />
             Upgrade Required
           </Badge>
         </div>
@@ -613,12 +591,9 @@ export default function SchoolSettingsPage() {
           <Switch
             checked={value === true || value === 'true'}
             onCheckedChange={(checked) => handleSettingChange(setting.key, checked, setting)}
-            disabled={isSaving || isLocked}
+            disabled={isSaving}
           />
           {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {isLocked && (
-            <Lock className="w-4 h-4 text-slate-400" />
-          )}
         </div>
       );
     }
@@ -628,23 +603,18 @@ export default function SchoolSettingsPage() {
         ? setting.options.map(opt => typeof opt === 'string' ? { value: opt, label: opt } : opt)
         : [];
 
-      // For unlocked settings or when no value is set, show "Select..." option
-      const showSelectOption = !isLocked || !value;
-
       return (
         <div className="flex items-center gap-2">
           <Select
             value={String(value || '')}
             onValueChange={(val) => handleSettingChange(setting.key, val, setting)}
-            disabled={isSaving || isLocked}
+            disabled={isSaving}
           >
             <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white">
               <SelectValue placeholder="Select an option..." />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-800">
-              {showSelectOption && (
-                <SelectItem value="__select__">Select an option...</SelectItem>
-              )}
+              <SelectItem value="__select__">Select an option...</SelectItem>
               {options.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
@@ -653,9 +623,6 @@ export default function SchoolSettingsPage() {
             </SelectContent>
           </Select>
           {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-          {isLocked && (
-            <Lock className="w-4 h-4 text-slate-400" />
-          )}
         </div>
       );
     }
@@ -750,15 +717,52 @@ export default function SchoolSettingsPage() {
               <div className="flex-1 min-w-0">
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{schoolInfo.name}</h1>
                 <div className="flex items-center gap-4 mt-1">
-                  {schoolInfo.code ? (
+                  {isEditingCode ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-500 dark:text-slate-400">Code:</span>
-                      <span className="font-mono font-medium text-sm bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300">
-                        {schoolInfo.code}
-                      </span>
+                      <Input
+                        value={schoolCode}
+                        onChange={(e) => setSchoolCode(e.target.value)}
+                        placeholder="School Code"
+                        className="h-8 w-32 font-mono text-sm bg-white dark:bg-slate-700"
+                        disabled={savingSchoolCode}
+                        autoFocus
+                      />
+                      <Button 
+                        size="sm" 
+                        onClick={handleSchoolCodeSave} 
+                        disabled={savingSchoolCode || !schoolCode}
+                        className="h-8 px-2"
+                      >
+                        {savingSchoolCode ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => {
+                          setIsEditingCode(false);
+                          setSchoolCode(schoolInfo.code || '');
+                        }}
+                        disabled={savingSchoolCode}
+                        className="h-8 px-2"
+                      >
+                        Cancel
+                      </Button>
                     </div>
                   ) : (
-                    <p className="text-sm text-amber-600">No code set</p>
+                    <div 
+                      className="flex items-center gap-2 cursor-pointer group"
+                      onClick={() => setIsEditingCode(true)}
+                      title="Click to edit school code"
+                    >
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Code:</span>
+                      {schoolInfo.code ? (
+                        <span className="font-mono font-medium text-sm bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
+                          {schoolInfo.code}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-amber-600 hover:underline">Add school code</span>
+                      )}
+                    </div>
                   )}
                   {schoolPlan && (
                     <Badge className={`${
@@ -876,17 +880,8 @@ export default function SchoolSettingsPage() {
                               {setting.requiredTier}
                             </Badge>
                           )}
-                          {isSettingLocked(setting) && (
-                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/30">
-                              <Lock className="w-3 h-3 mr-1" />
-                              Locked
-                            </Badge>
-                          )}
                         </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{setting.description}</p>
-                        {isSettingLocked(setting) && setting.lockedMessage && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">{setting.lockedMessage}</p>
-                        )}
                         {!isSettingVisible(setting) && (
                           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                             Requires {setting.requiredFeature ? `${setting.requiredFeature} feature` : `${setting.requiredTier} plan`}

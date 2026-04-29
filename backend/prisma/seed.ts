@@ -491,6 +491,9 @@ async function main() {
     console.log(`Using existing academic year: ${academicYear.name}`);
   }
 
+  const classIds: Record<string, string> = {};
+  const sectionIds: Record<string, string> = {};
+
   if (academicYear) {
     // Only create classes if academic year exists
     const classes = [
@@ -500,11 +503,19 @@ async function main() {
       { id: 'class-10-b', name: 'Grade 10', grade: 10, section: 'B' },
       { id: 'class-11-a', name: 'Grade 11', grade: 11, section: 'A' },
     ];
-
     for (const cls of classes) {
-      await prisma.class.upsert({
-        where: { id: cls.id },
-        update: {},
+      const seededClass = await prisma.class.upsert({
+        where: {
+          schoolId_academicYearId_name_section: {
+            schoolId: 'school-001',
+            academicYearId: academicYear.id,
+            name: cls.name,
+            section: cls.section,
+          },
+        },
+        update: {
+          grade: cls.grade,
+        },
         create: {
           id: cls.id,
           name: cls.name,
@@ -514,6 +525,7 @@ async function main() {
           schoolId: 'school-001',
         },
       });
+      classIds[cls.id] = seededClass.id;
     }
     console.log('Created classes: Grade 9 (A,B), Grade 10 (A,B), Grade 11 (A)');
 
@@ -525,18 +537,26 @@ async function main() {
       { id: 'section-b-10', name: 'B', classId: 'class-10-b' },
       { id: 'section-a-11', name: 'A', classId: 'class-11-a' },
     ];
-
     for (const section of sections) {
-      await prisma.section.upsert({
-        where: { id: section.id },
-        update: {},
+      const resolvedClassId = classIds[section.classId] ?? section.classId;
+      const seededSection = await prisma.section.upsert({
+        where: {
+          classId_name: {
+            classId: resolvedClassId,
+            name: section.name,
+          },
+        },
+        update: {
+          capacity: 30,
+        },
         create: {
           id: section.id,
           name: section.name,
-          classId: section.classId,
+          classId: resolvedClassId,
           capacity: 30,
         },
       });
+      sectionIds[section.id] = seededSection.id;
     }
     console.log('Created sections: A, B for each class');
   }
@@ -642,8 +662,8 @@ async function main() {
             update: {},
             create: {
               id: `slot-${slot.teacherEmail}-${slot.dayOfWeek}-${slot.startTime}`,
-              classId: slot.classId,
-              sectionId: slot.sectionId,
+              classId: classIds[slot.classId] ?? slot.classId,
+              sectionId: sectionIds[slot.sectionId] ?? slot.sectionId,
               subjectId: slot.subjectId,
               teacherId: teacher.id,
               dayOfWeek: slot.dayOfWeek,
@@ -723,8 +743,8 @@ async function main() {
         await prisma.studentClass.create({
           data: {
             studentId: studentForFees.id,
-            classId: 'class-10-a',
-            sectionId: 'section-a-10',
+            classId: classIds['class-10-a'] ?? 'class-10-a',
+            sectionId: sectionIds['section-a-10'] ?? 'section-a-10',
             academicYear: academicYear.name,
             schoolId: 'school-001',
           },
