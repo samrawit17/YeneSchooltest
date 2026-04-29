@@ -1,0 +1,114 @@
+{
+  "Profile": {
+    "title": "Profile Settings",
+    "description": "Manage your account information, security, and preferences",
+    "logout": "Logout",
+    "tabs": {
+      "profile": "Profile",
+      "security": "Security",
+      "notifications": "Notifications",
+      "preferences": "Preferences"
+    },
+    "info": {
+      "title": "Profile Information",
+      "description": "Your personal information and account details",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "save": "Save Changes",
+      "saving": "Saving...",
+      "saveSuccess": "Profile updated successfully",
+      "fullName": "Full Name",
+      "email": "Email Address",
+      "phone": "Phone Number",
+      "avatarUrl": "Avatar URL",
+      "schoolId": "School ID",
+      "memberSince": "Member Since",
+      "class": "Class",
+      "gradeLevel": "Grade Level",
+      "section": "Section",
+      "address": "Address",
+      "role": "Role"
+    },
+    "avatar": {
+      "title": "Change Profile Picture",
+      "description": "Upload a new profile picture or enter an image URL",
+      "placeholder": "Enter image URL"
+    },
+    "roles": {
+      "user": "User",
+      "teacher": "Teacher",
+      "admin": "Admin",
+      "superadmin": "Super Admin",
+      "student": "Student",
+      "parent": "Parent"
+    },
+    "actions": {
+      "leaveRequests": "Leave Requests"
+    },
+    "activity": {
+      "title": "Account Activity",
+      "description": "Recent account activities and updates",
+      "lastUpdated": "Profile last updated",
+      "updated": "Updated",
+      "emailVerified": "Email verified",
+      "emailVerifiedDesc": "Your email address is confirmed",
+      "verified": "Verified",
+      "lastLogin": "Last login",
+      "active": "Active"
+    },
+    "security": {
+      "title": "Change Password",
+      "description": "Update your password to keep your account secure",
+      "saveSuccess": "Password changed successfully",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "currentPlaceholder": "Enter current password",
+      "newPlaceholder": "Enter new password",
+      "confirmPlaceholder": "Confirm new password",
+      "passwordHelp": "Password must be at least 8 characters long and include uppercase, lowercase, numbers, and special characters.",
+      "updateButton": "Update Password",
+      "updating": "Updating..."
+    },
+    "notifications": {
+      "title": "Notification Preferences",
+      "description": "Choose how you want to be notified about important updates",
+      "channels": "Notification Channels",
+      "email": "Email Notifications",
+      "emailDesc": "Receive notifications via email",
+      "sms": "SMS Notifications",
+      "smsDesc": "Receive notifications via text message",
+      "push": "Push Notifications",
+      "pushDesc": "Receive push notifications on your device",
+      "types": "Notification Types",
+      "commBook": "Communication Book",
+      "commBookDesc": "Receive updates about communication book messages",
+      "timetable": "Timetable",
+      "timetableDesc": "Receive updates about timetable changes and schedules",
+      "attendance": "Attendance",
+      "attendanceDesc": "Receive attendance alerts and updates",
+      "announcements": "Announcements",
+      "announcementsDesc": "Receive school announcements and notices",
+      "assignments": "Assignments",
+      "assignmentsDesc": "Receive assignment and homework updates",
+      "exams": "Exam Results",
+      "examsDesc": "Receive exam results and academic updates",
+      "fees": "Fee Payments",
+      "feesDesc": "Receive fee payment reminders and receipts",
+      "events": "Events",
+      "eventsDesc": "Receive school event notifications",
+      "save": "Save Preferences"
+    },
+    "preferences": {
+      "appearance": "Appearance",
+      "appearanceDesc": "Customize how the app looks on your device",
+      "theme": "Theme",
+      "themeDesc": "Select your preferred theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System",
+      "language": "Language",
+      "languageDesc": "Select your preferred language"
+    }
+  }
+}

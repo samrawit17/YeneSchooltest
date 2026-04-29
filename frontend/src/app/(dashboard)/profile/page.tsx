@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
@@ -89,10 +89,23 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { AppLanguage, useLanguageStore } from "@/lib/languageStore";
+import enMessages from "../../../../../messages/en.json";
+import amMessages from "../../../../../messages/am.json";
+import arMessages from "../../../../../messages/ar.json";
+import omMessages from "../../../../../messages/om.json";
+import soMessages from "../../../../../messages/so.json";
 
 // Form validation schema
 const profileSchema = z.object({
@@ -122,10 +135,28 @@ type PasswordChangeFormValues = z.infer<typeof passwordChangeSchema>;
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
+const dateLocales: Record<AppLanguage, string> = {
+  am: "am-ET",
+  ar: "ar",
+  en: "en-US",
+  om: "om-ET",
+  so: "so-SO",
+};
+
+const profileMessagesByLanguage = {
+  am: amMessages.Profile,
+  ar: arMessages.Profile,
+  en: enMessages.Profile,
+  om: omMessages.Profile,
+  so: soMessages.Profile,
+} as const;
+
 const ProfilePage = () => {
   const router = useRouter();
   const { user, updateUser, logout } = useAuth();
   const { theme: themeState, setTheme, resolvedTheme } = useThemeStore();
+  const language = useLanguageStore((state) => state.language);
+  const setLanguage = useLanguageStore((state) => state.setLanguage);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -140,6 +171,12 @@ const ProfilePage = () => {
   });
 
   const queryClient = useQueryClient();
+  const t = useMemo(() => profileMessagesByLanguage[language], [language]);
+  const formatDate = (value: string, options?: Intl.DateTimeFormatOptions) =>
+    new Date(value).toLocaleDateString(dateLocales[language], options);
+  const formatDateTime = (value: string) =>
+    new Date(value).toLocaleString(dateLocales[language]);
+  const currentLocale = dateLocales[language];
 
   // Initialize form with react-hook-form
   const form = useForm<ProfileFormValues>({
@@ -182,7 +219,7 @@ const ProfilePage = () => {
       await userAPI.updateProfile(data);
     },
     onSuccess: () => {
-      toast.success("Profile updated successfully");
+      toast.success(t.info.saveSuccess);
       if (user) {
         updateUser({ ...user, ...form.getValues() });
       }
@@ -215,7 +252,7 @@ const ProfilePage = () => {
       await userAPI.changePassword(data.currentPassword, data.newPassword, data.confirmPassword);
     },
     onSuccess: () => {
-      toast.success("Password changed successfully");
+      toast.success(t.security.saveSuccess);
       passwordForm.reset();
     },
     onError: (error: any) => {
@@ -295,10 +332,10 @@ const ProfilePage = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-[#e35336]">
-                Profile Settings
+                {t.title}
               </h1>
               <p className="text-muted-foreground mt-2">
-                Manage your account information, security, and preferences
+                {t.description}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -309,7 +346,7 @@ const ProfilePage = () => {
                 onClick={logout}
               >
                 <LogOut className="w-4 h-4" />
-                Logout
+                {t.logout}
               </Button>
             </div>
           </div>
@@ -321,19 +358,19 @@ const ProfilePage = () => {
             <TabsList className="grid grid-cols-4 min-w-[500px] md:min-w-auto md:grid-cols-4 w-full bg-transparent shadow-none border-0 p-0">
               <TabsTrigger value="profile" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[#e35336] data-[state=active]:text-[#e35336] rounded-none px-2 md:px-4">
                 <User className="w-3 h-3 md:w-4 md:h-4" />
-                <span>Profile</span>
+                <span>{t.tabs.profile}</span>
               </TabsTrigger>
               <TabsTrigger value="security" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[#e35336] data-[state=active]:text-[#e35336] rounded-none px-2 md:px-4">
                 <Shield className="w-3 h-3 md:w-4 md:h-4" />
-                <span>Security</span>
+                <span>{t.tabs.security}</span>
               </TabsTrigger>
               <TabsTrigger value="notifications" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[#e35336] data-[state=active]:text-[#e35336] rounded-none px-2 md:px-4">
                 <Bell className="w-3 h-3 md:w-4 md:h-4" />
-                <span>Notifications</span>
+                <span>{t.tabs.notifications}</span>
               </TabsTrigger>
               <TabsTrigger value="preferences" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[#e35336] data-[state=active]:text-[#e35336] rounded-none px-2 md:px-4">
                 <Globe className="w-3 h-3 md:w-4 md:h-4" />
-                <span>Preferences</span>
+                <span>{t.tabs.preferences}</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -344,9 +381,9 @@ const ProfilePage = () => {
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <CardTitle className="text-lg md:text-xl">Profile Information</CardTitle>
+                  <CardTitle className="text-lg md:text-xl">{t.info.title}</CardTitle>
                   <CardDescription className="text-xs md:text-sm">
-                    Your personal information and account details
+                    {t.info.description}
                   </CardDescription>
                 </div>
                 <Button
@@ -357,12 +394,12 @@ const ProfilePage = () => {
                   {isEditing ? (
                     <>
                       <X className="w-3 h-3 md:w-4 md:h-4" />
-                      <span>Cancel</span>
+                      <span>{t.info.cancel}</span>
                     </>
                   ) : (
                     <>
                       <Edit2 className="w-3 h-3 md:w-4 md:h-4" />
-                      <span>Edit</span>
+                      <span>{t.info.edit}</span>
                     </>
                   )}
                 </Button>
@@ -394,9 +431,9 @@ const ProfilePage = () => {
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Change Profile Picture</DialogTitle>
+                            <DialogTitle>{t.avatar.title}</DialogTitle>
                             <DialogDescription>
-                              Upload a new profile picture or enter an image URL
+                              {t.avatar.description}
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4">
@@ -411,7 +448,7 @@ const ProfilePage = () => {
                                 )}
                               </Avatar>
                               <Input
-                                placeholder="Enter image URL"
+                                placeholder={t.avatar.placeholder}
                                 value={form.watch("avatarUrl")}
                                 onChange={(e) => form.setValue("avatarUrl", e.target.value)}
                               />
@@ -419,13 +456,13 @@ const ProfilePage = () => {
                           </div>
                           <DialogFooter>
                             <Button variant="outline" onClick={() => setShowAvatarDialog(false)}>
-                              Cancel
+                              {t.info.cancel}
                             </Button>
                             <Button onClick={() => {
                               form.handleSubmit(onSubmit)();
                               setShowAvatarDialog(false);
                             }}>
-                              Save Changes
+                              {t.info.save}
                             </Button>
                           </DialogFooter>
                         </DialogContent>
@@ -440,14 +477,14 @@ const ProfilePage = () => {
                     <div className="flex flex-wrap gap-2 mt-3 justify-center">
                       <Badge variant="secondary" className="gap-1.5">
                         <Shield className="w-3 h-3" />
-                        {user?.role ? (user.role.charAt(0) + user.role.slice(1).toLowerCase().replace('_', ' ')) : "User"}
+                        {user?.role ? (t.roles[user.role.toLowerCase().replace("_", "") as keyof typeof t.roles] ?? user.role) : t.roles.user}
                       </Badge>
                       {user?.role === 'TEACHER' && assignedSubjects.length > 0 && (
                         <Badge 
                           variant="outline" 
                           className="border-[#e35336] text-[#e35336] bg-[#e35336]/5 gap-1.5 animate-in zoom-in-95 duration-300"
                         >
-                          {assignedSubjects.join(' & ')} Teacher
+                          {assignedSubjects.join(' & ')} {t.roles.teacher}
                         </Badge>
                       )}
                       {profileData?.studentProfile && (
@@ -477,7 +514,7 @@ const ProfilePage = () => {
                         onClick={() => router.push('/employee/leave-requests')}
                       >
                         <CalendarCheck className="w-4 h-4" />
-                        Leave Requests
+                        {t.actions.leaveRequests}
                       </Button>
                     )}
                   </div>
@@ -496,10 +533,10 @@ const ProfilePage = () => {
                               <FormItem>
                                 <FormLabel className="flex items-center gap-2">
                                   <User className="w-4 h-4" />
-                                  Full Name
+                                  {t.info.fullName}
                                 </FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Enter your full name" {...field} />
+                                  <Input placeholder={t.info.fullName} {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -513,10 +550,10 @@ const ProfilePage = () => {
                               <FormItem>
                                 <FormLabel className="flex items-center gap-2">
                                   <Mail className="w-4 h-4" />
-                                  Email Address
+                                  {t.info.email}
                                 </FormLabel>
                                 <FormControl>
-                                  <Input type="email" placeholder="Enter your email" {...field} />
+                                  <Input type="email" placeholder={t.info.email} {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -530,10 +567,10 @@ const ProfilePage = () => {
                               <FormItem>
                                 <FormLabel className="flex items-center gap-2">
                                   <Phone className="w-4 h-4" />
-                                  Phone Number
+                                  {t.info.phone}
                                 </FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Enter your phone number" {...field} />
+                                  <Input placeholder={t.info.phone} {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -547,10 +584,10 @@ const ProfilePage = () => {
                               <FormItem>
                                 <FormLabel className="flex items-center gap-2">
                                   <Upload className="w-4 h-4" />
-                                  Avatar URL
+                                  {t.info.avatarUrl}
                                 </FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Enter avatar URL" {...field} />
+                                  <Input placeholder={t.info.avatarUrl} {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -565,18 +602,18 @@ const ProfilePage = () => {
                             onClick={() => setIsEditing(false)}
                           >
                             <X className="w-4 h-4 mr-2" />
-                            Cancel
+                            {t.info.cancel}
                           </Button>
                           <Button type="submit" disabled={updateMutation.isPending}>
                             {updateMutation.isPending ? (
                               <>
                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                                Saving...
+                                {t.info.saving}
                               </>
                             ) : (
                               <>
                                 <Save className="w-4 h-4 mr-2" />
-                                Save Changes
+                                {t.info.save}
                               </>
                             )}
                           </Button>
@@ -596,7 +633,7 @@ const ProfilePage = () => {
                                     <BookOpen className="w-5 h-5 text-indigo-600" />
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-gray-500">Class</p>
+                                    <p className="text-xs font-medium text-gray-500">{t.info.class}</p>
                                     <p className="text-sm font-bold text-gray-900">{profileData.studentProfile.className || profileData.enrollment?.className}</p>
                                   </div>
                                 </div>
@@ -612,7 +649,7 @@ const ProfilePage = () => {
                                     <GraduationCap className="w-5 h-5 text-blue-600" />
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-gray-500">Grade Level</p>
+                                    <p className="text-xs font-medium text-gray-500">{t.info.gradeLevel}</p>
                                     <p className="text-sm font-bold text-gray-900">{profileData.studentProfile.gradeLevel}</p>
                                   </div>
                                 </div>
@@ -628,7 +665,7 @@ const ProfilePage = () => {
                                     <BookOpen className="w-5 h-5 text-purple-600" />
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-gray-500">Section</p>
+                                    <p className="text-xs font-medium text-gray-500">{t.info.section}</p>
                                     <p className="text-sm font-bold text-gray-900">{profileData.studentProfile.section}</p>
                                    
                                   </div>
@@ -645,7 +682,7 @@ const ProfilePage = () => {
                                     <MapPin className="w-5 h-5 text-green-600" />
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-gray-500">Address</p>
+                                    <p className="text-xs font-medium text-gray-500">{t.info.address}</p>
                                     <p className="text-sm font-bold text-gray-900 truncate">{profileData.studentProfile.address}</p>
                                   </div>
                                 </div>
@@ -664,7 +701,7 @@ const ProfilePage = () => {
                                 <User className="w-5 h-5 text-blue-600" />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">Full Name</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.fullName}</p>
                                 <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{user?.name || "-"}</p>
                               </div>
                             </div>
@@ -678,7 +715,7 @@ const ProfilePage = () => {
                                 <Mail className="w-5 h-5 text-green-600" />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">Email Address</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.email}</p>
                                 <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{user?.email || "-"}</p>
                               </div>
                             </div>
@@ -692,7 +729,7 @@ const ProfilePage = () => {
                                 <Phone className="w-5 h-5 text-purple-600" />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">Phone Number</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.phone}</p>
                                 <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{user?.phone || "-"}</p>
                               </div>
                             </div>
@@ -706,9 +743,9 @@ const ProfilePage = () => {
                                 <Shield className="w-5 h-5 text-orange-600" />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">Role</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.role}</p>
                                 <p className="text-sm font-bold text-gray-900 dark:text-slate-100">
-                                  {user?.role ? (user.role.charAt(0) + user.role.slice(1).toLowerCase().replace('_', ' ')) : "-"}
+                                  {user?.role ? (t.roles[user.role.toLowerCase().replace("_", "") as keyof typeof t.roles] ?? user.role) : "-"}
                                 </p>
                               </div>
                             </div>
@@ -723,7 +760,7 @@ const ProfilePage = () => {
                                   <Building2 className="w-5 h-5 text-indigo-600" />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 dark:text-slate-400">School ID</p>
+                                  <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.schoolId}</p>
                                   <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{user.schoolId}</p>
                                 </div>
                               </div>
@@ -738,9 +775,9 @@ const ProfilePage = () => {
                                 <Calendar className="w-5 h-5 text-pink-600" />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500">Member Since</p>
+                                <p className="text-xs font-medium text-gray-500">{t.info.memberSince}</p>
                                 <p className="text-sm font-bold text-gray-900">
-                                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
+                                  {user?.createdAt ? formatDate(user.createdAt) : '-'}
                                 </p>
                               </div>
                             </div>
@@ -761,10 +798,10 @@ const ProfilePage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="w-5 h-5" />
-                Account Activity
+                {t.activity.title}
               </CardTitle>
               <CardDescription>
-                Recent account activities and updates
+                {t.activity.description}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -775,13 +812,13 @@ const ProfilePage = () => {
                       <Calendar className="w-4 h-4 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">Profile last updated</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{t.activity.lastUpdated}</p>
                       <p className="text-xs text-gray-600 dark:text-slate-400">
-                        {(user?.updatedAt || user?.createdAt) ? new Date(user.updatedAt || user.createdAt).toLocaleString() : '-'}
+                        {(user?.updatedAt || user?.createdAt) ? formatDateTime(user.updatedAt || user.createdAt) : '-'}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline">Updated</Badge>
+                  <Badge variant="outline">{t.activity.updated}</Badge>
                 </div>
                 
                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-green-100/50 rounded-lg border border-green-200 dark:from-green-950/30 dark:to-green-900/20 dark:border-green-800">
@@ -790,12 +827,12 @@ const ProfilePage = () => {
                       <CheckCircle className="w-4 h-4 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">Email verified</p>
-                      <p className="text-xs text-gray-600 dark:text-slate-400">Your email address is confirmed</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{t.activity.emailVerified}</p>
+                      <p className="text-xs text-gray-600 dark:text-slate-400">{t.activity.emailVerifiedDesc}</p>
                     </div>
                   </div>
                   <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200 border-green-300">
-                    Verified
+                    {t.activity.verified}
                   </Badge>
                 </div>
                 
@@ -805,13 +842,13 @@ const ProfilePage = () => {
                       <CreditCard className="w-4 h-4 text-gray-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">Last login</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{t.activity.lastLogin}</p>
                       <p className="text-xs text-gray-600 dark:text-slate-400">
-                        {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+                        {new Date().toLocaleString(currentLocale)}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline">Active</Badge>
+                  <Badge variant="outline">{t.activity.active}</Badge>
                 </div>
               </div>
             </CardContent>
@@ -824,10 +861,10 @@ const ProfilePage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                 <Lock className="w-5 h-5" />
-                Change Password
+                {t.security.title}
               </CardTitle>
               <CardDescription className="text-sm">
-                Update your password to keep your account secure
+                {t.security.description}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -839,12 +876,12 @@ const ProfilePage = () => {
                       name="currentPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Current Password</FormLabel>
+                          <FormLabel>{t.security.currentPassword}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Input
                                 type={showCurrentPassword ? "text" : "password"}
-                                placeholder="Enter current password"
+                                placeholder={t.security.currentPlaceholder}
                                 {...field}
                               />
                               <Button
@@ -871,12 +908,12 @@ const ProfilePage = () => {
                       name="newPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>New Password</FormLabel>
+                          <FormLabel>{t.security.newPassword}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Input
                                 type={showNewPassword ? "text" : "password"}
-                                placeholder="Enter new password"
+                                placeholder={t.security.newPlaceholder}
                                 {...field}
                               />
                               <Button
@@ -903,12 +940,12 @@ const ProfilePage = () => {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Confirm Password</FormLabel>
+                          <FormLabel>{t.security.confirmPassword}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Input
                                 type={showConfirmPassword ? "text" : "password"}
-                                placeholder="Confirm new password"
+                                placeholder={t.security.confirmPlaceholder}
                                 {...field}
                               />
                               <Button
@@ -932,19 +969,19 @@ const ProfilePage = () => {
                     />
                   </div>
                   <div className="text-xs md:text-sm text-gray-500 dark:text-slate-400">
-                    Password must be at least 8 characters long and include uppercase, lowercase, numbers, and special characters.
+                    {t.security.passwordHelp}
                   </div>
                   <div className="border-t pt-4">
                     <Button type="submit" className="gap-2 w-full md:w-auto" disabled={changePasswordMutation.isPending}>
                       {changePasswordMutation.isPending ? (
                         <>
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Updating...
+                          {t.security.updating}
                         </>
                       ) : (
                         <>
                           <Key className="w-4 h-4" />
-                          Update Password
+                          {t.security.updateButton}
                         </>
                       )}
                     </Button>
@@ -963,19 +1000,19 @@ const ProfilePage = () => {
         <TabsContent value="notifications" className="space-y-6 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Notification Preferences</CardTitle>
+              <CardTitle className="text-lg md:text-xl">{t.notifications.title}</CardTitle>
               <CardDescription className="text-sm">
-                Choose how you want to be notified about important updates
+                {t.notifications.description}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 md:space-y-6">
               {/* Notification Channels */}
               <div className="space-y-3 md:space-y-4">
-                <h4 className="text-sm md:text-base font-medium">Notification Channels</h4>
+                <h4 className="text-sm md:text-base font-medium">{t.notifications.channels}</h4>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                   <div className="space-y-1">
-                    <Label htmlFor="email-notifications" className="text-sm md:text-base">Email Notifications</Label>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive notifications via email</p>
+                    <Label htmlFor="email-notifications" className="text-sm md:text-base">{t.notifications.email}</Label>
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.emailDesc}</p>
                   </div>
                   <Switch
                     id="email-notifications"
@@ -989,8 +1026,8 @@ const ProfilePage = () => {
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                   <div className="space-y-1">
-                    <Label htmlFor="sms-notifications" className="text-sm md:text-base">SMS Notifications</Label>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive notifications via text message</p>
+                    <Label htmlFor="sms-notifications" className="text-sm md:text-base">{t.notifications.sms}</Label>
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.smsDesc}</p>
                   </div>
                   <Switch
                     id="sms-notifications"
@@ -1004,8 +1041,8 @@ const ProfilePage = () => {
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                   <div className="space-y-1">
-                    <Label htmlFor="push-notifications" className="text-sm md:text-base">Push Notifications</Label>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive push notifications on your device</p>
+                    <Label htmlFor="push-notifications" className="text-sm md:text-base">{t.notifications.push}</Label>
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.pushDesc}</p>
                   </div>
                   <Switch
                     id="push-notifications"
@@ -1020,12 +1057,12 @@ const ProfilePage = () => {
 
               {/* Notification Types */}
               <div className="space-y-3 md:space-y-4">
-                <h4 className="text-sm md:text-base font-medium">Notification Types</h4>
+                <h4 className="text-sm md:text-base font-medium">{t.notifications.types}</h4>
                 <div className="space-y-3 md:space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="comm-book-notifications" className="text-sm md:text-base cursor-pointer">Communication Book</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive updates about communication book messages</p>
+                      <Label htmlFor="comm-book-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.commBook}</Label>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.commBookDesc}</p>
                     </div>
                     <Switch
                       id="comm-book-notifications"
@@ -1038,8 +1075,8 @@ const ProfilePage = () => {
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="timetable-notifications" className="text-sm md:text-base cursor-pointer">Timetable</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive updates about timetable changes and schedules</p>
+                      <Label htmlFor="timetable-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.timetable}</Label>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.timetableDesc}</p>
                     </div>
                     <Switch
                       id="timetable-notifications"
@@ -1052,8 +1089,8 @@ const ProfilePage = () => {
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="attendance-notifications" className="text-sm md:text-base cursor-pointer">Attendance</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive attendance alerts and updates</p>
+                      <Label htmlFor="attendance-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.attendance}</Label>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.attendanceDesc}</p>
                     </div>
                     <Switch
                       id="attendance-notifications"
@@ -1066,8 +1103,8 @@ const ProfilePage = () => {
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="announcement-notifications" className="text-sm md:text-base cursor-pointer">Announcements</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive school announcements and notices</p>
+                      <Label htmlFor="announcement-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.announcements}</Label>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.announcementsDesc}</p>
                     </div>
                     <Switch
                       id="announcement-notifications"
@@ -1080,8 +1117,8 @@ const ProfilePage = () => {
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="assignment-notifications" className="text-sm md:text-base cursor-pointer">Assignments</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive assignment and homework updates</p>
+                      <Label htmlFor="assignment-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.assignments}</Label>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.assignmentsDesc}</p>
                     </div>
                     <Switch
                       id="assignment-notifications"
@@ -1094,8 +1131,8 @@ const ProfilePage = () => {
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="exam-notifications" className="text-sm md:text-base cursor-pointer">Exam Results</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive exam results and academic updates</p>
+                      <Label htmlFor="exam-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.exams}</Label>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.examsDesc}</p>
                     </div>
                     <Switch
                       id="exam-notifications"
@@ -1108,8 +1145,8 @@ const ProfilePage = () => {
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="fee-notifications" className="text-sm md:text-base cursor-pointer">Fee Payments</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive fee payment reminders and receipts</p>
+                      <Label htmlFor="fee-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.fees}</Label>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.feesDesc}</p>
                     </div>
                     <Switch
                       id="fee-notifications"
@@ -1122,8 +1159,8 @@ const ProfilePage = () => {
                   
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="event-notifications" className="text-sm md:text-base cursor-pointer">Events</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Receive school event notifications</p>
+                      <Label htmlFor="event-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.events}</Label>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.eventsDesc}</p>
                     </div>
                     <Switch
                       id="event-notifications"
@@ -1137,7 +1174,7 @@ const ProfilePage = () => {
             <CardFooter className="flex flex-col sm:flex-row">
               <Button className="gap-2 w-full sm:w-auto">
                 <Bell className="w-4 h-4" />
-                Save Preferences
+                {t.notifications.save}
               </Button>
             </CardFooter>
           </Card>
@@ -1146,17 +1183,17 @@ const ProfilePage = () => {
         <TabsContent value="preferences" className="space-y-6 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Appearance</CardTitle>
+              <CardTitle className="text-lg md:text-xl">{t.preferences.appearance}</CardTitle>
               <CardDescription className="text-sm">
-                Customize how the app looks on your device
+                {t.preferences.appearanceDesc}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4 md:space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
-                    <Label className="text-sm md:text-base">Theme</Label>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Select your preferred theme</p>
+                    <Label className="text-sm md:text-base">{t.preferences.theme}</Label>
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.preferences.themeDesc}</p>
                   </div>
 <div className="flex gap-2 mt-2 sm:mt-0">
                      <Button 
@@ -1167,7 +1204,7 @@ const ProfilePage = () => {
                           setTheme("light");
                           userAPI.updateTheme("LIGHT").catch(console.error);
                         }}
-                     >Light</Button>
+                     >{t.preferences.light}</Button>
                      <Button 
                        variant={themeState === "dark" ? "default" : "outline"} 
                        size="sm"
@@ -1176,7 +1213,7 @@ const ProfilePage = () => {
                           setTheme("dark");
                           userAPI.updateTheme("DARK").catch(console.error);
                         }}
-                     >Dark</Button>
+                     >{t.preferences.dark}</Button>
                      <Button 
                        variant={themeState === "system" ? "default" : "outline"} 
                        size="sm"
@@ -1185,7 +1222,7 @@ const ProfilePage = () => {
                           setTheme("system");
                           userAPI.updateTheme("SYSTEM").catch(console.error);
                         }}
-                     >System</Button>
+                     >{t.preferences.system}</Button>
                    </div>
                 </div>
                 
@@ -1193,12 +1230,21 @@ const ProfilePage = () => {
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
-                    <Label className="text-sm md:text-base">Language</Label>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">Select your preferred language</p>
+                    <Label className="text-sm md:text-base">{t.preferences.language}</Label>
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.preferences.languageDesc}</p>
                   </div>
-                  <Button variant="outline" size="sm" className="mt-2 sm:mt-0 text-xs md:text-sm">
-                    English
-                  </Button>
+                  <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder={t.preferences.language} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="am">አማርኛ (Amharic)</SelectItem>
+                      <SelectItem value="ar">العربية (Arabic)</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="om">Afan Oromo</SelectItem>
+                      <SelectItem value="so">Somali</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>
