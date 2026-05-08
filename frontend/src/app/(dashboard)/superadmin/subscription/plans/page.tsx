@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { usePlans } from '@/hooks/useSubscription';
-import api from '@/lib/api';
+import { subscriptionAPI } from '@/lib/api/subscription';
+import { superadminAPI } from '@/lib/api/superadmin';
 import { toast } from 'sonner';
 import {
   Crown,
@@ -102,7 +103,7 @@ const SubscriptionPlansPage = () => {
   const fetchSchools = async () => {
     try {
       setLoadingSchools(true);
-      const response = await api.get('/schools');
+      const response = await superadminAPI.getSchools();
       setSchools(response.data);
     } catch (error) {
       console.error('Failed to fetch schools:', error);
@@ -574,10 +575,10 @@ const SubscriptionPlansPage = () => {
                               value={schoolPlan?.id || 'none'}
                               onValueChange={async (value) => {
                                 try {
-                                  await api.post('/subscription/assign', {
-                                    schoolId: school.id,
-                                    planId: value === 'none' ? null : value,
-                                  });
+                                  await subscriptionAPI.assignPlan(
+                                    school.id,
+                                    value === 'none' ? null : value
+                                  );
                                   toast.success('Plan assigned successfully');
                                   await fetchSchools();
                                 } catch (error: any) {

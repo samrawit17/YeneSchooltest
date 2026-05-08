@@ -19,7 +19,7 @@ import {
   Building,
   Smartphone
 } from "lucide-react";
-import api from "@/lib/api";
+import { financeAPI } from "@/lib/api";
 
 // Shadcn/ui Components
 import {
@@ -96,9 +96,7 @@ const ChildFeesPage = () => {
           return;
         }
 
-        const response = await api.get(`/finance/student-fees/${childId}`, {
-          params: { schoolId, academicYearId }
-        });
+        const response = await financeAPI.getStudentFees(childId, schoolId, academicYearId);
         const data = response.data;
         setFeeItems(data.feeItems || []);
         setPayments(data.payments || []);

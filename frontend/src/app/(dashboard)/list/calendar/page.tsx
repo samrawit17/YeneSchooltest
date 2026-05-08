@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import FormModal from '@/components/FormModal';
 import TableSearch from '@/components/TableSearch';
-import { eventsAPI, Event } from '@/lib/api';
+import { eventsAPI, Event } from '@/lib/api/content';
 import { useQuery } from '@tanstack/react-query';
 import BigCalendar from '@/components/BigCalendar';
 import { Calendar } from 'lucide-react';

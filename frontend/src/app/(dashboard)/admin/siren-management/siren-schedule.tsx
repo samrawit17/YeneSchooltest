@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import api from "@/lib/api";
+import { sirenScheduleAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {
@@ -145,10 +145,7 @@ export function SirenScheduleManagement() {
   const fetchSchedules = useCallback(async () => {
     if (!schoolId) return;
     try {
-      const res = await api.get('/api/siren/schedules', {
-        params: { schoolId },
-        skipAuthErrorRedirect: true,
-      });
+      const res = await sirenScheduleAPI.list(schoolId);
       setSchedules(res.data || []);
     } catch (error) {
       toast.error("Failed to load siren schedules");
@@ -186,18 +183,10 @@ export function SirenScheduleManagement() {
 
     try {
       if (editingId) {
-        await api.put(
-          `/api/siren/schedules/${editingId}`,
-          { schoolId, ...form },
-          { skipAuthErrorRedirect: true }
-        );
+        await sirenScheduleAPI.update(editingId, { schoolId, ...form });
         toast.success("Schedule updated");
       } else {
-        await api.post(
-          '/api/siren/schedules',
-          { schoolId, ...form },
-          { skipAuthErrorRedirect: true }
-        );
+        await sirenScheduleAPI.create({ schoolId, ...form });
         toast.success("Schedule created");
       }
       await fetchSchedules();
@@ -239,9 +228,7 @@ export function SirenScheduleManagement() {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      await api.delete(`/api/siren/schedules/${deleteId}`, {
-        skipAuthErrorRedirect: true,
-      });
+      await sirenScheduleAPI.delete(deleteId);
       toast.success("Schedule deleted");
       await fetchSchedules();
       setDeleteId(null);
@@ -251,11 +238,7 @@ export function SirenScheduleManagement() {
   };
   const handleToggleActive = async (schedule: SirenSchedule) => {
     try {
-      await api.put(
-        `/api/siren/schedules/${schedule.id}`,
-        { ...schedule, isActive: !schedule.isActive },
-        { skipAuthErrorRedirect: true }
-      );
+      await sirenScheduleAPI.update(schedule.id, { ...schedule, isActive: !schedule.isActive });
       toast.success("Schedule updated");
       await fetchSchedules();
     } catch (error) {

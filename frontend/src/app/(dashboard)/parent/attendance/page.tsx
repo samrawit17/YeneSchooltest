@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { attendanceAPI, parentsAPI } from "@/lib/api";
+import { attendanceAPI } from "@/lib/api";
+import { parentsAPI } from "@/lib/api/people";
 import { Calendar, User, AlertCircle } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

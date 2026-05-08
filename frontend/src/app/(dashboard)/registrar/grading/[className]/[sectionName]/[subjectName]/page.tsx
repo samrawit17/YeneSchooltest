@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import api, { gradingAPI } from "@/lib/api";
+import { gradingAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle, XCircle, Download } from "lucide-react";
 
@@ -122,7 +122,7 @@ export default function GradeDetailPage() {
   const handleApprove = async (gradeId: string) => {
     setProcessing(true);
     try {
-      await api.put(`/grading/registrar/grades/${gradeId}/review`, { status: "APPROVED" });
+      await gradingAPI.reviewGrade(gradeId, { status: "APPROVED" });
       toast.success("Grade approved successfully");
       fetchGrades();
     } catch (error) {
@@ -139,7 +139,7 @@ export default function GradeDetailPage() {
 
     setProcessing(true);
     try {
-      await api.put(`/grading/registrar/grades/${gradeId}/review`, {
+      await gradingAPI.reviewGrade(gradeId, {
         status: "REJECTED",
         registrarComment: comment,
       });

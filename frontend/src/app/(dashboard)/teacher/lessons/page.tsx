@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
-import api from "@/lib/api";
+import { lessonsAPI } from "@/lib/api/content";
 import { toast } from "sonner";
 import TableSearch from "@/components/TableSearch";
 import {
@@ -110,7 +110,7 @@ const TeacherLessonsPage = () => {
     try {
       setLoading(true);
       // Use /lessons endpoint - backend automatically filters by teacherId for TEACHER role
-      const response = await api.get('/lessons');
+      const response = await lessonsAPI.listForTeacher();
       setLessons(response.data.data || response.data);
     } catch (error: any) {
       console.error('Failed to fetch lessons:', error);
@@ -124,7 +124,7 @@ const TeacherLessonsPage = () => {
     if (!confirm('Are you sure you want to delete this lesson?')) return;
     
     try {
-      await api.delete(`/lessons/${id}`);
+      await lessonsAPI.delete(id);
       toast.success('Lesson deleted successfully');
       fetchLessons();
     } catch (error: any) {

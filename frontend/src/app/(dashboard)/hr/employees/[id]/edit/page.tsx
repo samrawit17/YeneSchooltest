@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
-import { hrAPI } from '@/lib/api';
+import { hrAPI } from '@/lib/api/hr';
 import { toast } from 'sonner';
 
 const POSITIONS = [

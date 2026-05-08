@@ -37,7 +37,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/context/AuthContext";
-import { credentialsAPI, schoolsAPI, authAPI } from "@/lib/api";
+import { schoolsAPI, authAPI } from "@/lib/api";
+import { credentialsAPI } from "@/lib/api/admin";
 
 // Schema for staff creation
 const createStaffSchema = z.object({

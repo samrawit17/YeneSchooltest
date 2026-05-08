@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import api from '@/lib/api';
+import { subscriptionAPI } from '@/lib/api/subscription';
 import { PlanTier } from '@/types/subscription';
 
 interface Plan {
@@ -53,7 +53,7 @@ export function SubscriptionProvider({
     }
 
     try {
-      const response = await api.get(`/subscription/school/${schoolId}`);
+      const response = await subscriptionAPI.getSchoolPlan(schoolId);
       setPlan(response.data);
     } catch (error) {
       console.error('Failed to fetch school plan:', error);

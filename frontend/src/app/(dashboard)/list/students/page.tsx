@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { studentsAPI, bulkUploadAPI } from "@/lib/api";
+import { studentsAPI } from "@/lib/api";
+import { bulkUploadAPI } from "@/lib/api/hr";
 import { toast } from "sonner";
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";

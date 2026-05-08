@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { disciplineAPI, parentsAPI } from "@/lib/api";
+import { disciplineAPI, parentsAPI } from "@/lib/api/people";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, AlertTriangle, User, Clock, CheckCircle, Shield } from "lucide-react";
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Event } from '@/lib/api';
+import { Event } from '@/lib/api/content';
 import { useCalendar } from '@/context/CalendarContext';
 import { convertToEthiopian, ETHIOPIAN_MONTH_NAMES } from '@/lib/calendar-utils';
 

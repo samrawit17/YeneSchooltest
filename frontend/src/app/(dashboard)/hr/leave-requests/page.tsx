@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, CheckCircle, XCircle, Calendar, Search, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { hrAPI } from '@/lib/api';
+import { hrAPI } from '@/lib/api/hr';
 import Pagination from '@/components/Pagination';
 import TableSearch from '@/components/TableSearch';
 

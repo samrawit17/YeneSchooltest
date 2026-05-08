@@ -85,8 +85,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-import api from "@/lib/api";
 import { schoolSettingsAPI } from "@/lib/api";
+import { adminTimetableAPI } from "@/lib/api/timetable";
 import {
   getEthiopianSchedule,
   getTeachingSlots,
@@ -228,9 +228,9 @@ const AdminTimetablePage = () => {
     try {
       setFetchingData(true);
       const [classesRes, subjectsRes, academicYearsRes, schoolSettingsRes] = await Promise.all([
-        api.get('/classes'),
-        api.get('/subjects'),
-        currentAcademicYear ? api.get(`/academic-years`) : Promise.resolve({ data: [] }),
+        adminTimetableAPI.getClasses(),
+        adminTimetableAPI.getSubjects(),
+        currentAcademicYear ? adminTimetableAPI.getAcademicYears() : Promise.resolve({ data: [] }),
         user?.schoolId ? schoolSettingsAPI.getAll(user.schoolId) : Promise.resolve({ data: {} }),
       ]);
 
@@ -301,8 +301,8 @@ const AdminTimetablePage = () => {
     try {
       setLoading(true);
 
-      const classSubjectsRes = await api.get(`/class-subjects`, {
-        params: { schoolId: user?.schoolId }
+      const classSubjectsRes = await adminTimetableAPI.getClassSubjects({
+        schoolId: user?.schoolId
       });
 
       const filtered = (classSubjectsRes.data || []).filter(
@@ -310,8 +310,8 @@ const AdminTimetablePage = () => {
       );
       setClassSubjects(filtered);
 
-      const slotsRes = await api.get(`/timetable-slots/grid/class/${selectedClassId}`, {
-        params: { sectionId: selectedSectionId }
+      const slotsRes = await adminTimetableAPI.getGrid(selectedClassId, {
+        sectionId: selectedSectionId
       });
 
       const slots = slotsRes.data?.slots || [];
@@ -418,7 +418,7 @@ const AdminTimetablePage = () => {
     try {
       setSaving(true);
 
-      await api.delete(`/timetable-slots/class/${selectedClassId}/section/${selectedSectionId}`);
+      await adminTimetableAPI.clearSectionSlots(selectedClassId, selectedSectionId);
 
       const slots: any[] = [];
       Object.entries(schedule).forEach(([key, value]) => {
@@ -447,7 +447,7 @@ const AdminTimetablePage = () => {
         return;
       }
 
-      const response = await api.post('/timetable-slots/bulk', { slots });
+      const response = await adminTimetableAPI.bulkCreateSlots(slots);
 
       if (response.data?.success) {
         toast.success(`Saved ${response.data.created.length} slots`);

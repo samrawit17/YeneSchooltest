@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CreditCard, AlertCircle, CheckCircle, Receipt, Calendar, Clock, Wallet } from "lucide-react";
-import api from "@/lib/api";
+import { parentsAPI } from "@/lib/api/people";
 
 import {
   Card,
@@ -141,7 +141,7 @@ const ParentFeesPage = () => {
   useEffect(() => {
     const fetchChildren = async () => {
       try {
-        const response = await api.get("/parents/me/children");
+        const response = await parentsAPI.getChildren();
         if (response.status === 200) {
           const childrenData = response.data.children || response.data || [];
           const childrenWithFees = childrenData.map((child: any) => ({

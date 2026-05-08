@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import api from "@/lib/api";
+import { attendanceAPI } from "@/lib/api";
+import { parentDashboardAPI } from "@/lib/api/parent";
 
 interface AttendanceRecord {
   id: string;
@@ -46,15 +47,22 @@ const ChildAttendancePage = () => {
   useEffect(() => {
     const fetchAttendance = async () => {
       try {
-        const childResponse = await api.get(`/parents/me/children/${childId}`);
-        const childData = childResponse.data?.child || childResponse.data;
+        const childResponse = await parentDashboardAPI.getChildren();
+        const childRows = childResponse.data?.children || childResponse.data || [];
+        const childData = (Array.isArray(childRows) ? childRows : []).find((item: any) =>
+          item.studentId === childId ||
+          item.id === childId ||
+          item.student?.id === childId ||
+          item.userId === childId ||
+          item.student?.userId === childId
+        );
         const userId =
           childData?.student?.userId ||
           childData?.student?.user?.id ||
           childData?.userId ||
           childId;
         const monthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-        const response = await api.get(`/attendance/student/${userId}?month=${monthStr}`);
+        const response = await attendanceAPI.getStudentAttendance(userId, { month: monthStr });
         const data = response.data;
         setAttendance(data.records || []);
         setStats(data.summary || null);

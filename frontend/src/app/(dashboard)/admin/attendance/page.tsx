@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { attendanceAPI, classesAPI, gradingAPI } from "@/lib/api";
-import api from "@/lib/api";
 import { toast } from "sonner";
 import { 
   Calendar,
@@ -89,7 +88,7 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
   const handleNotifyAllTeachers = async () => {
     try {
       setNotifying(true);
-      await api.post('/attendance/check-reminders');
+      await attendanceAPI.checkReminders();
       toast.success('Notifications sent to all teachers with missing attendance');
     } catch (e) {
       toast.error('Failed to send notifications');

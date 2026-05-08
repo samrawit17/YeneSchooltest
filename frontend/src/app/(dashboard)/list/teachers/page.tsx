@@ -4,8 +4,9 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { teachersAPI, bulkUploadAPI } from "@/lib/api";
-import api from "@/lib/api";
+import { authAPI, classesAPI, sectionsAPI, subjectsAPI, teachersAPI } from "@/lib/api";
+import { bulkUploadAPI } from "@/lib/api/hr";
+import { classSubjectsAPI } from "@/lib/api/admin";
 import { toast } from "sonner";
 import TableSearch from "@/components/TableSearch";
 import Pagination from "@/components/Pagination";
@@ -111,7 +112,7 @@ const TeachersListPage = () => {
   const { data: classesData } = useQuery({
     queryKey: ["classes"],
     queryFn: async () => {
-      const response = await api.get('/classes');
+      const response = await classesAPI.getAll();
       const classes = response.data || [];
       // Deduplicate by grade
       const uniqueGrades = classes.reduce((acc: any[], cls: any) => {
@@ -129,7 +130,7 @@ const TeachersListPage = () => {
     queryKey: ["sections", selectedClass],
     queryFn: async () => {
       if (!selectedClass) return [];
-      const response = await api.get('/sections', { params: { classId: selectedClass } });
+      const response = await sectionsAPI.getAll({ classId: selectedClass });
       return response.data;
     },
     enabled: !!selectedClass,
@@ -156,7 +157,7 @@ const TeachersListPage = () => {
   const { data: subjectsData } = useQuery({
     queryKey: ["subjects"],
     queryFn: async () => {
-      const response = await api.get('/subjects');
+      const response = await subjectsAPI.getAll();
       return response.data;
     },
   });
@@ -166,9 +167,7 @@ const TeachersListPage = () => {
     queryKey: ["class-subjects", selectedClass, selectedSection],
     queryFn: async () => {
       if (!selectedClass || !selectedSection) return [];
-      const response = await api.get(`/class-subjects/by-class/${selectedClass}`, { 
-        params: { sectionId: selectedSection } 
-      });
+      const response = await classSubjectsAPI.getByClass(selectedClass, selectedSection);
       return response.data;
     },
     enabled: !!selectedClass && !!selectedSection,
@@ -179,7 +178,7 @@ const TeachersListPage = () => {
     queryKey: ["filter-sections", classFilter],
     queryFn: async () => {
       if (!classFilter) return [];
-      const response = await api.get('/sections', { params: { classId: classFilter } });
+      const response = await sectionsAPI.getAll({ classId: classFilter });
       return response.data;
     },
     enabled: !!classFilter,
@@ -824,21 +823,17 @@ const TeachersListPage = () => {
                   try {
                     if (assignType === 'subject') {
                       // For subject, we just update the teacher's specialization
-                      await api.put(`/users/${selectedTeacherForClass.id}`, {
+                      await authAPI.updateUser(selectedTeacherForClass.id, {
                         specialization: selectedSubject
                       });
                       toast.success(`Subject assigned to ${selectedTeacherForClass?.name}`);
                     } else if (assignType === 'section') {
                       if (!selectedSection) throw new Error("Please select a section");
-                      await api.put(`/sections/${selectedSection}`, {
-                        homeroomTeacherId: selectedTeacherForClass.id
-                      });
+                      await sectionsAPI.setHomeroomTeacher(selectedSection, selectedTeacherForClass.id);
                       toast.success(`Section assigned to ${selectedTeacherForClass?.name}`);
                     } else {
                       if (!selectedClass) throw new Error("Please select a class");
-                      await api.put(`/classes/${selectedClass}/homeroom-teacher`, {
-                        homeroomTeacherId: selectedTeacherForClass.id
-                      });
+                      await classesAPI.setHomeroomTeacher(selectedClass, selectedTeacherForClass.id);
                       toast.success(`Class assigned to ${selectedTeacherForClass?.name}`);
                     }
                     setAssignClassDialogOpen(false);

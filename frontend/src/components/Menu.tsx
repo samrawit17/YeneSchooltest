@@ -5,7 +5,10 @@ import { useAcademicYear } from "@/context/AcademicYearContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import api, { communicationsAPI, announcementsAPI, eventsAPI, schoolSettingsAPI, platformSettingsAPI, schoolsAPI } from "@/lib/api";
+import { schoolSettingsAPI, platformSettingsAPI, schoolsAPI } from "@/lib/api";
+import { communicationsAPI } from "@/lib/api/communications";
+import { announcementsAPI, eventsAPI } from "@/lib/api/content";
+import { subscriptionAPI } from "@/lib/api/subscription";
 import { useState, useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -658,7 +661,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
     queryFn: async () => {
       if (!schoolId) return null;
       try {
-        const response = await api.get(`/subscription/school/${schoolId}`);
+        const response = await subscriptionAPI.getSchoolPlan(schoolId);
         const plan = response.data;
         if (!plan) return null;
         const tierFeatures = getFeaturesByTierFromConfig(plan.tier);

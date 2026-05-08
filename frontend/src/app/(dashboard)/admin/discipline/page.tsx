@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { disciplineAPI, studentsAPI } from "@/lib/api";
+import { studentsAPI } from "@/lib/api";
+import { disciplineAPI } from "@/lib/api/people";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

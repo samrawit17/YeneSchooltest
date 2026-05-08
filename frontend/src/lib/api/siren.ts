@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import api from "../api";
+import api from "./core";
 
 export interface PeriodTime {
   id: string;
@@ -38,6 +38,64 @@ export interface SirenHardwareConfig {
   isEnabled: boolean;
   timeout: number;
 }
+
+export const periodTimeAPI = {
+  list: (schoolId: string) =>
+    api.get("/api/period-time", {
+      params: { schoolId },
+      skipAuthErrorRedirect: true,
+    }),
+  create: (data: Omit<PeriodTime, "id">) =>
+    api.post("/api/period-time", data, {
+      params: { schoolId: data.schoolId },
+      skipAuthErrorRedirect: true,
+    }),
+  update: (id: string, data: Partial<PeriodTime> & { schoolId?: string }) =>
+    api.put(`/api/period-time/${id}`, data, { skipAuthErrorRedirect: true }),
+  delete: (id: string) =>
+    api.delete(`/api/period-time/${id}`, { skipAuthErrorRedirect: true }),
+};
+
+export const sirenScheduleAPI = {
+  list: (schoolId: string) =>
+    api.get("/api/siren/schedules", {
+      params: { schoolId },
+      skipAuthErrorRedirect: true,
+    }),
+  create: (data: Omit<SirenSchedule, "id"> & { schoolId?: string }) =>
+    api.post("/api/siren/schedules", data, { skipAuthErrorRedirect: true }),
+  update: (id: string, data: Partial<SirenSchedule> & { schoolId?: string }) =>
+    api.put(`/api/siren/schedules/${id}`, data, { skipAuthErrorRedirect: true }),
+  delete: (id: string) =>
+    api.delete(`/api/siren/schedules/${id}`, { skipAuthErrorRedirect: true }),
+};
+
+export const sirenEventAPI = {
+  list: (schoolId: string, limit = 100) =>
+    api.get("/api/siren/events", {
+      params: { schoolId, limit },
+      skipAuthErrorRedirect: true,
+    }),
+};
+
+export const sirenHardwareAPI = {
+  get: (schoolId: string) =>
+    api.get("/api/siren/hardware", {
+      params: { schoolId },
+      skipAuthErrorRedirect: true,
+    }),
+  create: (data: Omit<SirenHardwareConfig, "id"> & { schoolId?: string }) =>
+    api.post("/api/siren/hardware", data, { skipAuthErrorRedirect: true }),
+  update: (id: string, data: Partial<SirenHardwareConfig> & { schoolId?: string }) =>
+    api.put(`/api/siren/hardware/${id}`, data, { skipAuthErrorRedirect: true }),
+  test: (data: { webhookUrl: string; timeout: number }) =>
+    api.post("/api/siren/hardware/test", data, { skipAuthErrorRedirect: true }),
+};
+
+export const sirenControlAPI = {
+  trigger: (data: { schoolId: string; type: string }) =>
+    api.post("/api/siren/trigger", data, { skipAuthErrorRedirect: true }),
+};
 
 /**
  * Hook for PeriodTime API operations

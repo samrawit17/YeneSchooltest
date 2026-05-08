@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import api from "@/lib/api";
+import { sirenHardwareAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {
@@ -55,10 +55,7 @@ export function SirenHardwareConfig() {
   const fetchConfig = useCallback(async () => {
     if (!schoolId) return;
     try {
-      const res = await api.get('/api/siren/hardware', {
-        params: { schoolId },
-        skipAuthErrorRedirect: true,
-      });
+      const res = await sirenHardwareAPI.get(schoolId);
       const data = res.data;
       if (!data) {
         setConfig(null);
@@ -101,17 +98,9 @@ export function SirenHardwareConfig() {
     setSaving(true);
     try {
       if (config) {
-        await api.put(
-          `/api/siren/hardware/${config.id}`,
-          { schoolId, ...form },
-          { skipAuthErrorRedirect: true }
-        );
+        await sirenHardwareAPI.update(config.id, { schoolId, ...form });
       } else {
-        await api.post(
-          '/api/siren/hardware',
-          { schoolId, ...form },
-          { skipAuthErrorRedirect: true }
-        );
+        await sirenHardwareAPI.create({ schoolId, ...form });
       }
       toast.success("Hardware config saved");
       await fetchConfig();
@@ -130,11 +119,7 @@ export function SirenHardwareConfig() {
 
     setTesting(true);
     try {
-      await api.post(
-        '/api/siren/hardware/test',
-        { webhookUrl: form.webhookUrl, timeout: form.timeout },
-        { skipAuthErrorRedirect: true }
-      );
+      await sirenHardwareAPI.test({ webhookUrl: form.webhookUrl, timeout: form.timeout });
       toast.success("Webhook test successful");
     } catch (error) {
       toast.error("Webhook test failed - check URL and connectivity");

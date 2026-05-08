@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import api from "@/lib/api";
+import { periodTimeAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {
@@ -77,10 +77,7 @@ export function PeriodTimeManagement() {
   const fetchPeriods = useCallback(async () => {
     if (!schoolId) return;
     try {
-      const res = await api.get('/api/period-time', {
-        params: { schoolId },
-        skipAuthErrorRedirect: true,
-      });
+      const res = await periodTimeAPI.list(schoolId);
       setPeriods(res.data || []);
     } catch (error) {
       toast.error("Failed to load period times");
@@ -106,31 +103,20 @@ export function PeriodTimeManagement() {
 
     try {
       if (editingId) {
-        await api.put(
-          `/api/period-time/${editingId}`,
-          {
-            schoolId,
-            periodNumber: parseInt(form.periodNumber),
-            startTime: form.startTime,
-            endTime: form.endTime,
-          },
-          { skipAuthErrorRedirect: true }
-        );
+        await periodTimeAPI.update(editingId, {
+          schoolId,
+          periodNumber: parseInt(form.periodNumber),
+          startTime: form.startTime,
+          endTime: form.endTime,
+        });
         toast.success("Period time updated");
       } else {
-        await api.post(
-          '/api/period-time',
-          {
-            schoolId,
-            periodNumber: parseInt(form.periodNumber),
-            startTime: form.startTime,
-            endTime: form.endTime,
-          },
-          {
-            params: { schoolId },
-            skipAuthErrorRedirect: true,
-          }
-        );
+        await periodTimeAPI.create({
+          schoolId,
+          periodNumber: parseInt(form.periodNumber),
+          startTime: form.startTime,
+          endTime: form.endTime,
+        });
         toast.success("Period time created");
       }
       await fetchPeriods();
@@ -155,9 +141,7 @@ export function PeriodTimeManagement() {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      await api.delete(`/api/period-time/${deleteId}`, {
-        skipAuthErrorRedirect: true,
-      });
+      await periodTimeAPI.delete(deleteId);
       toast.success("Period time deleted");
       await fetchPeriods();
       setDeleteId(null);

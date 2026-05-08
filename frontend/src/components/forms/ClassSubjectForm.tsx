@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { classSubjectsAPI, classesAPI, subjectsAPI, teachersAPI } from "@/lib/api";
+import { classesAPI, subjectsAPI, teachersAPI } from "@/lib/api";
+import { classSubjectsAPI } from "@/lib/api/admin";
 import { toast } from "sonner";
 import InputField from "@/components/InputField";
 

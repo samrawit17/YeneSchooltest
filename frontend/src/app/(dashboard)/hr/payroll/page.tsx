@@ -16,7 +16,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Plus, DollarSign, CheckCircle, XCircle, Clock, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { hrAPI, academicYearsAPI } from '@/lib/api';
+import { academicYearsAPI } from '@/lib/api';
+import { hrAPI } from '@/lib/api/hr';
 import { toast } from 'sonner';
 import Pagination from '@/components/Pagination';
 

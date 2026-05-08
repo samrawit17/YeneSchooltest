@@ -34,7 +34,13 @@ import {
   ChevronRight,
   Zap,
 } from "lucide-react";
-import { Communication, CommunicationStatus, CommunicationCategory, communicationsAPI, studentsAPI } from "@/lib/api";
+import { studentsAPI } from "@/lib/api";
+import {
+  Communication,
+  CommunicationStatus,
+  CommunicationCategory,
+  communicationsAPI,
+} from "@/lib/api/communications";
 import { useAuth } from "@/context/AuthContext";
 
 type FilterOption = "all" | "unread" | "open" | "closed" | "today" | "this_week";

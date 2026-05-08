@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { enrollmentAPI, academicYearsAPI, EnrollmentRequest, EnrollmentStats, EnrollmentCredentials } from '@/lib/api';
+import { academicYearsAPI } from '@/lib/api';
+import {
+  enrollmentAPI,
+  EnrollmentRequest,
+  EnrollmentStats,
+  EnrollmentCredentials,
+} from '@/lib/api/enrollment';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';

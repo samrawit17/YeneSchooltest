@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth, hasPermission } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import { dashboardAPI } from "@/lib/api/admin";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -79,7 +79,7 @@ const Dashboard = () => {
     const fetchDashboard = async () => {
       try {
         setLoading(true);
-        const response = await api.get<DashboardResponse>("/dashboard");
+        const response = await dashboardAPI.getDashboard();
         setDashboardData(response.data);
       } catch (err: any) {
         console.error("Failed to fetch dashboard:", err);

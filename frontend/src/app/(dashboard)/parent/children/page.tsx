@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Users, Calendar, BookOpen, Eye, TrendingUp, Award, Star } from "lucide-react";
-import api from "@/lib/api";
+import { parentDashboardAPI } from "@/lib/api/parent";
 
 // Shadcn/ui Components
 import {
@@ -55,8 +55,8 @@ const ParentChildrenPage = () => {
     const fetchChildren = async () => {
       try {
         const [childrenResponse, dashboardResponse] = await Promise.allSettled([
-          api.get("/parents/me/children"),
-          api.get("/dashboard/parent"),
+          parentDashboardAPI.getChildren(),
+          parentDashboardAPI.getDashboard(),
         ]);
         
         if (childrenResponse.status === "fulfilled" && childrenResponse.value.status === 200) {
@@ -78,10 +78,10 @@ const ParentChildrenPage = () => {
                 : null;
               try {
                 const enrollmentResponse = childUserId
-                  ? await api.get(`/enrollments/student/${childUserId}`)
+                  ? await parentDashboardAPI.getStudentEnrollment(childUserId)
                   : null;
                 if (enrollmentResponse?.data?.classId) {
-                  const classResponse = await api.get(`/classes/${enrollmentResponse.data.classId}`);
+                  const classResponse = await parentDashboardAPI.getStudentClass(enrollmentResponse.data.classId);
                   return {
                     ...child,
                     id: child.studentId || child.id,

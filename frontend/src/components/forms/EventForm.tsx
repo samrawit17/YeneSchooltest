@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { eventsAPI, CreateEventDto, Event } from '@/lib/api';
+import { eventsAPI, CreateEventDto, Event } from '@/lib/api/content';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

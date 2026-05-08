@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import api from "@/lib/api";
+import { sirenEventAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {
@@ -61,10 +61,7 @@ export function SirenEventHistory() {
   const fetchEvents = useCallback(async () => {
     if (!schoolId) return;
     try {
-      const res = await api.get('/api/siren/events', {
-        params: { schoolId, limit: 100 },
-        skipAuthErrorRedirect: true,
-      });
+      const res = await sirenEventAPI.list(schoolId, 100);
       setEvents(res.data || []);
     } catch (error) {
       toast.error("Failed to load siren events");

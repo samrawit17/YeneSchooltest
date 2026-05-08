@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { classesAPI } from "@/lib/api";
-import { promotionAPI, PromotionCandidate } from "@/lib/api";
+import { promotionAPI, PromotionCandidate } from "@/lib/api/reporting";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface NextClass {

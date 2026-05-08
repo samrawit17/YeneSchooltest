@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
-import { lessonsAPI, Lesson } from "@/lib/api";
+import { lessonsAPI, Lesson } from "@/lib/api/content";
 import { toast } from "sonner";
 import {
   ArrowLeft,

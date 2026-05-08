@@ -15,7 +15,12 @@ import {
   Send,
   ArrowLeft
 } from "lucide-react";
-import { CommunicationStatus, CommunicationReply, communicationsAPI, studentsAPI } from "@/lib/api";
+import { studentsAPI } from "@/lib/api";
+import {
+  CommunicationStatus,
+  CommunicationReply,
+  communicationsAPI,
+} from "@/lib/api/communications";
 import { useAuth } from "@/context/AuthContext";
 
 // Types

@@ -4,8 +4,9 @@ import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
-import { schoolsAPI, announcementsAPI, platformSettingsAPI } from "@/lib/api";
-import api, { eventsAPI } from "@/lib/api";
+import { schoolsAPI, platformSettingsAPI } from "@/lib/api";
+import { notificationsAPI } from "@/lib/api";
+import { announcementsAPI, eventsAPI } from "@/lib/api/content";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -177,8 +178,8 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
     queryFn: async () => {
       const communicationTypes = COMMUNICATION_NOTIFICATION_TYPES.join(",");
       const [bellNotificationsRes, communicationNotificationsRes] = await Promise.all([
-        api.get('/notifications', { params: { limit: 10 } }),
-        api.get('/notifications', { params: { limit: 10, types: communicationTypes } }),
+        notificationsAPI.getAll({ limit: 10 }),
+        notificationsAPI.getAll({ limit: 10, types: communicationTypes }),
       ]);
       return {
         bellNotifications: bellNotificationsRes.data || [],
@@ -295,7 +296,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
       if (targetNotification?.userId === null) {
         rememberSeenGlobalNotifications([id]);
       } else {
-        await api.post(`/notifications/${id}/read`);
+        await notificationsAPI.markRead(id);
       }
       // Update cache optimistically - include user ID in query key
       queryClient.setQueryData(["notifications", user?.id, user?.schoolId], (old: any) => {
@@ -364,7 +365,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
       }
 
       if (userScopedTypes) {
-        await api.post('/notifications/mark-all-read', types?.length ? { types } : {});
+        await notificationsAPI.markAllRead(types?.length ? { types } : undefined);
       }
 
       // Update cache optimistically - include user ID in query key

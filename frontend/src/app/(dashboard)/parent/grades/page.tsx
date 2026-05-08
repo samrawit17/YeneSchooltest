@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import api, { academicYearsAPI, gradingAPI } from "@/lib/api";
+import { academicYearsAPI, gradingAPI } from "@/lib/api";
+import { parentDashboardAPI } from "@/lib/api/parent";
 import { BookOpen, Loader2, Award, Download, Star, Target, Calendar, CheckCircle, AlertCircle, Clock } from "lucide-react";
 
 import {
@@ -102,7 +103,7 @@ export default function ParentGradesPage() {
   const fetchInitialData = useCallback(async () => {
     try {
       const [childrenResult, yearsResult] = await Promise.allSettled([
-        api.get("/parents/me/children"),
+        parentDashboardAPI.getChildren(),
         academicYearsAPI.getAll(),
       ]);
 
@@ -153,7 +154,7 @@ export default function ParentGradesPage() {
 
       // Get curriculum type from school settings
       try {
-        const schoolSettings = await api.get(`/schools/${user?.schoolId}/settings`);
+        const schoolSettings = await parentDashboardAPI.getSchoolSettings(user?.schoolId!);
         const cType = schoolSettings.data?.curriculum_type || "TERM";
         setCurriculumType(normalizeCurriculumType(cType));
       } catch (error) {

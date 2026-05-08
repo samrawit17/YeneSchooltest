@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { parentsAPI, authAPI } from "@/lib/api";
+import { authAPI } from "@/lib/api";
+import { parentsAPI } from "@/lib/api/people";
 import { Loader2, Save, User, Users, Phone, Mail, MapPin, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 

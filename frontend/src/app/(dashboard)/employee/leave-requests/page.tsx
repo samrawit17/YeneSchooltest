@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { MoreVertical, Calendar, Plus, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { hrAPI } from '@/lib/api';
+import { hrAPI } from '@/lib/api/hr';
 import Pagination from '@/components/Pagination';
 
 interface LeaveRequest {

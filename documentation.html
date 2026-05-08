@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS - School Management System | Enterprise Documentation</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-pink: #ec4899;
+            --accent-cyan: #06b6d4;
+            --accent-indigo: #6366f1;
+            --border-color: #334155;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.4);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg-primary); color: var(--text-primary); line-height: 1.7; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 280px; height: 100vh; background: var(--bg-secondary); border-right: 1px solid var(--border-color); overflow-y: auto; z-index: 100; }
+        .sidebar-header { padding: 24px 20px; border-bottom: 1px solid var(--border-color); }
+        .sidebar-header h2 { font-size: 1.25rem; color: var(--accent-blue); }
+        .sidebar-header p { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+        .nav-section { padding: 16px 12px 8px; }
+        .nav-section-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); padding: 0 8px; margin-bottom: 8px; }
+        .nav-link { display: block; padding: 8px 12px; color: var(--text-secondary); text-decoration: none; border-radius: 6px; font-size: 0.875rem; }
+        .nav-link:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .nav-link.active { background: var(--accent-blue); color: white; }
+        .main { margin-left: 280px; min-height: 100vh; }
+        .topbar { position: sticky; top: 0; background: rgba(15,23,42,0.9); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); padding: 16px 32px; z-index: 50; display: flex; justify-content: space-between; align-items: center; }
+        .topbar h1 { font-size: 1.5rem; font-weight: 600; }
+        .topbar .version { background: var(--accent-blue); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; }
+        .content { padding: 32px; max-width: 1200px; margin: 0 auto; }
+        .section { margin-bottom: 64px; scroll-margin-top: 100px; }
+        .section-title { font-size: 2rem; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; color: var(--text-primary); }
+        .section-title .icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+        .section-desc { color: var(--text-secondary); margin-bottom: 32px; font-size: 1.1rem; }
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: var(--shadow); }
+        .card-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 16px; color: var(--accent-cyan); display: flex; align-items: center; gap: 10px; }
+        .grid { display: grid; gap: 24px; }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        .grid-4 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+        .role-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; position: relative; overflow: hidden; }
+        .role-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--accent-blue); }
+        .role-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+        .badge-super-admin { background: rgba(239,68,68,0.2); color: #ef4444; }
+        .badge-admin { background: rgba(139,92,246,0.2); color: #8b5cf6; }
+        .badge-registrar { background: rgba(59,130,246,0.2); color: #3b82f6; }
+        .badge-teacher { background: rgba(16,185,129,0.2); color: #10b981; }
+        .badge-student { background: rgba(245,158,11,0.2); color: #f59e0b; }
+        .badge-parent { background: rgba(236,72,153,0.2); color: #ec4899; }
+        .badge-finance { background: rgba(6,182,212,0.2); color: #06b6d4; }
+        .badge-hr { background: rgba(99,102,241,0.2); color: #6366f1; }
+        .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(15,23,42,0.3); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        th { background: var(--bg-tertiary); padding: 14px 16px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--border-color); color: var(--text-primary); }
+        td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); color: var(--text-secondary); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(59,130,246,0.05); }
+        code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; font-family: 'Fira Code', monospace; color: var(--accent-cyan); }
+        .tier-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 32px; text-align: center; position: relative; overflow: hidden; transition: 0.3s; }
+        .tier-card:hover { border-color: var(--accent-blue); transform: scale(1.02); }
+        .tier-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; }
+        .tier-core::before { background: var(--text-muted); }
+        .tier-standard::before { background: var(--accent-blue); }
+        .tier-ultimate::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink)); }
+        .tier-card h3 { font-size: 1.5rem; margin: 12px 0 8px; }
+        .tier-card .tier-level { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 24px; text-transform: uppercase; letter-spacing: 2px; }
+        .tier-card ul { list-style: none; text-align: left; margin-bottom: 24px; }
+        .tier-card li { padding: 8px 0; font-size: 0.9rem; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .tier-card li::before { content: '\2713 '; color: var(--accent-green); font-weight: bold; margin-right: 8px; }
+        .hero { background: linear-gradient(135deg, var(--bg-secondary) 0%, #1e1b4b 100%); border: 1px solid var(--border-color); border-radius: 20px; padding: 64px 48px; margin-bottom: 64px; text-align: center; position: relative; overflow: hidden; }
+        .hero::after { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%); pointer-events: none; }
+        .hero h1 { font-size: 3.5rem; margin-bottom: 16px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), var(--accent-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 800; }
+        .hero p { color: var(--text-secondary); font-size: 1.25rem; max-width: 800px; margin: 0 auto 40px; }
+        .hero .stats { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; }
+        .hero .stat { text-align: center; }
+        .hero .stat-value { font-size: 2.5rem; font-weight: 800; color: var(--text-primary); }
+        .hero .stat-label { font-size: 0.75rem; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+        .tech-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+        .tech-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; }
+        .tech-card h4 { font-size: 0.75rem; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+        .tech-items { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tech-tag { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); padding: 5px 12px; border-radius: 6px; font-size: 0.8rem; color: var(--accent-blue); font-weight: 500; }
+        .perm-tag { background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.2); padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; color: var(--accent-cyan); font-family: 'Fira Code', monospace; display: inline-block; margin: 3px; }
+        .highlight-box { background: rgba(59,130,246,0.05); border-left: 4px solid var(--accent-blue); padding: 20px 24px; border-radius: 0 12px 12px 0; margin: 24px 0; }
+        .highlight-box.warning { background: rgba(245,158,11,0.05); border-left-color: var(--accent-orange); }
+        .highlight-box.success { background: rgba(16,185,129,0.05); border-left-color: var(--accent-green); }
+        .highlight-box.info { background: rgba(6,182,212,0.05); border-left-color: var(--accent-cyan); }
+        .divider { border: none; border-top: 1px solid var(--border-color); margin: 48px 0; opacity: 0.5; }
+        .accordion { border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; margin-bottom: 16px; background: var(--bg-secondary); }
+        .accordion-header { background: var(--bg-tertiary); padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; transition: 0.2s; }
+        .accordion-header:hover { background: var(--accent-blue); color: white; }
+        .accordion-body { padding: 24px; display: none; background: var(--bg-primary); }
+        .accordion.open .accordion-body { display: block; }
+        .accordion.open .accordion-header { background: var(--accent-blue); color: white; }
+        .module-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; transition: 0.2s; }
+        .module-card:hover { border-color: var(--accent-blue); background: rgba(59,130,246,0.05); }
+        .module-card h4 { font-size: 1rem; margin-bottom: 8px; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+        .module-card p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; }
+        .flow-diagram { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 16px; padding: 32px; margin: 24px 0; position: relative; }
+        .flow-step { display: flex; align-items: flex-start; gap: 20px; padding: 20px 0; position: relative; }
+        .flow-step:not(:last-child)::after { content: ''; position: absolute; left: 20px; top: 56px; bottom: -20px; width: 2px; border-left: 2px dashed var(--border-color); }
+        .flow-number { width: 42px; height: 42px; border-radius: 50%; background: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; box-shadow: 0 0 15px rgba(59,130,246,0.3); z-index: 1; }
+        .flow-text { font-size: 1rem; }
+        .flow-text strong { display: block; margin-bottom: 4px; color: var(--text-primary); }
+        .flow-text span { color: var(--text-muted); font-size: 0.85rem; }
+        .matrix-cell { text-align: center; }
+        .check { color: var(--accent-green); font-weight: bold; }
+        .cross { color: var(--text-muted); opacity: 0.5; }
+        .partial { color: var(--accent-orange); }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px; }
+        .feature-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary); }
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 5px; border: 2px solid var(--bg-primary); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+            .sidebar.open { transform: translateX(0); }
+            .main { margin-left: 0; }
+            .content { padding: 24px; }
+            .hero h1 { font-size: 2.5rem; }
+        }
+        @media (max-width: 640px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .hero { padding: 40px 24px; } }
+    </style>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <h2>SMS Enterprise</h2>
+        <p>School Management Platform v1.2</p>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Overview</div>
+        <a href="#overview" class="nav-link">Introduction</a>
+        <a href="#tech-stack" class="nav-link">Tech Stack</a>
+        <a href="#architecture" class="nav-link">Architecture</a>
+        <a href="#offline" class="nav-link">Offline Capabilities</a>
+        <a href="#ethiopian" class="nav-link">Ethiopian Integration</a>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Access Control</div>
+        <a href="#roles" class="nav-link">Roles Overview</a>
+        <a href="#permission-matrix" class="nav-link">Permission Matrix</a>
+        <a href="#guards" class="nav-link">Security Guards</a>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Core Systems</div>
+        <a href="#academic" class="nav-link">Academic & Grading</a>
+        <a href="#exams-seating" class="nav-link">Exams & Seating</a>
+        <a href="#finance-hr" class="nav-link">Finance & HR</a>
+        <a href="#content-system" class="nav-link">Content & Lessons</a>
+        <a href="#siren" class="nav-link">Automation (Siren)</a>
+    </div>
+    <div class="nav-section">
+        <div class="nav-section-title">Reference</div>
+        <a href="#modules" class="nav-link">Module Catalog</a>
+        <a href="#subscriptions" class="nav-link">Subscription Tiers</a>
+        <a href="#database" class="nav-link">Database Schema</a>
+        <a href="#api-routes" class="nav-link">API Registry</a>
+        <a href="#credentials" class="nav-link">Test Credentials</a>
+    </div>
+</nav>
+
+<div class="main">
+    <div class="topbar">
+        <h1>SMS Documentation</h1>
+        <span class="version">v1.2.4</span>
+    </div>
+    <div class="content">
+
+        <!-- Hero Section -->
+        <div class="hero" id="overview">
+            <h1>Enterprise SMS Platform</h1>
+            <p>A mission-critical, multi-tenant school ecosystem designed for high-scale operations with native offline support, Ethiopian calendar integration, and hardware automation.</p>
+            <div class="stats">
+                <div class="stat"><div class="stat-value">8</div><div class="stat-label">System Roles</div></div>
+                <div class="stat"><div class="stat-value">120+</div><div class="stat-label">API Endpoints</div></div>
+                <div class="stat"><div class="stat-value">48</div><div class="stat-label">Core Modules</div></div>
+                <div class="stat"><div class="stat-value">95+</div><div class="stat-label">Prisma Models</div></div>
+                <div class="stat"><div class="stat-value">100%</div><div class="stat-label">Offline Ready</div></div>
+            </div>
+        </div>
+
+        <!-- Tech Stack -->
+        <div class="section" id="tech-stack">
+            <h2 class="section-title"><span class="icon" style="background:rgba(59,130,246,0.2);color:var(--accent-blue);">⚙</span> Technology Stack</h2>
+            <p class="section-desc">Enterprise-grade architecture leveraging modern distributed systems patterns.</p>
+            <div class="tech-grid">
+                <div class="tech-card">
+                    <h4>Backend Engine</h4>
+                    <div class="tech-items">
+                        <span class="tech-tag">NestJS 11</span>
+                        <span class="tech-tag">Prisma 5.x</span>
+                        <span class="tech-tag">PostgreSQL 16</span>
+                        <span class="tech-tag">Redis Cache</span>
+                        <span class="tech-tag">Passport JWT</span>
+                        <span class="tech-tag">Web Push API</span>
+                        <span class="tech-tag">BullMQ (Tasks)</span>
+                    </div>
+                </div>
+                <div class="tech-card">
+                    <h4>Frontend Core</h4>
+                    <div class="tech-items">
+                        <span class="tech-tag">Next.js 14 (App)</span>
+                        <span class="tech-tag">TypeScript 5</span>
+                        <span class="tech-tag">TanStack Query v5</span>
+                        <span class="tech-tag">Tailwind CSS</span>
+                        <span class="tech-tag">Zustand</span>
+                        <span class="tech-tag">Lucide Icons</span>
+                        <span class="tech-tag">Recharts</span>
+                    </div>
+                </div>
+                <div class="tech-card">
+                    <h4>Offline & Sync</h4>
+                    <div class="tech-items">
+                        <span class="tech-tag">Dexie.js</span>
+                        <span class="tech-tag">IndexedDB</span>
+                        <span class="tech-tag">PWA (Service Workers)</span>
+                        <span class="tech-tag">Sync Queue Pattern</span>
+                        <span class="tech-tag">Conflict Resolvers</span>
+                    </div>
+                </div>
+                <div class="tech-card">
+                    <h4>Specialized Libs</h4>
+                    <div class="tech-items">
+                        <span class="tech-tag">Ethiopian Calendar Lib</span>
+                        <span class="tech-tag">ExcelJS</span>
+                        <span class="tech-tag">PDFKit</span>
+                        <span class="tech-tag">BCrypt</span>
+                        <span class="tech-tag">Webhooks</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Architecture Overview -->
+        <div class="section" id="architecture">
+            <h2 class="section-title"><span class="icon" style="background:rgba(139,92,246,0.2);color:var(--accent-purple);">🏗</span> Architecture Strategy</h2>
+            <p class="section-desc">High-availability multi-tenant design with strict data isolation and edge-first synchronization.</p>
+            <div class="grid grid-2">
+                <div class="card">
+                    <h3 class="card-title">Multi-Tenancy Engine</h3>
+                    <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:16px;">The platform uses <strong>Logical Isolation</strong> via a global <code>schoolId</code> scope. Every query is automatically scoped to the user's tenant.</p>
+                    <ul style="list-style:none;font-size:0.85rem;color:var(--text-muted);">
+                        <li style="margin-bottom:8px;">● <strong>Isolated File Storage:</strong> <code>/uploads/schools/{schoolId}/*</code></li>
+                        <li style="margin-bottom:8px;">● <strong>Tenant-Specific Enums:</strong> Custom assessment types and grading scales per school.</li>
+                        <li style="margin-bottom:8px;">● <strong>Subscription Gating:</strong> Features dynamically enabled based on <code>PlanTier</code>.</li>
+                        <li style="margin-bottom:8px;">● <strong>Platform Override:</strong> Super Admin role bypasses <code>schoolId</code> filters.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Data Lifecycle</h3>
+                    <div class="flow-diagram" style="padding:16px;margin:0;">
+                        <div class="flow-step" style="padding:10px 0;"><div class="flow-number" style="width:30px;height:30px;font-size:0.8rem;">1</div><div class="flow-text" style="font-size:0.8rem;"><strong>Edge Interaction</strong> — PWA captures data even when offline</div></div>
+                        <div class="flow-step" style="padding:10px 0;"><div class="flow-number" style="width:30px;height:30px;font-size:0.8rem;">2</div><div class="flow-text" style="font-size:0.8rem;"><strong>IndexedDB Persistence</strong> — Changes queued in Dexie sync table</div></div>
+                        <div class="flow-step" style="padding:10px 0;"><div class="flow-number" style="width:30px;height:30px;font-size:0.8rem;">3</div><div class="flow-text" style="font-size:0.8rem;"><strong>Background Sync</strong> — Automatic retry when network is restored</div></div>
+                        <div class="flow-step" style="padding:10px 0;"><div class="flow-number" style="width:30px;height:30px;font-size:0.8rem;">4</div><div class="flow-text" style="font-size:0.8rem;"><strong>Server Validation</strong> — Prisma enforces schema and role constraints</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Offline Capabilities -->
+        <div class="section" id="offline">
+            <h2 class="section-title"><span class="icon" style="background:rgba(6,182,212,0.2);color:var(--accent-cyan);">📡</span> Offline Support (Edge-First)</h2>
+            <p class="section-desc">Optimized for environments with intermittent connectivity. Essential for high-traffic operations like attendance and grading.</p>
+            <div class="grid grid-3">
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);margin-bottom:12px;">Attendance Edge</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);">Teachers can take attendance in classrooms without Wi-Fi. Records are stored in <code>OfflineAttendance</code> table in browser and synced later.</p>
+                </div>
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);margin-bottom:12px;">Student Data Cache</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);">Core student profiles and class lists are cached locally (<code>CachedStudent</code>) for instant lookups even when the API is unreachable.</p>
+                </div>
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);margin-bottom:12px;">Conflict Resolution</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);">Built-in <code>ConflictRecord</code> system handles "Last Write Wins" or "Manual Review" when multiple devices update the same record offline.</p>
+                </div>
+            </div>
+            <div class="highlight-box info"><strong>Developer Note:</strong> Offline logic is encapsulated in <code>frontend/src/lib/db/sync-service.ts</code>. It manages the <code>SyncQueueItem</code> lifecycle (Pending → In Progress → Completed/Failed).</div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Ethiopian Integration -->
+        <div class="section" id="ethiopian">
+            <h2 class="section-title"><span class="icon" style="background:rgba(16,185,129,0.2);color:var(--accent-green);">🇪🇹</span> Ethiopian Localizations</h2>
+            <p class="section-desc">Deep integration with Ethiopian academic standards and cultural requirements.</p>
+            <div class="grid grid-2">
+                <div class="card">
+                    <h3 class="card-title">Dual Calendar Engine</h3>
+                    <p style="font-size:0.9rem;color:var(--text-secondary);">The system supports simultaneous Gregorian and Ethiopian (Ge'ez) calendars. Schools can set <code>calendarType: ETHIOPIAN</code> in their settings.</p>
+                    <ul style="list-style:none;font-size:0.85rem;color:var(--text-muted);margin-top:12px;">
+                        <li style="margin-bottom:6px;">● <strong>Automatic Conversion:</strong> Dates stored as UTC in DB, displayed in ET format.</li>
+                        <li style="margin-bottom:6px;">● <strong>ET Academic Years:</strong> Support for 13 months and ET year numbers.</li>
+                        <li style="margin-bottom:6px;">● <strong>Holiday Integration:</strong> Pre-configured Ethiopian public holidays.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">MoE Syllabus Mapping</h3>
+                    <p style="font-size:0.9rem;color:var(--text-secondary);">Alignment with Ethiopian Ministry of Education curriculum requirements via <code>SyllabusMapping</code> model.</p>
+                    <div class="feature-grid">
+                        <div class="feature-item">Unit-based tracking (Unit 1 to Unit 12)</div>
+                        <div class="feature-item">Competency-based mapping</div>
+                        <div class="feature-item">Amharic & English subject names</div>
+                        <div class="feature-item">Grade-specific syllabus targets</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Roles & Permissions -->
+        <div class="section" id="roles">
+            <h2 class="section-title"><span class="icon" style="background:rgba(239,68,68,0.2);color:var(--accent-red);">🛡</span> RBAC & Security</h2>
+            <p class="section-desc">Database-driven permission system with 8 distinct roles and granular module-level control.</p>
+            <div class="grid grid-4">
+                <div class="role-card"><span class="role-badge badge-super-admin">Platform</span><h3>Super Admin</h3><p>Multi-school management, subscriptions, platform global flags.</p></div>
+                <div class="role-card"><span class="role-badge badge-admin">Full Access</span><h3>Admin</h3><p>Full control over a single school tenant and its settings.</p></div>
+                <div class="role-card"><span class="role-badge badge-registrar">Academic</span><h3>Registrar</h3><p>Enrollment, grading oversight, and academic record locking.</p></div>
+                <div class="role-card"><span class="role-badge badge-teacher">Instruction</span><h3>Teacher</h3><p>Class management, attendance, and grading for assigned units.</p></div>
+                <div class="role-card"><span class="role-badge badge-student">Portal</span><h3>Student</h3><p>View personal progress, homework, and fee status.</p></div>
+                <div class="role-card"><span class="role-badge badge-parent">Guardian</span><h3>Parent</h3><p>Monitor multiple linked children's progress and pay fees.</p></div>
+                <div class="role-card"><span class="role-badge badge-finance">Treasury</span><h3>Finance</h3><p>Fee structures, payment processing, and payroll disbursement.</p></div>
+                <div class="role-card"><span class="role-badge badge-hr">Workforce</span><h3>HR</h3><p>Employee lifecycle, leave management, and payroll calculation.</p></div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Academic & Grading -->
+        <div class="section" id="academic">
+            <h2 class="section-title"><span class="icon" style="background:rgba(99,102,241,0.2);color:var(--accent-indigo);">📈</span> Academic & Grading System</h2>
+            <p class="section-desc">Flexible grading architecture supporting diverse curriculum types and assessment methods.</p>
+            <div class="card">
+                <h3 class="card-title">Dynamic Grading Components</h3>
+                <p style="margin-bottom:16px;">Unlike rigid systems, SMS allows schools to define their own <code>GradingComponent</code> sets (e.g., CA 10%, Mid 30%, Lab 10%, Final 50%).</p>
+                <div class="table-wrapper">
+                    <table>
+                        <thead><tr><th>Curriculum Type</th><th>Subdivisions</th><th>Grading Logic</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Semester</strong></td><td>2 Terms</td><td>Mid-Term & Final Exam per Semester</td></tr>
+                            <tr><td><strong>Quarter</strong></td><td>4 Quarters</td><td>Continuous assessment focused</td></tr>
+                            <tr><td><strong>Term</strong></td><td>3 Terms</td><td>Cumulative grading across terms</td></tr>
+                            <tr><td><strong>Custom</strong></td><td>User Defined</td><td>Custom subdivisions (e.g., Months)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="highlight-box success"><strong>Grading Approval Workflow:</strong> Teacher Entry (Draft) → Registrar Review (Pending) → Admin/Registrar Approval (Locked). Once approved, <code>GradeChangeLog</code> tracks any subsequent edits for audit trails.</div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Exams & Seating -->
+        <div class="section" id="exams-seating">
+            <h2 class="section-title"><span class="icon" style="background:rgba(139,92,246,0.2);color:var(--accent-purple);">🪑</span> Exam Seating System</h2>
+            <p class="section-desc">Advanced logistics for large-scale exam management (ULTIMATE Tier).</p>
+            <div class="grid grid-2">
+                <div class="card">
+                    <h3 class="card-title">Automated Seating Generator</h3>
+                    <p style="font-size:0.9rem;color:var(--text-secondary);">Generate complex seating plans based on room capacity and student grades.</p>
+                    <ul style="list-style:none;font-size:0.85rem;color:var(--text-muted);margin-top:12px;">
+                        <li style="margin-bottom:6px;">● <strong>Smart Shuffling:</strong> Prevent cheating by mixing different grades in one room.</li>
+                        <li style="margin-bottom:6px;">● <strong>Capacity Enforcement:</strong> Automatic overflow management to multiple rooms.</li>
+                        <li style="margin-bottom:6px;">● <strong>Score Filters:</strong> Exclude students who haven't met attendance/fee requirements.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Seating Models</h3>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Model</th><th>Purpose</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>ExamSeatingPlan</code></td><td>Global config for an exam run</td></tr>
+                                <tr><td><code>ExamSectionAssignment</code></td><td>Maps students to rooms/sections</td></tr>
+                                <tr><td><code>ExamSeating</code></td><td>Individual student seat coordinates</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Finance & HR -->
+        <div class="section" id="finance-hr">
+            <h2 class="section-title"><span class="icon" style="background:rgba(6,182,212,0.2);color:var(--accent-cyan);">💰</span> Finance & HR Lifecycle</h2>
+            <p class="section-desc">Separation of duties between payroll calculation and payment processing.</p>
+            <div class="card">
+                <h3 class="card-title">Payroll Workflow</h3>
+                <div class="flow-diagram">
+                    <div class="flow-step"><div class="flow-number">1</div><div class="flow-text"><strong>HR Creation</strong> — <code>HrProfile</code> linked to <code>SalaryStructure</code> determines base pay</div></div>
+                    <div class="flow-step"><div class="flow-number">2</div><div class="flow-text"><strong>Calculation</strong> — System calculates tax, pension, and allowances (HR Role)</div></div>
+                    <div class="flow-step"><div class="flow-number">3</div><div class="flow-text"><strong>Submission</strong> — Finalized <code>Payroll</code> submitted for financial review</div></div>
+                    <div class="flow-step"><div class="flow-number">4</div><div class="flow-text"><strong>Disbursement</strong> — <code>Finance</code> processes payments and records references</div></div>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);margin-bottom:12px;">Fee Management</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);">Automated student fee generation based on <code>GradeLevel</code> and <code>AcademicYear</code>. Supports <code>DiscountPolicy</code> (e.g., Staff Child, Scholarship).</p>
+                </div>
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);margin-bottom:12px;">Leave System</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);">Employee leave requests (Sick, Casual, Maternity) with auto-calculating balances in <code>HrProfile</code>.</p>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Siren System -->
+        <div class="section" id="siren">
+            <h2 class="section-title"><span class="icon" style="background:rgba(239,68,68,0.2);color:var(--accent-red);">🔔</span> School Siren (Automation)</h2>
+            <p class="section-desc">IoT-ready automated bell system integrated with school periods.</p>
+            <div class="card">
+                <h3 class="card-title">Hardware Integration</h3>
+                <p style="margin-bottom:16px;">The system can trigger physical bells via webhooks or specialized hardware controllers.</p>
+                <div class="tech-grid">
+                    <div class="tech-card"><h4>Schedule Driven</h4><p style="font-size:0.8rem;">Auto-rings based on <code>PeriodTime</code> config.</p></div>
+                    <div class="tech-card"><h4>Event Driven</h4><p style="font-size:0.8rem;">Manual triggers for fire drills or emergencies.</p></div>
+                    <div class="tech-card"><h4>Webhook Support</h4><p style="font-size:0.8rem;">Triggers external systems via <code>SirenHardwareConfig</code>.</p></div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Module Catalog -->
+        <div class="section" id="modules">
+            <h2 class="section-title"><span class="icon" style="background:rgba(59,130,246,0.2);color:var(--accent-blue);">📦</span> Module Catalog</h2>
+            <p class="section-desc">Unified architecture with 48+ inter-connected modules.</p>
+            <div class="grid grid-3">
+                <div class="module-card"><h4>🔐 Auth & RBAC</h4><p>JWT-based multi-tenant authentication with granular permission overrides.</p></div>
+                <div class="module-card"><h4>🏫 Enrollment</h4><p>Digital application forms with document management and approval logic.</p></div>
+                <div class="module-card"><h4>📖 Unified Content</h4><p>Combined system for Lessons, Homework, and Assignments with student submissions.</p></div>
+                <div class="module-card"><h4>📊 Dashboard Hub</h4><p>Role-specific real-time data visualization with role-based widgets.</p></div>
+                <div class="module-card"><h4>💬 Comm-Book</h4><p>Digital parent-teacher communication log with read-receipts.</p></div>
+                <div class="module-card"><h4>📤 Bulk Tools</h4><p>High-speed CSV/Excel processing for massive student/staff data imports.</p></div>
+                <div class="module-card"><h4>📅 Attendance</h4><p>Session-based student and employee tracking with PWA offline support.</p></div>
+                <div class="module-card"><h4>🕐 Timetable</h4><p>Slot-based scheduling with teacher conflict detection and room allocation.</p></div>
+                <div class="module-card"><h4>💵 Finance</h4><p>Ledger-based accounting for student fees, payments, and receipts.</p></div>
+                <div class="module-card"><h4>👥 HR & Payroll</h4><p>Complete staff lifecycle management and automated payroll runs.</p></div>
+                <div class="module-card"><h4>🔔 Notifications</h4><p>Web Push, In-app, and Email notification engine with role targeting.</p></div>
+                <div class="module-card"><h4>🔍 Global Search</h4><p>School-wide entity indexing for instant search across all modules.</p></div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Subscription Plans -->
+        <div class="section" id="subscriptions">
+            <h2 class="section-title"><span class="icon" style="background:rgba(236,72,153,0.2);color:var(--accent-pink);">💎</span> Subscription Model</h2>
+            <p class="section-desc">Progressive feature unlocking managed via <code>SubscriptionGuard</code>.</p>
+            <div class="grid grid-3">
+                <div class="tier-card tier-core">
+                    <h3>CORE</h3>
+                    <div class="tier-level">Foundation</div>
+                    <ul>
+                        <li>Basic User Management</li>
+                        <li>School Profile & Settings</li>
+                        <li>Basic Reports</li>
+                        <li>Push Notifications</li>
+                        <li>Dashboard Access</li>
+                    </ul>
+                </div>
+                <div class="tier-card tier-standard">
+                    <h3>STANDARD</h3>
+                    <div class="tier-level">Operational</div>
+                    <ul>
+                        <li>All CORE features</li>
+                        <li>Attendance & Timetable</li>
+                        <li>Full Academic & Grading</li>
+                        <li>Finance & HR System</li>
+                        <li>Parent & Student Portals</li>
+                        <li>Messaging & Comm-Book</li>
+                    </ul>
+                </div>
+                <div class="tier-card tier-ultimate">
+                    <h3>ULTIMATE</h3>
+                    <div class="tier-level">Enterprise</div>
+                    <ul>
+                        <li>All STANDARD features</li>
+                        <li>Exam Seating Logistics</li>
+                        <li>Advanced Analytics</li>
+                        <li>School Siren Automation</li>
+                        <li>Bulk Data Operations</li>
+                        <li>Priority Multi-Language</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Database Schema -->
+        <div class="section" id="database">
+            <h2 class="section-title"><span class="icon" style="background:rgba(6,182,212,0.2);color:var(--accent-cyan);">🗄</span> Database Architecture</h2>
+            <p class="section-desc">95+ Models organized by logical domains. PostgreSQL backend managed via Prisma ORM.</p>
+
+            <div class="card">
+                <h3 class="card-title">Model Groups</h3>
+                <div class="grid grid-2">
+                    <div>
+                        <h4 style="margin-bottom:8px;font-size:0.9rem;">Identity & Access</h4>
+                        <div class="table-wrapper">
+                            <table>
+                                <tbody>
+                                    <tr><td><code>User</code>, <code>School</code></td><td>Core Entities</td></tr>
+                                    <tr><td><code>Permission</code>, <code>RolePermission</code></td><td>RBAC</td></tr>
+                                    <tr><td><code>Subscription</code>, <code>Plan</code></td><td>Monetization</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom:8px;font-size:0.9rem;">Academics & Teaching</h4>
+                        <div class="table-wrapper">
+                            <table>
+                                <tbody>
+                                    <tr><td><code>Class</code>, <code>Section</code>, <code>Subject</code></td><td>Structure</td></tr>
+                                    <tr><td><code>AcademicYear</code>, <code>Term</code></td><td>Timeline</td></tr>
+                                    <tr><td><code>Content</code>, <code>ContentSubmission</code></td><td>Learning</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-2" style="margin-top:20px;">
+                    <div>
+                        <h4 style="margin-bottom:8px;font-size:0.9rem;">Financials & HR</h4>
+                        <div class="table-wrapper">
+                            <table>
+                                <tbody>
+                                    <tr><td><code>FeeStructure</code>, <code>Payment</code></td><td>Finance</td></tr>
+                                    <tr><td><code>Payroll</code>, <code>SalaryStructure</code></td><td>Payroll</td></tr>
+                                    <tr><td><code>HrProfile</code>, <code>LeaveRequest</code></td><td>Personnel</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom:8px;font-size:0.9rem;">Logistics & Automation</h4>
+                        <div class="table-wrapper">
+                            <table>
+                                <tbody>
+                                    <tr><td><code>ExamSeatingPlan</code>, <code>ExamSeating</code></td><td>Exams</td></tr>
+                                    <tr><td><code>AttendanceSession</code>, <code>AttendanceRecord</code></td><td>Tracking</td></tr>
+                                    <tr><td><code>SirenSchedule</code>, <code>SirenEvent</code></td><td>Hardware</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Guards & Security -->
+        <div class="section" id="guards">
+            <h2 class="section-title"><span class="icon" style="background:rgba(239,68,68,0.2);color:var(--accent-red);">🛡</span> Backend Guards Registry</h2>
+            <p class="section-desc">Hierarchical security enforcement for every incoming request.</p>
+            <div class="grid grid-3">
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);">1. JwtAuthGuard</h4>
+                    <p style="font-size:0.8rem;margin-top:8px;">Extracts and validates identity from the <code>Authorization</code> header.</p>
+                </div>
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);">2. RolesGuard</h4>
+                    <p style="font-size:0.8rem;margin-top:8px;">Validates the <code>Role</code> enum against the <code>@Roles()</code> decorator metadata.</p>
+                </div>
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);">3. PermissionsGuard</h4>
+                    <p style="font-size:0.8rem;margin-top:8px;">Checks granular <code>Permission</code> records and enforces <code>schoolId</code> isolation.</p>
+                </div>
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);">4. SubscriptionGuard</h4>
+                    <p style="font-size:0.8rem;margin-top:8px;">Ensures the current tenant's <code>PlanTier</code> supports the requested module.</p>
+                </div>
+                <div class="card">
+                    <h4 style="color:var(--accent-blue);">5. RateLimitGuard</h4>
+                    <p style="font-size:0.8rem;margin-top:8px;">Throttles requests to prevent DoS attacks on critical endpoints like <code>/auth/login</code>.</p>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- API Registry -->
+        <div class="section" id="api-routes">
+            <h2 class="section-title"><span class="icon" style="background:rgba(6,182,212,0.2);color:var(--accent-cyan);">🔗</span> API Registry</h2>
+            <p class="section-desc">Comprehensive list of endpoints grouped by system modules. All routes are prefixed with <code>/api</code> in production.</p>
+            
+            <div class="accordion">
+                <div class="accordion-header">Academic-years Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/academic-years</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/academic-years</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/academic-years/active</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/academic-years/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/academic-years/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/academic-years/:id/activate</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/academic-years/:id/curriculum-type</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/academic-years/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/academic-years/terms/current</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/academic-years/:id/terms</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/academic-years/:id/terms</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/academic-years/terms/:termId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/academic-years/terms/:termId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/academic-years/terms/:termId/lock</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/academic-years/terms/:termId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/academic-years/:id/period-weights</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/academic-years/:id/validate-weights</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Announcements Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/announcements</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/announcements</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/announcements/active-count</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/announcements/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/announcements/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/announcements/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">General Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/health</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/protected</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/admin</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/permissions</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Assessments Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments/teacher/me</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments/subjects/:id/score-entry</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/assessments/subjects/:id/scores</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments/student/upcoming</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments/student/results</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments/parent/child/:childId/upcoming</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments/parent/child/:childId/results</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments/registrar/missing-marks</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments/config/weights</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/assessments/config/weights</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/assessments</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/assessments/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/assessments/:id/subjects</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/assessments/:id/lock</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Auth Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/login</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/logout</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/register/admin</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/register/teacher</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/register/student</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/register/parent</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/register/registrar</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/register/student-self</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/auth/users</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/auth/users/teachers</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/auth/users/me</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/auth/users/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/auth/users/me</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/auth/users/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PATCH</span></td><td><code>/auth/users/me/theme</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/auth/users/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/change-password</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/request-password-reset</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/reset-password</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auth/admin/reset-user-password/:userId</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Auto-assignment Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auto-assignment/enrollments/:enrollmentId/auto-assign</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auto-assignment/bulk</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auto-assignment/enrollments/:enrollmentId/reassign</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/auto-assignment/students/:studentId/assignment</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/auto-assignment/capacity</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/auto-assignment/approve-and-assign</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Bulk-upload Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/bulk-upload/staff</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/bulk-upload/students-auto</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/bulk-upload/report</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/bulk-upload/template</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/bulk-upload/credentials</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/bulk-upload/credentials/:id/mark-sent</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/bulk-upload/credentials/:id/delete</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/bulk-upload/credentials/export</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/bulk-upload/rebalance</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Attendance Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/today</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/attendance/session/:slotId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/students</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/session/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/attendance/session/:sessionId/records</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/attendance/session/:id/submit</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/me</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/me/summary</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/student/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/student/:id/summary</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/sessions</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/summary</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/missing</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/attendance/missing/notify</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/attendance/check-reminders</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/attendance/record/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/dashboard/teacher</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/dashboard/student</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/dashboard/parent/:studentId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/attendance/dashboard/admin</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Calendar Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/calendar/ethiopian-year</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/calendar/current</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/calendar/convert</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/calendar/convert-to-gregorian</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/calendar/school/:schoolId/mode</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/calendar/new-year-check</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Classes Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/classes</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/classes</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/classes/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/classes/grades/list</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/classes/search</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/classes/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/classes/:id/homeroom-teacher</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/classes/:id/students</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/classes/:id/stats</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Class-subjects Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/class-subjects</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/class-subjects/bulk-assign</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/class-subjects</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/class-subjects/matrix</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/class-subjects/by-class/:classId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/class-subjects/by-teacher/:teacherId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/class-subjects/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/class-subjects/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/class-subjects/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Communications Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/communications</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/communications</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/communications/unread-count</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/communications/my-count</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/communications/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/communications/:id/status</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/communications/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/communications/:id/replies</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/communications/replies/:replyId</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Credentials Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/credentials/preview/student/:schoolId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/credentials/preview/staff/:schoolId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/generate/bulk</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/students/bulk</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/staff/bulk</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/staff/create</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/students/create</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/export/csv</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/slips</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/validate-password</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/credentials/check-username/:username</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/credentials</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/credentials/stats</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/:id/send</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/credentials/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/credentials/assign-roll-numbers</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Dashboard Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/dashboard</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/dashboard/teacher</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/dashboard/student</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/dashboard/parent</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/dashboard/admin</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/dashboard/registrar</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/dashboard/superadmin</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Discipline Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/discipline</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/discipline</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/discipline/student/:studentId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/discipline/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/discipline/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/discipline/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Enrollment Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/enrollment/request</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/enrollment/capacity/:grade</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/enrollment/grades</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/enrollment/status</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/enrollment/requests</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/enrollment/stats</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/enrollment/requests/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/enrollment/requests/:id/approve</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/enrollment/requests/:id/reject</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/enrollment/requests/:id/waitlist</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/enrollment/requests/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/enrollment/requests/:id/send-credentials</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Enroll Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/enroll</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/enroll/verify</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/enroll/approve</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/enroll/reject</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Events Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/events</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/events</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/events/upcoming-count</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/events/active-count</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/events/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/events/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/events/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Exams Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/exams</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/teacher/me</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/student/upcoming</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/student/results</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/parent/child/:childId/upcoming</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/parent/child/:childId/results</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/form-data/assessment</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/exams/publish</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/exams/:id/results</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/exams/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/exams/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Exams Seating Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/seating/plans</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/seating/type/:examType/seating-plan</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/exams/seating/type/:examType/seating-plan</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/exams/seating/plan/:id/students</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/exams/seating/plan/:id/generate</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/seating/plan/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/seating/plan/:id/print</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/exams/seating/plan/:id/excel</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/exams/seating/plan/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Finance Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/finance/fee-structures</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/fee-structures</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/finance/fee-structures/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/finance/fee-structures/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/finance/student-fees/generate</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/student-fees</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/finance/payments/record</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/reports/daily</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/payments</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/reports/monthly</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/reports/outstanding</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/finance/fees/mark-overdue</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/reports/overdue</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/audit-logs</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/reports/student/:studentId/history</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/student-fees/:studentId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/curriculum-info</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/finance/fee-calculation/installments</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/finance/fee-structures/generate-installments</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/fee-collection-mode</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/finance/discount-policies</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/discount-policies</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/finance/discount-policies/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/finance/discount-policies/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/finance/student-fees/:studentFeeId/apply-discount</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/payroll</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/payroll/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/finance/payroll/:id/process-payment</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PATCH</span></td><td><code>/finance/payroll/:id/mark-paid</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/finance/payroll/reports</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Grading Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/teacher/assignments</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/teacher/students</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/teacher/grades</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/teacher/grades/bulk</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/teacher/grades/bulk-csv</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/teacher/grades/template</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/grading/teacher/grades/:id/draft</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/grading/teacher/grades/:id/submit</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/teacher/grades/submit-all</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/registrar/review</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/registrar/assessments</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/grading/registrar/grades/:id/review</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/registrar/grades/bulk-approve</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/registrar/grades/bulk-reject</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/registrar/reports/subject</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/registrar/reports/class</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/student/grades</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/parent/grades/:studentId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/calculate-rankings</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/grading-components</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/admin/grading-components</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/teacher/assessment-types</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/admin/assessment-types</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/assessment-types</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/grade-scales</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/admin/grade-scales</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/teacher-assignments</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/grading/admin/teacher-assignments/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/student/final-grades</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/parent/final-grades/:studentId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/subject/final-grade</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/student/financial-clearance</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/admin/entry-progress</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/send-reminder</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/admin/publish-checklist</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/bulk-publish</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/grading/admin/promotion-list</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/promotion-override</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/confirm-promotions</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/grading/admin/bulk-confirm-promotions</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Hr Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/hr/employees</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/hr/employees</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/hr/employees/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/hr/employees/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/hr/employees/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/hr/payroll</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/hr/payroll/:id/calculate</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/hr/payroll/:id/submit</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/hr/payroll</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/hr/payroll/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/hr/payroll/:id/process</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/hr/salary-structure</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/hr/salary-structure</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/hr/salary-structure/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/hr/salary-structure/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/hr/attendance/:employeeId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/hr/attendance</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/hr/attendance/me</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/hr/attendance/:employeeId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/hr/dashboard/stats</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Leave-requests Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/leave-requests</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/leave-requests</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/leave-requests/my</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/leave-requests/my/balance</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/leave-requests/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PATCH</span></td><td><code>/leave-requests/:id/approve</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PATCH</span></td><td><code>/leave-requests/:id/reject</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/leave-requests/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Lessons Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/lessons</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/lessons/bundle/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PATCH</span></td><td><code>/lessons/:id/submit-review</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PATCH</span></td><td><code>/lessons/:id/approve</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PATCH</span></td><td><code>/lessons/:id/reject</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/lessons/pending-review</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/lessons/homework/:homeworkId/submit</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/lessons/submissions/:submissionId/grade</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/lessons/coverage/report</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/lessons/:id/with-lock</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/lessons</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/lessons/form-data</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/lessons/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/lessons/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/lessons/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Messages Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/messages/staff</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/messages/conversation</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/messages</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/messages/:conversationId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/messages/:conversationId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PATCH</span></td><td><code>/messages/read/:messageId</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Notifications Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/notifications</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/notifications/categories</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/notifications/unread-count</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/notifications/push/public-key</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/notifications/push/subscriptions</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/notifications/push/subscriptions</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/notifications/:id/read</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/notifications/mark-all-read</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Parents Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/parents/me/profile</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/parents/me/children</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/parents/me/children/:childId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/parents</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/parents/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/parents/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/parents</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/parents/create-and-link</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/parents/link</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/parents/unlink/:parentId/:studentId</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Api Period-time Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/api/period-time</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/api/period-time</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/api/period-time/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/api/period-time/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Platform Settings Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/platform/settings</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/platform/settings/flags</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/platform/settings/:key</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/platform/settings/:key</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/platform/settings/:key</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/platform/settings/batch</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Permissions Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/permissions</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/permissions</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/permissions/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/permissions/module/:module</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/permissions/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/permissions/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Roles Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/roles</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/roles/:role/permissions</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/roles/:role/permissions</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/roles/:role/permissions/:permissionId</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Registrar Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/registrar/students</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/registrar/students</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/registrar/students/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/registrar/students/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/registrar/enrollments/pending</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/registrar/enrollments</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/registrar/enrollments/:id/approve</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/registrar/enrollments/:id/auto-approve</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/registrar/enrollments/:id/reject</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/registrar/students/:id/assign-class</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/registrar/students/:id/documents</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Promotion Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/promotion/candidates/:classId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/promotion/terms</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/promotion/next-classes/:classId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/promotion/single</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/promotion/bulk</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/promotion/history</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Report-cards Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/report-cards/generate</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/report-cards/bulk-generate</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/report-cards</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/report-cards/student/:studentId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/report-cards/class/:classId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/report-cards/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/report-cards/:id/remarks</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/report-cards/publish</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/report-cards/unpublish</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/report-cards/calculate-ranks</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/report-cards/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Schools Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/schools</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/schools</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/schools/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/schools/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/schools/:id/logo</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/schools/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Schools :schoolId Settings Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/schools/:schoolId/settings</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/schools/:schoolId/settings/:key</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/schools/:schoolId/settings/:key</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/schools/:schoolId/settings/:key</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/schools/:schoolId/settings/batch</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Search Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/search</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/search/categories</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Sections Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/sections</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/sections/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/sections/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/sections/:id/homeroom-teacher</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/sections/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/sections/sync-capacity</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Api Siren Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/api/siren/schedules</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/api/siren/schedules</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/api/siren/schedules/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/api/siren/schedules/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/api/siren/events</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/api/siren/hardware</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/api/siren/hardware</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/api/siren/hardware/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/api/siren/hardware/test</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/api/siren/trigger</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Students Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/students</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/students</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/students/id-cards</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/students/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/students/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/students/me/class</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/students/homeroom/me</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/students/enrollments/pending</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/students/enrollments/:id/approve</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/students/enrollments/:id/reject</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/students/:id/assign-class</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/students/:id/documents</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Subjects Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/subjects</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/subjects</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/subjects/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/subjects/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/subjects/:id</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Subscription Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/subscription/plans</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/subscription/plans/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/subscription/plans</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/subscription/plans/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/subscription/plans/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/subscription/assign</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/subscription/school/:schoolId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/subscription/school/:schoolId/subscription</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/subscription/subscription</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PUT</span></td><td><code>/subscription/subscription/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/subscription/plan/:planId/schools</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/subscription/schools</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/subscription/check-feature</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Api Sync Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/api/sync/attendance</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/api/sync/attendance/batch</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/api/sync/students</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/api/sync/conflicts</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/api/sync/conflicts/:id/resolve</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/api/sync/status</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/api/sync/health</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Teachers Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/teachers</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/teachers/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/teachers/me/assignments</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion">
+                <div class="accordion-header">Timetable-slots Module</div>
+                <div class="accordion-body">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Method</th><th>Endpoint</th></tr></thead>
+                            <tbody>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/timetable-slots</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/timetable-slots</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/timetable-slots/class/:classId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/timetable-slots/teacher/:teacherId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/timetable-slots/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">PATCH</span></td><td><code>/timetable-slots/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/timetable-slots/:id</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(16,185,129,0.1);color:var(--accent-green);">POST</span></td><td><code>/timetable-slots/bulk</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(245,158,11,0.1);color:var(--accent-orange);">DELETE</span></td><td><code>/timetable-slots/class/:classId/section/:sectionId</code></td></tr>
+                                <tr><td><span class="tech-tag" style="background:rgba(59,130,246,0.1);color:var(--accent-blue);">GET</span></td><td><code>/timetable-slots/grid/class/:classId</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="highlight-box warning">
+                <strong>Authentication Requirement:</strong> Most <code>GET</code> routes require a valid JWT Bearer token. <code>POST/PUT/DELETE</code> routes usually require specific permissions (e.g., <code>STUDENT_CREATE</code>, <code>FINANCE_MANAGE</code>).
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Test Credentials -->
+        <div class="section" id="credentials">
+            <h2 class="section-title"><span class="icon" style="background:rgba(163,163,163,0.2);color:var(--text-muted);">🔑</span> Test Credentials</h2>
+            <p class="section-desc">Default credentials for development and staging environments.</p>
+            <div class="grid grid-2">
+                <div class="card">
+                    <h3 class="card-title">Role-Based Access</h3>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead><tr><th>Role</th><th>Email / Identifier</th><th>Password</th></tr></thead>
+                            <tbody>
+                                <tr><td><strong>Super Admin</strong></td><td><code>superadmin@sms.com</code></td><td><code>Admin@123</code></td></tr>
+                                <tr><td><strong>School Admin</strong></td><td><code>admin@school.com</code></td><td><code>Admin@123</code></td></tr>
+                                <tr><td><strong>Teacher</strong></td><td><code>teacher@school.com</code></td><td><code>Teacher@123</code></td></tr>
+                                <tr><td><strong>Student</strong></td><td><code>STU001</code> / <code>student@school.com</code></td><td><code>Student@123</code></td></tr>
+                                <tr><td><strong>Parent</strong></td><td><code>parent@school.com</code></td><td><code>Parent@123</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Environment Access</h3>
+                    <ul style="list-style:none;font-size:0.9rem;color:var(--text-secondary);">
+                        <li style="margin-bottom:12px;">🌐 <strong>Development:</strong> <code>http://localhost:3000</code></li>
+                        <li style="margin-bottom:12px;">🛠 <strong>API Base:</strong> <code>http://localhost:5000/api</code></li>
+                        <li style="margin-bottom:12px;">📊 <strong>Prisma Studio:</strong> <code>npx prisma studio</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <div style="text-align:center;padding:64px 0;color:var(--text-muted);font-size:0.9rem;border-top:1px solid var(--border-color);">
+            <p>SMS Enterprise Platform | Built for Scale & Reliability</p>
+            <p style="margin-top:8px;">© 2026 SMS Solutions. All rights reserved.</p>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Smooth scrolling and active link highlighting
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            const targetElement = document.querySelector(targetId);
+            window.scrollTo({
+                top: targetElement.offsetTop - 80,
+                behavior: 'smooth'
+            });
+        });
+    });
+
+    const sections = document.querySelectorAll('.section, .hero');
+    const navLinks = document.querySelectorAll('.nav-link');
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            if (scrollY >= sectionTop - 120) {
+                current = section.getAttribute('id');
+            }
+        });
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + current) {
+                link.classList.add('active');
+            }
+        });
+    });
+
+    // Sidebar toggle for mobile (simulated)
+    document.querySelector('.sidebar-header').onclick = () => {
+        if (window.innerWidth < 1024) {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+    };
+
+    // Accordion toggle functionality
+    document.querySelectorAll('.accordion-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const accordion = this.parentElement;
+            accordion.classList.toggle('open');
+        });
+    });
+</script>
+
+</body>
+</html>

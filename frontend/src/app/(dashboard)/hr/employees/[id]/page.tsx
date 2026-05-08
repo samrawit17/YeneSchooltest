@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { hrAPI } from "@/lib/api";
+import { hrAPI } from "@/lib/api/hr";
 import { Loader2 } from "lucide-react";
 import UserDetailPage, { UserDetailData } from "@/components/UserDetailPage";
 import { toast } from "sonner";

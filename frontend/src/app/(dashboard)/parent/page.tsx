@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import api, { academicYearsAPI, gradingAPI } from "@/lib/api";
+import { academicYearsAPI, financeAPI, gradingAPI } from "@/lib/api";
+import { parentDashboardAPI } from "@/lib/api/parent";
 import {
   User,
   Calendar,
@@ -235,7 +236,7 @@ const ParentDashboard = () => {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const response = await api.get("/dashboard");
+        const response = await parentDashboardAPI.getGeneralDashboard();
         const data = response.data;
 
         // Fetch academic years
@@ -283,9 +284,7 @@ const ParentDashboard = () => {
           
             if (schoolId && academicYearId) {
               try {
-                const feeResponse = await api.get(`/finance/student-fees/${child.id}`, {
-                  params: { schoolId, academicYearId },
-                });
+                const feeResponse = await financeAPI.getStudentFees(child.id, schoolId, academicYearId);
                 const feeData = feeResponse.data;
                 if (feeData.summary) {
                   feeBalance = feeData.summary.totalBalance || 0;

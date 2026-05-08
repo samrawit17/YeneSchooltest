@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import api, { gradingAPI, termsAPI } from "@/lib/api";
+import { gradingAPI, termsAPI } from "@/lib/api";
 import { Filters, useFilters } from "@/components/filters/Filters";
 import { toast } from "sonner";
 import {
@@ -166,7 +166,7 @@ export default function RegistrarGradingPage() {
   const handleApprove = async (gradeId: string) => {
     setProcessing(true);
     try {
-      await api.put(`/grading/registrar/grades/${gradeId}/review`, { status: "APPROVED" });
+      await gradingAPI.reviewGrade(gradeId, { status: "APPROVED" });
       toast.success("Grade approved successfully");
       fetchSubmissions();
     } catch (error) {
@@ -183,7 +183,7 @@ export default function RegistrarGradingPage() {
     
     setProcessing(true);
     try {
-      await api.put(`/grading/registrar/grades/${gradeId}/review`, {
+      await gradingAPI.reviewGrade(gradeId, {
         status: "REJECTED",
         registrarComment: comment,
       });

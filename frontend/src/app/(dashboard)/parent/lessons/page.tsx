@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { lessonsAPI, Lesson } from "@/lib/api";
+import { lessonsAPI, Lesson } from "@/lib/api/content";
 import TableSearch from "@/components/TableSearch";
 import {
   BookText,
