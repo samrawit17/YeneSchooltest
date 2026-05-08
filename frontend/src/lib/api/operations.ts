@@ -73,8 +73,7 @@ export type SearchableEntity =
   | "attendance"
   | "payments"
   | "messages"
-  | "finance"
-  | "hr";
+  | "finance";
 
 export const searchAPI = {
   globalSearch: (query: string) => api.get("/search", { params: { q: query } }),

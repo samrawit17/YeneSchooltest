@@ -29,7 +29,7 @@ import {
   studentsAPI,
 } from "@/lib/api";
 import { credentialsAPI, CredentialResult } from "@/lib/api/admin";
-import { bulkUploadAPI, BulkUploadResult } from "@/lib/api/hr";
+import { bulkUploadAPI, BulkUploadResult } from "@/lib/api/bulk-upload";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,7 +78,6 @@ const ROLE_COLORS: Record<string, string> = {
   ADMIN: "text-orange-600 bg-orange-50 border-orange-200 dark:text-orange-300 dark:bg-orange-950/30 dark:border-orange-900",
   REGISTRAR: "text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900",
   FINANCE: "text-rose-600 bg-rose-50 border-rose-200 dark:text-rose-300 dark:bg-rose-950/30 dark:border-rose-900",
-  HR: "text-cyan-600 bg-cyan-50 border-cyan-200 dark:text-cyan-300 dark:bg-cyan-950/30 dark:border-cyan-900",
 };
 
 function getUploadSummary(result: BulkUploadResult | null) {
@@ -219,7 +218,7 @@ export default function BulkUploadPage() {
     name: "",
     email: "",
     phone: "",
-    role: "TEACHER" as "TEACHER" | "ADMIN" | "REGISTRAR" | "FINANCE" | "HR",
+    role: "TEACHER" as "TEACHER" | "ADMIN" | "REGISTRAR" | "FINANCE",
   });
 
   useEffect(() => {
@@ -1004,7 +1003,7 @@ export default function BulkUploadPage() {
                           <Label>Role</Label>
                           <Select
                             value={staffForm.role}
-                            onValueChange={(value: "TEACHER" | "ADMIN" | "REGISTRAR" | "FINANCE" | "HR") =>
+                            onValueChange={(value: "TEACHER" | "ADMIN" | "REGISTRAR" | "FINANCE") =>
                               setStaffForm((current) => ({ ...current, role: value }))
                             }
                           >
@@ -1016,7 +1015,6 @@ export default function BulkUploadPage() {
                               <SelectItem value="ADMIN">Admin</SelectItem>
                               <SelectItem value="REGISTRAR">Registrar</SelectItem>
                               <SelectItem value="FINANCE">Finance</SelectItem>
-                              <SelectItem value="HR">HR</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

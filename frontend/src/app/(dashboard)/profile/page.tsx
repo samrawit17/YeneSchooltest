@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import { userAPI, timetableSlotsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
+import { useProfileData } from "@/hooks/useProfileData";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeStore } from "@/lib/themeStore";
 import { toast } from "sonner";
@@ -171,12 +173,8 @@ const ProfilePage = () => {
   });
 
   const queryClient = useQueryClient();
-  const t = useMemo(() => profileMessagesByLanguage[language], [language]);
-  const formatDate = (value: string, options?: Intl.DateTimeFormatOptions) =>
-    new Date(value).toLocaleDateString(dateLocales[language], options);
-  const formatDateTime = (value: string) =>
-    new Date(value).toLocaleString(dateLocales[language]);
-  const currentLocale = dateLocales[language];
+  const { profileData, isLoadingProfile, assignedSubjects, t, formatDate, formatDateTime } = useProfileData();
+  const isLoading = isLoadingProfile;
 
   // Initialize form with react-hook-form
   const form = useForm<ProfileFormValues>({
@@ -189,30 +187,6 @@ const ProfilePage = () => {
     },
   });
 
-  // Fetch user profile
-  const { data: profileData, isLoading } = useQuery({
-    queryKey: ["userProfile"],
-    queryFn: async () => {
-      const response = await userAPI.getProfile();
-      return response.data;
-    },
-  });
-
-  // Fetch teacher subjects if user is a teacher
-  const { data: teacherSlots } = useQuery({
-    queryKey: ["teacherAssignments", user?.id],
-    queryFn: async () => {
-      if (!user?.id || user.role !== 'TEACHER') return [];
-      const response = await timetableSlotsAPI.getByTeacher(user.id);
-      return response.data || [];
-    },
-    enabled: !!user?.id && user.role === 'TEACHER',
-  });
-
-  const assignedSubjects = teacherSlots
-    ? Array.from(new Set(teacherSlots.map((slot: any) => slot.subject?.name))).filter(Boolean)
-    : [];
-
   // Update profile mutation
   const updateMutation = useMutation({
     mutationFn: async (data: ProfileFormValues) => {
@@ -224,7 +198,7 @@ const ProfilePage = () => {
         updateUser({ ...user, ...form.getValues() });
       }
       setIsEditing(false);
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.profile.user });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "Failed to update profile");
@@ -507,14 +481,14 @@ const ProfilePage = () => {
                     </div>
                     
                     {/* Leave Requests Link for Employees */}
-                    {['TEACHER', 'HR', 'FINANCE', 'REGISTRAR', 'ADMIN'].includes(user?.role || '') && (
+                    {['TEACHER', 'FINANCE', 'REGISTRAR', 'ADMIN'].includes(user?.role || '') && (
                       <Button
                         variant="outline"
                         className="mt-4 gap-2"
-                        onClick={() => router.push('/employee/leave-requests')}
+                        onClick={() => router.push('/messages')}
                       >
                         <CalendarCheck className="w-4 h-4" />
-                        {t.actions.leaveRequests}
+                        Messages
                       </Button>
                     )}
                   </div>
@@ -844,7 +818,7 @@ const ProfilePage = () => {
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{t.activity.lastLogin}</p>
                       <p className="text-xs text-gray-600 dark:text-slate-400">
-                        {new Date().toLocaleString(currentLocale)}
+                        {formatDateTime(new Date().toISOString())}
                       </p>
                     </div>
                   </div>

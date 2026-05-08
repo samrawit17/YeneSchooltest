@@ -1,15 +1,6 @@
 import api from './core';
 
 export const financeAPI = {
-  getPayrollsFinance: (params?: { status?: string; page?: number; limit?: number }) =>
-    api.get('/finance/payroll', { params }),
-  getPayrollByIdFinance: (id: string) => api.get(`/finance/payroll/${id}`),
-  processPaymentToBank: (payrollId: string) =>
-    api.post(`/finance/payroll/${payrollId}/process-payment`),
-  markPayrollPaid: (id: string, paymentReference?: string) =>
-    api.patch(`/finance/payroll/${id}/mark-paid`, { paymentReference }),
-  getPayrollReports: (params?: { startDate?: string; endDate?: string }) =>
-    api.get('/finance/payroll/reports', { params }),
   createFeeStructure: (data: {
     schoolId: string;
     academicYearId: string;

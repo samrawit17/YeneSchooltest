@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useParams } from "next/navigation";
 import { studentsAPI, classesAPI, sectionsAPI, registrarAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
+import { queryKeys } from "@/lib/query-keys";
 import { Loader2, ArrowLeft, Save, User, BookOpen, Users, FileText } from "lucide-react";
 import { toast } from "sonner";
 
@@ -120,7 +121,7 @@ export default function EditStudentPage() {
 
   // Fetch student data
   const { data: student, isLoading: isLoadingStudent, error: studentError } = useQuery<Student>({
-    queryKey: ["student", studentId],
+    queryKey: queryKeys.students.detail(studentId),
     queryFn: async () => {
       console.log("Fetching student with ID:", studentId);
       const response = await studentsAPI.getById(studentId);
@@ -132,7 +133,7 @@ export default function EditStudentPage() {
 
   // Fetch classes
   const { data: classesData } = useQuery<ClassOption[]>({
-    queryKey: ["classes"],
+    queryKey: queryKeys.classes.all,
     queryFn: async () => {
       const response = await classesAPI.getAll();
       return response.data;
@@ -141,7 +142,7 @@ export default function EditStudentPage() {
 
   // Fetch sections for selected class
   const { data: sectionsData } = useQuery<SectionOption[]>({
-    queryKey: ["sections", formData.classId],
+    queryKey: queryKeys.sections.byClass(formData.classId),
     queryFn: async () => {
       if (!formData.classId) return [];
       const response = await sectionsAPI.getAll({ classId: formData.classId });
@@ -233,10 +234,10 @@ export default function EditStudentPage() {
       toast.success("Student updated successfully");
       // Use userId for query key if available
       const idForQuery = userId || studentId;
-      queryClient.invalidateQueries({ queryKey: ["student", idForQuery] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(idForQuery) });
       // Also refetch to ensure data is fresh
       setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["student", idForQuery] });
+        queryClient.refetchQueries({ queryKey: queryKeys.students.detail(idForQuery) });
       }, 500);
     },
     onError: (error: any) => {
@@ -252,9 +253,9 @@ export default function EditStudentPage() {
     onSuccess: () => {
       toast.success("Parent information updated successfully");
       const idForQuery = userId || studentId;
-      queryClient.invalidateQueries({ queryKey: ["student", idForQuery] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(idForQuery) });
       setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["student", idForQuery] });
+        queryClient.refetchQueries({ queryKey: queryKeys.students.detail(idForQuery) });
       }, 500);
     },
     onError: (error: any) => {
@@ -269,9 +270,9 @@ export default function EditStudentPage() {
     onSuccess: () => {
       toast.success("Parent added successfully");
       const idForQuery = userId || studentId;
-      queryClient.invalidateQueries({ queryKey: ["student", idForQuery] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(idForQuery) });
       setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["student", idForQuery] });
+        queryClient.refetchQueries({ queryKey: queryKeys.students.detail(idForQuery) });
       }, 500);
     },
     onError: (error: any) => {
@@ -289,9 +290,9 @@ export default function EditStudentPage() {
     onSuccess: () => {
       toast.success("Class assigned successfully");
       const idForQuery = userId || studentId;
-      queryClient.invalidateQueries({ queryKey: ["student", idForQuery] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(idForQuery) });
       setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["student", idForQuery] });
+        queryClient.refetchQueries({ queryKey: queryKeys.students.detail(idForQuery) });
       }, 500);
     },
     onError: (error: any) => {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { announcementsAPI, Announcement } from "@/lib/api/content";
+import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/context/AuthContext";
 import { showToast } from "nextjs-toast-notify";
 import { 
@@ -60,7 +61,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
   const [hasRead, setHasRead] = useState(false);
 
   const { data: announcement, isLoading } = useQuery({
-    queryKey: ["announcement", id],
+    queryKey: queryKeys.announcements.detail(id),
     queryFn: async () => {
       const response = await announcementsAPI.getById(id);
       return response.data;
@@ -73,7 +74,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
     },
     onSuccess: () => {
       showToast.success("Announcement deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.announcements.all });
       window.location.href = "/list/announcements";
     },
     onError: (error: any) => {

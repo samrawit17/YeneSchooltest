@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { termsAPI, academicYearsAPI, schoolSettingsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import InputField from "@/components/InputField";
 
@@ -48,7 +49,7 @@ const TermForm = ({ type, data, academicYearId }: TermFormProps) => {
 
   // Fetch curriculum type from school settings
   const { data: settingsData } = useQuery({
-    queryKey: ['school-settings-curriculum-term-form', schoolId],
+    queryKey: queryKeys.school.curriculumTermForm(schoolId),
     queryFn: async () => {
       if (!schoolId) return { data: {} };
       try {
@@ -145,7 +146,7 @@ const TermForm = ({ type, data, academicYearId }: TermFormProps) => {
       toast.success(
         type === "create" ? `${periodLabel} created successfully` : `${periodLabel} updated successfully`
       );
-      queryClient.invalidateQueries({ queryKey: ["terms"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.terms.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || `Failed to ${type} ${periodLabel.toLowerCase()}`);

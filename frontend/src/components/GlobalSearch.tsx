@@ -53,8 +53,7 @@ type SearchableEntity =
     | 'attendance'
     | 'payments'
     | 'messages'
-    | 'finance'
-    | 'hr';
+    | 'finance';
 
 interface SearchResponse {
     data: SearchResult[];
@@ -100,12 +99,6 @@ const ROLE_QUICK_LINKS: Record<string, { label: string; href: string; icon: Reac
         { label: "Payments", href: "/list/finance", icon: <CreditCard className="h-4 w-4" /> },
         { label: "Students", href: "/list/students", icon: <GraduationCap className="h-4 w-4" /> },
     ],
-    hr: [
-        { label: "Dashboard", href: "/hr/employees", icon: <Settings className="h-4 w-4" /> },
-        { label: "Employees", href: "/hr/employees", icon: <Users className="h-4 w-4" /> },
-        { label: "Payroll", href: "/hr/payroll", icon: <DollarSign className="h-4 w-4" /> },
-        { label: "Attendance", href: "/hr/attendance", icon: <Calendar className="h-4 w-4" /> },
-    ],
     registrar: [
         { label: "Dashboard", href: "/registrar", icon: <School className="h-4 w-4" /> },
         { label: "Students", href: "/list/students", icon: <GraduationCap className="h-4 w-4" /> },
@@ -132,7 +125,6 @@ const typeIcons: Record<string, React.ReactNode> = {
     payment: <CreditCard className="h-3.5 w-3.5 shrink-0" />,
     message: <MessageSquare className="h-3.5 w-3.5 shrink-0" />,
     finance: <DollarSign className="h-3.5 w-3.5 shrink-0" />,
-    hr: <Settings className="h-3.5 w-3.5 shrink-0" />,
 };
 
 const typeLabels: Record<string, string> = {
@@ -152,7 +144,6 @@ const typeLabels: Record<string, string> = {
     payment: "Payments",
     message: "Messages",
     finance: "Finance",
-    hr: "Human Resources",
 };
 
 interface GlobalSearchProps {
@@ -343,7 +334,6 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         { key: 'payments', icon: <CreditCard className="h-3 w-3" />, label: 'Payments' },
         { key: 'messages', icon: <MessageSquare className="h-3 w-3" />, label: 'Messages' },
         { key: 'finance', icon: <DollarSign className="h-3 w-3" />, label: 'Finance' },
-        { key: 'hr', icon: <Settings className="h-3 w-3" />, label: 'HR' },
     ].filter(entity => permissions.includes(entity.key));
 
     return (

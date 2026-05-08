@@ -350,7 +350,7 @@ const FormModal = ({
     },
     onSuccess: () => {
       toast.success(`${table} deleted successfully`);
-      queryClient.invalidateQueries({ queryKey: [(table as string) === 'communication' ? 'communications' : table + 's'] });
+      queryClient.invalidateQueries({ queryKey: (table as string) === 'communication' ? queryKeys.communications.all : queryKeys[table as keyof typeof queryKeys]?.all ?? [table + 's'] });
       setOpen(false);
     },
     onError: (error: any) => {

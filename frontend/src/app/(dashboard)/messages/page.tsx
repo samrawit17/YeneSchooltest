@@ -7,6 +7,7 @@ import {
   MessagingMessage,
   MessagingParticipant,
 } from "@/lib/api/communications";
+import { queryKeys } from "@/lib/query-keys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Plus, Search, Send } from "lucide-react";
 
-const STAFF_ROLES = new Set(["ADMIN", "REGISTRAR", "TEACHER", "FINANCE", "HR"]);
+const STAFF_ROLES = new Set(["ADMIN", "REGISTRAR", "TEACHER", "FINANCE"]);
 
 export default function MessagesPage() {
   const { user } = useAuth();
@@ -44,7 +45,7 @@ export default function MessagesPage() {
   const isStaffUser = !!user?.role && STAFF_ROLES.has(user.role.toUpperCase());
 
   const conversationsQueryKey = useMemo(
-    () => ["messaging-conversations", user?.id, user?.schoolId],
+    () => queryKeys.messages.conversations(user?.id, user?.schoolId),
     [user?.id, user?.schoolId]
   );
 
@@ -68,7 +69,7 @@ export default function MessagesPage() {
   }, [conversations, conversationSearch]);
 
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
-    queryKey: ["messaging-messages", selectedConversationId, user?.id],
+    queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
     queryFn: async () => (await messagingAPI.getMessages(selectedConversationId!)).data,
     enabled: !!user?.id && !!user?.schoolId && !!selectedConversationId && isStaffUser,
     staleTime: 0,
@@ -76,7 +77,7 @@ export default function MessagesPage() {
   });
 
   const { data: staff = [], isLoading: isLoadingStaff } = useQuery({
-    queryKey: ["messaging-staff", user?.id, user?.schoolId, staffSearch, newDialogOpen],
+    queryKey: queryKeys.messages.staff(user?.id, user?.schoolId, staffSearch, newDialogOpen),
     queryFn: async () => (await messagingAPI.listStaff({ search: staffSearch })).data,
     enabled: !!user?.id && !!user?.schoolId && isStaffUser && newDialogOpen,
     staleTime: 30_000,
@@ -104,10 +105,16 @@ export default function MessagesPage() {
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => messagingAPI.sendMessage(selectedConversationId!, { content }),
     onMutate: async (newContent: string) => {
-      await queryClient.cancelQueries({ queryKey: ["messaging-messages", selectedConversationId, user?.id] });
-      const previousMessages = queryClient.getQueryData(["messaging-messages", selectedConversationId, user?.id]);
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+      });
+      const previousMessages = queryClient.getQueryData(
+        queryKeys.messages.conversationMessages(selectedConversationId, user?.id)
+      );
 
-      queryClient.setQueryData(["messaging-messages", selectedConversationId, user?.id], (old: any) => {
+      queryClient.setQueryData(
+        queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+        (old: any) => {
         const newMessage = {
           id: `temp-${Date.now()}`,
           content: newContent,
@@ -125,12 +132,17 @@ export default function MessagesPage() {
     onError: (err, newContent, context) => {
       if (context?.newContent) setDraft(context.newContent);
       if (context?.previousMessages) {
-        queryClient.setQueryData(["messaging-messages", selectedConversationId, user?.id], context.previousMessages);
+        queryClient.setQueryData(
+          queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+          context.previousMessages
+        );
       }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
-      queryClient.invalidateQueries({ queryKey: ["messaging-messages", selectedConversationId, user?.id] });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+      });
     },
   });
 
@@ -198,7 +210,9 @@ export default function MessagesPage() {
 
     Promise.all(unreadIds.map((id) => messagingAPI.markRead(id))).then(() => {
       queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
-      queryClient.invalidateQueries({ queryKey: ["messaging-messages", selectedConversationId, user?.id] });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+      });
     });
   }, [messages, selectedConversationId, user?.id, queryClient, conversationsQueryKey]);
 

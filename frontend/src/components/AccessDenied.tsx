@@ -71,7 +71,6 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
       parent: '/parent',
       registrar: '/registrar',
       finance: '/finance',
-      hr: '/hr',
     };
     return roleMap[userRole || ''] || '/dashboard';
   };
@@ -85,7 +84,6 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
       parent: 'Parent Dashboard',
       registrar: 'Registrar Dashboard',
       finance: 'Finance Dashboard',
-      hr: 'HR Dashboard',
     };
     return roleNames[userRole || ''] || 'Dashboard';
   };
@@ -96,7 +94,6 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
 
     const pathPermissions: Record<string, string[]> = {
       '/admin': ['admin', 'registrar'],
-      '/hr': ['hr', 'admin'],
       '/finance': ['finance', 'admin'],
       '/teacher': ['teacher', 'admin', 'registrar'],
       '/student': ['student'],
@@ -229,14 +226,6 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
         message: 'You do not have permission to access this admin section.',
         detail: 'This section requires Admin or Registrar privileges.',
         requiredRoles: ['admin', 'registrar'],
-      };
-    }
-    if (path.includes('/hr')) {
-      return {
-        title: 'HR Area Restricted',
-        message: 'You do not have permission to access this HR section.',
-        detail: 'This section requires HR or Admin privileges.',
-        requiredRoles: ['hr', 'admin'],
       };
     }
     if (path.includes('/finance')) {

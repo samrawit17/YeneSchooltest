@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { sectionsAPI, classesAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import InputField from "@/components/InputField";
 
@@ -68,7 +69,7 @@ const SectionForm = ({ type, data }: SectionFormProps) => {
       toast.success(
         type === "create" ? "Section created successfully" : "Section updated successfully"
       );
-      queryClient.invalidateQueries({ queryKey: ["sections"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sections.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || `Failed to ${type} section`);

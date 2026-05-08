@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { authAPI, classesAPI, subjectsAPI } from "@/lib/api";
 import { classSubjectsAPI } from "@/lib/api/admin";
-import { hrAPI } from "@/lib/api/hr";
+import { queryKeys } from "@/lib/query-keys";
 import { Loader2, Save, User, Briefcase, BookOpen, Users, FileText, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -113,7 +113,7 @@ export default function EditTeacherPage() {
 
   // Fetch teacher data
   const { data: teacher, isLoading: isLoadingTeacher, error: teacherError } = useQuery<Teacher>({
-    queryKey: ["teacher", teacherId],
+    queryKey: queryKeys.teachers.detail(teacherId),
     queryFn: async () => {
       const response = await authAPI.getUserById(teacherId);
       return response.data;
@@ -122,7 +122,7 @@ export default function EditTeacherPage() {
 
   // Fetch classes
   const { data: classesData } = useQuery<ClassOption[]>({
-    queryKey: ["classes"],
+    queryKey: queryKeys.classes.all,
     queryFn: async () => {
       const response = await classesAPI.getAll();
       return response.data;
@@ -131,7 +131,7 @@ export default function EditTeacherPage() {
 
   // Fetch subjects
   const { data: subjectsData } = useQuery<SubjectOption[]>({
-    queryKey: ["subjects"],
+    queryKey: queryKeys.subjects.all,
     queryFn: async () => {
       const response = await subjectsAPI.getAll();
       return response.data;
@@ -140,7 +140,7 @@ export default function EditTeacherPage() {
 
   // Fetch teacher's current subject assignments
   const { data: teacherSubjects, refetch: refetchSubjects } = useQuery<AssignedSubject[]>({
-    queryKey: ["teacher-subjects", teacherId],
+    queryKey: queryKeys.teachers.subjects(teacherId),
     queryFn: async () => {
       const response = await classSubjectsAPI.getByTeacher(teacherId);
       return response.data;
@@ -172,10 +172,10 @@ export default function EditTeacherPage() {
 
   // Update teacher mutation
   const updateTeacherMutation = useMutation({
-    mutationFn: (data: any) => hrAPI.updateEmployee(teacherId, data),
+    mutationFn: (data: any) => authAPI.updateUser(teacherId, data),
     onSuccess: () => {
       toast.success("Teacher updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["teacher", teacherId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.teachers.detail(teacherId) });
     },
     onError: (error: any) => {
       console.error("Update teacher error:", error);
@@ -189,8 +189,8 @@ export default function EditTeacherPage() {
       classesAPI.setHomeroomTeacher(classId, teacherId),
     onSuccess: () => {
       toast.success("Homeroom class assigned successfully");
-      queryClient.invalidateQueries({ queryKey: ["classes"] });
-      queryClient.invalidateQueries({ queryKey: ["teacher", teacherId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.teachers.detail(teacherId) });
     },
     onError: (error: any) => {
       console.error("Set homeroom error:", error);
@@ -204,8 +204,8 @@ export default function EditTeacherPage() {
       classesAPI.setHomeroomTeacher(classId, null),
     onSuccess: () => {
       toast.success("Homeroom class removed successfully");
-      queryClient.invalidateQueries({ queryKey: ["classes"] });
-      queryClient.invalidateQueries({ queryKey: ["teacher", teacherId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.teachers.detail(teacherId) });
     },
     onError: (error: any) => {
       console.error("Remove homeroom error:", error);

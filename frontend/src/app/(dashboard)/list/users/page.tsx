@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import { authAPI, schoolsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import Table from "@/components/Table";
@@ -57,7 +58,7 @@ const UsersPage = () => {
 
   // Fetch users
   const { data: usersData, isLoading, error } = useQuery({
-    queryKey: ["users", page, selectedRole],
+    queryKey: queryKeys.users.list(page, selectedRole),
     queryFn: async () => {
       const response = await authAPI.getUsers(selectedRole);
       return response.data as User[];
@@ -66,7 +67,7 @@ const UsersPage = () => {
 
   // Fetch schools (only for super admin)
   const { data: schoolsData } = useQuery({
-    queryKey: ["schools"],
+    queryKey: queryKeys.schools.all,
     queryFn: async () => {
       const response = await schoolsAPI.getAll();
       return response.data as School[];
@@ -81,7 +82,7 @@ const UsersPage = () => {
     },
     onSuccess: () => {
       toast.success("User deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "Failed to delete user");
@@ -102,7 +103,6 @@ const UsersPage = () => {
         { value: "PARENT", label: "Parent" },
         { value: "REGISTRAR", label: "Registrar" },
         { value: "FINANCE", label: "Finance" },
-        { value: "HR", label: "HR" },
       ];
     }
     return [];

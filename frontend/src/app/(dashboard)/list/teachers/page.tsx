@@ -5,8 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { authAPI, classesAPI, sectionsAPI, subjectsAPI, teachersAPI } from "@/lib/api";
-import { bulkUploadAPI } from "@/lib/api/hr";
+import { bulkUploadAPI } from "@/lib/api/bulk-upload";
 import { classSubjectsAPI } from "@/lib/api/admin";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import TableSearch from "@/components/TableSearch";
 import Pagination from "@/components/Pagination";
@@ -110,7 +111,7 @@ const TeachersListPage = () => {
 
   // Fetch classes for dropdown and deduplicate by unique grade
   const { data: classesData } = useQuery({
-    queryKey: ["classes"],
+    queryKey: queryKeys.classes.all,
     queryFn: async () => {
       const response = await classesAPI.getAll();
       const classes = response.data || [];
@@ -127,7 +128,7 @@ const TeachersListPage = () => {
 
   // Fetch sections for selected class
   const { data: sectionsData } = useQuery({
-    queryKey: ["sections", selectedClass],
+    queryKey: queryKeys.sections.byClass(selectedClass),
     queryFn: async () => {
       if (!selectedClass) return [];
       const response = await sectionsAPI.getAll({ classId: selectedClass });
@@ -138,7 +139,14 @@ const TeachersListPage = () => {
 
   // Fetch teachers data
   const { data: teachersData, isLoading, error } = useQuery<TeachersResponse>({
-    queryKey: ["teachers", currentPage, debouncedSearch, statusFilter, classFilter, sectionFilter, subjectFilter],
+    queryKey: queryKeys.teachers.list(
+      currentPage,
+      debouncedSearch,
+      statusFilter,
+      classFilter,
+      sectionFilter,
+      subjectFilter
+    ),
     queryFn: async () => {
       const response = await teachersAPI.getAll({ 
         page: currentPage, 
@@ -155,7 +163,7 @@ const TeachersListPage = () => {
 
   // Fetch subjects for filter dropdown
   const { data: subjectsData } = useQuery({
-    queryKey: ["subjects"],
+    queryKey: queryKeys.subjects.all,
     queryFn: async () => {
       const response = await subjectsAPI.getAll();
       return response.data;
@@ -164,7 +172,7 @@ const TeachersListPage = () => {
 
   // Fetch subjects for selected class and section
   const { data: classSubjectsData } = useQuery({
-    queryKey: ["class-subjects", selectedClass, selectedSection],
+    queryKey: queryKeys.classSubjects.bySelection(selectedClass, selectedSection),
     queryFn: async () => {
       if (!selectedClass || !selectedSection) return [];
       const response = await classSubjectsAPI.getByClass(selectedClass, selectedSection);
@@ -175,7 +183,7 @@ const TeachersListPage = () => {
 
   // Fetch sections for filter dropdown
   const { data: filterSectionsData } = useQuery({
-    queryKey: ["filter-sections", classFilter],
+    queryKey: queryKeys.classSections.filterSections(classFilter),
     queryFn: async () => {
       if (!classFilter) return [];
       const response = await sectionsAPI.getAll({ classId: classFilter });
@@ -189,7 +197,7 @@ const TeachersListPage = () => {
     mutationFn: (id: string) => teachersAPI.delete(id),
     onSuccess: () => {
       toast.success("Teacher deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["teachers"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "Failed to delete teacher");
@@ -253,7 +261,7 @@ const TeachersListPage = () => {
       
       if (response.data.status === 'success') {
         setImportResult(response.data);
-        queryClient.invalidateQueries({ queryKey: ["teachers"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all });
         toast.success(`Teacher created successfully!`);
       } else {
         toast.error("Failed to create teacher");
@@ -840,7 +848,7 @@ const TeachersListPage = () => {
                     setSelectedClass("");
                     setSelectedSection("");
                     setSelectedSubject("");
-                    queryClient.invalidateQueries({ queryKey: ["teachers"] });
+                    queryClient.invalidateQueries({ queryKey: queryKeys.teachers.all });
                   } catch (error: any) {
                     toast.error(error.response?.data?.message || error.message || "Failed to assign");
                   } finally {

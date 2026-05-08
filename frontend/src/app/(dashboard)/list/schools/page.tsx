@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { schoolsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import Table from "@/components/Table";
 import TableSearch from "@/components/TableSearch";
@@ -45,7 +46,7 @@ const SchoolsPage = () => {
 
   // Fetch schools
   const { data: schoolsData, isLoading, error } = useQuery({
-    queryKey: ["schools", page],
+    queryKey: queryKeys.schools.list(page),
     queryFn: async () => {
       const response = await schoolsAPI.getAll();
       return response.data as School[];
@@ -59,7 +60,7 @@ const SchoolsPage = () => {
     },
     onSuccess: () => {
       toast.success("School deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["schools"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.schools.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "Failed to delete school");

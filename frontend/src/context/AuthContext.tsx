@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useThemeStore } from '@/lib/themeStore';
 
 // User role types based on backend
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'REGISTRAR' | 'FINANCE' | 'HR';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'REGISTRAR' | 'FINANCE';
 
 export interface User {
   id: string;
@@ -166,7 +166,6 @@ export const hasPermission = (user: User | null, permission: string): boolean =>
      PARENT: ['student:read', 'result:read', 'announcement:read', 'fee:read', 'attendance:read', 'timetable:read', 'assignment:read'],
      REGISTRAR: ['student:create', 'student:read', 'student:update', 'student:approve', 'class:assign', 'document:upload', 'enrollment:read', 'enrollment:approve'],
      FINANCE: ['fee:create', 'fee:read', 'fee:update', 'fee:pay', 'fee:assign', 'report:read', 'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete', 'finance:student_fees:generate', 'finance:student_fees:read', 'finance:payments:record', 'finance:reports:read'],
-     HR: ['user:create', 'user:read', 'user:update', 'user:delete', 'staff:read', 'staff:create', 'staff:update'],
    };
 
   const userPermissions = rolePermissions[user.role] || [];

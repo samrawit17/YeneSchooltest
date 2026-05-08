@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
+import { queryKeys } from "@/lib/query-keys";
 import { Loader2, Save, User, Users, Phone, Mail, MapPin, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 
@@ -78,7 +79,7 @@ export default function EditParentPage() {
 
   // Fetch parent profile first to get user ID
   const { data: parentProfile, isLoading: parentLoading } = useQuery({
-    queryKey: ["parent-profile", parentId],
+    queryKey: queryKeys.parents.profile(parentId),
     queryFn: async () => {
       const response = await parentsAPI.getById(parentId);
       return response.data;
@@ -87,7 +88,7 @@ export default function EditParentPage() {
 
   // Fetch user data using the user ID from parent profile
   const { data: userData } = useQuery({
-    queryKey: ["user", parentProfile?.userId],
+    queryKey: queryKeys.users.detail(parentProfile?.userId),
     queryFn: async () => {
       if (!parentProfile?.userId) return null;
       const response = await authAPI.getUserById(parentProfile.userId);
@@ -103,7 +104,7 @@ export default function EditParentPage() {
       await authAPI.updateUser(parentProfile.userId, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user", parentId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(parentProfile?.userId) });
       toast.success("User updated successfully");
     },
     onError: (error: any) => {
@@ -117,7 +118,7 @@ export default function EditParentPage() {
       await parentsAPI.update(parentId, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["parent-profile", parentId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.parents.profile(parentId) });
       toast.success("Parent profile updated successfully");
     },
     onError: (error: any) => {

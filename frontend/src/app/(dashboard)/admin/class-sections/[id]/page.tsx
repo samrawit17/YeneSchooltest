@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { classesAPI, sectionsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { 
   ArrowLeft, 
   Users, 
@@ -91,7 +92,7 @@ export default function ClassDetailPage() {
 
   // Fetch class stats
   const { data: statsData, isLoading: statsLoading } = useQuery<{ data: ClassStats }>({
-    queryKey: ["class-stats", classId, sectionFilter],
+    queryKey: queryKeys.classSections.classStats(classId, sectionFilter),
     queryFn: async () => {
       const params: { sectionId?: string } = {};
       if (sectionFilter) params.sectionId = sectionFilter;
@@ -102,7 +103,7 @@ export default function ClassDetailPage() {
 
   // Fetch sections for the class
   const { data: sectionsData } = useQuery({
-    queryKey: ["class-sections", classId],
+    queryKey: queryKeys.classSections.sectionsByClass(classId),
     queryFn: async () => {
       const response = await sectionsAPI.getAll({ classId });
       return response.data?.data || response.data || [];
@@ -112,7 +113,7 @@ export default function ClassDetailPage() {
 
   // Fetch students
   const { data: studentsData, isLoading: studentsLoading, refetch: refetchStudents } = useQuery({
-    queryKey: ["class-students", classId, sectionFilter, searchTerm, page],
+    queryKey: queryKeys.classSections.students(classId, sectionFilter, searchTerm, page),
     queryFn: async () => {
       const params: { sectionId?: string; search?: string; page?: string; limit?: string; orderBy?: string } = {
         page: page.toString(),
@@ -128,7 +129,7 @@ export default function ClassDetailPage() {
 
   // Global search for classes and sections
   const { data: globalSearchResults, isLoading: globalSearchLoading } = useQuery({
-    queryKey: ["global-search", globalSearchTerm],
+    queryKey: queryKeys.classSections.globalSearch(globalSearchTerm),
     queryFn: async () => {
       if (!globalSearchTerm || globalSearchTerm.length < 2) {
         return { classes: [], sections: [] };

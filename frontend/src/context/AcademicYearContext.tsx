@@ -4,6 +4,7 @@ import React, { createContext, useContext, useMemo, useCallback, ReactNode } fro
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { schoolSettingsAPI, academicYearsAPI, termsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { CalendarType, formatAcademicYear, formatSchoolDate } from "@/utils/date";
 
 export interface AcademicYear {
@@ -124,7 +125,7 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
 
   const { data: settingsData, isLoading: isLoadingSettings } = useQuery({
-    queryKey: ["school-settings", user?.schoolId],
+    queryKey: queryKeys.school.settings(user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return null;
       try {
@@ -139,7 +140,7 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const { data: academicYearData, isLoading: isLoadingAcademicYear } = useQuery({
-    queryKey: ["active-academic-year", user?.schoolId],
+    queryKey: queryKeys.academicYears.active(user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return null;
 
@@ -169,7 +170,7 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
 
   // Query for all academic years
   const { data: allAcademicYearsData } = useQuery({
-    queryKey: ["all-academic-years", user?.schoolId],
+    queryKey: queryKeys.academicYears.allForSchool(user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return [];
       try {
@@ -184,7 +185,7 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const { data: currentTermData, isLoading: isLoadingCurrentTerm } = useQuery({
-    queryKey: ["current-term", user?.schoolId],
+    queryKey: queryKeys.terms.current(user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return null;
       try {

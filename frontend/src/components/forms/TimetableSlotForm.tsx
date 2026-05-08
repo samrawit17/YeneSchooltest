@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { schoolSettingsAPI, timetableSlotsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import InputField from "@/components/InputField";
 import {
@@ -27,7 +28,7 @@ const TimetableSlotForm = ({ type, data }: TimetableSlotFormProps) => {
   const schoolId = user.schoolId;
 
   const { data: schoolSettings } = useQuery({
-    queryKey: ["school-settings-timetable-slot-form", schoolId],
+    queryKey: queryKeys.school.timetableSlotForm(schoolId),
     queryFn: async () => {
       if (!schoolId) return null;
       const response = await schoolSettingsAPI.getAll(schoolId);
@@ -90,7 +91,7 @@ const TimetableSlotForm = ({ type, data }: TimetableSlotFormProps) => {
       toast.success(
         type === "create" ? "Timetable slot created successfully" : "Timetable slot updated successfully"
       );
-      queryClient.invalidateQueries({ queryKey: ["timetable-slots"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timetableSlots.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || `Failed to ${type} timetable slot`);

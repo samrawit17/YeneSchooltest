@@ -4,7 +4,8 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { studentsAPI } from "@/lib/api";
-import { bulkUploadAPI } from "@/lib/api/hr";
+import { bulkUploadAPI } from "@/lib/api/bulk-upload";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
@@ -122,7 +123,14 @@ const StudentsListPage = () => {
 
   // Fetch students data
   const { data: studentsData, isLoading } = useQuery<StudentsResponse>({
-    queryKey: ["students", currentPage, debouncedSearch, statusFilter, gradeFilter, sectionFilter, yearFilter],
+    queryKey: queryKeys.students.list(
+      currentPage,
+      debouncedSearch,
+      statusFilter,
+      gradeFilter,
+      sectionFilter,
+      yearFilter
+    ),
     queryFn: async () => {
       console.log("API Params:", { 
         status: statusFilter, 
@@ -153,7 +161,7 @@ const StudentsListPage = () => {
     mutationFn: (id: string) => studentsAPI.delete(id),
     onSuccess: () => {
       toast.success("Student deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "Failed to delete student");
@@ -224,7 +232,7 @@ const StudentsListPage = () => {
       if (response.data.status === 'success') {
         // Store the credentials to display
         setImportResult(response.data);
-        queryClient.invalidateQueries({ queryKey: ["students"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
         toast.success(`Student created successfully!`);
       } else {
         toast.error("Failed to create student");

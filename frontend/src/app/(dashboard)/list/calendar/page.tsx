@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import FormModal from '@/components/FormModal';
 import TableSearch from '@/components/TableSearch';
 import { eventsAPI, Event } from '@/lib/api/content';
+import { queryKeys } from '@/lib/query-keys';
 import { useQuery } from '@tanstack/react-query';
 import BigCalendar from '@/components/BigCalendar';
 import { Calendar } from 'lucide-react';
@@ -53,7 +54,7 @@ const EventListPage = () => {
 
   // Fetch events from API
   const { data: eventsData, isLoading, refetch } = useQuery({
-    queryKey: ['events'],
+    queryKey: queryKeys.events.all,
     queryFn: async () => {
       try {
         const response = await eventsAPI.getAll();

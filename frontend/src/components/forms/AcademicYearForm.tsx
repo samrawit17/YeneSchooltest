@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { academicYearsAPI, schoolSettingsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import InputField from "@/components/InputField";
 
@@ -31,7 +32,7 @@ const AcademicYearForm = ({ type, data }: AcademicYearFormProps) => {
 
   // Fetch current curriculum type from school settings for default
   const { data: settingsData } = useQuery({
-    queryKey: ['school-settings-curriculum-form', schoolId],
+    queryKey: queryKeys.school.curriculumForm(schoolId),
     queryFn: async () => {
       if (!schoolId) return { data: {} };
       try {
@@ -68,7 +69,7 @@ const AcademicYearForm = ({ type, data }: AcademicYearFormProps) => {
       toast.success(
         type === "create" ? "Academic year created successfully" : "Academic year updated successfully"
       );
-      queryClient.invalidateQueries({ queryKey: ["academic-years"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.academicYears.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || `Failed to ${type} academic year`);
@@ -93,7 +94,7 @@ const AcademicYearForm = ({ type, data }: AcademicYearFormProps) => {
     try {
       await academicYearsAPI.activate(data.id);
       toast.success("Academic year activated successfully");
-      queryClient.invalidateQueries({ queryKey: ["academic-years"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.academicYears.all });
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to activate academic year");
     } finally {

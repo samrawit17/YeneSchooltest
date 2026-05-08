@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { parentsAPI } from "@/lib/api/people";
+import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { Loader2, Plus } from "lucide-react";
@@ -24,7 +25,7 @@ const SingleParentPage = ({ params }: PageProps) => {
   const breadcrumbSetRef = useRef(false);
 
   const { data: parent, isLoading, error, refetch } = useQuery({
-    queryKey: ["parent", parentId],
+    queryKey: queryKeys.parents.detail(parentId),
     queryFn: async () => {
       const response = await parentsAPI.getById(parentId);
       return response.data;

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, type ReactNode } from "r
 import { useQuery } from "@tanstack/react-query";
 import { schoolSettingsAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { queryKeys } from "@/lib/query-keys";
 import {
   formatDateByCalendarType,
   formatDateTimeByCalendarType,
@@ -66,7 +67,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: ["school-calendar-setting", user?.schoolId],
+    queryKey: queryKeys.school.calendarSetting(user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return {};
       const response = await schoolSettingsAPI.getAll(user.schoolId);
@@ -107,4 +108,3 @@ export const useCalendar = () => {
   }
   return context;
 };
-
