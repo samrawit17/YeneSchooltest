@@ -14,7 +14,6 @@ const STAFF_ROLES: Role[] = [
   Role.REGISTRAR,
   Role.TEACHER,
   Role.FINANCE,
-  Role.HR,
 ];
 
 @Injectable()

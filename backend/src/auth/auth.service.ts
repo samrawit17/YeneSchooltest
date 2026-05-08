@@ -78,7 +78,9 @@ export class AuthService {
 
     // Check if account is active
     if (!user.isActive) {
-      throw new UnauthorizedException('Your account has been deactivated. Please contact HR for more information.');
+      throw new UnauthorizedException(
+        'Your account has been deactivated. Please contact school administration for more information.',
+      );
     }
 
     // Verify password
@@ -587,16 +589,6 @@ export class AuthService {
             specialization: true,
             hireDate: true,
             experienceYears: true,
-            department: {
-              select: { name: true },
-            },
-          },
-        },
-        hrProfile: {
-          select: {
-            id: true,
-            employeeId: true,
-            designation: true,
             department: {
               select: { name: true },
             },

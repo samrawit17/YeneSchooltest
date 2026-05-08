@@ -400,11 +400,11 @@ export class BulkUploadService {
     // For staff imports, validate role is provided
     if (
       record.role &&
-      !['student', 'teacher', 'admin', 'finance', 'hr', 'registrar', 'parent'].includes(
+      !['student', 'teacher', 'admin', 'finance', 'registrar', 'parent'].includes(
         record.role.toLowerCase(),
       )
     ) {
-      return `Row ${index + 1}: Invalid role '${record.role}'. Valid roles: student, teacher, admin, finance, hr, registrar, parent`;
+      return `Row ${index + 1}: Invalid role '${record.role}'. Valid roles: student, teacher, admin, finance, registrar, parent`;
     }
 
     // For student imports, validate student-specific fields are present if it's explicitly a student role or has student fields
@@ -424,7 +424,6 @@ export class BulkUploadService {
       student: Role.STUDENT,
       teacher: Role.TEACHER,
       finance: Role.FINANCE,
-      hr: Role.HR,
       registrar: Role.REGISTRAR,
       admin: Role.ADMIN,
       parent: Role.PARENT,
@@ -488,10 +487,6 @@ export class BulkUploadService {
           // Create Profiles
           if (role === Role.TEACHER) {
             await tx.teacherProfile.create({
-              data: { userId: user.id, schoolId, employeeId: username },
-            });
-          } else if (role === Role.HR) {
-            await tx.hrProfile.create({
               data: { userId: user.id, schoolId, employeeId: username },
             });
           } else if (role === Role.FINANCE) {

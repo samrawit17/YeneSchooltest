@@ -44,7 +44,7 @@ export interface CreateStaffDto {
   staff: Array<{
     name: string;
     email: string;
-    role: Role.TEACHER | Role.ADMIN | Role.REGISTRAR | Role.FINANCE | Role.HR;
+    role: Role.TEACHER | Role.ADMIN | Role.REGISTRAR | Role.FINANCE;
     phone?: string;
     // Option to auto-generate credentials (default: true)
     generateCredentials?: boolean;
@@ -219,8 +219,7 @@ export class CredentialController {
         role === Role.TEACHER ||
         role === Role.ADMIN ||
         role === Role.REGISTRAR ||
-        role === Role.FINANCE ||
-        role === Role.HR
+        role === Role.FINANCE
       ) {
         const cred = await this.credentialService.generateStaffCredentials(
           schoolId,
@@ -233,7 +232,7 @@ export class CredentialController {
         });
       } else {
         throw new BadRequestException(
-          'Role must be STUDENT, TEACHER, ADMIN, REGISTRAR, FINANCE, or HR',
+          'Role must be STUDENT, TEACHER, ADMIN, REGISTRAR, or FINANCE',
         );
       }
     }
@@ -391,8 +390,7 @@ export class CredentialController {
           | Role.TEACHER
           | Role.ADMIN
           | Role.REGISTRAR
-          | Role.FINANCE
-          | Role.HR;
+          | Role.FINANCE;
         phone?: string;
       }>;
       academicYear?: string;
@@ -443,11 +441,10 @@ export class CredentialController {
           Role.ADMIN,
           Role.REGISTRAR,
           Role.FINANCE,
-          Role.HR,
         ].includes(member.role)
       ) {
         throw new BadRequestException(
-          `Invalid role: ${member.role}. Must be TEACHER, ADMIN, REGISTRAR, FINANCE, or HR`,
+          `Invalid role: ${member.role}. Must be TEACHER, ADMIN, REGISTRAR, or FINANCE`,
         );
       }
 
@@ -563,11 +560,10 @@ export class CredentialController {
           Role.ADMIN,
           Role.REGISTRAR,
           Role.FINANCE,
-          Role.HR,
         ].includes(member.role)
       ) {
         throw new BadRequestException(
-          `Invalid role: ${member.role}. Must be TEACHER, ADMIN, REGISTRAR, FINANCE, or HR`,
+          `Invalid role: ${member.role}. Must be TEACHER, ADMIN, REGISTRAR, or FINANCE`,
         );
       }
 

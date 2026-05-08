@@ -31,7 +31,6 @@ export class SchoolSettingsController {
     Role.STUDENT,
     Role.REGISTRAR,
     Role.FINANCE,
-    Role.HR,
   )
   async getAllSettings(@Param('schoolId') schoolId: string) {
     try {

@@ -117,7 +117,7 @@ export class BulkUploadController {
   getTemplate(@Query('type') type: string = 'student', @Res() res: Response) {
     let template: string;
     if (type === 'staff') {
-      template = `full_name,email,phone,role\nAli Ahmed,ali@example.com,0911111111,teacher\nAbebe Tesfaye,abebe@example.com,0922222222,finance\nJohn Smith,john@example.com,0933333333,hr\nRegistrar User,reg@example.com,0944444444,registrar`;
+      template = `full_name,email,phone,role\nAli Ahmed,ali@example.com,0911111111,teacher\nAbebe Tesfaye,abebe@example.com,0922222222,finance\nRegistrar User,reg@example.com,0944444444,registrar`;
     } else if (type === 'students-auto') {
       template = `first_name,middle_name,last_name,student_code,roll_number,email,phone,gender,current_class,section,parent_name,parent_phone,parent_email,relation\nStudentFirstName,MiddleName,LastName,STU-001,1,student@example.com,0911111111,MALE,9,A,ParentFullName,0922222222,parent@example.com,Father`;
     } else {

@@ -39,8 +39,6 @@ model School {
   credentialLogs             CredentialGenerationLog[]
   departments                Department[]
   documents                  Document[]
-  employeeAttendances        EmployeeAttendance[]
-  employeeAttendanceSessions EmployeeAttendanceSession[]
   enrollments                Enrollment[]
   enrollmentRequests         EnrollmentRequest[]
   assessments                Assessment[]
@@ -53,18 +51,14 @@ model School {
   gradeLevels                GradeLevel[]
   gradeScales                GradeScale[]
   gradingComponents          GradingComponent[]
-  hrProfiles                 HrProfile[]
-  leaveRequests              LeaveRequest[]
   notifications              Notification[]
   pushSubscriptions          PushSubscription[]
   parentProfiles             ParentProfile[]
   parentStudents             ParentStudent[]
   payments                   Payment[]
-  payrolls                   Payroll[]
   pendingCredentials         PendingCredential[]
   receipts                   Receipt[]
   reportCards                ReportCard[]
-  salaryStructures           SalaryStructure[]
   schoolEvents               SchoolEvent[]
   studentClasses             StudentClass[]
   studentFees                StudentFee[]
@@ -210,8 +204,6 @@ model User {
   credentialLogs              CredentialGenerationLog[]
   Department                  Department[]
   documents                   Document[]
-  employeeAttendances         EmployeeAttendance[]       @relation("EmployeeAttendance")
-  recordedEmployeeAttendances EmployeeAttendance[]       @relation("EmployeeAttendanceRecordedBy")
   enrollments                 Enrollment[]
   examResults                 ExamResult[]
   createdAssessments          Assessment[]               @relation("CreatedAssessments")
@@ -220,21 +212,15 @@ model User {
   financeProfile              FinanceProfile?
   Grade                       Grade[]
   gradedExams                 Grade[]                    @relation("GradedExams")
-  hrProfile                   HrProfile?
   examSeatings                ExamSeating[]              @relation("ExamSeatings")
   createdSeatingPlans         ExamSeatingPlan[]
   examSectionStudents         ExamSectionStudent[]
-  leaveRequestsApproved       LeaveRequest[]             @relation("ApprovedLeaveRequests")
-  leaveRequests               LeaveRequest[]
   notifications               Notification[]
   pushSubscriptions           PushSubscription[]
   parentProfile               ParentProfile?
   passwordResetTokens         PasswordResetToken[]
   paymentsReceived            Payment[]                  @relation("PaymentReceivedBy")
   studentPayments             Payment[]                  @relation("StudentPayments")
-  processedPayrolls           Payroll[]                  @relation("PayrollProcessedBy")
-  submittedPayrolls           Payroll[]                  @relation("PayrollSubmittedBy")
-  payrollItems                PayrollItem[]
   pendingCredentials          PendingCredential[]
   receiptsGenerated           Receipt[]                  @relation("ReceiptGeneratedBy")
   studentReceipts             Receipt[]                  @relation("StudentReceipts")
@@ -1035,55 +1021,6 @@ model TeacherSubjectAssignment {
   @@index([schoolId], map: "TeacherSubjectAssignment_schoolId_fkey")
 }
 
-model HrProfile {
-  id           String    @id @default(cuid())
-  userId       String    @unique
-  schoolId     String
-  employeeId   String    @unique
-  departmentId String?
-  designation  String?
-  joiningDate  DateTime?
-
-  // Employment details
-  employmentType    String?   @default("FULL_TIME")
-  contractStartDate DateTime?
-  contractEndDate   DateTime?
-  workSchedule      String?
-  shiftTime         String?
-
-  // Qualifications
-  qualification String?
-  experience    String?
-
-  // Salary & Banking
-  salary        Float?
-  bankName      String?
-  accountNumber String?
-  ifscCode      String?
-
-  // Leave balance
-  annualLeave     Int @default(12)
-  sickLeave       Int @default(10)
-  casualLeave     Int @default(5)
-  usedAnnualLeave Int @default(0)
-  usedSickLeave   Int @default(0)
-  usedCasualLeave Int @default(0)
-
-  // Performance
-  performanceRating Int?
-  performanceReview String?
-  lastPromotionDate DateTime?
-
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  department Department? @relation(map: "departmentId_fk_77", fields: [departmentId], references: [id])
-  school     School      @relation(map: "schoolId_fk_78", fields: [schoolId], references: [id], onDelete: Cascade)
-  user       User        @relation(map: "userId_fk_79", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([departmentId], map: "HrProfile_departmentId_fkey")
-  @@index([schoolId], map: "HrProfile_schoolId_fkey")
-}
-
 model TeacherProfile {
   id              String      @id @default(cuid())
   userId          String      @unique
@@ -1117,154 +1054,10 @@ model Department {
   head            User?            @relation(map: "headId_fk_83", fields: [headId], references: [id])
   school          School           @relation(map: "schoolId_fk_84", fields: [schoolId], references: [id], onDelete: Cascade)
   financeProfiles FinanceProfile[]
-  hrProfiles      HrProfile[]
   teacherProfiles TeacherProfile[]
 
   @@unique([schoolId, name])
   @@index([headId], map: "Department_headId_fkey")
-}
-
-model LeaveRequest {
-  id                 String      @id @default(cuid())
-  schoolId           String
-  employeeId         String
-  leaveType          LeaveType
-  startDate          DateTime
-  endDate            DateTime
-  totalDays          Float
-  reason             String
-  status             LeaveStatus @default(PENDING)
-  approvedById       String?
-  rejectionReason    String?
-  attachments        String?
-  contactDuringLeave String?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  approvedBy         User?       @relation("ApprovedLeaveRequests", map: "leave_request_approved_by_fk", fields: [approvedById], references: [id])
-  employee           User        @relation(map: "employeeId_fk_85", fields: [employeeId], references: [id], onDelete: Cascade)
-  school             School      @relation(map: "schoolId_fk_86", fields: [schoolId], references: [id], onDelete: Cascade)
-
-  @@index([employeeId])
-  @@index([status])
-  @@index([startDate, endDate])
-  @@index([approvedById], map: "LeaveRequest_approvedById_fkey")
-  @@index([schoolId], map: "LeaveRequest_schoolId_fkey")
-}
-
-model Payroll {
-  id               String        @id @default(cuid())
-  schoolId         String
-  academicYear     String
-  month            Int
-  year             Int
-  status           PayrollStatus @default(DRAFT)
-  totalAmount      Float         @default(0)
-  processedById    String?
-  processedAt      DateTime?
-  submittedById    String?
-  submittedAt      DateTime?
-  paymentDate      DateTime?
-  paymentReference String? // Bank transfer reference
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  processedBy      User?         @relation("PayrollProcessedBy", fields: [processedById], references: [id])
-  submittedBy      User?         @relation("PayrollSubmittedBy", fields: [submittedById], references: [id])
-  school           School        @relation(map: "schoolId_fk_88", fields: [schoolId], references: [id], onDelete: Cascade)
-  payrollItems     PayrollItem[]
-
-  @@unique([schoolId, academicYear, month, year])
-  @@index([schoolId])
-  @@index([status])
-  @@index([academicYear])
-  @@index([processedById])
-  @@index([submittedById])
-}
-
-model PayrollItem {
-  id            String   @id @default(cuid())
-  payrollId     String
-  employeeId    String
-  baseSalary    Float
-  allowances    Float    @default(0)
-  deductions    Float    @default(0)
-  bonus         Float    @default(0)
-  overtime      Float    @default(0)
-  tax           Float    @default(0)
-  netSalary     Float
-  paymentMethod String?
-  bankAccount   String?
-  remarks       String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  employee      User     @relation(map: "employeeId_fk_89", fields: [employeeId], references: [id], onDelete: Cascade)
-  payroll       Payroll  @relation(map: "payrollId_fk_90", fields: [payrollId], references: [id], onDelete: Cascade)
-
-  @@unique([payrollId, employeeId])
-  @@index([employeeId])
-}
-
-model SalaryStructure {
-  id               String    @id @default(cuid())
-  schoolId         String
-  employeeRole     Role
-  grade            Int?
-  baseSalary       Float
-  housingAllowance Float     @default(0)
-  foodAllowance    Float     @default(0)
-  medicalAllowance Float     @default(0)
-  otherAllowances  Float     @default(0)
-  taxRate          Float     @default(0)
-  pensionRate      Float     @default(0)
-  effectiveFrom    DateTime
-  effectiveTo      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  school           School    @relation(map: "schoolId_fk_91", fields: [schoolId], references: [id], onDelete: Cascade)
-
-  @@unique([schoolId, employeeRole, grade, effectiveFrom])
-  @@index([schoolId])
-  @@index([employeeRole])
-}
-
-model EmployeeAttendance {
-  id           String                   @id @default(cuid())
-  schoolId     String
-  employeeId   String
-  date         DateTime
-  status       EmployeeAttendanceStatus @default(PRESENT)
-  checkInTime  DateTime?
-  checkOutTime DateTime?
-  remarks      String?
-  recordedById String?
-  createdAt    DateTime                 @default(now())
-  updatedAt    DateTime                 @updatedAt
-  employee     User                     @relation("EmployeeAttendance", fields: [employeeId], references: [id], onDelete: Cascade)
-  recordedBy   User?                    @relation("EmployeeAttendanceRecordedBy", map: "employee_attendance_recorded_by_fk", fields: [recordedById], references: [id])
-  school       School                   @relation(map: "schoolId_fk_92", fields: [schoolId], references: [id], onDelete: Cascade)
-
-  @@unique([employeeId, date])
-  @@index([schoolId])
-  @@index([employeeId])
-  @@index([date])
-  @@index([status])
-  @@index([recordedById], map: "EmployeeAttendance_recordedById_fkey")
-}
-
-model EmployeeAttendanceSession {
-  id        String   @id @default(cuid())
-  schoolId  String
-  name      String
-  date      DateTime
-  startTime DateTime
-  endTime   DateTime
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  school    School   @relation(map: "schoolId_fk_93", fields: [schoolId], references: [id], onDelete: Cascade)
-
-  @@unique([schoolId, date, name])
-  @@index([schoolId])
-  @@index([date])
 }
 
 model FinanceProfile {
@@ -1971,7 +1764,6 @@ enum Role {
   STUDENT
   PARENT
   FINANCE
-  HR
 }
 
 enum EnrollmentStatus {
@@ -2015,22 +1807,6 @@ enum AssessmentStatus {
 enum AssessmentScoreStatus {
   DRAFT
   SUBMITTED
-}
-
-enum LeaveStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
-}
-
-enum LeaveType {
-  SICK
-  CASUAL
-  MATERNITY
-  PATERNITY
-  EARNED
-  WITHOUT_PAY
 }
 
 enum ThemePreference {
@@ -2084,24 +1860,6 @@ enum GradeStatus {
   SUBMITTED
   APPROVED
   REJECTED
-}
-
-enum PayrollStatus {
-  DRAFT
-  SUBMITTED
-  PENDING_PAYMENT
-  PROCESSED
-  PAID
-  CANCELLED
-}
-
-enum EmployeeAttendanceStatus {
-  PRESENT
-  ABSENT
-  LATE
-  HALF_DAY
-  LEAVE
-  HOLIDAY
 }
 
 enum CommunicationStatus {

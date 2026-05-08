@@ -6,5 +6,4 @@ export enum Role {
   STUDENT = 'STUDENT',
   PARENT = 'PARENT',
   FINANCE = 'FINANCE',
-  HR = 'HR',
 }

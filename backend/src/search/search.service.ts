@@ -41,8 +41,7 @@ export type SearchableEntity =
   | 'attendance'
   | 'payments'
   | 'messages'
-  | 'finance'
-  | 'hr';
+  | 'finance';
 
 // Role-based search permissions configuration
 const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
@@ -63,7 +62,6 @@ const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
     'payments',
     'messages',
     'finance',
-    'hr',
   ],
   [Role.ADMIN]: [
     'students',
@@ -81,7 +79,6 @@ const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
     'attendance',
     'messages',
     'finance',
-    'hr',
   ],
   [Role.REGISTRAR]: [
     'students',
@@ -126,7 +123,6 @@ const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
     'messages',
   ],
   [Role.FINANCE]: ['students', 'parents', 'payments', 'finance'],
-  [Role.HR]: ['teachers', 'staff', 'hr', 'attendance'],
 };
 
 const ENTITY_LABELS: Record<SearchableEntity, string> = {
@@ -146,7 +142,6 @@ const ENTITY_LABELS: Record<SearchableEntity, string> = {
   payments: 'Payments',
   messages: 'Messages',
   finance: 'Finance',
-  hr: 'Human Resources',
 };
 
 @Injectable()

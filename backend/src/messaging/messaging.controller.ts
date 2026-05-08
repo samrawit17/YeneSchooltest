@@ -23,13 +23,13 @@ export class MessagingController {
   constructor(private readonly messagingService: MessagingService) {}
 
   @Get('staff')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE, Role.HR)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE)
   async listStaff(@Request() req: any, @Query('search') search?: string) {
     return this.messagingService.listStaff(req.user, search);
   }
 
   @Post('conversation')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE, Role.HR)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE)
   async createConversation(
     @Request() req: any,
     @Body() dto: CreateConversationDto,
@@ -38,13 +38,13 @@ export class MessagingController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE, Role.HR)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE)
   async listConversations(@Request() req: any) {
     return this.messagingService.listConversations(req.user);
   }
 
   @Get(':conversationId')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE, Role.HR)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE)
   async getConversationMessages(
     @Request() req: any,
     @Param('conversationId') conversationId: string,
@@ -56,7 +56,7 @@ export class MessagingController {
   }
 
   @Post(':conversationId')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE, Role.HR)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE)
   async sendMessage(
     @Request() req: any,
     @Param('conversationId') conversationId: string,
@@ -66,7 +66,7 @@ export class MessagingController {
   }
 
   @Patch('read/:messageId')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE, Role.HR)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.FINANCE)
   async markRead(@Request() req: any, @Param('messageId') messageId: string) {
     return this.messagingService.markMessageRead(req.user, messageId);
   }

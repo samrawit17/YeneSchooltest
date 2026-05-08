@@ -81,7 +81,7 @@ export class AdminDashboardService {
 
       if (
         !role ||
-        !['ADMIN', 'REGISTRAR', 'TEACHER', 'FINANCE', 'HR'].includes(role)
+        !['ADMIN', 'REGISTRAR', 'TEACHER', 'FINANCE'].includes(role)
       ) {
         this.logger.warn(
           `User ${userId} with role=${role} is not authorized for a school dashboard`,

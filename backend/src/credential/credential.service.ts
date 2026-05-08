@@ -148,7 +148,6 @@ export class CredentialService {
       | Role.ADMIN
       | Role.REGISTRAR
       | Role.FINANCE
-      | Role.HR
       | Role.PARENT,
     academicYear?: string,
   ): Promise<GeneratedCredentials> {
@@ -465,8 +464,6 @@ export class CredentialService {
         return 'PR';
       case Role.FINANCE:
         return 'FI';
-      case Role.HR:
-        return 'HR';
       case Role.REGISTRAR:
         return 'RE';
       default:
@@ -493,7 +490,6 @@ export class CredentialService {
    * Admin: AD-001
    * Parent: PR-001
    * Finance: FI-001
-   * HR: HR-001
    * Registrar: RE-001
    */
   async generateStaffId(
@@ -532,7 +528,6 @@ export class CredentialService {
         updateField = 'parentCount';
         break;
       case Role.FINANCE:
-      case Role.HR:
       case Role.REGISTRAR:
         newCount = counter.staffCount + 1;
         updateField = 'staffCount';
