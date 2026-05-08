@@ -2,54 +2,6 @@
 
 A full-stack School Management System built with **Next.js** (frontend) and **NestJS** (backend), backed by **Prisma/PostgreSQL**.
 
-## 📁 Project Structure
-
-```
-SMS/
-├── backend/          # NestJS API server
-│   ├── src/
-│   │   ├── auth/           # Authentication & authorization
-│   │   ├── academic-year/  # Academic years & terms
-│   │   ├── assessments/    # Grading & assessments
-│   │   ├── attendance/     # Attendance tracking
-│   │   ├── calendar/       # Calendar & events
-│   │   ├── class/          # Class management
-│   │   ├── communication/  # Messaging system
-│   │   ├── enrollment/     # Student enrollment
-│   │   ├── finance/        # Fees & payments
-│   │   ├── grading/        # Grade management
-│   │   ├── hr/             # HR & staff management
-│   │   ├── notification/   # Notifications
-│   │   ├── parent/         # Parent portal
-│   │   ├── school/         # School settings
-│   │   ├── student/        # Student management
-│   │   ├── teacher/        # Teacher portal
-│   │   ├── timetable-slot/ # Timetable management
-│   │   ├── siren/          # Siren/bell system
-│   │   └── ...
-│   ├── prisma/          # Database schema & migrations
-│   └── package.json
-│
-├── frontend/         # Next.js client
-│   ├── src/
-│   │   ├── app/           # Next.js app router pages
-│   │   │   ├── (dashboard)/  # Protected dashboard routes
-│   │   │   ├── api/          # API proxy routes
-│   │   │   └── ...
-│   │   ├── components/    # Reusable UI components
-│   │   ├── lib/           # API clients, utilities, hooks
-│   │   │   ├── api/         # Modular API layer (50+ modules)
-│   │   │   ├── hooks/       # Custom React hooks
-│   │   │   └── query-keys.ts # Centralized React Query keys
-│   │   ├── context/        # React contexts (Auth, AcademicYear, etc.)
-│   │   └── ...
-│   └── package.json
-│
-├── nginx/            # Nginx configuration
-├── docker-compose.yml
-└── README.md
-```
-
 ## 🚀 Tech Stack
 
 ### Backend
@@ -206,16 +158,4 @@ Key models (see `backend/prisma/schema.prisma`):
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
 
-MIT License - see LICENSE file for details.
-
-## 🆘 Support
-
-- Check `DOCKER.md` for Docker deployment
-- See `documentation.html` for detailed docs
-- Open an issue on GitHub for bugs/feature requests
-
----
-
-**Built with ❤️ using Next.js, NestJS, and Prisma**
