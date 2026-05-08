@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import { notificationsAPI } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -30,6 +30,7 @@ interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
+  actionUrl?: string;
 }
 
 const formatTimeAgo = (dateString: string) => {
@@ -64,7 +65,7 @@ const NotificationsPage = () => {
   const { data: notificationsData, isLoading: notificationsLoading, refetch } = useQuery({
     queryKey: ["notifications-all"],
     queryFn: async () => {
-      const response = await api.get('/notifications', { params: { limit: "100" } });
+      const response = await notificationsAPI.getAll({ limit: "100" });
       return response.data as Notification[];
     },
     enabled: !!user,
@@ -77,7 +78,7 @@ const NotificationsPage = () => {
   // Mark as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api.post(`/notifications/${id}/read`);
+      await notificationsAPI.markRead(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -88,7 +89,7 @@ const NotificationsPage = () => {
   // Mark all as read mutation
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      await api.post('/notifications/mark-all-read');
+      await notificationsAPI.markAllRead();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });

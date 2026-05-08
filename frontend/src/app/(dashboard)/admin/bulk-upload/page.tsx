@@ -24,14 +24,12 @@ import {
 
 import {
   academicYearsAPI,
-  bulkUploadAPI,
-  BulkUploadResult,
   classesAPI,
-  credentialsAPI,
   sectionsAPI,
   studentsAPI,
-  type CredentialResult,
 } from "@/lib/api";
+import { credentialsAPI, CredentialResult } from "@/lib/api/admin";
+import { bulkUploadAPI, BulkUploadResult } from "@/lib/api/hr";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

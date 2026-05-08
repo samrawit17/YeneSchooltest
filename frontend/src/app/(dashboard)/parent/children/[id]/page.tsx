@@ -22,7 +22,8 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react";
-import api from "@/lib/api";
+import { academicYearsAPI, financeAPI } from "@/lib/api";
+import { parentDashboardAPI } from "@/lib/api/parent";
 
 import {
   Card,
@@ -109,16 +110,24 @@ const ChildDetailPage = () => {
       try {
         const [childResponse, dashboardResponse, activeYearResponse] =
           await Promise.allSettled([
-            api.get(`/parents/me/children/${childId}`),
-            api.get("/dashboard/parent"),
-            api.get("/academic-years/active"),
+            parentDashboardAPI.getChildren(),
+            parentDashboardAPI.getDashboard(),
+            academicYearsAPI.getActive(),
           ]);
 
         if (childResponse.status !== "fulfilled") {
           throw new Error("Child details could not be loaded");
         }
 
-        const childData = childResponse.value.data?.child || childResponse.value.data;
+        const childrenRows = childResponse.value.data?.children || childResponse.value.data || [];
+        const childData =
+          (Array.isArray(childrenRows) ? childrenRows : []).find((item: any) =>
+            item.studentId === childId ||
+            item.id === childId ||
+            item.student?.id === childId ||
+            item.userId === childId ||
+            item.student?.userId === childId
+          ) || null;
         const studentProfile = childData?.student || {};
         const studentUser = studentProfile?.user || {};
         const studentUserId = studentProfile.userId || studentUser.id;
@@ -141,9 +150,10 @@ const ChildDetailPage = () => {
 
         if (schoolId && academicYearId && (childData?.studentId || studentUserId)) {
           try {
-            const feeResponse = await api.get(
-              `/finance/student-fees/${childData?.studentId || studentUserId}`,
-              { params: { schoolId, academicYearId } },
+            const feeResponse = await financeAPI.getStudentFees(
+              childData?.studentId || studentUserId,
+              schoolId,
+              academicYearId
             );
             feeSummary = {
               total: feeResponse.data?.summary?.totalFees || 0,

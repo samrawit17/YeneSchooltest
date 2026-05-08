@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import { studentsAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import ClassProgramView from "@/components/timetable/ClassProgramView";
 
@@ -30,7 +30,7 @@ export default function StudentTimetablePage() {
       setLoading(true);
 
       // Student class assignment (StudentClass) for the active academic year
-      const response = await api.get("/students/me/class");
+      const response = await studentsAPI.getMyClass();
       const assignment = response.data;
 
       if (assignment?.assigned && assignment?.classId) {

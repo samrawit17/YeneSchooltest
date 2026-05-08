@@ -4,7 +4,7 @@ import { Calendar, momentLocalizer, View, Views } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useState, useEffect } from "react";
-import { Event } from "@/lib/api";
+import { Event } from "@/lib/api/content";
 import { useCalendar } from "@/context/CalendarContext";
 import { convertToEthiopian, ETHIOPIAN_MONTH_NAMES } from "@/lib/calendar-utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";

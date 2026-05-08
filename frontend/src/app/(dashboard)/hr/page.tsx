@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Users, DollarSign, Calendar, Clock, ChevronRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { hrAPI } from '@/lib/api';
+import { hrAPI } from '@/lib/api/hr';
 
 interface Stats {
   totalEmployees: number;

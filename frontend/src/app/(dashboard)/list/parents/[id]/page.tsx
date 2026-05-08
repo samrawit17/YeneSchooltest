@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { parentsAPI } from "@/lib/api";
+import { parentsAPI } from "@/lib/api/people";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { Loader2, Plus } from "lucide-react";

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { parentsAPI } from "@/lib/api";
+import { parentsAPI } from "@/lib/api/people";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import FormModal from "@/components/FormModal";

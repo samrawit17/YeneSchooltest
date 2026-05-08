@@ -1,7 +1,12 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { messagingAPI, MessagingConversationListItem, MessagingMessage, MessagingParticipant } from "@/lib/api";
+import {
+  messagingAPI,
+  MessagingConversationListItem,
+  MessagingMessage,
+  MessagingParticipant,
+} from "@/lib/api/communications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";

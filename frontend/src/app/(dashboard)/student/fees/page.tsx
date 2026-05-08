@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { financeAPI } from '@/lib/api';
+import { academicYearsAPI } from '@/lib/api/academics';
 import { DollarSign, CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface StudentFee {
@@ -42,13 +43,11 @@ export default function StudentFeesPage() {
   const loadStudentFees = async (userData: any) => {
     try {
       // Get current academic year
-      const ayResponse = await fetch(`/academic-years?schoolId=${userData.schoolId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const ayData = await ayResponse.json();
+      const ayResponse = await academicYearsAPI.getActive({ schoolId: userData.schoolId });
+      const ayData = ayResponse.data;
       
-      if (ayData.success && ayData.data.length > 0) {
-        const currentYear = ayData.data.find((y: any) => y.isActive) || ayData.data[0];
+      if (Array.isArray(ayData) && ayData.length > 0) {
+        const currentYear = ayData.find((y: any) => y.isActive) || ayData[0];
         setAcademicYearId(currentYear.id);
         
         // Get student fees

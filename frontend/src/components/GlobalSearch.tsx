@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/context/AuthContext";
-import { searchAPI, SearchResult } from "@/lib/api";
+import { searchAPI, SearchResult } from "@/lib/api/operations";
 import { 
   Search, 
   Loader2, 

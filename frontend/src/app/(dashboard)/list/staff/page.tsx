@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { hrAPI } from "@/lib/api";
+import { hrAPI } from "@/lib/api/hr";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import Pagination from "@/components/Pagination";

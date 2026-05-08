@@ -10,7 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table';
 import { Plus, DollarSign, Edit, Trash2 } from 'lucide-react';
-import { hrAPI } from '@/lib/api';
+import { hrAPI } from '@/lib/api/hr';
 
 interface SalaryStructure {
   id: string;

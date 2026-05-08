@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
-import { lessonsAPI, CreateLessonDto } from "@/lib/api";
+import { lessonsAPI, CreateLessonDto } from "@/lib/api/content";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -542,4 +542,3 @@ const CreateLessonPage = () => {
 };
 
 export default CreateLessonPage;
-

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import api from "@/lib/api";
+import { superadminAPI } from "@/lib/api/superadmin";
 import { toast } from "sonner";
 import TableSearch from "@/components/TableSearch";
 import { 
@@ -82,7 +82,7 @@ const SuperAdminAdminsPage = () => {
   const fetchAdmins = async () => {
     try {
       setLoading(true);
-      const response = await api.get<{ data: AdminUser[] }>("/auth/users?role=ADMIN");
+      const response = await superadminAPI.getAdmins();
       // Backend returns paginated format: { data: [...], total, page, limit, totalPages }
       setAdmins(response.data?.data || []);
     } catch (error: any) {

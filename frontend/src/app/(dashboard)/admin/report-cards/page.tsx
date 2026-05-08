@@ -26,7 +26,7 @@ import {
   ReportCard,
   ReportCardStatus,
   reportCardsAPI,
-} from "@/lib/api";
+} from "@/lib/api/reporting";
 import { classesAPI } from "@/lib/api";
 import { termsAPI } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

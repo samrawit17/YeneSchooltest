@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { announcementsAPI, Announcement } from "@/lib/api";
+import { announcementsAPI, Announcement } from "@/lib/api/content";
 import { useAuth } from "@/context/AuthContext";
 import Pagination from "@/components/Pagination";
 import { Button } from "@/components/ui/button";

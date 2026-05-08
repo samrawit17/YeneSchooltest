@@ -11,7 +11,8 @@ import {
   TrendingUp,
   FileText
 } from "lucide-react";
-import api, { academicYearsAPI, gradingAPI, termsAPI } from "@/lib/api";
+import { academicYearsAPI, gradingAPI, termsAPI } from "@/lib/api";
+import { parentDashboardAPI } from "@/lib/api/parent";
 
 // Shadcn/ui Components
 import {
@@ -90,7 +91,7 @@ const ChildResultsPage = () => {
     const fetchResults = async () => {
       try {
         const [childrenRes, activeYearRes] = await Promise.all([
-          api.get("/parents/me/children"),
+          parentDashboardAPI.getChildren(),
           academicYearsAPI.getActive(),
         ]);
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { announcementsAPI, Announcement } from "@/lib/api";
+import { announcementsAPI, Announcement } from "@/lib/api/content";
 import { useAuth } from "@/context/AuthContext";
 import { showToast } from "nextjs-toast-notify";
 import { 

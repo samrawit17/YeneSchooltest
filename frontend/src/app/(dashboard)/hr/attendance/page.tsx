@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { hrAPI } from '@/lib/api';
+import { hrAPI } from '@/lib/api/hr';
 import Pagination from '@/components/Pagination';
 
 interface Attendance {

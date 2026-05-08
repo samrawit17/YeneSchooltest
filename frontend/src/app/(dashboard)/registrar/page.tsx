@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { dashboardAPI } from "@/lib/api";
+import { dashboardAPI } from "@/lib/api/admin";
 import { toast } from "sonner";
 import {
   Users,

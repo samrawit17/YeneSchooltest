@@ -1,0 +1,106 @@
+import api from './core';
+
+export const financeAPI = {
+  getPayrollsFinance: (params?: { status?: string; page?: number; limit?: number }) =>
+    api.get('/finance/payroll', { params }),
+  getPayrollByIdFinance: (id: string) => api.get(`/finance/payroll/${id}`),
+  processPaymentToBank: (payrollId: string) =>
+    api.post(`/finance/payroll/${payrollId}/process-payment`),
+  markPayrollPaid: (id: string, paymentReference?: string) =>
+    api.patch(`/finance/payroll/${id}/mark-paid`, { paymentReference }),
+  getPayrollReports: (params?: { startDate?: string; endDate?: string }) =>
+    api.get('/finance/payroll/reports', { params }),
+  createFeeStructure: (data: {
+    schoolId: string;
+    academicYearId: string;
+    termId?: string;
+    feeType: string;
+    amount: number;
+    grade?: number;
+    semester?: number;
+    description?: string;
+  }) => api.post('/finance/fee-structures', data),
+  listFeeStructures: (schoolId: string, academicYearId?: string, termId?: string) =>
+    api.get('/finance/fee-structures', { params: { schoolId, academicYearId, termId } }),
+  updateFeeStructure: (
+    id: string,
+    schoolId: string,
+    data: {
+      feeType?: string;
+      amount?: number;
+      grade?: number | null;
+      semester?: number | null;
+      description?: string | null;
+      isActive?: boolean;
+    }
+  ) => api.put(`/finance/fee-structures/${id}?schoolId=${schoolId}`, data),
+  deleteFeeStructure: (id: string, schoolId: string) =>
+    api.delete(`/finance/fee-structures/${id}?schoolId=${schoolId}`),
+  generateStudentFees: (data: {
+    schoolId: string;
+    academicYearId: string;
+    termId?: string;
+    grade?: number;
+  }) => api.post('/finance/student-fees/generate', data),
+  listStudentFees: (params: {
+    schoolId: string;
+    academicYearId?: string;
+    termId?: string;
+    studentId?: string;
+    grade?: number;
+    sectionId?: string;
+    status?: 'PAID' | 'PARTIAL' | 'PENDING';
+    page?: number;
+    limit?: number;
+  }) => api.get('/finance/student-fees', { params }),
+  getCurriculumInfo: (schoolId: string, academicYearId: string) =>
+    api.get('/finance/curriculum-info', { params: { schoolId, academicYearId } }),
+  recordPayment: (data: {
+    schoolId: string;
+    studentFeeId: string;
+    studentId: string;
+    amountPaid: number;
+    paymentMethod: 'CASH' | 'BANK_TRANSFER' | 'CHEQUE';
+    transactionReference?: string;
+    paymentDate?: string;
+    notes?: string;
+  }) => api.post('/finance/payments/record', data),
+  getAllPayments: (params: { schoolId: string }) => api.get('/finance/payments', { params }),
+  getDailyReport: (params: {
+    schoolId: string;
+    from?: string;
+    to?: string;
+    termId?: string;
+    academicYearId?: string;
+  }) => api.get('/finance/reports/daily', { params }),
+  getMonthlyReport: (schoolId: string, month: number, year: number) =>
+    api.get('/finance/reports/monthly', { params: { schoolId, month, year } }),
+  getOutstandingBalances: (schoolId: string, academicYearId: string, termId?: string) =>
+    api.get('/finance/reports/outstanding', { params: { schoolId, academicYearId, termId } }),
+  getStudentPaymentHistory: (studentId: string, schoolId: string) =>
+    api.get(`/finance/reports/student/${studentId}/history`, { params: { schoolId } }),
+  getStudentFees: (studentId: string, schoolId: string, academicYearId?: string) =>
+    api.get(`/finance/student-fees/${studentId}`, { params: { schoolId, academicYearId } }),
+  calculateInstallmentFees: (data: {
+    schoolId: string;
+    academicYearId: string;
+    feeType: string;
+    annualAmount: number;
+    grade?: number;
+    description?: string;
+  }) => api.post('/finance/fee-calculation/installments', data),
+  generateInstallmentFees: (data: {
+    schoolId: string;
+    academicYearId: string;
+    feeType?: string;
+    grade?: number;
+  }) => api.post('/finance/fee-structures/generate-installments', data),
+  getFeeCollectionMode: (schoolId: string) =>
+    api.get('/finance/fee-collection-mode', { params: { schoolId } }),
+  markOverdueFees: (data: { schoolId: string; academicYearId: string; termId?: string }) =>
+    api.post('/finance/fees/mark-overdue', data),
+  getOverdueReport: (schoolId: string, academicYearId: string, termId?: string) =>
+    api.get('/finance/reports/overdue', { params: { schoolId, academicYearId, termId } }),
+  getAuditLogs: (schoolId: string, entityType?: string, entityId?: string, limit?: number) =>
+    api.get('/finance/audit-logs', { params: { schoolId, entityType, entityId, limit } }),
+};

@@ -3,7 +3,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { assessmentsAPI, termsAPI } from "@/lib/api";
+import {
+  entryProgressAPI,
+  termsAPI,
+  type EntryProgressAssessmentType as AssessmentType,
+  type EntryProgressQuery,
+  type EntryProgressRow,
+} from "@/lib/api";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -36,24 +42,6 @@ import {
 } from "@/components/ui/select";
 import { Filters, useFilters } from "@/components/filters/Filters";
 import Pagination from "@/components/Pagination";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type AssessmentType = "QUIZ" | "TEST" | "MID" | "FINAL" | "ATTENDANCE";
-
-interface MissingMarkRow {
-  assessmentSubjectId: string;
-  assessmentId: string;
-  title: string;
-  type: AssessmentType;
-  subject: string;
-  className: string;
-  sectionName: string | null;
-  expectedEntries: number;
-  enteredEntries: number;
-  missingEntries: number;
-  isLocked: boolean;
-}
 
 type SortKey = "title" | "subject" | "className" | "progress" | "missing";
 type SortDir = "asc" | "desc";
@@ -102,7 +90,7 @@ const TYPE_META: Record<
   },
 };
 
-function getProgressStatus(row: MissingMarkRow): StatusFilter {
+function getProgressStatus(row: EntryProgressRow): StatusFilter {
   if (row.isLocked) return "LOCKED";
   if (row.expectedEntries === 0) return "COMPLETE";
   if (row.enteredEntries === 0) return "EMPTY";
@@ -170,7 +158,7 @@ export default function EntryProgressPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
-  const [data, setData] = useState<MissingMarkRow[]>([]);
+  const [data, setData] = useState<EntryProgressRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const [terms, setTerms] = useState<{ id: string; name: string }[]>([]);
@@ -232,13 +220,13 @@ export default function EntryProgressPage() {
     if (!selectedYear) return;
     setLoading(true);
     try {
-      const params: Record<string, string> = { 
+      const params: EntryProgressQuery = {
         academicYearId: selectedYear,
         page: String(page),
         limit: String(PAGE_SIZE),
       };
       if (selectedTerm) params.termId = selectedTerm;
-      const res = await assessmentsAPI.getMissingMarks(params);
+      const res = await entryProgressAPI.list(params);
       const response = res.data;
       const rows = Array.isArray(response.data) ? response.data : [];
       setData(rows);

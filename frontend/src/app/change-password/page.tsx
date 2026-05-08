@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
+import { userAPI } from "@/lib/api/auth";
 import { toast } from "sonner";
 import { Lock, Eye, EyeOff, KeyRound, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -169,24 +170,7 @@ const ChangePasswordPage = () => {
   const onSubmit = async (data: ChangePasswordFormData) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          currentPassword: data.currentPassword,
-          newPassword: data.newPassword,
-          confirmPassword: data.confirmPassword,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to change password');
-      }
+      await userAPI.changePassword(data.currentPassword, data.newPassword, data.confirmPassword);
 
       // Update user context to reflect password change
       if (user) {
@@ -211,7 +195,7 @@ const ChangePasswordPage = () => {
         router.replace(redirectPath);
       }, 1500);
     } catch (error: any) {
-      toast.error(error.message || "Failed to change password. Please try again.");
+      toast.error(error.response?.data?.message || "Failed to change password. Please try again.");
     } finally {
       setIsLoading(false);
     }

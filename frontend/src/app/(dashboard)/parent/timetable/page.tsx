@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import api, { studentsAPI } from "@/lib/api";
+import { studentsAPI } from "@/lib/api";
+import { parentDashboardAPI } from "@/lib/api/parent";
 import { useAuth } from "@/context/AuthContext";
 import ClassProgramView from "@/components/timetable/ClassProgramView";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,7 +47,7 @@ export default function ParentTimetablePage() {
             section: rawChild.section || rawChild.student?.section,
           };
           try {
-            const enrollmentResponse = await api.get(`/enrollments/student/${child.userId}`);
+            const enrollmentResponse = await parentDashboardAPI.getStudentEnrollment(child.userId);
             return {
               ...child,
               classId: enrollmentResponse.data?.classId,

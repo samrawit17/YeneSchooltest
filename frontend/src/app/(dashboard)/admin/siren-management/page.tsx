@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import api from "@/lib/api";
+import { sirenControlAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { playSirenAudio, unlockSirenAudio } from "@/lib/siren-audio";
@@ -42,14 +42,10 @@ export default function SirenManagementPage() {
     setRinging(true);
 
     try {
-      await api.post(
-        "/api/siren/trigger",
-        {
-          schoolId: user.schoolId,
-          type: "MANUAL_RING",
-        },
-        { skipAuthErrorRedirect: true }
-      );
+      await sirenControlAPI.trigger({
+        schoolId: user.schoolId,
+        type: "MANUAL_RING",
+      });
 
       if (audioEnabled) {
         try {

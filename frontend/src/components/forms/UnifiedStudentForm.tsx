@@ -41,7 +41,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/context/AuthContext";
-import { credentialsAPI, schoolsAPI, studentsAPI, classesAPI, sectionsAPI, academicYearsAPI } from "@/lib/api";
+import { schoolsAPI, studentsAPI, classesAPI, sectionsAPI, academicYearsAPI } from "@/lib/api";
+import { credentialsAPI } from "@/lib/api/admin";
 
 // Schema for student creation
 const createStudentSchema = z.object({

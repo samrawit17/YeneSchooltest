@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Loader2, Link, Unlink, Plus, Trash2, User, Users } from "lucide-react";
-import { parentsAPI, studentsAPI } from "@/lib/api";
+import { studentsAPI } from "@/lib/api";
+import { parentsAPI } from "@/lib/api/people";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {

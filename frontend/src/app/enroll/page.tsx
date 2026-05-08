@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { enrollmentAPI, schoolsAPI } from '@/lib/api';
+import { schoolsAPI } from '@/lib/api';
+import { enrollmentAPI } from '@/lib/api/enrollment';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

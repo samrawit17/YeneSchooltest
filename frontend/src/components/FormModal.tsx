@@ -17,7 +17,8 @@ import {
   Calendar
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { eventsAPI, announcementsAPI, communicationsAPI } from "@/lib/api";
+import { communicationsAPI } from "@/lib/api/communications";
+import { announcementsAPI, eventsAPI } from "@/lib/api/content";
 import { toast } from "sonner";
 
 // Lazy load forms for better performance

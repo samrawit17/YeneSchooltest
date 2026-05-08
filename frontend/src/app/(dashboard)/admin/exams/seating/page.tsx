@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import api, { assessmentsAPI, termsAPI } from "@/lib/api";
+import { assessmentsAPI, schoolSettingsAPI, termsAPI } from "@/lib/api";
+import { examSeatingAPI } from "@/lib/api/operations";
 import { toast } from "sonner";
 import {
   Users,
@@ -438,7 +439,7 @@ export default function ExamSeatingPage() {
       setLoadingOverview(true);
       setSeatingOverview(null);
       try {
-        const res = await api.get(`/exams/seating/type/${selectedExamType}/seating-plan`);
+        const res = await examSeatingAPI.getSeatingPlanByType(selectedExamType);
         if (cancelled) return;
 
         if (res.data) {
@@ -526,7 +527,7 @@ export default function ExamSeatingPage() {
         console.warn("No schoolId available for settings fetch");
         return;
       }
-      const res = await api.get(`/schools/${schoolId}/settings`, { skipAuthErrorRedirect: true });
+      const res = await schoolSettingsAPI.getAll(schoolId);
       const settings: Record<string, any> = {};
       res.data?.forEach((s: any) => {
         settings[s.key] = s.value;
@@ -582,7 +583,7 @@ export default function ExamSeatingPage() {
           academicYearId: currentAcademicYear?.id,
           termId: currentTerm?.id,
         }),
-        api.get("/exams/seating/plans"),
+        examSeatingAPI.getSeatingPlans(),
       ]);
 
       const examsRaw = examsRes.data;
@@ -688,7 +689,7 @@ export default function ExamSeatingPage() {
   const fetchSeatingOverview = async (planId: string, cancelled?: boolean) => {
     setLoadingOverview(true);
     try {
-      const res = await api.get(`/exams/seating/plan/${planId}`);
+      const res = await examSeatingAPI.getSeatingOverview(planId);
       if (cancelled) return;
       setSeatingOverview(res.data);
       if (res.data?.sections?.length) {
@@ -717,8 +718,8 @@ export default function ExamSeatingPage() {
 
     setGenerating(true);
     try {
-      const createRes = await api.post(
-        `/exams/seating/type/${selectedExamType}/seating-plan`,
+      const createRes = await examSeatingAPI.createSeatingPlan(
+        selectedExamType,
         {
           mode: "GRADE_RANGE",
           fromGrade,
@@ -737,7 +738,7 @@ export default function ExamSeatingPage() {
         shuffle: plan.shuffle,
       });
 
-      const genRes = await api.post(`/exams/seating/plan/${plan.id}/generate`);
+      const genRes = await examSeatingAPI.generateSeating(plan.id);
       setSeatingOverview(genRes.data);
 
       if (genRes.data?.sections?.length) {
@@ -768,10 +769,10 @@ export default function ExamSeatingPage() {
 
       setGenerating(true);
       try {
-        await api.delete(`/exams/seating/plan/${seatingPlan.id}`);
+        await examSeatingAPI.deleteSeatingPlan(seatingPlan.id);
 
-        const createRes = await api.post(
-          `/exams/seating/type/${selectedExamType}/seating-plan`,
+        const createRes = await examSeatingAPI.createSeatingPlan(
+          selectedExamType,
           {
             mode: "GRADE_RANGE",
             fromGrade,
@@ -790,7 +791,7 @@ export default function ExamSeatingPage() {
           shuffle: plan.shuffle,
         });
 
-        const genRes = await api.post(`/exams/seating/plan/${plan.id}/generate`);
+        const genRes = await examSeatingAPI.generateSeating(plan.id);
         setSeatingOverview(genRes.data);
 
         if (genRes.data?.sections?.length) {
@@ -812,8 +813,8 @@ export default function ExamSeatingPage() {
     // Settings unchanged: just delete student assignments and regenerate
     setGenerating(true);
     try {
-      await api.delete(`/exams/seating/plan/${seatingPlan.id}/students`);
-      const res = await api.post(`/exams/seating/plan/${seatingPlan.id}/generate`);
+      await examSeatingAPI.clearGeneratedStudents(seatingPlan.id);
+      const res = await examSeatingAPI.generateSeating(seatingPlan.id);
       setSeatingOverview(res.data);
 
       if (res.data?.sections?.length) {
@@ -838,7 +839,7 @@ export default function ExamSeatingPage() {
     }
 
     try {
-      await api.delete(`/exams/seating/plan/${seatingPlan.id}`);
+      await examSeatingAPI.deleteSeatingPlan(seatingPlan.id);
       setSeatingPlan(null);
       setSeatingOverview(null);
       setSavedSettings(null);
@@ -855,9 +856,7 @@ export default function ExamSeatingPage() {
       return;
     }
     try {
-      const response = await api.get(`/exams/seating/plan/${seatingPlan.id}/print`, {
-        responseType: "blob",
-      });
+      const response = await examSeatingAPI.downloadPdfReport(seatingPlan.id);
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -879,9 +878,7 @@ export default function ExamSeatingPage() {
       return;
     }
     try {
-      const response = await api.get(`/exams/seating/plan/${seatingPlan.id}/excel`, {
-        responseType: "blob",
-      });
+      const response = await examSeatingAPI.downloadExcelReport(seatingPlan.id);
       const blob = new Blob([response.data], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });

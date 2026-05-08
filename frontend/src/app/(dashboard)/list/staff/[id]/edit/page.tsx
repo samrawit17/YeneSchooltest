@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { hrAPI } from "@/lib/api";
+import { hrAPI } from "@/lib/api/hr";
 import { Loader2, Save, User, Briefcase, Phone, Mail, MapPin, Building, Calendar } from "lucide-react";
 import { toast } from "sonner";
 

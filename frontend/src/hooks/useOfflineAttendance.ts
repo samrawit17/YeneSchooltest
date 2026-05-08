@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type CachedStudent, type OfflineAttendance, type OfflineAttendanceSession } from '@/lib/db';
 import { syncService } from '@/lib/db/sync-service';
+import { studentsAPI } from '@/lib/api/students';
 
 // ============================================
 // TYPES
@@ -160,21 +161,17 @@ export function useOfflineAttendance(options: UseOfflineAttendanceOptions = {}) 
   // ============================================
 
   /**
-   * Cache students from server
-   */
+    * Cache students from server
+    */
   const cacheStudents = useCallback(async (classId: string): Promise<void> => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/students?classId=${classId}`);
+      const response = await studentsAPI.getAll({ classId });
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch students');
-      }
-      
-      const data = await response.json();
+      const data = response.data;
       
       // Cache students in IndexedDB
-      const studentsToCache: CachedStudent[] = data.students.map((s: Record<string, unknown>) => ({
+      const studentsToCache: CachedStudent[] = (Array.isArray(data) ? data : data?.data || []).map((s: Record<string, unknown>) => ({
         id: s.id as string,
         firstName: s.firstName as string,
         lastName: s.lastName as string,

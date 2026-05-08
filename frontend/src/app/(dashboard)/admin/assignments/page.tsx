@@ -62,7 +62,7 @@ import {
   classSubjectsAPI, 
   sectionsAPI,
   academicYearsAPI 
-} from "@/lib/api";
+} from "@/lib/api/admin";
 
 interface AssignmentCellTarget {
   classId: string;

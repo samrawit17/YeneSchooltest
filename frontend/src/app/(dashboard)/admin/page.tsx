@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { dashboardAPI } from "@/lib/api";
+import { dashboardAPI } from "@/lib/api/admin";
 import { toast } from "sonner";
 import DynamicChart from "@/components/charts/DynamicChart";
 import {

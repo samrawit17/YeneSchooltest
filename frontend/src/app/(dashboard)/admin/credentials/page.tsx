@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { credentialsAPI, PendingCredential, CredentialStats } from '@/lib/api';
+import { credentialsAPI, PendingCredential, CredentialStats } from '@/lib/api/admin';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '@/lib/api';
+import { subscriptionAPI } from '@/lib/api/subscription';
 import { toast } from 'sonner';
 import {
   Plan,
@@ -20,7 +20,7 @@ export const usePlans = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get<Plan[]>('/subscription/plans');
+      const response = await subscriptionAPI.getAllPlans();
       setPlans(response.data);
     } catch (err: any) {
       const message = err.response?.data?.message || 'Failed to fetch plans';
@@ -37,7 +37,7 @@ export const usePlans = () => {
 
   const createPlan = async (data: CreatePlanInput): Promise<Plan | null> => {
     try {
-      const response = await api.post<Plan>('/subscription/plans', data);
+      const response = await subscriptionAPI.createPlan(data);
       toast.success('Plan created successfully');
       await fetchPlans();
       return response.data;
@@ -50,7 +50,7 @@ export const usePlans = () => {
 
   const updatePlan = async (id: string, data: UpdatePlanInput): Promise<Plan | null> => {
     try {
-      const response = await api.put<Plan>(`/subscription/plans/${id}`, data);
+      const response = await subscriptionAPI.updatePlan(id, data);
       toast.success('Plan updated successfully');
       await fetchPlans();
       return response.data;
@@ -63,7 +63,7 @@ export const usePlans = () => {
 
   const deletePlan = async (id: string): Promise<boolean> => {
     try {
-      await api.delete(`/subscription/plans/${id}`);
+      await subscriptionAPI.deletePlan(id);
       toast.success('Plan deleted successfully');
       await fetchPlans();
       return true;
@@ -94,8 +94,7 @@ export const useSchoolPlans = () => {
     try {
       setLoading(true);
       setError(null);
-      const url = planId ? `/subscription/schools?planId=${planId}` : '/subscription/schools';
-      const response = await api.get<SchoolWithPlan[]>(url);
+      const response = await subscriptionAPI.getSchools(planId);
       setSchools(response.data);
     } catch (err: any) {
       const message = err.response?.data?.message || 'Failed to fetch schools';
@@ -112,7 +111,7 @@ export const useSchoolPlans = () => {
 
   const assignPlan = async (data: AssignPlanInput): Promise<boolean> => {
     try {
-      await api.post('/subscription/assign', data);
+      await subscriptionAPI.assignPlan(data.schoolId, data.planId);
       toast.success('Plan assigned successfully');
       await fetchSchools();
       return true;
@@ -125,7 +124,7 @@ export const useSchoolPlans = () => {
 
   const getSchoolPlan = async (schoolId: string): Promise<Plan | null> => {
     try {
-      const response = await api.get<Plan>(`/subscription/school/${schoolId}`);
+      const response = await subscriptionAPI.getSchoolPlan(schoolId);
       return response.data;
     } catch (err: any) {
       console.error('Failed to fetch school plan:', err);
@@ -146,9 +145,7 @@ export const useSchoolPlans = () => {
 export const usePlanFeatures = () => {
   const checkFeature = async (schoolId: string, feature: string) => {
     try {
-      const response = await api.get('/subscription/check-feature', {
-        params: { schoolId, feature },
-      });
+      const response = await subscriptionAPI.checkFeature(schoolId, feature);
       return response.data;
     } catch (err: any) {
       return { hasAccess: false, feature, tier: 'CORE' as PlanTier };
@@ -165,7 +162,7 @@ export const useSubscription = () => {
   const getSubscription = async (schoolId: string) => {
     try {
       setLoading(true);
-      const response = await api.get<Subscription>(`/subscription/school/${schoolId}/subscription`);
+      const response = await subscriptionAPI.getSchoolSubscription(schoolId);
       setSubscription(response.data);
       return response.data;
     } catch (err: any) {

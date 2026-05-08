@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import api from "@/lib/api";
+import { superadminAPI } from "@/lib/api/superadmin";
 import { toast } from "sonner";
 import { 
   Building2, 
@@ -74,7 +74,7 @@ const SuperAdminPage = () => {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/dashboard/superadmin");
+      const response = await superadminAPI.getDashboard();
       const data = response.data;
       
       setStats({

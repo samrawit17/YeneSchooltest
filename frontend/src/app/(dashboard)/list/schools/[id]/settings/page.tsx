@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { schoolSettingsAPI, schoolsAPI, academicYearsAPI, subscriptionAPI } from '@/lib/api';
+import { schoolSettingsAPI, schoolsAPI, academicYearsAPI } from '@/lib/api';
+import { subscriptionAPI } from '@/lib/api/admin';
 import { getCurrentEthiopianYear } from '@/lib/calendar-utils';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';

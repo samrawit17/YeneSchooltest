@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { toast } from "sonner";
-import { dashboardAPI, lessonsAPI, announcementsAPI, teachersAPI, attendanceAPI, gradingAPI, academicYearsAPI, termsAPI } from "@/lib/api";
+import { teachersAPI, attendanceAPI, gradingAPI, academicYearsAPI, termsAPI } from "@/lib/api";
+import { dashboardAPI } from "@/lib/api/admin";
+import { announcementsAPI, lessonsAPI } from "@/lib/api/content";
 import {
   BookOpen,
   Users,

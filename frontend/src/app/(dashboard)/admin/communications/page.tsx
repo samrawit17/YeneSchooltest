@@ -15,7 +15,7 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react";
-import { CommunicationStatus } from "@/lib/api";
+import { CommunicationStatus } from "@/lib/api/communications";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // Types

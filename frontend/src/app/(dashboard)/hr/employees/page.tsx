@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Plus, Search, Mail, Phone, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { hrAPI } from '@/lib/api';
+import { hrAPI } from '@/lib/api/hr';
 import Pagination from '@/components/Pagination';
 import TableSearch from '@/components/TableSearch';
 

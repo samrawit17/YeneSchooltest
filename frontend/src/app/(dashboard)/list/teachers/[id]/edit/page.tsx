@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { authAPI, classesAPI, classSubjectsAPI, subjectsAPI, hrAPI } from "@/lib/api";
+import { authAPI, classesAPI, subjectsAPI } from "@/lib/api";
+import { classSubjectsAPI } from "@/lib/api/admin";
+import { hrAPI } from "@/lib/api/hr";
 import { Loader2, Save, User, Briefcase, BookOpen, Users, FileText, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
