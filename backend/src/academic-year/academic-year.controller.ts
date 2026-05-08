@@ -43,7 +43,7 @@ export class AcademicYearController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.FINANCE, Role.TEACHER, Role.HR, Role.STUDENT, Role.PARENT)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.FINANCE, Role.TEACHER, Role.STUDENT, Role.PARENT)
   async getAcademicYears(
     @Query('schoolId') schoolId: string,
     @Request() req: any,
@@ -61,7 +61,6 @@ export class AcademicYearController {
     Role.STUDENT,
     Role.PARENT,
     Role.FINANCE,
-    Role.HR,
     Role.SUPER_ADMIN,
   )
   async getActiveAcademicYear(
@@ -126,7 +125,6 @@ export class AcademicYearController {
     Role.STUDENT,
     Role.PARENT,
     Role.FINANCE,
-    Role.HR,
     Role.SUPER_ADMIN,
   )
   async getCurrentTerm(

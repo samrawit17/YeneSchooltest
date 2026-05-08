@@ -232,37 +232,5 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
     // Events and Announcements
     'event:read',
     'announcement:read',
-    // Payroll - Finance can view, process payment, mark paid
-    'payroll:view_all',
-    'payroll:process_payment',
-    'payroll:mark_paid',
-    'payroll:reports',
   ],
-  [Role.HR]: [
-    // HR specific
-    'hr:read',
-    'academic_year:read',
-    // Employee management
-    'employee:create',
-    'employee:read',
-    'employee:update',
-    'employee:delete',
-    // Payroll - HR creates, calculates, submits to finance
-    'payroll:create',
-    'payroll:read',
-    'payroll:update',
-    'payroll:calculate',
-    'payroll:submit',
-    // Salary Structure
-    'salary_structure:create',
-    'salary_structure:read',
-    'salary_structure:update',
-    'salary_structure:delete',
-    // Dashboard
-    'dashboard:view',
-    // Events and Announcements
-    'event:read',
-    'announcement:read',
-  ],
-  
 };

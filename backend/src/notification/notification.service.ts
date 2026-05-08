@@ -1279,34 +1279,6 @@ export class NotificationService {
     });
   }
 
-  async notifyHROfNewLeaveRequest(
-    schoolId: string,
-    employeeName: string,
-    leaveType: string,
-    startDate: string,
-    totalDays: number,
-  ) {
-    const users = await this.prisma.user.findMany({
-      where: {
-        schoolId,
-        role: { in: ['HR', 'ADMIN'] },
-      },
-      select: { id: true },
-    });
-
-    if (users.length === 0) return;
-
-    return this.createBulkNotifications({
-      schoolId,
-      userIds: users.map((u) => u.id),
-      title: 'New Leave Request',
-      message: `${employeeName} has requested ${totalDays} day(s) of ${leaveType} leave starting ${startDate}`,
-      type: NotificationType.INFO,
-      actionUrl: '/hr/leave-requests',
-      metadata: { employeeName, leaveType, startDate, totalDays },
-    });
-  }
-
   async notifyAccountDeactivated(
     userId: string,
     schoolId: string,
@@ -1316,7 +1288,9 @@ export class NotificationService {
       schoolId,
       userId,
       title: 'Account Deactivated',
-      message: reason || 'Your account has been deactivated. Please contact HR for more information.',
+      message:
+        reason ||
+        'Your account has been deactivated. Please contact school administration for more information.',
       type: NotificationType.ALERT,
       actionUrl: '/profile',
       metadata: { reason },

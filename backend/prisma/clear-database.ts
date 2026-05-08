@@ -6,7 +6,6 @@
  * Seed users preserved:
  * - superadmin@example.com (SUPER_ADMIN)
  * - admin@springfieldhigh.edu (ADMIN)
- * - hr@springfieldhigh.edu (HR)
  * - registrar@springfieldhigh.edu (REGISTRAR)
  * - teacher@springfieldhigh.edu (TEACHER)
  * - student@springfieldhigh.edu (STUDENT)
@@ -24,7 +23,6 @@ const prisma = new PrismaClient();
 const SEED_USER_EMAILS = [
   'superadmin@example.com',
   'admin@springfieldhigh.edu',
-  'hr@springfieldhigh.edu',
   'registrar@springfieldhigh.edu',
   'teacher@springfieldhigh.edu',
   'student@springfieldhigh.edu',
@@ -133,13 +131,6 @@ async function main() {
     await prisma.attendance.deleteMany();
     console.log('  ✓ Attendance cleared');
 
-    // Employee attendance
-    await prisma.employeeAttendance.deleteMany();
-    console.log('  ✓ EmployeeAttendance cleared');
-    
-    await prisma.employeeAttendanceSession.deleteMany();
-    console.log('  ✓ EmployeeAttendanceSession cleared');
-
     // Finance
     await prisma.receipt.deleteMany();
     console.log('  ✓ Receipt cleared');
@@ -159,22 +150,6 @@ async function main() {
     await prisma.financeProfile.deleteMany();
     console.log('  ✓ FinanceProfile cleared');
 
-    // HR/Payroll
-    await prisma.payrollItem.deleteMany();
-    console.log('  ✓ PayrollItem cleared');
-    
-    await prisma.payroll.deleteMany();
-    console.log('  ✓ Payroll cleared');
-    
-    await prisma.salaryStructure.deleteMany();
-    console.log('  ✓ SalaryStructure cleared');
-    
-    await prisma.leaveRequest.deleteMany();
-    console.log('  ✓ LeaveRequest cleared');
-    
-    await prisma.hrProfile.deleteMany();
-    console.log('  ✓ HrProfile cleared');
-    
     await prisma.teacherProfile.deleteMany();
     console.log('  ✓ TeacherProfile cleared');
     

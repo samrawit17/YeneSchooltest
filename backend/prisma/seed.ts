@@ -114,22 +114,13 @@ async function main() {
     // Dashboard permissions (view only - content is role-filtered)
     { name: 'dashboard:view', module: 'dashboard', action: 'view', description: 'View dashboard' },
 
-    // HR permissions
+    // Staff management permissions
     { name: 'employee:create', module: 'employee', action: 'create', description: 'Create employees' },
     { name: 'employee:read', module: 'employee', action: 'read', description: 'View employees' },
     { name: 'employee:update', module: 'employee', action: 'update', description: 'Update employees' },
     { name: 'employee:delete', module: 'employee', action: 'delete', description: 'Delete employees' },
-    { name: 'payroll:create', module: 'payroll', action: 'create', description: 'Create payroll' },
-    { name: 'payroll:read', module: 'payroll', action: 'read', description: 'View payroll' },
-    { name: 'payroll:process', module: 'payroll', action: 'process', description: 'Process payroll' },
-    { name: 'payroll:update', module: 'payroll', action: 'update', description: 'Update payroll' },
-    { name: 'salary:create', module: 'salary', action: 'create', description: 'Create salary structure' },
-    { name: 'salary:read', module: 'salary', action: 'read', description: 'View salary structure' },
-    { name: 'salary:update', module: 'salary', action: 'update', description: 'Update salary structure' },
-    { name: 'salary:delete', module: 'salary', action: 'delete', description: 'Delete salary structure' },
     { name: 'attendance:create', module: 'attendance', action: 'create', description: 'Record attendance' },
     { name: 'attendance:read', module: 'attendance', action: 'read', description: 'View attendance' },
-    { name: 'hr:read', module: 'hr', action: 'read', description: 'View HR dashboard' },
   ];
 
   // Create permissions
@@ -266,22 +257,6 @@ async function main() {
     { role: Role.FINANCE, permissionName: 'finance:student_fees:read' },
     { role: Role.FINANCE, permissionName: 'finance:payments:record' },
     { role: Role.FINANCE, permissionName: 'finance:reports:read' },
-    
-    // HR
-    { role: Role.HR, permissionName: 'employee:create' },
-    { role: Role.HR, permissionName: 'employee:read' },
-    { role: Role.HR, permissionName: 'employee:update' },
-    { role: Role.HR, permissionName: 'employee:delete' },
-    { role: Role.HR, permissionName: 'payroll:create' },
-    { role: Role.HR, permissionName: 'payroll:read' },
-    { role: Role.HR, permissionName: 'payroll:process' },
-    { role: Role.HR, permissionName: 'payroll:update' },
-    { role: Role.HR, permissionName: 'salary:create' },
-    { role: Role.HR, permissionName: 'salary:read' },
-    { role: Role.HR, permissionName: 'salary:update' },
-    { role: Role.HR, permissionName: 'salary:delete' },
-    { role: Role.HR, permissionName: 'hr:read' },
-    { role: Role.HR, permissionName: 'dashboard:view' },
   ];
 
   // Create role permissions
@@ -329,33 +304,6 @@ async function main() {
       name: 'School Admin',
       role: Role.ADMIN,
       schoolId: 'school-001',
-    },
-  });
-
-  // 1b. HR user
-  const hrUser = await prisma.user.upsert({
-    where: { email: 'hr@springfieldhigh.edu' },
-    update: {},
-    create: {
-      email: 'hr@springfieldhigh.edu',
-      username: 'hr001',
-      password: hashedPassword,
-      name: 'HR Manager',
-      role: Role.HR,
-      schoolId: 'school-001',
-    },
-  });
-
-  // Create HR profile
-  await prisma.hrProfile.upsert({
-    where: { userId: hrUser.id },
-    update: {},
-    create: {
-      userId: hrUser.id,
-      schoolId: 'school-001',
-      employeeId: 'EMP-HR-001',
-      designation: 'HR Manager',
-      joiningDate: new Date(),
     },
   });
 
@@ -470,7 +418,6 @@ async function main() {
   console.log('Created test users:');
   console.log('  - superadmin@example.com / admin123 (Super Admin)');
   console.log('  - admin@springfieldhigh.edu / admin123 (School Admin)');
-  console.log('  - hr@springfieldhigh.edu / admin123 (HR Manager)');
   console.log('  - registrar@springfieldhigh.edu / admin123 (Registrar)');
   console.log('  - teacher@springfieldhigh.edu / admin123 (Teacher)');
   console.log('  - student@springfieldhigh.edu / admin123 (Student)');

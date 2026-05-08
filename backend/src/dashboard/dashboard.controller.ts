@@ -98,7 +98,6 @@ export class DashboardController {
           () => this.registrarDashboardService.getDashboard(userId, schoolId),
         );
       case 'FINANCE':
-      case 'HR':
         return this.getCachedDashboard(
           'school',
           req.user,

@@ -28,8 +28,6 @@ import { AnnouncementModule } from './announcement/announcement.module';
 import { EventModule } from './event/event.module';
 import { TeacherModule } from './teacher/teacher.module';
 import { LessonModule } from './lesson/lesson.module';
-import { LeaveRequestModule } from './leave-request/leave-request.module';
-import { HrModule } from './hr/hr.module';
 import { FinanceModule } from './finance/finance.module';
 import { GradingModule } from './grading/grading.module';
 import { CalendarModule } from './calendar/calendar.module';
@@ -75,8 +73,6 @@ import { PeriodTimeModule } from './period-time/period-time.module';
     EventModule,
     TeacherModule,
     LessonModule,
-    LeaveRequestModule,
-    HrModule,
     FinanceModule,
     GradingModule,
     AssessmentsModule,
