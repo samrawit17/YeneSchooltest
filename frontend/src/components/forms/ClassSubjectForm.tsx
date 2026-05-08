@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { classesAPI, subjectsAPI, teachersAPI } from "@/lib/api";
 import { classSubjectsAPI } from "@/lib/api/admin";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import InputField from "@/components/InputField";
 
@@ -26,7 +27,7 @@ const ClassSubjectForm = ({ type, data }: ClassSubjectFormProps) => {
 
   // Fetch academic years
   const { data: academicYears } = useQuery({
-    queryKey: ["academic-years"],
+    queryKey: queryKeys.academicYears.all,
     queryFn: async () => {
       const response = await classesAPI.getAll();
       // Get unique academic years from classes
@@ -42,7 +43,7 @@ const ClassSubjectForm = ({ type, data }: ClassSubjectFormProps) => {
 
   // Fetch classes when academic year is selected
   const { data: classes } = useQuery({
-    queryKey: ["classes", formData.academicYearId],
+    queryKey: queryKeys.classes.byAcademicYear(formData.academicYearId),
     queryFn: async () => {
       if (!formData.academicYearId) return [];
       const response = await classesAPI.getAll({ academicYearId: formData.academicYearId });
@@ -64,7 +65,7 @@ const ClassSubjectForm = ({ type, data }: ClassSubjectFormProps) => {
 
   // Fetch subjects
   const { data: subjects } = useQuery({
-    queryKey: ["subjects"],
+    queryKey: queryKeys.subjects.all,
     queryFn: async () => {
       const response = await subjectsAPI.getAll();
       return response.data;
@@ -73,7 +74,7 @@ const ClassSubjectForm = ({ type, data }: ClassSubjectFormProps) => {
 
   // Fetch teachers
   const { data: teachers } = useQuery({
-    queryKey: ["teachers"],
+    queryKey: queryKeys.teachers.all,
     queryFn: async () => {
       const response = await teachersAPI.getAll();
       return response.data;
@@ -92,7 +93,7 @@ const ClassSubjectForm = ({ type, data }: ClassSubjectFormProps) => {
       toast.success(
         type === "create" ? "Subject assigned successfully" : "Assignment updated successfully"
       );
-      queryClient.invalidateQueries({ queryKey: ["class-subjects"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.classSubjects.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || `Failed to ${type} assignment`);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { notificationsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -63,7 +64,7 @@ const NotificationsPage = () => {
 
   // Fetch notifications
   const { data: notificationsData, isLoading: notificationsLoading, refetch } = useQuery({
-    queryKey: ["notifications-all"],
+    queryKey: queryKeys.notifications.allPage(user?.id, user?.schoolId),
     queryFn: async () => {
       const response = await notificationsAPI.getAll({ limit: "100" });
       return response.data as Notification[];
@@ -81,8 +82,7 @@ const NotificationsPage = () => {
       await notificationsAPI.markRead(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-all"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 
@@ -92,8 +92,7 @@ const NotificationsPage = () => {
       await notificationsAPI.markAllRead();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-all"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 

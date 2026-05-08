@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { Loader2, Save, User, GraduationCap, Briefcase, Users, FileText, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 
 // User types
-type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT' | 'ADMIN' | 'REGISTRAR' | 'HR' | 'FINANCE' | 'SUPER_ADMIN';
+type UserRole = 'STUDENT' | 'TEACHER' | 'PARENT' | 'ADMIN' | 'REGISTRAR' | 'FINANCE' | 'SUPER_ADMIN';
 
 interface User {
   id: string;
@@ -55,7 +56,7 @@ export default function EditUserPage() {
 
   // Fetch user data
   const { data: user, isLoading: userLoading } = useQuery({
-    queryKey: ["user", userId],
+    queryKey: queryKeys.users.detail(userId),
     queryFn: async () => {
       const response = await authAPI.getUserById(userId);
       return response.data as User;
@@ -68,7 +69,7 @@ export default function EditUserPage() {
       await authAPI.updateUser(userId, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user", userId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(userId) });
       toast.success("User updated successfully");
     },
     onError: (error: any) => {
@@ -147,7 +148,6 @@ export default function EditUserPage() {
                   {user?.role === 'PARENT' && <Users className="w-6 h-6 text-blue-600" />}
                   {user?.role === 'ADMIN' && <FileText className="w-6 h-6 text-blue-600" />}
                   {user?.role === 'REGISTRAR' && <FileText className="w-6 h-6 text-blue-600" />}
-                  {user?.role === 'HR' && <FileText className="w-6 h-6 text-blue-600" />}
                   {user?.role === 'FINANCE' && <FileText className="w-6 h-6 text-blue-600" />}
                 </div>
                 <div>

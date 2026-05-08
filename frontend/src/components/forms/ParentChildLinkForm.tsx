@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Loader2, Link, Unlink, Plus, Trash2, User, Users } from "lucide-react";
 import { studentsAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
+import { queryKeys } from "@/lib/query-keys";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -121,7 +122,7 @@ const ParentChildLinkForm = ({
 
   // Fetch parents
   const { data: parents, isLoading: loadingParents } = useQuery({
-    queryKey: ["parents"],
+    queryKey: queryKeys.parents.all,
     queryFn: async () => {
       const response = await parentsAPI.getAll({ limit: 100 });
       return response.data?.data || response.data || [];
@@ -131,7 +132,7 @@ const ParentChildLinkForm = ({
 
   // Fetch students
   const { data: students, isLoading: loadingStudents } = useQuery({
-    queryKey: ["students", "approved", studentSearch],
+    queryKey: queryKeys.students.approved(studentSearch),
     queryFn: async () => {
       const response = await studentsAPI.getAll({
         status: "APPROVED",
@@ -165,8 +166,8 @@ const ParentChildLinkForm = ({
     },
     onSuccess: () => {
       toast.success("Parent linked to student successfully");
-      queryClient.invalidateQueries({ queryKey: ["parents"] });
-      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.parents.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
       onSuccess?.();
       onClose();
     },
@@ -182,8 +183,8 @@ const ParentChildLinkForm = ({
     },
     onSuccess: () => {
       toast.success("Parent unlinked from student successfully");
-      queryClient.invalidateQueries({ queryKey: ["parents"] });
-      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.parents.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "Failed to unlink parent from student");

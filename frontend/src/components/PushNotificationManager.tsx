@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { Volume2 } from "lucide-react";
+import { queryKeys } from "@/lib/query-keys";
 import { playSirenAudio, unlockSirenAudio } from "@/lib/siren-audio";
 import {
   PUSH_NOTIFICATIONS_DISABLED_KEY,
@@ -68,16 +69,16 @@ export default function PushNotificationManager() {
           });
         }
 
-        queryClient.invalidateQueries({ queryKey: ["notifications"] });
-        queryClient.invalidateQueries({ queryKey: ["communications-unread-count"] });
-        queryClient.invalidateQueries({ queryKey: ["communications-navbar"] });
-        queryClient.invalidateQueries({ queryKey: ["announcement-count"] });
-        queryClient.invalidateQueries({ queryKey: ["communication-stats-menu"] });
-        queryClient.invalidateQueries({ queryKey: ["announcements-count-menu"] });
-        queryClient.invalidateQueries({ queryKey: ["events-count-menu"] });
-        queryClient.invalidateQueries({ queryKey: ["notification-categories"] });
-        queryClient.invalidateQueries({ queryKey: ["messaging-messages"] });
-        queryClient.invalidateQueries({ queryKey: ["messaging-conversations"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.menu.communicationsUnread });
+        queryClient.invalidateQueries({ queryKey: queryKeys.menu.communicationsNavbar });
+        queryClient.invalidateQueries({ queryKey: queryKeys.announcements.activeCount() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.menu.communicationStats() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.announcements.menuCount() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.events.menuCount() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.notifications.categories });
+        queryClient.invalidateQueries({ queryKey: queryKeys.messages.messagesRoot });
+        queryClient.invalidateQueries({ queryKey: queryKeys.messages.conversationsRoot });
       }
     };
 

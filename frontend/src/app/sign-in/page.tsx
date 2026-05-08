@@ -90,7 +90,6 @@ const LoginPage = () => {
           case 'parent': return "/parent";
           case 'finance': return "/finance";
           case 'registrar': return "/registrar";
-          case 'hr': return "/hr";
           default: return "/dashboard";
         }
       })();

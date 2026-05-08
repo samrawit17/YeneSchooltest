@@ -13,6 +13,7 @@ import { schoolsAPI } from "@/lib/api";
 import { APP_VERSION } from "@/lib/version";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { queryKeys } from "@/lib/query-keys";
 
 export default function DashboardLayout({
   children,
@@ -28,7 +29,7 @@ export default function DashboardLayout({
 
   // Fetch school data
   const { data: school, isLoading: isSchoolLoading } = useQuery({
-    queryKey: ["school-layout", user?.schoolId],
+    queryKey: queryKeys.school.layout(user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return null;
       const response = await schoolsAPI.getById(user.schoolId);

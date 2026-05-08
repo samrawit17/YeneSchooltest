@@ -12,6 +12,7 @@ import {
   schoolSettingsAPI,
 } from "@/lib/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import FormModal from "@/components/FormModal";
 import { toast } from "sonner";
 import {
@@ -116,7 +117,7 @@ export default function AcademicStructurePage() {
 
   // Fetch academic years
   const { data: academicYears } = useQuery({
-    queryKey: ["academic-years"],
+    queryKey: queryKeys.academicYears.all,
     queryFn: async () => {
       const resp = await academicYearsAPI.getAll();
       return resp.data?.data || resp.data || [];
@@ -134,7 +135,7 @@ export default function AcademicStructurePage() {
 
   // Fetch school settings for section capacity
   const { data: sectionCapacitySetting } = useQuery({
-    queryKey: ["schoolSetting", "DEFAULT_SECTION_CAPACITY", user?.schoolId],
+    queryKey: queryKeys.school.setting("DEFAULT_SECTION_CAPACITY", user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return null;
       const resp = await schoolSettingsAPI.get(user.schoolId, "DEFAULT_SECTION_CAPACITY");
@@ -145,7 +146,7 @@ export default function AcademicStructurePage() {
 
   // Fetch grade system levels for this school
   const { data: gradeLevels = [] } = useQuery({
-    queryKey: ["school-grade-levels", user?.schoolId],
+    queryKey: queryKeys.school.gradeLevels(user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return [];
       const resp = await classesAPI.getGrades();
@@ -171,7 +172,7 @@ export default function AcademicStructurePage() {
     isLoading: classesLoading,
     refetch: refetchClasses,
   } = useQuery({
-    queryKey: ["academic-classes", academicYearId],
+    queryKey: queryKeys.classSections.academicClasses(academicYearId),
     queryFn: async () => {
       const resp = await classesAPI.getAll(
         academicYearId ? { academicYearId } : undefined
@@ -191,7 +192,7 @@ export default function AcademicStructurePage() {
     isLoading: sectionsLoading,
     refetch: refetchSections,
   } = useQuery({
-    queryKey: ["academic-sections"],
+    queryKey: queryKeys.classSections.academicSections,
     queryFn: async () => {
       const resp = await sectionsAPI.getAll();
       return (resp.data || []) as SectionData[];
@@ -205,7 +206,7 @@ export default function AcademicStructurePage() {
     isLoading: subjectsLoading,
     refetch: refetchSubjects,
   } = useQuery({
-    queryKey: ["academic-subjects"],
+    queryKey: queryKeys.subjects.academic,
     queryFn: async () => {
       const resp = await subjectsAPI.getAll();
       return (resp.data || []) as SubjectData[];
@@ -236,7 +237,7 @@ export default function AcademicStructurePage() {
     isLoading: searchClassesLoading,
     refetch: refetchSearchClasses,
   } = useQuery({
-    queryKey: ["academic-classes-search", debouncedSearch, academicYearId],
+    queryKey: queryKeys.classSections.classSearch(debouncedSearch, academicYearId),
     queryFn: async () => {
       if (!debouncedSearch || debouncedSearch.length < 2) {
         return [];
@@ -259,7 +260,7 @@ export default function AcademicStructurePage() {
     data: searchedSections = [],
     isLoading: searchSectionsLoading,
   } = useQuery({
-    queryKey: ["academic-sections-search", debouncedSearch],
+    queryKey: queryKeys.classSections.sectionSearch(debouncedSearch),
     queryFn: async () => {
       if (!debouncedSearch || debouncedSearch.length < 2) {
         return [];

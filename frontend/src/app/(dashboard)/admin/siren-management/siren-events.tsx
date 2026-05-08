@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import { sirenEventAPI } from "@/lib/api";
+import { sirenEventAPI } from "@/lib/api/siren-events";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {

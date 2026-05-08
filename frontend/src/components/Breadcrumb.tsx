@@ -102,21 +102,6 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   "fees-parent": { label: "Children Fees", href: "/parent/fees", parent: "parent" },
   "payment-detail": { label: "Payment Detail", parent: "finance" },
 
-  // HR Module
-  "hr": { label: "Human Resources", href: "/hr", parent: "dashboard" },
-  "employees": { label: "Employees", href: "/hr/employees", parent: "hr" },
-  "employees-detail": { label: "Employee Profile", parent: "employees" },
-  "employees-create": { label: "Add Employee", parent: "employees" },
-  "employees-edit": { label: "Edit Employee", parent: "employees" },
-  "payroll": { label: "Payroll", href: "/hr/payroll", parent: "hr" },
-  "salary-structure": { label: "Salary Structure", href: "/hr/salary-structure", parent: "hr" },
-  "hr-attendance": { label: "Staff Attendance", href: "/hr/attendance", parent: "hr" },
-  "leave-requests": { label: "Leave Requests", href: "/hr/leave-requests", parent: "hr" },
-
-  // Employee Self-Service Module
-  "employee": { label: "Employee Portal", href: "/employee", parent: "dashboard" },
-  "employee-leave-requests": { label: "My Leave Requests", href: "/employee/leave-requests", parent: "employee" },
-
   // Enrollments Module
   "enrollments": { label: "Enrollments", href: "/admin/enrollment", parent: "dashboard" },
 
@@ -257,7 +242,6 @@ function shouldHideBreadcrumb(pathname: string): boolean {
     "/teacher",
     "/student",
     "/parent",
-    "/hr",
     "/registrar",
     "/superadmin",
   ];
@@ -350,11 +334,6 @@ function getDashboardHref(pathname: string): string {
     return '/parent';
   }
 
-  // HR-specific paths
-  if (pathname.startsWith('/hr/') || pathname === '/hr') {
-    return '/hr';
-  }
-
   // Registrar-specific paths
   if (pathname.startsWith('/registrar/') || pathname === '/registrar') {
     return '/registrar';
@@ -387,8 +366,6 @@ function getDashboardLabel(href: string): string {
       return 'Student Portal';
     case '/parent':
       return 'Parent Portal';
-    case '/hr':
-      return 'HR';
     case '/registrar':
       return 'Registrar';
     case '/superadmin':
@@ -412,8 +389,6 @@ function getDashboardIcon(href: string): React.ReactNode {
     case '/student':
       return <LayoutDashboard className={iconClass} />;
     case '/parent':
-      return <LayoutDashboard className={iconClass} />;
-    case '/hr':
       return <LayoutDashboard className={iconClass} />;
     case '/registrar':
       return <LayoutDashboard className={iconClass} />;

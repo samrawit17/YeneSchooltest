@@ -10,6 +10,7 @@ import { communicationsAPI } from "@/lib/api/communications";
 import { announcementsAPI, eventsAPI } from "@/lib/api/content";
 import { subscriptionAPI } from "@/lib/api/subscription";
 import { useState, useMemo } from "react";
+import { queryKeys } from "@/lib/query-keys";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -66,7 +67,6 @@ const getDashboardPath = (role: string | undefined): string => {
     "parent": "/parent",
     "registrar": "/registrar",
     "finance": "/finance",
-    "hr": "/hr",
   };
 
   return roleMap[role.toLowerCase()] || "/dashboard";
@@ -97,7 +97,7 @@ const menuItems: MenuSection[] = [
         icon: <LayoutDashboard className="w-5 h-5" />,
         label: "Dashboard",
         href: "dashboard", // Special marker for role-based dashboard
-        visible: ["admin", "teacher", "student", "parent", "registrar", "finance", "hr", "super_admin"],
+        visible: ["admin", "teacher", "student", "parent", "registrar", "finance", "super_admin"],
         children: [
           {
             icon: <BookOpen className="w-4 h-4" />,
@@ -163,48 +163,6 @@ const menuItems: MenuSection[] = [
             label: "My Grades",
             href: "/student/grades",
             visible: ["student"],
-          },
-          {
-            icon: <CreditCard className="w-4 h-4" />,
-            label: "Process Payment",
-            href: "/finance/payroll",
-            visible: ["finance"],
-            subscriptionFeature: "HR_MANAGEMENT",
-          },
-          {
-            icon: <Users className="w-4 h-4" />,
-            label: "Employees",
-            href: "/hr/employees",
-            visible: ["hr"],
-            subscriptionFeature: "HR_MANAGEMENT",
-          },
-          {
-            icon: <CreditCard className="w-4 h-4" />,
-            label: "Run Payroll",
-            href: "/hr/payroll",
-            visible: ["hr"],
-            subscriptionFeature: "HR_MANAGEMENT",
-          },
-          {
-            icon: <DollarSign className="w-4 h-4" />,
-            label: "Salary Structure",
-            href: "/hr/salary-structure",
-            visible: ["hr"],
-            subscriptionFeature: "HR_MANAGEMENT",
-          },
-          {
-            icon: <Clock className="w-4 h-4" />,
-            label: "Employee Attendance",
-            href: "/hr/attendance",
-            visible: ["hr"],
-            subscriptionFeature: "HR_MANAGEMENT",
-          },
-{
-            icon: <CalendarCheck className="w-4 h-4" />,
-            label: "Leave Requests",
-            href: "/hr/leave-requests",
-            visible: ["hr"],
-            subscriptionFeature: "HR_MANAGEMENT",
           },
         ],
       },
@@ -326,13 +284,13 @@ const menuItems: MenuSection[] = [
         icon: <UserCircle className="w-5 h-5" />,
         label: "People",
         href: "/list/staff",
-        visible: ["admin", "registrar", "hr"],
+        visible: ["admin", "registrar"],
         children: [
           {
             icon: <Users className="w-4 h-4" />,
             label: "Staff",
             href: "/list/staff",
-            visible: ["admin", "registrar", "hr"],
+            visible: ["admin", "registrar"],
           },
           {
             icon: <Users className="w-4 h-4" />,
@@ -437,13 +395,13 @@ const menuItems: MenuSection[] = [
         icon: <CalendarDays className="w-5 h-5" />,
         label: "Calendar",
         href: "/list/calendar",
-        visible: ["admin", "teacher", "student", "parent", "registrar", "hr", "finance"],
+        visible: ["admin", "teacher", "student", "parent", "registrar", "finance"],
       },
       {
         icon: <Megaphone className="w-5 h-5" />,
         label: "Announcements",
         href: "/list/announcements",
-        visible: ["admin", "teacher", "student", "parent", "registrar", "hr", "finance"],
+        visible: ["admin", "teacher", "student", "parent", "registrar", "finance"],
       },
       {
         icon: <UserPlus className="w-5 h-5" />,
@@ -538,7 +496,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
 
   // Fetch school data
   const { data: school, isLoading: isSchoolLoading } = useQuery({
-    queryKey: ["school-menu", schoolId],
+    queryKey: queryKeys.school.menu(schoolId),
     queryFn: async () => {
       if (!schoolId) return null;
       const response = await schoolsAPI.getById(schoolId);
@@ -549,7 +507,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
 
   // Fetch curriculum type from school settings
   const { data: settingsData, isLoading: isSettingsLoading } = useQuery({
-    queryKey: ['school-settings-curriculum', schoolId],
+    queryKey: queryKeys.school.curriculum(schoolId),
     queryFn: async () => {
       if (!schoolId) return { data: {} };
       try {
@@ -573,7 +531,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
   );
 
   const { data: commStats, isLoading: isCommStatsLoading } = useQuery({
-    queryKey: ["communication-stats-menu", user?.id, schoolId, userRoleKey],
+    queryKey: queryKeys.menu.communicationStats(user?.id, schoolId, userRoleKey),
     queryFn: async () => {
       try {
         // Use user-specific count endpoint instead of getAll
@@ -594,7 +552,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
 
   // Fetch active announcements count
   const { data: announcementStats, isLoading: isAnnouncementStatsLoading } = useQuery({
-    queryKey: ['announcements-count-menu', user?.id, schoolId, userRoleKey],
+    queryKey: queryKeys.announcements.menuCount(user?.id, schoolId, userRoleKey),
     queryFn: async () => {
       try {
         const response = await announcementsAPI.getActiveCount({ role: userRoleKey });
@@ -610,7 +568,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
 
   // Fetch active events count
   const { data: eventStats, isLoading: isEventStatsLoading } = useQuery({
-    queryKey: ['events-count-menu', user?.id, schoolId, userRoleKey],
+    queryKey: queryKeys.events.menuCount(user?.id, schoolId, userRoleKey),
     queryFn: async () => {
       try {
         const response = await eventsAPI.getActiveCount({ role: userRoleKey });
@@ -641,7 +599,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
 
   // Fetch platform settings for feature flags
   const { data: platformSettings, isLoading: isPlatformSettingsLoading } = useQuery({
-    queryKey: ['platform-settings-flags'],
+    queryKey: queryKeys.menu.platformSettings,
     queryFn: async () => {
       try {
         const response = await platformSettingsAPI.getFlags();
@@ -657,7 +615,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
 
   // Fetch school plan for subscription-based feature gating
   const { data: schoolPlan, isLoading: isPlanLoading } = useQuery({
-    queryKey: ['school-plan-menu', schoolId],
+    queryKey: queryKeys.school.planMenu(schoolId),
     queryFn: async () => {
       if (!schoolId) return null;
       try {
@@ -693,7 +651,6 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
       TIMETABLE_MANAGEMENT: 'STANDARD',
       EXAM_MANAGEMENT: 'STANDARD',
       FINANCE_MANAGEMENT: 'STANDARD',
-      HR_MANAGEMENT: 'STANDARD',
       PARENT_PORTAL: 'STANDARD',
       MESSAGING: 'STANDARD',
       ANNOUNCEMENTS: 'STANDARD',

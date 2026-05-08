@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { authAPI, classesAPI, sectionsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -25,7 +26,7 @@ function TeacherDetailContent({ teacherId }: { teacherId: string }) {
   const { user } = useAuth();
   const breadcrumbSetRef = useRef(false);
   const { data: teacher, isLoading, error } = useQuery({
-    queryKey: ["teacher", teacherId],
+    queryKey: queryKeys.teachers.detail(teacherId),
     queryFn: async () => {
       const response = await authAPI.getUserById(teacherId);
       return response.data;
@@ -33,7 +34,7 @@ function TeacherDetailContent({ teacherId }: { teacherId: string }) {
   });
 
   const { data: homeroomAssignments } = useQuery({
-    queryKey: ["teacher-homeroom-assignments", teacherId],
+    queryKey: queryKeys.teachers.homeroomAssignments(teacherId),
     queryFn: async () => {
       try {
         const [classesResponse, sectionsResponse] = await Promise.all([

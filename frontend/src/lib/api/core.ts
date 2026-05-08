@@ -60,7 +60,7 @@ api.interceptors.response.use(
       }
     }
 
-    const protectedAdminRoutes = ['/admin', '/hr/', '/finance/', '/superadmin', '/registrar'];
+    const protectedAdminRoutes = ['/admin', '/finance/', '/superadmin', '/registrar'];
     const isProtectedRoute = protectedAdminRoutes.some((route) => currentPath.includes(route));
 
     if (

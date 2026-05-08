@@ -15,7 +15,6 @@ export {
   subjectsAPI,
   teachersAPI,
   termsAPI,
-  timetableSlotsAPI,
 } from "./api/academics";
 export {
   attendanceAPI,
@@ -35,6 +34,7 @@ export {
   type EntryProgressRow,
 } from "./api/entry-progress";
 export { financeAPI } from "./api/finance";
+export { bulkUploadAPI, type BulkUploadResult } from "./api/bulk-upload";
 export {
   subscriptionAPI,
   type SubscriptionPlan,
@@ -76,7 +76,6 @@ export {
   type UpdateLessonDto,
   type LessonCoverageReport,
 } from "./api/content";
-export { hrAPI, bulkUploadAPI, type BulkUploadResult } from "./api/hr";
 export { superadminAPI, type SuperAdminStatsResponse } from "./api/superadmin";
 export { adminTimetableAPI } from "./api/timetable";
 export {
@@ -103,8 +102,18 @@ export {
 } from "./api/enrollment";
 export {
   periodTimeAPI,
+  type PeriodTime,
+} from "./api/siren-period-time";
+export {
   sirenScheduleAPI,
+  type SirenSchedule,
+} from "./api/siren-schedules";
+export {
   sirenEventAPI,
+  type SirenEvent,
+} from "./api/siren-events";
+export {
   sirenHardwareAPI,
-  sirenControlAPI,
-} from "./api/siren";
+  type SirenHardwareConfig,
+} from "./api/siren-hardware";
+export { sirenControlAPI } from "./api/siren-control";

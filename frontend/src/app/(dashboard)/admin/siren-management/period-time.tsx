@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import { periodTimeAPI } from "@/lib/api";
+import { periodTimeAPI } from "@/lib/api/siren-period-time";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {

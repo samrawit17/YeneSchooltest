@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { subjectsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -62,7 +63,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
       toast.success(
         type === "create" ? "Subject created successfully" : "Subject updated successfully"
       );
-      queryClient.invalidateQueries({ queryKey: ["academic-subjects"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.subjects.academic });
       if (onSuccess) onSuccess();
     },
     onError: (error: any) => {

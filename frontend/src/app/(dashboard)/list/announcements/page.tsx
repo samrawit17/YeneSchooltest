@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { announcementsAPI, Announcement } from "@/lib/api/content";
+import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/context/AuthContext";
 import Pagination from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,7 @@ const AnnouncementListPage = () => {
   const itemsPerPage = 10;
 
   const { data: announcements, isLoading } = useQuery({
-    queryKey: ["announcements", user?.role],
+    queryKey: queryKeys.announcements.list(user?.role),
     queryFn: async () => {
       const response = await announcementsAPI.getAll({ role: user?.role });
       return response.data;

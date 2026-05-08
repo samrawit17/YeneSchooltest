@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { sirenControlAPI } from "@/lib/api";
+import { sirenControlAPI } from "@/lib/api/siren-control";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { playSirenAudio, unlockSirenAudio } from "@/lib/siren-audio";

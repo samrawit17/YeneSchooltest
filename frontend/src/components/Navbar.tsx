@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import { schoolsAPI, platformSettingsAPI } from "@/lib/api";
 import { notificationsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { announcementsAPI, eventsAPI } from "@/lib/api/content";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -136,7 +137,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
 
   // Fetch events for calendar popover
   const { data: eventsData } = useQuery({
-    queryKey: ['events-navbar'],
+    queryKey: queryKeys.events.navbar,
     queryFn: () => eventsAPI.getAll(),
     enabled: !!user,
   });
@@ -161,7 +162,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
 
   // Use React Query for school data - cached across navigations
   const { data: school, isLoading: schoolLoading } = useQuery({
-    queryKey: ["school", user?.schoolId],
+    queryKey: queryKeys.school.detail(user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return null;
       const response = await schoolsAPI.getById(user.schoolId);
@@ -174,7 +175,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
 
   // Use React Query for notifications - cached across navigations but user-specific
   const { data: notificationsData, isLoading: notificationsLoading } = useQuery({
-    queryKey: ["notifications", user?.id, user?.schoolId],
+    queryKey: queryKeys.notifications.list(user?.id, user?.schoolId),
     queryFn: async () => {
       const communicationTypes = COMMUNICATION_NOTIFICATION_TYPES.join(",");
       const [bellNotificationsRes, communicationNotificationsRes] = await Promise.all([
@@ -245,7 +246,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
 
   // Fetch active announcements count (user-specific)
   const { data: announcementCount } = useQuery({
-    queryKey: ["announcement-count", user?.id, user?.role],
+    queryKey: queryKeys.announcements.activeCount(user?.id, user?.role),
     queryFn: async () => {
       const response = await announcementsAPI.getActiveCount({ role: user?.role });
       return response.data?.count || 0;
@@ -259,7 +260,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
 
   // Fetch platform settings for feature flags - MUST BE FIRST to ensure it's available for other queries
   const { data: platformSettings, isLoading: platformSettingsLoading } = useQuery({
-    queryKey: ['platform-settings-flags'],
+    queryKey: queryKeys.menu.platformSettings,
     queryFn: async () => {
       try {
         const response = await platformSettingsAPI.getFlags();
@@ -299,7 +300,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
         await notificationsAPI.markRead(id);
       }
       // Update cache optimistically - include user ID in query key
-      queryClient.setQueryData(["notifications", user?.id, user?.schoolId], (old: any) => {
+      queryClient.setQueryData(queryKeys.notifications.list(user?.id, user?.schoolId), (old: any) => {
         if (!old) return old;
         const markCollection = (items: Notification[] = []) =>
           items.map((notification) =>
@@ -331,17 +332,17 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
   };
 
   const invalidateNotificationQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    queryClient.invalidateQueries({ queryKey: ["notification-categories"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "all"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "attendance"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "enrollment"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "academic"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "schedule"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "communication"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "event"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "finance"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "system"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.categories });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.allPage(user?.id, user?.schoolId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("attendance") });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("enrollment") });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("academic") });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("schedule") });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("communication") });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("event") });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("finance") });
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("system") });
   };
 
   const markAllAsRead = async (types?: string[]) => {
@@ -369,7 +370,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
       }
 
       // Update cache optimistically - include user ID in query key
-      queryClient.setQueryData(["notifications", user?.id, user?.schoolId], (old: any) => {
+      queryClient.setQueryData(queryKeys.notifications.list(user?.id, user?.schoolId), (old: any) => {
         if (!old) return old;
         const shouldMark = (notification: Notification) =>
           !types?.length || types.includes(notification.type);

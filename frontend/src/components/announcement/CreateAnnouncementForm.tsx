@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { announcementsAPI, CreateAnnouncementDto } from "@/lib/api/content";
+import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,7 +41,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
   const createMutation = useMutation({
     mutationFn: (data: CreateAnnouncementDto) => announcementsAPI.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.announcements.all });
       onSuccess?.();
     },
   });
@@ -92,7 +93,15 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
           </div>
           <div className="space-y-2">
             <Label>Priority</Label>
-            <Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value })}>
+            <Select
+              value={formData.priority}
+              onValueChange={(value) =>
+                setFormData({
+                  ...formData,
+                  priority: value as "LOW" | "MEDIUM" | "HIGH",
+                })
+              }
+            >
               <SelectTrigger className="bg-white dark:bg-gray-800 dark:border-gray-600">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>

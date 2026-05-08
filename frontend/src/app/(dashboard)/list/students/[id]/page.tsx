@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { studentsAPI, attendanceAPI, financeAPI, academicYearsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { Loader2, Edit2 } from "lucide-react";
 import UserDetailPage, { UserDetailData } from "@/components/UserDetailPage";
 import { toast } from "sonner";
@@ -49,7 +50,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
   // Fetch student data first
   const { data: student, isLoading, error } = useQuery({
-    queryKey: ["student", studentId],
+    queryKey: queryKeys.students.detail(studentId),
     queryFn: async () => {
       const response = await studentsAPI.getById(studentId);
       return response.data;
@@ -98,7 +99,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
   // Fetch attendance data
   const { data: attendanceData } = useQuery({
-    queryKey: ["studentAttendance", studentId],
+    queryKey: queryKeys.students.attendance(studentId),
     queryFn: async () => {
       // First get the student to find the userId
       const studentResponse = await studentsAPI.getById(studentId);
@@ -114,7 +115,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
   // Fetch fee data
   const { data: feeData } = useQuery({
-    queryKey: ["studentFees", studentId, user?.schoolId],
+    queryKey: queryKeys.students.fees(studentId, user?.schoolId),
     queryFn: async () => {
       const schoolId = user?.schoolId || '';
       // First get the student to find the userId
@@ -135,7 +136,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
   // Fetch academic years to map IDs to names
   const { data: academicYears } = useQuery({
-    queryKey: ["academicYears", user?.schoolId],
+    queryKey: queryKeys.academicYears.list(user?.schoolId),
     queryFn: async () => {
       const response = await academicYearsAPI.getAll({ schoolId: user?.schoolId });
       return response.data;
@@ -148,7 +149,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
     mutationFn: (data: any) => studentsAPI.update(studentId, data),
     onSuccess: () => {
       toast.success("Student updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["student", studentId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId) });
       setEditDialogOpen(false);
       setIsEditing(false);
     },

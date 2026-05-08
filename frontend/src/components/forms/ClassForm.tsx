@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { classesAPI, academicYearsAPI, schoolSettingsAPI } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import InputField from "@/components/InputField";
 
@@ -12,6 +14,7 @@ interface ClassFormProps {
 }
 
 const ClassForm = ({ type, data }: ClassFormProps) => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: data?.name || "",
@@ -26,16 +29,18 @@ const ClassForm = ({ type, data }: ClassFormProps) => {
 
   // Fetch school settings
   const { data: settingsData } = useQuery({
-    queryKey: ["school-settings-class-form"],
+    queryKey: queryKeys.school.classForm,
     queryFn: async () => {
-      const response = await schoolSettingsAPI.getAll();
+      if (!user?.schoolId) return [];
+      const response = await schoolSettingsAPI.getAll(user.schoolId);
       return response.data;
     },
+    enabled: !!user?.schoolId,
   });
 
   // Fetch academic years
   const { data: academicYears } = useQuery({
-    queryKey: ["academic-years"],
+    queryKey: queryKeys.academicYears.all,
     queryFn: async () => {
       const response = await academicYearsAPI.getAll();
       return response.data;
@@ -100,7 +105,7 @@ const ClassForm = ({ type, data }: ClassFormProps) => {
       toast.success(
         type === "create" ? "Class created successfully" : "Class updated successfully"
       );
-      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || `Failed to ${type} class`);

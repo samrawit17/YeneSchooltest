@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { academicYearsAPI } from '@/lib/api';
+import { queryKeys } from '@/lib/query-keys';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -108,13 +109,13 @@ export default function AcademicYearsPage() {
 
   const refreshAcademicContext = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['academic-years'] }),
-      queryClient.invalidateQueries({ queryKey: ['academic-years', schoolId] }),
-      queryClient.invalidateQueries({ queryKey: ['active-academic-year', user?.schoolId] }),
-      queryClient.invalidateQueries({ queryKey: ['current-term', user?.schoolId] }),
-      queryClient.invalidateQueries({ queryKey: ['school-settings', user?.schoolId] }),
-      queryClient.invalidateQueries({ queryKey: ['academic-year-active'] }),
-      queryClient.invalidateQueries({ queryKey: ['current-term'] }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.academicYears.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.academicYears.list(schoolId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.academicYears.active(user?.schoolId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.terms.current(user?.schoolId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(user?.schoolId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.academicYears.currentState }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.terms.currentRoot }),
     ]);
   };
 

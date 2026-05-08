@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsAPI, CreateEventDto, Event } from '@/lib/api/content';
+import { queryKeys } from '@/lib/query-keys';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,7 +51,7 @@ const EventForm = ({ initialData, onSuccess, onCancel }: EventFormProps) => {
     mutationFn: (data: CreateEventDto) => eventsAPI.create(data),
     onSuccess: () => {
       toast.success('Event created successfully');
-      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
       onSuccess?.();
     },
     onError: (error: any) => {
@@ -63,7 +64,7 @@ const EventForm = ({ initialData, onSuccess, onCancel }: EventFormProps) => {
       eventsAPI.update(id, data),
     onSuccess: () => {
       toast.success('Event updated successfully');
-      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
       onSuccess?.();
     },
     onError: (error: any) => {

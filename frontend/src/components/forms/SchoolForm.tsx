@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { schoolsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import { 
   Building2, 
@@ -43,7 +44,7 @@ const SchoolForm = ({ type, data, onSuccess, onCancel }: SchoolFormProps) => {
     },
     onSuccess: () => {
       toast.success(type === "create" ? "School created successfully" : "School updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["schools"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.schools.all });
       onSuccess?.();
     },
     onError: (error: any) => {

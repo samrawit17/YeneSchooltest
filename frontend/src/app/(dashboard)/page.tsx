@@ -70,11 +70,6 @@ const Dashboard = () => {
       return;
     }
 
-    // Redirect HR to /hr
-    if (user?.role === 'HR') {
-      router.replace('/hr');
-      return;
-    }
 
     const fetchDashboard = async () => {
       try {
