@@ -68,7 +68,7 @@ export class AdminDashboardService {
     options?: { role?: string; permissions?: string[] },
   ): Promise<UniversalDashboardResponseDto> {
     try {
-      // Only allow full dashboards for school-scoped roles (ADMIN, REGISTRAR, TEACHER)
+      // Only allow full dashboards for school-scoped roles that share the admin dashboard data model.
       const role = options?.role;
       const permissions = options?.permissions || [];
 
@@ -79,10 +79,7 @@ export class AdminDashboardService {
         return this.getEmptyDashboard(schoolId, permissions);
       }
 
-      if (
-        !role ||
-        !['ADMIN', 'REGISTRAR', 'TEACHER', 'FINANCE'].includes(role)
-      ) {
+      if (!role || !['ADMIN', 'IT_MANAGER', 'REGISTRAR', 'TEACHER', 'FINANCE'].includes(role)) {
         this.logger.warn(
           `User ${userId} with role=${role} is not authorized for a school dashboard`,
         );
@@ -340,7 +337,10 @@ export class AdminDashboardService {
       // Get role distribution of users in school
       const userRoleDistribution = await this.prisma.user.groupBy({
         by: ['role'],
-        where: { schoolId },
+        where: {
+          schoolId,
+          role: { in: ['SUPER_ADMIN', 'ADMIN', 'IT_MANAGER', 'REGISTRAR', 'TEACHER', 'STUDENT', 'PARENT', 'FINANCE'] },
+        },
         _count: { id: true },
       });
 

@@ -26,6 +26,7 @@ export class SchoolSettingsController {
   @Roles(
     Role.SUPER_ADMIN,
     Role.ADMIN,
+    Role.IT_MANAGER,
     Role.PARENT,
     Role.TEACHER,
     Role.STUDENT,
@@ -46,7 +47,7 @@ export class SchoolSettingsController {
 
   @Get(':key')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   async getSetting(
     @Param('schoolId') schoolId: string,
     @Param('key') key: string,
@@ -64,7 +65,7 @@ export class SchoolSettingsController {
 
   @Put(':key')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   async setSetting(
     @Param('schoolId') schoolId: string,
     @Param('key') key: string,
@@ -87,7 +88,7 @@ export class SchoolSettingsController {
 
   @Delete(':key')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   async deleteSetting(
     @Param('schoolId') schoolId: string,
     @Param('key') key: string,
@@ -104,7 +105,7 @@ export class SchoolSettingsController {
 
   @Post('batch')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   async batchUpdate(
     @Param('schoolId') schoolId: string,
     @Body() settings: Record<string, any>,

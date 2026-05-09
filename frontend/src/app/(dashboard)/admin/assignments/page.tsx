@@ -9,7 +9,6 @@ import {
   Users,
   GraduationCap,
   Loader2,
-  Search,
   Plus,
   Edit,
   Trash2,
@@ -36,7 +35,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
@@ -55,14 +53,10 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  classesAPI, 
-  subjectsAPI, 
-  authAPI, 
-  classSubjectsAPI, 
-  sectionsAPI,
-  academicYearsAPI 
-} from "@/lib/api/admin";
+import { classesAPI, sectionsAPI } from "@/lib/api/academics";
+import { authAPI } from "@/lib/api/auth";
+import { classSubjectsAPI } from "@/lib/api/admin";
+import { Filters, useFilters } from "@/components/filters/Filters";
 
 interface AssignmentCellTarget {
   classId: string;
@@ -87,12 +81,11 @@ const TeacherAssignmentPage = () => {
   // Data State
   const [matrixData, setMatrixData] = useState<any>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
-  const [academicYears, setAcademicYears] = useState<any[]>([]);
-  const [selectedYearId, setSelectedYearId] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
+  const { selectedYear, setSelectedYear, selectedSearch, setSelectedSearch } = useFilters({ academicYear: true, search: true });
+
   // UI State
-  const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"matrix" | "list">("matrix");
   
   // Modal State
@@ -136,27 +129,16 @@ const TeacherAssignmentPage = () => {
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const [yearsRes, teachersRes] = await Promise.all([
-        academicYearsAPI.getAll(),
-        authAPI.getTeachers({ limit: "200" })
-      ]);
-      
-      const years = yearsRes.data || [];
-      setAcademicYears(years);
-      setTeachers(teachersRes.data?.data || []);
-
-      const activeYear = years.find((y: any) => y.isActive) || years[0];
-      if (activeYear) {
-        setSelectedYearId(activeYear.id);
-        fetchMatrix(activeYear.id);
-      }
+      const teachersRes = await authAPI.getTeachers({ limit: "200" });
+      const teachersData = Array.isArray(teachersRes.data) ? teachersRes.data : teachersRes.data?.data || [];
+      setTeachers(teachersData);
     } catch (error) {
       console.error("Failed to fetch initial assignment data", error);
       toast.error("Failed to load setup data");
     } finally {
       setLoading(false);
     }
-  }, [fetchMatrix]);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
@@ -164,10 +146,11 @@ const TeacherAssignmentPage = () => {
     }
   }, [isAuthenticated, authLoading, fetchInitialData]);
 
-  const handleYearChange = (id: string) => {
-    setSelectedYearId(id);
-    fetchMatrix(id);
-  };
+  useEffect(() => {
+    if (selectedYear) {
+      fetchMatrix(selectedYear);
+    }
+  }, [selectedYear, fetchMatrix]);
 
   const openAssignModal = (sectionId: string, subjectId: string, teacherId?: string) => {
     const row = matrixData?.sections?.find((s: any) => s.id === sectionId);
@@ -203,7 +186,7 @@ const TeacherAssignmentPage = () => {
   };
 
   const handleSaveAssignment = async () => {
-    if (!selectedCell || !selectedYearId || !user?.schoolId) return;
+    if (!selectedCell || !selectedYear || !user?.schoolId) return;
 
     try {
       setSaving(true);
@@ -211,14 +194,14 @@ const TeacherAssignmentPage = () => {
         sectionIds: [selectedCell.sectionId],
         subjectIds: [selectedCell.subjectId],
         teacherId: selectedSubjectTeacherId === "none" ? null : selectedSubjectTeacherId,
-        academicYearId: selectedYearId,
+        academicYearId: selectedYear,
         classId: selectedCell.classId
       });
 
       toast.success("Assignment updated");
       setShowAssignModal(false);
       setSelectedCell(null);
-      fetchMatrix(selectedYearId);
+      fetchMatrix(selectedYear);
     } catch (error) {
       toast.error("Failed to save assignment");
     } finally {
@@ -238,7 +221,7 @@ const TeacherAssignmentPage = () => {
         sectionIds: selectedSections,
         subjectIds: selectedSubjects,
         teacherId: selectedBulkTeacherId,
-        academicYearId: selectedYearId,
+        academicYearId: selectedYear,
       });
 
       toast.success(`Assigned to ${selectedSections.length} sections and ${selectedSubjects.length} subjects`);
@@ -246,7 +229,7 @@ const TeacherAssignmentPage = () => {
       setSelectedSections([]);
       setSelectedSubjects([]);
       setSelectedBulkTeacherId("");
-      fetchMatrix(selectedYearId);
+      fetchMatrix(selectedYear);
     } catch (error) {
       toast.error("Bulk assignment failed");
     } finally {
@@ -275,8 +258,8 @@ const TeacherAssignmentPage = () => {
       toast.success("Homeroom assignment updated");
       setShowHomeroomModal(false);
       setSelectedHomeroomTarget(null);
-      if (selectedYearId) {
-        fetchMatrix(selectedYearId);
+      if (selectedYear) {
+        fetchMatrix(selectedYear);
       }
     } catch (error) {
       toast.error("Failed to update homeroom assignment");
@@ -305,7 +288,7 @@ const TeacherAssignmentPage = () => {
   const matrixSections = matrixData?.sections || [];
   const matrixSubjects = matrixData?.subjects || [];
   const filteredSections = matrixSections.filter((s: any) => {
-    const term = searchTerm.toLowerCase();
+    const term = selectedSearch.toLowerCase();
     return (
       (s.class?.name || "").toLowerCase().includes(term) ||
       (s.name || "").toLowerCase().includes(term) ||
@@ -326,17 +309,6 @@ const TeacherAssignmentPage = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          <Select value={selectedYearId} onValueChange={handleYearChange}>
-            <SelectTrigger className="w-[200px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm">
-              <SelectValue placeholder="Academic Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {academicYears.map(y => (
-                <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
           <Button 
             variant="default" 
             className="bg-[#e35336] hover:bg-[#e35336] shadow-md"
@@ -348,18 +320,20 @@ const TeacherAssignmentPage = () => {
         </div>
       </div>
 
-      {/* SEARCH AND TOOLS */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-        <div className="relative w-full md:w-[400px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input 
-            placeholder="Search classes or sections..." 
-            className="pl-10 border-slate-200 dark:border-slate-600 outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+      {/* Filters */}
+      <Card className="shadow-sm bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+        <CardContent className="pt-4 pb-4">
+          <Filters
+            config={{ academicYear: true, search: true }}
+            selectedYear={selectedYear}
+            onYearChange={setSelectedYear}
+            selectedSearch={selectedSearch}
+            onSearchChange={setSelectedSearch}
+            searchPlaceholder="Search classes or sections..."
+            className="w-full"
           />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* MATRIX GRID VIEW */}
       <Card className="border-none shadow-xl bg-white dark:bg-slate-800 overflow-hidden">
@@ -367,10 +341,10 @@ const TeacherAssignmentPage = () => {
           <div className="flex justify-between items-center">
             <CardTitle className="text-lg dark:text-white">Assignment Matrix</CardTitle>
             <div className="flex gap-2">
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-100">
-                {matrixSections.length} Rows
+              <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-100 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700">
+                {filteredSections.length} Rows
               </Badge>
-              <Badge variant="secondary" className="bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-100">
+              <Badge variant="secondary" className="bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-100 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700">
                 {matrixSubjects.length} Subjects
               </Badge>
             </div>
@@ -481,7 +455,7 @@ const TeacherAssignmentPage = () => {
               <SelectTrigger className="w-full h-12 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
                 <SelectValue placeholder="Select Teacher" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[200]">
                 <SelectItem value="none" className="text-red-600 font-medium">Remove Assignment</SelectItem>
                 {teachers.map(t => (
                   <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -548,7 +522,7 @@ const TeacherAssignmentPage = () => {
             <div className="space-y-3">
               <h4 className="font-semibold text-sm text-slate-900 dark:text-white border-b pb-2">Select Sections</h4>
               <ScrollArea className="h-[300px] rounded-md border p-2 dark:border-slate-600">
-                {matrixSections.map((s: any) => (
+                {filteredSections.map((s: any) => (
                   <div 
                     key={s.id} 
                     className={`flex items-center p-2 rounded cursor-pointer mb-1 text-sm ${
@@ -566,7 +540,7 @@ const TeacherAssignmentPage = () => {
                 ))}
               </ScrollArea>
               <div className="flex gap-2">
-                <Button variant="link" size="sm" onClick={() => setSelectedSections(matrixSections.map((s: any) => s.id))}>Select All</Button>
+                <Button variant="link" size="sm" onClick={() => setSelectedSections(filteredSections.map((s: any) => s.id))}>Select All</Button>
                 <Button variant="link" size="sm" onClick={() => setSelectedSections([])}>Clear</Button>
               </div>
             </div>

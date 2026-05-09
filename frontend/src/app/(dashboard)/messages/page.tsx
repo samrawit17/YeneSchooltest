@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Plus, Search, Send } from "lucide-react";
 
-const STAFF_ROLES = new Set(["ADMIN", "REGISTRAR", "TEACHER", "FINANCE"]);
+const STAFF_ROLES = new Set(["ADMIN", "REGISTRAR", "TEACHER", "FINANCE", "IT_MANAGER"]);
 
 export default function MessagesPage() {
   const { user } = useAuth();

@@ -70,6 +70,11 @@ const Dashboard = () => {
       return;
     }
 
+    if (user?.role === 'IT_MANAGER') {
+      router.replace('/it-manager');
+      return;
+    }
+
 
     const fetchDashboard = async () => {
       try {

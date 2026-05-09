@@ -5,7 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JWT_COOKIE_NAME } from '../auth.service';
 
-import { DEFAULT_ROLE_PERMISSIONS } from '../constants/default-permissions.constant';
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  IT_MANAGER_FORBIDDEN_PERMISSIONS,
+} from '../constants/default-permissions.constant';
 import { Role } from '../types/role.enum';
 
 @Injectable()
@@ -62,6 +65,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ...user.userPermissions.map((up) => up.permission.name),
       ...rolePermissions.map((rp) => rp.permission.name),
     ]);
+
+    if (user.role === Role.IT_MANAGER) {
+      for (const forbiddenPermission of IT_MANAGER_FORBIDDEN_PERMISSIONS) {
+        allPermissions.delete(forbiddenPermission);
+      }
+    }
 
     return {
       id: user.id,

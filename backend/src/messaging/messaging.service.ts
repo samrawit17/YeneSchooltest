@@ -11,6 +11,7 @@ import { Role } from '../auth/types/role.enum';
 
 const STAFF_ROLES: Role[] = [
   Role.ADMIN,
+  Role.IT_MANAGER,
   Role.REGISTRAR,
   Role.TEACHER,
   Role.FINANCE,

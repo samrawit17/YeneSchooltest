@@ -33,7 +33,7 @@ export class EventController {
   constructor(private eventService: EventService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('event:create')
   async create(
     @Request() req: AuthenticatedRequest,
@@ -95,7 +95,7 @@ export class EventController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('event:update')
   async update(
     @Param('id') id: string,
@@ -110,7 +110,7 @@ export class EventController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('event:delete')
   async delete(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     const schoolId = req.user.schoolId;

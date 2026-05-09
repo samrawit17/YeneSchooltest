@@ -35,7 +35,7 @@ const SingleParentPage = ({ params }: PageProps) => {
   // Set breadcrumbs with parent name
   useEffect(() => {
     const parentName = parent?.user?.name || parent?.name || "Parent Profile";
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+    const isAdmin = ((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') || user?.role === 'SUPER_ADMIN';
     
     if (!breadcrumbSetRef.current && parent) {
       breadcrumbSetRef.current = true;

@@ -36,7 +36,7 @@ export class AnnouncementController {
   constructor(private announcementService: AnnouncementService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('announcement:create')
   async create(
     @Request() req: AuthenticatedRequest,
@@ -87,7 +87,7 @@ export class AnnouncementController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('announcement:update')
   async update(
     @Param('id') id: string,
@@ -102,7 +102,7 @@ export class AnnouncementController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('announcement:delete')
   async delete(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     const schoolId = req.user.schoolId;

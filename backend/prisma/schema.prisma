@@ -1759,6 +1759,7 @@ enum SubmissionStatus {
 enum Role {
   SUPER_ADMIN
   ADMIN
+  IT_MANAGER
   REGISTRAR
   TEACHER
   STUDENT

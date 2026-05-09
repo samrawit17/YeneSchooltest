@@ -49,7 +49,7 @@ export class AssessmentsController {
   }
 
   @Get('subjects/:id/score-entry')
-  @Roles(Role.TEACHER, Role.REGISTRAR, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.TEACHER, Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async getScoreEntry(@Request() req: AuthRequest, @Param('id') id: string) {
     return this.assessmentsService.getScoreEntry(
       req.user.id,
@@ -60,7 +60,7 @@ export class AssessmentsController {
   }
 
   @Post('subjects/:id/scores')
-  @Roles(Role.TEACHER, Role.REGISTRAR, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.TEACHER, Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async saveScores(
     @Request() req: AuthRequest,
     @Param('id') id: string,
@@ -136,7 +136,7 @@ export class AssessmentsController {
   }
 
   @Get('registrar/missing-marks')
-  @Roles(Role.REGISTRAR, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async getMissingMarks(
     @Request() req: AuthRequest,
     @Query() query: ListAssessmentsFilterDto,
@@ -145,13 +145,13 @@ export class AssessmentsController {
   }
 
   @Get('config/weights')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.REGISTRAR)
   async getWeights(@Request() req: AuthRequest) {
     return this.assessmentsService.getWeights(req.user.schoolId);
   }
 
   @Put('config/weights')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async updateWeights(
     @Request() req: AuthRequest,
     @Body() dto: UpdateAssessmentWeightsDto,
@@ -160,7 +160,7 @@ export class AssessmentsController {
   }
 
   @Post()
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.TEACHER)
   async createAssessment(
     @Request() req: AuthRequest,
     @Body() dto: CreateAssessmentDto,
@@ -174,7 +174,7 @@ export class AssessmentsController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.REGISTRAR)
   async listAssessments(
     @Request() req: AuthRequest,
     @Query() query: ListAssessmentsFilterDto,
@@ -183,7 +183,7 @@ export class AssessmentsController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.REGISTRAR, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.REGISTRAR, Role.TEACHER)
   async getAssessmentById(
     @Request() req: AuthRequest,
     @Param('id') id: string,
@@ -192,7 +192,7 @@ export class AssessmentsController {
   }
 
   @Post(':id/subjects')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.TEACHER)
   async addSubjects(
     @Request() req: AuthRequest,
     @Param('id') id: string,
@@ -208,7 +208,7 @@ export class AssessmentsController {
   }
 
   @Post(':id/lock')
-  @Roles(Role.REGISTRAR, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async lockAssessment(@Request() req: AuthRequest, @Param('id') id: string) {
     return this.assessmentsService.lockAssessment(req.user.schoolId, id);
   }

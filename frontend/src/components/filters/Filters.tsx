@@ -9,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 
@@ -20,6 +21,7 @@ export interface FilterConfig {
   section?: boolean;
   status?: boolean;
   curriculum?: boolean;
+  search?: boolean;
 }
 
 export interface FilterOptions {
@@ -50,6 +52,10 @@ selectedSection?: string;
 
   selectedCurriculum?: string;
   onCurriculumChange?: (curriculum: string) => void;
+
+  selectedSearch?: string;
+  onSearchChange?: (search: string) => void;
+  searchPlaceholder?: string;
 
   disabled?: boolean;
   className?: string;
@@ -91,7 +97,11 @@ export function Filters({
   onStatusChange,
   selectedCurriculum = "",
   onCurriculumChange,
-  
+
+  selectedSearch = "",
+  onSearchChange,
+  searchPlaceholder = "Search...",
+
   disabled = false,
   className = "",
 }: FiltersProps) {
@@ -241,6 +251,7 @@ export function Filters({
   if (initialLoading) {
     return (
       <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full ${className}`}>
+        {config.search && <Skeleton className="h-9 w-full" />}
         {config.academicYear && <Skeleton className="h-9 w-full" />}
         {config.term && <Skeleton className="h-9 w-full" />}
         {config.curriculum && <Skeleton className="h-9 w-full" />}
@@ -253,6 +264,19 @@ export function Filters({
 
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full ${className}`}>
+      {config.search && onSearchChange && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder={searchPlaceholder}
+            className="pl-10 h-9 text-sm w-full"
+            value={selectedSearch}
+            onChange={(e) => onSearchChange(e.target.value)}
+            disabled={disabled}
+          />
+        </div>
+      )}
+
       {config.academicYear && (
         <Select
           value={selectedYear || ""}
@@ -422,6 +446,7 @@ export function useFilters(initialConfig: FilterConfig = {}) {
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedCurriculum, setSelectedCurriculum] = useState("");
+  const [selectedSearch, setSelectedSearch] = useState("");
 
   // Set initial values when currentAcademicYear/currentTerm are available
   useEffect(() => {
@@ -443,6 +468,7 @@ export function useFilters(initialConfig: FilterConfig = {}) {
     setSelectedSection("");
     setSelectedStatus("");
     setSelectedCurriculum("");
+    setSelectedSearch("");
   }, [currentAcademicYear, currentTerm]);
 
   const getActiveFilters = useCallback(() => {
@@ -453,8 +479,9 @@ export function useFilters(initialConfig: FilterConfig = {}) {
     if (selectedSection) filters.sectionId = selectedSection;
     if (selectedStatus) filters.status = selectedStatus;
     if (selectedCurriculum) filters.curriculum = selectedCurriculum;
+    if (selectedSearch) filters.search = selectedSearch;
     return filters;
-  }, [selectedYear, selectedTerm, selectedGrade, selectedSection, selectedStatus, selectedCurriculum]);
+  }, [selectedYear, selectedTerm, selectedGrade, selectedSection, selectedStatus, selectedCurriculum, selectedSearch]);
 
   return {
     selectedYear,
@@ -469,6 +496,8 @@ export function useFilters(initialConfig: FilterConfig = {}) {
     setSelectedStatus,
     selectedCurriculum,
     setSelectedCurriculum,
+    selectedSearch,
+    setSelectedSearch,
     resetFilters,
     getActiveFilters,
   };

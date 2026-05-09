@@ -26,7 +26,30 @@ export const authAPI = {
       },
     }),
 
-  getUsers: (role?: string) => api.get('/auth/users', { params: { role } }),
+  getUsers: (
+    roleOrParams?:
+      | string
+      | {
+          role?: string;
+          roles?: string[];
+          page?: number;
+          limit?: number;
+          search?: string;
+        }
+  ) => {
+    const params =
+      typeof roleOrParams === "string"
+        ? { role: roleOrParams }
+        : {
+            role: roleOrParams?.role,
+            roles: roleOrParams?.roles?.join(","),
+            page: roleOrParams?.page,
+            limit: roleOrParams?.limit,
+            search: roleOrParams?.search,
+          };
+
+    return api.get('/auth/users', { params });
+  },
 
   getTeachers: (params?: { page?: string; limit?: string; search?: string }) =>
     api.get('/auth/users/teachers', { params }),

@@ -202,7 +202,7 @@ export class GradingController {
    * Get submitted grades for review
    */
   @Get('registrar/review')
-  @Roles(Role.REGISTRAR, Role.ADMIN)
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER)
   async getGradesForReview(
     @Request() req: AuthRequest,
     @Query() filter: GradeFilterDto,
@@ -214,7 +214,7 @@ export class GradingController {
    * Get assessment scores for review
    */
   @Get('registrar/assessments')
-  @Roles(Role.REGISTRAR, Role.ADMIN)
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER)
   async getAssessmentScoresForReview(
     @Request() req: AuthRequest,
     @Query() filter: GradeFilterDto,
@@ -226,7 +226,7 @@ export class GradingController {
    * Review a grade (approve/reject)
    */
   @Put('registrar/grades/:id/review')
-  @Roles(Role.REGISTRAR, Role.ADMIN)
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER)
   async reviewGrade(
     @Request() req: AuthRequest,
     @Param('id') gradeId: string,
@@ -244,7 +244,7 @@ export class GradingController {
    * Bulk approve grades
    */
   @Post('registrar/grades/bulk-approve')
-  @Roles(Role.REGISTRAR, Role.ADMIN)
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER)
   async bulkApproveGrades(
     @Request() req: AuthRequest,
     @Body('gradeIds') gradeIds: string[],
@@ -260,7 +260,7 @@ export class GradingController {
    * Bulk reject grades
    */
   @Post('registrar/grades/bulk-reject')
-  @Roles(Role.REGISTRAR, Role.ADMIN)
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER)
   async bulkRejectGrades(
     @Request() req: AuthRequest,
     @Body() body: { gradeIds: string[]; comment: string },
@@ -277,7 +277,7 @@ export class GradingController {
    * Get subject performance report
    */
   @Get('registrar/reports/subject')
-  @Roles(Role.REGISTRAR, Role.ADMIN)
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER)
   async getSubjectPerformanceReport(
     @Request() req: AuthRequest,
     @Query('academicYear') academicYear: string,
@@ -296,7 +296,7 @@ export class GradingController {
    * Get class summary report
    */
   @Get('registrar/reports/class')
-  @Roles(Role.REGISTRAR, Role.ADMIN)
+  @Roles(Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER)
   async getClassSummaryReport(
     @Request() req: AuthRequest,
     @Query('academicYear') academicYear: string,
@@ -357,7 +357,7 @@ export class GradingController {
    * Calculate rankings for curriculum period (usually called when term ends)
    */
   @Post('admin/calculate-rankings')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async calculateRankings(
     @Request() req: AuthRequest,
     @Body() body: { academicYearId: string; termId?: string },
@@ -374,7 +374,7 @@ export class GradingController {
    * Create grading components
    */
   @Post('admin/grading-components')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async createGradingComponents(
     @Request() req: AuthRequest,
     @Body() dto: GradingComponentDto[],
@@ -386,7 +386,7 @@ export class GradingController {
    * Get grading components
    */
   @Get('admin/grading-components')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.TEACHER)
   async getGradingComponents(@Request() req: AuthRequest) {
     return this.gradingService.getGradingComponents(req.user.schoolId);
   }
@@ -404,7 +404,7 @@ export class GradingController {
    * Get assessment types config (admin only)
    */
   @Get('admin/assessment-types')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async getAssessmentTypes(@Request() req: AuthRequest) {
     return this.gradingService.getAssessmentTypes(req.user.schoolId);
   }
@@ -413,7 +413,7 @@ export class GradingController {
    * Create assessment types config (admin only)
    */
   @Post('admin/assessment-types')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async createAssessmentTypes(
     @Request() req: AuthRequest,
     @Body() dto: { code: string; name: string; percentage: number }[],
@@ -425,7 +425,7 @@ export class GradingController {
    * Create grade scale
    */
   @Post('admin/grade-scales')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async createGradeScales(
     @Request() req: AuthRequest,
     @Body() dto: GradeScaleDto[],
@@ -437,7 +437,7 @@ export class GradingController {
    * Get grade scale
    */
   @Get('admin/grade-scales')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async getGradeScale(@Request() req: AuthRequest) {
     return this.gradingService.getGradeScale(req.user.schoolId);
   }
@@ -446,7 +446,7 @@ export class GradingController {
    * Assign teacher to subject/class/section
    */
   @Post('admin/teacher-assignments')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async assignTeacher(@Body() dto: TeacherAssignmentDto) {
     return this.gradingService.assignTeacher(dto);
   }
@@ -455,7 +455,7 @@ export class GradingController {
    * Remove teacher assignment
    */
   @Delete('admin/teacher-assignments/:id')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async removeTeacherAssignment(@Param('id') assignmentId: string) {
     return this.gradingService.removeTeacherAssignment(assignmentId);
   }
@@ -465,7 +465,7 @@ export class GradingController {
    * Dynamically calculates based on curriculum type and period weights
    */
   @Get('student/final-grades')
-  @Roles(Role.STUDENT, Role.ADMIN, Role.TEACHER, Role.SUPER_ADMIN)
+  @Roles(Role.STUDENT, Role.ADMIN, Role.IT_MANAGER, Role.TEACHER, Role.SUPER_ADMIN)
   async getStudentFinalGrades(
     @Request() req: any,
     @Query('academicYear') academicYear: string,
@@ -492,7 +492,7 @@ export class GradingController {
    * Parent: View child's final aggregated grades with period breakdown
    */
   @Get('parent/final-grades/:studentId')
-  @Roles(Role.PARENT, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.PARENT, Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async getChildFinalGrades(
     @Request() req: any,
     @Param('studentId') studentId: string,
@@ -520,7 +520,7 @@ export class GradingController {
    * Calculate final grade for a specific subject
    */
   @Get('subject/final-grade')
-  @Roles(Role.TEACHER, Role.REGISTRAR, Role.ADMIN)
+  @Roles(Role.TEACHER, Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER)
   async calculateSubjectFinalGrade(
     @Query('studentId') studentId: string,
     @Query('subjectId') subjectId: string,
@@ -541,7 +541,7 @@ export class GradingController {
   @Roles(
     Role.STUDENT,
     Role.PARENT,
-    Role.ADMIN,
+    Role.ADMIN, Role.IT_MANAGER,
     Role.TEACHER,
     Role.REGISTRAR,
     Role.FINANCE,
@@ -581,7 +581,7 @@ export class GradingController {
    * Get mark entry progress - percentage of grades entered per subject/class
    */
   @Get('admin/entry-progress')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.REGISTRAR)
   async getEntryProgress(
     @Request() req: AuthRequest,
     @Query('academicYear') academicYear: string,
@@ -598,7 +598,7 @@ export class GradingController {
    * Send reminder to teachers who haven't completed grade entry
    */
   @Post('admin/send-reminder')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async sendReminder(
     @Request() req: AuthRequest,
     @Body() body: { academicYear: string; term: string },
@@ -616,7 +616,7 @@ export class GradingController {
    * Get publish checklist - assessments ready to be published
    */
   @Get('admin/publish-checklist')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.REGISTRAR)
   async getPublishChecklist(
     @Request() req: AuthRequest,
     @Query('academicYear') academicYear: string,
@@ -633,7 +633,7 @@ export class GradingController {
    * Bulk publish results to students and parents
    */
   @Post('admin/bulk-publish')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async bulkPublish(
     @Request() req: AuthRequest,
     @Body() body: { assessmentIds: string[]; notifyParents: boolean },
@@ -649,7 +649,7 @@ export class GradingController {
    * Get promotion list - students with promotion recommendations
    */
   @Get('admin/promotion-list')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.REGISTRAR)
   async getPromotionList(
     @Request() req: AuthRequest,
     @Query('academicYear') academicYear: string,
@@ -663,7 +663,7 @@ export class GradingController {
    * Override promotion recommendation for a student
    */
   @Post('admin/promotion-override')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async overridePromotion(
     @Request() req: AuthRequest,
     @Body() body: { studentId: string; recommendation: string },
@@ -679,7 +679,7 @@ export class GradingController {
    * Confirm promotions for the academic year
    */
   @Post('admin/confirm-promotions')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async confirmPromotions(
     @Request() req: AuthRequest,
     @Body() body: { academicYear: string; notifyParents: boolean },
@@ -695,7 +695,7 @@ export class GradingController {
    * Bulk confirm all promotions
    */
   @Post('admin/bulk-confirm-promotions')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async bulkConfirmPromotions(
     @Request() req: AuthRequest,
     @Body() body: { academicYear: string; notifyParents: boolean },

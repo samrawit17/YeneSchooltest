@@ -19,7 +19,7 @@ import { SirenService } from './siren.service';
 
 @Controller('api/siren')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.IT_MANAGER)
 export class SirenController {
   constructor(private readonly sirenService: SirenService) {}
 

@@ -12,6 +12,8 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import type { Response as ExpressResponse } from 'express';
 import { CredentialService, BulkCredentialResult } from './credential.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -44,7 +46,12 @@ export interface CreateStaffDto {
   staff: Array<{
     name: string;
     email: string;
-    role: Role.TEACHER | Role.ADMIN | Role.REGISTRAR | Role.FINANCE;
+    role:
+      | Role.TEACHER
+      | Role.ADMIN
+      | Role.IT_MANAGER
+      | Role.REGISTRAR
+      | Role.FINANCE;
     phone?: string;
     // Option to auto-generate credentials (default: true)
     generateCredentials?: boolean;
@@ -62,6 +69,61 @@ export class CredentialController {
     private readonly credentialService: CredentialService,
     private readonly prismaService: PrismaService,
   ) {}
+
+  private async createStaffUserRecord(
+    client: PrismaService | Prisma.TransactionClient,
+    data: {
+      email: string;
+      username: string;
+      password: string;
+      name: string;
+      role: Role;
+      schoolId: string;
+      mustChangePassword: boolean;
+      phone?: string;
+    },
+  ) {
+    const now = new Date();
+    const rows = await client.$queryRaw<
+      Array<{
+        id: string;
+        email: string | null;
+        username: string | null;
+        name: string;
+        role: string;
+      }>
+    >(Prisma.sql`
+      INSERT INTO "User" (
+        "id",
+        "email",
+        "username",
+        "password",
+        "name",
+        "role",
+        "schoolId",
+        "createdAt",
+        "updatedAt",
+        "mustChangePassword",
+        "phone"
+      )
+      VALUES (
+        ${randomUUID()},
+        ${data.email},
+        ${data.username},
+        ${data.password},
+        ${data.name},
+        ${data.role}::"Role",
+        ${data.schoolId},
+        ${now},
+        ${now},
+        ${data.mustChangePassword},
+        ${data.phone ?? null}
+      )
+      RETURNING "id", "email", "username", "name", "role"
+    `);
+
+    return rows[0];
+  }
 
   /**
    * Generate a preview of the next student admission number
@@ -155,6 +217,7 @@ export class CredentialController {
         roleType = 'T';
         break;
       case Role.ADMIN:
+      case Role.IT_MANAGER:
         nextSequence = (counter?.adminCount || 0) + 1;
         roleType = 'A';
         break;
@@ -218,6 +281,7 @@ export class CredentialController {
       } else if (
         role === Role.TEACHER ||
         role === Role.ADMIN ||
+        role === Role.IT_MANAGER ||
         role === Role.REGISTRAR ||
         role === Role.FINANCE
       ) {
@@ -232,7 +296,7 @@ export class CredentialController {
         });
       } else {
         throw new BadRequestException(
-          'Role must be STUDENT, TEACHER, ADMIN, REGISTRAR, or FINANCE',
+          'Role must be STUDENT, TEACHER, ADMIN, IT_MANAGER, REGISTRAR, or FINANCE',
         );
       }
     }
@@ -389,6 +453,7 @@ export class CredentialController {
         role:
           | Role.TEACHER
           | Role.ADMIN
+          | Role.IT_MANAGER
           | Role.REGISTRAR
           | Role.FINANCE;
         phone?: string;
@@ -439,12 +504,13 @@ export class CredentialController {
         ![
           Role.TEACHER,
           Role.ADMIN,
+          Role.IT_MANAGER,
           Role.REGISTRAR,
           Role.FINANCE,
         ].includes(member.role)
       ) {
         throw new BadRequestException(
-          `Invalid role: ${member.role}. Must be TEACHER, ADMIN, REGISTRAR, or FINANCE`,
+          `Invalid role: ${member.role}. Must be TEACHER, ADMIN, IT_MANAGER, REGISTRAR, or FINANCE`,
         );
       }
 
@@ -456,17 +522,15 @@ export class CredentialController {
       );
 
       // Create user
-      const user = await this.prismaService.user.create({
-        data: {
-          email: member.email,
-          username: credentials.username,
-          password: credentials.hashedPassword,
-          name: member.name,
-          role: member.role,
-          schoolId,
-          mustChangePassword: true,
-          phone: member.phone || undefined,
-        },
+      const user = await this.createStaffUserRecord(this.prismaService, {
+        email: member.email,
+        username: credentials.username,
+        password: credentials.hashedPassword,
+        name: member.name,
+        role: member.role,
+        schoolId,
+        mustChangePassword: true,
+        phone: member.phone,
       });
 
       // Create teacher profile for TEACHER role
@@ -558,12 +622,13 @@ export class CredentialController {
         ![
           Role.TEACHER,
           Role.ADMIN,
+          Role.IT_MANAGER,
           Role.REGISTRAR,
           Role.FINANCE,
         ].includes(member.role)
       ) {
         throw new BadRequestException(
-          `Invalid role: ${member.role}. Must be TEACHER, ADMIN, REGISTRAR, or FINANCE`,
+          `Invalid role: ${member.role}. Must be TEACHER, ADMIN, IT_MANAGER, REGISTRAR, or FINANCE`,
         );
       }
 
@@ -599,17 +664,15 @@ export class CredentialController {
 
       const createdMember = await this.prismaService.$transaction(
         async (tx) => {
-          const user = await tx.user.create({
-            data: {
-              email: member.email,
-              username,
-              password: hashedPassword,
-              name: member.name,
-              role: member.role,
-              schoolId,
-              mustChangePassword: generateCredentials,
-              phone: member.phone || undefined,
-            },
+          const user = await this.createStaffUserRecord(tx, {
+            email: member.email,
+            username,
+            password: hashedPassword,
+            name: member.name,
+            role: member.role,
+            schoolId,
+            mustChangePassword: generateCredentials,
+            phone: member.phone,
           });
 
           if (member.role === Role.TEACHER) {

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useThemeStore } from '@/lib/themeStore';
 
 // User role types based on backend
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'REGISTRAR' | 'FINANCE';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'IT_MANAGER' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'REGISTRAR' | 'FINANCE';
 
 export interface User {
   id: string;
@@ -161,6 +161,7 @@ export const hasPermission = (user: User | null, permission: string): boolean =>
    const rolePermissions: Record<UserRole, string[]> = {
      SUPER_ADMIN: ['*'],
      ADMIN: ['manage_users', 'manage_schools', 'student:create', 'student:read', 'student:update', 'student:approve', 'teacher:create', 'teacher:read', 'class:read', 'class:create', 'exam:create', 'exam:read', 'fee:create', 'fee:read', 'announcement:create', 'announcement:read', 'report:read', 'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete', 'finance:student_fees:generate', 'finance:student_fees:read', 'finance:payments:record', 'finance:reports:read'],
+     IT_MANAGER: ['user:read', 'student:read', 'parent:read', 'teacher:read', 'class:create', 'class:read', 'class:update', 'section:create', 'section:read', 'section:update', 'section:delete', 'timetable:create', 'timetable:read', 'timetable:update', 'timetable:manage', 'announcement:create', 'announcement:read', 'event:create', 'event:read', 'dashboard:view', 'academic_year:create', 'academic_year:read', 'academic_year:update', 'academic_year:delete'],
      TEACHER: ['exam:create', 'exam:update', 'exam:read', 'result:publish', 'result:read', 'subject:read', 'student:read', 'announcement:create', 'announcement:read', 'attendance:create', 'attendance:read', 'lesson:read', 'lesson:create'],
      STUDENT: ['exam:read', 'result:read', 'announcement:read', 'fee:read', 'attendance:read', 'timetable:read', 'assignment:read'],
      PARENT: ['student:read', 'result:read', 'announcement:read', 'fee:read', 'attendance:read', 'timetable:read', 'assignment:read'],

@@ -29,7 +29,7 @@ export class ReportCardController {
   ) {}
 
   @Post('generate')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
   @Permissions('report_card:create')
   async generateReportCard(
     @Request() req,
@@ -56,7 +56,7 @@ export class ReportCardController {
   }
 
   @Post('bulk-generate')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:create')
   async bulkGenerate(
     @Request() req,
@@ -128,7 +128,7 @@ export class ReportCardController {
   }
 
   @Put(':id/remarks')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   async updateRemarks(
     @Param('id') id: string,
@@ -144,21 +144,21 @@ export class ReportCardController {
   }
 
   @Put('publish')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:publish')
   async publishReportCards(@Body() body: { ids: string[] }) {
     return this.reportCardService.publishReportCards(body.ids);
   }
 
   @Put('unpublish')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:publish')
   async unpublishReportCards(@Body() body: { ids: string[] }) {
     return this.reportCardService.unpublishReportCards(body.ids);
   }
 
   @Post('calculate-ranks')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   async calculateRanks(
     @Body() body: { classId: string; academicYear: string; term: string },
@@ -171,7 +171,7 @@ export class ReportCardController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:delete')
   async deleteReportCard(@Param('id') id: string) {
     return this.reportCardService.deleteReportCard(id);

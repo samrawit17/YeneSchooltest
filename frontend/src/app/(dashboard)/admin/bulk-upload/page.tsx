@@ -218,7 +218,7 @@ export default function BulkUploadPage() {
     name: "",
     email: "",
     phone: "",
-    role: "TEACHER" as "TEACHER" | "ADMIN" | "REGISTRAR" | "FINANCE",
+    role: "TEACHER" as "TEACHER" | "ADMIN" | "IT_MANAGER" | "REGISTRAR" | "FINANCE",
   });
 
   useEffect(() => {
@@ -1003,7 +1003,7 @@ export default function BulkUploadPage() {
                           <Label>Role</Label>
                           <Select
                             value={staffForm.role}
-                            onValueChange={(value: "TEACHER" | "ADMIN" | "REGISTRAR" | "FINANCE") =>
+                            onValueChange={(value: "TEACHER" | "ADMIN" | "IT_MANAGER" | "REGISTRAR" | "FINANCE") =>
                               setStaffForm((current) => ({ ...current, role: value }))
                             }
                           >
@@ -1013,6 +1013,7 @@ export default function BulkUploadPage() {
                             <SelectContent>
                               <SelectItem value="TEACHER">Teacher</SelectItem>
                               <SelectItem value="ADMIN">Admin</SelectItem>
+                              <SelectItem value="IT_MANAGER">IT Manager</SelectItem>
                               <SelectItem value="REGISTRAR">Registrar</SelectItem>
                               <SelectItem value="FINANCE">Finance</SelectItem>
                             </SelectContent>

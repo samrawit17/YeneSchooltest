@@ -37,13 +37,13 @@ export class ExamsController {
 
   // ==================== ADMIN ENDPOINTS ====================
   @Post()
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async createExam(@Request() req: AuthRequest, @Body() dto: CreateExamDto) {
     return this.examsService.createExam(req.user.schoolId, dto);
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.REGISTRAR)
   async getExams(@Request() req: AuthRequest, @Query() query: GetExamsFilterDto) {
     return this.examsService.getExams(req.user.schoolId, query);
   }
@@ -98,7 +98,7 @@ export class ExamsController {
 
   // ==================== FORM DATA ENDPOINTS (static routes before :id) ====================
   @Get('form-data/assessment')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async getAssessmentFormData(
     @Request() req: AuthRequest,
     @Query() query: any,
@@ -110,7 +110,7 @@ export class ExamsController {
   }
 
   @Post('publish')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async publishTermResults(
     @Request() req: AuthRequest,
     @Body() body: { academicYear: string; termId: string; classId: string },
@@ -119,7 +119,7 @@ export class ExamsController {
   }
 
   @Post(':id/results')
-  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.TEACHER, Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async enterExamResults(
     @Request() req: AuthRequest,
     @Param('id') examId: string,
@@ -135,13 +135,13 @@ export class ExamsController {
 
   // ==================== PARAMETERIZED ROUTES (after static ones) ====================
   @Get(':id')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER, Role.STUDENT, Role.PARENT)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.TEACHER, Role.STUDENT, Role.PARENT)
   async getExamById(@Request() req: AuthRequest, @Param('id') id: string) {
     return this.examsService.getExamById(req.user.schoolId, id);
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async updateExam(
     @Request() req: AuthRequest,
     @Param('id') id: string,
@@ -151,7 +151,7 @@ export class ExamsController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async deleteExam(@Request() req: AuthRequest, @Param('id') id: string) {
     return this.examsService.deleteExam(req.user.schoolId, id);
   }

@@ -274,16 +274,18 @@ const TeachersListPage = () => {
   // Handle error state
   if (error) {
     return (
-      <div className="p-6 min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
-        <div className="max-w-7xl mx-auto">
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <p className="text-red-500">Failed to load teachers. Please try again later.</p>
-                <p className="text-sm text-gray-500 mt-2">{(error as any).message}</p>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+        <div className="p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
+            <Card className="dark:border-slate-700 dark:bg-slate-800">
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <p className="text-red-500">Failed to load teachers. Please try again later.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{(error as any).message}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
@@ -292,15 +294,17 @@ const TeachersListPage = () => {
   // Handle empty state
   if (!isLoading && teachers.length === 0 && !searchInput) {
     return (
-      <div className="p-6 min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
-        <div className="max-w-7xl mx-auto">
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <p className="text-gray-500">No teachers found.</p>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+        <div className="p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
+            <Card className="dark:border-slate-700 dark:bg-slate-800">
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <p className="text-gray-500 dark:text-gray-400">No teachers found.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
@@ -308,14 +312,22 @@ const TeachersListPage = () => {
 
   if (isLoading) {
     return (
-      <div className="p-6 min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
-        <div className="max-w-7xl mx-auto">
-          <Skeleton className="h-8 w-48 mb-6" />
-          <Card>
-            <CardContent className="p-0">
-              <Skeleton className="h-96 w-full" />
-            </CardContent>
-          </Card>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+        <div className="p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <Skeleton className="h-8 w-48" />
+              <div className="flex gap-3">
+                <Skeleton className="h-10 w-28 rounded-lg" />
+                <Skeleton className="h-10 w-32 rounded-lg" />
+              </div>
+            </div>
+            <Card className="dark:border-slate-700 dark:bg-slate-800">
+              <CardContent className="p-0">
+                <Skeleton className="h-96 w-full" />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
@@ -531,7 +543,7 @@ const TeachersListPage = () => {
                           >
                             <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                           </Link>
-                          {(user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') && (
+                          {((user?.role !== 'ADMIN' && user?.role !== 'IT_MANAGER') && user?.role !== 'IT_MANAGER' && user?.role !== 'SUPER_ADMIN') && (
                             <Link
                               href={`/list/teachers/${teacher.id || ''}/edit`}
                               className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -581,7 +593,7 @@ const TeachersListPage = () => {
                               </button>
                             </div>
                           </div>
-                          {(user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') && (
+                          {((user?.role !== 'ADMIN' && user?.role !== 'IT_MANAGER') && user?.role !== 'IT_MANAGER' && user?.role !== 'SUPER_ADMIN') && (
                             <button
                               className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                               title="Delete"

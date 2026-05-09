@@ -36,7 +36,7 @@ export class ClassController {
   ) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('class:create')
   async create(@Request() req: AuthenticatedRequest, @Body() body: any) {
     const schoolId = req.user.schoolId || body.schoolId;
@@ -110,7 +110,7 @@ export class ClassController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('class:update')
   async update(@Param('id') id: string, @Body() body: any) {
     return this.classService.update(id, {
@@ -122,7 +122,7 @@ export class ClassController {
   }
 
   @Put(':id/homeroom-teacher')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('class:update')
   async setHomeroomTeacher(@Param('id') id: string, @Body() body: any) {
     return this.classService.update(id, {

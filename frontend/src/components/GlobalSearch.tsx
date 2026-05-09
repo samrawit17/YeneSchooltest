@@ -73,6 +73,15 @@ const ROLE_QUICK_LINKS: Record<string, { label: string; href: string; icon: Reac
         { label: "Finance", href: "/list/finance", icon: <DollarSign className="h-4 w-4" /> },
         { label: "Announcements", href: "/list/announcements", icon: <Megaphone className="h-4 w-4" /> },
     ],
+    it_manager: [
+        { label: "Dashboard", href: "/it-manager", icon: <School className="h-4 w-4" /> },
+        { label: "Teachers", href: "/list/teachers", icon: <Users className="h-4 w-4" /> },
+        { label: "Classes", href: "/admin/class-sections", icon: <School className="h-4 w-4" /> },
+        { label: "Timetable", href: "/admin/timetable", icon: <Calendar className="h-4 w-4" /> },
+        { label: "Assignments", href: "/admin/assignments", icon: <Users className="h-4 w-4" /> },
+        { label: "Siren", href: "/admin/siren-management", icon: <Settings className="h-4 w-4" /> },
+        { label: "Announcements", href: "/list/announcements", icon: <Megaphone className="h-4 w-4" /> },
+    ],
     teacher: [
         { label: "Dashboard", href: "/teacher", icon: <School className="h-4 w-4" /> },
         { label: "My Classes", href: "/teacher/my-class", icon: <School className="h-4 w-4" /> },
@@ -337,7 +346,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     ].filter(entity => permissions.includes(entity.key));
 
     return (
-        <div ref={wrapperRef} className="relative z-[9998] w-full max-w-5xl mx-auto flex items-center md:h-10 lg:h-10 font-sans">
+        <div ref={wrapperRef} className="relative z-[9998] w-full mx-auto flex items-center md:h-10 lg:h-10 font-sans">
             <Command 
                 className="overflow-visible bg-transparent w-full" 
                 shouldFilter={false}

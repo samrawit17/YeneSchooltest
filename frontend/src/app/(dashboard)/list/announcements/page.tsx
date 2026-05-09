@@ -57,7 +57,7 @@ type StatusFilter = "all" | "active" | "scheduled" | "expired";
 
 const AnnouncementListPage = () => {
   const { user } = useAuth();
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'REGISTRAR';
+  const isAdmin = (user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'IT_MANAGER') || user?.role?.toUpperCase() === 'REGISTRAR';
   
   const [searchQuery, setSearchQuery] = useState("");
   const [audienceFilter, setAudienceFilter] = useState<AudienceFilter>("all");

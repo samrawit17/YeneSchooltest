@@ -34,7 +34,7 @@ export class TimetableSlotController {
   constructor(private timetableSlotService: TimetableSlotService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('timetable:manage')
   async create(
     @Request() req: AuthenticatedRequest,
@@ -113,21 +113,21 @@ export class TimetableSlotController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('timetable:manage')
   async update(@Param('id') id: string, @Body() body: UpdateTimetableSlotDto) {
     return this.timetableSlotService.update(id, body);
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('timetable:manage')
   async delete(@Param('id') id: string) {
     return this.timetableSlotService.delete(id);
   }
 
   @Post('bulk')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('timetable:manage')
   async bulkCreate(
     @Request() req: AuthenticatedRequest,
@@ -143,7 +143,7 @@ export class TimetableSlotController {
   }
 
   @Delete('class/:classId/section/:sectionId')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('timetable:manage')
   async deleteByClassSection(
     @Request() req: AuthenticatedRequest,

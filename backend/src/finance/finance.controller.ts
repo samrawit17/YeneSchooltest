@@ -38,14 +38,14 @@ export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 
   @Post('fee-structures')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   async createFeeStructure(@Body() dto: CreateFeeStructureDto) {
     const fs = await this.financeService.createFeeStructure(dto);
     return { success: true, data: fs };
   }
 
   @Get('fee-structures')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   async listFeeStructures(
     @Query('schoolId') schoolId: string,
     @Query('academicYearId') academicYearId?: string,
@@ -60,7 +60,7 @@ export class FinanceController {
   }
 
   @Put('fee-structures/:id')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:update')
   async updateFeeStructure(
     @Param('id') id: string,
@@ -72,7 +72,7 @@ export class FinanceController {
   }
 
   @Delete('fee-structures/:id')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:delete')
   async deleteFeeStructure(
     @Param('id') id: string,
@@ -83,14 +83,14 @@ export class FinanceController {
   }
 
   @Post('student-fees/generate')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.FINANCE)
   async generateStudentFees(@Body() dto: GenerateStudentFeesDto) {
     const result = await this.financeService.generateStudentFees(dto);
     return { success: true, ...result };
   }
 
   @Get('student-fees')
-  @Roles(Role.ADMIN, Role.FINANCE, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE, Role.REGISTRAR)
   async listStudentFees(@Query() query: StudentFeesQueryDto) {
     const result = await this.financeService.getStudentFees({
       ...query,
@@ -117,7 +117,7 @@ export class FinanceController {
   }
 
   @Get('reports/daily')
-  @Roles(Role.FINANCE, Role.ADMIN)
+  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
   @Permissions('finance:reports:read')
   async dailyReport(@Query() query: ReportQueryDto) {
     const result = await this.financeService.dailyCollectionReport(query);
@@ -125,14 +125,14 @@ export class FinanceController {
   }
 
   @Get('payments')
-  @Roles(Role.ADMIN, Role.FINANCE, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE, Role.REGISTRAR)
   async getAllPayments(@Query('schoolId') schoolId: string) {
     const result = await this.financeService.getAllPayments(schoolId);
     return { success: true, ...result };
   }
 
   @Get('reports/monthly')
-  @Roles(Role.FINANCE, Role.ADMIN)
+  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
   @Permissions('finance:reports:read')
   async monthlyReport(
     @Query('schoolId') schoolId: string,
@@ -148,7 +148,7 @@ export class FinanceController {
   }
 
   @Get('reports/outstanding')
-  @Roles(Role.FINANCE, Role.ADMIN)
+  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
   @Permissions('finance:reports:read')
   async outstanding(
     @Query('schoolId') schoolId: string,
@@ -164,7 +164,7 @@ export class FinanceController {
   }
 
   @Post('fees/mark-overdue')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fees:update')
   async markOverdue(
     @Body() body: { schoolId: string; academicYearId: string; termId?: string },
@@ -178,7 +178,7 @@ export class FinanceController {
   }
 
   @Get('reports/overdue')
-  @Roles(Role.FINANCE, Role.ADMIN)
+  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
   @Permissions('finance:reports:read')
   async overdueReport(
     @Query('schoolId') schoolId: string,
@@ -194,7 +194,7 @@ export class FinanceController {
   }
 
   @Get('audit-logs')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:reports:read')
   async auditLogs(
     @Query('schoolId') schoolId: string,
@@ -212,7 +212,7 @@ export class FinanceController {
   }
 
   @Get('reports/student/:studentId/history')
-  @Roles(Role.FINANCE, Role.ADMIN)
+  @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
   @Permissions('finance:reports:read')
   async studentHistory(
     @Param('studentId') studentId: string,
@@ -245,7 +245,7 @@ export class FinanceController {
 
   // Get curriculum info and terms for finance module
   @Get('curriculum-info')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:read')
   async getCurriculumInfo(
     @Query('schoolId') schoolId: string,
@@ -267,7 +267,7 @@ export class FinanceController {
    * Returns the breakdown without creating anything
    */
   @Post('fee-calculation/installments')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:create')
   async calculateInstallmentFees(@Body() dto: CalculateInstallmentFeesDto) {
     const result = await this.financeService.calculateInstallmentFees(dto);
@@ -279,7 +279,7 @@ export class FinanceController {
    * Creates multiple fee structures from a single annual fee
    */
   @Post('fee-structures/generate-installments')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:create')
   async generateInstallmentFees(@Body() dto: GenerateInstallmentFeesDto) {
     const result = await this.financeService.generateInstallmentFees(dto);
@@ -290,7 +290,7 @@ export class FinanceController {
    * Get fee collection mode for a school
    */
   @Get('fee-collection-mode')
-  @Roles(Role.ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:read')
   async getFeeCollectionMode(@Query('schoolId') schoolId: string) {
     const feeCollectionMode =
@@ -320,7 +320,7 @@ export class FinanceController {
    */
   @Post('discount-policies')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async createDiscountPolicy(
     @Request() req: any,
     @Body()
@@ -344,7 +344,7 @@ export class FinanceController {
    */
   @Get('discount-policies')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.FINANCE)
   async listDiscountPolicies(
     @Request() req: any,
     @Query('includeInactive') includeInactive: string = 'false',
@@ -361,7 +361,7 @@ export class FinanceController {
    */
   @Put('discount-policies/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async updateDiscountPolicy(
     @Request() req: any,
     @Param('id') id: string,
@@ -387,7 +387,7 @@ export class FinanceController {
    */
   @Delete('discount-policies/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async deleteDiscountPolicy(@Request() req: any, @Param('id') id: string) {
     const result = await this.financeService.deleteDiscountPolicy(
       id,
@@ -401,7 +401,7 @@ export class FinanceController {
    */
   @Post('student-fees/:studentFeeId/apply-discount')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.FINANCE)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.FINANCE)
   async applyDiscountPolicy(
     @Request() req: any,
     @Param('studentFeeId') studentFeeId: string,

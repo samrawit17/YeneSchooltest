@@ -146,6 +146,7 @@ export class CredentialService {
     role:
       | Role.TEACHER
       | Role.ADMIN
+      | Role.IT_MANAGER
       | Role.REGISTRAR
       | Role.FINANCE
       | Role.PARENT,
@@ -459,8 +460,9 @@ export class CredentialService {
       case Role.TEACHER:
         return 'TH';
       case Role.ADMIN:
+      case Role.IT_MANAGER:
         return 'AD';
-      case Role.PARENT:
+      case Role.REGISTRAR:
         return 'PR';
       case Role.FINANCE:
         return 'FI';
@@ -520,6 +522,7 @@ export class CredentialService {
         updateField = 'teacherCount';
         break;
       case Role.ADMIN:
+      case Role.IT_MANAGER:
         newCount = counter.adminCount + 1;
         updateField = 'adminCount';
         break;

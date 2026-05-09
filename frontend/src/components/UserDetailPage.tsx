@@ -233,6 +233,8 @@ const getRoleBadgeColor = (role: string) => {
       return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800";
     case "ADMIN":
       return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
+    case "IT_MANAGER":
+      return "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800";
     case "SUPER_ADMIN":
       return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
     case "REGISTRAR":
@@ -299,7 +301,7 @@ export default function UserDetailPage({
       tabs.push({ key: "parentInfo", label: "Parent Info" });
     } else if (role === "TEACHER") {
       tabs.push({ key: "academic", label: "Work Info" });
-    } else if (["FINANCE", "REGISTRAR", "STAFF", "ADMIN"].includes(role)) {
+    } else if (["FINANCE", "REGISTRAR", "STAFF", "ADMIN", "IT_MANAGER"].includes(role)) {
       tabs.push({ key: "academic", label: "Work Info" });
       tabs.push({ key: "transactions", label: "Transactions" });
     } else if (role === "PARENT") {
@@ -439,7 +441,7 @@ export default function UserDetailPage({
 // ==================== OVERVIEW TAB ====================
 function OverviewTab({ user }: { user: UserDetailData }) {
   const role = user.role?.toUpperCase();
-  const isEmployee = ["TEACHER", "FINANCE", "REGISTRAR", "ADMIN", "STAFF"].includes(role || "");
+  const isEmployee = ["TEACHER", "FINANCE", "REGISTRAR", "ADMIN", "STAFF", "IT_MANAGER"].includes(role || "");
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -609,7 +611,7 @@ function AcademicTab({ user }: { user: UserDetailData }) {
   }
 
   // For other staff roles (FINANCE, REGISTRAR, ADMIN, etc.)
-  if (role && ["FINANCE", "REGISTRAR", "ADMIN", "LIBRARIAN", "GUARD", "DRIVER", "COOK", "CLEANER", "OTHER"].includes(role)) {
+  if (role && ["FINANCE", "REGISTRAR", "ADMIN", "IT_MANAGER", "LIBRARIAN", "GUARD", "DRIVER", "COOK", "CLEANER", "OTHER"].includes(role)) {
     return (
       <div className="space-y-6">
         {/* Only show Work Information if there's data */}

@@ -344,6 +344,10 @@ function getDashboardHref(pathname: string): string {
     return '/superadmin';
   }
 
+  if (pathname.startsWith('/it-manager/') || pathname === '/it-manager') {
+    return '/it-manager';
+  }
+
   // Admin and list paths (for admin/registrar users viewing admin pages)
   if (pathname.startsWith('/admin/') || pathname === '/admin' ||
     pathname.startsWith('/list/') || pathname.startsWith('/settings') ||
@@ -370,6 +374,8 @@ function getDashboardLabel(href: string): string {
       return 'Registrar';
     case '/superadmin':
       return 'Super Admin';
+    case '/it-manager':
+      return 'IT Manager';
     case '/admin':
       return 'Dashboard';
     default:
@@ -393,6 +399,8 @@ function getDashboardIcon(href: string): React.ReactNode {
     case '/registrar':
       return <LayoutDashboard className={iconClass} />;
     case '/superadmin':
+      return <LayoutDashboard className={iconClass} />;
+    case '/it-manager':
       return <LayoutDashboard className={iconClass} />;
     case '/admin':
       return <LayoutDashboard className={iconClass} />;
@@ -484,7 +492,7 @@ function generateBreadcrumbsFromPath(pathname: string, userRole?: string): Bread
     
     // Special handling for Teachers link - only clickable for admin users
     const isTeachersLink = href === '/list/teachers' || label === 'Teachers';
-    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+    const isAdmin = (userRole === 'ADMIN' || userRole === 'IT_MANAGER') || userRole === 'IT_MANAGER' || userRole === 'SUPER_ADMIN';
     const shouldBeLink = !isLast && href && !isNonLinkPath && !(isTeachersLink && !isAdmin);
 
     breadcrumbs.push({

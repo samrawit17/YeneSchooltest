@@ -653,7 +653,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                 <Skeleton className="h-9 sm:h-10 w-full rounded-full" />
               </div>
             ) : user && (
-              <div className="hidden sm:flex flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl transition-all duration-300 ease-in-out">
+              <div className="hidden sm:flex flex-1 min-w-0 transition-all duration-300 ease-in-out">
                 <GlobalSearch />
               </div>
             )}

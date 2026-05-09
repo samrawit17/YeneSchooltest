@@ -133,7 +133,7 @@ export const credentialsAPI = {
     staff: Array<{
       name: string;
       email: string;
-      role: "TEACHER" | "ADMIN" | "PARENT";
+      role: "TEACHER" | "ADMIN" | "IT_MANAGER" | "PARENT";
       phone?: string;
     }>;
     academicYear?: string;
@@ -146,7 +146,7 @@ export const credentialsAPI = {
     staff: Array<{
       name: string;
       email: string;
-      role: "TEACHER" | "ADMIN" | "PARENT" | "REGISTRAR";
+      role: "TEACHER" | "ADMIN" | "IT_MANAGER" | "PARENT" | "REGISTRAR";
       phone?: string;
       generateCredentials?: boolean;
       username?: string;
@@ -231,6 +231,7 @@ export const dashboardAPI = {
   getStudentDashboard: () => api.get("/dashboard/student"),
   getParentDashboard: () => api.get("/dashboard/parent"),
   getAdminDashboard: () => api.get("/dashboard/admin"),
+  getItManagerDashboard: () => api.get("/dashboard/it-manager"),
   getRegistrarDashboard: () => api.get("/dashboard/registrar"),
   getSuperadminDashboard: () => api.get("/dashboard/superadmin"),
 };

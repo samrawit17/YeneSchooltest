@@ -44,7 +44,7 @@ import { credentialsAPI } from "@/lib/api/admin";
 const createStaffSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  role: z.enum(["TEACHER", "ADMIN", "PARENT", "REGISTRAR"], {
+  role: z.enum(["TEACHER", "ADMIN", "IT_MANAGER", "PARENT", "REGISTRAR", "FINANCE"], {
     required_error: "Role is required",
   }),
   phone: z.string().optional(),
@@ -83,6 +83,7 @@ interface UnifiedStaffFormProps {
   initialData?: StaffUserData;
   onSuccess?: () => void;
   onCancel?: () => void;
+  allowedRoles?: Array<"TEACHER" | "ADMIN" | "IT_MANAGER" | "PARENT" | "REGISTRAR" | "FINANCE">;
 }
 
 export default function UnifiedStaffForm({
@@ -92,12 +93,24 @@ export default function UnifiedStaffForm({
   initialData,
   onSuccess,
   onCancel,
+  allowedRoles = ["TEACHER", "ADMIN", "IT_MANAGER", "PARENT", "REGISTRAR", "FINANCE"],
 }: UnifiedStaffFormProps) {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [schoolCode, setSchoolCode] = useState<string | undefined>(propSchoolCode);
   const [schoolId, setSchoolId] = useState<string>(propSchoolId || user?.schoolId || "");
   const [showPassword, setShowPassword] = useState(false);
+  const roleOptions: Record<
+    "TEACHER" | "ADMIN" | "IT_MANAGER" | "PARENT" | "REGISTRAR" | "FINANCE",
+    string
+  > = {
+    TEACHER: "Teacher",
+    ADMIN: "Administrator",
+    IT_MANAGER: "IT Manager",
+    PARENT: "Parent",
+    REGISTRAR: "Registrar",
+    FINANCE: "Finance",
+  };
 
   // Fetch school settings if not provided
   useEffect(() => {
@@ -121,7 +134,7 @@ export default function UnifiedStaffForm({
     defaultValues: {
       name: "",
       email: "",
-      role: "TEACHER",
+      role: allowedRoles[0] || "TEACHER",
       phone: "",
       generateCredentials: true,
       username: "",
@@ -182,7 +195,7 @@ export default function UnifiedStaffForm({
       createForm.reset({
         name: "",
         email: "",
-        role: "TEACHER",
+        role: allowedRoles[0] || "TEACHER",
         phone: "",
         generateCredentials: true,
         username: "",
@@ -290,10 +303,11 @@ export default function UnifiedStaffForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="TEACHER">Teacher</SelectItem>
-                        <SelectItem value="ADMIN">Administrator</SelectItem>
-                        <SelectItem value="PARENT">Parent</SelectItem>
-                        <SelectItem value="REGISTRAR">Registrar</SelectItem>
+                        {allowedRoles.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {roleOptions[role]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -317,11 +331,11 @@ export default function UnifiedStaffForm({
             </div>
 
             {/* Credential Options */}
-            <div className="p-4 bg-slate-50 rounded-lg space-y-4">
+            <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Key className="h-5 w-5 text-slate-600" />
-                  <span className="font-medium">Credential Options</span>
+                  <Key className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                  <span className="font-medium dark:text-gray-100">Credential Options</span>
                 </div>
                 <FormField
                   control={createForm.control}
@@ -481,15 +495,15 @@ export default function UnifiedStaffForm({
           </div>
 
           {/* Password Change Section */}
-          <div className="p-4 bg-slate-50 rounded-lg space-y-4">
+          <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-4">
             <FormField
               control={updateForm.control}
               name="changePassword"
               render={({ field }) => (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Key className="h-5 w-5 text-slate-600" />
-                    <span className="font-medium">Change Password</span>
+                    <Key className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                    <span className="font-medium dark:text-gray-100">Change Password</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
@@ -521,7 +535,7 @@ export default function UnifiedStaffForm({
                       </FormControl>
                       <button
                         type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

@@ -6,8 +6,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { attendanceAPI, classesAPI, gradingAPI } from "@/lib/api";
 import { toast } from "sonner";
+import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
 import { 
-  Calendar,
   Download,
   Users,
   UserCheck,
@@ -26,6 +26,8 @@ import {
   Bell
 } from "lucide-react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 // Shadcn/ui Components
 import {
   Card,
@@ -35,7 +37,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
@@ -248,7 +249,10 @@ export default function AttendanceManagementPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'date' | 'period'>('date');
 
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
+  const isAdmin =
+    (user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'IT_MANAGER') ||
+    user?.role?.toUpperCase() === 'IT_MANAGER' ||
+    user?.role?.toUpperCase() === 'SUPER_ADMIN';
   const { currentAcademicYear, currentTerm, getAllAcademicYears, getTermsForYear } = useAcademicYear();
 
   // Fetch academic years and periods
@@ -646,8 +650,132 @@ export default function AttendanceManagementPage() {
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#e35336]" />
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto p-2 space-y-6">
+          {/* Header Skeleton */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-[#E2E8F0] dark:border-gray-700 p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <Skeleton className="h-7 w-48" />
+                <Skeleton className="h-4 w-72" />
+              </div>
+              <div className="flex gap-3">
+                <Skeleton className="h-9 w-[180px] rounded-lg" />
+                <Skeleton className="h-9 w-[160px] rounded-lg" />
+                <Skeleton className="h-9 w-[140px] rounded-lg" />
+                <Skeleton className="h-9 w-[140px] rounded-lg" />
+                <Skeleton className="h-9 w-24 rounded-lg" />
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Cards Skeleton */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-8 w-16" />
+                    </div>
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Charts Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm lg:col-span-2 dark:bg-gray-800">
+              <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-7 w-28 rounded-lg" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex items-end justify-between h-[200px] gap-3">
+                  {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                      <Skeleton className="h-3 w-8" />
+                      <Skeleton
+                        className="w-full rounded-t-md"
+                        style={{ height: `${Math.max(20 + i * 10, 40)}%` }}
+                      />
+                      <Skeleton className="h-3 w-12" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
+              <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
+                <Skeleton className="h-5 w-36" />
+              </CardHeader>
+              <CardContent className="pt-6 flex flex-col items-center">
+                <Skeleton className="h-[200px] w-[200px] rounded-full" />
+                <div className="mt-4 w-full space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Bottom Row Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[1, 2].map((i) => (
+              <Card key={i} className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
+                <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
+                  <Skeleton className="h-5 w-40" />
+                </CardHeader>
+                <CardContent className="pt-4 space-y-3">
+                  {[1, 2, 3].map((j) => (
+                    <div key={j} className="flex items-center justify-between p-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="space-y-1">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Table Skeleton */}
+          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
+            <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600 pb-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-64" />
+                <Skeleton className="h-9 w-64 rounded-lg" />
+              </div>
+            </CardHeader>
+            <div className="p-4 space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -681,15 +809,15 @@ export default function AttendanceManagementPage() {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <div className="flex items-center gap-2 px-2">
-                  <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                  <Input 
-                    type="date" 
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-[140px] border-0 bg-transparent focus-visible:ring-0 text-sm dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
+                <CalendarDatePicker
+                  value={selectedDate ? new Date(selectedDate) : undefined}
+                  onChange={(date) => {
+                    if (date) {
+                      setSelectedDate(date.toISOString().split('T')[0]);
+                    }
+                  }}
+                  className="w-[180px] bg-transparent border-0 shadow-none dark:bg-transparent dark:text-white"
+                />
                 <Button 
                   variant="ghost" 
                   size="icon"
@@ -994,8 +1122,18 @@ export default function AttendanceManagementPage() {
           </CardHeader>
           
           {sessionsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-[#e35336]" />
+            <div className="p-6 space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
             </div>
            ) : filteredSessions.length > 0 ? (
              <div className="overflow-x-auto">
