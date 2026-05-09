@@ -29,7 +29,7 @@ export class AcademicYearController {
   constructor(private readonly academicYearService: AcademicYearService) {}
 
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('academic_year:create')
   async createAcademicYear(
     @Body() createDto: CreateAcademicYearDto,
@@ -43,7 +43,15 @@ export class AcademicYearController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.FINANCE, Role.TEACHER, Role.STUDENT, Role.PARENT)
+  @Roles(
+    Role.ADMIN,
+    Role.IT_MANAGER,
+    Role.REGISTRAR,
+    Role.FINANCE,
+    Role.TEACHER,
+    Role.STUDENT,
+    Role.PARENT,
+  )
   async getAcademicYears(
     @Query('schoolId') schoolId: string,
     @Request() req: any,
@@ -56,6 +64,7 @@ export class AcademicYearController {
   @Get('active')
   @Roles(
     Role.ADMIN,
+    Role.IT_MANAGER,
     Role.REGISTRAR,
     Role.TEACHER,
     Role.STUDENT,
@@ -72,14 +81,14 @@ export class AcademicYearController {
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('academic_year:read')
   async getAcademicYearById(@Param('id') id: string) {
     return this.academicYearService.getAcademicYearById(id);
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('academic_year:update')
   async updateAcademicYear(
     @Param('id') id: string,
@@ -89,14 +98,14 @@ export class AcademicYearController {
   }
 
   @Put(':id/activate')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('academic_year:update')
   async activateAcademicYear(@Param('id') id: string) {
     return this.academicYearService.activateAcademicYear(id);
   }
 
   @Put(':id/curriculum-type')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('academic_year:update')
   async updateCurriculumType(
     @Param('id') id: string,
@@ -106,7 +115,7 @@ export class AcademicYearController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('academic_year:delete')
   async deleteAcademicYear(@Param('id') id: string) {
     return this.academicYearService.deleteAcademicYear(id);
@@ -120,6 +129,7 @@ export class AcademicYearController {
   @Get('terms/current')
   @Roles(
     Role.ADMIN,
+    Role.IT_MANAGER,
     Role.REGISTRAR,
     Role.TEACHER,
     Role.STUDENT,
@@ -139,7 +149,7 @@ export class AcademicYearController {
    * Get all terms for a specific academic year
    */
   @Get(':id/terms')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER)
   async getTermsByAcademicYear(@Param('id') id: string) {
     const academicYear = await this.academicYearService.getAcademicYearById(id);
     return academicYear.terms;
@@ -149,7 +159,7 @@ export class AcademicYearController {
    * Create a custom term/period for an academic year
    */
   @Post(':id/terms')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('academic_year:update')
   async createTerm(
     @Param('id') academicYearId: string,
@@ -162,7 +172,7 @@ export class AcademicYearController {
    * Get a specific term by ID
    */
   @Get('terms/:termId')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER)
   async getTermById(@Param('termId') termId: string) {
     return this.academicYearService.getTermById(termId);
   }
@@ -171,7 +181,7 @@ export class AcademicYearController {
    * Update a term/period
    */
   @Put('terms/:termId')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('academic_year:update')
   async updateTerm(
     @Param('termId') termId: string,
@@ -184,7 +194,7 @@ export class AcademicYearController {
    * Lock or unlock a term/period
    */
   @Put('terms/:termId/lock')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('academic_year:update')
   async lockTerm(
     @Param('termId') termId: string,
@@ -197,7 +207,7 @@ export class AcademicYearController {
    * Delete a term/period
    */
   @Delete('terms/:termId')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('academic_year:delete')
   async deleteTerm(@Param('termId') termId: string) {
     return this.academicYearService.deleteTerm(termId);
@@ -207,7 +217,7 @@ export class AcademicYearController {
    * Get period weights for an academic year
    */
   @Get(':id/period-weights')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER)
   async getPeriodWeights(@Param('id') id: string) {
     return this.academicYearService.getPeriodWeights(id);
   }
@@ -216,7 +226,7 @@ export class AcademicYearController {
    * Validate period weights (check if they sum to 100%)
    */
   @Get(':id/validate-weights')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async validatePeriodWeights(@Param('id') id: string) {
     const isValid = await this.academicYearService.validatePeriodWeights(id);
     return {

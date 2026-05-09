@@ -81,7 +81,7 @@ export default function ReportCardsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [bulkGenerateLoading, setBulkGenerateLoading] = useState(false);
 
-  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const isAdmin = ((user?.role === "ADMIN" || user?.role === "IT_MANAGER") || user?.role === "IT_MANAGER") || user?.role === "SUPER_ADMIN";
 
   useEffect(() => {
     fetchClasses();

@@ -45,7 +45,7 @@ export class SeatingController {
    */
   @Get('plans')
   @RequiresFeature('EXAM_SEATING')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.TEACHER)
   async getSeatingPlans(
     @Request() req: AuthRequest,
   ): Promise<SeatingPlanResponseDto[]> {
@@ -58,7 +58,7 @@ export class SeatingController {
    */
   @Get('type/:examType/seating-plan')
   @RequiresFeature('EXAM_SEATING')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.TEACHER)
   async getSeatingPlanByExamType(
     @Request() req: AuthRequest,
     @Param('examType') examType: string,
@@ -75,7 +75,7 @@ export class SeatingController {
    */
   @Post('type/:examType/seating-plan')
   @RequiresFeature('EXAM_SEATING')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async createSeatingPlanByExamType(
     @Request() req: AuthRequest,
     @Param('examType') examType: string,
@@ -95,7 +95,7 @@ export class SeatingController {
    */
   @Delete('plan/:id/students')
   @RequiresFeature('EXAM_SEATING')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async deleteSeatingStudents(
     @Request() req: AuthRequest,
     @Param('id') planId: string,
@@ -109,7 +109,7 @@ export class SeatingController {
    */
   @Post('plan/:id/generate')
   @RequiresFeature('EXAM_SEATING')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async generateSeating(
     @Request() req: AuthRequest,
     @Param('id') planId: string,
@@ -123,7 +123,7 @@ export class SeatingController {
    */
   @Get('plan/:id')
   @RequiresFeature('EXAM_SEATING')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.TEACHER)
   async getSeatingOverview(
     @Request() req: AuthRequest,
     @Param('id') planId: string,
@@ -137,7 +137,7 @@ export class SeatingController {
    */
   @Get('plan/:id/print')
   @RequiresFeature('EXAM_SEATING')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.TEACHER)
   async printSeatingPlan(
     @Request() req: AuthRequest,
     @Param('id') planId: string,
@@ -156,7 +156,7 @@ export class SeatingController {
    */
   @Get('plan/:id/excel')
   @RequiresFeature('EXAM_SEATING')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.TEACHER)
   async exportSeatingExcel(
     @Request() req: AuthRequest,
     @Param('id') planId: string,
@@ -175,7 +175,7 @@ export class SeatingController {
    */
   @Delete('plan/:id')
   @RequiresFeature('EXAM_SEATING')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteSeatingPlan(
     @Request() req: AuthRequest,

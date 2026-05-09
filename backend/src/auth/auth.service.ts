@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { Role } from './types/role.enum';
-import { EnrollmentStatus } from '@prisma/client';
+import { EnrollmentStatus, Prisma } from '@prisma/client';
 import { CredentialService } from '../credential/credential.service';
 
 // Cookie name constant
@@ -117,6 +117,87 @@ export class AuthService {
     };
   }
 
+  private async getUsersWithRoleTextFilter(
+    params: {
+      schoolId?: string;
+      role?: Role;
+      roles?: Role[];
+      filters?: { page?: number; limit?: number; search?: string };
+    },
+  ) {
+    const { schoolId, role, roles, filters } = params;
+    const effectiveRoles = roles?.length ? roles : role ? [role] : [];
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 10;
+    const skip = (page - 1) * limit;
+    const search = filters?.search?.trim();
+    const searchPattern = search ? `%${search}%` : null;
+
+    const roleListSql = Prisma.join(effectiveRoles.map((value) => Prisma.sql`${value}`));
+    const schoolSql = schoolId
+      ? Prisma.sql`AND "schoolId" = ${schoolId}`
+      : Prisma.empty;
+    const searchSql = searchPattern
+      ? Prisma.sql`AND ("name" ILIKE ${searchPattern} OR "email" ILIKE ${searchPattern})`
+      : Prisma.empty;
+
+    const countRows = await this.prismaService.$queryRaw<Array<{ count: number }>>(
+      Prisma.sql`
+        SELECT COUNT(*)::int AS count
+        FROM "User"
+        WHERE "role"::text IN (${roleListSql})
+        ${schoolSql}
+        ${searchSql}
+      `,
+    );
+
+    const users = await this.prismaService.$queryRaw<
+      Array<{
+        id: string;
+        email: string;
+        name: string;
+        role: string;
+        schoolId: string;
+        isActive: boolean;
+        phone: string | null;
+        avatarUrl: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+      }>
+    >(
+      Prisma.sql`
+        SELECT
+          "id",
+          "email",
+          "name",
+          "role",
+          "schoolId",
+          "isActive",
+          "phone",
+          "avatarUrl",
+          "createdAt",
+          "updatedAt"
+        FROM "User"
+        WHERE "role"::text IN (${roleListSql})
+        ${schoolSql}
+        ${searchSql}
+        ORDER BY "createdAt" DESC
+        OFFSET ${skip}
+        LIMIT ${limit}
+      `,
+    );
+
+    const total = countRows[0]?.count || 0;
+
+    return {
+      data: users,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   async login(user: any, @Res({ passthrough: true }) res?: Response) {
     const payload = { email: user.email, sub: user.id, role: user.role };
     const token = this.jwtService.sign(payload);
@@ -192,6 +273,41 @@ export class AuthService {
     });
 
     return { success: true, message: 'Admin created successfully' };
+  }
+
+  // SUPER_ADMIN creates IT_MANAGER (requires schoolId)
+  async registerItManager(
+    email: string,
+    password: string,
+    name: string,
+    schoolId: string,
+  ) {
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    if (!schoolId) {
+      throw new Error('IT_MANAGER role requires a schoolId');
+    }
+
+    // Check if email already exists
+    const existingUser = await this.prismaService.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return { success: false, message: 'An account with this email already exists' };
+    }
+
+    await this.prismaService.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role: Role.IT_MANAGER,
+        schoolId,
+      },
+    });
+
+    return { success: true, message: 'IT Manager created successfully' };
   }
 
   // ADMIN creates TEACHER
@@ -463,12 +579,14 @@ export class AuthService {
 
   async getUsers(
     role?: Role,
+    roles?: Role[],
     filters?: { page?: number; limit?: number; search?: string },
   ) {
-    const where: any = {};
-    if (role) {
-      where.role = role;
+    if (role || roles?.length) {
+      return this.getUsersWithRoleTextFilter({ role, roles, filters });
     }
+
+    const where: any = {};
 
     if (filters?.search) {
       where.OR = [
@@ -514,12 +632,19 @@ export class AuthService {
   async getUsersBySchool(
     schoolId: string,
     role?: Role,
+    roles?: Role[],
     filters?: { page?: number; limit?: number; search?: string },
   ) {
-    const where: any = { schoolId };
-    if (role) {
-      where.role = role;
+    if (role || roles?.length) {
+      return this.getUsersWithRoleTextFilter({
+        schoolId,
+        role,
+        roles,
+        filters,
+      });
     }
+
+    const where: any = { schoolId };
 
     if (filters?.search) {
       where.OR = [

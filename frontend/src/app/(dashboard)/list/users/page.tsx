@@ -94,11 +94,13 @@ const UsersPage = () => {
     if (user?.role === "SUPER_ADMIN") {
       return [
         { value: "ADMIN", label: "Admin" },
+        { value: "IT_MANAGER", label: "IT Manager" },
       ];
     } else if (user?.role === "ADMIN") {
       return [
         { value: "", label: "All Users" },
         { value: "TEACHER", label: "Teacher" },
+        { value: "IT_MANAGER", label: "IT Manager" },
         { value: "STUDENT", label: "Student" },
         { value: "PARENT", label: "Parent" },
         { value: "REGISTRAR", label: "Registrar" },
@@ -140,6 +142,8 @@ const UsersPage = () => {
       className: "w-24",
     },
   ];
+
+  const canManageUsers = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
 
   const renderRow = (item: User) => (
     <tr
@@ -199,28 +203,32 @@ const UsersPage = () => {
           >
             <Eye className="w-4 h-4 text-blue-600" />
           </button>
-          <button
-            className="p-2 hover:bg-yellow-50 rounded-lg transition-colors"
-            title="Edit"
-            onClick={() => {
-              setSelectedUser(item);
-              setModalType("update");
-              setIsModalOpen(true);
-            }}
-          >
-            <Edit2 className="w-4 h-4 text-yellow-600" />
-          </button>
-          <button
-            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-            title="Delete"
-            onClick={() => {
-              setSelectedUser(item);
-              setModalType("delete");
-              setIsModalOpen(true);
-            }}
-          >
-            <Trash2 className="w-4 h-4 text-red-600" />
-          </button>
+          {canManageUsers && (
+            <>
+              <button
+                className="p-2 hover:bg-yellow-50 rounded-lg transition-colors"
+                title="Edit"
+                onClick={() => {
+                  setSelectedUser(item);
+                  setModalType("update");
+                  setIsModalOpen(true);
+                }}
+              >
+                <Edit2 className="w-4 h-4 text-yellow-600" />
+              </button>
+              <button
+                className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                title="Delete"
+                onClick={() => {
+                  setSelectedUser(item);
+                  setModalType("delete");
+                  setIsModalOpen(true);
+                }}
+              >
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </button>
+            </>
+          )}
         </div>
       </td>
     </tr>
@@ -233,8 +241,7 @@ const UsersPage = () => {
     }
   };
 
-  // Check if current user can create users
-  const canCreateUsers = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
+  const canCreateUsers = canManageUsers;
 
   return (
     <div className="space-y-6 font-sans">

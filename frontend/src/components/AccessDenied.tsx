@@ -65,6 +65,7 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
   const getDashboardUrl = (): string => {
     const roleMap: Record<string, string> = {
       admin: '/admin',
+      it_manager: '/it-manager',
       super_admin: '/superadmin',
       teacher: '/teacher',
       student: '/student',
@@ -78,6 +79,7 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
   const getRoleName = (): string => {
     const roleNames: Record<string, string> = {
       admin: 'Admin Dashboard',
+      it_manager: 'IT Manager Dashboard',
       super_admin: 'Super Admin Dashboard',
       teacher: 'Teacher Dashboard',
       student: 'Student Dashboard',
@@ -93,7 +95,8 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
     const path = attemptedUrl.toLowerCase();
 
     const pathPermissions: Record<string, string[]> = {
-      '/admin': ['admin', 'registrar'],
+      '/admin': ['admin', 'it_manager', 'registrar'],
+      '/it-manager': ['it_manager'],
       '/finance': ['finance', 'admin'],
       '/teacher': ['teacher', 'admin', 'registrar'],
       '/student': ['student'],
@@ -108,7 +111,7 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
       }
     }
 
-    return ['admin'];
+      return ['admin', 'it_manager'];
   };
 
   if (actualType === '404') {
@@ -220,12 +223,20 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
         requiredRoles: ['super_admin'],
       };
     }
+    if (path.includes('/it-manager')) {
+      return {
+        title: 'IT Manager Area',
+        message: 'You do not have permission to access this IT manager section.',
+        detail: 'This section is intended for operational system management.',
+        requiredRoles: ['it_manager'],
+      };
+    }
     if (path.includes('/admin')) {
       return {
         title: 'Admin Area Restricted',
         message: 'You do not have permission to access this admin section.',
         detail: 'This section requires Admin or Registrar privileges.',
-        requiredRoles: ['admin', 'registrar'],
+        requiredRoles: ['admin', 'it_manager', 'registrar'],
       };
     }
     if (path.includes('/finance')) {

@@ -57,7 +57,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
   const { id } = params;
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'REGISTRAR';
+  const isAdmin = (user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'IT_MANAGER') || user?.role?.toUpperCase() === 'REGISTRAR';
   const [hasRead, setHasRead] = useState(false);
 
   const { data: announcement, isLoading } = useQuery({

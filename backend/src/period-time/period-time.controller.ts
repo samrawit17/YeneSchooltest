@@ -7,7 +7,7 @@ import { PeriodTimeService } from './period-time.service';
 
 @Controller('api/period-time')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.IT_MANAGER)
 export class PeriodTimeController {
   constructor(private service: PeriodTimeService) {}
 

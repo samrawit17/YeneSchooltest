@@ -34,7 +34,7 @@ export class CommunicationController {
    * Teachers, Admins, Parents can create
    */
   @Post()
-  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN, Role.PARENT)
+  @Roles(Role.TEACHER, Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.PARENT)
   async createCommunication(
     @Request() req: any,
     @Body() dto: CreateCommunicationDto,
@@ -124,7 +124,7 @@ export class CommunicationController {
    * Delete a communication (Admin only)
    */
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async deleteCommunication(@Request() req: any, @Param('id') id: string) {
     return this.communicationService.deleteCommunication(
       req.user.schoolId,

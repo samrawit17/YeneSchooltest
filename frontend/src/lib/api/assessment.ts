@@ -46,7 +46,10 @@ export const gradingAPI = {
   getTeacherAssignments: (params?: { academicYear?: string }) =>
     api.get('/grading/teacher/assignments', { params, skipAuthErrorRedirect: true }),
   getStudentFinalGrades: (params: { academicYear: string; classId?: string }) =>
-    api.get('/grading/student/final-grades', { params }),
+    api.get('/grading/student/final-grades', {
+      params,
+      skipAuthErrorRedirect: true,
+    }),
   getChildFinalGrades: (studentId: string, params: { academicYear: string; classId?: string }) =>
     api.get(`/grading/parent/final-grades/${studentId}`, { params }),
   calculateSubjectFinalGrade: (params: {

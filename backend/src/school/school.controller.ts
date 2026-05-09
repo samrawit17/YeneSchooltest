@@ -93,7 +93,7 @@ export class SchoolController {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.IT_MANAGER)
   async updateSchool(
     @Param('id') id: string,
     @Body()
@@ -109,7 +109,7 @@ export class SchoolController {
   ) {
     try {
       // If ADMIN, ensure they can only update their own school
-      if (req.user.role === Role.ADMIN && req.user.schoolId !== id) {
+      if ((req.user.role === Role.ADMIN || req.user.role === Role.IT_MANAGER) && req.user.schoolId !== id) {
         throw new HttpException(
           'You can only update your own school',
           HttpStatus.FORBIDDEN,
@@ -136,7 +136,7 @@ export class SchoolController {
 
   @Post(':id/logo')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.IT_MANAGER)
   @UseInterceptors(FileInterceptor('file'))
   async uploadLogo(
     @Param('id') id: string,
@@ -149,7 +149,7 @@ export class SchoolController {
       }
 
       // If ADMIN, ensure they can only update their own school
-      if (req.user.role === Role.ADMIN && req.user.schoolId !== id) {
+      if ((req.user.role === Role.ADMIN || req.user.role === Role.IT_MANAGER) && req.user.schoolId !== id) {
         throw new HttpException(
           'You can only update your own school',
           HttpStatus.FORBIDDEN,

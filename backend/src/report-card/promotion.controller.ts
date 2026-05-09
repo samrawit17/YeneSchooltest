@@ -26,7 +26,7 @@ export class PromotionController {
   ) {}
 
   @Get('candidates/:classId')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('promotion:read')
   async getPromotionCandidates(
     @Request() req,
@@ -49,7 +49,7 @@ export class PromotionController {
   }
 
   @Get('terms')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('promotion:read')
   async getPromotionTerms(@Request() req) {
     const academicYear =
@@ -62,14 +62,14 @@ export class PromotionController {
   }
 
   @Get('next-classes/:classId')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
   @Permissions('promotion:read')
   async getNextClassOptions(@Param('classId') classId: string) {
     return this.reportCardService.getNextClassOptions(classId);
   }
 
   @Post('single')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('promotion:create')
   async promoteStudent(
     @Request() req,
@@ -94,7 +94,7 @@ export class PromotionController {
   }
 
   @Post('bulk')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('promotion:create')
   async bulkPromote(
     @Request() req,
@@ -124,7 +124,7 @@ export class PromotionController {
   }
 
   @Get('history')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('promotion:read')
   async getPromotionHistory(
     @Request() req,

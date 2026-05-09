@@ -37,7 +37,11 @@ export class AttendanceService {
   ) {}
 
   private isAdmin(user: RequestUser): boolean {
-    return user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
+    return (
+      (user.role === Role.ADMIN || user.role === Role.IT_MANAGER) ||
+      user.role === Role.IT_MANAGER ||
+      user.role === Role.SUPER_ADMIN
+    );
   }
 
   private isWeekend(date: Date): boolean {
@@ -399,7 +403,7 @@ export class AttendanceService {
       }
 
       const isAdmin =
-        user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
+        (user.role === Role.ADMIN || user.role === Role.IT_MANAGER) || user.role === Role.SUPER_ADMIN;
       if (!isAdmin && session.takenById !== user.id) {
         const classId = session.classId || session.timetableSlot?.classId;
         const sectionId = session.timetableSlot?.sectionId || undefined;
@@ -863,7 +867,7 @@ export class AttendanceService {
       // Admins can take attendance for any class
       // Check both class-level and section-level homeroom teacher
       const isAdmin =
-        user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
+        (user.role === Role.ADMIN || user.role === Role.IT_MANAGER) || user.role === Role.SUPER_ADMIN;
       if (!isAdmin) {
         const isClassLevelHomeroom = classData.homeroomTeacherId === user.id;
         const isSectionLevelHomeroom = sectionId
@@ -913,7 +917,7 @@ export class AttendanceService {
 
       // STRICT: Only homeroom teachers can take attendance (admins are also allowed)
       const isAdmin =
-        user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
+        (user.role === Role.ADMIN || user.role === Role.IT_MANAGER) || user.role === Role.SUPER_ADMIN;
       const isHomeroomTeacher = await this.isHomeroomTeacher(
         user.id,
         slot.classId,
@@ -2123,7 +2127,7 @@ export class AttendanceService {
    * Get all sessions with filters (Admin)
    */
   async getAllSessions(user: RequestUser, query: AttendanceQueryDto) {
-    if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN) {
+    if (!this.isAdmin(user)) {
       throw new ForbiddenException('Only admins can view all sessions');
     }
 
@@ -2222,7 +2226,7 @@ export class AttendanceService {
    * Get attendance summary (Admin)
    */
   async getSummary(user: RequestUser, query: AttendanceQueryDto) {
-    if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN) {
+    if (!this.isAdmin(user)) {
       throw new ForbiddenException('Only admins can view attendance summary');
     }
 
@@ -2292,7 +2296,7 @@ export class AttendanceService {
    */
   async getAttendanceReport(user: RequestUser, query: AttendanceQueryDto) {
     // Only admins can access this
-    if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN) {
+    if (!this.isAdmin(user)) {
       throw new ForbiddenException('Only admins can view attendance reports');
     }
 
@@ -2391,7 +2395,7 @@ export class AttendanceService {
     dto: OverrideAttendanceDto,
   ) {
     // Only admins can override
-    if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN) {
+    if (!this.isAdmin(user)) {
       throw new ForbiddenException('Only admins can override attendance');
     }
 
@@ -2421,7 +2425,7 @@ export class AttendanceService {
    * Get attendance by date for admin dashboard
    */
   async getAttendanceByDate(user: RequestUser, date: string) {
-    if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN) {
+    if (!this.isAdmin(user)) {
       throw new ForbiddenException('Only admins can view attendance by date');
     }
 
@@ -2754,7 +2758,7 @@ export class AttendanceService {
     grade?: string,
     section?: string,
   ) {
-    if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN) {
+    if (!this.isAdmin(user)) {
       throw new ForbiddenException('Only admins can access this endpoint');
     }
 
@@ -2846,7 +2850,7 @@ export class AttendanceService {
    * Notify homeroom teachers about missing attendance
    */
   async notifyMissingAttendance(user: any, date: string) {
-    if (user.role !== Role.ADMIN && user.role !== Role.SUPER_ADMIN) {
+    if (!this.isAdmin(user)) {
       throw new ForbiddenException('Only admins can access this endpoint');
     }
 
@@ -3471,7 +3475,9 @@ export class AttendanceService {
     const admins = await this.prisma.user.findMany({
       where: {
         schoolId,
-        role: Role.ADMIN,
+        role: {
+          in: [Role.ADMIN, Role.IT_MANAGER],
+        },
       },
       select: { id: true },
     });

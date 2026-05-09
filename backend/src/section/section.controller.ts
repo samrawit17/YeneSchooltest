@@ -64,7 +64,7 @@ export class SectionController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('section:update')
   async update(@Param('id') id: string, @Body() body: any) {
     return this.sectionService.update(id, {
@@ -80,7 +80,7 @@ export class SectionController {
   // Note: Auto-creation is also handled via bulk upload
 
   @Put(':id/homeroom-teacher')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('section:update')
   async setHomeroomTeacher(
     @Param('id') id: string,
@@ -93,7 +93,7 @@ export class SectionController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('section:delete')
   async delete(@Param('id') id: string) {
     return this.sectionService.delete(id);
@@ -103,7 +103,7 @@ export class SectionController {
    * Sync all section capacities to match school setting DEFAULT_SECTION_CAPACITY
    */
   @Put('sync-capacity')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('section:update')
   async syncCapacity(@Request() req: AuthenticatedRequest) {
     const schoolId = req.user.schoolId;

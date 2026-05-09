@@ -67,7 +67,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
       breadcrumbSetRef.current = true;
       
       // Check if user is admin to make Students link clickable
-      const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+      const isAdmin = ((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') || user?.role === 'SUPER_ADMIN';
       
       setItems([
         { label: "Dashboard", href: "/dashboard", isCurrent: false },

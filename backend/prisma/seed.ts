@@ -121,6 +121,11 @@ async function main() {
     { name: 'employee:delete', module: 'employee', action: 'delete', description: 'Delete employees' },
     { name: 'attendance:create', module: 'attendance', action: 'create', description: 'Record attendance' },
     { name: 'attendance:read', module: 'attendance', action: 'read', description: 'View attendance' },
+    // Academic Year permissions
+    { name: 'academic_year:create', module: 'academic_year', action: 'create', description: 'Create academic years' },
+    { name: 'academic_year:read', module: 'academic_year', action: 'read', description: 'View academic years' },
+    { name: 'academic_year:update', module: 'academic_year', action: 'update', description: 'Update academic years' },
+    { name: 'academic_year:delete', module: 'academic_year', action: 'delete', description: 'Delete academic years' },
   ];
 
   // Create permissions
@@ -133,6 +138,58 @@ async function main() {
   }
 
   // Define role permissions based on FIXED PERMISSION PHILOSOPHY
+  const adminPermissionsList = [
+    // User management
+    'user:create', 'user:read', 'user:update', 'user:deactivate',
+    // Student management
+    'student:create', 'student:read', 'student:update', 'student:approve_enrollment',
+    // Parent management
+    'parent:create', 'parent:read', 'parent:update', 'parent:link_student', 'parent:unlink_student',
+    // Teacher management
+    'teacher:create', 'teacher:read', 'teacher:update',
+    // Class & Section
+    'class:create', 'class:read', 'class:update',
+    'section:create', 'section:read', 'section:update', 'section:delete',
+    // Timetable
+    'timetable:create', 'timetable:read', 'timetable:update',
+    // Announcements
+    'announcement:create', 'announcement:read',
+    // Events
+    'event:create', 'event:read',
+    // Attendance
+    'attendance:read', 'attendance:update',
+    // Staff management
+    'employee:create', 'employee:read', 'employee:update', 'employee:delete',
+    // Academic Year
+    'academic_year:create', 'academic_year:read', 'academic_year:update', 'academic_year:delete',
+    // Finance module
+    'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete',
+    'finance:student_fees:generate', 'finance:student_fees:read',
+    'finance:payments:record', 'finance:reports:read',
+    // Dashboard
+    'dashboard:view',
+  ];
+
+  const itManagerPermissionsList = [
+    'user:read',
+    'view_users',
+    'student:read',
+    'parent:read',
+    'teacher:read',
+    'employee:read',
+    'class:create', 'class:read', 'class:update',
+    'section:create', 'section:read', 'section:update', 'section:delete',
+    'timetable:create', 'timetable:read', 'timetable:update',
+    'announcement:create', 'announcement:read',
+    'event:create', 'event:read',
+    'attendance:read', 'attendance:update',
+    'academic_year:create', 'academic_year:read', 'academic_year:update', 'academic_year:delete',
+    'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete',
+    'finance:student_fees:generate', 'finance:student_fees:read',
+    'finance:payments:record', 'finance:reports:read',
+    'dashboard:view',
+  ];
+
   const rolePermissions = [
     // SUPER_ADMIN (VERY LIMITED) - Only school and user management
     { role: Role.SUPER_ADMIN, permissionName: 'school:create' },
@@ -143,49 +200,10 @@ async function main() {
     { role: Role.SUPER_ADMIN, permissionName: 'dashboard:view' },
 
     // ADMIN (FULL SCHOOL CONTROL)
-    // User management
-    { role: Role.ADMIN, permissionName: 'user:create' },
-    { role: Role.ADMIN, permissionName: 'user:read' },
-    { role: Role.ADMIN, permissionName: 'user:update' },
-    { role: Role.ADMIN, permissionName: 'user:deactivate' },
-    // Student management
-    { role: Role.ADMIN, permissionName: 'student:create' },
-    { role: Role.ADMIN, permissionName: 'student:read' },
-    { role: Role.ADMIN, permissionName: 'student:update' },
-    { role: Role.ADMIN, permissionName: 'student:approve_enrollment' },
-    // Parent management
-    { role: Role.ADMIN, permissionName: 'parent:create' },
-    { role: Role.ADMIN, permissionName: 'parent:read' },
-    { role: Role.ADMIN, permissionName: 'parent:update' },
-    { role: Role.ADMIN, permissionName: 'parent:link_student' },
-    { role: Role.ADMIN, permissionName: 'parent:unlink_student' },
-    // Teacher management
-    { role: Role.ADMIN, permissionName: 'teacher:create' },
-    { role: Role.ADMIN, permissionName: 'teacher:read' },
-    { role: Role.ADMIN, permissionName: 'teacher:update' },
-    // Class & Section
-    { role: Role.ADMIN, permissionName: 'class:create' },
-    { role: Role.ADMIN, permissionName: 'class:read' },
-    { role: Role.ADMIN, permissionName: 'class:update' },
-    { role: Role.ADMIN, permissionName: 'section:create' },
-    { role: Role.ADMIN, permissionName: 'section:read' },
-    { role: Role.ADMIN, permissionName: 'section:update' },
-    { role: Role.ADMIN, permissionName: 'section:delete' },
-    // Timetable
-    { role: Role.ADMIN, permissionName: 'timetable:create' },
-    { role: Role.ADMIN, permissionName: 'timetable:read' },
-    { role: Role.ADMIN, permissionName: 'timetable:update' },
-    // Announcements
-    { role: Role.ADMIN, permissionName: 'announcement:create' },
-    { role: Role.ADMIN, permissionName: 'announcement:read' },
-    // Events
-    { role: Role.ADMIN, permissionName: 'event:create' },
-    { role: Role.ADMIN, permissionName: 'event:read' },
-    // Attendance (Admin can view reports and override records, but cannot take attendance)
-    { role: Role.ADMIN, permissionName: 'attendance:read' },
-    { role: Role.ADMIN, permissionName: 'attendance:update' },
-    // Dashboard
-    { role: Role.ADMIN, permissionName: 'dashboard:view' },
+    ...adminPermissionsList.map((p) => ({ role: Role.ADMIN, permissionName: p })),
+
+    // IT_MANAGER (academic operations without people-management writes)
+    ...itManagerPermissionsList.map((p) => ({ role: Role.IT_MANAGER, permissionName: p })),
 
     // REGISTRAR
     { role: Role.REGISTRAR, permissionName: 'student:create' },
@@ -237,16 +255,6 @@ async function main() {
     { role: Role.FINANCE, permissionName: 'fee:read' },
     { role: Role.FINANCE, permissionName: 'fee:collect' },
     { role: Role.FINANCE, permissionName: 'dashboard:view' },
-
-    // ADMIN (finance module)
-    { role: Role.ADMIN, permissionName: 'finance:fee_structure:create' },
-    { role: Role.ADMIN, permissionName: 'finance:fee_structure:read' },
-    { role: Role.ADMIN, permissionName: 'finance:fee_structure:update' },
-    { role: Role.ADMIN, permissionName: 'finance:fee_structure:delete' },
-    { role: Role.ADMIN, permissionName: 'finance:student_fees:generate' },
-    { role: Role.ADMIN, permissionName: 'finance:student_fees:read' },
-    { role: Role.ADMIN, permissionName: 'finance:payments:record' },
-    { role: Role.ADMIN, permissionName: 'finance:reports:read' },
 
     // FINANCE (finance module)
     { role: Role.FINANCE, permissionName: 'finance:fee_structure:create' },

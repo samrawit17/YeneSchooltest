@@ -32,6 +32,27 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            (function() {
+              try {
+                var key = 'theme-storage';
+                var stored = localStorage.getItem(key);
+                if (stored) {
+                  var parsed = JSON.parse(stored);
+                  var t = parsed.state.theme;
+                  if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                  }
+                } else {
+                  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                  }
+                }
+              } catch(e) {}
+            })();
+          `
+        }} />
         <Providers>
           <ToastProvider />
           <PushNotificationManager />

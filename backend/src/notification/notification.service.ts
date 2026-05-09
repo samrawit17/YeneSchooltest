@@ -85,6 +85,10 @@ export enum NotificationType {
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
+  private canViewSchoolGlobalNotifications(userRole: string) {
+    return userRole === 'ADMIN' || userRole === 'IT_MANAGER';
+  }
+
   constructor(private prisma: PrismaService) {
     this.configureWebPush();
   }
@@ -126,16 +130,17 @@ export class NotificationService {
       schoolId?: string;
     },
   ) {
-    // SUPER_ADMIN is a global SaaS admin - can see all global notifications but not school-specific notifications
-    // Only school ADMIN can see school-specific notifications
-    const isSchoolAdmin = userRole === 'ADMIN';
+    // SUPER_ADMIN is a global SaaS admin - can see all global notifications but not school-specific notifications.
+    // School operational roles that share the admin bell should also receive school-global notifications.
+    const canSeeSchoolGlobalNotifications =
+      this.canViewSchoolGlobalNotifications(userRole);
 
     const where: any = {
       userId, // User-specific notifications
     };
 
     // Add global notifications for both school admins and super admins
-    if (isSchoolAdmin) {
+    if (canSeeSchoolGlobalNotifications) {
       where.OR = [{ userId }, { userId: null }];
       delete where.userId;
     }
@@ -222,15 +227,14 @@ export class NotificationService {
     userRole: string,
     schoolId?: string,
   ) {
-    // SUPER_ADMIN is a global SaaS admin - can see all global notifications but not school-specific notifications
-    // Only school ADMIN can see school-specific notifications
-    const isSchoolAdmin = userRole === 'ADMIN';
+    const canSeeSchoolGlobalNotifications =
+      this.canViewSchoolGlobalNotifications(userRole);
 
     const where: any = {
       userId,
     };
 
-    if (isSchoolAdmin) {
+    if (canSeeSchoolGlobalNotifications) {
       where.OR = [{ userId }, { userId: null }];
       delete where.userId;
     }
@@ -340,16 +344,15 @@ export class NotificationService {
     schoolId?: string,
     types?: string[],
   ) {
-    // SUPER_ADMIN is a global SaaS admin - can see all global notifications but not school-specific notifications
-    // Only school ADMIN can see school-specific notifications
-    const isSchoolAdmin = userRole === 'ADMIN';
+    const canSeeSchoolGlobalNotifications =
+      this.canViewSchoolGlobalNotifications(userRole);
 
     const where: any = {
       userId,
       isRead: false,
     };
 
-    if (isSchoolAdmin) {
+    if (canSeeSchoolGlobalNotifications) {
       where.OR = [
         { userId, isRead: false },
         { userId: null, isRead: false },

@@ -37,7 +37,7 @@ export class LessonController {
    * Includes: Lesson + Homework + Resources + Ethiopian curriculum tags
    */
   @Post()
-  @Roles(Role.ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.TEACHER)
   async createBundle(
     @Body() createLessonBundleDto: CreateLessonBundleDto,
     @Request() req,
@@ -53,7 +53,7 @@ export class LessonController {
    * Update Lesson Bundle
    */
   @Put('bundle/:id')
-  @Roles(Role.ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.TEACHER)
   async updateBundle(
     @Param('id') id: string,
     @Body() updateLessonBundleDto: UpdateLessonBundleDto,
@@ -86,7 +86,7 @@ export class LessonController {
    * Approve lesson (PENDING_REVIEW -> PUBLISHED) - HoD only
    */
   @Patch(':id/approve')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   async approveLesson(@Param('id') id: string, @Request() req) {
     return this.lessonService.approveLesson(id, req.user.id, req.user.schoolId);
   }
@@ -95,7 +95,7 @@ export class LessonController {
    * Reject lesson (PENDING_REVIEW -> DRAFT) - HoD only
    */
   @Patch(':id/reject')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   async rejectLesson(
     @Param('id') id: string,
     @Body('reason') reason: string,
@@ -113,7 +113,7 @@ export class LessonController {
    * Get lessons pending review (For HoD dashboard)
    */
   @Get('pending-review')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   async getPendingReview(
     @Request() req,
     @Query('departmentId') departmentId?: string,
@@ -147,7 +147,7 @@ export class LessonController {
    * Grade homework (Teacher)
    */
   @Post('submissions/:submissionId/grade')
-  @Roles(Role.ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.TEACHER)
   async gradeHomework(
     @Param('submissionId') submissionId: string,
     @Body() gradeHomeworkDto: GradeHomeworkDto,
@@ -166,7 +166,7 @@ export class LessonController {
    * Get Lesson Coverage Report
    */
   @Get('coverage/report')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER)
   async getCoverageReport(
     @Query() query: LessonCoverageQueryDto,
     @Request() req,
@@ -200,7 +200,7 @@ export class LessonController {
   }
 
   @Get('form-data')
-  @Roles(Role.ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.TEACHER)
   async getFormData(@Request() req) {
     const { id: teacherId, schoolId } = req.user;
     return this.lessonService.getFormData(teacherId, schoolId);
@@ -213,7 +213,7 @@ export class LessonController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.TEACHER)
   async update(
     @Param('id') id: string,
     @Body() updateLessonDto: UpdateLessonDto,
@@ -228,7 +228,7 @@ export class LessonController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.TEACHER)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.TEACHER)
   async delete(@Param('id') id: string, @Request() req) {
     const { id: userId, schoolId } = req.user;
     return this.lessonService.remove(id, userId, schoolId);

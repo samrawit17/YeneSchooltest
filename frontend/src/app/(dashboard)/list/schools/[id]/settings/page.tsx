@@ -26,6 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -665,8 +666,54 @@ export default function SchoolSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="container mx-auto p-6 max-w-6xl animate-pulse">
+        {/* School Header Skeleton */}
+        <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
+          <div className="flex items-center gap-4">
+            <Skeleton className="w-20 h-20 rounded-xl" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-7 w-64" />
+              <div className="flex gap-3">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+            </div>
+          </div>
+          <div className="mt-4">
+            <Skeleton className="h-14 w-full rounded-lg" />
+          </div>
+        </div>
+
+        {/* Tabs Skeleton */}
+        <div className="flex gap-2 mb-4">
+          <Skeleton className="h-9 w-24 rounded-md" />
+          <Skeleton className="h-9 w-28 rounded-md" />
+          <Skeleton className="h-9 w-24 rounded-md" />
+        </div>
+
+        {/* Settings Card Skeleton */}
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-10 h-10 rounded-lg" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-56" />
+              </div>
+            </div>
+          </div>
+          <div className="p-6 space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-start justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="flex-1 pr-4 space-y-2">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-64" />
+                </div>
+                <Skeleton className="h-8 w-16 rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

@@ -19,6 +19,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { communicationsAPI } from "@/lib/api/communications";
 import { announcementsAPI, eventsAPI } from "@/lib/api/content";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 // Lazy load forms for better performance
@@ -264,6 +265,7 @@ const forms: {
       initialData={type === "update" ? data : undefined}
       onSuccess={onClose}
       onCancel={onClose}
+      allowedRoles={["TEACHER", "IT_MANAGER", "REGISTRAR", "FINANCE"]}
     />
   ),
   student_unified: (type, data, onClose) => (
@@ -416,20 +418,20 @@ const FormModal = ({
       return (
         <div className="p-6 md:p-8 flex flex-col gap-4">
           <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-8 h-8 text-red-600" />
+            <div className="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/40 dark:to-red-800/40 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
             </div>
-            <p className="text-xl font-bold text-gray-900 mb-2">
+            <p className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               Confirm Deletion
             </p>
-            <p className="text-gray-600 font-medium">
+            <p className="text-gray-600 dark:text-gray-400 font-medium">
               Are you sure you want to delete this {table}? This action cannot be undone.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row justify-center gap-3 mt-6">
             <button
               onClick={() => setOpen(false)}
-              className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+              className="px-5 py-2.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-semibold"
             >
               Cancel
             </button>
@@ -453,11 +455,11 @@ const FormModal = ({
       }
       return (
         <div className="p-8 text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="w-8 h-8 text-gray-600" />
+          <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-gray-600 dark:text-gray-300" />
           </div>
-          <p className="text-gray-900 font-bold">Form Not Available</p>
-          <p className="text-gray-600 font-medium mt-1">
+          <p className="text-gray-900 dark:text-gray-100 font-bold">Form Not Available</p>
+          <p className="text-gray-600 dark:text-gray-400 font-medium mt-1">
             Form for {table} is currently under development
           </p>
         </div>
@@ -466,11 +468,11 @@ const FormModal = ({
     
     return (
       <div className="p-8 text-center">
-        <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-          <AlertTriangle className="w-8 h-8 text-gray-600" />
+        <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle className="w-8 h-8 text-gray-600 dark:text-gray-300" />
         </div>
-        <p className="text-gray-900 font-bold">Invalid Form Type</p>
-        <p className="text-gray-600 font-medium mt-1">
+        <p className="text-gray-900 dark:text-gray-100 font-bold">Invalid Form Type</p>
+        <p className="text-gray-600 dark:text-gray-400 font-medium mt-1">
           Form type not supported
         </p>
       </div>
@@ -499,11 +501,10 @@ const FormModal = ({
 
   // If title is provided, render as modal directly
   if (title) {
-
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open && onClose) onClose();
-      setIsOpen?.(open);
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen && onClose) onClose();
+      setOpen(nextOpen);
     }}>
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden" customCloseButton={false}>
         <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">

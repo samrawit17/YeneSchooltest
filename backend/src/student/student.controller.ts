@@ -96,7 +96,7 @@ export class StudentController {
   }
 
   @Get('id-cards')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   async getStudentsForIdCards(
     @Request() req,
     @Query('grade') grade?: string,
@@ -148,7 +148,7 @@ export class StudentController {
   }
 
   @Get('homeroom/me')
-  @Roles(Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.TEACHER, Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   @Permissions('student:read')
   async getMyHomeroomStudents(@Request() req) {
     const schoolId = req.user.schoolId;

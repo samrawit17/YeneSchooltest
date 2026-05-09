@@ -156,6 +156,7 @@ const ChangePasswordPage = () => {
         switch (user.role) {
           case 'SUPER_ADMIN': return "/superadmin";
           case 'ADMIN': return "/admin";
+          case 'IT_MANAGER': return "/it-manager";
           case 'TEACHER': return "/teacher";
           case 'STUDENT': return "/student";
           case 'PARENT': return "/parent";
@@ -185,6 +186,7 @@ const ChangePasswordPage = () => {
           switch (user?.role) {
             case 'SUPER_ADMIN': return "/superadmin";
             case 'ADMIN': return "/admin";
+            case 'IT_MANAGER': return "/it-manager";
             case 'TEACHER': return "/teacher";
             case 'STUDENT': return "/student";
             case 'PARENT': return "/parent";

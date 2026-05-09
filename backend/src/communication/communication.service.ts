@@ -16,7 +16,7 @@ import {
 
 @Injectable()
 export class CommunicationService {
-  private readonly adminRoles = new Set(['ADMIN', 'SUPER_ADMIN']);
+  private readonly adminRoles = new Set(['ADMIN', 'IT_MANAGER', 'SUPER_ADMIN']);
 
   constructor(
     private prisma: PrismaService,

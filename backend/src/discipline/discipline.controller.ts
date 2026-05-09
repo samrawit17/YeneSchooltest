@@ -30,7 +30,7 @@ export class DisciplineController {
   constructor(private readonly disciplineService: DisciplineService) {}
 
   @Post()
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async createIncident(@Body() dto: CreateIncidentDto & { reportedBy: string }) {
     return this.disciplineService.createIncident({
       ...dto,
@@ -39,7 +39,7 @@ export class DisciplineController {
   }
 
   @Get()
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async getIncidents(
     @Query('schoolId') schoolId: string,
     @Query('studentId') studentId?: string,
@@ -50,25 +50,25 @@ export class DisciplineController {
   }
 
   @Get('student/:studentId')
-  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.PARENT)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.PARENT)
   async getStudentIncidents(@Param('studentId') studentId: string) {
     return this.disciplineService.getStudentIncidents(studentId);
   }
 
   @Get(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async getIncident(@Param('id') id: string) {
     return this.disciplineService.getIncidentById(id);
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async updateIncident(@Param('id') id: string, @Body() dto: UpdateIncidentDto) {
     return this.disciplineService.updateIncident(id, dto);
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   async deleteIncident(@Param('id') id: string) {
     return this.disciplineService.deleteIncident(id);
   }

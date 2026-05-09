@@ -87,6 +87,44 @@ export class AuthController {
     }
   }
 
+  // SUPER_ADMIN creates IT_MANAGER
+  @Post('register/it-manager')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(Role.SUPER_ADMIN)
+  @Permissions('user:create')
+  async registerItManager(
+    @Request() req,
+    @Body()
+    body: { email: string; password: string; name: string; schoolId: string },
+  ) {
+    try {
+      if (!body.schoolId) {
+        throw new HttpException(
+          'schoolId is required for IT_MANAGER registration',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const result = await this.authService.registerItManager(
+        body.email,
+        body.password,
+        body.name,
+        body.schoolId,
+      );
+      if (!result.success) {
+        throw new HttpException(result.message, HttpStatus.BAD_REQUEST);
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'IT Manager registration failed: ' + error.message,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
   // ADMIN creates TEACHER
   @Post('register/teacher')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -275,8 +313,20 @@ export class AuthController {
   @Permissions('user:read')
   async getUsers(@Request() req, @Query('role') role?: Role) {
     try {
+      const roles = String(req.query?.roles || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean) as Role[];
+      const page = req.query?.page ? parseInt(String(req.query.page), 10) : 1;
+      const limit = req.query?.limit
+        ? parseInt(String(req.query.limit), 10)
+        : 10;
+      const search = req.query?.search
+        ? String(req.query.search)
+        : undefined;
+
       if (req.user.role === Role.SUPER_ADMIN) {
-        return this.authService.getUsers(role);
+        return this.authService.getUsers(role, roles, { page, limit, search });
       }
 
       if (!req.user.schoolId) {
@@ -286,7 +336,11 @@ export class AuthController {
         );
       }
 
-      return this.authService.getUsersBySchool(req.user.schoolId, role);
+      return this.authService.getUsersBySchool(req.user.schoolId, role, roles, {
+        page,
+        limit,
+        search,
+      });
     } catch (error) {
       throw new HttpException(
         'Failed to get users: ' + error.message,
@@ -297,7 +351,7 @@ export class AuthController {
 
   @Get('users/teachers')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.TEACHER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.IT_MANAGER, Role.TEACHER)
   @Permissions('user:read')
   async getTeachers(
     @Request() req,
@@ -311,7 +365,7 @@ export class AuthController {
 
       // SUPER_ADMIN can see all teachers across schools
       if (req.user.role === Role.SUPER_ADMIN) {
-        return this.authService.getUsers(Role.TEACHER, {
+        return this.authService.getUsers(Role.TEACHER, undefined, {
           page: pageNum,
           limit: limitNum,
           search,
@@ -328,6 +382,7 @@ export class AuthController {
       return this.authService.getUsersBySchool(
         req.user.schoolId,
         Role.TEACHER,
+        undefined,
         {
           page: pageNum,
           limit: limitNum,

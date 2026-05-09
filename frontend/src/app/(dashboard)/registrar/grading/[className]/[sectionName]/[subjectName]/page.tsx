@@ -58,7 +58,7 @@ export default function GradeDetailPage() {
       return;
     }
 
-    if (user?.role !== "REGISTRAR" && user?.role !== "ADMIN") {
+    if (user?.role !== "REGISTRAR" && (user?.role !== "ADMIN" && user?.role !== "IT_MANAGER")) {
       router.push("/");
       return;
     }

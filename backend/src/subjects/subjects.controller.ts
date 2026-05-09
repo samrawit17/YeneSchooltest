@@ -24,7 +24,7 @@ export class SubjectsController {
   constructor(private subjectsService: SubjectsService) {}
 
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('class:create')
   async create(
     @Request() req,
@@ -59,7 +59,7 @@ export class SubjectsController {
   }
 
   @Put(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('class:update')
   async update(
     @Param('id') id: string,
@@ -69,7 +69,7 @@ export class SubjectsController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('class:delete')
   async delete(@Param('id') id: string) {
     return this.subjectsService.delete(id);

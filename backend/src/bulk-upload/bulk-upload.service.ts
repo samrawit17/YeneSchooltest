@@ -426,6 +426,8 @@ export class BulkUploadService {
       finance: Role.FINANCE,
       registrar: Role.REGISTRAR,
       admin: Role.ADMIN,
+      'it-manager': Role.IT_MANAGER,
+      it_manager: Role.IT_MANAGER,
       parent: Role.PARENT,
     };
     return roleMap[roleStr.toLowerCase()] || Role.STUDENT;

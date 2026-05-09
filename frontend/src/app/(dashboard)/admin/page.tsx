@@ -104,6 +104,10 @@ interface DashboardResponse {
   };
 }
 
+interface AdminPageProps {
+  dashboardRole?: "ADMIN" | "IT_MANAGER";
+}
+
 // Map icon string names from backend to lucide icons
 const iconMap: Record<string, React.ElementType> = {
   student: UserPlus,
@@ -128,7 +132,7 @@ const iconColorMap: Record<string, { bg: string; icon: string }> = {
   finance: { bg: "bg-rose-100 dark:bg-rose-900/50", icon: "text-rose-600 dark:text-rose-400" },
 };
 
-const AdminPage = () => {
+const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { formattedYearLabel, displayTermName, currentTerm, formatDate: formatSchoolDate } = useAcademicYear();
@@ -143,7 +147,10 @@ const AdminPage = () => {
       else setLoading(true);
       setError(null);
 
-      const response = await dashboardAPI.getAdminDashboard();
+      const response =
+        dashboardRole === "IT_MANAGER"
+          ? await dashboardAPI.getItManagerDashboard()
+          : await dashboardAPI.getAdminDashboard();
       setDashboardData(response.data);
     } catch (err: any) {
       const message = err?.response?.data?.message || "Failed to load dashboard data";
@@ -262,6 +269,7 @@ const AdminPage = () => {
   const quickActions = dashboardData?.quickActions || [];
   const charts = dashboardData?.charts || {};
   const metadata = dashboardData?.metadata;
+  const isITManagerDashboard = dashboardRole === "IT_MANAGER";
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
@@ -270,9 +278,14 @@ const AdminPage = () => {
           {/* Header */}
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-[#e35336]">Admin Dashboard</h1>
+              <h1 className="text-2xl font-bold text-[#e35336]">
+                {isITManagerDashboard ? "IT Manager Dashboard" : "Admin Dashboard"}
+              </h1>
               <p className="text-gray-500 dark:text-gray-400 mt-1">
-                Welcome back{user?.name ? `, ${user.name}` : ""}! Here's what's happening in your school today.
+                Welcome back{user?.name ? `, ${user.name}` : ""}!{" "}
+                {isITManagerDashboard
+                  ? "Here's the current state of your school's systems and operations."
+                  : "Here's what's happening in your school today."}
               </p>
               {metadata?.generatedAt && (
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">

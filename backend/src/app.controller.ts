@@ -35,7 +35,7 @@ export class AppController {
 
   @Get('admin')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   getAdmin(@Request() req) {
     return {
       message: 'Admin route accessed',

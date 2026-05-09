@@ -47,6 +47,7 @@ const LoginPage = () => {
         switch (user.role) {
           case 'SUPER_ADMIN': return "/superadmin";
           case 'ADMIN': return "/admin";
+          case 'IT_MANAGER': return "/it-manager";
           case 'TEACHER': return "/teacher";
           case 'STUDENT': return "/student";
           case 'PARENT': return "/parent";
@@ -85,6 +86,7 @@ const LoginPage = () => {
         switch (user.role?.toLowerCase()) {
           case 'super_admin': return "/superadmin";
           case 'admin': return "/admin";
+          case 'it_manager': return "/it-manager";
           case 'teacher': return "/teacher";
           case 'student': return "/student";
           case 'parent': return "/parent";

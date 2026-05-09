@@ -80,10 +80,11 @@ export class DashboardController {
           () => this.superadminDashboardService.getDashboard(userId),
         );
       case 'ADMIN':
+      case 'IT_MANAGER':
         return this.getCachedDashboard(
           'school',
           req.user,
-          'overview:admin',
+          `overview:${role.toLowerCase()}`,
           () =>
             this.adminDashboardService.getDashboard(userId, schoolId, {
               role,
@@ -189,6 +190,27 @@ export class DashboardController {
       'school',
       req.user,
       `admin:${req.user.role}`,
+      () =>
+        this.adminDashboardService.getDashboard(
+          req.user.id,
+          req.user.schoolId,
+          {
+            role: req.user.role,
+            permissions: req.user.permissions || [],
+          },
+        ),
+    );
+  }
+
+  @Get('it-manager')
+  @Permissions('dashboard:view')
+  async getItManagerDashboard(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<UniversalDashboardResponseDto> {
+    return this.getCachedDashboard(
+      'school',
+      req.user,
+      'it-manager',
       () =>
         this.adminDashboardService.getDashboard(
           req.user.id,

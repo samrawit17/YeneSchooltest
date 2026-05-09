@@ -145,7 +145,9 @@ export default function PushNotificationManager() {
 
   const canEnableAudio =
     isAuthenticated &&
-    (user?.role === "TEACHER" || user?.role === "ADMIN");
+    (user?.role === "TEACHER" ||
+      ((user?.role === "ADMIN" || user?.role === "IT_MANAGER") || user?.role === "IT_MANAGER") ||
+      user?.role === "IT_MANAGER");
 
   return (
     <>

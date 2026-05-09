@@ -82,7 +82,7 @@ function TeacherDetailContent({ teacherId }: { teacherId: string }) {
   // Set breadcrumbs with teacher name
   useEffect(() => {
     const teacherName = teacher?.name || "Teacher Profile";
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+    const isAdmin = ((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER' || user?.role === 'SUPER_ADMIN';
     if (!breadcrumbSetRef.current && teacher) {
       breadcrumbSetRef.current = true;
       setItems([

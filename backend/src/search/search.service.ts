@@ -80,6 +80,23 @@ const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
     'messages',
     'finance',
   ],
+  [Role.IT_MANAGER]: [
+    'students',
+    'teachers',
+    'parents',
+    'staff',
+    'exams',
+    'lessons',
+    'announcements',
+    'events',
+    'classes',
+    'sections',
+    'subjects',
+    'grades',
+    'attendance',
+    'messages',
+    'finance',
+  ],
   [Role.REGISTRAR]: [
     'students',
     'teachers',
@@ -150,7 +167,7 @@ export class SearchService {
 
   private getSearchPermissions(role: string): SearchableEntity[] {
     const normalizedRole = role?.toUpperCase() as Role;
-    return SEARCH_PERMISSIONS[normalizedRole] || SEARCH_PERMISSIONS[Role.ADMIN];
+    return SEARCH_PERMISSIONS[normalizedRole] || SEARCH_PERMISSIONS[Role.IT_MANAGER];
   }
 
   async globalSearch(

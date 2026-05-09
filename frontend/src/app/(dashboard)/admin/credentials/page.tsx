@@ -264,6 +264,7 @@ export default function CredentialsPage() {
                     <SelectItem value="TEACHER">Teacher</SelectItem>
                     <SelectItem value="PARENT">Parent</SelectItem>
                     <SelectItem value="ADMIN">Admin</SelectItem>
+                    <SelectItem value="IT_MANAGER">IT Manager</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
