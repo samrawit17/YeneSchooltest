@@ -174,9 +174,41 @@ const SETTINGS_CONFIG: SettingItem[] = [
 
   // Access Settings
   {
+    key: 'TEACHER_PORTAL_ACCESS',
+    label: 'Teacher Portal Access',
+    description: 'Allow teachers to access the teacher portal',
+    type: 'boolean',
+    category: 'access',
+    systemDefault: true,
+  },
+  {
+    key: 'STUDENT_PORTAL_ACCESS',
+    label: 'Student Portal Access',
+    description: 'Allow students to access the student portal',
+    type: 'boolean',
+    category: 'access',
+    systemDefault: true,
+  },
+  {
     key: 'PARENT_PORTAL_ACCESS',
     label: 'Parent Portal Access',
     description: 'Allow parents to access the parent portal',
+    type: 'boolean',
+    category: 'access',
+    systemDefault: true,
+  },
+  {
+    key: 'FINANCE_PORTAL_ACCESS',
+    label: 'Finance Portal Access',
+    description: 'Allow finance staff to access the finance portal',
+    type: 'boolean',
+    category: 'access',
+    systemDefault: true,
+  },
+  {
+    key: 'REGISTRAR_PORTAL_ACCESS',
+    label: 'Registrar Portal Access',
+    description: 'Allow registrars to access the registrar portal',
     type: 'boolean',
     category: 'access',
     systemDefault: true,
@@ -566,6 +598,10 @@ export default function SchoolSettingsPage() {
     // Check for null, undefined, or empty string
     if (value !== undefined && value !== null && value !== '') {
       return value;
+    }
+    // For booleans, default to systemDefault so switches appear ON by default
+    if (setting.type === 'boolean') {
+      return setting.systemDefault ?? true;
     }
     // For academic settings, don't return default - show "Select an option..." until admin chooses
     // Only use default after user has explicitly saved a value

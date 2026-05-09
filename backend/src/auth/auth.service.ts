@@ -89,6 +89,31 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Check portal access for role-based portals
+    const portalAccessKeyMap: Record<string, string> = {
+      TEACHER: 'TEACHER_PORTAL_ACCESS',
+      STUDENT: 'STUDENT_PORTAL_ACCESS',
+      PARENT: 'PARENT_PORTAL_ACCESS',
+      FINANCE: 'FINANCE_PORTAL_ACCESS',
+      REGISTRAR: 'REGISTRAR_PORTAL_ACCESS',
+    };
+
+    const portalKey = portalAccessKeyMap[user.role];
+    if (portalKey && user.schoolId) {
+      const portalSetting = await this.prismaService.schoolSetting.findUnique({
+        where: {
+          schoolId_key: { schoolId: user.schoolId, key: portalKey },
+        },
+        select: { value: true },
+      });
+
+      if (portalSetting && portalSetting.value === 'false') {
+        throw new UnauthorizedException(
+          'This portal is currently disabled. Please contact your school administration.',
+        );
+      }
+    }
+
     // Update last login time
     await this.prismaService.user.update({
       where: { id: user.id },
