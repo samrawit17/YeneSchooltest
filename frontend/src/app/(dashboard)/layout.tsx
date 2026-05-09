@@ -12,6 +12,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { schoolsAPI } from "@/lib/api";
 import { APP_VERSION } from "@/lib/version";
 import { useQuery } from "@tanstack/react-query";
+import { getCurrentEthiopianYear } from "@/lib/calendar-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -37,6 +38,12 @@ export default function DashboardLayout({
     },
     enabled: !!user?.schoolId,
   });
+  // Set document title to school name
+  useEffect(() => {
+    if (school?.name) {
+      document.title = `${school.name} - Portal`;
+    }
+  }, [school?.name]);
 
 
   useEffect(() => {
@@ -175,14 +182,14 @@ export default function DashboardLayout({
         <footer className="border-t border-gray-200 dark:border-[#334155] bg-[#F1F5F9] dark:bg-[#111827] px-3 sm:px-4 py-2 sm:py-3">
           <div className="flex flex-row items-center justify-between gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
             <div className="flex items-center gap-1 sm:gap-2">
-              <span className="font-medium">SMS</span>
-              <span className="text-gray-300 dark:text-gray-600">|</span>
-              <span>v{APP_VERSION}</span>
+              <span className="font-medium">{school?.name ? `${school.name} Portal` : 'SMS Portal'}</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <span>© {new Date().getFullYear()}</span>
+              <span>© {user?.calendarType === 'ETHIOPIAN' ? `${getCurrentEthiopianYear()} E.C.` : new Date().getFullYear()}</span>
               <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
-              <span className="hidden md:inline">Powered by Next.js</span>
+              <span className="hidden md:inline">Lemari SMS</span>
+              <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
+              <span>v{APP_VERSION}</span>
             </div>
           </div>
         </footer>

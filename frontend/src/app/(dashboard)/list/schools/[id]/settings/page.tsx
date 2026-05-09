@@ -6,6 +6,7 @@ import { schoolSettingsAPI, schoolsAPI, academicYearsAPI } from '@/lib/api';
 import { subscriptionAPI } from '@/lib/api/admin';
 import { getCurrentEthiopianYear } from '@/lib/calendar-utils';
 import { useAuth } from '@/context/AuthContext';
+import { useBreadcrumb } from '@/context/BreadcrumbContext';
 import { toast } from 'sonner';
 import { 
   Loader2, 
@@ -125,14 +126,6 @@ const SETTINGS_CONFIG: SettingItem[] = [
     category: 'attendance',
     systemDefault: '03:00',
   },
-  {
-    key: 'PARENT_VIEW_ATTENDANCE',
-    label: 'Parent View Attendance',
-    description: 'Allow parents to view their children\'s attendance records',
-    type: 'boolean',
-    category: 'attendance',
-    systemDefault: true,
-  },
 
   // Exam Settings
   {
@@ -174,9 +167,41 @@ const SETTINGS_CONFIG: SettingItem[] = [
 
   // Access Settings
   {
+    key: 'TEACHER_PORTAL_ACCESS',
+    label: 'Teacher Portal Access',
+    description: 'Allow teachers to access the teacher portal',
+    type: 'boolean',
+    category: 'access',
+    systemDefault: true,
+  },
+  {
+    key: 'STUDENT_PORTAL_ACCESS',
+    label: 'Student Portal Access',
+    description: 'Allow students to access the student portal',
+    type: 'boolean',
+    category: 'access',
+    systemDefault: true,
+  },
+  {
     key: 'PARENT_PORTAL_ACCESS',
     label: 'Parent Portal Access',
     description: 'Allow parents to access the parent portal',
+    type: 'boolean',
+    category: 'access',
+    systemDefault: true,
+  },
+  {
+    key: 'FINANCE_PORTAL_ACCESS',
+    label: 'Finance Portal Access',
+    description: 'Allow finance staff to access the finance portal',
+    type: 'boolean',
+    category: 'access',
+    systemDefault: true,
+  },
+  {
+    key: 'REGISTRAR_PORTAL_ACCESS',
+    label: 'Registrar Portal Access',
+    description: 'Allow registrars to access the registrar portal',
     type: 'boolean',
     category: 'access',
     systemDefault: true,
@@ -308,7 +333,7 @@ export default function SchoolSettingsPage() {
   const params = useParams();
   const schoolId = params.id as string;
   const { user, updateUser } = useAuth();
-
+  const { setItems } = useBreadcrumb();
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -454,6 +479,18 @@ export default function SchoolSettingsPage() {
     fetchSchoolPlan();
   }, [schoolId, fetchSettings, fetchSchoolInfo, fetchAcademicYears, fetchSchoolPlan]);
 
+  // Set breadcrumb with school name
+  useEffect(() => {
+    if (schoolInfo?.name) {
+      setItems([
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Schools' },
+        { label: schoolInfo.name, href: `/list/schools/${schoolId}` },
+        { label: 'Settings', isCurrent: true },
+      ]);
+    }
+  }, [schoolInfo?.name, schoolId, setItems]);
+
   useEffect(() => {
     if (settings['calendar_type']) {
       fetchAcademicYears();
@@ -567,6 +604,10 @@ export default function SchoolSettingsPage() {
     if (value !== undefined && value !== null && value !== '') {
       return value;
     }
+    // For booleans, default to systemDefault so switches appear ON by default
+    if (setting.type === 'boolean') {
+      return setting.systemDefault ?? true;
+    }
     // For academic settings, don't return default - show "Select an option..." until admin chooses
     // Only use default after user has explicitly saved a value
     return '';
@@ -666,7 +707,7 @@ export default function SchoolSettingsPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 max-w-6xl animate-pulse">
+      <div className="container mx-auto p-6 max-w-6xl">
         {/* School Header Skeleton */}
         <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
           <div className="flex items-center gap-4">

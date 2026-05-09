@@ -1,25 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { authAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import Table from "@/components/Table";
+import TableSearch from "@/components/TableSearch";
 import Pagination from "@/components/Pagination";
 import FormModal from "@/components/FormModal";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
 import {
-  CheckCircle,
-  Edit2,
-  Phone,
-  Search,
+  Eye,
   Shield,
-  Trash2,
   UserPlus,
-  XCircle,
+  Search,
 } from "lucide-react";
 
 type StaffRole = "TEACHER" | "IT_MANAGER" | "REGISTRAR" | "FINANCE";
@@ -54,11 +52,26 @@ const roleBadgeClass: Record<StaffRole, string> = {
   FINANCE: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700",
 };
 
+const getStatusBadge = (isActive: boolean) => {
+  if (isActive) {
+    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800";
+  }
+  return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700";
+};
+
+const getInitials = (name: string) => {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
 export default function StaffPage() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"create" | "update">("create");
@@ -67,246 +80,246 @@ export default function StaffPage() {
   const canManageStaff = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
   const { data, isLoading, error } = useQuery<UsersResponse>({
-    queryKey: ["staff-users", page, search, selectedRole],
+    queryKey: ["staff-users", page, searchInput, selectedRole],
     queryFn: async () => {
       const response = await authAPI.getUsers({
         roles: selectedRole ? [selectedRole] : STAFF_ROLES,
         page,
         limit: 10,
-        search: search || undefined,
+        search: searchInput || undefined,
       });
       return response.data;
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => authAPI.deleteUser(id),
-    onSuccess: () => {
-      toast.success("Staff user deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["staff-users"] });
-    },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Failed to delete staff user");
-    },
-  });
+  const staffList = data?.data || [];
+  const total = data?.total || 0;
+  const totalPages = data?.totalPages || 0;
 
-  const columns = [
-    { header: "Staff", accessor: "staff" },
-    { header: "Role", accessor: "role", className: "hidden md:table-cell" },
-    { header: "Phone", accessor: "phone", className: "hidden lg:table-cell" },
-    { header: "Status", accessor: "status", className: "hidden md:table-cell" },
-    { header: "Actions", accessor: "actions", className: "w-24" },
-  ];
-
-  const renderRow = (item: StaffUser) => (
-    <tr key={item.id} className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50 flex items-center justify-center">
-            <span className="text-blue-700 dark:text-blue-300 font-semibold text-sm">
-              {item.name.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <div>
-            <p className="font-medium text-gray-900 dark:text-gray-100">{item.name}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{item.email}</p>
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+        <div className="p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
+            <Card className="dark:border-slate-700 dark:bg-slate-800">
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <p className="text-red-500">Failed to load staff. Please try again later.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{(error as any).message}</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </td>
-      <td className="hidden md:table-cell p-4">
-        <Badge variant="outline" className={roleBadgeClass[item.role]}>
-          {item.role.replace("_", " ")}
-        </Badge>
-      </td>
-      <td className="hidden lg:table-cell p-4">
-        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-          <Phone className="w-4 h-4" />
-          <span>{item.phone || "-"}</span>
+      </div>
+    );
+  }
+
+  if (!isLoading && staffList.length === 0 && !searchInput) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+        <div className="p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
+            <Card className="dark:border-slate-700 dark:bg-slate-800">
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <p className="text-gray-500 dark:text-gray-400">No staff found.</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </td>
-      <td className="hidden md:table-cell p-4">
-        <div className="flex items-center gap-2">
-          {item.isActive ? (
-            <>
-              <CheckCircle className="w-4 h-4 text-green-500" />
-              <span className="text-green-700 dark:text-green-400 font-medium">Active</span>
-            </>
-          ) : (
-            <>
-              <XCircle className="w-4 h-4 text-red-500" />
-              <span className="text-red-700 dark:text-red-400 font-medium">Inactive</span>
-            </>
-          )}
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+        <div className="p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-10 w-32 rounded-lg" />
+            </div>
+            <Card className="dark:border-slate-700 dark:bg-slate-800">
+              <CardContent className="p-0">
+                <Skeleton className="h-96 w-full" />
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </td>
-      <td className="p-4">
-        <div className="flex items-center gap-1">
-          {canManageStaff && (
-            <>
-              <button
-                className="p-2 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 rounded-lg transition-colors"
-                title="Edit"
-                onClick={() => {
-                  setSelectedUser(item);
-                  setModalType("update");
-                  setIsModalOpen(true);
-                }}
-              >
-                <Edit2 className="w-4 h-4 text-yellow-600" />
-              </button>
-              <button
-                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                title="Delete"
-                onClick={() => {
-                  if (window.confirm(`Delete ${item.name}? This action cannot be undone.`)) {
-                    deleteMutation.mutate(item.id);
-                  }
-                }}
-              >
-                <Trash2 className="w-4 h-4 text-red-600" />
-              </button>
-            </>
-          )}
-        </div>
-      </td>
-    </tr>
-  );
+      </div>
+    );
+  }
+
+  const startItem = (page - 1) * 10 + 1;
+  const endItem = Math.min(page * 10, total);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
       <div className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">Staff Management</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Create and manage teachers, IT managers, registrars, and finance staff.
-          </p>
-        </div>
-        {canManageStaff && (
-          <button
-            onClick={() => {
-              setSelectedUser(null);
-              setModalType("create");
-              setIsModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            <UserPlus className="w-5 h-5" />
-            <span>Add Staff</span>
-          </button>
-        )}
-      </div>
-
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-4">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="relative w-full max-w-sm">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400 dark:text-gray-500" />
-            <Input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search staff by name or email"
-              className="pl-9"
-            />
+          {/* Top Section - Title and Buttons */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <h1 className="text-2xl font-bold text-[#e35336]">Staff Management</h1>
+            <div className="flex items-center gap-3">
+              {canManageStaff && (
+                <Button
+                  style={{ backgroundColor: "#1E3A8A" }}
+                  onClick={() => {
+                    setSelectedUser(null);
+                    setModalType("create");
+                    setIsModalOpen(true);
+                  }}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Staff
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Role:</label>
-            <select
-              value={selectedRole}
-              onChange={(e) => {
-                setSelectedRole(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium dark:bg-slate-700 dark:text-gray-100"
-            >
-              <option value="">All Staff</option>
-              <option value="TEACHER">Teacher</option>
-              <option value="IT_MANAGER">IT Manager</option>
-              <option value="REGISTRAR">Registrar</option>
-              <option value="FINANCE">Finance</option>
-            </select>
-          </div>
-        </div>
-      </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-        {isLoading ? (
-          <div className="animate-pulse">
-            {/* Search & Filter Skeleton */}
-            <div className="p-4 border-b border-gray-200 dark:border-slate-700">
-              <div className="flex flex-wrap gap-4 items-center">
-                <Skeleton className="h-10 w-72 rounded-lg" />
-                <div className="flex items-center gap-3">
-                  <Skeleton className="h-4 w-8" />
-                  <Skeleton className="h-10 w-32 rounded-lg" />
+          {/* Filters Section */}
+          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <CardContent className="p-4">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+                <div className="w-full lg:flex-1">
+                  <TableSearch
+                    search={searchInput}
+                    setSearch={setSearchInput}
+                    placeholder="Search by name or email..."
+                    className="w-full"
+                  />
                 </div>
-              </div>
-            </div>
-            {/* Table Header */}
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-slate-700">
-              <div className="flex gap-8">
-                <Skeleton className="h-4 w-48" />
-                <Skeleton className="h-4 w-20 hidden md:block" />
-                <Skeleton className="h-4 w-20 hidden lg:block" />
-                <Skeleton className="h-4 w-16 hidden md:block" />
-                <Skeleton className="h-4 w-16" />
-              </div>
-            </div>
-            {/* Table Rows */}
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-slate-700">
-                <div className="flex items-center gap-3 flex-1">
-                  <Skeleton className="w-10 h-10 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
+                <div className="w-full lg:w-auto">
+                  <div className="flex flex-wrap gap-3">
+                    <select
+                      value={selectedRole}
+                      onChange={(e) => {
+                        setSelectedRole(e.target.value);
+                        setPage(1);
+                      }}
+                      className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
+                    >
+                      <option value="">All Roles</option>
+                      <option value="TEACHER">Teacher</option>
+                      <option value="IT_MANAGER">IT Manager</option>
+                      <option value="REGISTRAR">Registrar</option>
+                      <option value="FINANCE">Finance</option>
+                    </select>
                   </div>
                 </div>
-                <Skeleton className="h-6 w-24 rounded-full hidden md:block" />
-                <Skeleton className="h-4 w-28 hidden lg:block" />
-                <Skeleton className="h-4 w-16 hidden md:block" />
-                <div className="flex gap-1">
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                </div>
               </div>
-            ))}
-          </div>
-        ) : error ? (
-          <div className="p-8 text-center">
-            <p className="text-red-600 font-medium">Error loading staff</p>
-          </div>
-        ) : !data?.data.length ? (
-          <div className="p-8 text-center">
-            <Shield className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400 font-medium">
-              {canManageStaff ? "No staff found. Create your first staff user." : "No staff available"}
-            </p>
-          </div>
-        ) : (
-          <Table columns={columns} renderRow={renderRow} data={data.data} />
-        )}
-      </div>
+            </CardContent>
+          </Card>
 
-      {data && data.totalPages > 1 && (
-        <Pagination page={page} setPage={setPage} totalPages={data.totalPages} />
-      )}
+          {/* Main Data Table */}
+          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
+                  <tr className="border-b border-gray-100 dark:border-slate-700">
+                    <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Staff</th>
+                    <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Role</th>
+                    <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Phone</th>
+                    <th className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Status</th>
+                    <th className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staffList.map((item) => (
+                    <tr key={item.id} className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-10 h-10">
+                            {item.avatarUrl ? (
+                              <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                                {getInitials(item.name)}
+                              </AvatarFallback>
+                            ) : (
+                              <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                                {getInitials(item.name)}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{item.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={roleBadgeClass[item.role]}>
+                          {item.role.replace("_", " ")}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{item.phone || "-"}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(item.isActive)}`}>
+                          {item.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <Link
+                            href={`/list/staff/${item.id}`}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                            title="View"
+                          >
+                            <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400 hover:text-[#e35336]" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {staffList.length === 0 && searchInput && (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
+                  <p className="text-lg font-medium text-gray-900 dark:text-white">
+                    No staff found
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    No staff match "{searchInput}". Try different keywords.
+                  </p>
+                </div>
+              )}
+            </div>
+          </Card>
 
-      {canManageStaff && (
-        <FormModal
-          isOpen={isModalOpen}
-          setIsOpen={setIsModalOpen}
-          title={modalType === "create" ? "Add Staff User" : "Update Staff User"}
-          type={modalType}
-          table="staff"
-          data={selectedUser || undefined}
-          id={selectedUser?.id}
-        />
-      )}
+          {/* Bottom - Pagination */}
+          {staffList.length > 0 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {searchInput
+                  ? `Showing ${startItem}–${Math.min(endItem, total)} of ${total} staff for "${searchInput}"`
+                  : `Showing ${startItem}–${endItem} of ${total} staff`}
+              </p>
+              <Pagination
+                page={page}
+                setPage={setPage}
+                totalPages={totalPages}
+                className="flex-wrap"
+              />
+            </div>
+          )}
         </div>
+
+        {canManageStaff && (
+          <FormModal
+            isOpen={isModalOpen}
+            setIsOpen={setIsModalOpen}
+            title={modalType === "create" ? "Add Staff User" : "Update Staff User"}
+            type={modalType}
+            table="staff"
+            data={selectedUser || undefined}
+            id={selectedUser?.id}
+          />
+        )}
       </div>
     </div>
   );

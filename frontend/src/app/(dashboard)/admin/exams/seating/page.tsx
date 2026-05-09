@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -908,15 +909,15 @@ export default function ExamSeatingPage() {
   /* -------------------- Render guards -------------------- */
   if (isLoading || loadingInitial) {
     return (
-      <div className="p-6 max-w-7xl mx-auto space-y-6 animate-pulse">
-        <div className="h-8 bg-gray-200 rounded w-1/3" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-1/2" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 space-y-4">
-            <div className="h-96 bg-gray-100 rounded-xl" />
+            <Skeleton className="h-96 w-full rounded-xl" />
           </div>
           <div className="lg:col-span-8">
-            <div className="h-96 bg-gray-100 rounded-xl" />
+            <Skeleton className="h-96 w-full rounded-xl" />
           </div>
         </div>
       </div>
@@ -939,29 +940,21 @@ export default function ExamSeatingPage() {
             <p className="text-gray-500">
               Configure and generate seating for students across multiple grades
             </p>
-            {currentAcademicYear && (
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                  <GraduationCap className="w-3 h-3 mr-1" />
-                  {currentAcademicYear.name || currentAcademicYear.label}
-                </Badge>
-              </div>
-            )}
           </div>
           {seatingOverview && (
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className="text-primary border-primary bg-primary/5">
+              <Badge variant="outline" className="text-primary border-primary bg-primary/5 dark:text-blue-400 dark:border-blue-400 dark:bg-blue-950/30">
                 <UserCheck className="w-3 h-3 mr-1" />
                 {seatingOverview.totalStudents} Students
               </Badge>
-              <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50">
+              <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50 dark:text-green-400 dark:border-green-400 dark:bg-green-950/30">
                 <LayoutGrid className="w-3 h-3 mr-1" />
                 {seatingOverview.totalSections} Sections
               </Badge>
               {isDirty && (
                 <Badge
                   variant="outline"
-                  className="text-amber-600 border-amber-600 bg-amber-50"
+                  className="text-amber-600 border-amber-600 bg-amber-50 dark:text-amber-400 dark:border-amber-400 dark:bg-amber-950/30"
                 >
                   <AlertTriangle className="w-3 h-3 mr-1" />
                   Unsaved Changes
@@ -1015,7 +1008,7 @@ export default function ExamSeatingPage() {
                               {allPlans.some((p) => p.examType === et.type) && (
                                 <Badge
                                   variant="outline"
-                                  className="ml-1 text-xs text-blue-600 border-blue-200"
+                                  className="ml-1 text-xs text-blue-600 border-blue-200 dark:text-blue-400 dark:border-blue-700"
                                 >
                                   Plan exists
                                 </Badge>
