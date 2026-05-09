@@ -65,7 +65,7 @@ const Pagination = ({
       <button
         onClick={() => setPage(Math.max(1, page - 1))}
         disabled={page === 1}
-        className="flex items-center justify-center w-8 h-8 text-white bg-[#e35336] rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#c74428] hover:shadow-md active:scale-95 transition-all duration-150"
+        className="flex items-center justify-center w-8 h-8 text-white bg-[var(--brand-color,#e35336)] rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#c74428] hover:shadow-md active:scale-95 transition-all duration-150"
         aria-label="Previous page"
       >
         <ChevronLeft className="w-4 h-4" />
@@ -91,7 +91,7 @@ const Pagination = ({
               onClick={() => setPage(pageNum)}
               className={`flex items-center justify-center w-8 h-8 text-sm font-medium rounded-md transition-all duration-150 ${
                 page === pageNum
-                  ? "bg-[#e35336] text-white shadow-sm"
+                  ? "bg-[var(--brand-color,#e35336)] text-white shadow-sm"
                   : "text-gray-600 hover:bg-gray-100 active:bg-gray-200"
               }`}
               aria-label={`Go to page ${pageNum}`}
@@ -107,7 +107,7 @@ const Pagination = ({
       <button
         onClick={() => setPage(Math.min(totalPages, page + 1))}
         disabled={page === totalPages}
-        className="flex items-center justify-center w-8 h-8 text-white bg-[#e35336] rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#c74428] hover:shadow-md active:scale-95 transition-all duration-150"
+        className="flex items-center justify-center w-8 h-8 text-white bg-[var(--brand-color,#e35336)] rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#c74428] hover:shadow-md active:scale-95 transition-all duration-150"
         aria-label="Next page"
       >
         <ChevronRight className="w-4 h-4" />

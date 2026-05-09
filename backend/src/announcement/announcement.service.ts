@@ -49,15 +49,15 @@ export class AnnouncementService {
   }
 
   async create(data: CreateAnnouncementDto, userId: string, schoolId: string) {
-    // Handle empty visibleTo array - convert to null for Prisma
+    // Handle empty visibleTo array - store as comma-separated string or null
     const visibleTo =
-      data.visibleTo && data.visibleTo.length > 0 ? data.visibleTo : null;
+      data.visibleTo && data.visibleTo.length > 0 ? data.visibleTo.join(',') : null;
 
     const announcement = await this.prisma.announcement.create({
       data: {
         title: data.title,
         content: data.content,
-        visibleTo: visibleTo as any,
+        visibleTo,
         startDate: new Date(data.startDate),
         endDate: data.endDate ? new Date(data.endDate) : null,
         priority: data.priority || 'MEDIUM',
@@ -92,7 +92,7 @@ export class AnnouncementService {
     return announcement;
   }
 
-  async findAll(schoolId: string, userRole?: string) {
+  async findAll(schoolId: string, userRole?: string, userId?: string) {
     const now = new Date();
 
     // Build where clause for active announcements
@@ -137,10 +137,20 @@ export class AnnouncementService {
       ],
     });
 
+    // Transform visibleTo from comma-separated string to array for frontend
+    const transformed = announcements.map((a) => ({
+      ...a,
+      visibleTo: a.visibleTo ? a.visibleTo.split(',').map((r) => r.trim()) : [],
+    }));
+
     // Filter by role if userRole is provided
     if (userRole) {
-      return announcements.filter((announcement) => {
-        const visibleTo = (announcement.visibleTo as unknown as string[]) || [];
+      return transformed.filter((announcement) => {
+        // Creator always sees their own announcements
+        if (userId && announcement.createdById === userId) {
+          return true;
+        }
+        const visibleTo = announcement.visibleTo as string[];
         // If visibleTo is empty, it's visible to all
         if (!visibleTo || visibleTo.length === 0) {
           return true;
@@ -152,7 +162,7 @@ export class AnnouncementService {
       });
     }
 
-    return announcements;
+    return transformed;
   }
 
   async findOne(id: string) {
@@ -179,7 +189,12 @@ export class AnnouncementService {
       throw new NotFoundException('Announcement not found');
     }
 
-    return announcement;
+    return {
+      ...announcement,
+      visibleTo: announcement.visibleTo
+        ? announcement.visibleTo.split(',').map((r) => r.trim())
+        : [],
+    };
   }
 
   async update(
@@ -197,11 +212,11 @@ export class AnnouncementService {
       throw new NotFoundException('Announcement not found');
     }
 
-    // Handle empty visibleTo array - convert to null for Prisma
+    // Handle empty visibleTo array - store as comma-separated string or null
     const visibleTo =
       data.visibleTo !== undefined
         ? data.visibleTo.length > 0
-          ? data.visibleTo
+          ? data.visibleTo.join(',')
           : null
         : undefined;
 
@@ -210,7 +225,7 @@ export class AnnouncementService {
       data: {
         ...(data.title && { title: data.title }),
         ...(data.content && { content: data.content }),
-        ...(visibleTo !== undefined && { visibleTo: visibleTo as any }),
+        ...(visibleTo !== undefined && { visibleTo }),
         ...(data.startDate && { startDate: new Date(data.startDate) }),
         ...(data.endDate !== undefined && {
           endDate: data.endDate ? new Date(data.endDate) : null,

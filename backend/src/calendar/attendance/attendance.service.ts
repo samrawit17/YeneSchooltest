@@ -444,15 +444,6 @@ export class AttendanceService {
     classId?: string,
     sectionId?: string,
   ) {
-    console.log('[DEBUG] getStudentsForAttendance params:', {
-      userId: user.id,
-      classId,
-      className,
-      section,
-      sectionId,
-      date,
-    });
-    console.log('[DEBUG] User schoolId:', user.schoolId);
     const targetDate = date ? new Date(date) : new Date();
 
     // Find the relevant academic year for this date
@@ -486,21 +477,9 @@ export class AttendanceService {
           academicYear: true,
         },
       });
-      console.log(
-        '[DEBUG] classDataById:',
-        classDataById
-          ? {
-              id: classDataById.id,
-              name: classDataById.name,
-              academicYear: classDataById.academicYear?.name,
-            }
-          : 'NOT FOUND',
-      );
-
       if (classDataById && classDataById.academicYear) {
         // Use the academic year from the class record directly
         const classAcademicYearId = classDataById.academicYearId;
-        const classAcademicYearName = classDataById.academicYear.name;
 
         let resolvedSectionId: string | undefined = sectionId || undefined;
 
@@ -519,8 +498,6 @@ export class AttendanceService {
           classId: classDataById.id,
           // FIXED: Remove strict academicYear filter (matches ClassService.getStudentsByClass)
         };
-        console.log('[DEBUG] studentClassWhere:', studentClassWhere);
-        console.log('[DEBUG] resolvedSectionId:', resolvedSectionId);
 
         if (resolvedSectionId) {
           studentClassWhere.sectionId = resolvedSectionId;
@@ -536,7 +513,6 @@ export class AttendanceService {
             },
           },
         });
-        console.log('[DEBUG] studentClasses found:', studentClasses.length);
 
         if (studentClasses.length === 0) {
           const relaxedWhere: any = {
@@ -624,18 +600,23 @@ export class AttendanceService {
       section?.toLowerCase?.(),
     ].filter((v): v is string => typeof v === 'string' && v.length > 0);
 
-    // First, try to find the class by name for the current academic year
+    // Prefer the concrete class record regardless of the currently active year.
     let classData = await this.prisma.class.findFirst({
       where: {
         schoolId: user.schoolId,
         name: { in: possibleClassNames },
-        academicYearId: academicYear.id,
         OR: [
           { section: { in: possibleSections } },
           { sections: { some: { name: { in: possibleSections } } } },
         ],
       },
-      include: { sections: true },
+      include: {
+        sections: true,
+        academicYear: true,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
     });
 
     if (!classData) {
@@ -643,9 +624,14 @@ export class AttendanceService {
         where: {
           schoolId: user.schoolId,
           name: { in: possibleClassNames },
-          academicYearId: academicYear.id,
         },
-        include: { sections: true },
+        include: {
+          sections: true,
+          academicYear: true,
+        },
+        orderBy: {
+          updatedAt: 'desc',
+        },
       });
     }
 
@@ -689,7 +675,7 @@ export class AttendanceService {
           ? await this.prisma.enrollment.findMany({
               where: {
                 schoolId: user.schoolId,
-                academicYear: academicYear.name,
+                academicYear: classData.academicYearId,
                 status: 'APPROVED',
                 studentId: { in: studentIds },
               },
@@ -734,7 +720,7 @@ export class AttendanceService {
       where: {
         schoolId: user.schoolId,
         enrollmentStatus: 'APPROVED',
-        academicYear: academicYear.name,
+        academicYear: classData?.academicYearId || academicYear.id,
         className: { in: possibleClassNames },
         section: { in: possibleSections },
       },
@@ -857,9 +843,9 @@ export class AttendanceService {
         throw new NotFoundException('Class not found');
       }
 
-      if (!classData.academicYear?.isActive) {
+      if (!classData.academicYearId) {
         throw new BadRequestException(
-          'Academic year for this class is not active',
+          'Academic year is not configured for this class',
         );
       }
 
@@ -929,13 +915,13 @@ export class AttendanceService {
         );
       }
 
-      // Verify academic year is active
+      // Verify timetable slot has an academic year configured
       if (slot.academicYearId) {
         const academicYear = await this.prisma.academicYear.findUnique({
           where: { id: slot.academicYearId },
         });
-        if (!academicYear?.isActive) {
-          throw new BadRequestException('Academic year is not active');
+        if (!academicYear) {
+          throw new BadRequestException('Academic year is not configured');
         }
       }
 
@@ -1132,24 +1118,18 @@ export class AttendanceService {
       throw new NotFoundException('Attendance session not found');
     }
 
-    // Determine the relevant academic year for the session date
-    const sessionDate = new Date(session.date);
-    const academicYear = await this.findAcademicYearByDate(
-      session.schoolId,
-      sessionDate,
-    );
-    const academicYearName = academicYear?.name;
-
     // Determine class and section info - handles both homeroom and regular sessions
     let classId: string;
     let sectionId: string | null;
     let className: string;
     let sectionName: string;
+    let academicYearName: string | undefined;
 
     if (session.classId && session.class) {
       // Homeroom session
       classId = session.classId;
       className = session.class.name;
+      academicYearName = session.class.academicYear?.name;
 
       const teacherSection = await this.prisma.section.findFirst({
         where: {
@@ -1171,10 +1151,20 @@ export class AttendanceService {
       sectionId = session.timetableSlot.sectionId;
       className = session.timetableSlot.class.name;
       sectionName = session.timetableSlot.section.name;
+      academicYearName = session.timetableSlot.academicYear?.name;
     } else {
       throw new BadRequestException(
         'Session has neither class nor timetable slot',
       );
+    }
+
+    if (!academicYearName) {
+      const sessionDate = new Date(session.date);
+      const academicYear = await this.findAcademicYearByDate(
+        session.schoolId,
+        sessionDate,
+      );
+      academicYearName = academicYear?.name;
     }
 
     // Verify teacher owns this session or is homeroom teacher for the class
@@ -1359,9 +1349,14 @@ export class AttendanceService {
           include: {
             class: true,
             section: true,
+            academicYear: true,
           },
         },
-        class: true,
+        class: {
+          include: {
+            academicYear: true,
+          },
+        },
       },
     });
 
@@ -1420,19 +1415,16 @@ export class AttendanceService {
     let eligibleStudentIds: string[] = [];
 
     if (classId) {
-      const academicYear = await this.prisma.academicYear.findFirst({
-        where: {
-          schoolId: session.schoolId,
-          isActive: true,
-        },
-      });
+      const academicYearName =
+        session.class?.academicYear?.name ||
+        session.timetableSlot?.academicYear?.name;
 
-      if (academicYear) {
+      if (academicYearName) {
         const studentClasses = await this.prisma.studentClass.findMany({
           where: {
             schoolId: session.schoolId,
             classId: classId,
-            academicYear: academicYear.name,
+            academicYear: academicYearName,
           },
           select: { studentId: true },
         });

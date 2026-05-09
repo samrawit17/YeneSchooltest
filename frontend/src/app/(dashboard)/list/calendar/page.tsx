@@ -85,7 +85,7 @@ const EventListPage = () => {
   return (
     <div className="bg-white dark:bg-[#1E293B] p-2 md:p-4 rounded-md flex-1 m-0 md:m-4 mt-0 md:mt-0 border border-gray-200 dark:border-[#334155] overflow-hidden">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 md:gap-3 mb-3 md:mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 md:gap-3 mb-6 md:mb-8">
         <div>
           <h1 className="text-lg md:text-xl font-semibold dark:text-white">School Calendar</h1>
           {role === 'admin' && (
@@ -128,7 +128,7 @@ const EventListPage = () => {
             {upcomingActivities.map((event) => (
               <div
                 key={event.id}
-                className="p-3 md:p-4 rounded-lg border-2 border-[#e35336]/30 hover:border-[#e35336] hover:shadow-md transition-all bg-white dark:bg-[#1E293B] dark:border-[#334155] cursor-pointer"
+                className="p-3 md:p-4 rounded-lg border-2 border-[var(--brand-color,#e35336)]/30 hover:border-[var(--brand-color,#e35336)] hover:shadow-md transition-all bg-white dark:bg-[#1E293B] dark:border-[#334155] cursor-pointer"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <h3 className="font-semibold text-sm text-gray-800 dark:text-white line-clamp-1 flex-1">{event.title}</h3>

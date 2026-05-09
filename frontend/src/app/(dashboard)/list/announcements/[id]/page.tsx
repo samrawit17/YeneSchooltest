@@ -126,7 +126,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
   // Loading state with skeletons matching the exact structure
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC]">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
         <div className="w-full">
           {/* Header Skeleton */}
           <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-6 py-4">

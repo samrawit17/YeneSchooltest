@@ -808,14 +808,11 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
             // Check if this is a communication menu item
             const isCommunicationItem = item.label === "Communication";
             const showCommBadge = isCommunicationItem && openCommunicationsCount > 0;
-            const isAnnouncementItem = item.label === "Announcements";
-            const showAnnouncementBadge = isAnnouncementItem && announcementsCount > 0;
-
             // Check if this is an events menu item
             const isEventItem = item.label === "Events";
             const showEventBadge = isEventItem && eventsCount > 0;
 
-            const showBadge = showCommBadge || showAnnouncementBadge || showEventBadge;
+            const showBadge = showCommBadge || showEventBadge;
             const hasChildren = item.children && item.children.length > 0;
             const submenuActive = isSubmenuActive(item.children);
             const isOpen = openSubmenus[item.label] || submenuActive;
@@ -841,8 +838,8 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                 <div key={`${item.label}-${item.href}`}>
                   <div
                     className={`flex items-center justify-start gap-3 py-3 px-4 rounded-lg transition-colors relative ${isActive && !parentWithSameChild
-                      ? "bg-[#e35336]/10 dark:bg-[#e35336]/20 text-[#e35336] font-medium"
-                      : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1E293B]"
+                      ? "bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] text-black font-medium"
+                      : "text-black dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1E293B]"
                       } ${collapsed ? 'justify-center' : ''}`}
                     title={collapsed ? item.label : undefined}
                   >
@@ -850,7 +847,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                       <div
                         className={`flex items-center flex-1 gap-3 cursor-default ${collapsed ? 'justify-center' : ''}`}
                       >
-                        <div className={`relative ${isActive || submenuActive ? "text-[#e35336]" : "text-gray-600 dark:text-gray-300"}`}>
+                        <div className={`relative ${isActive || submenuActive ? "text-black" : "text-black dark:text-gray-300"}`}>
                           {item.icon}
                         </div>
                         <span className={`text-sm ${collapsed ? 'hidden' : ''} ${isActive || submenuActive ? "font-medium" : ""}`}>
@@ -864,7 +861,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                         onClick={() => onItemClick?.()}
                         className={`flex items-center flex-1 gap-3 ${collapsed ? 'justify-center' : ''}`}
                       >
-                        <div className={`relative ${isActive && !parentWithSameChild || submenuActive ? "text-[#e35336]" : "text-gray-600 dark:text-gray-300"}`}>
+                        <div className={`relative ${isActive && !parentWithSameChild || submenuActive ? "text-black" : "text-black dark:text-gray-300"}`}>
                           {item.icon}
                         </div>
                         <span className={`text-sm ${collapsed ? 'hidden' : ''} ${isActive && !parentWithSameChild ? "font-medium" : ""}`}>
@@ -875,8 +872,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                     {showBadge && !collapsed && (
                       <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
                         {showCommBadge ? (openCommunicationsCount > 99 ? '99+' : openCommunicationsCount) :
-                          showAnnouncementBadge ? (announcementsCount > 99 ? '9+' : announcementsCount) :
-                            (eventsCount > 99 ? '9+' : eventsCount)}
+                          (eventsCount > 99 ? '9+' : eventsCount)}
                       </span>
                     )}
                     {hasVisibleChildren && !collapsed && (
@@ -896,7 +892,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                       </button>
                     )}
                     {isActive && !collapsed && !showBadge && !hasChildren && !parentWithSameChild && (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[#e35336]" />
+                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--brand-color,#e35336)]" />
                     )}
                   </div>
 
@@ -914,16 +910,16 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                             onClick={() => onItemClick?.()}
                             className={`flex items-center gap-3 py-2 px-4 rounded-lg transition-colors ${
                               isChildActive
-                                ? "bg-[#e35336]/10 dark:bg-[#e35336]/20 text-[#e35336] font-medium"
+                                ? "bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] text-black font-medium"
                                 : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1E293B]"
                             }`}
                           >
-                            <div className={isChildActive ? "text-[#e35336]" : "text-gray-500 dark:text-gray-400"}>
+                            <div className={isChildActive ? "text-black" : "text-gray-500 dark:text-gray-400"}>
                               {child.icon}
                             </div>
                             <span className="text-sm">{child.label}</span>
                             {isChildActive && (
-                              <div className="ml-auto w-1 h-1 rounded-full bg-[#e35336]" />
+                              <div className="ml-auto w-1 h-1 rounded-full bg-[var(--brand-color,#e35336)]" />
                             )}
                           </Link>
                         );

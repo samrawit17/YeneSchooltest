@@ -15,6 +15,7 @@ export {
   subjectsAPI,
   teachersAPI,
   termsAPI,
+  timetableSlotsAPI,
 } from "./api/academics";
 export {
   attendanceAPI,

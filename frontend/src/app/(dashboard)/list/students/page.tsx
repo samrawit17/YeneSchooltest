@@ -312,7 +312,7 @@ const StudentsListPage = () => {
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Top Section - Title and Buttons */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h1 className="text-2xl font-bold text-[#e35336]">Students</h1>
+            <h1 className="text-2xl font-bold text-black">Students Management</h1>
             <div className="flex items-center gap-3">
               {user?.role === 'REGISTRAR' && (
                 <>

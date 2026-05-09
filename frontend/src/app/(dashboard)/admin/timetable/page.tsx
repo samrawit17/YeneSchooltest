@@ -27,8 +27,9 @@ import {
   EyeOff,
   Search,
   Filter,
+  ArrowRight,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+
 
 // Shadcn/ui Components
 import {
@@ -123,6 +124,7 @@ interface ClassSubject {
   classId: string;
   sectionId: string;
   subjectId: string;
+  academicYear?: string;
   teacherId?: string;
   subject?: Subject;
   teacher?: Teacher;
@@ -152,16 +154,16 @@ interface ScheduleEntry {
 
 // Subject color palette for visual distinction
 const SUBJECT_COLORS = [
-  { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700", hover: "hover:bg-rose-100", accent: "bg-rose-500" },
-  { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", hover: "hover:bg-orange-100", accent: "bg-orange-500" },
-  { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", hover: "hover:bg-amber-100", accent: "bg-amber-500" },
-  { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", hover: "hover:bg-emerald-100", accent: "bg-emerald-500" },
-  { bg: "bg-teal-50", border: "border-teal-200", text: "text-teal-700", hover: "hover:bg-teal-100", accent: "bg-teal-500" },
-  { bg: "bg-cyan-50", border: "border-cyan-200", text: "text-cyan-700", hover: "hover:bg-cyan-100", accent: "bg-cyan-500" },
-  { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", hover: "hover:bg-blue-100", accent: "bg-blue-500" },
-  { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", hover: "hover:bg-indigo-100", accent: "bg-indigo-500" },
-  { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", hover: "hover:bg-violet-100", accent: "bg-violet-500" },
-  { bg: "bg-fuchsia-50", border: "border-fuchsia-200", text: "text-fuchsia-700", hover: "hover:bg-fuchsia-100", accent: "bg-fuchsia-500" },
+  { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-300", hover: "hover:bg-rose-100 dark:hover:bg-rose-900/40", accent: "bg-rose-500" },
+  { bg: "bg-orange-50 dark:bg-orange-950/30", border: "border-orange-200 dark:border-orange-800", text: "text-orange-700 dark:text-orange-300", hover: "hover:bg-orange-100 dark:hover:bg-orange-900/40", accent: "bg-orange-500" },
+  { bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-300", hover: "hover:bg-amber-100 dark:hover:bg-amber-900/40", accent: "bg-amber-500" },
+  { bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800", text: "text-emerald-700 dark:text-emerald-300", hover: "hover:bg-emerald-100 dark:hover:bg-emerald-900/40", accent: "bg-emerald-500" },
+  { bg: "bg-teal-50 dark:bg-teal-950/30", border: "border-teal-200 dark:border-teal-800", text: "text-teal-700 dark:text-teal-300", hover: "hover:bg-teal-100 dark:hover:bg-teal-900/40", accent: "bg-teal-500" },
+  { bg: "bg-cyan-50 dark:bg-cyan-950/30", border: "border-cyan-200 dark:border-cyan-800", text: "text-cyan-700 dark:text-cyan-300", hover: "hover:bg-cyan-100 dark:hover:bg-cyan-900/40", accent: "bg-cyan-500" },
+  { bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-800", text: "text-blue-700 dark:text-blue-300", hover: "hover:bg-blue-100 dark:hover:bg-blue-900/40", accent: "bg-blue-500" },
+  { bg: "bg-indigo-50 dark:bg-indigo-950/30", border: "border-indigo-200 dark:border-indigo-800", text: "text-indigo-700 dark:text-indigo-300", hover: "hover:bg-indigo-100 dark:hover:bg-indigo-900/40", accent: "bg-indigo-500" },
+  { bg: "bg-violet-50 dark:bg-violet-950/30", border: "border-violet-200 dark:border-violet-800", text: "text-violet-700 dark:text-violet-300", hover: "hover:bg-violet-100 dark:hover:bg-violet-900/40", accent: "bg-violet-500" },
+  { bg: "bg-fuchsia-50 dark:bg-fuchsia-950/30", border: "border-fuchsia-200 dark:border-fuchsia-800", text: "text-fuchsia-700 dark:text-fuchsia-300", hover: "hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40", accent: "bg-fuchsia-500" },
 ];
 
 const AdminTimetablePage = () => {
@@ -183,8 +185,6 @@ const AdminTimetablePage = () => {
 
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
-  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState<string>("");
-
   const [schedule, setSchedule] = useState<Record<string, ScheduleEntry>>({});
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
   const [showTeacherNames, setShowTeacherNames] = useState(true);
@@ -227,14 +227,12 @@ const AdminTimetablePage = () => {
   const fetchInitialData = useCallback(async () => {
     try {
       setFetchingData(true);
-      const [classesRes, subjectsRes, academicYearsRes, schoolSettingsRes] = await Promise.all([
-        adminTimetableAPI.getClasses(),
+      const [subjectsRes, academicYearsRes, schoolSettingsRes] = await Promise.all([
         adminTimetableAPI.getSubjects(),
         currentAcademicYear ? adminTimetableAPI.getAcademicYears() : Promise.resolve({ data: [] }),
         user?.schoolId ? schoolSettingsAPI.getAll(user.schoolId) : Promise.resolve({ data: {} }),
       ]);
 
-      setClasses(classesRes.data || []);
       setSubjects(subjectsRes.data || []);
       setAcademicYears(academicYearsRes.data || []);
       setSchoolSettings(schoolSettingsRes.data || {});
@@ -245,6 +243,22 @@ const AdminTimetablePage = () => {
       setFetchingData(false);
     }
   }, [user?.schoolId, currentAcademicYear]);
+
+  const fetchClassesForYear = useCallback(async () => {
+    if (!selectedYear) {
+      setClasses([]);
+      return;
+    }
+
+    try {
+      const classesRes = await adminTimetableAPI.getClasses({ academicYearId: selectedYear });
+      setClasses(classesRes.data || []);
+    } catch (error) {
+      console.error('Failed to fetch classes for year:', error);
+      toast.error('Failed to load classes');
+      setClasses([]);
+    }
+  }, [selectedYear]);
 
   // Link grade filter to class selection
   useEffect(() => {
@@ -259,13 +273,32 @@ const AdminTimetablePage = () => {
 
   // Link section filter to section selection
   useEffect(() => {
-    if (!selectedSection || selectedSection === "all" || !selectedClassId) return;
+    if (!selectedSection || selectedSection === "all") {
+      setSelectedSectionId("");
+      return;
+    }
 
-    const classInfo = classes.find(c => c.id === selectedClassId);
-    if (!classInfo?.sections?.length) return;
+    const classWithSection = classes.find((classItem) =>
+      classItem.sections?.some(
+        (section) =>
+          section.id === selectedSection || section.name === selectedSection
+      )
+    );
 
-    const sectionMatch = classInfo.sections.find(s => s.name === selectedSection);
+    if (!classWithSection?.sections?.length) {
+      setSelectedSectionId("");
+      return;
+    }
+
+    const sectionMatch = classWithSection.sections.find(
+      (section) =>
+        section.id === selectedSection || section.name === selectedSection
+    );
+
     if (sectionMatch) {
+      if (selectedClassId !== classWithSection.id) {
+        setSelectedClassId(classWithSection.id);
+      }
       setSelectedSectionId(sectionMatch.id);
     }
   }, [selectedSection, selectedClassId, classes]);
@@ -295,14 +328,26 @@ const AdminTimetablePage = () => {
     }
   }, [fetchInitialData, isAuthenticated, isLoading]);
 
+  useEffect(() => {
+    if (isAuthenticated && !isLoading && selectedYear) {
+      fetchClassesForYear();
+      setSelectedClassId("");
+      setSelectedSectionId("");
+      setClassSubjects([]);
+      setSchedule({});
+      setUnsavedChanges(false);
+    }
+  }, [fetchClassesForYear, isAuthenticated, isLoading, selectedYear]);
+
   const fetchClassData = useCallback(async () => {
-    if (!selectedClassId || !selectedSectionId) return;
+    if (!selectedClassId || !selectedSectionId || !selectedYear) return;
 
     try {
       setLoading(true);
 
       const classSubjectsRes = await adminTimetableAPI.getClassSubjects({
-        schoolId: user?.schoolId
+        schoolId: user?.schoolId,
+        academicYearId: selectedYear,
       });
 
       const filtered = (classSubjectsRes.data || []).filter(
@@ -333,13 +378,13 @@ const AdminTimetablePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClassId, selectedSectionId, user?.schoolId]);
+  }, [selectedClassId, selectedSectionId, selectedYear, user?.schoolId]);
 
   useEffect(() => {
-    if (selectedClassId && selectedSectionId) {
+    if (selectedClassId && selectedSectionId && selectedYear) {
       fetchClassData();
     }
-  }, [fetchClassData, selectedClassId, selectedSectionId]);
+  }, [fetchClassData, selectedClassId, selectedSectionId, selectedYear]);
 
   const getSlotKey = (day: number, time: string) => `${day}-${time}`;
 
@@ -364,7 +409,7 @@ const AdminTimetablePage = () => {
   };
 
   const getTeacherForSubject = (subjectId: string) => {
-    const cs = classSubjects.find(c => c.subjectId === subjectId);
+    const cs = classSubjects.find(c => c.subjectId === subjectId && !!c.teacherId);
     return cs?.teacherId || '';
   };
 
@@ -524,16 +569,12 @@ const AdminTimetablePage = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 md:p-8 space-y-6">
 
         {/* Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div 
           className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
         >
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[#e35336] rounded-xl shadow-lg shadow-[#e35336]/20">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
+
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                   Timetable Management
@@ -547,14 +588,12 @@ const AdminTimetablePage = () => {
 
           <div className="flex flex-wrap items-center gap-2">
             {unsavedChanges && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+              <div
                 className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
               >
                 <AlertCircle className="w-4 h-4 text-amber-600" />
                 <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">Unsaved changes</span>
-              </motion.div>
+              </div>
             )}
 
             <DropdownMenu>
@@ -604,7 +643,7 @@ const AdminTimetablePage = () => {
               onClick={saveSchedule} 
               disabled={saving || !selectedClassId || !selectedSectionId}
               size="sm"
-              className="gap-2 bg-[#e35336] hover:bg-[#d1492e] shadow-lg shadow-[#e35336]/25"
+              className="gap-2 bg-[var(--brand-color,#e35336)] hover:opacity-90 shadow-lg shadow-[var(--brand-color,#e35336)]/25"
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -614,13 +653,10 @@ const AdminTimetablePage = () => {
               Save Schedule
             </Button>
           </div>
-        </motion.div>
+        </div>
 
         {/* Stats Overview */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+        <div 
           className="grid grid-cols-2 md:grid-cols-4 gap-3"
         >
           {[
@@ -641,22 +677,19 @@ const AdminTimetablePage = () => {
               </CardContent>
             </Card>
           ))}
-        </motion.div>
+        </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
 
           {/* Left Sidebar */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
+          <div 
             className="xl:col-span-1 space-y-4"
           >
             {/* Class Selection */}
             <Card className="border-0 shadow-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-[#e35336] to-[#f08060] text-white pb-4">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <CardHeader className="text-black dark:text-white pb-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2 dark:text-white">
                   <GraduationCap className="w-4 h-4" />
                   Class Selection
                 </CardTitle>
@@ -664,12 +697,14 @@ const AdminTimetablePage = () => {
               <CardContent className="p-4 space-y-4">
                 <Filters
                   config={{ academicYear: true, grade: true, section: true }}
+                  sectionMode="name"
                   selectedYear={selectedYear}
                   onYearChange={setSelectedYear}
                   selectedGrade={selectedGrade}
                   onGradeChange={(val) => { setSelectedGrade(val); setSchedule({}); setUnsavedChanges(false); }}
                   selectedSection={selectedSection}
                   onSectionChange={(val) => { setSelectedSection(val); setSchedule({}); setUnsavedChanges(false); }}
+                  className="!grid-cols-1 !sm:grid-cols-1 !md:grid-cols-1 !lg:grid-cols-1"
                 />
               </CardContent>
             </Card>
@@ -677,14 +712,14 @@ const AdminTimetablePage = () => {
             {/* View Controls */}
             <Card className="border-0 shadow-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2 dark:text-white">
                   <Eye className="w-4 h-4 text-gray-500" />
                   Display Options
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 pt-0 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="show-teachers" className="text-sm cursor-pointer">Show Teachers</Label>
+                  <Label htmlFor="show-teachers" className="text-sm cursor-pointer dark:text-gray-300">Show Teachers</Label>
                   <Switch 
                     id="show-teachers" 
                     checked={showTeacherNames} 
@@ -692,7 +727,7 @@ const AdminTimetablePage = () => {
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="show-rooms" className="text-sm cursor-pointer">Show Rooms</Label>
+                  <Label htmlFor="show-rooms" className="text-sm cursor-pointer dark:text-gray-300">Show Rooms</Label>
                   <Switch 
                     id="show-rooms" 
                     checked={showRoomNumbers} 
@@ -726,113 +761,18 @@ const AdminTimetablePage = () => {
               </CardContent>
             </Card>
 
-            {/* Subject Assignments */}
-            <Card className="border-0 shadow-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-gray-500" />
-                    Subject Assignments
-                  </CardTitle>
-                  <Badge variant="secondary" className="text-xs">
-                    {classSubjects.length}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="relative mb-3">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <Input
-                    placeholder="Search subjects..."
-                    value={searchSubject}
-                    onChange={(e) => setSearchSubject(e.target.value)}
-                    className="pl-9 h-9 text-sm"
-                  />
-                </div>
-
-                <ScrollArea className="h-[300px] pr-3">
-                  <div className="space-y-2">
-                    {filteredSubjects.map((subject, index) => {
-                      const cs = classSubjects.find(c => c.subjectId === subject.id);
-                      const colors = subjectColorMap[subject.id] || SUBJECT_COLORS[0];
-                      const isAssigned = !!cs?.teacherId;
-
-                      return (
-                        <motion.div
-                          key={subject.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className={cn(
-                            "group relative p-3 rounded-xl border transition-all cursor-pointer",
-                            colors.bg,
-                            colors.border,
-                            "hover:shadow-md hover:scale-[1.02]"
-                          )}
-                          onClick={() => isAssigned && quickFillSubject(subject.id)}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <div className={cn("w-2 h-2 rounded-full", colors.accent)} />
-                                <p className={cn("font-semibold text-sm truncate", colors.text)}>
-                                  {subject.name}
-                                </p>
-                              </div>
-                              <div className="mt-1.5 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                                <User className="w-3 h-3" />
-                                <span className="truncate">
-                                  {cs?.teacher?.name || 'No teacher assigned'}
-                                </span>
-                              </div>
-                              {cs?.teacher?.email && (
-                                <p className="text-[10px] text-gray-400 mt-0.5 truncate pl-5">
-                                  {cs.teacher.email}
-                                </p>
-                              )}
-                            </div>
-                            {isAssigned && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/50 rounded">
-                                    <RefreshCw className="w-3 h-3 text-gray-500" />
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Quick fill empty slots</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                          {!isAssigned && (
-                            <div className="absolute inset-0 bg-gray-100/80 dark:bg-slate-700/80 rounded-xl flex items-center justify-center">
-                              <Badge variant="outline" className="text-[10px] text-gray-400 border-gray-300">
-                                Not Assigned
-                              </Badge>
-                            </div>
-                          )}
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </motion.div>
+          </div>
 
           {/* Main Timetable */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+          <div 
             className="xl:col-span-3"
           >
             <Card className="border-0 shadow-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm overflow-hidden">
               <CardHeader className="border-b bg-gray-50/50 dark:bg-slate-800/50">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-[#e35336]" />
+                    <CardTitle className="text-lg flex items-center gap-2 dark:text-white">
+                      <Clock className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
                       Weekly Schedule
                     </CardTitle>
                     <CardDescription className="mt-1">
@@ -856,11 +796,8 @@ const AdminTimetablePage = () => {
                   {selectedClassId && selectedSectionId && (
                     <div className="flex items-center gap-2">
                       <div className="h-2 w-32 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <motion.div 
-                          className="h-full bg-gradient-to-r from-[#e35336] to-[#f08060] rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${stats.percentage}%` }}
-                          transition={{ duration: 0.5 }}
+                        <div 
+                          className="h-full bg-[var(--brand-color,#e35336)] rounded-full"
                         />
                       </div>
                       <span className="text-xs font-medium text-gray-500">{stats.percentage}%</span>
@@ -874,7 +811,7 @@ const AdminTimetablePage = () => {
                   loading ? (
                     <div className="flex items-center justify-center py-20">
                       <div className="flex flex-col items-center gap-3">
-                        <Loader2 className="w-8 h-8 animate-spin text-[#e35336]" />
+                        <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
                         <p className="text-sm text-gray-500">Loading schedule...</p>
                       </div>
                     </div>
@@ -934,39 +871,32 @@ const AdminTimetablePage = () => {
                                     onMouseEnter={() => setHoveredSlot(slotKey)}
                                     onMouseLeave={() => setHoveredSlot(null)}
                                   >
-                                    <AnimatePresence mode="wait">
+                                    
                                       {isFilled ? (
-                                        <motion.div
-                                          key="filled"
-                                          initial={{ opacity: 0, scale: 0.95 }}
-                                          animate={{ opacity: 1, scale: 1 }}
-                                          exit={{ opacity: 0, scale: 0.95 }}
+                                        <div
                                           className={cn(
                                             "relative rounded-xl border-2 p-2.5 transition-all",
-                                            colors?.bg,
-                                            colors?.border,
+                                            "bg-[var(--brand-color,#e35336)]/10 border-[var(--brand-color,#e35336)]/30",
                                             isHovered && "shadow-lg scale-[1.02] z-20"
                                           )}
                                         >
                                           {/* Remove button */}
                                           {isHovered && (
-                                            <motion.button
-                                              initial={{ opacity: 0 }}
-                                              animate={{ opacity: 1 }}
-                                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-600 transition-colors z-30"
+                                            <button
+                                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--brand-color,#e35336)] text-white rounded-full flex items-center justify-center shadow-md hover:opacity-90 transition-colors z-30"
                                               onClick={(e) => {
                                                 e.stopPropagation();
                                                 clearSlot(day.value, timeRange.start);
                                               }}
                                             >
                                               <X className="w-3 h-3" />
-                                            </motion.button>
+                                            </button>
                                           )}
 
                                           <div className="space-y-1.5">
                                             <div className="flex items-center gap-1.5">
-                                              <div className={cn("w-2 h-2 rounded-full shrink-0", colors?.accent)} />
-                                              <p className={cn("font-bold text-sm leading-tight", colors?.text)}>
+                                              <div className={cn("w-2 h-2 rounded-full shrink-0", "bg-[var(--brand-color,#e35336)]")} />
+                                              <p className={cn("font-bold text-sm leading-tight", "text-[var(--brand-color,#e35336)]")}>
                                                 {getSubjectName(slot.subjectId)}
                                               </p>
                                             </div>
@@ -985,21 +915,17 @@ const AdminTimetablePage = () => {
                                                   placeholder="Room"
                                                   value={slot.room}
                                                   onChange={(e) => updateSlot(day.value, timeRange.start, 'room', e.target.value)}
-                                                  className="h-6 text-xs bg-white/60 dark:bg-slate-700/60 border-0 focus:ring-1 focus:ring-[#e35336] px-1.5"
+                                                  className="h-6 text-xs bg-white/60 dark:bg-slate-700/60 border-0 focus:ring-1 focus:ring-[var(--brand-color,#e35336)] px-1.5"
                                                 />
                                               </div>
                                             )}
                                           </div>
-                                        </motion.div>
+                                        </div>
                                       ) : (
-                                        <motion.div
-                                          key="empty"
-                                          initial={{ opacity: 0 }}
-                                          animate={{ opacity: 1 }}
-                                          exit={{ opacity: 0 }}
+                                        <div
                                           className={cn(
                                             "h-full min-h-[80px] rounded-xl border-2 border-dashed border-gray-200 dark:border-slate-700 p-2 transition-all",
-                                            isHovered && "border-[#e35336]/50 bg-[#e35336]/5"
+                                            isHovered && "border-[var(--brand-color,#e35336)]/50 bg-[var(--brand-color,#e35336)]/5"
                                           )}
                                         >
                                           <Select
@@ -1033,9 +959,9 @@ const AdminTimetablePage = () => {
                                               })}
                                             </SelectContent>
                                           </Select>
-                                        </motion.div>
+                                        </div>
                                       )}
-                                    </AnimatePresence>
+                                    
                                   </TableCell>
                                 );
                               })}
@@ -1047,21 +973,18 @@ const AdminTimetablePage = () => {
                   )
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 px-4">
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: "spring", stiffness: 200 }}
+                    <div
                       className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800 rounded-3xl flex items-center justify-center mb-6 shadow-inner"
                     >
                       <Calendar className="w-10 h-10 text-gray-400" />
-                    </motion.div>
+                    </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                       No Class Selected
                     </h3>
                     <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm mb-6">
                       Please select a grade and section from the sidebar to view and edit the timetable
                     </p>
-                    <div className="flex items-center gap-2 text-sm text-[#e35336]">
+                    <div className="flex items-center gap-2 text-sm text-[var(--brand-color,#e35336)]">
                       <ArrowRight className="w-4 h-4 animate-bounce" />
                       <span>Start by selecting a class</span>
                     </div>
@@ -1087,7 +1010,7 @@ const AdminTimetablePage = () => {
                 </CardFooter>
               )}
             </Card>
-          </motion.div>
+          </div>
         </div>
       </div>
     </TooltipProvider>

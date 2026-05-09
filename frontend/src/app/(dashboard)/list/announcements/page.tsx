@@ -163,7 +163,7 @@ const AnnouncementListPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-[#e35336]">Announcements</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-black">Announcements</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Latest news and updates</p>
         </div>
         {isAdmin && (

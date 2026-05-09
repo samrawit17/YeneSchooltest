@@ -47,7 +47,16 @@ export class SchoolSettingsController {
 
   @Get(':key')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.IT_MANAGER)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.ADMIN,
+    Role.IT_MANAGER,
+    Role.PARENT,
+    Role.TEACHER,
+    Role.STUDENT,
+    Role.REGISTRAR,
+    Role.FINANCE,
+  )
   async getSetting(
     @Param('schoolId') schoolId: string,
     @Param('key') key: string,

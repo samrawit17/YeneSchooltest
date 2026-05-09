@@ -106,13 +106,13 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
   const getEventColor = (eventType?: string) => {
     switch (eventType) {
       case 'ACADEMIC':
-        return 'bg-[#e35336]/10 text-[#e35336] dark:bg-[#e35336]/20 dark:text-[#e35336] border-l-2 border-[#e35336]';
+        return 'bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] dark:text-[var(--brand-color,#e35336)] border-l-2 border-[var(--brand-color,#e35336)]';
       case 'EXTRACURRICULAR':
-        return 'bg-[#e35336]/10 text-[#e35336] dark:bg-[#e35336]/20 dark:text-[#e35336] border-l-2 border-[#e35336]';
+        return 'bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] dark:text-[var(--brand-color,#e35336)] border-l-2 border-[var(--brand-color,#e35336)]';
       case 'ADMINISTRATIVE':
-        return 'bg-[#e35336]/10 text-[#e35336] dark:bg-[#e35336]/20 dark:text-[#e35336] border-l-2 border-[#e35336]';
+        return 'bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] dark:text-[var(--brand-color,#e35336)] border-l-2 border-[var(--brand-color,#e35336)]';
       case 'SPORTS':
-        return 'bg-[#e35336]/10 text-[#e35336] dark:bg-[#e35336]/20 dark:text-[#e35336] border-l-2 border-[#e35336]';
+        return 'bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] dark:text-[var(--brand-color,#e35336)] border-l-2 border-[var(--brand-color,#e35336)]';
       default:
         return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-l-2 border-gray-300';
     }
@@ -122,25 +122,25 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
     <div className="w-full min-w-[320px]">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm text-[#e35336] dark:text-[#e35336]">
+        <h3 className="font-semibold text-sm text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]">
           {formatMonthYear(currentDate)}
         </h3>
         <div className="flex items-center gap-1">
           <button
             onClick={goToPreviousWeek}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[#e35336] transition-colors"
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[var(--brand-color,#e35336)] transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={goToToday}
-            className="px-2 py-1 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[#e35336] transition-colors"
+            className="px-2 py-1 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[var(--brand-color,#e35336)] transition-colors"
           >
             Today
           </button>
           <button
             onClick={goToNextWeek}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[#e35336] transition-colors"
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[var(--brand-color,#e35336)] transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -171,15 +171,15 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
               className={`
                 min-h-[60px] p-1 rounded border text-center cursor-pointer transition-all
                 ${today 
-                  ? 'border-[#e35336] bg-[#e35336]/5 dark:bg-[#e35336]/10' 
-                  : 'border-gray-200 dark:border-gray-700 hover:border-[#e35336] dark:hover:border-[#e35336]'
+                  ? 'border-[var(--brand-color,#e35336)] bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[rgba(var(--brand-color-rgb),0.1)]' 
+                  : 'border-gray-200 dark:border-gray-700 hover:border-[var(--brand-color,#e35336)] dark:hover:border-[var(--brand-color,#e35336)]'
                 }
               `}
               onClick={() => onEventClick && onEventClick(dayEvents[0])}
             >
               <div className={`
                 text-xs font-medium mb-1
-                ${today ? 'text-[#e35336] font-bold' : 'text-gray-700 dark:text-gray-300'}
+                ${today ? 'text-[var(--brand-color,#e35336)] font-bold' : 'text-gray-700 dark:text-gray-300'}
               `}>
                 {formatDayNumber(day)}
               </div>
@@ -195,7 +195,7 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
                   </div>
                 ))}
                 {dayEvents.length > 3 && (
-                  <div className="text-[10px] text-[#e35336] font-medium">
+                  <div className="text-[10px] text-[var(--brand-color,#e35336)] font-medium">
                     +{dayEvents.length - 3} more
                   </div>
                 )}
@@ -209,7 +209,7 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
       <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
         <button
           onClick={() => window.location.href = '/list/calendar'}
-          className="w-full text-center text-xs text-[#e35336] hover:text-[#c74428] hover:underline transition-colors"
+          className="w-full text-center text-xs text-[var(--brand-color,#e35336)] hover:text-[#c74428] hover:underline transition-colors"
         >
           View Calendar
         </button>

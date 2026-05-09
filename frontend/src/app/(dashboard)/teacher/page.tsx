@@ -222,7 +222,10 @@ const TeacherDashboard = () => {
 
       // Fetch announcements
       try {
-        const announcementsResponse = await announcementsAPI.getAll({ role: 'teacher' });
+        const announcementsResponse = await announcementsAPI.getAll(
+          { role: 'teacher' },
+          { skipAuthErrorRedirect: true }
+        );
         if (announcementsResponse.data) {
           const announcementsData = announcementsResponse.data.map((ann: any) => ({
             id: ann.id,
@@ -235,7 +238,7 @@ const TeacherDashboard = () => {
           setAnnouncements(announcementsData.slice(0, 3));
         }
       } catch (announcementError) {
-        console.log('No announcements found');
+        console.log('Teacher announcements unavailable');
       }
 
       // Fetch today's schedule from attendance dashboard

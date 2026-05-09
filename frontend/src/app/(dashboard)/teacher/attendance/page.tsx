@@ -395,9 +395,8 @@ export default function TeacherAttendancePage() {
         const message = (sessionError as any)?.response?.data?.message;
         if (typeof message === 'string') {
           toast.error(message, { dismissible: true });
-        } else {
-          await fetchStudentsDirectly(classId, sectionName, sectionId);
         }
+        await fetchStudentsDirectly(classId, sectionName, sectionId);
       }
 
     } catch (error) {

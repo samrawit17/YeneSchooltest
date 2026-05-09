@@ -112,7 +112,7 @@ h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, 
 
 .dark .rbc-event {
   color: white !important;
-  background-color: #e35336 !important;
+  background-color: var(--brand-color, #e35336) !important;
 }
 
 .dark .rbc-calendar {
@@ -130,7 +130,7 @@ h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, 
 }
 
 .dark .rbc-toolbar button.rbc-active {
-  background-color: #e35336;
+  background-color: var(--brand-color, #e35336);
 }
 
 .dark .rbc-time-content {
@@ -177,7 +177,7 @@ h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, 
 
 /* Dark mode - single color events */
 .dark .rbc-event:nth-child(n) {
-  background-color: #e35336 !important;
+  background-color: var(--brand-color, #e35336) !important;
 }
 
 .rbc-event-label{
@@ -194,8 +194,8 @@ h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, 
 .dark .rbc-event,
 .dark .rbc-event:nth-child(n),
 .dark .rbc-event[style] {
-  background-color: #e35336 !important;
-  border-color: #e35336 !important;
+  background-color: var(--brand-color, #e35336) !important;
+  border-color: var(--brand-color, #e35336) !important;
   color: white !important;
 }
 
@@ -212,7 +212,7 @@ h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, 
 .dark .rbc-event:nth-child(6),
 .dark .rbc-event:nth-child(7),
 .dark .rbc-event:nth-child(8) {
-  background-color: #e35336 !important;
+  background-color: var(--brand-color, #e35336) !important;
 }
 
 @layer base {
@@ -402,9 +402,9 @@ html::-webkit-scrollbar-corner {
   height: 1px !important;
 }
 
-/* Dark mode scrollbar - Black background with #e35336 thumb */
+/* Dark mode scrollbar - Black background with brand color thumb */
 .dark html, .dark body {
-  scrollbar-color: #e35336 transparent;
+  scrollbar-color: var(--brand-color, #e35336) transparent;
 }
 
 .dark html::-webkit-scrollbar-track, .dark body::-webkit-scrollbar-track {
@@ -417,7 +417,7 @@ html::-webkit-scrollbar-corner {
 }
 
 .dark html::-webkit-scrollbar-thumb, .dark body::-webkit-scrollbar-thumb {
-  background: #e35336 !important;
+  background: var(--brand-color, #e35336) !important;
   border-radius: 0 !important;
   width: 0 !important;
   transition: width 0.2s, opacity 0.2s, background 0.2s;
@@ -470,13 +470,13 @@ html::-webkit-scrollbar-corner {
 }
 
 .dark .rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
-  background: #e35336 !important;
+  background: var(--brand-color, #e35336) !important;
 }
 
 /* Pagination Button Styles with #e35336 */
 .pagination-button {
-  background-color: #e35336 !important;
-  border-color: #e35336 !important;
+  background-color: var(--brand-color, #e35336) !important;
+  border-color: var(--brand-color, #e35336) !important;
   color: white !important;
 }
 
@@ -492,8 +492,8 @@ html::-webkit-scrollbar-corner {
 
 /* Active page */
 .pagination-active {
-  background-color: #e35336 !important;
-  border-color: #e35336 !important;
+  background-color: var(--brand-color, #e35336) !important;
+  border-color: var(--brand-color, #e35336) !important;
 }
 
 /* ULTRA SPECIFIC SCROLLBAR OVERRIDES - Maximum priority */
@@ -519,7 +519,7 @@ html body *::-webkit-scrollbar-thumb {
 
 /* Dark mode ultra specific */
 .dark html body *::-webkit-scrollbar-thumb {
-  background: #e35336 !important;
+  background: var(--brand-color, #e35336) !important;
 }
 
 .dark html body *::-webkit-scrollbar-track {
@@ -586,7 +586,7 @@ html body *::-webkit-scrollbar-thumb {
 }
 
 .dark .rbc-date-cell.rbc-now {
-  color: #e35336;
+  color: var(--brand-color, #e35336);
   font-weight: 600;
 }
 
@@ -610,8 +610,8 @@ html body *::-webkit-scrollbar-thumb {
 }
 
 .dark .rbc-event {
-  background-color: #e35336;
-  border-color: #e35336;
+  background-color: var(--brand-color, #e35336);
+  border-color: var(--brand-color, #e35336);
   color: white;
 }
 
@@ -624,7 +624,7 @@ html body *::-webkit-scrollbar-thumb {
 }
 
 .dark .rbc-show-more {
-  color: #e35336;
+  color: var(--brand-color, #e35336);
   background-color: transparent;
   font-weight: 500;
 }
@@ -706,8 +706,8 @@ html body *::-webkit-scrollbar-thumb {
 }
 
 .dark .rbc-toolbar button.rbc-active {
-  background-color: #e35336;
-  border-color: #e35336;
+  background-color: var(--brand-color, #e35336);
+  border-color: var(--brand-color, #e35336);
   color: white;
 }
 

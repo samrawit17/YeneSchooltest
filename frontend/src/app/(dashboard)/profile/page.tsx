@@ -305,7 +305,7 @@ const ProfilePage = () => {
         <div className="mb-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-[#e35336]">
+              <h1 className="text-2xl font-bold text-black">
                 {t.title}
               </h1>
               <p className="text-muted-foreground mt-2">
@@ -330,19 +330,19 @@ const ProfilePage = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
           <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
             <TabsList className="grid grid-cols-4 min-w-[500px] md:min-w-auto md:grid-cols-4 w-full bg-transparent shadow-none border-0 p-0">
-              <TabsTrigger value="profile" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[#e35336] data-[state=active]:text-[#e35336] rounded-none px-2 md:px-4">
+              <TabsTrigger value="profile" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none px-2 md:px-4">
                 <User className="w-3 h-3 md:w-4 md:h-4" />
                 <span>{t.tabs.profile}</span>
               </TabsTrigger>
-              <TabsTrigger value="security" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[#e35336] data-[state=active]:text-[#e35336] rounded-none px-2 md:px-4">
+              <TabsTrigger value="security" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none px-2 md:px-4">
                 <Shield className="w-3 h-3 md:w-4 md:h-4" />
                 <span>{t.tabs.security}</span>
               </TabsTrigger>
-              <TabsTrigger value="notifications" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[#e35336] data-[state=active]:text-[#e35336] rounded-none px-2 md:px-4">
+              <TabsTrigger value="notifications" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none px-2 md:px-4">
                 <Bell className="w-3 h-3 md:w-4 md:h-4" />
                 <span>{t.tabs.notifications}</span>
               </TabsTrigger>
-              <TabsTrigger value="preferences" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[#e35336] data-[state=active]:text-[#e35336] rounded-none px-2 md:px-4">
+              <TabsTrigger value="preferences" className="gap-1.5 md:gap-2 text-xs md:text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none px-2 md:px-4">
                 <Globe className="w-3 h-3 md:w-4 md:h-4" />
                 <span>{t.tabs.preferences}</span>
               </TabsTrigger>
@@ -456,7 +456,7 @@ const ProfilePage = () => {
                       {user?.role === 'TEACHER' && assignedSubjects.length > 0 && (
                         <Badge 
                           variant="outline" 
-                          className="border-[#e35336] text-[#e35336] bg-[#e35336]/5 gap-1.5 animate-in zoom-in-95 duration-300"
+                          className="border-[var(--brand-color,#e35336)] text-[var(--brand-color,#e35336)] bg-[rgba(var(--brand-color-rgb),0.05)] gap-1.5 animate-in zoom-in-95 duration-300"
                         >
                           {assignedSubjects.join(' & ')} {t.roles.teacher}
                         </Badge>

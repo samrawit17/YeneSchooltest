@@ -204,6 +204,7 @@ interface UserDetailPageProps {
   user: UserDetailData;
   backUrl: string;
   backLabel: string;
+  viewerRole?: string;
   onEdit?: () => void;
   onResetPassword?: () => void;
   onDeactivate?: () => void;
@@ -278,6 +279,7 @@ export default function UserDetailPage({
   user,
   backUrl,
   backLabel,
+  viewerRole,
   onEdit,
   onResetPassword,
   onDeactivate,
@@ -293,11 +295,15 @@ export default function UserDetailPage({
     const tabs: { key: TabKey; label: string }[] = [
       { key: "overview", label: "Overview" },
     ];
+    const normalizedViewerRole = viewerRole?.toUpperCase();
+    const canViewFeesTab = !(role === "STUDENT" && normalizedViewerRole === "TEACHER");
 
     if (role === "STUDENT") {
       tabs.push({ key: "academic", label: "Academic Info" });
       tabs.push({ key: "attendance", label: "Attendance" });
-      tabs.push({ key: "fees", label: "Fees" });
+      if (canViewFeesTab) {
+        tabs.push({ key: "fees", label: "Fees" });
+      }
       tabs.push({ key: "parentInfo", label: "Parent Info" });
     } else if (role === "TEACHER") {
       tabs.push({ key: "academic", label: "Work Info" });

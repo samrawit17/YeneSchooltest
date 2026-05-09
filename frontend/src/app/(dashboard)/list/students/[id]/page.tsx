@@ -47,6 +47,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   
   // Check if user is registrar
   const isRegistrar = user?.role?.toUpperCase() === 'REGISTRAR';
+  const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
 
   // Fetch student data first
   const { data: student, isLoading, error } = useQuery({
@@ -131,7 +132,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
       });
       return response.data;
     },
-    enabled: !!studentId && !!user?.schoolId,
+    enabled: !!studentId && !!user?.schoolId && !isTeacher,
   });
 
   // Fetch academic years to map IDs to names
@@ -253,7 +254,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
     avatarUrl: userData.img || userData.avatarUrl,
     isActive: userData.isActive ?? true,
     createdAt: userData.createdAt || student.createdAt,
-    lastLogin: student.lastLogin || userData.lastLogin,
+    lastLogin: student.lastLogin || userData.lastLoginAt || userData.lastLogin,
     username: userData.email,
     phone: student.phone || userData.phone,
     gender: student.gender,
@@ -291,6 +292,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
         user={userDetail}
         backUrl="/list/students"
         backLabel="Students"
+        viewerRole={user?.role}
         onEdit={isRegistrar ? handleEditClick : undefined}
         onResetPassword={isRegistrar ? () => {} : undefined}
         onDeactivate={isRegistrar ? () => {} : undefined}

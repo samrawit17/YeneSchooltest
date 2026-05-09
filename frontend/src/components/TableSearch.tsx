@@ -39,7 +39,7 @@ const TableSearch = ({
     <div
       className={`${className} relative flex items-center gap-2 text-sm rounded-xl border-2 transition-all duration-200 ${
         isFocused
-          ? "border-[#e35336] bg-white dark:bg-gray-800 shadow-sm"
+          ? "border-[var(--brand-color,#e35336)] bg-white dark:bg-gray-800 shadow-sm"
           : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-500"
       }`}
     >
@@ -48,7 +48,7 @@ const TableSearch = ({
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className={`h-5 w-5 transition-colors duration-200 ${
-            isFocused ? "text-[#e35336]" : "text-gray-400"
+            isFocused ? "text-[var(--brand-color,#e35336)]" : "text-gray-400"
           }`}
           fill="none"
           viewBox="0 0 24 24"
@@ -80,7 +80,7 @@ const TableSearch = ({
         <button
           type="button"
           onClick={handleClear}
-          className="pr-3 text-gray-400 hover:text-[#e35336] transition-colors duration-200"
+          className="pr-3 text-gray-400 hover:text-[var(--brand-color,#e35336)] transition-colors duration-200"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

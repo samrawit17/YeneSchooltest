@@ -258,6 +258,16 @@ const SETTINGS_CONFIG: SettingItem[] = [
     systemDefault: false,
     requiredTier: 'ULTIMATE',
   },
+
+  // Branding Settings
+  {
+    key: 'theme_color',
+    label: 'Brand Color',
+    description: 'Primary brand color for buttons, menus, and accents',
+    type: 'color',
+    category: 'branding',
+    systemDefault: '#e35336',
+  },
 ];
 
 const CATEGORY_CONFIG = {
@@ -320,6 +330,12 @@ const CATEGORY_CONFIG = {
     icon: SettingsIcon,
     color: 'text-rose-600',
     bgColor: 'bg-rose-100',
+  },
+  branding: {
+    label: 'Branding',
+    icon: SettingsIcon,
+    color: 'text-pink-600',
+    bgColor: 'bg-pink-100',
   },
 };
 
@@ -702,58 +718,52 @@ export default function SchoolSettingsPage() {
       );
     }
 
+    if (setting.type === 'color') {
+      return (
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <input
+              type="color"
+              value={value || setting.systemDefault || '#e35336'}
+              onChange={(e) => handleSettingChange(setting.key, e.target.value, setting)}
+              disabled={isSaving}
+              className="w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer disabled:opacity-50"
+            />
+          </div>
+          <Input
+            type="text"
+            value={value || setting.systemDefault || '#e35336'}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+                handleSettingChange(setting.key, val, setting);
+              }
+            }}
+            disabled={isSaving}
+            className="w-28 font-mono text-sm"
+          />
+          {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+        </div>
+      );
+    }
+
     return null;
   };
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 max-w-6xl">
-        {/* School Header Skeleton */}
-        <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
-          <div className="flex items-center gap-4">
-            <Skeleton className="w-20 h-20 rounded-xl" />
-            <div className="flex-1 space-y-3">
-              <Skeleton className="h-7 w-64" />
-              <div className="flex gap-3">
-                <Skeleton className="h-5 w-24" />
-                <Skeleton className="h-5 w-20 rounded-full" />
-              </div>
-            </div>
-          </div>
-          <div className="mt-4">
-            <Skeleton className="h-14 w-full rounded-lg" />
-          </div>
-        </div>
-
-        {/* Tabs Skeleton */}
-        <div className="flex gap-2 mb-4">
+      <div className="container mx-auto p-6 max-w-6xl space-y-6">
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <div className="flex gap-2">
           <Skeleton className="h-9 w-24 rounded-md" />
           <Skeleton className="h-9 w-28 rounded-md" />
           <Skeleton className="h-9 w-24 rounded-md" />
         </div>
-
-        {/* Settings Card Skeleton */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-          <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <Skeleton className="w-10 h-10 rounded-lg" />
-              <div className="space-y-1.5">
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-4 w-56" />
-              </div>
-            </div>
-          </div>
-          <div className="p-6 space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-start justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="flex-1 pr-4 space-y-2">
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-4 w-64" />
-                </div>
-                <Skeleton className="h-8 w-16 rounded-md" />
-              </div>
-            ))}
-          </div>
+        <div className="space-y-2">
+          <Skeleton className="h-14 w-full rounded-lg" />
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
         </div>
       </div>
     );

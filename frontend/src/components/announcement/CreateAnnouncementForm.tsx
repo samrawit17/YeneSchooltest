@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
+import { toast } from "sonner";
 import { Loader2, Clock } from "lucide-react";
 
 interface CreateAnnouncementFormProps {
@@ -41,6 +42,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
   const createMutation = useMutation({
     mutationFn: (data: CreateAnnouncementDto) => announcementsAPI.create(data),
     onSuccess: () => {
+      toast.success("Announcement published successfully");
       queryClient.invalidateQueries({ queryKey: queryKeys.announcements.all });
       onSuccess?.();
     },
@@ -49,9 +51,23 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const submitData: Partial<CreateAnnouncementDto> = {
+    let startDate: string;
+    if (postImmediately) {
+      startDate = new Date().toISOString();
+    } else if (scheduleDateValue) {
+      const [hours, minutes] = scheduleTime.split(":").map(Number);
+      const scheduled = new Date(scheduleDateValue);
+      scheduled.setHours(hours, minutes, 0, 0);
+      startDate = scheduled.toISOString();
+    } else {
+      startDate = new Date().toISOString();
+    }
+    
+    const submitData: CreateAnnouncementDto = {
       title: formData.title,
       content: formData.content,
+      startDate,
+      visibleTo: selectedRoles,
       priority: formData.priority as "LOW" | "MEDIUM" | "HIGH",
       location: formData.location,
     };
@@ -61,7 +77,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
       submitData.endDate = endDateValue.toISOString();
     }
     
-    createMutation.mutate(submitData as CreateAnnouncementDto);
+    createMutation.mutate(submitData);
   };
 
   const handleRoleToggle = (roleId: string) => {

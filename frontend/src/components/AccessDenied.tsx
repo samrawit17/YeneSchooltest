@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ShieldOff, ArrowLeft, Search, AlertTriangle, LayoutDashboard, FileQuestion, ShieldX } from 'lucide-react';
+import { ShieldOff, ArrowLeft, Search, AlertTriangle, LayoutDashboard, FileQuestion, ShieldX, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
 
 interface AccessDeniedProps {
   type?: '403' | '404';
@@ -12,9 +13,11 @@ interface AccessDeniedProps {
 export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { logout } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [attemptedUrl, setAttemptedUrl] = useState<string>('');
+  const [attemptedApiUrl, setAttemptedApiUrl] = useState<string>('');
   const [errorCode, setErrorCode] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [requiredPermission, setRequiredPermission] = useState<string>('');
@@ -22,12 +25,21 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
   useEffect(() => {
     setMounted(true);
 
-    const url = sessionStorage.getItem('accessDeniedUrl') || '';
+    const url =
+      sessionStorage.getItem('accessDeniedUrl') ||
+      searchParams.get('from') ||
+      '';
+    const apiUrl = sessionStorage.getItem('accessDeniedApiUrl') || '';
     const code = sessionStorage.getItem('accessDeniedCode') || type;
     const message = sessionStorage.getItem('accessDeniedMessage') || '';
-    const permission = sessionStorage.getItem('accessDeniedPermission') || '';
+    const permission =
+      sessionStorage.getItem('accessDeniedPermission') ||
+      searchParams.get('permission') ||
+      '';
+    const queryApiUrl = searchParams.get('api') || '';
 
     setAttemptedUrl(url);
+    setAttemptedApiUrl(apiUrl || queryApiUrl);
     setErrorCode(code);
     setErrorMessage(message);
     setRequiredPermission(permission);
@@ -44,11 +56,12 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
 
     return () => {
       sessionStorage.removeItem('accessDeniedUrl');
+      sessionStorage.removeItem('accessDeniedApiUrl');
       sessionStorage.removeItem('accessDeniedCode');
       sessionStorage.removeItem('accessDeniedMessage');
       sessionStorage.removeItem('accessDeniedPermission');
     };
-  }, [type]);
+  }, [searchParams, type]);
 
   if (!mounted) {
     return (
@@ -146,6 +159,17 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
             </div>
           )}
 
+          {attemptedApiUrl && (
+            <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 mb-4">
+              <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">
+                Blocked Request
+              </div>
+              <p className="font-mono text-sm text-slate-700 dark:text-slate-200 break-all">
+                {attemptedApiUrl}
+              </p>
+            </div>
+          )}
+
           {errorMessage && (
             <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg p-3 mb-4">
               <p className="text-sm font-mono text-red-600 dark:text-red-400 break-words">
@@ -204,6 +228,14 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
             >
               <LayoutDashboard className="w-4 h-4 mr-2" />
               Go to {getRoleName()}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => { logout(); router.push('/sign-in'); }}
+              className="dark:bg-gray-800 dark:border-gray-700 text-red-500 hover:text-red-600"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
             </Button>
           </div>
         </div>
@@ -319,6 +351,17 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
           </div>
         )}
 
+        {attemptedApiUrl && (
+          <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 mb-4">
+            <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">
+              Blocked Request
+            </div>
+            <p className="font-mono text-sm text-slate-700 dark:text-slate-200 break-all">
+              {attemptedApiUrl}
+            </p>
+          </div>
+        )}
+
         {errorMessage && (
           <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg p-3 mb-4">
             <div className="flex items-start gap-2">
@@ -380,6 +423,14 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
           >
             <LayoutDashboard className="w-4 h-4 mr-2" />
             Go to {getRoleName()}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => { logout(); router.push('/sign-in'); }}
+            className="dark:bg-gray-800 dark:border-gray-700 text-red-500 hover:text-red-600"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
           </Button>
         </div>
 
