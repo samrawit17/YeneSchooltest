@@ -9,7 +9,7 @@ import Navbar from "@/components/Navbar";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { schoolsAPI } from "@/lib/api";
+import { schoolsAPI, schoolSettingsAPI } from "@/lib/api";
 import { APP_VERSION } from "@/lib/version";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentEthiopianYear } from "@/lib/calendar-utils";
@@ -41,9 +41,74 @@ export default function DashboardLayout({
   // Set document title to school name
   useEffect(() => {
     if (school?.name) {
-      document.title = `${school.name} - Portal`;
+      document.title = `${school.name} - SMS Portal`;
     }
   }, [school?.name]);
+
+  // Dynamically set favicon from school logo
+  useEffect(() => {
+    if (school?.logoUrl) {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = school.logoUrl;
+    }
+  }, [school?.logoUrl]);
+
+  // Fetch brand color and apply CSS variables
+  const { data: brandColor } = useQuery({
+    queryKey: queryKeys.school.setting('theme_color', user?.schoolId),
+    queryFn: async () => {
+      if (!user?.schoolId) return '#e35336';
+      try {
+        const response = await schoolSettingsAPI.get(user.schoolId, 'theme_color');
+        return response.data?.value || '#e35336';
+      } catch {
+        return '#e35336';
+      }
+    },
+    enabled: !!user?.schoolId,
+    staleTime: 60000,
+  });
+
+  useEffect(() => {
+    if (brandColor && brandColor !== '#e35336') {
+      const hex = brandColor;
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const root = document.documentElement;
+      root.style.setProperty('--brand-color', hex);
+      root.style.setProperty('--brand-color-rgb', `${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}`);
+      // Convert hex to HSL for shadcn's --primary variable
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h = 0, s = 0, l = (max + min) / 2;
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+          case g: h = ((b - r) / d + 2) / 6; break;
+          case b: h = ((r - g) / d + 4) / 6; break;
+        }
+      }
+      const hslH = Math.round(h * 360);
+      const hslS = Math.round(s * 100);
+      const hslL = Math.round(l * 100);
+      root.style.setProperty('--primary', `${hslH} ${hslS}% ${hslL}%`);
+      root.style.setProperty('--ring', `${hslH} ${hslS}% ${hslL}%`);
+    } else {
+      const root = document.documentElement;
+      root.style.setProperty('--brand-color', '#e35336');
+      root.style.setProperty('--brand-color-rgb', '227, 83, 54');
+      root.style.setProperty('--primary', '10 75% 55%');
+      root.style.setProperty('--ring', '10 75% 55%');
+    }
+  }, [brandColor]);
+
 
 
   useEffect(() => {

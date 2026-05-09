@@ -15,6 +15,7 @@ import {
   MapPin,
   GraduationCap,
   Filter,
+  Eye,
 } from "lucide-react";
 
 // Shadcn/ui Components
@@ -145,13 +146,19 @@ const ClassStudentsPage = () => {
     fetchStudents(searchTerm);
   };
 
-  const filteredStudents = students.filter((student) => {
-    const matchesGender =
-      filterGender === "all" || student.gender === filterGender;
-    const matchesSection =
-      filterSection === "all" || student.section?.id === filterSection;
-    return matchesGender && matchesSection;
-  });
+  const filteredStudents = students
+    .filter((student) => {
+      const matchesGender =
+        filterGender === "all" || student.gender === filterGender;
+      const matchesSection =
+        filterSection === "all" || student.section?.id === filterSection;
+      return matchesGender && matchesSection;
+    })
+    .sort((a, b) => {
+      const rollA = a.rollNumber ?? "";
+      const rollB = b.rollNumber ?? "";
+      return String(rollA).localeCompare(String(rollB), undefined, { numeric: true });
+    });
 
   const getInitials = (name: string) => {
     return name
@@ -365,9 +372,9 @@ const ClassStudentsPage = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Roll No.</TableHead>
                       <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Student</TableHead>
                       <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Student Code</TableHead>
-                      <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Roll No.</TableHead>
                       <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Gender</TableHead>
                       <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Section</TableHead>
                       <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Contact</TableHead>
@@ -380,6 +387,11 @@ const ClassStudentsPage = () => {
                         key={student.id} 
                         className="hover:bg-blue-50/50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800"
                       >
+                        <TableCell className="px-6 py-4">
+                          <span className="font-semibold text-blue-600 dark:text-blue-400 min-w-[60px] inline-block">
+                            {student.rollNumber || "-"}
+                          </span>
+                        </TableCell>
                         <TableCell className="px-6 py-4">
                           <div className="flex items-center gap-4 min-w-[240px]">
                             <Avatar className="h-12 w-12 border-2 border-white dark:border-gray-800 shadow-sm">
@@ -399,11 +411,6 @@ const ClassStudentsPage = () => {
                         <TableCell className="px-6 py-4">
                           <span className="font-mono text-sm bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-lg min-w-[100px] inline-block text-center">
                             {student.studentCode || "-"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <span className="font-semibold text-blue-600 dark:text-blue-400 min-w-[60px] inline-block">
-                            {student.rollNumber || "-"}
                           </span>
                         </TableCell>
                         <TableCell className="px-6 py-4">
@@ -449,14 +456,13 @@ const ClassStudentsPage = () => {
                         </TableCell>
                         <TableCell className="px-6 py-4 text-right">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-800 transition-colors min-w-[80px]"
                             onClick={() =>
                               router.push(`/list/students/${student.id}`)
                             }
                           >
-                            View Profile
+                            <Eye className="w-4 h-4 text-gray-500" />
                           </Button>
                         </TableCell>
                       </TableRow>

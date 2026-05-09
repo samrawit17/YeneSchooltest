@@ -217,7 +217,12 @@ export class TeacherService {
     // Get teacher's timetable slots (subjects they teach)
     // Also include slots where teacher is assigned via ClassSubject
     const classSubjects = await this.prisma.classSubject.findMany({
-      where: { teacherId },
+      where: {
+        teacherId,
+        class: {
+          schoolId,
+        },
+      },
       select: { classId: true, sectionId: true },
     });
     
@@ -264,25 +269,11 @@ export class TeacherService {
 
     const homeroomSectionStudentCounts = await Promise.all(
       homeroomSections.map(async (section) => {
-        const className = section.class.name || `Grade ${section.class.grade}`;
-        const possibleClassNames = [
-          className,
-          className.replace('Grade ', ''),
-          `Grade ${className.replace('Grade ', '')}`,
-        ].filter((v, i, arr) => arr.indexOf(v) === i);
-
-        const possibleSections = [
-          section.name,
-          section.name.toUpperCase(),
-          section.name.toLowerCase(),
-        ].filter((v, i, arr) => arr.indexOf(v) === i);
-
-        const studentCount = await this.prisma.studentProfile.count({
+        const studentCount = await this.prisma.studentClass.count({
           where: {
             schoolId,
-            enrollmentStatus: 'APPROVED',
-            className: { in: possibleClassNames },
-            section: { in: possibleSections },
+            classId: section.class.id,
+            sectionId: section.id,
           },
         });
 

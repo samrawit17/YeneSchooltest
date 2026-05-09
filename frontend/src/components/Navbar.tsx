@@ -575,7 +575,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-[#e35336] hover:text-white transition-all duration-200 shadow-sm h-8 w-8 sm:h-9 sm:w-9"
+                  className="lg:hidden rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-[var(--brand-color,#e35336)] hover:text-white transition-all duration-200 shadow-sm h-8 w-8 sm:h-9 sm:w-9"
                   aria-label="Toggle menu"
                 >
                   <HamburgerMenuIcon className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -584,7 +584,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
               <SheetContent side="left" className="w-72 sm:w-80 md:w-96 p-0 bg-white dark:bg-[#111827] border-r border-gray-200 dark:border-gray-700 max-w-[85vw]">
                 <SheetHeader className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 bg-white/95 dark:bg-[#111827]/95 backdrop-blur flex flex-row items-center justify-between">
                   <SheetTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <School className="h-5 w-5 sm:h-6 sm:w-6 text-[#e35336] flex-shrink-0" />
+                    <School className="h-5 w-5 sm:h-6 sm:w-6 text-[var(--brand-color,#e35336)] flex-shrink-0" />
                     {schoolLoading ? (
                       <Skeleton className="h-5 sm:h-6 w-24" />
                     ) : (
@@ -717,7 +717,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                     >
                       <Bell className="h-5 w-5 sm:h-6 sm:w-6 font-bold" />
                       {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
+                        <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-[var(--brand-color,#e35336)] text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                       )}
@@ -725,7 +725,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80 sm:w-96 dark:bg-slate-900 max-w-[95vw]">
                     <DropdownMenuLabel className="flex items-center justify-between dark:text-white">
-                      <a href="/notifications" className="flex items-center justify-between w-full hover:text-[#e35336]">
+                      <a href="/notifications" className="flex items-center justify-between w-full hover:text-[var(--brand-color,#e35336)]">
                         <span className="text-sm sm:text-base">Alerts & Notifications</span>
                       </a>
                     </DropdownMenuLabel>
@@ -733,7 +733,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                     <ScrollArea className="h-[250px] sm:h-[300px]">
                       {notificationsLoading ? (
                         <div className="p-4 flex items-center justify-center">
-                          <Loader2 className="h-5 w-5 animate-spin text-[#e35336]" />
+                          <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-color,#e35336)]" />
                         </div>
                       ) : bellNotifications.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 dark:text-slate-400 text-sm">
@@ -783,7 +783,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                     <div className="p-2">
                         <Button
                           variant="ghost"
-                          className="w-full text-sm text-white bg-[#e35336] hover:bg-[#c94429] dark:bg-slate-700 dark:hover:bg-slate-600"
+                          className="w-full text-sm text-white bg-[var(--brand-color,#e35336)] hover:bg-[#c94429]"
                           onClick={() => router.push('/notifications')}
                         >
                           View all notifications
@@ -812,7 +812,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                       >
                         <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 font-bold text-dark dark:text-white" />
                         {unreadCommunicationsCount > 0 && (
-                          <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-blue-500 text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
+                          <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-[var(--brand-color,#e35336)] text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
                             {unreadCommunicationsCount > 99 ? '99+' : unreadCommunicationsCount}
                           </span>
                         )}
@@ -870,7 +870,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                       <div className="p-2">
                         <Button
                           variant="ghost"
-                          className="w-full text-sm text-white bg-[#e35336] hover:bg-[#c94429] dark:bg-slate-700 dark:hover:bg-slate-600"
+                          className="w-full text-sm text-white bg-[var(--brand-color,#e35336)] hover:bg-[#c94429]"
                           onClick={() => router.push('/list/communications')}
                         >
                           View all communications
@@ -929,7 +929,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                         {user.avatarUrl ? (
                           <AvatarImage src={user.avatarUrl} alt={user.name} />
                         ) : (
-                          <AvatarFallback className="bg-gradient-to-br from-[#e35336] to-[#c94429] text-white font-bold text-base sm:text-lg">
+                          <AvatarFallback className="bg-gradient-to-br from-[var(--brand-color,#e35336)] to-[#c94429] text-white font-bold text-base sm:text-lg">
                             {user.name?.charAt(0).toUpperCase() || "U"}
                           </AvatarFallback>
                         )}
@@ -937,7 +937,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
                         <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{user.email}</p>
-                        <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#e35336]/10 text-[#e35336] dark:bg-[#e35336]/20">
+                        <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
                           {user.role?.toLowerCase().replace("_", " ")}
                         </span>
                       </div>
@@ -949,11 +949,11 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                   {/* Quick Links */}
 <DropdownMenuGroup>
                     <DropdownMenuItem onClick={() => router.push("/dashboard")} className="dark:text-slate-200 dark:focus:bg-slate-800">
-                      <LayoutDashboard className="mr-2 h-4 w-4 text-[#e35336]" />
+                      <LayoutDashboard className="mr-2 h-4 w-4 text-[var(--brand-color,#e35336)]" />
                       <span>Dashboard</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => router.push("/profile")} className="dark:text-slate-200 dark:focus:bg-slate-800">
-                      <User className="mr-2 h-4 w-4 text-[#e35336]" />
+                      <User className="mr-2 h-4 w-4 text-[var(--brand-color,#e35336)]" />
                       <span>Profile</span>
                     </DropdownMenuItem>
                     {user.role?.toLowerCase().includes("parent") && (

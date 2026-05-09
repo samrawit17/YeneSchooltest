@@ -6,6 +6,15 @@ import api from "./core";
  * are now accessed via their dedicated modules.
  */
 export const adminTimetableAPI = {
+  getClasses: (params?: { academicYearId?: string }) => api.get('/classes', { params }),
+
+  getSubjects: () => api.get('/subjects'),
+
+  getAcademicYears: () => api.get('/academic-years'),
+
+  getClassSubjects: (params?: { classId?: string; sectionId?: string; academicYearId?: string }) =>
+    api.get('/class-subjects', { params }),
+
   getGrid: (classId: string, params?: { sectionId?: string }) =>
     api.get(`/timetable-slots/grid/class/${classId}`, { params }),
 

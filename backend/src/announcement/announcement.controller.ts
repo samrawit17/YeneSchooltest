@@ -60,7 +60,7 @@ export class AnnouncementController {
       return { success: false, message: 'School ID is required' };
     }
     const userRole = role || req.user.role;
-    return this.announcementService.findAll(schoolId, userRole);
+    return this.announcementService.findAll(schoolId, userRole, req.user.id);
   }
 
   @Get('active-count')

@@ -678,7 +678,7 @@ export default function AssessmentManagementPage() {
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">Assessment Management</h1>
+          <h1 className="text-2xl font-bold text-black">Assessment Management</h1>
           <p className="text-gray-500 text-sm mt-0.5">
             One unified workflow for quizzes, tests, mid exams, and final exams
           </p>

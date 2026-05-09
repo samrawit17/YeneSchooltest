@@ -27,7 +27,7 @@ const EnrollmentForm = dynamic(() => import("./forms/EnrollmentForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -36,7 +36,7 @@ const SchoolForm = dynamic(() => import("./forms/SchoolForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -45,7 +45,7 @@ const ClassForm = dynamic(() => import("./forms/ClassForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -54,7 +54,7 @@ const SectionForm = dynamic(() => import("./forms/SectionForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -63,7 +63,7 @@ const AcademicYearForm = dynamic(() => import("./forms/AcademicYearForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -72,7 +72,7 @@ const TermForm = dynamic(() => import("./forms/TermForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -81,7 +81,7 @@ const TimetableSlotForm = dynamic(() => import("./forms/TimetableSlotForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -90,7 +90,7 @@ const SubjectForm = dynamic(() => import("./forms/SubjectForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -99,7 +99,7 @@ const ClassSubjectForm = dynamic(() => import("./forms/ClassSubjectForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -108,7 +108,7 @@ const UnifiedStaffForm = dynamic(() => import("./forms/UnifiedStaffForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -117,7 +117,7 @@ const UnifiedStudentForm = dynamic(() => import("./forms/UnifiedStudentForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -126,7 +126,7 @@ const ParentChildLinkForm = dynamic(() => import("./forms/ParentChildLinkForm"),
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -135,7 +135,7 @@ const EventForm = dynamic(() => import("./forms/EventForm"), {
   ssr: false,
   loading: () => (
     <div className="p-8 text-center">
-      <Loader2 className="w-6 h-6 animate-spin text-[#e35336] mx-auto" />
+      <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
       <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">Loading form...</p>
     </div>
   ),
@@ -402,7 +402,7 @@ const FormModal = ({
 
   const bgColor =
     type === "create"
-      ? "bg-gradient-to-br from-[#e35336] to-[#c74428] hover:from-[#c74428] hover:to-[#e35336]"
+      ? "bg-[var(--brand-color,#e35336)] hover:bg-[var(--brand-color,#e35336)] hover:opacity-90"
       : type === "update"
       ? "bg-gradient-to-br from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700"
       : "bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700";
@@ -509,7 +509,7 @@ const FormModal = ({
       <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden" customCloseButton={false}>
         <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-[#e35336] to-[#c94429] rounded-xl flex items-center justify-center shadow-md">
+            <div className="w-9 h-9 bg-[var(--brand-color,#e35336)] rounded-xl flex items-center justify-center shadow-md">
               {getTableIcon()}
             </div>
             <div>
@@ -557,7 +557,7 @@ const FormModal = ({
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gradient-to-br from-[#e35336] to-[#c94429] rounded-xl flex items-center justify-center shadow-md">
+                <div className="w-9 h-9 bg-[var(--brand-color,#e35336)] rounded-xl flex items-center justify-center shadow-md">
                   {getTableIcon()}
                 </div>
                 <div>

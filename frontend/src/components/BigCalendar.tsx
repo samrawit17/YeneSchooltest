@@ -114,7 +114,7 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
     const isDark = document.documentElement.classList.contains('dark');
     return {
       style: isToday ? {
-        backgroundColor: isDark ? "rgba(227, 83, 54, 0.2)" : "#fce8e6",
+        backgroundColor: isDark ? "rgba(var(--brand-color-rgb), 0.2)" : "rgba(var(--brand-color-rgb), 0.1)",
       } : {
         backgroundColor: isDark ? "transparent" : "transparent"
       }
@@ -126,7 +126,7 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
     const isDark = document.documentElement.classList.contains('dark');
     return {
       style: {
-        backgroundColor: "#e35336",
+        backgroundColor: "var(--brand-color, #e35336)",
         borderRadius: screenSize === 'xs' ? "2px" : "4px",
         color: "white",
         border: "none",

@@ -217,7 +217,7 @@ const ParentListPage = () => {
         <div className="space-y-6 w-full min-w-0">
           {/* Top Section - Title and Buttons */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full min-w-0">
-            <h1 className="text-2xl font-bold text-[#e35336]">Parents</h1>
+            <h1 className="text-2xl font-bold text-black">Parents</h1>
             <div className="flex items-center gap-3">
             </div>
           </div>

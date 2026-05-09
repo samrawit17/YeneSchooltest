@@ -484,7 +484,6 @@ export default function AcademicStructurePage() {
                 <CardTitle className="flex items-center gap-2 text-base">
                   <School className="w-5 h-5 text-blue-500" /> All Classes
                 </CardTitle>
-                <FormModal table="class" type="create" />
               </CardHeader>
               <CardContent>
                 {classesLoading ? (
@@ -600,7 +599,6 @@ export default function AcademicStructurePage() {
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Layers className="w-5 h-5 text-emerald-500" /> All Sections
                 </CardTitle>
-                <FormModal table="section" type="create" />
               </CardHeader>
               <CardContent>
                 {sectionsLoading ? (

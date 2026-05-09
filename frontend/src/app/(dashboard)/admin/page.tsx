@@ -278,7 +278,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
           {/* Header */}
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-[#e35336]">
+              <h1 className="text-2xl font-bold text-black">
                 {isITManagerDashboard ? "IT Manager Dashboard" : "Admin Dashboard"}
               </h1>
               <p className="text-gray-500 dark:text-gray-400 mt-1">
@@ -295,7 +295,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
             </div>
             {displayTermName && (
               <div className="text-right">
-                <p className="text-xl font-bold text-[#e35336]">{displayTermName}</p>
+                <p className="text-xl font-bold text-black">{displayTermName}</p>
               </div>
             )}
 

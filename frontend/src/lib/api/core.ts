@@ -43,6 +43,13 @@ api.interceptors.response.use(
       const skipAuthRedirect = (error.config as any)?.skipAuthErrorRedirect === true;
       if (!currentPath.includes('/access-denied') && !currentPath.includes('/sign-in') && !skipAuthRedirect) {
         sessionStorage.setItem('accessDeniedUrl', currentPath);
+        const requestUrl =
+          error.config?.url ||
+          error.response?.config?.url ||
+          '';
+        if (requestUrl) {
+          sessionStorage.setItem('accessDeniedApiUrl', requestUrl);
+        }
         sessionStorage.setItem('accessDeniedCode', '403');
         const errorMessage =
           error.response?.data?.message ||
@@ -56,7 +63,18 @@ api.interceptors.response.use(
           sessionStorage.setItem('accessDeniedPermission', requiredPermission);
         }
 
-        window.location.href = '/access-denied?type=403';
+        const redirectParams = new URLSearchParams({ type: '403' });
+        if (requestUrl) {
+          redirectParams.set('api', requestUrl);
+        }
+        if (currentPath) {
+          redirectParams.set('from', currentPath);
+        }
+        if (requiredPermission) {
+          redirectParams.set('permission', requiredPermission);
+        }
+
+        window.location.href = `/access-denied?${redirectParams.toString()}`;
       }
     }
 
@@ -73,12 +91,27 @@ api.interceptors.response.use(
       const skipAuthRedirect = (error.config as any)?.skipAuthErrorRedirect === true;
       if (!skipAuthRedirect) {
         sessionStorage.setItem('accessDeniedUrl', currentPath);
+        const requestUrl =
+          error.config?.url ||
+          error.response?.config?.url ||
+          '';
+        if (requestUrl) {
+          sessionStorage.setItem('accessDeniedApiUrl', requestUrl);
+        }
         sessionStorage.setItem('accessDeniedCode', '404');
         const notFoundMessage =
           error.response?.data?.message ||
           'Resource not found or you do not have permission to access this page.';
         sessionStorage.setItem('accessDeniedMessage', notFoundMessage);
-        window.location.href = '/access-denied?type=404';
+        const redirectParams = new URLSearchParams({ type: '404' });
+        if (requestUrl) {
+          redirectParams.set('api', requestUrl);
+        }
+        if (currentPath) {
+          redirectParams.set('from', currentPath);
+        }
+
+        window.location.href = `/access-denied?${redirectParams.toString()}`;
       }
     }
 

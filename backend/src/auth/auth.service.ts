@@ -12,6 +12,10 @@ import * as bcrypt from 'bcrypt';
 import { Role } from './types/role.enum';
 import { EnrollmentStatus, Prisma } from '@prisma/client';
 import { CredentialService } from '../credential/credential.service';
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  IT_MANAGER_FORBIDDEN_PERMISSIONS,
+} from './constants/default-permissions.constant';
 
 // Cookie name constant
 export const JWT_COOKIE_NAME = 'Authentication';
@@ -124,6 +128,24 @@ export class AuthService {
     const calendarType =
       user.school?.schoolSettings?.[0]?.value || 'ETHIOPIAN';
 
+    const rolePermissions = await this.prismaService.rolePermission.findMany({
+      where: { role: user.role },
+      include: { permission: true },
+    });
+
+    const defaultRolePerms = DEFAULT_ROLE_PERMISSIONS[user.role as Role] || [];
+    const allPermissions = new Set([
+      ...defaultRolePerms,
+      ...user.userPermissions.map((up) => up.permission.name),
+      ...rolePermissions.map((rp) => rp.permission.name),
+    ]);
+
+    if (user.role === Role.IT_MANAGER) {
+      for (const forbiddenPermission of IT_MANAGER_FORBIDDEN_PERMISSIONS) {
+        allPermissions.delete(forbiddenPermission);
+      }
+    }
+
     return {
       id: user.id,
       email: user.email,
@@ -138,7 +160,7 @@ export class AuthService {
       mustChangePassword: user.mustChangePassword,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      permissions: user.userPermissions.map((up) => up.permission.name),
+      permissions: Array.from(allPermissions),
     };
   }
 

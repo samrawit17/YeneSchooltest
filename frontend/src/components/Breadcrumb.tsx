@@ -593,7 +593,7 @@ export function Breadcrumb({
                   className={`
                     flex items-center gap-1 px-1 sm:px-2 py-0.5 sm:py-1 rounded-md
                     ${item.isCurrent
-                      ? "font-semibold text-[#e35336] bg-[#e35336]/5"
+                      ? "font-semibold text-[var(--brand-color,#e35336)] bg-[rgba(var(--brand-color-rgb),0.05)]"
                       : "text-gray-500 font-medium"
                     }
                   `}
@@ -619,15 +619,15 @@ export function Breadcrumb({
                     flex items-center gap-1 
                     px-1 sm:px-2 py-0.5 sm:py-1 rounded-md
                     text-gray-600 dark:text-gray-400
-                    hover:text-[#e35336] dark:hover:text-[#e35336]
+                    hover:text-[var(--brand-color,#e35336)] dark:hover:text-[var(--brand-color,#e35336)]
                     transition-all duration-200
-                    hover:bg-[#e35336]/5
+                    hover:bg-[rgba(var(--brand-color-rgb),0.05)]
                     overflow-hidden
                   `}
                 >
                   {/* Active indicator line on hover */}
-                  <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-[#e35336] group-hover:w-1/2 group-hover:left-0 transition-all duration-300"></span>
-                  <span className="absolute bottom-0 right-1/2 w-0 h-0.5 bg-[#e35336] group-hover:w-1/2 group-hover:right-0 transition-all duration-300"></span>
+                  <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-[var(--brand-color,#e35336)] group-hover:w-1/2 group-hover:left-0 transition-all duration-300"></span>
+                  <span className="absolute bottom-0 right-1/2 w-0 h-0.5 bg-[var(--brand-color,#e35336)] group-hover:w-1/2 group-hover:right-0 transition-all duration-300"></span>
 
                   {showIcon && item.icon}
                   <span className={showSimplified && index === 1 ? 'hidden md:inline' : ''}>

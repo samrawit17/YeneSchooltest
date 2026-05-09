@@ -12,6 +12,46 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { academicYearsAPI } from "@/lib/api";
 
+const buildMonthOptions = (
+  selectedYear: string,
+  academicYears: { id: string; name: string; startDate?: string; endDate?: string }[]
+) => {
+  const yearConfig = academicYears.find((year) => year.id === selectedYear);
+  const now = new Date();
+
+  if (!yearConfig?.startDate) {
+    return Array.from({ length: 12 }, (_, index) => {
+      const monthDate = new Date(now.getFullYear(), index, 1);
+      return {
+        value: `${monthDate.getFullYear()}-${String(index + 1).padStart(2, "0")}`,
+        label: monthDate.toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+        }),
+      };
+    });
+  }
+
+  const start = new Date(yearConfig.startDate);
+  const configuredEnd = yearConfig.endDate ? new Date(yearConfig.endDate) : now;
+  const end = configuredEnd < now ? configuredEnd : now;
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const options: Array<{ value: string; label: string }> = [];
+
+  while (cursor <= end) {
+    options.push({
+      value: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
+      label: cursor.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      }),
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return options;
+};
+
 const AttendanceSkeleton = () => (
   <div className="p-6 space-y-6">
     <Skeleton className="h-8 w-48" />
@@ -83,6 +123,7 @@ export default function ParentAttendancePage() {
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string; startDate?: string; endDate?: string }[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const monthOptions = buildMonthOptions(selectedYear, academicYears);
 
   const fetchChildren = useCallback(async () => {
     try {
@@ -297,16 +338,11 @@ export default function ParentAttendancePage() {
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
             >
-              {Array.from({ length: 12 }, (_, i) => {
-                const month = new Date(2024, i, 1);
-                const monthValue = `${month.getFullYear()}-${String(i + 1).padStart(2, '0')}`;
-                const monthLabel = month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                return (
-                  <option key={monthValue} value={monthValue}>
-                    {monthLabel}
-                  </option>
-                );
-              })}
+              {monthOptions.map((month) => (
+                <option key={month.value} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

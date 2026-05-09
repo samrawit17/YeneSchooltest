@@ -602,14 +602,55 @@ export class StudentService {
       academicYearName = academicYear?.name || null;
     }
 
-    // Find class by matching student's className and section
+    // Prefer the canonical StudentClass assignment, then fall back to profile text fields.
+    const currentStudentClass = await this.prismaService.studentClass.findFirst({
+      where: {
+        studentId: student.userId,
+        schoolId,
+      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        class: {
+          include: {
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        section: {
+          include: {
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
     let classWithTeacher: any = null;
-    if (student.className && student.section) {
+    let sectionWithTeacher: any = null;
+
+    if (currentStudentClass) {
+      classWithTeacher = currentStudentClass.class;
+      sectionWithTeacher = currentStudentClass.section;
+    } else if (student.className && student.section) {
+      const classNameVariants = [
+        student.className,
+        student.className.replace('Grade ', ''),
+        `Grade ${student.className.replace('Grade ', '')}`,
+      ];
+
       const classRecord = await this.prismaService.class.findFirst({
         where: {
           schoolId,
-          name: student.className,
           section: student.section,
+          OR: classNameVariants.map((name) => ({ name })),
         },
         include: {
           homeroomTeacher: {
@@ -618,10 +659,27 @@ export class StudentService {
               name: true,
             },
           },
+          sections: {
+            where: { name: student.section },
+            include: {
+              homeroomTeacher: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+            take: 1,
+          },
         },
       });
+
       classWithTeacher = classRecord;
+      sectionWithTeacher = classRecord?.sections?.[0] || null;
     }
+
+    const homeroomTeacher =
+      sectionWithTeacher?.homeroomTeacher || classWithTeacher?.homeroomTeacher || null;
 
     // Format parent info
     const parentInfo =
@@ -640,13 +698,13 @@ export class StudentService {
       ...student,
       enrollment,
       enrollmentYear: enrollment?.academicYear || academicYearName || null,
-      classTeacher: classWithTeacher?.homeroomTeacher?.name || null,
+      classTeacher: homeroomTeacher?.name || null,
       class: classWithTeacher
         ? {
             id: classWithTeacher.id,
             name: classWithTeacher.name,
             section: classWithTeacher.section,
-            homeroomTeacher: classWithTeacher.homeroomTeacher,
+            homeroomTeacher,
           }
         : null,
       lastLogin: student.user?.lastLoginAt || null,

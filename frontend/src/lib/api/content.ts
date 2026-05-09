@@ -37,7 +37,16 @@ export interface UpdateAnnouncementDto {
 
 export const announcementsAPI = {
   create: (data: CreateAnnouncementDto) => api.post("/announcements", data),
-  getAll: (params?: { role?: string }) => api.get<Announcement[]>("/announcements", { params }),
+  getAll: (
+    params?: { role?: string },
+    options?: { skipAuthErrorRedirect?: boolean }
+  ) =>
+    api.get<Announcement[]>("/announcements", {
+      params,
+      ...(options?.skipAuthErrorRedirect
+        ? { skipAuthErrorRedirect: true }
+        : {}),
+    }),
   getActiveCount: (params?: { role?: string }) =>
     api.get<{ count: number }>("/announcements/active-count", { params }),
   getById: (id: string) => api.get<Announcement>(`/announcements/${id}`),

@@ -352,10 +352,10 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                 shouldFilter={false}
             >
                 <div 
-                    className="flex items-center w-full h-9 sm:h-10 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#111827] overflow-hidden focus-within:border-[#e35336] shadow-sm transition-all duration-200 focus-within:shadow-inner" 
+                    className="flex items-center w-full h-9 sm:h-10 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#111827] overflow-hidden focus-within:border-[var(--brand-color,#e35336)] dark:focus-within:border-[var(--brand-color,#e35336)] shadow-sm transition-all duration-200 focus-within:shadow-inner" 
                     cmdk-input-wrapper=""
                 >
-                    <div className="pl-4 pr-2 text-gray-500 hidden sm:flex">
+                    <div className="pl-4 pr-2 text-gray-500 flex-shrink-0 cursor-pointer" onClick={() => inputRef.current?.focus()}>
                         <Search className="h-4 w-4" />
                     </div>
 
@@ -376,31 +376,15 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                     {query && (
                         <button 
                             type="button"
-                            className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                            className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0"
                             onClick={() => {
                                 setQuery("");
                                 inputRef.current?.focus();
                             }}
                         >
-                            <X className="h-4 w-4 lg:h-5 lg:w-5" />
+                            <X className="h-4 w-4" />
                         </button>
                     )}
-
-                    <button 
-                        type="button"
-                        className="flex items-center justify-center h-full px-4 sm:px-5 bg-gray-100 dark:bg-gray-800 border-l border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors tooltip"
-                        title="Search (⌘K)"
-                        onClick={() => {
-                            setOpen(true);
-                            setTimeout(() => inputRef.current?.focus(), 100);
-                        }}
-                    >
-                        {loading ? (
-                            <Loader2 className="h-4 w-4 lg:h-5 lg:w-5 animate-spin text-gray-500" />
-                        ) : (
-                            <Search className="h-4 w-4 lg:h-4 lg:w-4 text-gray-600 dark:text-gray-300" />
-                        )}
-                    </button>
                 </div>
 
                 {open && mounted && createPortal(
