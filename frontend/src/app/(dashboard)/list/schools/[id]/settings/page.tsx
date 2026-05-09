@@ -6,6 +6,7 @@ import { schoolSettingsAPI, schoolsAPI, academicYearsAPI } from '@/lib/api';
 import { subscriptionAPI } from '@/lib/api/admin';
 import { getCurrentEthiopianYear } from '@/lib/calendar-utils';
 import { useAuth } from '@/context/AuthContext';
+import { useBreadcrumb } from '@/context/BreadcrumbContext';
 import { toast } from 'sonner';
 import { 
   Loader2, 
@@ -124,14 +125,6 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'time',
     category: 'attendance',
     systemDefault: '03:00',
-  },
-  {
-    key: 'PARENT_VIEW_ATTENDANCE',
-    label: 'Parent View Attendance',
-    description: 'Allow parents to view their children\'s attendance records',
-    type: 'boolean',
-    category: 'attendance',
-    systemDefault: true,
   },
 
   // Exam Settings
@@ -340,7 +333,7 @@ export default function SchoolSettingsPage() {
   const params = useParams();
   const schoolId = params.id as string;
   const { user, updateUser } = useAuth();
-
+  const { setItems } = useBreadcrumb();
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -485,6 +478,18 @@ export default function SchoolSettingsPage() {
     fetchAcademicYears();
     fetchSchoolPlan();
   }, [schoolId, fetchSettings, fetchSchoolInfo, fetchAcademicYears, fetchSchoolPlan]);
+
+  // Set breadcrumb with school name
+  useEffect(() => {
+    if (schoolInfo?.name) {
+      setItems([
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Schools' },
+        { label: schoolInfo.name, href: `/list/schools/${schoolId}` },
+        { label: 'Settings', isCurrent: true },
+      ]);
+    }
+  }, [schoolInfo?.name, schoolId, setItems]);
 
   useEffect(() => {
     if (settings['calendar_type']) {
@@ -702,7 +707,7 @@ export default function SchoolSettingsPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 max-w-6xl animate-pulse">
+      <div className="container mx-auto p-6 max-w-6xl">
         {/* School Header Skeleton */}
         <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
           <div className="flex items-center gap-4">
