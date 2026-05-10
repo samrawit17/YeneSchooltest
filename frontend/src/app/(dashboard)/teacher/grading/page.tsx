@@ -691,7 +691,7 @@ export default function TeacherGradingPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-<h1 className="text-2xl font-bold flex items-center gap-2 text-[#e35336]">
+<h1 className="text-2xl font-bold flex items-center gap-2 text-black">
             Grade Entry
           </h1>
           <p className="text-muted-foreground text-gray-500 dark:text-gray-400">

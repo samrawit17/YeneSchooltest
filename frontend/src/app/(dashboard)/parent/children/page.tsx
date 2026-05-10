@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { User, Users, Calendar, BookOpen, Eye, TrendingUp, Award, Star } from "lucide-react";
+import { Users, Calendar, BookOpen, Eye, TrendingUp, Star, ArrowRight, User } from "lucide-react";
 import { parentDashboardAPI } from "@/lib/api/parent";
 
-// Shadcn/ui Components
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -103,7 +101,6 @@ const ParentChildrenPage = () => {
                   };
                 }
               } catch (e) {
-                // Continue without class info
               }
               return {
                 ...child,
@@ -147,53 +144,31 @@ const ParentChildrenPage = () => {
 
   const getGradeColor = (grade: string) => {
     switch (grade) {
-      case "A": return "text-green-600 bg-green-50";
-      case "B": return "text-blue-600 bg-blue-50";
-      case "C": return "text-yellow-600 bg-yellow-50";
-      case "D": return "text-orange-600 bg-orange-50";
-      case "F": return "text-red-600 bg-red-50";
-      default: return "text-gray-600 bg-gray-50";
+      case "A": return "text-green-600 bg-green-50 dark:bg-green-950/30 dark:text-green-400";
+      case "B": return "text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400";
+      case "C": return "text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30 dark:text-yellow-400";
+      case "D": return "text-orange-600 bg-orange-50 dark:bg-orange-950/30 dark:text-orange-400";
+      case "F": return "text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400";
+      default: return "text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-400";
     }
   };
 
-  const getAttendanceColor = (rate: number) => {
-    if (rate >= 90) return "text-green-600";
-    if (rate >= 75) return "text-yellow-600";
-    return "text-red-600";
-  };
-
-  // Skeleton loading
   if (loading) {
     return (
-      <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header Skeleton */}
-          <div className="mb-6">
-            <Skeleton className="h-8 w-48 mb-2" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-          
-          {/* Cards Skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
+              <Card key={i} className="dark:bg-slate-900 dark:border-slate-800">
+                <CardContent className="p-5 space-y-4">
                   <div className="flex items-center gap-3">
-                    <Skeleton className="w-12 h-12 rounded-full" />
-                    <div className="flex-1">
-                      <Skeleton className="h-5 w-32 mb-1" />
-                      <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1 space-y-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Skeleton className="h-5 w-20" />
-                    <Skeleton className="h-5 w-16" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Skeleton className="h-20 w-full rounded-lg" />
-                    <Skeleton className="h-20 w-full rounded-lg" />
                   </div>
                   <Skeleton className="h-9 w-full" />
                 </CardContent>
@@ -206,144 +181,114 @@ const ParentChildrenPage = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 bg-gradient-to-br from-white to-gray-50 dark:from-slate-950 dark:to-slate-900 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#e35336]">
-            My Children
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-2">
-            Monitor your children's academic progress and attendance
-          </p>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="mx-auto max-w-7xl px-6 py-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-[#e35336]/10 flex items-center justify-center">
+              <Users className="w-6 h-6 text-[#e35336]" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-[#e35336]">My Children</h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Monitor your children's academic progress and attendance
+              </p>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* No Children Message */}
+      <div className="mx-auto max-w-7xl px-6 py-6">
         {children.length === 0 ? (
-          <Card className="border-2 border-dashed border-gray-200 dark:border-gray-700">
+          <Card className="dark:bg-slate-900 dark:border-slate-800">
             <CardContent className="py-16 text-center">
-              <div className="w-16 h-16 bg-[#e35336]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-xl bg-[#e35336]/10 flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-[#e35336]" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 No Children Linked
               </h3>
-              <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
                 Contact the school administration to link your children to your parent account.
               </p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-4">
             {children.map((child) => {
               const attendance = getAttendance(child);
               const academics = getAcademics(child);
               const gradeColor = getGradeColor(academics.grade);
-              const attendanceColor = getAttendanceColor(attendance.rate);
-              
+
               return (
-                <Card 
-                  key={child.id} 
-                  className="group hover:shadow-xl transition-all duration-300 border-t-4 border-t-[#e35336] hover:border-t-[#e35336] overflow-hidden"
+                <Card
+                  key={child.id}
+                  className="dark:bg-slate-900 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-14 h-14 ring-2 ring-[#e35336]/20 group-hover:ring-[#e35336]/40 transition-all">
-                        <AvatarFallback className="bg-gradient-to-br from-[#e35336] to-[#c74428] text-white text-lg font-semibold">
-                          {child.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
-                          {child.name}
-                        </CardTitle>
-                        <CardDescription className="text-sm flex items-center gap-1 mt-1">
-                          <span className="font-medium text-[#e35336]">{child.className}</span>
-                          <span>•</span>
-                          <span>Section {child.section}</span>
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    {/* Badges */}
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline" className="bg-gray-50 dark:bg-gray-800">
-                        {child.studentCode}
-                      </Badge>
-                      <Badge variant="secondary" className="bg-[#e35336]/10 text-[#e35336] hover:bg-[#e35336]/20">
-                        {child.relation}
-                      </Badge>
-                      {child.isPrimary && (
-                        <Badge className="bg-amber-50 text-amber-700 border-amber-200">
-                          <Star className="w-3 h-3 mr-1" />
-                          Primary
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Attendance Card */}
-                      <div className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Calendar className="w-4 h-4 text-[#e35336]" />
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Attendance</span>
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <Avatar className="h-12 w-12 ring-2 ring-[#e35336]/20">
+                          <AvatarFallback className="bg-[#e35336] text-white font-semibold">
+                            {child.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                              {child.name}
+                            </p>
+                            {child.isPrimary && (
+                              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {child.className} • Section {child.section} • {child.studentCode}
+                          </p>
                         </div>
-                        <p className={`text-2xl font-bold ${attendanceColor}`}>
-                          {attendance.rate}%
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {attendance.presentDays}/{attendance.totalDays} days
-                        </p>
                       </div>
 
-                      {/* Academic Card */}
-                      <div className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center gap-2 mb-2">
-                          <BookOpen className="w-4 h-4 text-[#e35336]" />
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Latest Grade</span>
+                      <div className="hidden md:flex items-center gap-6">
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Attendance</p>
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">{attendance.rate}%</p>
+                          <p className="text-[10px] text-gray-400">{attendance.presentDays}/{attendance.totalDays} days</p>
                         </div>
-                        <div className="flex items-baseline gap-2">
-                          <span className={`text-2xl font-bold px-2 py-0.5 rounded ${gradeColor}`}>
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Grade</p>
+                          <span className={`text-lg font-bold px-2 py-0.5 rounded ${gradeColor}`}>
                             {academics.grade}
                           </span>
                           {academics.average > 0 && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {academics.average}% avg
-                            </span>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{academics.average}% avg</p>
                           )}
                         </div>
                       </div>
-                    </div>
 
-                    {/* Progress Indicators */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <TrendingUp className="w-3 h-3" />
-                          Overall Progress
-                        </span>
-                        <span>{attendance.rate}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className="bg-[#e35336] h-1.5 rounded-full transition-all duration-500"
-                          style={{ width: `${attendance.rate}%` }}
-                        />
+                      <div className="flex items-center gap-2">
+                        <div className="md:hidden flex items-center gap-3 mr-2">
+                          <div className="text-center">
+                            <p className="text-[10px] text-gray-400">Att.</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">{attendance.rate}%</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-gray-400">Grade</p>
+                            <span className={`text-sm font-bold px-1.5 py-0.5 rounded ${gradeColor}`}>
+                              {academics.grade}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/parent/children/${child.studentId || child.id}`)}
+                          className="h-9"
+                        >
+                          View
+                          <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                        </Button>
                       </div>
                     </div>
-
-                    {/* Action Button */}
-                    <Button 
-                      variant="outline" 
-                      className="w-full group/btn border-[#e35336] text-[#e35336] hover:bg-[#e35336] hover:text-white transition-all duration-300"
-                      onClick={() => router.push(`/parent/children/${child.studentId || child.id}`)}
-                    >
-                      <Eye className="w-4 h-4 mr-2 group-hover/btn:animate-pulse" />
-                      View Detailed Report
-                    </Button>
                   </CardContent>
                 </Card>
               );

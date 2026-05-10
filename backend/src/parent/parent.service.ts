@@ -435,9 +435,20 @@ export class ParentService {
       where: { userId: { in: studentUserIds } },
     });
     const profileMap = new Map(studentProfiles.map((sp) => [sp.userId, sp]));
-    const academicYear = await this.prismaService.academicYear.findFirst({
-      where: { isActive: true },
-    });
+    const academicYear =
+      (await this.prismaService.academicYear.findFirst({
+        where: {
+          schoolId: parentProfile.schoolId,
+          isActive: true,
+        },
+        orderBy: { updatedAt: 'desc' },
+      })) ||
+      (await this.prismaService.academicYear.findFirst({
+        where: {
+          schoolId: parentProfile.schoolId,
+        },
+        orderBy: { createdAt: 'desc' },
+      }));
 
     const schoolSettings = await this.prismaService.schoolSetting.findFirst({
       where: { schoolId: parentProfile.schoolId, key: 'curriculum_type' },
@@ -483,7 +494,7 @@ export class ParentService {
     };
     const periodCount = terms.length || periodCountMap[curriculumType] || 3;
 
-    if (!academicYear || studentUserIds.length === 0) {
+    if (studentUserIds.length === 0) {
       return children.map((child: any) => {
         const sp = profileMap.get(child.student.userId);
         return {
@@ -510,23 +521,165 @@ export class ParentService {
       });
     }
 
-    const studentFees = await this.prismaService.studentFee.findMany({
+    const studentFees = academicYear
+      ? await this.prismaService.studentFee.findMany({
+          where: {
+            studentId: { in: studentUserIds },
+            academicYearId: academicYear.id,
+          },
+          include: {
+            feeStructure: { select: { feeType: true } },
+            term: { select: { name: true } },
+            payments: true,
+          },
+        })
+      : [];
+
+    const studentClasses = await this.prismaService.studentClass.findMany({
       where: {
         studentId: { in: studentUserIds },
-        academicYearId: academicYear.id,
+        ...(academicYear?.id ? { academicYear: academicYear.id } : {}),
       },
       include: {
-        feeStructure: { select: { feeType: true } },
-        term: { select: { name: true } },
-        payments: true,
+        class: {
+          select: {
+            id: true,
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+            ClassSubject: {
+              where: {
+                teacherId: { not: null },
+              },
+              select: {
+                teacher: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+                subject: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        section: {
+          select: {
+            id: true,
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+            classSubjects: {
+              where: {
+                teacherId: { not: null },
+              },
+              select: {
+                teacher: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+                subject: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
+
+    const studentTeacherMap = new Map(
+      studentClasses.map((studentClass) => {
+        const homeroomTeacher =
+          studentClass.section?.homeroomTeacher ||
+          studentClass.class?.homeroomTeacher ||
+          null;
+
+        const teachingTeacherMap = new Map<string, any>();
+
+        const assignments = [
+          ...(studentClass.section?.classSubjects || []),
+          ...(studentClass.class?.ClassSubject || []),
+        ];
+
+        for (const assignment of assignments) {
+          const teacher = assignment.teacher;
+          if (!teacher?.id) continue;
+
+          const existing = teachingTeacherMap.get(teacher.id);
+          const subjectName = assignment.subject?.name || null;
+
+          if (existing) {
+            if (
+              subjectName &&
+              !existing.subjects.includes(subjectName)
+            ) {
+              existing.subjects.push(subjectName);
+            }
+            continue;
+          }
+
+          teachingTeacherMap.set(teacher.id, {
+            id: teacher.id,
+            name: teacher.name,
+            email: teacher.email,
+            phone: teacher.phone || null,
+            subjects: subjectName ? [subjectName] : [],
+          });
+        }
+
+        return [
+          studentClass.studentId,
+          {
+            homeroomTeacher: homeroomTeacher
+              ? {
+                  id: homeroomTeacher.id,
+                  name: homeroomTeacher.name,
+                  email: homeroomTeacher.email,
+                  phone: homeroomTeacher.phone || null,
+                }
+              : null,
+            teachingTeachers: Array.from(teachingTeacherMap.values()),
+          },
+        ];
+      }),
+    );
 
     const childrenWithFees = children.map((child: any) => {
       const studentId = child.student.userId;
       const studentFeeItems = studentFees.filter(
         (sf: any) => sf.studentId === studentId,
       );
+      const teacherData = studentTeacherMap.get(studentId) || {
+        homeroomTeacher: null,
+        teachingTeachers: [],
+      };
 
       const groupedByBaseFee = new Map<string, FeeBreakdown[]>();
 
@@ -630,6 +783,8 @@ export class ParentService {
           ...child.student,
           id: child.student.userId,
         },
+        homeroomTeacher: teacherData.homeroomTeacher,
+        teachingTeachers: teacherData.teachingTeachers,
         curriculumType,
         periodCount,
         periodLabels: terms.map((t: any) => t.name),
