@@ -81,6 +81,30 @@ export enum NotificationType {
   ALERT = 'ALERT',
 }
 
+type NotificationPreferenceRecord = {
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  pushEnabled: boolean;
+  commBookEnabled: boolean;
+  timetableEnabled: boolean;
+  attendanceEnabled: boolean;
+  announcementsEnabled: boolean;
+  assignmentsEnabled: boolean;
+  examsEnabled: boolean;
+  feesEnabled: boolean;
+  eventsEnabled: boolean;
+};
+
+type NotificationPreferenceCategory =
+  | 'commBookEnabled'
+  | 'timetableEnabled'
+  | 'attendanceEnabled'
+  | 'announcementsEnabled'
+  | 'assignmentsEnabled'
+  | 'examsEnabled'
+  | 'feesEnabled'
+  | 'eventsEnabled';
+
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
@@ -91,6 +115,319 @@ export class NotificationService {
 
   constructor(private prisma: PrismaService) {
     this.configureWebPush();
+  }
+
+  private buildDefaultPreferencesForRole(
+    userRole: string,
+  ): NotificationPreferenceRecord {
+    const role = userRole?.toUpperCase();
+
+    const defaults: NotificationPreferenceRecord = {
+      emailEnabled: true,
+      smsEnabled: false,
+      pushEnabled: true,
+      commBookEnabled: false,
+      timetableEnabled: false,
+      attendanceEnabled: false,
+      announcementsEnabled: false,
+      assignmentsEnabled: false,
+      examsEnabled: false,
+      feesEnabled: false,
+      eventsEnabled: false,
+    };
+
+    switch (role) {
+      case 'SUPER_ADMIN':
+        defaults.announcementsEnabled = true;
+        defaults.eventsEnabled = true;
+        break;
+      case 'IT_MANAGER':
+        defaults.timetableEnabled = true;
+        defaults.attendanceEnabled = true;
+        defaults.announcementsEnabled = true;
+        defaults.eventsEnabled = true;
+        break;
+      case 'TEACHER':
+        defaults.commBookEnabled = true;
+        defaults.timetableEnabled = true;
+        defaults.attendanceEnabled = true;
+        defaults.announcementsEnabled = true;
+        defaults.assignmentsEnabled = true;
+        defaults.examsEnabled = true;
+        defaults.eventsEnabled = true;
+        break;
+      case 'STUDENT':
+        defaults.timetableEnabled = true;
+        defaults.announcementsEnabled = true;
+        defaults.assignmentsEnabled = true;
+        defaults.examsEnabled = true;
+        defaults.feesEnabled = true;
+        defaults.eventsEnabled = true;
+        break;
+      case 'PARENT':
+        defaults.commBookEnabled = true;
+        defaults.timetableEnabled = true;
+        defaults.attendanceEnabled = true;
+        defaults.announcementsEnabled = true;
+        defaults.assignmentsEnabled = true;
+        defaults.examsEnabled = true;
+        defaults.feesEnabled = true;
+        defaults.eventsEnabled = true;
+        break;
+      case 'REGISTRAR':
+        defaults.timetableEnabled = true;
+        defaults.attendanceEnabled = true;
+        defaults.announcementsEnabled = true;
+        defaults.examsEnabled = true;
+        defaults.eventsEnabled = true;
+        break;
+      case 'FINANCE':
+        defaults.announcementsEnabled = true;
+        defaults.feesEnabled = true;
+        defaults.eventsEnabled = true;
+        break;
+      default:
+        break;
+    }
+
+    return defaults;
+  }
+
+  private getPreferenceCategoryForNotificationType(
+    type: string,
+  ): NotificationPreferenceCategory | null {
+    if (
+      [
+        NotificationType.MESSAGE_RECEIVED,
+        NotificationType.COMMUNICATION,
+      ].includes(type as NotificationType)
+    ) {
+      return 'commBookEnabled';
+    }
+
+    if (
+      [
+        NotificationType.SCHEDULE_CHANGED,
+        NotificationType.CLASS_CANCELLED,
+        NotificationType.TIMETABLE_UPDATED,
+      ].includes(type as NotificationType)
+    ) {
+      return 'timetableEnabled';
+    }
+
+    if (
+      [
+        NotificationType.ATTENDANCE_MARKED,
+        NotificationType.ATTENDANCE_ABSENT,
+        NotificationType.ATTENDANCE_LATE,
+        NotificationType.ATTENDANCE_SESSION_OPENED,
+        NotificationType.ATTENDANCE_SESSION_SUBMITTED,
+      ].includes(type as NotificationType)
+    ) {
+      return 'attendanceEnabled';
+    }
+
+    if (type === NotificationType.ANNOUNCEMENT) {
+      return 'announcementsEnabled';
+    }
+
+    if (
+      [
+        NotificationType.ASSIGNMENT_CREATED,
+        NotificationType.ASSIGNMENT_DUE,
+        NotificationType.ASSIGNMENT_GRADED,
+        NotificationType.LESSON_PUBLISHED,
+        NotificationType.LESSON,
+      ].includes(type as NotificationType)
+    ) {
+      return 'assignmentsEnabled';
+    }
+
+    if (
+      [
+        NotificationType.RESULT_PUBLISHED,
+        NotificationType.GRADE_UPDATED,
+        NotificationType.ASSESSMENT_CREATED,
+      ].includes(type as NotificationType)
+    ) {
+      return 'examsEnabled';
+    }
+
+    if (
+      [
+        NotificationType.FEE_DUE,
+        NotificationType.FEE_PAID,
+        NotificationType.PAYMENT_RECEIVED,
+      ].includes(type as NotificationType)
+    ) {
+      return 'feesEnabled';
+    }
+
+    if (
+      [
+        NotificationType.EVENT,
+        NotificationType.EVENT_UPDATED,
+        NotificationType.EVENT_DELETED,
+      ].includes(type as NotificationType)
+    ) {
+      return 'eventsEnabled';
+    }
+
+    return null;
+  }
+
+  private isNotificationTypeEnabled(
+    type: string,
+    preferences: NotificationPreferenceRecord,
+  ) {
+    const category = this.getPreferenceCategoryForNotificationType(type);
+    if (!category) {
+      return true;
+    }
+
+    return preferences[category];
+  }
+
+  private async ensureNotificationPreferences(
+    userId: string,
+    userRole?: string,
+  ) {
+    let role = userRole;
+    if (!role) {
+      const users = await this.prisma.$queryRaw<Array<{ role: string | null }>>(
+        Prisma.sql`
+          SELECT "role"::text AS role
+          FROM "User"
+          WHERE id = ${userId}
+          LIMIT 1
+        `,
+      );
+      role = users[0]?.role || 'STUDENT';
+    }
+
+    return this.prisma.notificationPreference.upsert({
+      where: { userId },
+      update: {},
+      create: {
+        userId,
+        ...this.buildDefaultPreferencesForRole(role),
+      },
+    });
+  }
+
+  async getNotificationPreferences(userId: string, userRole: string) {
+    return this.ensureNotificationPreferences(userId, userRole);
+  }
+
+  async updateNotificationPreferences(
+    userId: string,
+    userRole: string,
+    data: Partial<NotificationPreferenceRecord>,
+  ) {
+    await this.ensureNotificationPreferences(userId, userRole);
+
+    return this.prisma.notificationPreference.update({
+      where: { userId },
+      data,
+    });
+  }
+
+  private async getPreferenceSnapshotsForUsers(
+    userIds: string[],
+  ): Promise<Map<string, NotificationPreferenceRecord>> {
+    const uniqueUserIds = Array.from(new Set(userIds));
+    const users = await this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        role: string | null;
+        preferenceId: string | null;
+        emailEnabled: boolean | null;
+        smsEnabled: boolean | null;
+        pushEnabled: boolean | null;
+        commBookEnabled: boolean | null;
+        timetableEnabled: boolean | null;
+        attendanceEnabled: boolean | null;
+        announcementsEnabled: boolean | null;
+        assignmentsEnabled: boolean | null;
+        examsEnabled: boolean | null;
+        feesEnabled: boolean | null;
+        eventsEnabled: boolean | null;
+      }>
+    >(Prisma.sql`
+      SELECT
+        u.id,
+        u."role"::text AS role,
+        np.id AS "preferenceId",
+        np."emailEnabled",
+        np."smsEnabled",
+        np."pushEnabled",
+        np."commBookEnabled",
+        np."timetableEnabled",
+        np."attendanceEnabled",
+        np."announcementsEnabled",
+        np."assignmentsEnabled",
+        np."examsEnabled",
+        np."feesEnabled",
+        np."eventsEnabled"
+      FROM "User" u
+      LEFT JOIN "NotificationPreference" np ON np."userId" = u.id
+      WHERE u.id IN (${Prisma.join(uniqueUserIds)})
+    `);
+
+    const preferenceMap = new Map<string, NotificationPreferenceRecord>();
+
+    for (const user of users) {
+      const preference =
+        user.preferenceId
+          ? {
+              emailEnabled: Boolean(user.emailEnabled),
+              smsEnabled: Boolean(user.smsEnabled),
+              pushEnabled: Boolean(user.pushEnabled),
+              commBookEnabled: Boolean(user.commBookEnabled),
+              timetableEnabled: Boolean(user.timetableEnabled),
+              attendanceEnabled: Boolean(user.attendanceEnabled),
+              announcementsEnabled: Boolean(user.announcementsEnabled),
+              assignmentsEnabled: Boolean(user.assignmentsEnabled),
+              examsEnabled: Boolean(user.examsEnabled),
+              feesEnabled: Boolean(user.feesEnabled),
+              eventsEnabled: Boolean(user.eventsEnabled),
+            }
+          : await this.ensureNotificationPreferences(user.id, user.role || 'STUDENT');
+
+      preferenceMap.set(user.id, preference);
+    }
+
+    return preferenceMap;
+  }
+
+  private async filterEligibleUserIdsForNotification(
+    userIds: string[],
+    type: string,
+  ) {
+    const preferences = await this.getPreferenceSnapshotsForUsers(userIds);
+
+    return userIds.filter((userId) => {
+      const preference = preferences.get(userId);
+      return (
+        preference && this.isNotificationTypeEnabled(type, preference)
+      );
+    });
+  }
+
+  private async filterPushEligibleUserIdsForNotification(
+    userIds: string[],
+    type: string,
+  ) {
+    const preferences = await this.getPreferenceSnapshotsForUsers(userIds);
+
+    return userIds.filter((userId) => {
+      const preference = preferences.get(userId);
+      return (
+        preference &&
+        preference.pushEnabled &&
+        this.isNotificationTypeEnabled(type, preference)
+      );
+    });
   }
 
   private configureWebPush() {
@@ -177,7 +514,11 @@ export class NotificationService {
       take: options?.limit || 20,
     });
 
-    return notifications;
+    const preferences = await this.getNotificationPreferences(userId, userRole);
+
+    return notifications.filter((notification) =>
+      this.isNotificationTypeEnabled(notification.type, preferences),
+    );
   }
 
   // Helper to map categories to notification types
@@ -248,11 +589,15 @@ export class NotificationService {
       where,
       select: { type: true, isRead: true },
     });
+    const preferences = await this.getNotificationPreferences(userId, userRole);
+    const visibleNotifications = notifications.filter((notification) =>
+      this.isNotificationTypeEnabled(notification.type, preferences),
+    );
 
     const categories = {
       all: {
-        total: notifications.length,
-        unread: notifications.filter((n) => !n.isRead).length,
+        total: visibleNotifications.length,
+        unread: visibleNotifications.filter((n) => !n.isRead).length,
       },
       attendance: { total: 0, unread: 0 },
       enrollment: { total: 0, unread: 0 },
@@ -264,7 +609,7 @@ export class NotificationService {
       system: { total: 0, unread: 0 },
     };
 
-    notifications.forEach((n) => {
+    visibleNotifications.forEach((n) => {
       const type = n.type;
       const isUnread = !n.isRead;
 
@@ -370,11 +715,20 @@ export class NotificationService {
       where.type = { in: types };
     }
 
-    const count = await this.prisma.notification.count({
+    const notifications = await this.prisma.notification.findMany({
       where,
+      select: {
+        type: true,
+        isRead: true,
+      },
     });
+    const preferences = await this.getNotificationPreferences(userId, userRole);
 
-    return count;
+    return notifications.filter(
+      (notification) =>
+        !notification.isRead &&
+        this.isNotificationTypeEnabled(notification.type, preferences),
+    ).length;
   }
 
   async markAsRead(notificationId: string, userId: string) {
@@ -427,6 +781,17 @@ export class NotificationService {
     actionUrl?: string;
     metadata?: any;
   }) {
+    if (data.userId) {
+      const preferences = await this.getNotificationPreferences(
+        data.userId,
+        '',
+      );
+
+      if (!this.isNotificationTypeEnabled(data.type, preferences)) {
+        return null;
+      }
+    }
+
     const notification = await this.prisma.notification.create({
       data: {
         schoolId: data.schoolId,
@@ -461,8 +826,17 @@ export class NotificationService {
     actionUrl?: string;
     metadata?: any;
   }) {
+    const eligibleUserIds = await this.filterEligibleUserIdsForNotification(
+      data.userIds,
+      data.type,
+    );
+
+    if (eligibleUserIds.length === 0) {
+      return { count: 0 };
+    }
+
     const notifications = await this.prisma.notification.createMany({
-      data: data.userIds.map((userId) => ({
+      data: eligibleUserIds.map((userId) => ({
         schoolId: data.schoolId,
         userId,
         title: data.title,
@@ -473,7 +847,7 @@ export class NotificationService {
       })),
     });
 
-    await this.sendPushToUsers(data.userIds, {
+    await this.sendPushToUsers(eligibleUserIds, {
       title: data.title,
       message: data.message,
       type: data.type,
@@ -492,19 +866,36 @@ export class NotificationService {
     actionUrl?: string;
     metadata?: any;
   }) {
-    const notification = await this.prisma.notification.create({
-      data: {
+    const users = await this.prisma.user.findMany({
+      where: {
         schoolId: data.schoolId,
-        userId: null, // null means global notification
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    const eligibleUserIds = await this.filterEligibleUserIdsForNotification(
+      users.map((user) => user.id),
+      data.type,
+    );
+
+    if (eligibleUserIds.length === 0) {
+      return { count: 0 };
+    }
+
+    const notifications = await this.prisma.notification.createMany({
+      data: eligibleUserIds.map((userId) => ({
+        schoolId: data.schoolId,
+        userId,
         title: data.title,
         message: data.message,
         type: data.type,
         actionUrl: data.actionUrl,
         metadata: data.metadata ? JSON.stringify(data.metadata) : null,
-      },
+      })),
     });
 
-    await this.sendPushToSchool(data.schoolId, {
+    await this.sendPushToUsers(eligibleUserIds, {
       title: data.title,
       message: data.message,
       type: data.type,
@@ -512,7 +903,7 @@ export class NotificationService {
       metadata: data.metadata,
     });
 
-    return notification;
+    return notifications;
   }
 
   async savePushSubscription(data: {
@@ -703,7 +1094,16 @@ export class NotificationService {
       return;
     }
 
-    const uniqueUserIds = Array.from(new Set(userIds));
+    const uniqueUserIds = Array.from(
+      new Set(
+        await this.filterPushEligibleUserIdsForNotification(userIds, data.type),
+      ),
+    );
+
+    if (uniqueUserIds.length === 0) {
+      return;
+    }
+
     const subscriptions = await this.prisma.$queryRaw<
       Array<{
         id: string;

@@ -6,16 +6,12 @@ import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { teachersAPI } from "@/lib/api";
 import { toast } from "sonner";
-import TableSearch from "@/components/TableSearch";
 import {
   BookOpen,
   Users,
   Calendar,
   Clock,
   Eye,
-  Edit,
-  Plus,
-  Search,
   MoreVertical,
   MapPin,
   Loader2
@@ -31,7 +27,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -41,13 +36,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface TeacherClass {
   id: string;
@@ -63,6 +51,28 @@ interface TeacherClass {
   type: 'homeroom' | 'teaching';
 }
 
+interface TeachingClassAssignment {
+  id: string;
+  class?: {
+    id: string;
+    name: string;
+    grade: number;
+    section?: string;
+  };
+  section?: {
+    id: string;
+    name: string;
+  };
+  subject?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+  room?: string;
+  studentCount?: number;
+  schedules?: string[];
+}
+
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const MyClassesPage = () => {
@@ -71,9 +81,6 @@ const MyClassesPage = () => {
   const { setItems } = useBreadcrumb();
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterGrade, setFilterGrade] = useState<string>("all");
-  const [filterSubject, setFilterSubject] = useState<string>("all");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -101,10 +108,11 @@ const MyClassesPage = () => {
       
       // Fetch teacher's assignments (both homeroom and teaching)
       const response = await teachersAPI.getMyAssignments();
-      const { homeroomClasses, homeroomSections, teachingAssignments } = response.data || {
+      const { homeroomClasses, homeroomSections, teachingAssignments, teachingClasses } = response.data || {
         homeroomClasses: [],
         homeroomSections: [],
-        teachingAssignments: []
+        teachingAssignments: [],
+        teachingClasses: [],
       };
       
       const classesWithSchedule: TeacherClass[] = [];
@@ -179,53 +187,29 @@ const MyClassesPage = () => {
       }
       }
       
-      // Process teaching assignments from timetable
-      // Group by class ID to combine all schedules for the same class
-      const teachingByClass = new Map();
-      for (const ta of teachingAssignments) {
-        const classId = ta.class?.id;
-        if (!teachingByClass.has(classId)) {
-          teachingByClass.set(classId, {
-            class: ta.class,
-            slots: [],
-            subjects: new Set()
-          });
-        }
-        const entry = teachingByClass.get(classId);
-        entry.slots.push(ta);
-        if (ta.subject?.name) {
-          entry.subjects.add(ta.subject.name);
-        }
-      }
-      
-      for (const [classId, data] of teachingByClass) {
-        const ta = data.slots[0];
-        // Skip if we already added this class as homeroom
-        const existingHomeroom = classesWithSchedule.find(
-          c => c.id === ta.class?.id && c.type === 'homeroom'
-        );
-        
-        if (!existingHomeroom) {
-          // Combine all schedules for this class
-          const slotStrs = data.slots.map((s: any) => 
-            `${DAYS[s.dayOfWeek]} ${s.startTime}-${s.endTime}`
-          ).sort();
-          const subjects = Array.from(data.subjects).join(', ');
-          
-          classesWithSchedule.push({
-            id: ta.class?.id,
-            classSubjectId: ta.id,
-            name: ta.class?.name || 'Unknown',
-            grade: ta.class?.grade || 0,
-            section: ta.class?.section || 'N/A',
-            subject: subjects || ta.subject?.name || 'Unknown',
-            subjectCode: ta.subject?.code,
-            studentCount: 0,
-            schedule: slotStrs.join(', '),
-            room: ta.room || 'TBD',
-            type: 'teaching'
-          });
-        }
+      // Process normalized teaching assignments from backend.
+      for (const ta of (teachingClasses || []) as TeachingClassAssignment[]) {
+        const schedule = (ta.schedules || [])
+          .map((slot) => {
+            const [dayOfWeek, time] = slot.split("|");
+            const dayLabel = DAYS[Number(dayOfWeek)] || "Scheduled";
+            return `${dayLabel} ${time}`;
+          })
+          .join(", ");
+
+        classesWithSchedule.push({
+          id: ta.class?.id || ta.id,
+          classSubjectId: ta.id,
+          name: ta.class?.name || "Unknown",
+          grade: ta.class?.grade || 0,
+          section: ta.section?.name || ta.class?.section || "N/A",
+          subject: ta.subject?.name || "Unknown",
+          subjectCode: ta.subject?.code,
+          studentCount: ta.studentCount || 0,
+          schedule: schedule || "Not scheduled",
+          room: ta.room || "TBD",
+          type: "teaching",
+        });
       }
       
       setClasses(classesWithSchedule);
@@ -248,14 +232,6 @@ const MyClassesPage = () => {
       { id: '6', classSubjectId: 'cs6', name: '7B', grade: 7, section: 'B', subject: 'Physics', studentCount: 18, schedule: 'Thursday 11:00-12:00', room: 'Lab 2', type: 'homeroom' },
     ]);
   };
-
-  const filteredClasses = classes.filter(cls => {
-    const matchesSearch = cls.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         cls.subject.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGrade = filterGrade === "all" || cls.grade.toString() === filterGrade;
-    const matchesSubject = filterSubject === "all" || cls.subject === filterSubject;
-    return matchesSearch && matchesGrade && matchesSubject;
-  });
 
   const grades = Array.from(new Set(classes.map(cls => cls.grade))).sort((a, b) => a - b);
   const subjects = Array.from(new Set(classes.map(cls => cls.subject))).sort();
@@ -280,7 +256,7 @@ const MyClassesPage = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">My Classes</h1>
+          <h1 className="text-2xl font-bold text-black">My Classes</h1>
           <p className="text-gray-500">Manage your assigned classes and subjects</p>
         </div>
         <Button onClick={() => router.push('/teacher/timetable')}>
@@ -345,42 +321,10 @@ const MyClassesPage = () => {
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <TableSearch
-          search={searchTerm}
-          setSearch={setSearchTerm}
-          placeholder="Search classes or subjects..."
-          className="flex-1"
-        />
-        <Select value={filterGrade} onValueChange={setFilterGrade}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by grade" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Grades</SelectItem>
-            {grades.map(grade => (
-              <SelectItem key={grade} value={grade.toString()}>Grade {grade}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterSubject} onValueChange={setFilterSubject}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by subject" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Subjects</SelectItem>
-            {subjects.map(subject => (
-              <SelectItem key={subject} value={subject}>{subject}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Classes Grid */}
-      {filteredClasses.length > 0 ? (
+      {classes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredClasses.map((cls) => (
+          {classes.map((cls) => (
             <Card key={`${cls.id}-${cls.section}-${cls.type}`} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -488,21 +432,8 @@ const MyClassesPage = () => {
               <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No classes found</h3>
               <p className="text-gray-500 mb-4">
-                {searchTerm || filterGrade !== 'all' || filterSubject !== 'all'
-                  ? 'Try adjusting your filters'
-                  : 'You have not been assigned to any classes yet'}
+                You have not been assigned to any classes yet
               </p>
-              {(searchTerm || filterGrade !== 'all' || filterSubject !== 'all') && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setSearchTerm('');
-                    setFilterGrade('all');
-                    setFilterSubject('all');
-                  }}
-                >
-                  Clear Filters
-                </Button>
               )}
             </div>
           </CardContent>

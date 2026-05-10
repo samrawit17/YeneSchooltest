@@ -71,10 +71,10 @@ export class ParentController {
 
   /**
    * Get all parents for a school
-   * Only ADMIN can view all parents
+   * School read roles can view parent directory
    */
   @Get()
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('parent:read')
   async getParents(
     @Request() req,
@@ -93,10 +93,10 @@ export class ParentController {
 
   /**
    * Get parent by ID
-   * Only ADMIN can view any parent profile
+   * School read roles can view parent profiles
    */
   @Get(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('parent:read')
   async getParentById(@Param('id') parentId: string, @Request() req) {
     return this.parentService.getParentById(parentId, req.user.schoolId);

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Post,
+  Put,
   Param,
   Query,
   UseGuards,
@@ -15,6 +16,7 @@ import {
   RemovePushSubscriptionDto,
   SavePushSubscriptionDto,
 } from './dto/push-subscription.dto';
+import { UpdateNotificationPreferencesDto } from './dto/notification-preferences.dto';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
@@ -80,6 +82,26 @@ export class NotificationController {
         : undefined,
     );
     return { count };
+  }
+
+  @Get('preferences')
+  async getPreferences(@Request() req: any) {
+    return this.notificationService.getNotificationPreferences(
+      req.user.id,
+      req.user.role,
+    );
+  }
+
+  @Put('preferences')
+  async updatePreferences(
+    @Request() req: any,
+    @Body() body: UpdateNotificationPreferencesDto,
+  ) {
+    return this.notificationService.updateNotificationPreferences(
+      req.user.id,
+      req.user.role,
+      body,
+    );
   }
 
   @Get('push/public-key')

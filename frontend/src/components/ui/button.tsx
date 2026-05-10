@@ -5,20 +5,21 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-color,#e35336)]/35 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+          "border border-[var(--brand-color,#e35336)]/25 bg-[rgba(var(--brand-color-rgb),0.9)] text-white shadow-sm hover:bg-[rgba(var(--brand-color-rgb),0.82)] hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+          "border border-[rgba(var(--brand-color-rgb),0.22)] bg-[rgba(var(--brand-color-rgb),0.14)] text-sm font-semibold text-[var(--brand-color,#e35336)] shadow-sm hover:bg-[rgba(var(--brand-color-rgb),0.2)] hover:text-[var(--brand-color,#e35336)]",
         secondary:
-          "bg-[#E680578] text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "border border-slate-200 bg-slate-100 text-slate-700 shadow-sm hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
+        ghost:
+          "text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.14)] hover:text-[var(--brand-color,#e35336)]",
+        link: "font-semibold text-[var(--brand-color,#e35336)] underline-offset-4 hover:underline",
       },
       size: {
         default: "h-9 px-4 py-2",

@@ -269,7 +269,7 @@ export default function TeacherExamsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-[#e35336]">My Exams</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-black">My Exams</h1>
           <p className="text-xs md:text-sm text-slate-500 dark:text-gray-400 mt-0.5">
             {activeYear?.name} {activeTerm ? `• ${activeTerm.name}` : ""}
           </p>

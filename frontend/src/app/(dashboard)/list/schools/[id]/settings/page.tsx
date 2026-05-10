@@ -7,6 +7,8 @@ import { subscriptionAPI } from '@/lib/api/admin';
 import { getCurrentEthiopianYear } from '@/lib/calendar-utils';
 import { useAuth } from '@/context/AuthContext';
 import { useBreadcrumb } from '@/context/BreadcrumbContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
 import { toast } from 'sonner';
 import { 
   Loader2, 
@@ -44,7 +46,7 @@ interface SettingItem {
   key: string;
   label: string;
   description: string;
-  type: 'boolean' | 'string' | 'number' | 'select' | 'time';
+  type: 'boolean' | 'string' | 'number' | 'select' | 'time' | 'color';
   category: string;
   systemDefault?: any;
   options?: { value: string; label: string }[] | string[];
@@ -263,10 +265,18 @@ const SETTINGS_CONFIG: SettingItem[] = [
   {
     key: 'theme_color',
     label: 'Brand Color',
-    description: 'Primary brand color for buttons, menus, and accents',
+    description: 'Primary brand color for buttons, highlights, and accent surfaces',
     type: 'color',
     category: 'branding',
     systemDefault: '#e35336',
+  },
+  {
+    key: 'BRAND_COLOR_IN_NAVIGATION',
+    label: 'Use Brand Color In Navigation',
+    description: 'Apply the brand accent tint to the navbar and sidebar menu',
+    type: 'boolean',
+    category: 'branding',
+    systemDefault: true,
   },
 ];
 
@@ -346,6 +356,7 @@ const TIER_LEVELS: Record<PlanTier, number> = {
 };
 
 export default function SchoolSettingsPage() {
+  const queryClient = useQueryClient();
   const params = useParams();
   const schoolId = params.id as string;
   const { user, updateUser } = useAuth();
@@ -598,6 +609,17 @@ export default function SchoolSettingsPage() {
       setError(null);
       await schoolSettingsAPI.set(schoolId, key, value);
       setSettings((prev) => ({ ...prev, [key]: value }));
+      queryClient.setQueryData(queryKeys.school.setting(key, schoolId), {
+        key,
+        value,
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.school.setting(key, schoolId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
+
+      if (key === 'theme_color' || key === 'BRAND_COLOR_IN_NAVIGATION') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.school.setting('theme_color', schoolId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.school.setting('BRAND_COLOR_IN_NAVIGATION', schoolId) });
+      }
       
       // Update user session for calendar type change
       if (key === 'calendar_type' && user) {
@@ -607,6 +629,37 @@ export default function SchoolSettingsPage() {
       toast.success(`${setting.label} updated successfully`);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to update setting';
+      toast.error(errorMessage);
+      setError(errorMessage);
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleResetSetting = async (key: string, setting: SettingItem) => {
+    try {
+      setSaving(key);
+      setError(null);
+      await schoolSettingsAPI.delete(schoolId, key);
+      setSettings((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      queryClient.removeQueries({ queryKey: queryKeys.school.setting(key, schoolId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
+
+      if (key === 'theme_color') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.school.setting('theme_color', schoolId) });
+      }
+
+      if (key === 'calendar_type' && user && setting.systemDefault) {
+        updateUser({ ...user, calendarType: setting.systemDefault });
+      }
+
+      toast.success(`${setting.label} reset to default`);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Failed to reset setting';
       toast.error(errorMessage);
       setError(errorMessage);
     } finally {
@@ -632,6 +685,10 @@ export default function SchoolSettingsPage() {
   const renderSettingInput = (setting: SettingItem) => {
     const value = getSettingValue(setting.key, setting);
     const isSaving = saving === setting.key;
+    const hasCustomValue =
+      settings[setting.key] !== undefined &&
+      settings[setting.key] !== null &&
+      settings[setting.key] !== '';
 
     // Render upgrade badge for hidden features
     if (!isSettingVisible(setting)) {
@@ -742,6 +799,17 @@ export default function SchoolSettingsPage() {
             disabled={isSaving}
             className="w-28 font-mono text-sm"
           />
+          {setting.key === 'theme_color' && hasCustomValue && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleResetSetting(setting.key, setting)}
+              disabled={isSaving}
+              className="text-xs"
+            >
+              Use Default
+            </Button>
+          )}
           {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
         </div>
       );

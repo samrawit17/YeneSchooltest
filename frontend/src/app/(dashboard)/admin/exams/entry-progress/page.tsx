@@ -317,7 +317,7 @@ export default function EntryProgressPage() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">Score Entry Progress</h1>
+          <h1 className="text-2xl font-bold text-black">Score Entry Progress</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Track which subjects still need marks entered by teachers
           </p>

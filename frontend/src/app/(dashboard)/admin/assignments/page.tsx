@@ -276,9 +276,9 @@ const TeacherAssignmentPage = () => {
 
   if (loading && !matrixData) {
     return (
-      <div className="flex h-[80vh] items-center justify-center">
+        <div className="flex h-[80vh] items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          <Loader2 className="h-10 w-10 animate-spin text-[var(--brand-color,#e35336)]" />
           <p className="text-gray-500 dark:text-slate-400 font-medium">Loading Professional Assignment Hub...</p>
         </div>
       </div>
@@ -301,7 +301,7 @@ const TeacherAssignmentPage = () => {
       {/* HEADER SECTION */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336] flex items-center gap-3">
+          <h1 className="flex items-center gap-3 text-2xl font-bold text-black">
             
             Teacher Assignment Hub
           </h1>
@@ -311,7 +311,7 @@ const TeacherAssignmentPage = () => {
         <div className="flex items-center gap-3">
           <Button 
             variant="default" 
-            className="bg-[#e35336] hover:bg-[#e35336] shadow-md"
+            className="shadow-md"
             onClick={() => setShowBulkModal(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -371,8 +371,8 @@ const TeacherAssignmentPage = () => {
               </thead>
               <tbody>
                 {filteredSections.map((section: any) => (
-                  <tr key={section.id} className="border-b hover:bg-blue-50/30 dark:hover:bg-slate-700/30 transition-colors group">
-                    <td className="sticky left-0 z-10 bg-white dark:bg-slate-800 group-hover:bg-blue-50/30 dark:group-hover:bg-slate-700/30 p-4 border-r dark:border-slate-700">
+                  <tr key={section.id} className="group border-b transition-colors hover:bg-[rgba(var(--brand-color-rgb),0.06)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.1)]">
+                    <td className="sticky left-0 z-10 border-r bg-white p-4 dark:border-slate-700 dark:bg-slate-800 group-hover:bg-[rgba(var(--brand-color-rgb),0.06)] dark:group-hover:bg-[rgba(var(--brand-color-rgb),0.1)]">
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-800 dark:text-white">
                           {section.class?.name || section.name}
@@ -418,15 +418,15 @@ const TeacherAssignmentPage = () => {
                           <button 
                             type="button"
                             onClick={() => openAssignModal(section.id, sub.id, teacher?.id)}
-                            className={`w-full h-full min-h-[50px] flex flex-col items-center justify-center p-2 rounded-lg transition-all border cursor-pointer ${teacher ? 'bg-blue-50/50 border-blue-100 hover:bg-blue-100/50 hover:border-blue-200' : 'border-dashed border-slate-200 hover:border-blue-400 hover:bg-slate-50'}`}
+                            className={`w-full h-full min-h-[50px] flex flex-col items-center justify-center p-2 rounded-lg transition-all border cursor-pointer ${teacher ? 'bg-[rgba(var(--brand-color-rgb),0.08)] border-[rgba(var(--brand-color-rgb),0.18)] hover:bg-[rgba(var(--brand-color-rgb),0.14)] hover:border-[rgba(var(--brand-color-rgb),0.28)]' : 'border-dashed border-slate-200 hover:border-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.04)]'}`}
                           >
                             {teacher ? (
                               <>
-                                <span className="text-sm font-medium text-blue-800">{teacher.name}</span>
-                                <span className="text-[10px] text-blue-600 truncate max-w-[120px]">Assigned</span>
+                                <span className="text-sm font-medium text-[var(--brand-color,#e35336)]">{teacher.name}</span>
+                                <span className="text-[10px] text-[var(--brand-color,#e35336)]/80 truncate max-w-[120px]">Assigned</span>
                               </>
                             ) : (
-                              <Plus className="h-4 w-4 text-slate-300 group-hover:text-blue-500" />
+                              <Plus className="h-4 w-4 text-slate-300 group-hover:text-[var(--brand-color,#e35336)]" />
                             )}
                           </button>
                         </td>
@@ -466,7 +466,7 @@ const TeacherAssignmentPage = () => {
 
           <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setShowAssignModal(false)} disabled={saving} className="dark:border-slate-600 dark:text-white">Cancel</Button>
-            <Button onClick={handleSaveAssignment} disabled={saving} className="bg-blue-600 hover:bg-blue-700 min-w-[100px]">
+            <Button onClick={handleSaveAssignment} disabled={saving} className="min-w-[100px]">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
             </Button>
           </DialogFooter>
@@ -512,7 +512,7 @@ const TeacherAssignmentPage = () => {
         <DialogContent className="max-w-2xl bg-white dark:bg-slate-800">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 dark:text-white">
-              <Grid className="h-5 w-5 text-blue-600" />
+              <Grid className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
               Professional Bulk Assignment
             </DialogTitle>
             <DialogDescription className="dark:text-slate-400">Assign one teacher to many sections and subjects at once.</DialogDescription>
@@ -526,12 +526,12 @@ const TeacherAssignmentPage = () => {
                   <div 
                     key={s.id} 
                     className={`flex items-center p-2 rounded cursor-pointer mb-1 text-sm ${
-                      selectedSections.includes(s.id) ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'hover:bg-slate-50 dark:hover:bg-slate-700'
+                      selectedSections.includes(s.id) ? 'bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.18)] text-[var(--brand-color,#e35336)]' : 'hover:bg-slate-50 dark:hover:bg-slate-700'
                     }`}
                     onClick={() => toggleSection(s.id)}
                   >
                     <div className={`w-4 h-4 rounded border mr-2 flex items-center justify-center ${
-                      selectedSections.includes(s.id) ? 'bg-blue-600 border-blue-600' : 'border-slate-300 dark:border-slate-500'
+                      selectedSections.includes(s.id) ? 'bg-[var(--brand-color,#e35336)] border-[var(--brand-color,#e35336)]' : 'border-slate-300 dark:border-slate-500'
                     }`}>
                       {selectedSections.includes(s.id) && <Check className="h-3 w-3 text-white" />}
                     </div>

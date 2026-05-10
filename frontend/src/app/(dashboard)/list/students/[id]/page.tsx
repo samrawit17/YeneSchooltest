@@ -4,9 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { studentsAPI, attendanceAPI, financeAPI, academicYearsAPI } from "@/lib/api";
+import { communicationsAPI } from "@/lib/api/communications";
 import { queryKeys } from "@/lib/query-keys";
 import { Loader2, Edit2 } from "lucide-react";
 import UserDetailPage, { UserDetailData } from "@/components/UserDetailPage";
+import NewMessageModal from "@/components/communications/NewMessageModal";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
@@ -84,6 +86,8 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showNewMessageModal, setShowNewMessageModal] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -191,7 +195,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
     return (
       <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "Inter, sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
           <p className="text-gray-600 dark:text-gray-400 font-medium">Loading student data...</p>
         </div>
       </div>
@@ -280,10 +284,21 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
     parents: student.parents || [],
   };
 
-  // Handle send message - navigate to communication book
   const handleSendMessage = () => {
-    const communicationStudentId = userData.id || studentId;
-    router.push(`/list/communications?studentId=${communicationStudentId}`);
+    setShowNewMessageModal(true);
+  };
+
+  const handleCreateMessage = async (recipientStudentId: string, subject: string, message: string) => {
+    setIsSendingMessage(true);
+    try {
+      await communicationsAPI.create({ studentId: recipientStudentId, subject, message });
+      toast.success("Message sent");
+      setShowNewMessageModal(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to send message");
+    } finally {
+      setIsSendingMessage(false);
+    }
   };
 
   return (
@@ -297,6 +312,17 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
         onResetPassword={isRegistrar ? () => {} : undefined}
         onDeactivate={isRegistrar ? () => {} : undefined}
         onSendMessage={handleSendMessage}
+      />
+
+      <NewMessageModal
+        isOpen={showNewMessageModal}
+        onClose={() => setShowNewMessageModal(false)}
+        onSubmit={handleCreateMessage}
+        isSending={isSendingMessage}
+        preselectedStudentId={userData.id || studentId}
+        preselectedStudentName={userData.name || userDetail.name}
+        isParent={user?.role === "PARENT"}
+        isTeacher={user?.role === "TEACHER"}
       />
 
       {/* Edit Student Dialog */}

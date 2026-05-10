@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
-import { userAPI, timetableSlotsAPI } from "@/lib/api";
+import { notificationsAPI, userAPI, timetableSlotsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { useProfileData } from "@/hooks/useProfileData";
 import { useAuth } from "@/context/AuthContext";
@@ -153,6 +153,53 @@ const profileMessagesByLanguage = {
   so: soMessages.Profile,
 } as const;
 
+type NotificationPreferenceKey =
+  | "commBook"
+  | "timetable"
+  | "attendance"
+  | "announcements"
+  | "assignments"
+  | "exams"
+  | "fees"
+  | "events";
+
+type AppUserRole =
+  | "SUPER_ADMIN"
+  | "ADMIN"
+  | "IT_MANAGER"
+  | "TEACHER"
+  | "STUDENT"
+  | "PARENT"
+  | "REGISTRAR"
+  | "FINANCE";
+
+const NOTIFICATION_ROLE_MAP: Record<NotificationPreferenceKey, AppUserRole[]> = {
+  commBook: ["TEACHER", "PARENT"],
+  timetable: ["IT_MANAGER", "TEACHER", "STUDENT", "PARENT", "REGISTRAR"],
+  attendance: ["IT_MANAGER", "TEACHER", "STUDENT", "PARENT", "REGISTRAR"],
+  announcements: ["SUPER_ADMIN", "IT_MANAGER", "TEACHER", "STUDENT", "PARENT", "REGISTRAR", "FINANCE"],
+  assignments: ["TEACHER", "STUDENT", "PARENT"],
+  exams: ["TEACHER", "STUDENT", "PARENT", "REGISTRAR"],
+  fees: ["PARENT", "STUDENT", "FINANCE"],
+  events: ["SUPER_ADMIN", "IT_MANAGER", "TEACHER", "STUDENT", "PARENT", "REGISTRAR", "FINANCE"],
+};
+
+const DEFAULT_NOTIFICATION_SETTINGS = {
+  emailEnabled: true,
+  smsEnabled: false,
+  pushEnabled: true,
+  commBookEnabled: false,
+  timetableEnabled: false,
+  attendanceEnabled: false,
+  announcementsEnabled: false,
+  assignmentsEnabled: false,
+  examsEnabled: false,
+  feesEnabled: false,
+  eventsEnabled: false,
+};
+
+type NotificationSettingsKey = keyof typeof DEFAULT_NOTIFICATION_SETTINGS;
+
 const ProfilePage = () => {
   const router = useRouter();
   const { user, updateUser, logout } = useAuth();
@@ -160,21 +207,131 @@ const ProfilePage = () => {
   const language = useLanguageStore((state) => state.language);
   const setLanguage = useLanguageStore((state) => state.setLanguage);
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState("notifications");
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showAvatarDialog, setShowAvatarDialog] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [notifications, setNotifications] = useState({
-    email: true,
-    sms: false,
-    push: true,
-  });
+  const [notificationSettings, setNotificationSettings] = useState(
+    DEFAULT_NOTIFICATION_SETTINGS,
+  );
 
   const queryClient = useQueryClient();
   const { profileData, isLoadingProfile, assignedSubjects, t, formatDate, formatDateTime } = useProfileData();
   const isLoading = isLoadingProfile;
+  const { data: notificationPreferences } = useQuery({
+    queryKey: ["notification-preferences", user?.id],
+    queryFn: async () => {
+      const response = await notificationsAPI.getPreferences();
+      return response.data;
+    },
+    enabled: !!user?.id,
+  });
+  const normalizedRole = (user?.role || "").toUpperCase() as AppUserRole;
+  const visibleNotificationTypes = useMemo(() => {
+    const items: Array<{
+      key: NotificationPreferenceKey;
+      id: string;
+      settingsKey: NotificationSettingsKey;
+      label: string;
+      description: string;
+    }> = [
+      {
+        key: "commBook",
+        id: "comm-book-notifications",
+        settingsKey: "commBookEnabled",
+        label: t.notifications.commBook,
+        description: t.notifications.commBookDesc,
+      },
+      {
+        key: "timetable",
+        id: "timetable-notifications",
+        settingsKey: "timetableEnabled",
+        label: t.notifications.timetable,
+        description: t.notifications.timetableDesc,
+      },
+      {
+        key: "attendance",
+        id: "attendance-notifications",
+        settingsKey: "attendanceEnabled",
+        label: t.notifications.attendance,
+        description: t.notifications.attendanceDesc,
+      },
+      {
+        key: "announcements",
+        id: "announcement-notifications",
+        settingsKey: "announcementsEnabled",
+        label: t.notifications.announcements,
+        description: t.notifications.announcementsDesc,
+      },
+      {
+        key: "assignments",
+        id: "assignment-notifications",
+        settingsKey: "assignmentsEnabled",
+        label: t.notifications.assignments,
+        description: t.notifications.assignmentsDesc,
+      },
+      {
+        key: "exams",
+        id: "exam-notifications",
+        settingsKey: "examsEnabled",
+        label: t.notifications.exams,
+        description: t.notifications.examsDesc,
+      },
+      {
+        key: "fees",
+        id: "fee-notifications",
+        settingsKey: "feesEnabled",
+        label: t.notifications.fees,
+        description: t.notifications.feesDesc,
+      },
+      {
+        key: "events",
+        id: "event-notifications",
+        settingsKey: "eventsEnabled",
+        label: t.notifications.events,
+        description: t.notifications.eventsDesc,
+      },
+    ];
+
+    return items.filter((item) =>
+      NOTIFICATION_ROLE_MAP[item.key].includes(normalizedRole),
+    );
+  }, [normalizedRole, t.notifications]);
+
+  useEffect(() => {
+    if (notificationPreferences) {
+      setNotificationSettings({
+        emailEnabled: notificationPreferences.emailEnabled,
+        smsEnabled: notificationPreferences.smsEnabled,
+        pushEnabled: notificationPreferences.pushEnabled,
+        commBookEnabled: notificationPreferences.commBookEnabled,
+        timetableEnabled: notificationPreferences.timetableEnabled,
+        attendanceEnabled: notificationPreferences.attendanceEnabled,
+        announcementsEnabled: notificationPreferences.announcementsEnabled,
+        assignmentsEnabled: notificationPreferences.assignmentsEnabled,
+        examsEnabled: notificationPreferences.examsEnabled,
+        feesEnabled: notificationPreferences.feesEnabled,
+        eventsEnabled: notificationPreferences.eventsEnabled,
+      });
+    }
+  }, [notificationPreferences]);
+
+  const updateNotificationPreferencesMutation = useMutation({
+    mutationFn: async () => {
+      await notificationsAPI.updatePreferences(notificationSettings);
+    },
+    onSuccess: () => {
+      toast.success(t.notifications.save);
+      queryClient.invalidateQueries({ queryKey: ["notification-preferences", user?.id] });
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.response?.data?.message || "Failed to update notification preferences",
+      );
+    },
+  });
 
   // Initialize form with react-hook-form
   const form = useForm<ProfileFormValues>({
@@ -990,8 +1147,13 @@ const ProfilePage = () => {
                   </div>
                   <Switch
                     id="email-notifications"
-                    checked={notifications.email}
-                    onCheckedChange={(checked) => setNotifications({...notifications, email: checked})}
+                    checked={notificationSettings.emailEnabled}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings({
+                        ...notificationSettings,
+                        emailEnabled: checked,
+                      })
+                    }
                     className="mt-2 sm:mt-0"
                   />
                 </div>
@@ -1005,8 +1167,13 @@ const ProfilePage = () => {
                   </div>
                   <Switch
                     id="sms-notifications"
-                    checked={notifications.sms}
-                    onCheckedChange={(checked) => setNotifications({...notifications, sms: checked})}
+                    checked={notificationSettings.smsEnabled}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings({
+                        ...notificationSettings,
+                        smsEnabled: checked,
+                      })
+                    }
                     className="mt-2 sm:mt-0"
                   />
                 </div>
@@ -1020,8 +1187,13 @@ const ProfilePage = () => {
                   </div>
                   <Switch
                     id="push-notifications"
-                    checked={notifications.push}
-                    onCheckedChange={(checked) => setNotifications({...notifications, push: checked})}
+                    checked={notificationSettings.pushEnabled}
+                    onCheckedChange={(checked) =>
+                      setNotificationSettings({
+                        ...notificationSettings,
+                        pushEnabled: checked,
+                      })
+                    }
                     className="mt-2 sm:mt-0"
                   />
                 </div>
@@ -1030,123 +1202,42 @@ const ProfilePage = () => {
               <Separator />
 
               {/* Notification Types */}
-              <div className="space-y-3 md:space-y-4">
-                <h4 className="text-sm md:text-base font-medium">{t.notifications.types}</h4>
+              {visibleNotificationTypes.length > 0 && (
                 <div className="space-y-3 md:space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="space-y-1">
-                      <Label htmlFor="comm-book-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.commBook}</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.commBookDesc}</p>
-                    </div>
-                    <Switch
-                      id="comm-book-notifications"
-                      defaultChecked
-                      className="mt-2 sm:mt-0"
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="space-y-1">
-                      <Label htmlFor="timetable-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.timetable}</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.timetableDesc}</p>
-                    </div>
-                    <Switch
-                      id="timetable-notifications"
-                      defaultChecked
-                      className="mt-2 sm:mt-0"
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="space-y-1">
-                      <Label htmlFor="attendance-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.attendance}</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.attendanceDesc}</p>
-                    </div>
-                    <Switch
-                      id="attendance-notifications"
-                      defaultChecked
-                      className="mt-2 sm:mt-0"
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="space-y-1">
-                      <Label htmlFor="announcement-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.announcements}</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.announcementsDesc}</p>
-                    </div>
-                    <Switch
-                      id="announcement-notifications"
-                      defaultChecked
-                      className="mt-2 sm:mt-0"
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="space-y-1">
-                      <Label htmlFor="assignment-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.assignments}</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.assignmentsDesc}</p>
-                    </div>
-                    <Switch
-                      id="assignment-notifications"
-                      defaultChecked
-                      className="mt-2 sm:mt-0"
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="space-y-1">
-                      <Label htmlFor="exam-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.exams}</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.examsDesc}</p>
-                    </div>
-                    <Switch
-                      id="exam-notifications"
-                      defaultChecked
-                      className="mt-2 sm:mt-0"
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="space-y-1">
-                      <Label htmlFor="fee-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.fees}</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.feesDesc}</p>
-                    </div>
-                    <Switch
-                      id="fee-notifications"
-                      defaultChecked
-                      className="mt-2 sm:mt-0"
-                    />
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div className="space-y-1">
-                      <Label htmlFor="event-notifications" className="text-sm md:text-base cursor-pointer">{t.notifications.events}</Label>
-                      <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.eventsDesc}</p>
-                    </div>
-                    <Switch
-                      id="event-notifications"
-                      defaultChecked
-                      className="mt-2 sm:mt-0"
-                    />
+                  <h4 className="text-sm md:text-base font-medium">{t.notifications.types}</h4>
+                  <div className="space-y-3 md:space-y-4">
+                    {visibleNotificationTypes.map((item, index) => (
+                      <div key={item.key}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                          <div className="space-y-1">
+                            <Label htmlFor={item.id} className="text-sm md:text-base cursor-pointer">{item.label}</Label>
+                            <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{item.description}</p>
+                          </div>
+                          <Switch
+                            id={item.id}
+                            checked={notificationSettings[item.settingsKey]}
+                            onCheckedChange={(checked) =>
+                              setNotificationSettings({
+                                ...notificationSettings,
+                                [item.settingsKey]: checked,
+                              })
+                            }
+                            className="mt-2 sm:mt-0"
+                          />
+                        </div>
+                        {index < visibleNotificationTypes.length - 1 && <Separator />}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col sm:flex-row">
-              <Button className="gap-2 w-full sm:w-auto">
+              <Button
+                className="gap-2 w-full sm:w-auto"
+                onClick={() => updateNotificationPreferencesMutation.mutate()}
+                disabled={updateNotificationPreferencesMutation.isPending}
+              >
                 <Bell className="w-4 h-4" />
                 {t.notifications.save}
               </Button>

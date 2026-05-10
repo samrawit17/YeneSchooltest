@@ -159,6 +159,9 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   // Notifications Module
   "notifications": { label: "Notifications", href: "/notifications", parent: "dashboard" },
 
+  // Help Module
+  "help": { label: "Help Center", href: "/help", parent: "dashboard" },
+
   // Platform Settings (Super Admin)
   "platform-settings": { label: "Platform Settings", href: "/platform-settings", parent: "dashboard" },
 

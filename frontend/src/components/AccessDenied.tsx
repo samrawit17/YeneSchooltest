@@ -231,6 +231,14 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
             </Button>
             <Button
               variant="outline"
+              onClick={() => router.push('/help')}
+              className="dark:bg-gray-800 dark:border-gray-700"
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Help Center
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => { logout(); router.push('/sign-in'); }}
               className="dark:bg-gray-800 dark:border-gray-700 text-red-500 hover:text-red-600"
             >
@@ -267,7 +275,7 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
       return {
         title: 'Admin Area Restricted',
         message: 'You do not have permission to access this admin section.',
-        detail: 'This section requires Admin or Registrar privileges.',
+        detail: 'This section requires Admin, IT Manager, or Registrar privileges.',
         requiredRoles: ['admin', 'it_manager', 'registrar'],
       };
     }
@@ -309,6 +317,38 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
         message: 'This page requires Registrar privileges.',
         detail: 'Your account does not have the required registrar role.',
         requiredRoles: ['registrar', 'admin'],
+      };
+    }
+    if (path.includes('/list/staff') || path.includes('/list/teachers')) {
+      return {
+        title: 'Staff Management Restricted',
+        message: 'You do not have permission to manage staff records.',
+        detail: 'This section requires Admin, IT Manager, or Registrar privileges.',
+        requiredRoles: ['admin', 'it_manager', 'registrar'],
+      };
+    }
+    if (path.includes('/list/parents')) {
+      return {
+        title: 'Parent Records Restricted',
+        message: 'You do not have permission to access parent records.',
+        detail: 'This section requires Admin, IT Manager, or Registrar privileges.',
+        requiredRoles: ['admin', 'it_manager', 'registrar'],
+      };
+    }
+    if (path.includes('/list/students')) {
+      return {
+        title: 'Student Records Restricted',
+        message: 'You do not have permission to access student records.',
+        detail: 'This section requires Admin, IT Manager, or Registrar privileges.',
+        requiredRoles: ['admin', 'it_manager', 'registrar'],
+      };
+    }
+    if (path.includes('/list')) {
+      return {
+        title: 'List View Restricted',
+        message: 'You do not have permission to access this list.',
+        detail: 'This area requires specific role privileges.',
+        requiredRoles: [],
       };
     }
     return {
@@ -423,6 +463,14 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
           >
             <LayoutDashboard className="w-4 h-4 mr-2" />
             Go to {getRoleName()}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => router.push('/help')}
+            className="dark:bg-gray-800 dark:border-gray-700"
+          >
+            <Search className="w-4 h-4 mr-2" />
+            Help Center
           </Button>
           <Button
             variant="outline"

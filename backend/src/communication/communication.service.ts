@@ -241,7 +241,11 @@ export class CommunicationService {
     // should not block communication creation.
     if (isTargetStudent && targetUser.studentProfile?.parents) {
       const notificationPromises = targetUser.studentProfile.parents
-        .filter((parentRelation: any) => parentRelation.parent.user)
+        .filter(
+          (parentRelation: any) =>
+            parentRelation.parent.user &&
+            parentRelation.parent.user.id !== createdById,
+        )
         .map((parentRelation: any) =>
           this.notificationService.createNotification({
             schoolId: effectiveSchoolId || targetUser.schoolId,
@@ -260,7 +264,7 @@ export class CommunicationService {
     }
 
     // For non-student targets (staff, parents), notify the target user directly
-    if (!isTargetStudent) {
+    if (!isTargetStudent && targetUser.id !== createdById) {
       await this.safeNotify({
         schoolId: effectiveSchoolId || targetUser.schoolId,
         userId: targetUser.id,
@@ -339,7 +343,16 @@ export class CommunicationService {
             select: { id: true, name: true, role: true },
           },
           student: {
-            select: { id: true, name: true },
+            select: {
+              id: true,
+              name: true,
+              studentProfile: {
+                select: {
+                  className: true,
+                  section: true,
+                },
+              },
+            },
           },
           class: {
             select: { id: true, name: true, section: true },
@@ -587,7 +600,10 @@ export class CommunicationService {
     });
 
     // Notify relevant parties about status change
-    if (dto.status === CommunicationStatus.CLOSED) {
+    if (
+      dto.status === CommunicationStatus.CLOSED &&
+      communication.createdById !== userId
+    ) {
       // Notify the creator that it was closed
       await this.safeNotify({
         schoolId,
@@ -601,7 +617,10 @@ export class CommunicationService {
     }
 
     // Notify relevant parties about acknowledgment
-    if (dto.status === CommunicationStatus.ACKNOWLEDGED) {
+    if (
+      dto.status === CommunicationStatus.ACKNOWLEDGED &&
+      communication.createdById !== userId
+    ) {
       // Notify the creator that it was acknowledged
       await this.safeNotify({
         schoolId,
@@ -615,7 +634,10 @@ export class CommunicationService {
     }
 
     // Notify relevant parties about reopening
-    if (dto.status === CommunicationStatus.OPEN) {
+    if (
+      dto.status === CommunicationStatus.OPEN &&
+      communication.createdById !== userId
+    ) {
       // Notify relevant parties that it was reopened
       await this.safeNotify({
         schoolId,
@@ -729,7 +751,7 @@ export class CommunicationService {
     });
 
     // If parent replies, notify the creator (teacher/admin)
-    if (userRole === 'PARENT') {
+    if (userRole === 'PARENT' && communication.createdById !== userId) {
       await this.safeNotify({
         schoolId,
         userId: communication.createdById,
@@ -745,7 +767,11 @@ export class CommunicationService {
       if (communication.student.studentProfile) {
         const notificationPromises =
           communication.student.studentProfile.parents
-            .filter((parentRelation: any) => parentRelation.parent.user)
+            .filter(
+              (parentRelation: any) =>
+                parentRelation.parent.user &&
+                parentRelation.parent.user.id !== userId,
+            )
             .map((parentRelation: any) =>
               this.notificationService.createNotification({
                 schoolId,

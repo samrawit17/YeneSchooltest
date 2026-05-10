@@ -474,6 +474,15 @@ export default function AttendanceManagementPage() {
   // Use actual weekly stats from API
   const weeklyStatsData = dashboardData?.weeklyStats || [];
 
+  const chartAccentClasses = {
+    solid: "bg-[var(--brand-color,#e35336)]",
+    medium: "bg-[rgba(var(--brand-color-rgb),0.72)]",
+    soft: "bg-[rgba(var(--brand-color-rgb),0.42)]",
+    surface: "bg-[rgba(var(--brand-color-rgb),0.12)]",
+    text: "text-[var(--brand-color,#e35336)]",
+    ring: "border-[rgba(var(--brand-color-rgb),0.22)]",
+  };
+
   // Bar Chart Component - Weekly Attendance Trend
   const BarChart = ({ data }: { data: Array<{ date: string; attendanceRate: number; presentCount?: number; totalStudentsMarked?: number }> }) => {
     const chartData = data;
@@ -486,8 +495,8 @@ export default function AttendanceManagementPage() {
 
     // Get color based on attendance rate
     const getBarColor = (rate: number) => {
-      if (rate >= 90) return 'bg-green-500';
-      if (rate >= 75) return 'bg-yellow-500';
+      if (rate >= 90) return chartAccentClasses.solid;
+      if (rate >= 75) return chartAccentClasses.medium;
       return 'bg-red-500';
     };
     
@@ -523,11 +532,11 @@ export default function AttendanceManagementPage() {
         {/* Legend */}
         <div className="flex items-center justify-center gap-6 text-xs pt-2 border-t border-gray-100 dark:border-gray-700">
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 bg-green-500 rounded-full"></span> 
+            <span className={`w-2.5 h-2.5 rounded-full ${chartAccentClasses.solid}`}></span> 
             <span className="text-gray-600 dark:text-gray-400">Excellent (90%+)</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></span> 
+            <span className={`w-2.5 h-2.5 rounded-full ${chartAccentClasses.medium}`}></span> 
             <span className="text-gray-600 dark:text-gray-400">Good (75-89%)</span>
           </span>
           <span className="flex items-center gap-1.5">
@@ -554,7 +563,7 @@ export default function AttendanceManagementPage() {
           <circle cx="75" cy="75" r={radius} fill="none" stroke="#E5E7EB" strokeWidth="20" />
           {/* Present */}
           <circle 
-            cx="75" cy="75" r={radius} fill="none" stroke="#22C55E" strokeWidth="20"
+            cx="75" cy="75" r={radius} fill="none" stroke="var(--brand-color, #e35336)" strokeWidth="20"
             strokeDasharray={circumference}
             strokeDashoffset={presentOffset}
             className="transition-all duration-500"
@@ -568,7 +577,7 @@ export default function AttendanceManagementPage() {
           />
           {/* Late */}
           <circle 
-            cx="75" cy="75" r={radius - 44} fill="none" stroke="#FB923C" strokeWidth="8"
+            cx="75" cy="75" r={radius - 44} fill="none" stroke="rgba(var(--brand-color-rgb), 0.55)" strokeWidth="8"
             strokeDasharray={circumference}
             strokeDashoffset={lateOffset}
             className="transition-all duration-500"
@@ -619,12 +628,12 @@ export default function AttendanceManagementPage() {
                 return (
                   <div key={index} className="flex-1 flex flex-col items-center gap-1">
                     <div 
-                      className="w-3 h-3 rounded-full bg-blue-600 absolute transform -translate-x-1/2"
+                      className="w-3 h-3 rounded-full bg-[var(--brand-color,#e35336)] absolute transform -translate-x-1/2"
                       style={{ bottom: `${item.attendanceRate}%` }}
                     />
                     {index > 0 && (
                       <div 
-                        className="absolute h-0.5 bg-blue-600 transform origin-left"
+                        className="absolute h-0.5 bg-[var(--brand-color,#e35336)] transform origin-left"
                         style={{
                           bottom: `${chartData[index - 1].attendanceRate}%`,
                           width: `${Math.sqrt(Math.pow(100 / chartData.length, 2) + Math.pow(Math.abs(y - prevY), 2))}%`,
@@ -787,7 +796,7 @@ export default function AttendanceManagementPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-[#E2E8F0] dark:border-gray-700 p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-[#e35336]">Attendance Dashboard</h1>
+              <h1 className="text-2xl font-bold text-black">Attendance Dashboard</h1>
               <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Monitor and analyze student attendance across all classes</p>
             </div>
 
@@ -906,15 +915,6 @@ export default function AttendanceManagementPage() {
                   )}
                 </SelectContent>
               </Select>
-
-              <Button 
-                onClick={handleExport}
-                variant="outline" 
-                className="border-[#E2E8F0] dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
             </div>
           </div>
         </div>
@@ -922,34 +922,34 @@ export default function AttendanceManagementPage() {
         {/* Today's Overview Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardContent className="pt-6">
+            <CardContent className="px-3 py-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Total Students</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">{dashboardData?.todayStats.totalStudentsMarked || 0}</p>
                 </div>
-                <div className="w-12 h-12 bg-[#e35336]/10 rounded-full flex items-center justify-center">
-                  <Users className="w-6 h-6 text-[#e35336]" />
+                <div className="w-9 h-9 bg-[#e35336]/10 rounded-full flex items-center justify-center">
+                  <Users className="w-4.5 h-4.5 text-[#e35336]" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardContent className="pt-6">
+            <CardContent className="px-3 py-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Present</p>
-                  <p className="text-2xl font-bold text-green-600 mt-1">{dashboardData?.todayStats.presentCount || 0}</p>
-                  <p className="text-xs text-green-600 mt-1">{dashboardData?.todayStats.attendanceRate || 0}%</p>
+                  <p className="text-2xl font-bold text-[var(--brand-color,#e35336)] mt-1">{dashboardData?.todayStats.presentCount || 0}</p>
+                  <p className="text-xs text-[var(--brand-color,#e35336)] mt-1">{dashboardData?.todayStats.attendanceRate || 0}%</p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <UserCheck className="w-6 h-6 text-green-600" />
+                <div className="w-9 h-9 bg-[rgba(var(--brand-color-rgb),0.12)] rounded-full flex items-center justify-center">
+                  <UserCheck className="w-4.5 h-4.5 text-[var(--brand-color,#e35336)]" />
                 </div>
               </div>
               <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-green-500 rounded-full transition-all duration-500" 
+                  className="h-full bg-[var(--brand-color,#e35336)] rounded-full transition-all duration-500" 
                   style={{ width: `${dashboardData?.todayStats.attendanceRate || 0}%` }}
                 />
               </div>
@@ -957,19 +957,19 @@ export default function AttendanceManagementPage() {
           </Card>
 
           <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardContent className="pt-6">
+            <CardContent className="px-3 py-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Sessions Taken</p>
-                  <p className="text-2xl font-bold text-blue-600 mt-1">{dashboardData?.todayStats.submittedSessions || 0}/{dashboardData?.todayStats.totalSessions || 0}</p>
+                  <p className="text-2xl font-bold text-[var(--brand-color,#e35336)] mt-1">{dashboardData?.todayStats.submittedSessions || 0}/{dashboardData?.todayStats.totalSessions || 0}</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-blue-600" />
+                <div className="w-9 h-9 bg-[rgba(var(--brand-color-rgb),0.12)] rounded-full flex items-center justify-center">
+                  <BarChart3 className="w-4.5 h-4.5 text-[var(--brand-color,#e35336)]" />
                 </div>
               </div>
               <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-blue-500 rounded-full transition-all duration-500" 
+                  className="h-full bg-[rgba(var(--brand-color-rgb),0.72)] rounded-full transition-all duration-500" 
                   style={{ width: `${dashboardData?.todayStats.totalSessions ? (dashboardData.todayStats.submittedSessions / dashboardData.todayStats.totalSessions) * 100 : 0}%` }}
                 />
               </div>
@@ -977,14 +977,14 @@ export default function AttendanceManagementPage() {
           </Card>
 
           <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardContent className="pt-6">
+            <CardContent className="px-3 py-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Pending</p>
-                  <p className="text-2xl font-bold text-orange-600 mt-1">{dashboardData?.todayStats.notSubmittedSessions || 0}</p>
+                  <p className="text-2xl font-bold text-[rgba(var(--brand-color-rgb),0.85)] mt-1">{dashboardData?.todayStats.notSubmittedSessions || 0}</p>
                 </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-orange-600" />
+                <div className="w-9 h-9 bg-[rgba(var(--brand-color-rgb),0.12)] rounded-full flex items-center justify-center">
+                  <Clock className="w-4.5 h-4.5 text-[rgba(var(--brand-color-rgb),0.85)]" />
                 </div>
               </div>
             </CardContent>
@@ -1027,7 +1027,7 @@ export default function AttendanceManagementPage() {
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                    <span className="w-3 h-3 bg-[var(--brand-color,#e35336)] rounded-full"></span>
                     Present
                   </span>
                   <span className="font-medium">{stats.present} ({presentPercentage}%)</span>
@@ -1041,7 +1041,7 @@ export default function AttendanceManagementPage() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 bg-orange-400 rounded-full"></span>
+                    <span className="w-3 h-3 bg-[rgba(var(--brand-color-rgb),0.55)] rounded-full"></span>
                     Late
                   </span>
                   <span className="font-medium">{stats.late} ({latePercentage}%)</span>
@@ -1057,7 +1057,7 @@ export default function AttendanceManagementPage() {
           <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
           <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
           <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-orange-500" />
+          <Activity className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
           Missing Attendance
           </CardTitle>
           </CardHeader>
@@ -1178,7 +1178,7 @@ export default function AttendanceManagementPage() {
                            <div className="flex items-center gap-2">
                              <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
                                <div 
-                                 className={`h-full rounded-full ${rate >= 90 ? 'bg-green-500' : rate >= 75 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                 className={`h-full rounded-full ${rate >= 90 ? 'bg-[var(--brand-color,#e35336)]' : rate >= 75 ? 'bg-[rgba(var(--brand-color-rgb),0.72)]' : 'bg-red-500'}`}
                                  style={{ width: `${rate}%` }}
                                />
                              </div>

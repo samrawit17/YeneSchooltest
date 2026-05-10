@@ -170,6 +170,41 @@ export class SearchService {
     return SEARCH_PERMISSIONS[normalizedRole] || SEARCH_PERMISSIONS[Role.IT_MANAGER];
   }
 
+  private getLessonsHref(userRole: string, lessonId: string): string {
+    switch (userRole) {
+      case Role.TEACHER:
+        return `/teacher/lessons/${lessonId}`;
+      case Role.STUDENT:
+        return '/student/lessons';
+      case Role.PARENT:
+        return '/parent/lessons';
+      default:
+        return '/teacher/lessons';
+    }
+  }
+
+  private getSubjectsHref(userRole: string): string {
+    switch (userRole) {
+      case Role.TEACHER:
+        return '/teacher/my-class';
+      case Role.STUDENT:
+        return '/student/lessons';
+      default:
+        return '/admin/class-sections';
+    }
+  }
+
+  private getPaymentsHref(userRole: string): string {
+    switch (userRole) {
+      case Role.PARENT:
+        return '/parent/fees';
+      case Role.STUDENT:
+        return '/student/fees';
+      default:
+        return '/list/finance';
+    }
+  }
+
   async globalSearch(
     query: string,
     schoolId: string | null,
@@ -205,7 +240,7 @@ export class SearchService {
       searchPromises.push(this.searchClasses(query, schoolId, userRole));
     }
     if (permissions.includes('subjects')) {
-      searchPromises.push(this.searchSubjects(query, schoolId));
+      searchPromises.push(this.searchSubjects(query, schoolId, userRole));
     }
     if (permissions.includes('grades')) {
       searchPromises.push(this.searchGrades(query, schoolId, userRole));
@@ -300,7 +335,7 @@ export class SearchService {
           break;
         default:
           type = 'staff';
-          href = `/list/staff/${user.id}`;
+          href = `/list/users/${user.id}`;
           showInSearch = permissions.includes('staff');
       }
 
@@ -402,7 +437,7 @@ export class SearchService {
         id: lesson.id,
         title: lesson.title,
         subtitle: lesson.topicName || 'Lesson',
-        href: '/teacher/lessons',
+        href: this.getLessonsHref(userRole, lesson.id),
       });
     }
 
@@ -442,7 +477,7 @@ export class SearchService {
         id: announcement.id,
         title: announcement.title,
         subtitle: new Date(announcement.createdAt).toLocaleDateString(),
-        href: '/list/announcements',
+        href: `/list/announcements/${announcement.id}`,
       });
     }
 
@@ -482,7 +517,7 @@ export class SearchService {
         id: event.id,
         title: event.title,
         subtitle: new Date(event.startDate).toLocaleDateString(),
-        href: '/list/events',
+        href: '/list/calendar',
       });
     }
 
@@ -583,6 +618,7 @@ export class SearchService {
   private async searchSubjects(
     query: string,
     schoolId: string | null,
+    userRole: string,
   ): Promise<SearchResult[]> {
     const whereClause: any = {
       OR: [
@@ -613,7 +649,7 @@ export class SearchService {
         id: subject.id,
         title: subject.name,
         subtitle: subject.code || undefined,
-        href: '/admin/subjects',
+        href: this.getSubjectsHref(userRole),
       });
     }
 
@@ -653,8 +689,10 @@ export class SearchService {
       let href = '/registrar/grading';
       if (userRole === Role.TEACHER) {
         href = '/teacher/grading';
-      } else if (userRole === Role.STUDENT || userRole === Role.PARENT) {
+      } else if (userRole === Role.STUDENT) {
         href = '/student/grades';
+      } else if (userRole === Role.PARENT) {
+        href = '/parent/grades';
       }
 
       results.push({
@@ -700,7 +738,7 @@ export class SearchService {
       if (userRole === Role.TEACHER) {
         href = '/teacher/attendance';
       } else if (userRole === Role.PARENT) {
-        href = '/parent/children';
+        href = '/parent/attendance';
       }
 
       results.push({
@@ -749,7 +787,7 @@ export class SearchService {
         id: payment.id,
         title: `Payment: $${payment.amountPaid.toFixed(2)}`,
         subtitle: `Student: ${payment.student?.name || 'Unknown'} • ${payment.receiptNumber || ''}`,
-        href: '/list/finance',
+        href: this.getPaymentsHref(userRole),
       });
     }
 

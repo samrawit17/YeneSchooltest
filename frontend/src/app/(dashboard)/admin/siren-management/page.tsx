@@ -87,16 +87,25 @@ export default function SirenManagementPage() {
       </div>
 
       <Tabs defaultValue="periods" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="periods" className="gap-2">
+        <TabsList className="grid w-full grid-cols-3 rounded-xl border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.08)] p-1">
+          <TabsTrigger
+            value="periods"
+            className="gap-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+          >
             <Clock className="w-4 h-4" />
             <span className="hidden sm:inline">Periods</span>
           </TabsTrigger>
-          <TabsTrigger value="schedules" className="gap-2">
+          <TabsTrigger
+            value="schedules"
+            className="gap-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+          >
             <Bell className="w-4 h-4" />
             <span className="hidden sm:inline">Schedules</span>
           </TabsTrigger>
-          <TabsTrigger value="hardware" className="gap-2">
+          <TabsTrigger
+            value="hardware"
+            className="gap-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+          >
             <Zap className="w-4 h-4" />
             <span className="hidden sm:inline">Hardware</span>
           </TabsTrigger>

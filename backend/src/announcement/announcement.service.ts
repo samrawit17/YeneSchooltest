@@ -4,6 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import {
   CreateAnnouncementDto,
   UpdateAnnouncementDto,
@@ -25,17 +26,46 @@ export class AnnouncementService {
     title: string,
     message: string,
     createdById: string,
+    visibleTo?: string[] | null,
   ) {
-    // Get all users in the school to notify
-    const users = await this.prisma.user.findMany({
-      where: { schoolId },
-      select: { id: true },
-    });
+    const normalizedAudience = (visibleTo || [])
+      .map((role) => role.trim().toLowerCase())
+      .filter(Boolean);
+
+    const audienceRoleMap: Record<string, string[]> = {
+      student: ['STUDENT'],
+      parent: ['PARENT'],
+      teacher: ['TEACHER'],
+      staff: ['TEACHER'],
+      admin: ['ADMIN'],
+      it_manager: ['IT_MANAGER'],
+      registrar: ['REGISTRAR'],
+      finance: ['FINANCE'],
+    };
+
+    const targetRoles = Array.from(
+      new Set(
+        normalizedAudience.flatMap((audience) => audienceRoleMap[audience] || []),
+      ),
+    );
+
+    const users = targetRoles.length
+      ? await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          SELECT id
+          FROM "User"
+          WHERE "schoolId" = ${schoolId}
+            AND id <> ${createdById}
+            AND "role"::text IN (${Prisma.join(targetRoles)})
+        `)
+      : await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          SELECT id
+          FROM "User"
+          WHERE "schoolId" = ${schoolId}
+            AND id <> ${createdById}
+        `);
 
     // Create notifications for all users (excluding the creator)
-    const recipientIds = users
-      .filter((user) => user.id !== createdById)
-      .map((user) => user.id);
+    const recipientIds = users.map((user) => user.id);
 
     if (recipientIds.length > 0) {
       await this.notificationService.createBulkNotifications({
@@ -87,6 +117,7 @@ export class AnnouncementService {
       announcement.title,
       announcement.content,
       userId,
+      data.visibleTo ?? null,
     );
 
     return announcement;

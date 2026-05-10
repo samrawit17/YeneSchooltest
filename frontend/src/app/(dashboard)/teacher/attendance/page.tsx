@@ -781,7 +781,7 @@ export default function TeacherAttendancePage() {
     disabled?: boolean;
   }) => {
     const statusConfig = {
-      PRESENT: { label: 'Present', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-200 dark:hover:bg-green-900/50', selectedColor: 'bg-green-600 text-white border-green-600' },
+      PRESENT: { label: 'Present', color: 'bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] border-[rgba(var(--brand-color-rgb),0.18)] hover:bg-[rgba(var(--brand-color-rgb),0.18)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.3)]', selectedColor: 'bg-[var(--brand-color,#e35336)] text-white border-[var(--brand-color,#e35336)]' },
       ABSENT: { label: 'Absent', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/50', selectedColor: 'bg-red-600 text-white border-red-600' },
       LATE: { label: 'Late', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800 hover:bg-orange-200 dark:hover:bg-orange-900/50', selectedColor: 'bg-orange-500 text-white border-orange-500' },
       EXCUSED: { label: 'Excused', color: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600', selectedColor: 'bg-gray-600 text-white border-gray-600' },
@@ -824,7 +824,7 @@ export default function TeacherAttendancePage() {
             <div key={index} className="flex-1 flex flex-col items-center gap-2">
               <div className="w-full flex gap-0.5 sm:gap-1 h-[100px] sm:h-[120px] items-end">
                 <div
-                  className="flex-1 bg-green-500 rounded-t"
+                  className="flex-1 bg-[var(--brand-color,#e35336)] rounded-t"
                   style={{ height: `${maxValue > 0 ? (item.present / maxValue) * 100 : 0}%` }}
                 />
                 <div
@@ -844,7 +844,7 @@ export default function TeacherAttendancePage() {
         {/* Legend */}
         <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-gray-600 dark:text-gray-400 px-2">
           <span className="flex items-center gap-1">
-            <span className="w-3 h-3 bg-green-500 rounded"></span> Present
+            <span className="w-3 h-3 bg-[var(--brand-color,#e35336)] rounded"></span> Present
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 bg-red-400 rounded"></span> Absent
@@ -859,21 +859,21 @@ export default function TeacherAttendancePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#e35336]" />
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0F172A] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0F172A]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:p-6">
         {/* Top Header */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E2E8F0] dark:border-[#334155] p-3 sm:p-6 mb-6">
+        <div className="bg-white dark:bg-[#1E293B] rounded-lg border border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] p-3 sm:p-6 mb-6 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             {/* Title */}
             <div className="order-1">
-              <h1 className="text-2xl font-bold text-[#e35336]">Attendance</h1>
+              <h1 className="text-2xl font-bold text-black">Attendance</h1>
               <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Mark and monitor daily student attendance</p>
               {isWeekendSelection && (
                 <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm">
@@ -881,7 +881,7 @@ export default function TeacherAttendancePage() {
                 </div>
               )}
               {isSubmitted && (
-                <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm">
+                <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] rounded-full text-sm">
                   <CheckCircle className="w-4 h-4" />
                   <span>Attendance Submitted</span>
                 </div>
@@ -894,7 +894,7 @@ export default function TeacherAttendancePage() {
                 </div>
               )}
               {isOnline && pendingOfflineCount > 0 && (
-                <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-sm">
+                <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] rounded-full text-sm">
                   <AlertTriangle className="w-4 h-4" />
                   <span>{pendingOfflineCount} records pending sync</span>
                 </div>
@@ -906,7 +906,7 @@ export default function TeacherAttendancePage() {
               {/* Connection Status Badge */}
               <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                 isOnline 
-                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
+                  ? 'bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)]' 
                   : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
               }`}>
                 {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
@@ -914,7 +914,7 @@ export default function TeacherAttendancePage() {
               </div>
 
               {/* Date Picker - Ethiopian Calendar Only */}
-              <div className="flex items-center gap-0.5 sm:gap-1 bg-amber-50 dark:bg-[#1E293B] rounded-lg border border-amber-200 dark:border-amber-700 p-0.5 sm:p-1">
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-[rgba(var(--brand-color-rgb),0.08)] dark:bg-[rgba(var(--brand-color-rgb),0.16)] rounded-lg border border-[rgba(var(--brand-color-rgb),0.2)] dark:border-[rgba(var(--brand-color-rgb),0.3)] p-0.5 sm:p-1">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -923,13 +923,13 @@ export default function TeacherAttendancePage() {
                     prevDate.setDate(prevDate.getDate() - 1);
                     setSelectedDate(prevDate.toISOString().split('T')[0]);
                   }}
-                  className="h-7 w-7 sm:h-8 sm:w-8 text-amber-600 dark:text-amber-400"
+                  className="h-7 w-7 sm:h-8 sm:w-8 text-[var(--brand-color,#e35336)]"
                 >
                   <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
                 <div className="flex items-center gap-1 px-0.5 sm:px-2">
-                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400 hidden sm:block" />
-                  <span className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400 min-w-[80px] sm:min-w-[120px] text-center">
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-[var(--brand-color,#e35336)] hidden sm:block" />
+                  <span className="text-xs sm:text-sm font-medium text-[var(--brand-color,#e35336)] min-w-[80px] sm:min-w-[120px] text-center">
                     {ethiopianDate || getEthiopianDate(selectedDate) || 'Loading...'}
                   </span>
                 </div>
@@ -941,7 +941,7 @@ export default function TeacherAttendancePage() {
                     nextDate.setDate(nextDate.getDate() + 1);
                     setSelectedDate(nextDate.toISOString().split('T')[0]);
                   }}
-                  className="h-7 w-7 sm:h-8 sm:w-8 text-amber-600 dark:text-amber-400"
+                  className="h-7 w-7 sm:h-8 sm:w-8 text-[var(--brand-color,#e35336)]"
                 >
                   <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
@@ -953,7 +953,7 @@ export default function TeacherAttendancePage() {
                 onValueChange={setSelectedClass}
                 disabled={isLoadingClasses}
               >
-                <SelectTrigger className="w-[140px] sm:w-[180px] border-[#E2E8F0] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white">
+                <SelectTrigger className="w-[140px] sm:w-[180px] border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white">
                   <SelectValue placeholder={isLoadingClasses ? "Loading..." : "Class"} />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-[#1E293B] dark:border-[#334155]">
@@ -973,36 +973,36 @@ export default function TeacherAttendancePage() {
         {/* Attendance Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           {/* Total Students */}
-          <Card className="border-[#E2E8F0] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
+          <Card className="border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Total Students</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.total}</p>
                 </div>
-                <div className="w-12 h-12 bg-[#e35336]/10 dark:bg-[#e35336]/20 rounded-full flex items-center justify-center">
-                  <Users className="w-6 h-6 text-[#e35336]" />
+                <div className="w-12 h-12 bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] rounded-full flex items-center justify-center">
+                  <Users className="w-6 h-6 text-[var(--brand-color,#e35336)]" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Present */}
-          <Card className="border-[#E2E8F0] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
+          <Card className="border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Present</p>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{stats.present}</p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">{presentPercentage}%</p>
+                  <p className="text-2xl font-bold text-[var(--brand-color,#e35336)] mt-1">{stats.present}</p>
+                  <p className="text-xs text-[var(--brand-color,#e35336)] mt-1">{presentPercentage}%</p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                  <UserCheck className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <div className="w-12 h-12 bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] rounded-full flex items-center justify-center">
+                  <UserCheck className="w-6 h-6 text-[var(--brand-color,#e35336)]" />
                 </div>
               </div>
               <div className="mt-2 h-1.5 bg-gray-100 dark:bg-[#334155] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-green-500 rounded-full transition-all duration-500"
+                  className="h-full bg-[var(--brand-color,#e35336)] rounded-full transition-all duration-500"
                   style={{ width: `${presentPercentage}%` }}
                 />
               </div>
@@ -1032,7 +1032,7 @@ export default function TeacherAttendancePage() {
           </Card>
 
           {/* Late */}
-          <Card className="border-[#E2E8F0] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
+          <Card className="border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -1055,8 +1055,8 @@ export default function TeacherAttendancePage() {
         </div>
 
         {/* Main Body - Student Attendance Table */}
-        <Card className="border-[#E2E8F0] dark:border-[#334155] shadow-sm mb-6 dark:bg-[#1E293B]">
-          <CardHeader className="border-b border-[#E2E8F0] dark:border-[#334155] pb-4">
+        <Card className="border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] shadow-sm mb-6 dark:bg-[#1E293B]">
+          <CardHeader className="border-b border-[rgba(var(--brand-color-rgb),0.14)] dark:border-[#334155] pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
                 <span className="hidden sm:inline">Student Attendance - {selectedClassLabel}</span>
@@ -1069,7 +1069,7 @@ export default function TeacherAttendancePage() {
                   placeholder="Search students..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 border-[#E2E8F0] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white"
+                  className="pl-9 border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white"
                 />
               </div>
             </div>
@@ -1078,7 +1078,7 @@ export default function TeacherAttendancePage() {
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px] sm:min-w-full">
-              <thead className="bg-gray-50 dark:bg-[#0F172A] border-b border-[#E2E8F0] dark:border-[#334155]">
+              <thead className="bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[#0F172A] border-b border-[rgba(var(--brand-color-rgb),0.14)] dark:border-[#334155]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student ID</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student Name</th>
@@ -1093,7 +1093,7 @@ export default function TeacherAttendancePage() {
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-5 h-5 animate-spin text-[#e35336]" />
+                        <Loader2 className="w-5 h-5 animate-spin text-[var(--brand-color,#e35336)]" />
                         <span className="text-gray-500 dark:text-gray-400">Loading students...</span>
                       </div>
                     </td>
@@ -1130,12 +1130,12 @@ export default function TeacherAttendancePage() {
                   </tr>
                 ) : (
                   filteredStudents.map((student) => (
-                    <tr key={student.id} className="hover:bg-gray-50 dark:hover:bg-[#334155]">
+                    <tr key={student.id} className="hover:bg-[rgba(var(--brand-color-rgb),0.05)] dark:hover:bg-[#334155]">
                       <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{student.studentId}</td>
                       <td className="px-2 sm:px-4 py-3">
                         <div className="flex items-center gap-2 sm:gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className="bg-[#e35336]/10 dark:bg-[#e35336]/20 text-[#e35336] text-xs">
+                            <AvatarFallback className="bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] text-xs">
                               {student.name.split(' ').map(n => n[0]).join('')}
                             </AvatarFallback>
                           </Avatar>
@@ -1158,7 +1158,7 @@ export default function TeacherAttendancePage() {
                           value={student.remark}
                           onChange={(e) => handleRemarkChange(student.id, e.target.value)}
                           disabled={!canEdit()}
-                          className="w-full sm:w-32 lg:w-48 h-8 border-[#E2E8F0] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white text-xs sm:text-sm"
+                          className="w-full sm:w-32 lg:w-48 h-8 border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white text-xs sm:text-sm"
                         />
                       </td>
                       <td className="px-2 sm:px-4 py-3 text-xs text-gray-500 dark:text-gray-400 hidden md:table-cell">
@@ -1173,14 +1173,14 @@ export default function TeacherAttendancePage() {
         </Card>
 
         {/* Sticky Action Bar */}
-        <div className="sticky bottom-4 sm:bottom-6 bg-white dark:bg-[#1E293B] border border-[#E2E8F0] dark:border-[#334155] rounded-lg p-3 sm:p-4 shadow-lg">
+        <div className="sticky bottom-4 sm:bottom-6 bg-white dark:bg-[#1E293B] border border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] rounded-lg p-3 sm:p-4 shadow-lg">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Button
                 onClick={handleMarkAllPresent}
                 variant="outline"
                 disabled={!canEdit()}
-                className="border-[#E2E8F0] dark:border-[#334155] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#334155] text-xs sm:text-sm"
+                className="border-[rgba(var(--brand-color-rgb),0.18)] dark:border-[#334155] text-gray-700 dark:text-gray-300 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] text-xs sm:text-sm"
               >
                 <CheckCircle className="w-4 h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">Mark All Present</span>
@@ -1190,7 +1190,7 @@ export default function TeacherAttendancePage() {
                 onClick={handleReset}
                 variant="outline"
                 disabled={!canEdit() || !hasChanges}
-                className="border-[#E2E8F0] dark:border-[#334155] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#334155] text-xs sm:text-sm"
+                className="border-[rgba(var(--brand-color-rgb),0.18)] dark:border-[#334155] text-gray-700 dark:text-gray-300 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] text-xs sm:text-sm"
               >
                 <RotateCcw className="w-4 h-4 mr-1 sm:mr-2" />
                 Reset
@@ -1199,7 +1199,7 @@ export default function TeacherAttendancePage() {
             <Button
               onClick={handleSave}
               disabled={!canEdit() || !hasChanges || isSaving || isSubmitted}
-              className="bg-[#e35336] hover:bg-[#e35336]/90 text-white min-w-[140px] sm:min-w-[160px] text-xs sm:text-sm"
+              className="bg-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.9)] text-white min-w-[140px] sm:min-w-[160px] text-xs sm:text-sm"
             >
               {isSaving ? (
                 <>
@@ -1227,7 +1227,7 @@ export default function TeacherAttendancePage() {
                 onClick={handleSync}
                 disabled={isSyncing}
                 variant="outline"
-                className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                className="border-[rgba(var(--brand-color-rgb),0.35)] text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.08)]"
               >
                 {isSyncing ? (
                   <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />

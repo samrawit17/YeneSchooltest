@@ -34,7 +34,6 @@ import {
   ChevronRight,
   Zap,
 } from "lucide-react";
-import { studentsAPI } from "@/lib/api";
 import {
   Communication,
   CommunicationStatus,
@@ -42,9 +41,9 @@ import {
   communicationsAPI,
 } from "@/lib/api/communications";
 import { useAuth } from "@/context/AuthContext";
+import NewMessageModal from "@/components/communications/NewMessageModal";
 
 type FilterOption = "all" | "unread" | "open" | "closed" | "today" | "this_week";
-type CategoryFilter = CommunicationCategory | "all";
 type ViewMode = "inbox" | "starred" | "archived" | "trash";
 
 interface QuickReplyTemplate {
@@ -107,12 +106,14 @@ interface ConversationWithParent extends Communication {
   lastMessage: string;
 }
 
-interface RecipientOption {
-  id: string;
-  name: string;
-  className?: string;
-  section?: string;
-  childName?: string;
+function getConversationClassLabel(conversation: ConversationWithParent | Communication) {
+  const className = conversation.class?.name || conversation.student?.studentProfile?.className;
+  const section = conversation.class?.section || conversation.student?.studentProfile?.section;
+
+  if (className && section) return `${className} - Section ${section}`;
+  if (className) return className;
+  if (section) return `Section ${section}`;
+  return null;
 }
 
 function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelete, canDelete }: {
@@ -144,7 +145,7 @@ function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelet
   return (
     <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[75%] group relative ${isMe ? "order-2" : "order-1"}`}>
-        <div className={`rounded-2xl p-4 ${isMe ? "bg-gradient-to-br from-[#e35336] to-[#c94429] text-white rounded-br-sm" : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-bl-sm shadow-sm"}`}>
+        <div className={`rounded-2xl p-3 ${isMe ? "bg-[var(--brand-color,#e35336)] text-white rounded-br-sm" : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-bl-sm shadow-sm"}`}>
           {!isMe && (
             <div className="flex items-center gap-2 mb-2">
               <span className={`font-semibold text-sm ${isMe ? "text-white/90" : "text-slate-900 dark:text-white"}`}>
@@ -188,19 +189,16 @@ function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelet
   );
 }
 
-function ConversationList({ conversations, loading, error, selectedId, onSelect, onRefresh }: {
+function ConversationList({ conversations, loading, error, selectedId, onSelect, onRefresh, searchQuery }: {
   conversations: ConversationWithParent[];
   loading: boolean;
   error: string | null;
   selectedId: string | null;
   onSelect: (conv: ConversationWithParent) => void;
   onRefresh: () => void;
+  searchQuery: string;
 }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
-
   const filtered = conversations.filter(conv => {
-    if (categoryFilter !== "all" && conv.category !== categoryFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
@@ -215,45 +213,17 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search conversations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-slate-800 border-0 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#e35336]/50"
-          />
-        </div>
-        <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
-          <button onClick={() => setCategoryFilter("all")} className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${categoryFilter === "all" ? "bg-[#e35336] text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
-            All
-          </button>
-          {(["ACADEMIC", "ATTENDANCE", "DISCIPLINE", "HEALTH", "GENERAL"] as CommunicationCategory[]).map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${categoryFilter === cat ? `${CATEGORY_CONFIG[cat].bg} ${CATEGORY_CONFIG[cat].text}` : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"}`}
-            >
-              {CATEGORY_CONFIG[cat].icon}
-              {CATEGORY_CONFIG[cat].label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full p-6">
-            <Loader2 className="w-8 h-8 text-[#e35336] animate-spin mb-3" />
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
             <p className="text-sm text-slate-500 dark:text-slate-400">Loading conversations...</p>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-full p-6">
             <XCircle className="w-12 h-12 text-red-400 mb-3" />
             <p className="text-sm text-red-500 mb-3">{error}</p>
-            <button onClick={onRefresh} className="text-[#e35336] text-sm hover:underline">Try again</button>
+            <button onClick={onRefresh} className="text-sm text-[var(--brand-color,#e35336)] hover:underline">Try again</button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-6">
@@ -265,15 +235,15 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
             <button
               key={conv.id}
               onClick={() => onSelect(conv)}
-              className={`w-full p-4 border-b border-slate-100 dark:border-slate-800 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${selectedId === conv.id ? "bg-slate-100 dark:bg-slate-800 border-l-4 border-l-[#e35336]" : ""}`}
+              className={`w-full border-b border-slate-100 p-3 text-left transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 ${selectedId === conv.id ? "border-l-4 border-l-[var(--brand-color,#e35336)] bg-[rgba(var(--brand-color-rgb),0.08)] dark:bg-[rgba(var(--brand-color-rgb),0.14)]" : ""}`}
             >
               <div className="flex items-start gap-3">
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#e35336] to-[#c94429] flex items-center justify-center text-white font-semibold text-lg">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] text-base font-semibold text-white">
                     {conv.student?.name?.charAt(0) || "S"}
                   </div>
                   {conv.unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#e35336] rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    <span className="absolute -right-1 -top-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] px-1 text-[10px] font-bold text-white">
                       {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
                     </span>
                   )}
@@ -295,8 +265,7 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-2">
-                <CategoryBadge category={conv.category} />
+              <div className="mt-2 flex items-center gap-2">
                 <StatusBadge status={conv.status} compact />
               </div>
             </button>
@@ -307,14 +276,12 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
   );
 }
 
-function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMessage, onAcknowledge, onClose, onReopen, onDeleteReply, onDelete }: {
+function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMessage, onReopen, onDeleteReply, onDelete }: {
   conversation: ConversationWithParent | null;
   isAdmin: boolean;
   isTeacher: boolean;
   currentUserId: string;
   onSendMessage: (msg: string) => void;
-  onAcknowledge: () => void;
-  onClose: () => void;
   onReopen: () => void;
   onDeleteReply: (id: string) => void;
   onDelete: () => void;
@@ -352,24 +319,32 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
 
   return (
     <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900">
-      <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+      <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#e35336] to-[#c94429] flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-[#e35336]/20">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] text-lg font-bold text-white shadow-lg shadow-[var(--brand-color,#e35336)]/20">
               {conversation.student?.name?.charAt(0) || "S"}
             </div>
             <div>
-              <h2 className="font-bold text-lg text-slate-900 dark:text-white">{conversation.student?.name || "Unknown Student"}</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {conversation.class?.name} - Section {conversation.class?.section}
-              </p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">{conversation.student?.name || "Unknown Student"}</h2>
+              {getConversationClassLabel(conversation) && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {getConversationClassLabel(conversation)}
+                </p>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex items-center gap-1.5">
               <CategoryBadge category={conversation.category} />
               <StatusBadge status={conversation.status} />
             </div>
+            {conversation.status === "CLOSED" && isAdmin && (
+              <button onClick={onReopen} className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40">
+                <RefreshCw className="h-3.5 w-3.5" />
+                Reopen
+              </button>
+            )}
             {isAdmin && (
               <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                 <Trash className="w-5 h-5" />
@@ -377,29 +352,9 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-4">
-          {conversation.status === "OPEN" && (
-            <button onClick={onAcknowledge} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors">
-              <CheckCircle className="w-4 h-4" />
-              Mark as Read
-            </button>
-          )}
-          {conversation.status !== "CLOSED" && (
-            <button onClick={onClose} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 rounded-lg transition-colors">
-              <XCircle className="w-4 h-4" />
-              Resolve
-            </button>
-          )}
-          {conversation.status === "CLOSED" && isAdmin && (
-            <button onClick={onReopen} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg transition-colors">
-              <RefreshCw className="w-4 h-4" />
-              Reopen
-            </button>
-          )}
-        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 space-y-3 overflow-y-auto p-4">
         <MessageCard
           message={conversation.message}
           senderName={conversation.createdBy?.name || "Teacher"}
@@ -423,15 +378,15 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
       </div>
 
       {(conversation.status !== "CLOSED" || isAdmin) && (
-        <div className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4">
-          <div className="flex items-end gap-3">
+        <div className="border-t border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+          <div className="flex items-end gap-2">
             <div className="relative">
               <button
                 onClick={() => setShowQuickReplies(!showQuickReplies)}
-                className="p-3 text-slate-400 hover:text-[#e35336] hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+                className="rounded-lg p-2.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-[var(--brand-color,#e35336)] dark:hover:bg-slate-700"
                 title="Quick replies"
               >
-                <Zap className="w-5 h-5" />
+                <Zap className="h-4.5 w-4.5" />
               </button>
               {showQuickReplies && (isAdmin || isTeacher) && (
                 <div className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-20">
@@ -445,7 +400,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
                         onClick={() => { setMessageInput(tpl.message); setShowQuickReplies(false); }}
                         className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-start gap-3 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0"
                       >
-                        <span className="text-[#e35336] mt-0.5">{tpl.icon}</span>
+                        <span className="mt-0.5 text-[var(--brand-color,#e35336)]">{tpl.icon}</span>
                         <div>
                           <p className="text-sm font-semibold text-slate-900 dark:text-white">{tpl.label}</p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">{tpl.message}</p>
@@ -463,13 +418,13 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 placeholder="Type your message..."
                 rows={1}
-                className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#e35336]/50 resize-none"
+                className="w-full resize-none rounded-lg border-0 bg-slate-100 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:bg-slate-700 dark:text-white"
               />
             </div>
             <button
               onClick={handleSend}
               disabled={!messageInput.trim() || isSending}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#e35336] to-[#c94429] text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-[#e35336]/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
               Send
@@ -479,308 +434,13 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
       )}
 
       {conversation.status === "CLOSED" && (
-        <div className="bg-emerald-50 dark:bg-emerald-900/20 border-t border-emerald-100 dark:border-emerald-800/50 px-6 py-3">
+        <div className="border-t border-emerald-100 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/50 dark:bg-emerald-900/20">
           <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
             <CheckCircle className="w-5 h-5" />
             <span className="text-sm font-medium">This conversation has been resolved</span>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function NewMessageModal({ isOpen, onClose, onSubmit, isSending, preselectedStudentId, isParent, isTeacher }: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (studentId: string, subject: string, message: string) => void;
-  isSending: boolean;
-  preselectedStudentId?: string | null;
-  isParent?: boolean;
-  isTeacher?: boolean;
-}) {
-  const [studentId, setStudentId] = useState(preselectedStudentId || "");
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
-  const [students, setStudents] = useState<RecipientOption[]>([]);
-  const [allStudents, setAllStudents] = useState<RecipientOption[]>([]);
-  const [loadingStudents, setLoadingStudents] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const fetchStudents = async () => {
-    try {
-      setLoadingStudents(true);
-      if (isParent) {
-        const response = await studentsAPI.getChildren();
-        const children = response.data?.children || response.data || [];
-        const teacherMap = new Map<string, RecipientOption>();
-        for (const child of children) {
-          const teacher = child.homeroomTeacher;
-          if (!teacher?.id || !teacher?.name) continue;
-          const existing = teacherMap.get(teacher.id);
-          if (existing) {
-            if (child.name && !existing.childName?.includes(child.name)) {
-              existing.childName = existing.childName ? `${existing.childName}, ${child.name}` : child.name;
-            }
-            continue;
-          }
-          teacherMap.set(teacher.id, { id: teacher.id, name: teacher.name, childName: child.name });
-        }
-        const query = searchQuery.trim().toLowerCase();
-        const filtered = Array.from(teacherMap.values()).filter(t => !query || t.name.toLowerCase().includes(query) || t.childName?.toLowerCase().includes(query));
-        setAllStudents(Array.from(teacherMap.values()));
-        setStudents(filtered);
-      } else if (isTeacher) {
-        const response = await studentsAPI.getHomeroomStudents();
-        const data = response.data?.data || [];
-        const fetched = data.map((s: any) => ({ 
-          id: s.id, 
-          name: s.name, 
-          className: s.className, 
-          section: s.section 
-        }));
-        setAllStudents(fetched);
-        setStudents(fetched);
-        setShowDropdown(true);
-      } else {
-        const response = await studentsAPI.getAll({ search: searchQuery, limit: '50', status: 'ACTIVE' });
-        const data = response.data?.data || response.data || [];
-        const mapped = data.map((s: any) => ({ id: s.id, name: s.name, className: s.class?.name, section: s.class?.section }));
-        setAllStudents(mapped);
-        setStudents(mapped);
-      }
-    } catch (err) {
-      console.error('Failed to fetch students:', err);
-    } finally {
-      setLoadingStudents(false);
-    }
-  };
-
-  const filterStudents = (query: string) => {
-    if (!query.trim()) {
-      setStudents(allStudents);
-      return;
-    }
-    const q = query.toLowerCase();
-    setStudents(allStudents.filter(s => 
-      s.name.toLowerCase().includes(q) || 
-      s.className?.toLowerCase().includes(q)
-    ));
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      if (preselectedStudentId) {
-        setStudentId(preselectedStudentId);
-      } else {
-        setStudentId("");
-        setSubject("");
-        setMessage("");
-        setSearchQuery("");
-        setStudents([]);
-        setAllStudents([]);
-        if (isTeacher) {
-          fetchStudents();
-        }
-      }
-    }
-  }, [isOpen, preselectedStudentId, isTeacher]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setShowDropdown(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setShowDropdown(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSubmit = () => {
-    if (!studentId.trim() || !subject.trim() || !message.trim()) {
-      toast.error("Please fill in all fields and select a student");
-      return;
-    }
-    onSubmit(studentId, subject, message);
-  };
-
-  const selectedStudent = students.find(s => s.id === studentId);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-800/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e35336] to-[#c94429] flex items-center justify-center">
-              <Send className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">New Message</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isParent ? 'Send a message to your child\'s teacher' : isTeacher ? 'Send a message about a student to their parent' : 'Send a message to a parent'}
-              </p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-          <div ref={dropdownRef} className="mb-5">
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              {isParent ? 'Select Teacher' : isTeacher ? 'Select Student' : 'Select Student'} <span className="text-red-500">*</span>
-            </label>
-            {preselectedStudentId ? (
-              <div className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 rounded-xl text-sm text-slate-500 dark:text-slate-400">
-                Student selected
-              </div>
-            ) : (
-              <div 
-                className="relative cursor-pointer" 
-                onMouseEnter={() => { if (isTeacher && allStudents.length > 0) setShowDropdown(true); }} 
-                onMouseLeave={() => { if (isTeacher) setShowDropdown(false); }}
-              >
-                <input
-                  type="text"
-                  placeholder={
-                    isParent ? "Search for your child's teacher..." : 
-                    isTeacher ? (allStudents.length > 0 ? `Search in ${allStudents.length} assigned students...` : "Click or hover to see students from your assigned classes...") : 
-                    "Search for a student..."
-                  }
-                  value={searchQuery}
-                  onChange={(e) => { 
-                    const value = e.target.value;
-                    setSearchQuery(value);
-                    setShowDropdown(true);
-                    if (isTeacher && allStudents.length > 0) {
-                      filterStudents(value);
-                    }
-                  }}
-                  onFocus={() => { 
-                    setShowDropdown(true); 
-                    if (allStudents.length === 0) {
-                      fetchStudents();
-                    } else if (isTeacher) {
-                      setStudents(allStudents);
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#e35336]/50 cursor-pointer"
-                />
-                {loadingStudents && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-slate-400" />
-                )}
-                {!loadingStudents && isTeacher && allStudents.length > 0 && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 bg-slate-200 dark:bg-slate-600 px-2 py-0.5 rounded-full">
-                    {allStudents.length} students
-                  </span>
-                )}
-                {showDropdown && students.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-10 max-h-64 overflow-y-auto">
-                    <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        {isTeacher ? 'Your Assigned Students' : 'Search Results'}
-                      </p>
-                    </div>
-                    {students.map(s => (
-                      <button
-                        key={s.id}
-                        onClick={() => { setStudentId(s.id); setSearchQuery(s.name); setShowDropdown(false); }}
-                        className={`w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center justify-between ${studentId === s.id ? "bg-[#e35336]/5" : ""}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#e35336] to-[#c94429] flex items-center justify-center text-white text-sm font-medium">
-                            {s.name.charAt(0)}
-                          </div>
-                          <div>
-                            <span className="font-medium text-slate-900 dark:text-white block">{s.name}</span>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {s.className} - Section {s.section}
-                            </span>
-                          </div>
-                        </div>
-                        {studentId === s.id && (
-                          <CheckCircle className="w-5 h-5 text-[#e35336]" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {!loadingStudents && students.length === 0 && allStudents.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 z-10">
-                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
-                      No matches found
-                    </p>
-                  </div>
-                )}
-                {!loadingStudents && isTeacher && allStudents.length === 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-4 z-10">
-                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
-                      You don't have any students in your assigned classes
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-            {selectedStudent && (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
-                <CheckCircle className="w-3.5 h-3.5" />
-                Selected: {selectedStudent.name}
-              </p>
-            )}
-          </div>
-
-          <div className="mb-5">
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Subject <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Enter message subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#e35336]/50"
-            />
-          </div>
-
-          <div className="mb-5">
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Message <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              placeholder="Write your message..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={6}
-              className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-700 border-0 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#e35336]/50 resize-none"
-            />
-          </div>
-        </div>
-
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors">
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSending || !studentId || !subject.trim() || !message.trim()}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#e35336] to-[#c94429] text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-[#e35336]/30 transition-all disabled:opacity-50"
-          >
-            <Send className="w-4 h-4" />
-            {isSending ? "Sending..." : "Send Message"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -798,8 +458,10 @@ function CommunicationsContent() {
   const [selectedConversation, setSelectedConversation] = useState<ConversationWithParent | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const autoMarkedConversationRef = useRef<string | null>(null);
 
   const isAdmin = ((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') || user?.role === 'SUPER_ADMIN';
   const isTeacher = user?.role === 'TEACHER';
@@ -862,30 +524,6 @@ function CommunicationsContent() {
     }
   };
 
-  const handleAcknowledge = async () => {
-    if (!selectedConversation) return;
-    try {
-      const response = await communicationsAPI.updateStatus(selectedConversation.id, { status: 'ACKNOWLEDGED' });
-      const updated = { ...selectedConversation, status: response.data.status as CommunicationStatus };
-      setConversations(prev => prev.map(c => c.id === selectedConversation.id ? updated : c));
-      setSelectedConversation(updated);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to acknowledge');
-    }
-  };
-
-  const handleClose = async () => {
-    if (!selectedConversation) return;
-    try {
-      const response = await communicationsAPI.updateStatus(selectedConversation.id, { status: 'CLOSED' });
-      const updated = { ...selectedConversation, status: response.data.status as CommunicationStatus };
-      setConversations(prev => prev.map(c => c.id === selectedConversation.id ? updated : c));
-      setSelectedConversation(updated);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to close');
-    }
-  };
-
   const handleReopen = async () => {
     if (!selectedConversation || !isAdmin) return;
     try {
@@ -897,6 +535,26 @@ function CommunicationsContent() {
       toast.error(err.response?.data?.message || 'Failed to reopen');
     }
   };
+
+  useEffect(() => {
+    if (!selectedConversation || selectedConversation.status !== 'OPEN') return;
+    if (autoMarkedConversationRef.current === selectedConversation.id) return;
+
+    autoMarkedConversationRef.current = selectedConversation.id;
+
+    const acknowledgeOpenedConversation = async () => {
+      try {
+        const response = await communicationsAPI.updateStatus(selectedConversation.id, { status: 'ACKNOWLEDGED' });
+        const updated = { ...selectedConversation, status: response.data.status as CommunicationStatus };
+        setConversations(prev => prev.map(c => c.id === selectedConversation.id ? updated : c));
+        setSelectedConversation(updated);
+      } catch {
+        autoMarkedConversationRef.current = null;
+      }
+    };
+
+    acknowledgeOpenedConversation();
+  }, [selectedConversation]);
 
   const handleDeleteReply = async (replyId: string) => {
     if (!selectedConversation || !confirm("Delete this message?")) return;
@@ -924,7 +582,7 @@ function CommunicationsContent() {
   const handleSendNewMessage = async (studentId: string, subject: string, message: string) => {
     setIsSending(true);
     try {
-      await communicationsAPI.create({ studentId, subject, message, category });
+      await communicationsAPI.create({ studentId, subject, message });
       toast.success("Message sent");
       setShowNewMessageModal(false);
       router.replace('/list/communications');
@@ -937,28 +595,40 @@ function CommunicationsContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900">
-      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-900">
+      <header className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
     
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Communication Book</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Manage communications with parents and guardians</p>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Communication Book</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Manage communications with parents and guardians</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowNewMessageModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#e35336] to-[#c94429] text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-[#e35336]/30 transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            New Message
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="relative w-[280px] max-w-full">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border-0 bg-slate-100 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:bg-slate-700 dark:text-white"
+              />
+            </div>
+            <button
+              onClick={() => setShowNewMessageModal(true)}
+              className="flex items-center gap-2 rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
+            >
+              <Plus className="h-4.5 w-4.5" />
+              New Message
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-96 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-shrink-0 overflow-hidden">
+        <aside className="w-[320px] flex-shrink-0 overflow-hidden border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <ConversationList
             conversations={conversations}
             loading={loading}
@@ -966,6 +636,7 @@ function CommunicationsContent() {
             selectedId={selectedConversation?.id || null}
             onSelect={setSelectedConversation}
             onRefresh={() => fetchCommunications(1)}
+            searchQuery={searchQuery}
           />
         </aside>
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -975,8 +646,6 @@ function CommunicationsContent() {
             isTeacher={isTeacher || false}
             currentUserId={user?.id || ""}
             onSendMessage={handleSendMessage}
-            onAcknowledge={handleAcknowledge}
-            onClose={handleClose}
             onReopen={handleReopen}
             onDeleteReply={handleDeleteReply}
             onDelete={handleDeleteThread}
@@ -1001,7 +670,7 @@ export default function CommunicationBookPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-900">
-        <Loader2 className="w-10 h-10 text-[#e35336] animate-spin" />
+        <Loader2 className="h-10 w-10 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     }>
       <CommunicationsContent />

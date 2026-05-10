@@ -529,7 +529,7 @@ export default function BulkUploadPage() {
             <div className="flex items-start gap-4">
         
               <div>
-                <h1 className="text-2xl font-bold text-[#e35336]">
+                <h1 className="text-2xl font-bold text-black">
                   User Provisioning
                 </h1>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">

@@ -12,17 +12,12 @@ import {
   Loader2,
   Mail,
   Phone,
-  MapPin,
-  GraduationCap,
-  Filter,
   Eye,
 } from "lucide-react";
 
-// Shadcn/ui Components
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -31,13 +26,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -45,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Pagination from "@/components/Pagination";
 
 interface Student {
   id: string;
@@ -90,13 +79,10 @@ const ClassStudentsPage = () => {
   const [classData, setClassData] = useState<ClassData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterGender, setFilterGender] = useState<string>("all");
-  const [filterSection, setFilterSection] = useState<string>("all");
-  const [sections, setSections] = useState<{ id: string; name: string }[]>([]);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
-    limit: 50,
+    limit: 25,
     totalPages: 0,
   });
 
@@ -112,28 +98,23 @@ const ClassStudentsPage = () => {
     }
   }, [isAuthenticated, isLoading, classId]);
 
-  const fetchStudents = async (search?: string) => {
+  const fetchStudents = async (pageNum?: number) => {
     try {
       setLoading(true);
       const response = await classesAPI.getStudents(classId, {
-        search: search || searchTerm || undefined,
-        limit: "100",
+        search: searchTerm || undefined,
+        page: String(pageNum || pagination.page),
+        limit: String(pagination.limit),
       });
       const data: StudentsResponse = response.data;
 
-      setStudents(data.students || []);
+      setStudents((data.students || []).sort((a, b) => {
+        const rollA = a.rollNumber ?? "";
+        const rollB = b.rollNumber ?? "";
+        return String(rollA).localeCompare(String(rollB), undefined, { numeric: true });
+      }));
       setClassData(data.class);
       setPagination(data.pagination);
-
-      // Extract unique sections
-      const uniqueSections = Array.from(
-        new Set(
-          data.students
-            .filter((s) => s.section)
-            .map((s) => JSON.stringify(s.section))
-        )
-      ).map((s) => JSON.parse(s as string));
-      setSections(uniqueSections);
     } catch (error: any) {
       console.error("Failed to fetch students:", error);
       toast.error("Failed to load students");
@@ -143,22 +124,20 @@ const ClassStudentsPage = () => {
   };
 
   const handleSearch = () => {
-    fetchStudents(searchTerm);
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchStudents(1);
   };
 
-  const filteredStudents = students
-    .filter((student) => {
-      const matchesGender =
-        filterGender === "all" || student.gender === filterGender;
-      const matchesSection =
-        filterSection === "all" || student.section?.id === filterSection;
-      return matchesGender && matchesSection;
-    })
-    .sort((a, b) => {
-      const rollA = a.rollNumber ?? "";
-      const rollB = b.rollNumber ?? "";
-      return String(rollA).localeCompare(String(rollB), undefined, { numeric: true });
-    });
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > pagination.totalPages) return;
+    setPagination(prev => ({ ...prev, page: newPage }));
+    fetchStudents(newPage);
+  };
+
+  const handleLimitChange = (newLimit: string) => {
+    setPagination(prev => ({ ...prev, limit: Number(newLimit), page: 1 }));
+    fetchStudents(1);
+  };
 
   const getInitials = (name: string) => {
     return name
@@ -170,14 +149,14 @@ const ClassStudentsPage = () => {
   };
 
   const getGenderBadgeColor = (gender?: string) => {
-    if (!gender) return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-none";
+    if (!gender) return "text-gray-600 dark:text-gray-400 border-none";
     switch (gender.toLowerCase()) {
       case "male":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border-none";
+        return "text-gray-700 dark:text-gray-300 border-none";
       case "female":
-        return "bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-400 border-none";
+        return "text-gray-700 dark:text-gray-300 border-none";
       default:
-        return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-none";
+        return "text-gray-600 dark:text-gray-400 border-none";
     }
   };
 
@@ -197,272 +176,164 @@ const ClassStudentsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950">
-      <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="p-5 space-y-4">
+        {/* Header + Stats row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => router.push("/teacher/my-class")}
-              className="hover:bg-white/50 dark:hover:bg-gray-800/50"
+              className="h-9 w-9"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-[#e35336]">
+              <h1 className="text-xl font-bold text-[#e35336]">
                 {classData?.name || "Class"} Students
               </h1>
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {classData
                   ? `Grade ${classData.grade} - Section ${classData.section}`
-                  : "View and manage students in this class"}
+                  : "View and manage students"}
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            {classData?.homeroomTeacherId === user?.id && (
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/teacher/attendance?classId=${classId}`)}
-                className="bg-white dark:bg-gray-900"
-              >
-                Take Attendance
-              </Button>
-            )}
+          <div className="flex items-center gap-3">
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Total Students
-                  </p>
-                  <p className="text-2xl font-bold">{students.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-pink-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Female</p>
-                  <p className="text-2xl font-bold">
-                    {students.filter((s) => s.gender?.toLowerCase() === "female")
-                      .length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Male</p>
-                  <p className="text-2xl font-bold">
-                    {students.filter((s) => s.gender?.toLowerCase() === "male")
-                      .length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <GraduationCap className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Sections</p>
-                  <p className="text-2xl font-bold">{sections.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Search + Actions */}
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder="Search by name, email, or student code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+          <Button size="sm" onClick={handleSearch} className="h-9">
+            Search
+          </Button>
+          {classData?.homeroomTeacherId === user?.id && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => router.push(`/teacher/attendance?classId=${classId}`)}
+              className="h-9"
+            >
+              Attendance
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => router.push(`/teacher/grading?classId=${classId}`)}
+            className="h-9"
+          >
+            Grade Entry
+          </Button>
         </div>
 
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search by name, email, student code..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={filterGender} onValueChange={setFilterGender}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Genders</SelectItem>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-              {sections.length > 0 && (
-                <Select value={filterSection} onValueChange={setFilterSection}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Section" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Sections</SelectItem>
-                    {sections.filter((section) => section.id).map((section) => (
-                      <SelectItem key={section.id} value={section.id}>
-                        Section {section.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <Button onClick={handleSearch}>
-                <Filter className="w-4 h-4 mr-2" />
-                Apply
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Students Table - Full Width */}
-        <Card className="overflow-hidden border-0 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 border-b">
+        {/* Students Table */}
+        <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <CardHeader className="py-3 px-5 border-b dark:border-slate-800">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Students List</CardTitle>
-                <CardDescription className="text-gray-600 dark:text-gray-400 mt-1">
-                  Showing {filteredStudents.length} of {students.length} students in {classData?.name || 'this class'}
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="bg-white dark:bg-gray-900 px-4 py-2 rounded-full border shadow-sm">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{students.length}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-500 ml-1">total</span>
-                </div>
-              </div>
+              <CardTitle className="text-base font-semibold">
+                Students ({students.length})
+              </CardTitle>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            {filteredStudents.length > 0 ? (
-              <div className="w-full overflow-x-auto">
+            {students.length > 0 ? (
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Roll No.</TableHead>
-                      <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Student</TableHead>
-                      <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Student Code</TableHead>
-                      <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Gender</TableHead>
-                      <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Section</TableHead>
-                      <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4">Contact</TableHead>
-                      <TableHead className="font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap px-6 py-4 text-right">Actions</TableHead>
+                    <TableRow className="border-b dark:border-slate-800">
+                      <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3">Roll</TableHead>
+                      <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3">Student</TableHead>
+                      <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3 hidden sm:table-cell">Code</TableHead>
+                      <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3">Gender</TableHead>
+                      <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3 hidden md:table-cell">Section</TableHead>
+                      <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3 hidden lg:table-cell">Contact</TableHead>
+                      <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredStudents.map((student) => (
-                      <TableRow 
-                        key={student.id} 
-                        className="hover:bg-blue-50/50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-100 dark:border-gray-800"
+                    {students.map((student) => (
+                      <TableRow
+                        key={student.id}
+                        className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                       >
-                        <TableCell className="px-6 py-4">
-                          <span className="font-semibold text-blue-600 dark:text-blue-400 min-w-[60px] inline-block">
+                        <TableCell className="px-4 py-3">
+                          <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 min-w-[50px] inline-block">
                             {student.rollNumber || "-"}
                           </span>
                         </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <div className="flex items-center gap-4 min-w-[240px]">
-                            <Avatar className="h-12 w-12 border-2 border-white dark:border-gray-800 shadow-sm">
+                        <TableCell className="px-4 py-3">
+                          <div className="flex items-center gap-3 min-w-[200px]">
+                            <Avatar className="h-9 w-9">
                               <AvatarImage src={student.avatarUrl} />
-                              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
+                              <AvatarFallback className="text-xs bg-blue-500 text-white">
                                 {getInitials(student.name)}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="font-semibold text-gray-900 dark:text-white">{student.name}</p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {student.email}
-                              </p>
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">{student.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[220px]">{student.email}</p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <span className="font-mono text-sm bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-lg min-w-[100px] inline-block text-center">
+                        <TableCell className="px-4 py-3 hidden sm:table-cell">
+                          <span className="text-sm font-mono bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded">
                             {student.studentCode || "-"}
                           </span>
                         </TableCell>
-                        <TableCell className="px-6 py-4">
+                        <TableCell className="px-4 py-3">
                           {student.gender ? (
-                            <Badge className={`${getGenderBadgeColor(student.gender)} px-3 py-1.5 min-w-[70px] justify-center`}>
+                            <Badge variant="outline" className={`${getGenderBadgeColor(student.gender)} text-xs px-2.5 py-1 min-w-[60px] justify-center`}>
                               {student.gender === 'MALE' ? 'Male' : student.gender === 'FEMALE' ? 'Female' : student.gender}
                             </Badge>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="text-sm text-gray-400">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-6 py-4">
+                        <TableCell className="px-4 py-3 hidden md:table-cell">
                           {student.section ? (
-                            <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 px-3 py-1.5 min-w-[100px] justify-center">
-                              Section {student.section.name}
+                            <Badge variant="outline" className="text-xs px-2.5 py-1 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800">
+                              {student.section.name}
                             </Badge>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="text-sm text-gray-400">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <div className="flex flex-col gap-2 min-w-[200px]">
+                        <TableCell className="px-4 py-3 hidden lg:table-cell">
+                          <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
                             {student.phone && (
-                              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                <div className="bg-gray-100 dark:bg-gray-800 p-1.5 rounded-lg">
-                                  <Phone className="w-3.5 h-3.5" />
-                                </div>
-                                <span>{student.phone}</span>
-                              </div>
+                              <span className="flex items-center gap-1.5">
+                                <Phone className="w-3.5 h-3.5" /> {student.phone}
+                              </span>
                             )}
                             {student.email && (
-                              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                <div className="bg-gray-100 dark:bg-gray-800 p-1.5 rounded-lg">
-                                  <Mail className="w-3.5 h-3.5" />
-                                </div>
-                                <span className="truncate max-w-[180px]">{student.email}</span>
-                              </div>
+                              <span className="flex items-center gap-1.5 truncate max-w-[180px]">
+                                <Mail className="w-3.5 h-3.5 shrink-0" /> {student.email}
+                              </span>
                             )}
-                            {!student.phone && !student.email && (
-                              <span className="text-gray-400">No contact info</span>
-                            )}
+                            {!student.phone && !student.email && "-"}
                           </div>
                         </TableCell>
-                        <TableCell className="px-6 py-4 text-right">
+                        <TableCell className="px-4 py-3 text-right">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() =>
-                              router.push(`/list/students/${student.id}`)
-                            }
+                            onClick={() => router.push(`/list/students/${student.id}`)}
+                            className="h-8 w-8 p-0"
                           >
-                            <Eye className="w-4 h-4 text-gray-500" />
+                            <Eye className="w-4 h-4 text-gray-400" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -471,36 +342,53 @@ const ClassStudentsPage = () => {
                 </Table>
               </div>
             ) : (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-10 h-10 text-gray-400" />
-                </div>
-                <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
-                  No students found
-                </h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                  {searchTerm || filterGender !== "all" || filterSection !== "all"
-                    ? "Try adjusting your filters to find what you're looking for"
-                    : "No students are assigned to this class yet"}
+              <div className="text-center py-10">
+                <Users className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  {searchTerm
+                    ? "No students match your search"
+                    : "No students assigned to this class"}
                 </p>
-                {(searchTerm || filterGender !== "all" || filterSection !== "all") && (
+                {searchTerm && (
                   <Button
                     variant="outline"
-                    size="lg"
+                    size="sm"
+                    className="mt-3 h-8 text-xs"
                     onClick={() => {
                       setSearchTerm("");
-                      setFilterGender("all");
-                      setFilterSection("all");
-                      fetchStudents("");
+                      fetchStudents(1);
                     }}
                   >
-                    Clear Filters
+                    Clear Search
                   </Button>
                 )}
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>Show</span>
+            <select
+              value={pagination.limit}
+              onChange={(e) => handleLimitChange(e.target.value)}
+              className="px-2 py-1 border border-gray-300 dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-sm"
+            >
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+            <span>of {pagination.total} students</span>
+          </div>
+          <Pagination
+            page={pagination.page}
+            setPage={handlePageChange}
+            totalPages={pagination.totalPages}
+          />
+        </div>
       </div>
     </div>
   );

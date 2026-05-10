@@ -110,12 +110,16 @@ interface Notification {
 
 interface NavbarProps {
   sidebarCollapsed?: boolean;
+  useBrandNavigation?: boolean;
 }
 
 const COMMUNICATION_NOTIFICATION_TYPES = ["COMMUNICATION", "MESSAGE_RECEIVED"];
 const GLOBAL_NOTIFICATION_READS_KEY = "global_notification_reads";
 
-const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
+const Navbar = ({
+  sidebarCollapsed = false,
+  useBrandNavigation = true,
+}: NavbarProps) => {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -565,7 +569,11 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
   const navigationItems = getNavigationItems();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-[#F1F5F9] dark:bg-[#111827] backdrop-blur supports-[backdrop-filter]:bg-[#F1F5F9]/60 dark:supports-[backdrop-filter]:bg-[#111827]/60 transition-all duration-300">
+    <header className={`sticky top-0 z-50 w-full border-b dark:border-[#334155] dark:bg-[#111827] dark:supports-[backdrop-filter]:bg-[#111827]/60 transition-all duration-300 ${
+      useBrandNavigation
+        ? "border-[rgba(var(--brand-color-rgb),0.53)] bg-[rgba(var(--brand-color-rgb),0.42)] supports-[backdrop-filter]:bg-[rgba(var(--brand-color-rgb),0.42)]"
+        : "border-gray-200 bg-[#F1F5F9] supports-[backdrop-filter]:bg-[#F1F5F9]/90"
+    }`}>
       <div className="w-full h-14 sm:h-16 md:h-18">
         <div className="flex items-center justify-between h-full gap-1 sm:gap-2 md:gap-4 px-2 sm:px-3 md:px-4 overflow-hidden">
           {/* Left: Mobile Menu Button and Logo */}
@@ -575,15 +583,27 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-[var(--brand-color,#e35336)] hover:text-white transition-all duration-200 shadow-sm h-8 w-8 sm:h-9 sm:w-9"
+                  className={`lg:hidden rounded-lg dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition-all duration-200 shadow-sm h-8 w-8 sm:h-9 sm:w-9 ${
+                    useBrandNavigation
+                      ? "bg-white/80 text-slate-800 hover:bg-[rgba(var(--brand-color-rgb),0.16)]"
+                      : "bg-gray-100 text-slate-800 hover:bg-gray-200"
+                  }`}
                   aria-label="Toggle menu"
                 >
                   <HamburgerMenuIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 sm:w-80 md:w-96 p-0 bg-white dark:bg-[#111827] border-r border-gray-200 dark:border-gray-700 max-w-[85vw]">
-                <SheetHeader className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 bg-white/95 dark:bg-[#111827]/95 backdrop-blur flex flex-row items-center justify-between">
-                  <SheetTitle className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <SheetContent side="left" className={`w-72 sm:w-80 md:w-96 p-0 dark:bg-[#111827] dark:border-[#374151] max-w-[85vw] ${
+                useBrandNavigation
+                  ? "bg-[rgba(var(--brand-color-rgb),0.18)] border-r border-[rgba(var(--brand-color-rgb),0.18)]"
+                  : "bg-white border-r border-gray-200"
+              }`}>
+                <SheetHeader className={`p-3 sm:p-4 dark:border-[#374151] sticky top-0 z-20 dark:bg-[#111827]/95 backdrop-blur flex flex-row items-center justify-between ${
+                  useBrandNavigation
+                    ? "border-b border-[rgba(var(--brand-color-rgb),0.14)] bg-white/70"
+                    : "border-b border-gray-200 bg-white/95"
+                }`}>
+                  <SheetTitle className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                     <School className="h-5 w-5 sm:h-6 sm:w-6 text-[var(--brand-color,#e35336)] flex-shrink-0" />
                     {schoolLoading ? (
                       <Skeleton className="h-5 sm:h-6 w-24" />
@@ -603,7 +623,11 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                 </SheetHeader>
                 <ScrollArea className="h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] flex-1">
                   <div className="p-3 sm:p-4">
-                    <Menu collapsed={false} onItemClick={() => setMobileMenuOpen(false)} />
+                    <Menu
+                      collapsed={false}
+                      onItemClick={() => setMobileMenuOpen(false)}
+                      useBrandNavigation={useBrandNavigation}
+                    />
                   </div>
                 </ScrollArea>
               </SheetContent>
@@ -623,11 +647,11 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
               <div className="flex items-center gap-1 sm:gap-2">
                 <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                   <PopoverTrigger asChild>
-                    <div className="flex items-center gap-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded">
-                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+                    <div className={`flex items-center gap-1 dark:hover:bg-gray-800 p-1 rounded ${useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-gray-100"}`}>
+                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
 <div className="flex flex-col text-left hidden lg:flex">
-                          <span className="text-gray-600 dark:text-gray-300 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">Today: {currentDate || '--'}</span>
-                          <span className="text-gray-500 dark:text-gray-400 text-[10px] truncate max-w-[160px] sm:max-w-[200px]">
+                          <span className="text-slate-700 dark:text-gray-300 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">Today: {currentDate || '--'}</span>
+                          <span className="text-slate-500 dark:text-gray-400 text-[10px] truncate max-w-[160px] sm:max-w-[200px]">
                             {formattedYearLabel}{displayTermName ? ` | ${displayTermName}` : ""}
                           </span>
                         </div>
@@ -638,8 +662,8 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                   </PopoverContent>
                 </Popover>
                 <div className="hidden md:flex items-center gap-1">
-                  <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
-                  <span className="font-bold text-gray-800 dark:text-gray-100 text-xs sm:text-sm">{currentTime || '--:--:--'}</span>
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
+                  <span className="font-bold text-slate-800 dark:text-gray-100 text-xs sm:text-sm">{currentTime || '--:--:--'}</span>
                 </div>
               </div>
             )}
@@ -712,7 +736,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="relative h-8 w-8 sm:h-9 sm:w-9"
+                      className={`relative h-8 w-8 text-slate-900 hover:text-slate-900 dark:text-white dark:hover:bg-slate-800 dark:hover:text-white sm:h-9 sm:w-9 ${useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-slate-100"}`}
                       aria-label="Notifications"
                     >
                       <Bell className="h-5 w-5 sm:h-6 sm:w-6 font-bold" />
@@ -783,7 +807,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                     <div className="p-2">
                         <Button
                           variant="ghost"
-                          className="w-full text-sm text-white bg-[var(--brand-color,#e35336)] hover:bg-[#c94429]"
+                          className="w-full border border-[var(--brand-color,#e35336)]/30 bg-[rgba(var(--brand-color-rgb),0.14)] text-sm font-semibold text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.22)] hover:text-[var(--brand-color,#e35336)] dark:border-[var(--brand-color,#e35336)]/35 dark:bg-[rgba(var(--brand-color-rgb),0.2)]"
                           onClick={() => router.push('/notifications')}
                         >
                           View all notifications
@@ -804,13 +828,13 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                     }}
                   >
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="relative h-8 w-8 sm:h-9 sm:w-9"
-                        aria-label="Communications"
-                      >
-                        <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 font-bold text-dark dark:text-white" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`relative h-8 w-8 text-slate-900 hover:text-slate-900 dark:text-white dark:hover:bg-slate-800 dark:hover:text-white sm:h-9 sm:w-9 ${useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-slate-100"}`}
+                      aria-label="Communications"
+                    >
+                        <MessageSquare className="h-5 w-5 font-bold sm:h-6 sm:w-6" />
                         {unreadCommunicationsCount > 0 && (
                           <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-[var(--brand-color,#e35336)] text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
                             {unreadCommunicationsCount > 99 ? '99+' : unreadCommunicationsCount}
@@ -870,7 +894,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                       <div className="p-2">
                         <Button
                           variant="ghost"
-                          className="w-full text-sm text-white bg-[var(--brand-color,#e35336)] hover:bg-[#c94429]"
+                          className="w-full border border-[var(--brand-color,#e35336)]/30 bg-[rgba(var(--brand-color-rgb),0.14)] text-sm font-semibold text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.22)] hover:text-[var(--brand-color,#e35336)] dark:border-[var(--brand-color,#e35336)]/35 dark:bg-[rgba(var(--brand-color-rgb),0.2)]"
                           onClick={() => router.push('/list/communications')}
                         >
                           View all communications
@@ -900,10 +924,10 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                   >
                     <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
                       <div className="hidden md:block text-right min-w-0">
-                        <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate max-w-[60px] sm:max-w-[80px] lg:max-w-[100px]">
+                        <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[60px] sm:max-w-[80px] lg:max-w-[100px]">
                           {user.name}
                         </p>
-                        <p className="text-[10px] sm:text-xs text-gray-500 capitalize truncate max-w-[60px] sm:max-w-[100px] lg:max-w-[120px]">
+                        <p className="text-[10px] sm:text-xs text-slate-500 dark:text-gray-400 capitalize truncate max-w-[60px] sm:max-w-[100px] lg:max-w-[120px]">
                           {user.role?.toLowerCase().replace("_", " ") || "User"}
                         </p>
                       </div>
@@ -911,7 +935,7 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                         {user.avatarUrl ? (
                           <AvatarImage src={user.avatarUrl} alt={user.name} />
                         ) : (
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold text-xs sm:text-sm">
+                          <AvatarFallback className="bg-[var(--brand-color,#e35336)] text-white font-semibold text-xs sm:text-sm">
                             {user.name?.charAt(0).toUpperCase() || "U"}
                           </AvatarFallback>
                         )}
@@ -920,78 +944,138 @@ const Navbar = ({ sidebarCollapsed = false }: NavbarProps) => {
                     </div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[280px] sm:w-[320px] dark:bg-slate-900" align="end" forceMount>
-
-                  {/* Compact User Info */}
-                  <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-white dark:border-slate-600 shadow">
+                <DropdownMenuContent
+                  className="w-[300px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900"
+                  align="end"
+                  forceMount
+                >
+                  <div className="border-b border-slate-200 bg-[linear-gradient(135deg,rgba(var(--brand-color-rgb),0.16),rgba(var(--brand-color-rgb),0.04))] p-4 dark:border-slate-700">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-12 w-12 border border-white/70 shadow-md dark:border-slate-600">
                         {user.avatarUrl ? (
                           <AvatarImage src={user.avatarUrl} alt={user.name} />
                         ) : (
-                          <AvatarFallback className="bg-gradient-to-br from-[var(--brand-color,#e35336)] to-[#c94429] text-white font-bold text-base sm:text-lg">
+                          <AvatarFallback className="bg-[var(--brand-color,#e35336)] text-base font-bold text-white">
                             {user.name?.charAt(0).toUpperCase() || "U"}
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">{user.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{user.email}</p>
-                        <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
-                          {user.role?.toLowerCase().replace("_", " ")}
-                        </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                          <Mail className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{user.email}</span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center rounded-full bg-[rgba(var(--brand-color-rgb),0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
+                            {user.role?.toLowerCase().replace("_", " ")}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <DropdownMenuSeparator className="dark:bg-slate-700" />
-
-                  {/* Quick Links */}
-<DropdownMenuGroup>
-                    <DropdownMenuItem onClick={() => router.push("/dashboard")} className="dark:text-slate-200 dark:focus:bg-slate-800">
-                      <LayoutDashboard className="mr-2 h-4 w-4 text-[var(--brand-color,#e35336)]" />
-                      <span>Dashboard</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push("/profile")} className="dark:text-slate-200 dark:focus:bg-slate-800">
-                      <User className="mr-2 h-4 w-4 text-[var(--brand-color,#e35336)]" />
-                      <span>Profile</span>
-                    </DropdownMenuItem>
-                    {user.role?.toLowerCase().includes("parent") && (
-                      <>
-                        <DropdownMenuItem onClick={() => router.push("/parent/children")} className="dark:text-slate-200 dark:focus:bg-slate-800">
-                          <Users className="mr-2 h-4 w-4 text-blue-500" />
-                          <span>My Children</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.push("/parent/fees")} className="dark:text-slate-200 dark:focus:bg-slate-800">
-                          <CreditCard className="mr-2 h-4 w-4 text-amber-500" />
-                          <span>Fees</span>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {user.role?.toLowerCase().includes("teacher") && (
-                      <DropdownMenuItem onClick={() => router.push("/classes")} className="dark:text-slate-200 dark:focus:bg-slate-800">
-                        <Home className="mr-2 h-4 w-4 text-purple-500" />
-                        <span>My Classes</span>
+                  <div className="p-2">
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        onClick={() => router.push("/dashboard")}
+                        className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                          <LayoutDashboard className="h-4 w-4" />
+                        </span>
+                        <span className="flex-1">
+                          <span className="block text-sm font-medium">Dashboard</span>
+                          <span className="block text-xs text-slate-500 dark:text-slate-400">Go to your main workspace</span>
+                        </span>
                       </DropdownMenuItem>
-                    )}
-                  </DropdownMenuGroup>
 
-                  <DropdownMenuSeparator className="dark:bg-slate-700" />
+                      <DropdownMenuItem
+                        onClick={() => router.push("/profile")}
+                        className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                          <User className="h-4 w-4" />
+                        </span>
+                        <span className="flex-1">
+                          <span className="block text-sm font-medium">Profile</span>
+                          <span className="block text-xs text-slate-500 dark:text-slate-400">Manage your account details</span>
+                        </span>
+                      </DropdownMenuItem>
 
-                  <DropdownMenuItem onClick={() => router.push("/help")} className="dark:text-slate-200 dark:focus:bg-slate-800">
-                    <HelpCircle className="mr-2 h-4 w-4" />
-                    <span>Help</span>
-                  </DropdownMenuItem>
+                      {user.role?.toLowerCase().includes("parent") && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => router.push("/parent/children")}
+                            className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                          >
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300">
+                              <Users className="h-4 w-4" />
+                            </span>
+                            <span className="flex-1">
+                              <span className="block text-sm font-medium">My Children</span>
+                              <span className="block text-xs text-slate-500 dark:text-slate-400">View student profiles and activity</span>
+                            </span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => router.push("/parent/fees")}
+                            className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                          >
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
+                              <CreditCard className="h-4 w-4" />
+                            </span>
+                            <span className="flex-1">
+                              <span className="block text-sm font-medium">Fees</span>
+                              <span className="block text-xs text-slate-500 dark:text-slate-400">Review payments and balances</span>
+                            </span>
+                          </DropdownMenuItem>
+                        </>
+                      )}
 
-                  <DropdownMenuSeparator className="dark:bg-slate-700" />
+                      {user.role?.toLowerCase().includes("teacher") && (
+                        <DropdownMenuItem
+                          onClick={() => router.push("/classes")}
+                          className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                        >
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
+                            <Home className="h-4 w-4" />
+                          </span>
+                          <span className="flex-1">
+                            <span className="block text-sm font-medium">My Classes</span>
+                            <span className="block text-xs text-slate-500 dark:text-slate-400">Jump into your assigned classes</span>
+                          </span>
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuGroup>
 
-                  <DropdownMenuItem
-                    className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:bg-slate-800"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
-                  </DropdownMenuItem>
+                    <DropdownMenuSeparator className="my-2 bg-slate-200 dark:bg-slate-700" />
+
+                    <DropdownMenuItem
+                      onClick={() => router.push("/help")}
+                      className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        <HelpCircle className="h-4 w-4" />
+                      </span>
+                      <span className="flex-1">
+                        <span className="block text-sm font-medium">Help</span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-400">Get support and guidance</span>
+                      </span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      className="flex items-center gap-3 rounded-xl px-3 py-3 text-red-600 outline-none transition-colors hover:bg-red-50 focus:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 dark:focus:bg-red-950/30"
+                      onClick={handleLogout}
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                        <LogOut className="h-4 w-4" />
+                      </span>
+                      <span className="flex-1">
+                        <span className="block text-sm font-medium">Logout</span>
+                        <span className="block text-xs text-red-500/80 dark:text-red-400/80">End your current session</span>
+                      </span>
+                    </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (

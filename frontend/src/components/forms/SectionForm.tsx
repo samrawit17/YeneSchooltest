@@ -6,25 +6,26 @@ import { sectionsAPI, classesAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
-import InputField from "@/components/InputField";
+import { Loader2 } from "lucide-react";
 
 interface SectionFormProps {
   type: "create" | "update";
   data?: any;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-const SectionForm = ({ type, data }: SectionFormProps) => {
+const SectionForm = ({ type, data, onSuccess, onCancel }: SectionFormProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     classId: data?.classId || "",
     name: data?.name || "",
-    capacity: data?.capacity || 30, // Initial default, will be updated by settings
+    capacity: data?.capacity || 30,
     roomNumber: data?.roomNumber || "",
   });
   const [classes, setClasses] = useState<any[]>([]);
 
-  // Fetch school settings for default section capacity
   useEffect(() => {
     const fetchDefaultCapacity = async () => {
       if (type === "create" && !data?.capacity && user?.schoolId) {
@@ -70,6 +71,7 @@ const SectionForm = ({ type, data }: SectionFormProps) => {
         type === "create" ? "Section created successfully" : "Section updated successfully"
       );
       queryClient.invalidateQueries({ queryKey: queryKeys.sections.all });
+      if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || `Failed to ${type} section`);
@@ -82,79 +84,105 @@ const SectionForm = ({ type, data }: SectionFormProps) => {
     try {
       await mutation.mutateAsync();
     } catch (error) {
-      // Error handled by mutation
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClass = "w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all";
+  const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+
   return (
-    <form onSubmit={handleSubmit} className="p-6">
-      <div className="space-y-4">
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">Class</label>
-          <select
-            value={formData.classId}
-            onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            <option value="">Select a class</option>
-            {classes.map((cls) => (
-              <option key={cls.id} value={cls.id}>
-                {cls.name || `Grade ${cls.grade}`} - {cls.academicYear?.name || cls.academicYearId} ({cls.section})
-              </option>
-            ))}
-          </select>
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-3">
+        {/* Class and Room Number */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>
+              Class <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.classId}
+              onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+              required
+              className={inputClass}
+            >
+              <option value="">Select a class</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name || `Grade ${cls.grade}`} - {cls.academicYear?.name || cls.academicYearId} ({cls.section})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>
+              Room Number
+            </label>
+            <input
+              type="text"
+              value={formData.roomNumber}
+              onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
+              placeholder="e.g., 101, A204"
+              className={inputClass}
+            />
+          </div>
         </div>
-        <InputField
-          label="Section Name"
-          name="name"
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-          placeholder="Enter section name (e.g., A, B, C)"
-        />
-        <InputField
-          label="Capacity"
-          name="capacity"
-          type="number"
-          value={formData.capacity}
-          onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-          required
-          placeholder="Enter section capacity"
-          inputProps={{ min: 1, max: 100 }}
-        />
-        <InputField
-          label="Room Number"
-          name="roomNumber"
-          type="text"
-          value={formData.roomNumber}
-          onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
-          placeholder="Enter room number (optional)"
-        />
+
+        {/* Section Name and Capacity */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>
+              Section Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              placeholder="e.g., A, B, C"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>
+              Capacity <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              value={formData.capacity}
+              onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+              required
+              placeholder="Enter capacity"
+              min={1}
+              max={100}
+              className={inputClass}
+            />
+          </div>
+        </div>
       </div>
-      <div className="flex justify-end gap-3 mt-6">
+
+      {/* Actions */}
+      <div className="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-slate-700">
         <button
           type="button"
-          onClick={() => window.history.back()}
-          className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          onClick={onCancel ? onCancel : () => window.history.back()}
+          className="px-4 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading || mutation.isPending}
-          className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 text-white bg-[#e35336] rounded-lg hover:bg-[#d14830] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          {loading ? (
+          {loading || mutation.isPending ? (
             <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2" />
-              Loading...
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
             </>
           ) : (
-            type === "create" ? "Create" : "Update"
+            type === "create" ? "Create Section" : "Update Section"
           )}
         </button>
       </div>
