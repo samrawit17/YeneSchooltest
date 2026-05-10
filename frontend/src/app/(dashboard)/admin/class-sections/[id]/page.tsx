@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { classesAPI, sectionsAPI } from "@/lib/api";
@@ -16,21 +17,14 @@ import {
   Mail,
   Phone,
   Hash,
-  ChevronDown,
   X,
+  School,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -73,12 +67,11 @@ type ClassStats = {
 
 export default function ClassDetailPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { setItems } = useBreadcrumb();
   const router = useRouter();
   const params = useParams();
   const classId = params.id as string;
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sectionFilter, setSectionFilter] = useState<string>("");
   const [page, setPage] = useState(1);
   const [globalSearchTerm, setGlobalSearchTerm] = useState("");
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
@@ -92,11 +85,9 @@ export default function ClassDetailPage() {
 
   // Fetch class stats
   const { data: statsData, isLoading: statsLoading } = useQuery<{ data: ClassStats }>({
-    queryKey: queryKeys.classSections.classStats(classId, sectionFilter),
+    queryKey: queryKeys.classSections.classStats(classId, ""),
     queryFn: async () => {
-      const params: { sectionId?: string } = {};
-      if (sectionFilter) params.sectionId = sectionFilter;
-      return classesAPI.getStats(classId, params);
+      return classesAPI.getStats(classId);
     },
     enabled: !!classId,
   });
@@ -113,21 +104,18 @@ export default function ClassDetailPage() {
 
   // Fetch students
   const { data: studentsData, isLoading: studentsLoading, refetch: refetchStudents } = useQuery({
-    queryKey: queryKeys.classSections.students(classId, sectionFilter, searchTerm, page),
+    queryKey: queryKeys.classSections.students(classId, "", "", page),
     queryFn: async () => {
-      const params: { sectionId?: string; search?: string; page?: string; limit?: string; orderBy?: string } = {
+      const params: { page?: string; limit?: string; orderBy?: string } = {
         page: page.toString(),
         limit: "50",
         orderBy: "rollNumber",
       };
-      if (sectionFilter) params.sectionId = sectionFilter;
-      if (searchTerm) params.search = searchTerm;
       return classesAPI.getStudents(classId, params);
     },
     enabled: !!classId,
   });
 
-  // Global search for classes and sections
   const { data: globalSearchResults, isLoading: globalSearchLoading } = useQuery({
     queryKey: queryKeys.classSections.globalSearch(globalSearchTerm),
     queryFn: async () => {
@@ -150,29 +138,47 @@ export default function ClassDetailPage() {
   const classInfo = statsData?.data?.class;
   const students: Student[] = studentsData?.data?.students || [];
   const pagination = studentsData?.data?.pagination;
+  const displayedHomeroomTeacher = useMemo(() => {
+    if (classInfo?.homeroomTeacher) {
+      return classInfo.homeroomTeacher;
+    }
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    setPage(1);
-  };
+    const matchingSection = (classInfo?.sections || []).find(
+      (section) => section.name === classInfo?.section,
+    );
 
-  const handleSectionChange = (value: string) => {
-    setSectionFilter(value === "all" ? "" : value);
-    setPage(1);
-  };
+    return matchingSection?.homeroomTeacher || null;
+  }, [classInfo]);
 
-  // Close global search when clicking outside
+  useEffect(() => {
+    if (!classInfo) return;
+
+    const classLabel = classInfo.name || "Class Details";
+    const sectionLabel = classInfo.section
+      ? `Section ${classInfo.section}`
+      : "Section";
+
+    setItems([
+      { label: "Dashboard", href: "/admin", isCurrent: false },
+      { label: "Administration", href: "/admin", isCurrent: false },
+      { label: "Class & Sections", href: "/admin/class-sections", isCurrent: false },
+      { label: classLabel, isCurrent: false },
+      { label: sectionLabel, isCurrent: true },
+    ]);
+
+    return () => setItems(null);
+  }, [classInfo, setItems]);
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.global-search-container')) {
+      if (!target.closest(".global-search-container")) {
         setShowGlobalSearch(false);
       }
     };
-    
+
     if (showGlobalSearch) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
     }
   }, [showGlobalSearch]);
 
@@ -188,13 +194,13 @@ export default function ClassDetailPage() {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-1 items-center gap-4">
           <Link href="/admin/class-sections">
             <Button variant="outline" size="icon">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <div>
+          <div className="flex-1">
             {statsLoading ? (
               <>
                 <Skeleton className="h-8 w-48 mb-2" />
@@ -202,105 +208,29 @@ export default function ClassDetailPage() {
                 <Skeleton className="h-4 w-64 mt-1" />
               </>
             ) : (
-              <>
-                <h1 className="text-2xl font-bold">
-                  {classInfo?.name || "Class Details"}
-                </h1>
-                <p className="text-muted-foreground">
-                  Grade {classInfo?.grade} • Section {classInfo?.section}
-                </p>
-                {classInfo?.homeroomTeacher && (
-                  <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                    <span className="font-medium">Homeroom Teacher:</span> {classInfo.homeroomTeacher.name}
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold">
+                    {classInfo?.name || "Class Details"}
+                  </h1>
+                  <p className="mt-1 text-muted-foreground">
+                    Grade {classInfo?.grade} • Section {classInfo?.section}
                   </p>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-        {/* Global Search */}
-        <div className="relative global-search-container">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search classes or sections..."
-              value={globalSearchTerm}
-              onChange={(e) => {
-                setGlobalSearchTerm(e.target.value);
-                setShowGlobalSearch(true);
-              }}
-              onFocus={() => setShowGlobalSearch(true)}
-              className="w-64 pl-9"
-            />
-            {globalSearchTerm && (
-              <button
-                onClick={() => {
-                  setGlobalSearchTerm("");
-                  setShowGlobalSearch(false);
-                }}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
-              >
-                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-              </button>
-            )}
-          </div>
-          {/* Search Results Dropdown */}
-          {showGlobalSearch && globalSearchTerm.length >= 2 && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-900 border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-              {globalSearchLoading ? (
-                <div className="p-4 flex items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin" />
                 </div>
-              ) : (
-                <>
-                  {globalSearchResults?.classes?.length === 0 && globalSearchResults?.sections?.length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground">
-                      No results found
-                    </div>
-                  ) : (
-                    <>
-                      {globalSearchResults?.classes?.length > 0 && (
-                        <div className="p-2">
-                          <div className="text-xs font-semibold text-muted-foreground px-2 py-1">Classes</div>
-                          {globalSearchResults.classes.slice(0, 5).map((cls: any) => (
-                            <div
-                              key={cls.id}
-                              onClick={() => {
-                                window.location.href = `/admin/class-sections/${cls.id}`;
-                              }}
-                              className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
-                            >
-                              <Users className="h-4 w-4" />
-                              <span>{cls.name}</span>
-                              <span className="text-xs text-muted-foreground">Grade {cls.grade}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {globalSearchResults?.sections?.length > 0 && (
-                        <div className="p-2 border-t">
-                          <div className="text-xs font-semibold text-muted-foreground px-2 py-1">Sections</div>
-                          {globalSearchResults.sections.slice(0, 5).map((section: any) => (
-                            <div
-                              key={section.id}
-                              onClick={() => {
-                                window.location.href = `/admin/class-sections/${section.class?.id}`;
-                              }}
-                              className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
-                            >
-                              <Hash className="h-4 w-4" />
-                              <span>Section {section.name}</span>
-                              <span className="text-xs text-muted-foreground">{section.class?.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+                <div className="flex flex-col items-start gap-1 text-sm lg:items-end">
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.08)] px-3 py-2">
+                    <School className="h-4 w-4 text-[var(--brand-color,#e35336)]" />
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      Homeroom Teacher:
+                    </span>
+                    <span className="font-semibold text-[var(--brand-color,#e35336)]">
+                      {displayedHomeroomTeacher?.name || "Not assigned"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -371,26 +301,87 @@ export default function ClassDetailPage() {
         )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
+      <div className="relative global-search-container">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search students by name, email, or code..."
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="pl-10"
+            placeholder="Search classes or sections..."
+            value={globalSearchTerm}
+            onChange={(e) => {
+              setGlobalSearchTerm(e.target.value);
+              setShowGlobalSearch(true);
+            }}
+            onFocus={() => setShowGlobalSearch(true)}
+            className="w-full max-w-md pl-9"
           />
+          {globalSearchTerm && (
+            <button
+              onClick={() => {
+                setGlobalSearchTerm("");
+                setShowGlobalSearch(false);
+              }}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2"
+            >
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </button>
+          )}
         </div>
-
-        <Select value={sectionFilter || "all"} onValueChange={handleSectionChange} disabled>
-          <SelectTrigger className="w-[250px]">
-            <SelectValue placeholder="All Sections" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Sections</SelectItem>
-          </SelectContent>
-        </Select>
+        {showGlobalSearch && globalSearchTerm.length >= 2 && (
+          <div className="absolute left-0 top-full mt-2 w-full max-w-md bg-white dark:bg-slate-900 border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+            {globalSearchLoading ? (
+              <div className="p-4 flex items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : (
+              <>
+                {globalSearchResults?.classes?.length === 0 && globalSearchResults?.sections?.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No results found
+                  </div>
+                ) : (
+                  <>
+                    {globalSearchResults?.classes?.length > 0 && (
+                      <div className="p-2">
+                        <div className="text-xs font-semibold text-muted-foreground px-2 py-1">Classes</div>
+                        {globalSearchResults.classes.slice(0, 5).map((cls: any) => (
+                          <div
+                            key={cls.id}
+                            onClick={() => {
+                              window.location.href = `/admin/class-sections/${cls.id}`;
+                            }}
+                            className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                          >
+                            <Users className="h-4 w-4" />
+                            <span>{cls.name}</span>
+                            <span className="text-xs text-muted-foreground">Grade {cls.grade}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {globalSearchResults?.sections?.length > 0 && (
+                      <div className="p-2 border-t">
+                        <div className="text-xs font-semibold text-muted-foreground px-2 py-1">Sections</div>
+                        {globalSearchResults.sections.slice(0, 5).map((section: any) => (
+                          <div
+                            key={section.id}
+                            onClick={() => {
+                              window.location.href = `/admin/class-sections/${section.class?.id}`;
+                            }}
+                            className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                          >
+                            <Hash className="h-4 w-4" />
+                            <span>Section {section.name}</span>
+                            <span className="text-xs text-muted-foreground">{section.class?.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Students Table Card */}

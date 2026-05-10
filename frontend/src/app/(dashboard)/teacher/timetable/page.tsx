@@ -208,7 +208,7 @@ const TeacherTimetablePage = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">My Timetable</h1>
+          <h1 className="text-2xl font-bold text-black">My Timetable</h1>
           <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 hidden sm:block">
             Professional weekly view for school hours {schoolStartTime} to {schoolEndTime}
           </p>
@@ -434,42 +434,7 @@ const TeacherTimetablePage = () => {
         </CardContent>
       </Card>
 
-      {/* Class Distribution by Day */}
-      <Card className="dark:bg-[#1E293B] dark:border-[#334155]">
-        <CardHeader className="pb-2 md:pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg md:text-xl dark:text-white">
-            <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-green-400" />
-            Class Distribution
-          </CardTitle>
-          <CardDescription className="text-xs md:text-sm dark:text-gray-400">Number of classes per day</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-5 gap-1 md:gap-4">
-            {weekdays.map((day) => {
-              const dayClasses = getTimetableForDay(day.value);
-              const isToday = todayIsWeekday && day.value === todayDayOfWeek;
-              
-              return (
-                <div 
-                  key={day.value}
-                  className={`p-2 md:p-4 rounded-lg md:rounded-xl text-center transition-all ${
-                    isToday ? 'bg-[#e35336]/10 dark:bg-[#e35336]/20 border-2 border-[#e35336] shadow-sm shadow-[#e35336]/20' : 'bg-gray-50 dark:bg-[#0F172A] border-2 border-transparent'
-                  }`}
-                >
-                  <p className={`text-xs font-medium ${isToday ? 'text-[#e35336]' : 'text-gray-500 dark:text-gray-400'}`}>
-                    <span className="hidden md:inline">{day.name}</span>
-                    <span className="md:hidden">{day.name.slice(0, 3)}</span>
-                  </p>
-                  <p className={`text-lg md:text-2xl font-bold mt-1 md:mt-2 ${isToday ? 'text-[#e35336]' : 'text-gray-900 dark:text-white'}`}>
-                    {dayClasses.length}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">classes</p>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+     
     </div>
   );
 };

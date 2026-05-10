@@ -11,6 +11,7 @@ interface RecipientOption {
   className?: string;
   section?: string;
   childName?: string;
+  subjectNames?: string[];
 }
 
 interface NewMessageModalProps {
@@ -52,23 +53,57 @@ export default function NewMessageModal({
         const children = response.data?.children || response.data || [];
         const teacherMap = new Map<string, RecipientOption>();
         for (const child of children) {
-          const teacher = child.homeroomTeacher;
-          if (!teacher?.id || !teacher?.name) continue;
-          const existing = teacherMap.get(teacher.id);
-          if (existing) {
-            if (child.name && !existing.childName?.includes(child.name)) {
-              existing.childName = existing.childName ? `${existing.childName}, ${child.name}` : child.name;
+          const relatedTeachers = [
+            ...(child.homeroomTeacher
+              ? [{ ...child.homeroomTeacher, subjects: [] }]
+              : []),
+            ...(Array.isArray(child.teachingTeachers)
+              ? child.teachingTeachers
+              : []),
+          ];
+
+          for (const teacher of relatedTeachers) {
+            if (!teacher?.id || !teacher?.name) continue;
+
+            const existing = teacherMap.get(teacher.id);
+            const incomingSubjects = Array.isArray(teacher.subjects)
+              ? teacher.subjects.filter(Boolean)
+              : [];
+
+            if (existing) {
+              if (child.name && !existing.childName?.includes(child.name)) {
+                existing.childName = existing.childName
+                  ? `${existing.childName}, ${child.name}`
+                  : child.name;
+              }
+              if (incomingSubjects.length > 0) {
+                existing.subjectNames = Array.from(
+                  new Set([
+                    ...(existing.subjectNames || []),
+                    ...incomingSubjects,
+                  ]),
+                );
+              }
+              continue;
             }
-            continue;
+
+            teacherMap.set(teacher.id, {
+              id: teacher.id,
+              name: teacher.name,
+              childName: child.name,
+              subjectNames: incomingSubjects,
+            });
           }
-          teacherMap.set(teacher.id, { id: teacher.id, name: teacher.name, childName: child.name });
         }
         const query = searchQuery.trim().toLowerCase();
         const filtered = Array.from(teacherMap.values()).filter(
           (teacher) =>
             !query ||
             teacher.name.toLowerCase().includes(query) ||
-            teacher.childName?.toLowerCase().includes(query),
+            teacher.childName?.toLowerCase().includes(query) ||
+            teacher.subjectNames?.some((subject) =>
+              subject.toLowerCase().includes(query),
+            ),
         );
         setAllStudents(Array.from(teacherMap.values()));
         setStudents(filtered);
@@ -122,7 +157,11 @@ export default function NewMessageModal({
       allStudents.filter(
         (student) =>
           student.name.toLowerCase().includes(normalizedQuery) ||
-          student.className?.toLowerCase().includes(normalizedQuery),
+          student.className?.toLowerCase().includes(normalizedQuery) ||
+          student.childName?.toLowerCase().includes(normalizedQuery) ||
+          student.subjectNames?.some((subject) =>
+            subject.toLowerCase().includes(normalizedQuery),
+          ),
       ),
     );
   };
@@ -285,7 +324,12 @@ export default function NewMessageModal({
                           <div>
                             <span className="block font-medium text-slate-900 dark:text-white">{student.name}</span>
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {student.className} - Section {student.section}
+                              {student.className && student.section
+                                ? `${student.className} - Section ${student.section}`
+                                : student.childName || ""}
+                              {!student.className && student.subjectNames?.length
+                                ? `${student.childName ? " • " : ""}${student.subjectNames.join(", ")}`
+                                : ""}
                             </span>
                           </div>
                         </div>

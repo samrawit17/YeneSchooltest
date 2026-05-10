@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { academicYearsAPI, financeAPI, gradingAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import {
   User,
   Calendar,
@@ -221,6 +222,7 @@ const getGradeStatus = (avg: number): { text: string; color: string } => {
 };
 
 const ParentDashboard = () => {
+  const { displayTermName, periodLabel } = useAcademicYear();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -385,7 +387,16 @@ const ParentDashboard = () => {
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-[#e35336]">Parent Dashboard</h1>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <h1 className="text-2xl font-bold text-black dark:text-white">
+                Parent Dashboard
+              </h1>
+              {displayTermName ? (
+                <div className="text-base font-semibold text-black sm:text-lg">
+                  Current {periodLabel}: {displayTermName}
+                </div>
+              ) : null}
+            </div>
             <p className="text-gray-500 dark:text-gray-400 mt-1">
               Monitor your children's academic progress
             </p>
