@@ -1158,8 +1158,9 @@ export class AttendanceService {
       );
     }
 
+    const sessionDate = new Date(session.date);
+
     if (!academicYearName) {
-      const sessionDate = new Date(session.date);
       const academicYear = await this.findAcademicYearByDate(
         session.schoolId,
         sessionDate,

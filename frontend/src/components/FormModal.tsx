@@ -206,13 +206,13 @@ const forms: {
       />
     );
   },
-  class: (type, data) => (
+  class: (type, data, onClose) => (
     // @ts-expect-error - Type mismatch expected for form props
-    <ClassForm type={type} data={data} />
+    <ClassForm type={type} data={data} onSuccess={onClose} onCancel={onClose} />
   ),
-  section: (type, data) => (
+  section: (type, data, onClose) => (
     // @ts-expect-error - Type mismatch expected for form props
-    <SectionForm type={type} data={data} />
+    <SectionForm type={type} data={data} onSuccess={onClose} onCancel={onClose} />
   ),
   academic_year: (type, data) => (
     // @ts-expect-error - Type mismatch expected for form props

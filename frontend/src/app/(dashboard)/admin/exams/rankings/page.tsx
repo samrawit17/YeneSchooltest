@@ -126,7 +126,7 @@ export default function StudentRankingsPage() {
     <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A] min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">Student Rankings</h1>
+          <h1 className="text-2xl font-bold text-black">Student Rankings</h1>
           <p className="text-gray-500">Calculate and view student performance rankings</p>
         </div>
       </div>

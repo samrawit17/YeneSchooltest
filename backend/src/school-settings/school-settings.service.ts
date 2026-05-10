@@ -72,6 +72,7 @@ export const SCHOOL_SETTING_KEYS = {
   SCHOOL_EMAIL: 'school_email',
   LOGO_URL: 'logo_url',
   THEME_COLOR: 'theme_color',
+  BRAND_COLOR_IN_NAVIGATION: 'BRAND_COLOR_IN_NAVIGATION',
   TEACHER_PORTAL_ACCESS: 'TEACHER_PORTAL_ACCESS',
   STUDENT_PORTAL_ACCESS: 'STUDENT_PORTAL_ACCESS',
   PARENT_PORTAL_ACCESS: 'PARENT_PORTAL_ACCESS',
@@ -111,6 +112,7 @@ export class SchoolSettingsService {
   ] as const;
   private readonly booleanKeys = new Set([
     SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES,
+    SCHOOL_SETTING_KEYS.BRAND_COLOR_IN_NAVIGATION,
     'ALLOW_SELF_ENROLLMENT',
     'ATTENDANCE_TRACKING',
     'LATE_MARKING',
@@ -240,6 +242,24 @@ export class SchoolSettingsService {
       if (!isValidTime) {
         throw new BadRequestException(
           'ATTENDANCE_CUTOFF_TIME must be in 24-hour HH:mm format',
+        );
+      }
+      return normalizedValue;
+    }
+
+    if (
+      key === SCHOOL_SETTING_KEYS.THEME_COLOR ||
+      key === SCHOOL_SETTING_KEYS.NAVIGATION_BG_COLOR ||
+      key === SCHOOL_SETTING_KEYS.NAVBAR_BG_COLOR ||
+      key === SCHOOL_SETTING_KEYS.MENU_BG_COLOR ||
+      key === SCHOOL_SETTING_KEYS.LAYOUT_BG_COLOR ||
+      key === SCHOOL_SETTING_KEYS.FOOTER_BG_COLOR
+    ) {
+      const normalizedValue = String(value || '').trim();
+      const isValidHexColor = /^#([0-9A-Fa-f]{6})$/.test(normalizedValue);
+      if (!isValidHexColor) {
+        throw new BadRequestException(
+          `${key} must be a valid hex color in #RRGGBB format`,
         );
       }
       return normalizedValue;

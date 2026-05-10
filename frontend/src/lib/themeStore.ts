@@ -50,10 +50,32 @@ export const useThemeStore = create<ThemeState>()(
       
       initializeTheme: () => {
         if (!isClient) return
-        const stored = localStorage.getItem('theme') as Theme | null
-        if (stored && ['light', 'dark', 'system'].includes(stored)) {
-          set({ theme: stored })
-          const resolved = stored === 'system' ? getSystemTheme() : stored
+        let storedTheme: Theme | null = null
+
+        try {
+          const persisted = localStorage.getItem('theme-storage')
+          if (persisted) {
+            const parsed = JSON.parse(persisted)
+            const persistedTheme = parsed?.state?.theme
+            if (persistedTheme && ['light', 'dark', 'system'].includes(persistedTheme)) {
+              storedTheme = persistedTheme as Theme
+            }
+          }
+        } catch {
+          storedTheme = null
+        }
+
+        // Legacy fallback if an older plain `theme` key exists
+        if (!storedTheme) {
+          const legacyTheme = localStorage.getItem('theme') as Theme | null
+          if (legacyTheme && ['light', 'dark', 'system'].includes(legacyTheme)) {
+            storedTheme = legacyTheme
+          }
+        }
+
+        if (storedTheme) {
+          set({ theme: storedTheme })
+          const resolved = storedTheme === 'system' ? getSystemTheme() : storedTheme
           set({ resolvedTheme: resolved })
           
           const root = window.document.documentElement

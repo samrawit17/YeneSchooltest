@@ -16,6 +16,16 @@ import { getCurrentEthiopianYear } from "@/lib/calendar-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { queryKeys } from "@/lib/query-keys";
 
+const isValidHexColor = (value?: string | null): value is string =>
+  !!value && /^#([0-9A-Fa-f]{6})$/.test(value);
+
+const hexToRgb = (hex: string) => ({
+  r: parseInt(hex.slice(1, 3), 16),
+  g: parseInt(hex.slice(3, 5), 16),
+  b: parseInt(hex.slice(5, 7), 16),
+});
+
+
 export default function DashboardLayout({
   children,
 }: {
@@ -74,25 +84,42 @@ export default function DashboardLayout({
     staleTime: 60000,
   });
 
+  const { data: useBrandColorInNavigation } = useQuery({
+    queryKey: queryKeys.school.setting('BRAND_COLOR_IN_NAVIGATION', user?.schoolId),
+    queryFn: async () => {
+      if (!user?.schoolId) return true;
+      try {
+        const response = await schoolSettingsAPI.get(user.schoolId, 'BRAND_COLOR_IN_NAVIGATION');
+        return response.data?.value ?? true;
+      } catch {
+        return true;
+      }
+    },
+    enabled: !!user?.schoolId,
+    staleTime: 60000,
+  });
+
+
   useEffect(() => {
-    if (brandColor && brandColor !== '#e35336') {
+    if (isValidHexColor(brandColor) && brandColor !== '#e35336') {
       const hex = brandColor;
-      const r = parseInt(hex.slice(1, 3), 16) / 255;
-      const g = parseInt(hex.slice(3, 5), 16) / 255;
-      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const { r, g, b } = hexToRgb(hex);
+      const red = r / 255;
+      const green = g / 255;
+      const blue = b / 255;
       const root = document.documentElement;
       root.style.setProperty('--brand-color', hex);
-      root.style.setProperty('--brand-color-rgb', `${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}`);
+      root.style.setProperty('--brand-color-rgb', `${r}, ${g}, ${b}`);
       // Convert hex to HSL for shadcn's --primary variable
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const max = Math.max(red, green, blue), min = Math.min(red, green, blue);
       let h = 0, s = 0, l = (max + min) / 2;
       if (max !== min) {
         const d = max - min;
         s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
         switch (max) {
-          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-          case g: h = ((b - r) / d + 2) / 6; break;
-          case b: h = ((r - g) / d + 4) / 6; break;
+          case red: h = ((green - blue) / d + (green < blue ? 6 : 0)) / 6; break;
+          case green: h = ((blue - red) / d + 2) / 6; break;
+          case blue: h = ((red - green) / d + 4) / 6; break;
         }
       }
       const hslH = Math.round(h * 360);
@@ -108,6 +135,7 @@ export default function DashboardLayout({
       root.style.setProperty('--ring', '10 75% 55%');
     }
   }, [brandColor]);
+
 
 
 
@@ -157,11 +185,18 @@ export default function DashboardLayout({
     <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
       {/* Desktop Sidebar */}
       <aside
-        className={`hidden md:flex flex-col bg-[#F1F5F9] dark:bg-[#111827] shadow-sm border-r border-gray-200 dark:border-[#334155] transition-all duration-300 ease-in-out relative ${sidebarCollapsed ? 'w-20' : 'w-64'
-          }`}
+        className={`hidden md:flex flex-col shadow-sm border-r dark:bg-[#111827] dark:border-[#334155] transition-all duration-300 ease-in-out relative ${
+          useBrandColorInNavigation !== false
+            ? 'bg-[rgba(var(--brand-color-rgb),0.18)] border-[rgba(var(--brand-color-rgb),0.22)]'
+            : 'bg-[#F1F5F9] border-gray-200'
+        } ${sidebarCollapsed ? 'w-20' : 'w-64'}`}
       >
         {/* Logo */}
-        <div className={`flex items-center justify-center p-4 border-b border-gray-200 dark:border-[#334155] shrink-0`}>
+        <div className={`flex items-center justify-center p-4 border-b dark:border-[#334155] shrink-0 ${
+          useBrandColorInNavigation !== false
+            ? 'border-[rgba(var(--brand-color-rgb),0.18)]'
+            : 'border-gray-200'
+        }`}>
           {isSchoolLoading ? (
             <Skeleton className="h-8 w-8 rounded-xl" />
           ) : sidebarCollapsed ? (
@@ -181,7 +216,7 @@ export default function DashboardLayout({
               </div>
             )
           ) : (
-            <span className="text-xl font-bold text-[#e35336] dark:text-white">
+            <span className="text-2xl font-bold text-slate-900 dark:text-white">
               {school?.name || "SMS Portal"}
             </span>
           )}
@@ -189,12 +224,19 @@ export default function DashboardLayout({
 
         {/* Navigation Menu */}
         <div className="flex-1 overflow-y-auto m-4">
-          <Menu collapsed={sidebarCollapsed} />
+          <Menu
+            collapsed={sidebarCollapsed}
+            useBrandNavigation={useBrandColorInNavigation !== false}
+          />
         </div>
 
         {/* User Info */}
-        <div className="m-4 border-t border-gray-200 dark:border-[#334155]">
-          <div className={`flex items-center gap-3 p-3 bg-white dark:bg-[#1E293B] rounded-lg mt-4 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+        <div className={`m-4 border-t dark:border-[#334155] ${
+          useBrandColorInNavigation !== false
+            ? 'border-[rgba(var(--brand-color-rgb),0.18)]'
+            : 'border-gray-200'
+        }`}>
+          <div className={`flex items-center gap-3 p-3 rounded-lg mt-4 border border-white/60 bg-white/80 backdrop-blur dark:border-slate-700/70 dark:bg-[#1E293B] ${sidebarCollapsed ? 'justify-center' : ''}`}>
             <Image
               src="/avatar.svg"
               alt={user?.name || "User"}
@@ -204,10 +246,10 @@ export default function DashboardLayout({
             />
             {!sidebarCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 dark:text-white truncate">
+                <p className="text-sm font-medium text-slate-800 dark:text-white truncate">
                   {user?.name || "User"}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                <p className="text-xs text-slate-500 dark:text-gray-400 truncate">
                   {user?.email || ""}
                 </p>
               </div>
@@ -218,12 +260,16 @@ export default function DashboardLayout({
         {/* Collapse Toggle Button */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="absolute top-1/2 -right-3 transform -translate-y-1/2 bg-[#F1F5F9] dark:bg-[#1E293B] border border-gray-200 dark:border-[#334155] rounded-full p-1 shadow-md hover:bg-gray-200 dark:hover:bg-[#334155] transition-colors z-50"
+          className={`absolute top-1/2 -right-3 transform -translate-y-1/2 rounded-full border p-1 shadow-md backdrop-blur transition-colors z-50 dark:border-[#334155] dark:bg-[#1E293B] dark:hover:bg-[#334155] ${
+            useBrandColorInNavigation !== false
+              ? 'border-[rgba(var(--brand-color-rgb),0.22)] bg-white/90 hover:bg-[rgba(var(--brand-color-rgb),0.2)]'
+              : 'border-gray-200 bg-white hover:bg-gray-100'
+          }`}
         >
           {sidebarCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-gray-600 dark:text-white" />
+            <ChevronRight className="w-4 h-4 text-slate-700 dark:text-white" />
           ) : (
-            <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-white" />
+            <ChevronLeft className="w-4 h-4 text-slate-700 dark:text-white" />
           )}
         </button>
       </aside>
@@ -231,7 +277,10 @@ export default function DashboardLayout({
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-visible transition-all duration-300 ease-in-out">
         {/* Top Navbar */}
-        <Navbar sidebarCollapsed={sidebarCollapsed} />
+        <Navbar
+          sidebarCollapsed={sidebarCollapsed}
+          useBrandNavigation={useBrandColorInNavigation !== false}
+        />
 
         {/* Breadcrumb Navigation */}
         <Breadcrumb />

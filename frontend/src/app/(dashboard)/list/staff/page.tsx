@@ -265,7 +265,7 @@ export default function StaffPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
                           <Link
-                            href={`/list/staff/${item.id}`}
+                            href={`/list/users/${item.id}`}
                             className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                             title="View"
                           >

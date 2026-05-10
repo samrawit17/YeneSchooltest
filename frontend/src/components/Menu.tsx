@@ -53,6 +53,7 @@ import {
   Bookmark,
   Key,
   ShieldCheck,
+  HelpCircle,
 } from "lucide-react";
 
 // Helper function to get dashboard path based on role
@@ -457,12 +458,26 @@ const menuItems: MenuSection[] = [
         href: "/settings/school",
         visible: ["admin", "it_manager"],
       },
+      {
+        icon: <HelpCircle className="w-5 h-5" />,
+        label: "Help Center",
+        href: "/help",
+        visible: ["super_admin", "admin", "it_manager", "teacher", "student", "parent", "registrar", "finance"],
+      },
     ],
   },
 
 ];
 
-const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemClick?: () => void }) => {
+const Menu = ({
+  collapsed = false,
+  onItemClick,
+  useBrandNavigation = true,
+}: {
+  collapsed?: boolean;
+  onItemClick?: () => void;
+  useBrandNavigation?: boolean;
+}) => {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
@@ -755,7 +770,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
     <div className="mt-6 font-sans">
       {menuItems.map((section) => (
         <div className="flex flex-col gap-2 mb-6" key={section.title}>
-          <span className={`text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider px-4 py-2 ${collapsed ? 'hidden' : ''}`}>
+          <span className={`text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider px-4 py-2 ${collapsed ? 'hidden' : ''}`}>
             {section.title}
           </span>
           {section.items.map((item) => {
@@ -781,9 +796,13 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
               ? getDashboardPath(user?.role)
               : item.href;
 
+            const isSchoolSettingsRoute =
+              actualHref === "/settings/school" &&
+              !!pathname?.match(/^\/list\/schools\/[^/]+\/settings$/);
+
             // More specific active state matching
             // Only match exact path for root routes, or paths with trailing slash
-            const isExactMatch = pathname === actualHref;
+            const isExactMatch = pathname === actualHref || isSchoolSettingsRoute;
             const isChildMatch = pathname?.startsWith(actualHref + "/");
 
             // Special case: /parent should not match /parent/children, /parent/fees, etc.
@@ -838,8 +857,12 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                 <div key={`${item.label}-${item.href}`}>
                   <div
                     className={`flex items-center justify-start gap-3 py-3 px-4 rounded-lg transition-colors relative ${isActive && !parentWithSameChild
-                      ? "bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] text-black font-medium"
-                      : "text-black dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#1E293B]"
+                      ? useBrandNavigation
+                        ? "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
+                        : "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
+                      : useBrandNavigation
+                        ? "text-slate-800 dark:text-gray-200 hover:bg-white/55 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
+                        : "text-slate-800 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                       } ${collapsed ? 'justify-center' : ''}`}
                     title={collapsed ? item.label : undefined}
                   >
@@ -847,7 +870,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                       <div
                         className={`flex items-center flex-1 gap-3 cursor-default ${collapsed ? 'justify-center' : ''}`}
                       >
-                        <div className={`relative ${isActive || submenuActive ? "text-black" : "text-black dark:text-gray-300"}`}>
+                        <div className="relative text-slate-900 dark:text-white">
                           {item.icon}
                         </div>
                         <span className={`text-sm ${collapsed ? 'hidden' : ''} ${isActive || submenuActive ? "font-medium" : ""}`}>
@@ -861,7 +884,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                         onClick={() => onItemClick?.()}
                         className={`flex items-center flex-1 gap-3 ${collapsed ? 'justify-center' : ''}`}
                       >
-                        <div className={`relative ${isActive && !parentWithSameChild || submenuActive ? "text-black" : "text-black dark:text-gray-300"}`}>
+                        <div className="relative text-slate-900 dark:text-white">
                           {item.icon}
                         </div>
                         <span className={`text-sm ${collapsed ? 'hidden' : ''} ${isActive && !parentWithSameChild ? "font-medium" : ""}`}>
@@ -885,9 +908,9 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                         className="ml-auto p-1"
                       >
                         {isOpen ? (
-                          <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                          <ChevronDown className="w-4 h-4 text-slate-500 dark:text-gray-400" />
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                          <ChevronRight className="w-4 h-4 text-slate-500 dark:text-gray-400" />
                         )}
                       </button>
                     )}
@@ -898,7 +921,7 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
 
                   {/* Related children */}
                   {hasVisibleChildren && !collapsed && isOpen && (
-                    <div className="ml-4 pl-2 border-l border-gray-200 dark:border-gray-700 space-y-1">
+                    <div className={`ml-4 pl-2 border-l dark:border-gray-700 space-y-1 ${useBrandNavigation ? "border-white/55" : "border-gray-200"}`}>
                       {visibleChildren.map((child) => {
                         const childHref = child.href;
                         const isChildActive = pathname === childHref;
@@ -910,11 +933,15 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
                             onClick={() => onItemClick?.()}
                             className={`flex items-center gap-3 py-2 px-4 rounded-lg transition-colors ${
                               isChildActive
-                                ? "bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] text-black font-medium"
-                                : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1E293B]"
+                                ? useBrandNavigation
+                                  ? "bg-[rgba(var(--brand-color-rgb),0.34)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.34)] dark:text-white"
+                                  : "bg-[rgba(var(--brand-color-rgb),0.34)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.34)] dark:text-white"
+                                : useBrandNavigation
+                                  ? "text-slate-600 dark:text-gray-300 hover:bg-white/55 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
+                                  : "text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                             }`}
                           >
-                            <div className={isChildActive ? "text-black" : "text-gray-500 dark:text-gray-400"}>
+                            <div className="text-slate-900 dark:text-white">
                               {child.icon}
                             </div>
                             <span className="text-sm">{child.label}</span>
@@ -941,10 +968,10 @@ const Menu = ({ collapsed = false, onItemClick }: { collapsed?: boolean; onItemC
             onItemClick?.();
             logout();
           }}
-          className={`flex items-center justify-start gap-3 text-gray-700 dark:text-white py-3 px-4 rounded-lg hover:bg-gray-100 dark:hover:bg-[#1E293B] transition-colors w-full ${collapsed ? 'justify-center' : ''}`}
+          className={`flex items-center justify-start gap-3 text-slate-700 dark:text-white py-3 px-4 rounded-lg transition-colors w-full ${collapsed ? 'justify-center' : ''} ${useBrandNavigation ? 'hover:bg-white/55 dark:hover:bg-[#1E293B]' : 'hover:bg-slate-100 dark:hover:bg-[#1E293B]'}`}
           title={collapsed ? "Logout" : undefined}
         >
-          <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          <LogOut className="w-5 h-5 text-slate-500 dark:text-gray-300" />
           <span className={`text-sm font-medium ${collapsed ? 'hidden' : ''}`}>
             Logout
           </span>

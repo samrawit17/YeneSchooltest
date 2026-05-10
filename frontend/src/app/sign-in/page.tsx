@@ -154,7 +154,7 @@ const LoginPage = () => {
         <div className="w-full max-w-sm space-y-8">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-2 rounded-xl">
+            <div className="rounded-xl bg-[var(--brand-color,#e35336)] p-2">
               <School className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-semibold text-gray-900">EduPortal</span>
@@ -273,7 +273,7 @@ const LoginPage = () => {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 bg-[#e35336] hover:bg-[#c6452a] text-white transition-colors"
+                className="h-12 w-full bg-[var(--brand-color,#e35336)] text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -295,7 +295,7 @@ const LoginPage = () => {
             Don't have an account?{" "}
             <Button
               variant="link"
-              className="text-[#e35336] hover:text-[#c6452a] p-0 h-auto font-medium"
+              className="h-auto p-0 font-medium text-[var(--brand-color,#e35336)] hover:opacity-80"
               asChild
             >
               <Link href="/enroll">Sign up</Link>

@@ -324,7 +324,7 @@ export default function AcademicYearsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e35336]"></div>
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-[var(--brand-color,#e35336)]"></div>
       </div>
     );
   }
@@ -334,12 +334,12 @@ export default function AcademicYearsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl mt-3 font-bold text-[#e35336]">Unified Academic Management</h1>
+          <h1 className="mt-3 text-2xl font-bold text-[var(--brand-color,#e35336)]">Unified Academic Management</h1>
           <p className="text-gray-600 dark:text-gray-400">Configure your school's academic structure and calendars</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-[#e35336] text-white rounded-lg hover:bg-[#d14830]"
+          className="rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
         >
           + New Academic Year
         </button>
@@ -356,7 +356,7 @@ export default function AcademicYearsPage() {
             const year = academicYears.find(y => y.id === e.target.value);
             setSelectedYear(year || null);
           }}
-          className="w-full max-w-md px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+          className="w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
         >
           {academicYears.map(year => {
               const status = getYearStatus(year);
@@ -430,7 +430,7 @@ export default function AcademicYearsPage() {
                             <button
                               onClick={() => openEditTerm(term)}
                               disabled={term.isLocked}
-                              className="text-[#e35336] hover:text-[#d14830] disabled:opacity-50"
+                              className="text-[var(--brand-color,#e35336)] hover:opacity-80 disabled:opacity-50"
                             >
                               Edit
                             </button>
@@ -469,7 +469,7 @@ export default function AcademicYearsPage() {
               <button
                 onClick={() => handleActivateYear(selectedYear.id)}
                 disabled={saving || getTotalWeight() !== 100}
-                className="px-6 py-2 bg-[#e35336] text-white rounded-lg hover:bg-[#d14830] disabled:opacity-50"
+                className="rounded-lg bg-[var(--brand-color,#e35336)] px-6 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20 disabled:opacity-50"
               >
                 Activate Academic Year
               </button>
@@ -543,7 +543,7 @@ export default function AcademicYearsPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-[#e35336] text-white rounded-lg hover:bg-[#d14830]"
+                  className="rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
                 >
                   {saving ? 'Creating...' : 'Create'}
                 </button>
@@ -628,7 +628,7 @@ export default function AcademicYearsPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-[#e35336] text-white rounded-lg hover:bg-[#d14830]"
+                  className="rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
                 >
                   {saving ? 'Saving...' : editingTerm ? 'Update' : 'Create'}
                 </button>

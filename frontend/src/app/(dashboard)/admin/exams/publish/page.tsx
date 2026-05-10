@@ -332,11 +332,9 @@ export default function PublishResultsPage() {
         <div className="mx-auto max-w-7xl px-6 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/20">
-                <Send className="h-6 w-6" />
-              </div>
+
               <div>
-                <h1 className="text-2xl font-bold text-[#e35336]">
+                <h1 className="text-2xl font-bold text-black">
                   Publish Results
                 </h1>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">

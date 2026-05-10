@@ -6,14 +6,16 @@ import { classesAPI, academicYearsAPI, schoolSettingsAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
-import InputField from "@/components/InputField";
+import { Loader2 } from "lucide-react";
 
 interface ClassFormProps {
   type: "create" | "update";
   data?: any;
+  onSuccess?: () => void;
+  onCancel?: () => void;
 }
 
-const ClassForm = ({ type, data }: ClassFormProps) => {
+const ClassForm = ({ type, data, onSuccess, onCancel }: ClassFormProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -27,7 +29,6 @@ const ClassForm = ({ type, data }: ClassFormProps) => {
 
   const queryClient = useQueryClient();
 
-  // Fetch school settings
   const { data: settingsData } = useQuery({
     queryKey: queryKeys.school.classForm,
     queryFn: async () => {
@@ -38,7 +39,6 @@ const ClassForm = ({ type, data }: ClassFormProps) => {
     enabled: !!user?.schoolId,
   });
 
-  // Fetch academic years
   const { data: academicYears } = useQuery({
     queryKey: queryKeys.academicYears.all,
     queryFn: async () => {
@@ -49,11 +49,7 @@ const ClassForm = ({ type, data }: ClassFormProps) => {
 
   useEffect(() => {
     if (settingsData) {
-      const settings: Record<string, any> = {};
-      settingsData.forEach((s: any) => {
-        settings[s.key] = s.value;
-      });
-      setSchoolSettings(settings);
+      setSchoolSettings(settingsData);
     }
   }, [settingsData]);
 
@@ -106,6 +102,7 @@ const ClassForm = ({ type, data }: ClassFormProps) => {
         type === "create" ? "Class created successfully" : "Class updated successfully"
       );
       queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
+      if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || `Failed to ${type} class`);
@@ -114,8 +111,7 @@ const ClassForm = ({ type, data }: ClassFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate grade range
+
     if (formData.grade < gradeRange.min || formData.grade > gradeRange.max) {
       toast.error(`Grade must be between ${gradeRange.min} and ${gradeRange.max}`);
       return;
@@ -125,96 +121,119 @@ const ClassForm = ({ type, data }: ClassFormProps) => {
     try {
       await mutation.mutateAsync();
     } catch (error) {
-      // Error handled by mutation
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClass = "w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all";
+  const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+
   return (
-    <form onSubmit={handleSubmit} className="p-6">
-      <div className="space-y-4">
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mb-4">
-          <p className="text-sm text-blue-700 dark:text-blue-300">
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-3">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-2.5 rounded-lg">
+          <p className="text-xs text-blue-700 dark:text-blue-300">
             <strong>Grade System:</strong> {gradeRange.labels}
             {schoolSettings?.grade_system && (
-              <span className="ml-2 text-xs">(Configured in school settings)</span>
+              <span className="ml-1.5">(Configured in school settings)</span>
             )}
           </p>
         </div>
-        
-        <InputField
-          label="Grade"
-          name="grade"
-          type="number"
-          value={formData.grade}
-          onChange={(e) => setFormData({ ...formData, grade: parseInt(e.target.value) })}
-          required
-          placeholder={`Enter grade (${gradeRange.min}-${gradeRange.max})`}
-          inputProps={{ min: gradeRange.min, max: gradeRange.max }}
-        />
-        <InputField
-          label="Class Name"
-          name="name"
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Enter class name (optional)"
-        />
-        <InputField
-          label="Section"
-          name="section"
-          type="text"
-          value={formData.section}
-          onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-          required
-          placeholder="Enter section (e.g., A, B, C)"
-        />
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">Academic Year</label>
-          <select
-            value={formData.academicYearId}
-            onChange={(e) => setFormData({ ...formData, academicYearId: e.target.value })}
-            required
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Academic Year</option>
-            {academicYears?.map((year: any) => (
-              <option key={year.id} value={year.id}>
-                {year.name}
-              </option>
-            ))}
-          </select>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>
+              Grade <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              value={formData.grade}
+              onChange={(e) => setFormData({ ...formData, grade: parseInt(e.target.value) })}
+              required
+              placeholder={`Enter grade (${gradeRange.min}-${gradeRange.max})`}
+              min={gradeRange.min}
+              max={gradeRange.max}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>
+              Section <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.section}
+              onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+              required
+              placeholder="e.g., A, B, C"
+              className={inputClass}
+            />
+          </div>
         </div>
-        
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>
+              Class Name
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Enter class name (optional)"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>
+              Academic Year <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.academicYearId}
+              onChange={(e) => setFormData({ ...formData, academicYearId: e.target.value })}
+              required
+              className={inputClass}
+            >
+              <option value="">Select Academic Year</option>
+              {academicYears?.map((year: any) => (
+                <option key={year.id} value={year.id}>
+                  {year.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {schoolSettings?.DEFAULT_SECTION_CAPACITY && (
-          <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-lg">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               <strong>Section Capacity:</strong> Default capacity is {schoolSettings.DEFAULT_SECTION_CAPACITY} students per section
             </p>
           </div>
         )}
       </div>
-      <div className="flex justify-end gap-3 mt-6">
+
+      <div className="flex justify-end gap-3 mt-6 pt-4 border-t dark:border-slate-700">
         <button
           type="button"
-          onClick={() => window.history.back()}
-          className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          onClick={onCancel ? onCancel : () => window.history.back()}
+          className="px-4 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading || mutation.isPending || !formData.academicYearId}
-          className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 text-white bg-[#e35336] rounded-lg hover:bg-[#d14830] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          {loading ? (
+          {loading || mutation.isPending ? (
             <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2" />
-              Loading...
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
             </>
           ) : (
-            type === "create" ? "Create" : "Update"
+            type === "create" ? "Create Class" : "Update Class"
           )}
         </button>
       </div>

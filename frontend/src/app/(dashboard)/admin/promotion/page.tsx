@@ -14,6 +14,7 @@ import {
   Award,
   TrendingUp,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { classesAPI } from "@/lib/api";
@@ -127,12 +128,12 @@ export default function PromotionPage() {
 
   const handlePromote = async () => {
     if (!selectedNextClass) {
-      alert("Please select a destination class");
+      toast.error("Please select a destination class");
       return;
     }
 
     if (!promoteAll && selectedStudents.size === 0) {
-      alert("Please select students to promote");
+      toast.error("Please select students to promote");
       return;
     }
 
@@ -140,34 +141,57 @@ export default function PromotionPage() {
       ? `Promote ALL students to the next class?`
       : `Promote ${selectedStudents.size} selected student(s) to the next class?`;
 
-    if (!confirm(confirmMessage)) return;
+    toast.warning(confirmMessage, {
+      duration: 10000,
+      style: {
+        width: "420px",
+        maxWidth: "calc(100vw - 2rem)",
+        background: "#ef4444",
+        color: "#ffffff",
+        border: "1px solid rgba(255,255,255,0.18)",
+      },
+      action: {
+        label: "Confirm",
+        onClick: async () => {
+          setActionLoading(true);
+          try {
+            const nextYear = String(parseInt(currentAcademicYear?.name || "2026") + 1);
+            const result = await promotionAPI.bulkPromote({
+              fromClassId: selectedClass,
+              toClassId: selectedNextClass,
+              fromAcademicYear: currentAcademicYear?.name || "",
+              toAcademicYear: nextYear,
+              studentIds: Array.from(selectedStudents),
+              promoteAll,
+              minAverageGrade,
+              minAttendance,
+            });
 
-    setActionLoading(true);
-    try {
-      const nextYear = String(parseInt(currentAcademicYear?.name || "2026") + 1);
-      const result = await promotionAPI.bulkPromote({
-        fromClassId: selectedClass,
-        toClassId: selectedNextClass,
-        fromAcademicYear: currentAcademicYear?.name || "",
-        toAcademicYear: nextYear,
-        studentIds: Array.from(selectedStudents),
-        promoteAll,
-        minAverageGrade,
-        minAttendance,
-      });
+            toast.success(
+              `Promotion complete. Promoted: ${result.data.promoted}, Retained: ${result.data.retained}${
+                result.data.failed > 0 ? `, Failed: ${result.data.failed}` : ""
+              }`
+            );
 
-      alert(
-        `Promotion complete!\nPromoted: ${result.data.promoted}\nRetained: ${result.data.retained}${
-          result.data.failed > 0 ? `\nFailed: ${result.data.failed}` : ""
-        }`
-      );
-
-      fetchPromotionData();
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to promote students");
-    } finally {
-      setActionLoading(false);
-    }
+            fetchPromotionData();
+          } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to promote students");
+          } finally {
+            setActionLoading(false);
+          }
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+      classNames: {
+        actionButton:
+          "!bg-white !text-red-600 hover:!bg-red-50 !border-0 !font-semibold",
+        cancelButton:
+          "!bg-red-500/70 !text-white hover:!bg-red-500 !border !border-white/20 !font-medium",
+      },
+    });
   };
 
   const stats = {
@@ -185,9 +209,7 @@ export default function PromotionPage() {
       <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
-              <GraduationCap className="w-6 h-6 text-white" />
-            </div>
+
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
                 Student Promotion

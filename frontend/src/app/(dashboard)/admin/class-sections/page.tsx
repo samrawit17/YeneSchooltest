@@ -24,8 +24,7 @@ import {
   Search,
   RefreshCw,
   Loader2,
-  Edit2,
-  Trash2,
+  MoreHorizontal,
   ChevronRight,
   Users,
   Hash,
@@ -57,6 +56,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // ===================== TYPES =====================
@@ -96,6 +101,77 @@ type SubjectData = {
   description?: string;
   grade?: number;
 };
+
+function EntityActions({
+  entityLabel,
+  formTable,
+  data,
+  onDelete,
+}: {
+  entityLabel: string;
+  formTable: "class" | "section" | "subject";
+  data: any;
+  onDelete: () => void;
+}) {
+  const [editOpen, setEditOpen] = useState(false);
+
+  return (
+    <div className="flex items-center justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            aria-label={`${entityLabel} actions`}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-36">
+          <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+            Edit
+          </DropdownMenuItem>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full cursor-default select-none items-center rounded-xl px-3 py-2 text-sm text-red-600 outline-none transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+              >
+                Delete
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete {entityLabel}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this {entityLabel.toLowerCase()}? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={onDelete}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <FormModal
+        table={formTable}
+        type="update"
+        data={data}
+        title={`Update ${entityLabel}`}
+        isOpen={editOpen}
+        setIsOpen={setEditOpen}
+      />
+    </div>
+  );
+}
 
 // ===================== MAIN PAGE =====================
 
@@ -359,7 +435,7 @@ export default function AcademicStructurePage() {
             <div className="flex items-start gap-4">
 
               <div>
-                <h1 className="text-2xl font-bold text-[#e35336]">
+                <h1 className="text-2xl font-bold text-black">
                   All Classes and Sections
                 </h1>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -400,13 +476,7 @@ export default function AcademicStructurePage() {
               color: "text-emerald-500",
               bg: "bg-emerald-50 dark:bg-emerald-950/30",
             },
-            {
-              icon: BookOpen,
-              label: "Subjects",
-              value: `${activeSubjects}/${subjects.length}`,
-              color: "text-purple-500",
-              bg: "bg-purple-50 dark:bg-purple-950/30",
-            },
+
             {
               icon: Users,
               label: "Total Capacity",
@@ -551,36 +621,12 @@ export default function AcademicStructurePage() {
                               </div>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <FormModal table="class" type="update" data={cls} />
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <button
-                                      className="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-md transition-all"
-                                      title="Delete class"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Class</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete this class? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDeleteClass(cls.id)}
-                                        className="bg-red-500 hover:bg-red-600"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
+                              <EntityActions
+                                entityLabel="Class"
+                                formTable="class"
+                                data={cls}
+                                onDelete={() => handleDeleteClass(cls.id)}
+                              />
                             </TableCell>
                           </TableRow>
                         ))}
@@ -667,36 +713,12 @@ export default function AcademicStructurePage() {
                               )}
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <FormModal table="section" type="update" data={sec} />
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <button
-                                      className="w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-md transition-all"
-                                      title="Delete section"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Section</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete this section? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDeleteSection(sec.id)}
-                                        className="bg-red-500 hover:bg-red-600"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
+                              <EntityActions
+                                entityLabel="Section"
+                                formTable="section"
+                                data={sec}
+                                onDelete={() => handleDeleteSection(sec.id)}
+                              />
                             </TableCell>
                           </TableRow>
                         ))}
@@ -711,91 +733,84 @@ export default function AcademicStructurePage() {
           {/* ========== SUBJECTS TAB ========== */}
           <TabsContent value="subjects">
             <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <BookOpen className="w-5 h-5 text-purple-500" /> All Subjects
                 </CardTitle>
                 <FormModal table="subject" type="create" />
               </CardHeader>
-              <CardContent className="pt-0">
+              <CardContent>
                 {subjectsLoading ? (
-                  <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
                   </div>
                 ) : filteredSubjects.length === 0 ? (
-                  <div className="text-center py-8">
+                  <div className="text-center py-12">
                     <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
                     <p className="text-gray-500 dark:text-gray-400 font-medium">No subjects found</p>
                     <p className="text-sm text-gray-400 dark:text-gray-500">Create a subject to get started</p>
                   </div>
                 ) : (
-                  <div className="overflow-y-auto max-h-[400px] pr-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {filteredSubjects.map((sub) => (
-                        <div
-                          key={sub.id}
-                          className="p-3 rounded-lg border dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/40 flex items-center justify-center shrink-0">
-                                <BookOpen className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <div className="overflow-x-auto">
+                    <Table className="w-full">
+                      <TableHeader>
+                        <TableRow className="border-b dark:border-slate-700">
+                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Subject Name</TableHead>
+                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Code</TableHead>
+                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Status</TableHead>
+                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden lg:table-cell">Description</TableHead>
+                          <TableHead className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredSubjects.map((sub) => (
+                          <TableRow
+                            key={sub.id}
+                            className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                          >
+                            <TableCell className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/40 flex items-center justify-center">
+                                  <BookOpen className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                  {sub.name}
+                                </span>
                               </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-gray-900 dark:text-white truncate">{sub.name}</p>
-                                {sub.code && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{sub.code}</p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
+                            </TableCell>
+                            <TableCell className="py-3 px-4 hidden md:table-cell">
+                              {sub.code ? (
+                                <span className="font-mono text-gray-600 dark:text-gray-400">{sub.code}</span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3 px-4 hidden md:table-cell">
                               {sub.isActive ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
                                   Active
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
                                   Inactive
                                 </span>
                               )}
-                            </div>
-                          </div>
-                          {sub.description && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 line-clamp-2">{sub.description}</p>
-                          )}
-                          <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t dark:border-slate-700">
-                            <FormModal table="subject" type="update" data={sub} />
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <button
-                                  className="w-7 h-7 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800 text-red-600 dark:text-red-400 transition-all"
-                                  title="Delete subject"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Subject</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete this subject? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDeleteSubject(sub.id)}
-                                    className="bg-red-500 hover:bg-red-600"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 hidden lg:table-cell text-gray-600 dark:text-gray-400 max-w-[200px] truncate">
+                              {sub.description || <span className="text-gray-400">—</span>}
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-right">
+                              <EntityActions
+                                entityLabel="Subject"
+                                formTable="subject"
+                                data={sub}
+                                onDelete={() => handleDeleteSubject(sub.id)}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </CardContent>

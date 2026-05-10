@@ -185,7 +185,7 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
               </div>
               {/* Event markers */}
               <div className="space-y-0.5">
-                {dayEvents.slice(0, 3).map((event, eventIndex) => (
+                {dayEvents.map((event, eventIndex) => (
                   <div
                     key={eventIndex}
                     className={`text-[10px] px-1 py-0.5 rounded truncate font-medium ${getEventColor(event.eventType)}`}
@@ -194,11 +194,6 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
                     {event.title}
                   </div>
                 ))}
-                {dayEvents.length > 3 && (
-                  <div className="text-[10px] text-[var(--brand-color,#e35336)] font-medium">
-                    +{dayEvents.length - 3} more
-                  </div>
-                )}
               </div>
             </div>
           );

@@ -227,7 +227,7 @@ const getInitials = (name: string) => {
 const getRoleBadgeColor = (role: string) => {
   switch (role?.toUpperCase()) {
     case "STUDENT":
-      return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800";
+      return "bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] border-[rgba(var(--brand-color-rgb),0.24)] dark:bg-[rgba(var(--brand-color-rgb),0.18)] dark:text-[var(--brand-color,#e35336)] dark:border-[rgba(var(--brand-color-rgb),0.28)]";
     case "TEACHER":
       return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800";
     case "PARENT":
@@ -344,7 +344,7 @@ export default function UserDetailPage({
                     {user.avatarUrl ? (
                       <AvatarImage src={user.avatarUrl} alt={user.name} />
                     ) : null}
-                    <AvatarFallback className="text-lg sm:text-xl font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
+                    <AvatarFallback className="text-lg sm:text-xl font-bold bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)] dark:text-[var(--brand-color,#e35336)]">
                       {getInitials(user.name)}
                     </AvatarFallback>
                   </Avatar>
@@ -373,19 +373,19 @@ export default function UserDetailPage({
                 {/* Right side - Quick actions */}
                 <div className="flex flex-wrap items-center gap-2 ml-auto">
                   {onEdit && (
-                    <Button variant="outline" size="sm" onClick={onEdit} style={{ borderColor: "#e35336", color: "#e35336" }}>
+                    <Button variant="outline" size="sm" onClick={onEdit}>
                       <Edit2 className="w-4 h-4 mr-1.5" />
                       Edit
                     </Button>
                   )}
                   {onResetPassword && (
-                    <Button variant="outline" size="sm" onClick={onResetPassword} style={{ borderColor: "#e35336", color: "#e35336" }}>
+                    <Button variant="outline" size="sm" onClick={onResetPassword}>
                       <KeyRound className="w-4 h-4 mr-1.5" />
                       Reset Password
                     </Button>
                   )}
                   {onDeactivate && (
-                    <Button variant="outline" size="sm" onClick={onDeactivate} style={{ borderColor: "#e35336", color: "#e35336" }}>
+                    <Button variant="outline" size="sm" onClick={onDeactivate}>
                       <UserX className="w-4 h-4 mr-1.5" />
                       Deactivate
                     </Button>
@@ -397,7 +397,7 @@ export default function UserDetailPage({
                     </Button>
                   )}
                   {onSendMessage && (
-                    <Button size="sm" onClick={onSendMessage} style={{ backgroundColor: "#e35336" }}>
+                    <Button size="sm" onClick={onSendMessage}>
                       <Send className="w-4 h-4 mr-1.5" />
                       Send Message
                     </Button>
@@ -414,10 +414,10 @@ export default function UserDetailPage({
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                    className={`px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                     activeTab === tab.key
-                      ? "border-[#e35336] text-[#e35336]"
-                      : "border-transparent text-gray-500 dark:text-gray-400 hover:text-[#e35336] hover:border-[#e35336]"
+                      ? "border-[var(--brand-color,#e35336)] text-[var(--brand-color,#e35336)]"
+                      : "border-transparent text-gray-500 dark:text-gray-400 hover:text-[var(--brand-color,#e35336)] hover:border-[var(--brand-color,#e35336)]"
                   }`}
                 >
                   {tab.label}

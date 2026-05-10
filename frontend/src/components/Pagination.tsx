@@ -65,7 +65,7 @@ const Pagination = ({
       <button
         onClick={() => setPage(Math.max(1, page - 1))}
         disabled={page === 1}
-        className="flex items-center justify-center w-8 h-8 text-white bg-[var(--brand-color,#e35336)] rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#c74428] hover:shadow-md active:scale-95 transition-all duration-150"
+        className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] text-white shadow-sm transition-all duration-150 hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Previous page"
       >
         <ChevronLeft className="w-4 h-4" />
@@ -92,7 +92,7 @@ const Pagination = ({
               className={`flex items-center justify-center w-8 h-8 text-sm font-medium rounded-md transition-all duration-150 ${
                 page === pageNum
                   ? "bg-[var(--brand-color,#e35336)] text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100 active:bg-gray-200"
+                  : "text-gray-600 hover:bg-[rgba(var(--brand-color-rgb),0.12)] hover:text-[var(--brand-color,#e35336)] active:bg-[rgba(var(--brand-color-rgb),0.18)]"
               }`}
               aria-label={`Go to page ${pageNum}`}
               aria-current={page === pageNum ? "page" : undefined}
@@ -107,7 +107,7 @@ const Pagination = ({
       <button
         onClick={() => setPage(Math.min(totalPages, page + 1))}
         disabled={page === totalPages}
-        className="flex items-center justify-center w-8 h-8 text-white bg-[var(--brand-color,#e35336)] rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#c74428] hover:shadow-md active:scale-95 transition-all duration-150"
+        className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] text-white shadow-sm transition-all duration-150 hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Next page"
       >
         <ChevronRight className="w-4 h-4" />

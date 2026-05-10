@@ -692,7 +692,6 @@ export default function TeacherGradingPage() {
       <div className="flex items-center justify-between">
         <div>
 <h1 className="text-2xl font-bold flex items-center gap-2 text-[#e35336]">
-            <BookOpen className="h-6 w-6" />
             Grade Entry
           </h1>
           <p className="text-muted-foreground text-gray-500 dark:text-gray-400">
@@ -885,44 +884,6 @@ export default function TeacherGradingPage() {
         </Card>
       )}
 
-      {/* Grading Scale Reference */}
-      <Card className="dark:bg-gray-800">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
-            <Calculator className="h-5 w-5" />
-            Grade Scale Reference
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-5 gap-4">
-            <div className="text-center p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-green-800 dark:text-green-400">A</div>
-              <div className="text-sm text-green-700 dark:text-green-400">90-100</div>
-              <div className="text-xs text-green-600 dark:text-green-500">Excellent</div>
-            </div>
-            <div className="text-center p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-blue-800 dark:text-blue-400">B</div>
-              <div className="text-sm text-blue-700 dark:text-blue-400">80-89</div>
-              <div className="text-xs text-blue-600 dark:text-blue-500">Very Good</div>
-            </div>
-            <div className="text-center p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-800 dark:text-yellow-400">C</div>
-              <div className="text-sm text-yellow-700 dark:text-yellow-400">70-79</div>
-              <div className="text-xs text-yellow-600 dark:text-yellow-500">Good</div>
-            </div>
-            <div className="text-center p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-orange-800 dark:text-orange-400">D</div>
-              <div className="text-sm text-orange-700 dark:text-orange-400">60-69</div>
-              <div className="text-xs text-orange-600 dark:text-orange-500">Satisfactory</div>
-            </div>
-            <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-red-800 dark:text-red-400">F</div>
-              <div className="text-sm text-red-700 dark:text-red-400">0-59</div>
-              <div className="text-xs text-red-600 dark:text-red-500">Fail</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

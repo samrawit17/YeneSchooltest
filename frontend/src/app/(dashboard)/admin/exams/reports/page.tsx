@@ -163,7 +163,7 @@ const generateReport = async () => {
     <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A] min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">Exam Reports & Rankings</h1>
+          <h1 className="text-2xl font-bold text-black">Exam Reports & Rankings</h1>
           <p className="text-gray-500">Generate class rankings and publish term results</p>
         </div>
         <AlertDialog>

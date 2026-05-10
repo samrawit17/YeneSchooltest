@@ -33,7 +33,14 @@ export interface Communication {
   createdAt: string;
   updatedAt: string;
   createdBy?: { id: string; name: string; role: string };
-  student?: { id: string; name: string };
+  student?: {
+    id: string;
+    name: string;
+    studentProfile?: {
+      className?: string | null;
+      section?: string | null;
+    } | null;
+  };
   class?: { id: string; name: string; section: string };
   replies?: CommunicationReply[];
   _count?: { replies: number };

@@ -223,7 +223,34 @@ export class TeacherService {
           schoolId,
         },
       },
-      select: { classId: true, sectionId: true },
+      select: {
+        id: true,
+        classId: true,
+        sectionId: true,
+        subjectId: true,
+        class: {
+          select: {
+            id: true,
+            name: true,
+            grade: true,
+            section: true,
+          },
+        },
+        section: {
+          select: {
+            id: true,
+            name: true,
+            roomNumber: true,
+          },
+        },
+        subject: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
     });
     
     const classIds = classSubjects.map(cs => cs.classId);
@@ -293,6 +320,120 @@ export class TeacherService {
       );
     }
 
+    const teachingAssignmentMap = new Map<
+      string,
+      {
+        id: string;
+        class: {
+          id: string;
+          name: string;
+          grade: number | null;
+          section: string | null;
+        };
+        section: {
+          id: string;
+          name: string;
+          roomNumber: string | null;
+        } | null;
+        subject: {
+          id: string;
+          name: string;
+          code: string | null;
+        } | null;
+        room: string | null;
+        schedules: string[];
+        studentCount: number;
+      }
+    >();
+
+    const studentCounts = await Promise.all(
+      classSubjects.map(async (assignment) => {
+        const studentCount = await this.prisma.studentClass.count({
+          where: {
+            schoolId,
+            classId: assignment.classId,
+            sectionId: assignment.sectionId,
+          },
+        });
+
+        return {
+          key: `${assignment.classId}:${assignment.sectionId}:${assignment.subjectId}`,
+          studentCount,
+        };
+      }),
+    );
+
+    const studentCountMap = new Map(
+      studentCounts.map((item) => [item.key, item.studentCount]),
+    );
+
+    for (const assignment of classSubjects) {
+      const key = `${assignment.classId}:${assignment.sectionId}:${assignment.subjectId}`;
+      teachingAssignmentMap.set(key, {
+        id: assignment.id,
+        class: assignment.class,
+        section: assignment.section,
+        subject: assignment.subject,
+        room: assignment.section?.roomNumber || null,
+        schedules: [],
+        studentCount: studentCountMap.get(key) || 0,
+      });
+    }
+
+    const formatSchedule = (slot: {
+      dayOfWeek: number;
+      startTime: string;
+      endTime: string;
+    }) => `${slot.dayOfWeek}|${slot.startTime}-${slot.endTime}`;
+
+    for (const slot of timetableSlots) {
+      const key = `${slot.class.id}:${slot.section?.id || ""}:${slot.subject?.id || ""}`;
+      const existing = teachingAssignmentMap.get(key);
+
+      if (existing) {
+        existing.room = slot.room || existing.room;
+        existing.schedules.push(formatSchedule(slot));
+        continue;
+      }
+
+      const studentCount = slot.section?.id
+        ? await this.prisma.studentClass.count({
+            where: {
+              schoolId,
+              classId: slot.class.id,
+              sectionId: slot.section.id,
+            },
+          })
+        : 0;
+
+      teachingAssignmentMap.set(key, {
+        id: slot.id,
+        class: slot.class,
+        section: slot.section
+          ? {
+              ...slot.section,
+              roomNumber: null,
+            }
+          : null,
+        subject: slot.subject,
+        room: slot.room || null,
+        schedules: [formatSchedule(slot)],
+        studentCount,
+      });
+    }
+
+    const teachingClasses = Array.from(teachingAssignmentMap.values()).map(
+      (item) => ({
+        id: item.id,
+        class: item.class,
+        section: item.section,
+        subject: item.subject,
+        room: item.room,
+        studentCount: item.studentCount,
+        schedules: Array.from(new Set(item.schedules)).sort(),
+      }),
+    );
+
     return {
       homeroomClasses: homeroomClasses.map((cls) => ({
         ...cls,
@@ -300,6 +441,7 @@ export class TeacherService {
       })),
       homeroomSections: homeroomSectionStudentCounts,
       teachingAssignments: timetableSlots,
+      teachingClasses,
     };
   }
 }
