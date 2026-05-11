@@ -2,6 +2,7 @@ import api from "./core";
 
 export const parentsAPI = {
   getChildren: () => api.get("/parents/me/children"),
+  getRelatedTeachers: () => api.get("/parents/me/teachers"),
   getChildById: (childId: string) => api.get(`/parents/me/children/${childId}`),
   createAndLink: (data: {
     email: string;

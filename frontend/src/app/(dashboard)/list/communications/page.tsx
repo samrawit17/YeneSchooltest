@@ -101,9 +101,19 @@ function CategoryBadge({ category }: { category: CommunicationCategory }) {
 
 interface ConversationWithParent extends Communication {
   parentName: string;
+  teacherName: string;
   parentAvatar?: string;
   unreadCount: number;
   lastMessage: string;
+}
+
+function getTeacherDisplayName(conversation: Communication) {
+  const teacherReply = conversation.replies?.find((reply) => reply.sender?.role === "TEACHER");
+  if (teacherReply?.sender?.name) return teacherReply.sender.name;
+  if (conversation.createdBy?.role === "TEACHER" && conversation.createdBy?.name) {
+    return conversation.createdBy.name;
+  }
+  return "Teacher";
 }
 
 function getConversationClassLabel(conversation: ConversationWithParent | Communication) {
@@ -114,6 +124,29 @@ function getConversationClassLabel(conversation: ConversationWithParent | Commun
   if (className) return className;
   if (section) return `Section ${section}`;
   return null;
+}
+
+function getConversationTitle(conversation: ConversationWithParent, viewerRole?: string) {
+  if (viewerRole === "PARENT") return conversation.teacherName || "Teacher";
+  if (viewerRole === "TEACHER") return conversation.parentName || "Parent";
+  return conversation.student?.name || conversation.parentName || conversation.teacherName || "Unknown Contact";
+}
+
+function getConversationSubtitle(conversation: ConversationWithParent, viewerRole?: string) {
+  const studentName = conversation.student?.name;
+  const classLabel = getConversationClassLabel(conversation);
+
+  if (viewerRole === "PARENT") {
+    if (studentName && classLabel) return `${studentName} • ${classLabel}`;
+    return studentName || classLabel || conversation.subject;
+  }
+
+  if (viewerRole === "TEACHER") {
+    if (studentName && classLabel) return `${studentName} • ${classLabel}`;
+    return studentName || classLabel || conversation.subject;
+  }
+
+  return classLabel || conversation.subject;
 }
 
 function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelete, canDelete }: {
@@ -189,7 +222,7 @@ function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelet
   );
 }
 
-function ConversationList({ conversations, loading, error, selectedId, onSelect, onRefresh, searchQuery }: {
+function ConversationList({ conversations, loading, error, selectedId, onSelect, onRefresh, searchQuery, viewerRole }: {
   conversations: ConversationWithParent[];
   loading: boolean;
   error: string | null;
@@ -197,13 +230,16 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
   onSelect: (conv: ConversationWithParent) => void;
   onRefresh: () => void;
   searchQuery: string;
+  viewerRole?: string;
 }) {
   const filtered = conversations.filter(conv => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return (
+        getConversationTitle(conv, viewerRole).toLowerCase().includes(q) ||
         conv.student?.name?.toLowerCase().includes(q) ||
         conv.parentName?.toLowerCase().includes(q) ||
+        conv.teacherName?.toLowerCase().includes(q) ||
         conv.subject?.toLowerCase().includes(q) ||
         conv.message?.toLowerCase().includes(q)
       );
@@ -240,7 +276,7 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
               <div className="flex items-start gap-3">
                 <div className="relative">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] text-base font-semibold text-white">
-                    {conv.student?.name?.charAt(0) || "S"}
+                    {getConversationTitle(conv, viewerRole).charAt(0) || "C"}
                   </div>
                   {conv.unreadCount > 0 && (
                     <span className="absolute -right-1 -top-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] px-1 text-[10px] font-bold text-white">
@@ -251,14 +287,14 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">
-                      {conv.student?.name || "Unknown Student"}
+                      {getConversationTitle(conv, viewerRole)}
                     </span>
                     <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">
                       {new Date(conv.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 truncate">
-                    {conv.subject}
+                    {getConversationSubtitle(conv, viewerRole)}
                   </p>
                   <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
                     {conv.lastMessage || conv.message}
@@ -276,7 +312,7 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
   );
 }
 
-function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMessage, onReopen, onDeleteReply, onDelete }: {
+function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMessage, onReopen, onDeleteReply, onDelete, viewerRole }: {
   conversation: ConversationWithParent | null;
   isAdmin: boolean;
   isTeacher: boolean;
@@ -285,6 +321,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
   onReopen: () => void;
   onDeleteReply: (id: string) => void;
   onDelete: () => void;
+  viewerRole?: string;
 }) {
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -323,13 +360,13 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] text-lg font-bold text-white shadow-lg shadow-[var(--brand-color,#e35336)]/20">
-              {conversation.student?.name?.charAt(0) || "S"}
+              {getConversationTitle(conversation, viewerRole).charAt(0) || "C"}
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">{conversation.student?.name || "Unknown Student"}</h2>
-              {getConversationClassLabel(conversation) && (
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">{getConversationTitle(conversation, viewerRole)}</h2>
+              {getConversationSubtitle(conversation, viewerRole) && (
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {getConversationClassLabel(conversation)}
+                  {getConversationSubtitle(conversation, viewerRole)}
                 </p>
               )}
             </div>
@@ -465,6 +502,7 @@ function CommunicationsContent() {
 
   const isAdmin = ((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') || user?.role === 'SUPER_ADMIN';
   const isTeacher = user?.role === 'TEACHER';
+  const viewerRole = user?.role;
 
   // Auto-open new message modal when studentId is passed via URL
   useEffect(() => {
@@ -488,6 +526,7 @@ function CommunicationsContent() {
         return {
           ...comm,
           parentName: parentReply?.sender?.name || (comm.createdBy?.role === 'PARENT' ? comm.createdBy?.name : 'Parent'),
+          teacherName: getTeacherDisplayName(comm),
           unreadCount: 0,
           lastMessage: lastReply?.message || comm.message,
         };
@@ -637,6 +676,7 @@ function CommunicationsContent() {
             onSelect={setSelectedConversation}
             onRefresh={() => fetchCommunications(1)}
             searchQuery={searchQuery}
+            viewerRole={viewerRole}
           />
         </aside>
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -649,6 +689,7 @@ function CommunicationsContent() {
             onReopen={handleReopen}
             onDeleteReply={handleDeleteReply}
             onDelete={handleDeleteThread}
+            viewerRole={viewerRole}
           />
         </main>
       </div>

@@ -321,12 +321,6 @@ const menuItems: MenuSection[] = [
         visible: ["admin", "it_manager", "registrar"],
         children: [
           {
-            icon: <BookOpen className="w-4 h-4" />,
-            label: "Overview",
-            href: "/admin/academics",
-            visible: ["admin", "it_manager", "registrar"],
-          },
-          {
             icon: <Users className="w-4 h-4" />,
             label: "Class & Sections",
             href: "/admin/class-sections",

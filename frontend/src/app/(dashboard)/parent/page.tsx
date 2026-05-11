@@ -412,7 +412,7 @@ const ParentDashboard = () => {
                   className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                 >
                   <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                    <AvatarFallback className="text-sm">
                       {selectedChild?.name?.charAt(0) || "S"}
                     </AvatarFallback>
                   </Avatar>
@@ -441,7 +441,7 @@ const ParentDashboard = () => {
                         }`}
                       >
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                          <AvatarFallback className="text-sm">
                             {child.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
@@ -466,7 +466,7 @@ const ParentDashboard = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="w-14 h-14">
-                      <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-lg">
+                      <AvatarFallback className="text-lg">
                         {selectedChild.name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>

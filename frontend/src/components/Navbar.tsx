@@ -935,7 +935,7 @@ const Navbar = ({
                         {user.avatarUrl ? (
                           <AvatarImage src={user.avatarUrl} alt={user.name} />
                         ) : (
-                          <AvatarFallback className="bg-[var(--brand-color,#e35336)] text-white font-semibold text-xs sm:text-sm">
+                          <AvatarFallback className="font-semibold text-xs sm:text-sm">
                             {user.name?.charAt(0).toUpperCase() || "U"}
                           </AvatarFallback>
                         )}
@@ -955,7 +955,7 @@ const Navbar = ({
                         {user.avatarUrl ? (
                           <AvatarImage src={user.avatarUrl} alt={user.name} />
                         ) : (
-                          <AvatarFallback className="bg-[var(--brand-color,#e35336)] text-base font-bold text-white">
+                          <AvatarFallback className="text-base font-bold">
                             {user.name?.charAt(0).toUpperCase() || "U"}
                           </AvatarFallback>
                         )}

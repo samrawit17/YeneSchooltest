@@ -58,6 +58,19 @@ export interface CreateParentAndLinkDto {
   emergencyContact?: boolean;
 }
 
+type RelatedTeacherOption = {
+  teacherId: string;
+  teacherName: string;
+  teacherEmail: string | null;
+  teacherPhone: string | null;
+  studentId: string;
+  childName: string;
+  className: string | null;
+  section: string | null;
+  relationType: 'HOMEROOM' | 'TEACHING';
+  subjects: string[];
+};
+
 @Injectable()
 export class ParentService {
   constructor(
@@ -800,6 +813,387 @@ export class ParentService {
     });
 
     return childrenWithFees;
+  }
+
+  async getRelatedTeachersByParentUserId(
+    parentUserId: string,
+  ): Promise<RelatedTeacherOption[]> {
+    let parentProfile = await this.prismaService.parentProfile.findUnique({
+      where: { userId: parentUserId },
+    });
+
+    if (!parentProfile) {
+      const user = await this.prismaService.user.findUnique({
+        where: { id: parentUserId },
+      });
+
+      if (user) {
+        parentProfile = await this.prismaService.parentProfile.findFirst({
+          where: { user: { email: user.email } },
+        });
+      }
+    }
+
+    if (!parentProfile) {
+      throw new NotFoundException('Parent profile not found');
+    }
+
+    const children = await this.prismaService.parentStudent.findMany({
+      where: { parentId: parentProfile.id },
+      include: {
+        student: {
+          include: {
+            user: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    const studentUserIds = children.map((child) => child.student.userId);
+    const studentProfiles = await this.prismaService.studentProfile.findMany({
+      where: { userId: { in: studentUserIds } },
+      select: {
+        userId: true,
+        className: true,
+        section: true,
+      },
+    });
+
+    const profileMap = new Map(
+      studentProfiles.map((profile) => [profile.userId, profile]),
+    );
+    const childMap = new Map(
+      children.map((child) => [
+        child.student.userId,
+        {
+          childName: child.student.user?.name || 'Unknown',
+        },
+      ]),
+    );
+    if (studentUserIds.length === 0) {
+      return [];
+    }
+
+    const activeAcademicYear =
+      (await this.prismaService.academicYear.findFirst({
+        where: {
+          schoolId: parentProfile.schoolId,
+          isActive: true,
+        },
+        orderBy: { updatedAt: 'desc' },
+      })) ||
+      (await this.prismaService.academicYear.findFirst({
+        where: {
+          schoolId: parentProfile.schoolId,
+        },
+        orderBy: { createdAt: 'desc' },
+      }));
+
+    const studentClasses = await this.prismaService.studentClass.findMany({
+      where: {
+        studentId: { in: studentUserIds },
+        schoolId: parentProfile.schoolId,
+        ...(activeAcademicYear?.id
+          ? { academicYear: activeAcademicYear.id }
+          : {}),
+      },
+      include: {
+        class: {
+          select: {
+            name: true,
+            section: true,
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+            ClassSubject: {
+              where: { teacherId: { not: null } },
+              select: {
+                teacher: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+                subject: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        section: {
+          select: {
+            name: true,
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+            classSubjects: {
+              where: { teacherId: { not: null } },
+              select: {
+                teacher: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+                subject: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const options: RelatedTeacherOption[] = [];
+    const studentClassMap = new Map<string, typeof studentClasses>();
+    for (const studentClass of studentClasses) {
+      const existing = studentClassMap.get(studentClass.studentId) || [];
+      existing.push(studentClass);
+      studentClassMap.set(studentClass.studentId, existing);
+    }
+
+    const pushTeacherOptions = (
+      source: {
+        studentId: string;
+        childName: string;
+        className: string | null;
+        sectionName: string | null;
+        classData?: {
+          homeroomTeacher?: {
+            id: string;
+            name: string;
+            email: string | null;
+            phone: string | null;
+          } | null;
+          ClassSubject?: Array<{
+            teacher?: {
+              id: string;
+              name: string;
+              email: string | null;
+              phone: string | null;
+            } | null;
+            subject?: { name: string } | null;
+          }>;
+        } | null;
+        sectionData?: {
+          homeroomTeacher?: {
+            id: string;
+            name: string;
+            email: string | null;
+            phone: string | null;
+          } | null;
+          classSubjects?: Array<{
+            teacher?: {
+              id: string;
+              name: string;
+              email: string | null;
+              phone: string | null;
+            } | null;
+            subject?: { name: string } | null;
+          }>;
+        } | null;
+      },
+    ) => {
+      const homeroomTeacher =
+        source.sectionData?.homeroomTeacher ||
+        source.classData?.homeroomTeacher ||
+        null;
+
+      if (homeroomTeacher?.id) {
+        options.push({
+          teacherId: homeroomTeacher.id,
+          teacherName: homeroomTeacher.name,
+          teacherEmail: homeroomTeacher.email,
+          teacherPhone: homeroomTeacher.phone || null,
+          studentId: source.studentId,
+          childName: source.childName,
+          className: source.className,
+          section: source.sectionName,
+          relationType: 'HOMEROOM',
+          subjects: ['Homeroom'],
+        });
+      }
+
+      const teacherMap = new Map<string, RelatedTeacherOption>();
+      const teachingAssignments = [
+        ...(source.sectionData?.classSubjects || []),
+        ...(source.classData?.ClassSubject || []),
+      ];
+
+      for (const assignment of teachingAssignments) {
+        const teacher = assignment.teacher;
+        if (!teacher?.id) continue;
+
+        const subjectName = assignment.subject?.name;
+        const existing = teacherMap.get(teacher.id);
+
+        if (existing) {
+          if (subjectName && !existing.subjects.includes(subjectName)) {
+            existing.subjects.push(subjectName);
+          }
+          continue;
+        }
+
+        teacherMap.set(teacher.id, {
+          teacherId: teacher.id,
+          teacherName: teacher.name,
+          teacherEmail: teacher.email,
+          teacherPhone: teacher.phone || null,
+          studentId: source.studentId,
+          childName: source.childName,
+          className: source.className,
+          section: source.sectionName,
+          relationType: 'TEACHING',
+          subjects: subjectName ? [subjectName] : [],
+        });
+      }
+
+      options.push(...Array.from(teacherMap.values()));
+    };
+
+    for (const child of children) {
+      const studentId = child.student.userId;
+      const childInfo = childMap.get(studentId);
+      const studentProfile = profileMap.get(studentId);
+      const childName = childInfo?.childName || 'Unknown';
+      const className = studentProfile?.className || null;
+      const sectionName = studentProfile?.section || null;
+      const relatedClasses = studentClassMap.get(studentId) || [];
+
+      if (relatedClasses.length > 0) {
+        for (const studentClass of relatedClasses) {
+          pushTeacherOptions({
+            studentId,
+            childName,
+            className: className || studentClass.class?.name || null,
+            sectionName: sectionName || studentClass.section?.name || null,
+            classData: studentClass.class,
+            sectionData: studentClass.section,
+          });
+        }
+        continue;
+      }
+
+      if (!className) {
+        continue;
+      }
+
+      const possibleClassNames = [
+        className,
+        className.replace('Grade ', ''),
+        `Grade ${className.replace('Grade ', '')}`,
+      ].filter((value, index, array) => array.indexOf(value) === index);
+
+      const fallbackClass = await this.prismaService.class.findFirst({
+        where: {
+          schoolId: parentProfile.schoolId,
+          ...(activeAcademicYear?.id
+            ? { academicYearId: activeAcademicYear.id }
+            : {}),
+          name: { in: possibleClassNames },
+        },
+        select: {
+          id: true,
+          name: true,
+          homeroomTeacher: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+          ClassSubject: {
+            where: { teacherId: { not: null } },
+            select: {
+              teacher: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+              subject: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const fallbackSection =
+        fallbackClass && sectionName
+          ? await this.prismaService.section.findFirst({
+              where: {
+                classId: fallbackClass.id,
+                name: sectionName,
+              },
+              select: {
+                name: true,
+                homeroomTeacher: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+                classSubjects: {
+                  where: { teacherId: { not: null } },
+                  select: {
+                    teacher: {
+                      select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                      },
+                    },
+                    subject: {
+                      select: {
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            })
+          : null;
+
+      pushTeacherOptions({
+        studentId,
+        childName,
+        className,
+        sectionName,
+        classData: fallbackClass,
+        sectionData: fallbackSection,
+      });
+    }
+    return options;
   }
 
   async getChildByIdForParent(parentUserId: string, childId: string) {

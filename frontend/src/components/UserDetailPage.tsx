@@ -344,7 +344,7 @@ export default function UserDetailPage({
                     {user.avatarUrl ? (
                       <AvatarImage src={user.avatarUrl} alt={user.name} />
                     ) : null}
-                    <AvatarFallback className="text-lg sm:text-xl font-bold bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)] dark:text-[var(--brand-color,#e35336)]">
+                    <AvatarFallback className="text-lg sm:text-xl font-bold">
                       {getInitials(user.name)}
                     </AvatarFallback>
                   </Avatar>

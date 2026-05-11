@@ -20,6 +20,7 @@ import { useAcademicYear } from "@/context/AcademicYearContext";
 import { classesAPI } from "@/lib/api";
 import { promotionAPI, PromotionCandidate } from "@/lib/api/reporting";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface NextClass {
   id: string;
@@ -33,6 +34,12 @@ interface PromotionData {
   totalStudents: number;
   candidates: PromotionCandidate[];
 }
+
+const parseRollNumber = (rollNumber?: string | null) => {
+  if (!rollNumber) return Number.POSITIVE_INFINITY;
+  const parsed = Number.parseInt(rollNumber, 10);
+  return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+};
 
 export default function PromotionPage() {
   const { user } = useAuth();
@@ -203,6 +210,18 @@ export default function PromotionPage() {
 
   const promotableStudents = promotionData?.candidates.filter((c) => c.status === "PROMOTED") || [];
   const retainedStudents = promotionData?.candidates.filter((c) => c.status === "RETAINED") || [];
+  const sortedCandidates = (promotionData?.candidates || []).slice().sort((a, b) => {
+    const rollComparison = parseRollNumber(a.student.rollNumber) - parseRollNumber(b.student.rollNumber);
+    if (rollComparison !== 0) return rollComparison;
+
+    const rollLabelA = a.student.rollNumber || "";
+    const rollLabelB = b.student.rollNumber || "";
+    if (rollLabelA !== rollLabelB) {
+      return rollLabelA.localeCompare(rollLabelB, undefined, { numeric: true, sensitivity: "base" });
+    }
+
+    return a.student.name.localeCompare(b.student.name, undefined, { sensitivity: "base" });
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -398,14 +417,8 @@ export default function PromotionPage() {
                   <Table className="w-full">
                     <TableHeader>
                       <TableRow className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                        <TableHead className="px-4 py-3 text-left">
-                          <input
-                            type="checkbox"
-                            checked={selectedStudents.size === promotableStudents.length && promotableStudents.length > 0}
-                            onChange={handleSelectAll}
-                            disabled={promotableStudents.length === 0}
-                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50"
-                          />
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                          Roll No.
                         </TableHead>
                         <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
                           Student
@@ -428,7 +441,7 @@ export default function PromotionPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-slate-100 dark:divide-slate-700">
-                      {promotionData.candidates.map((candidate) => (
+                      {sortedCandidates.map((candidate) => (
                         <TableRow
                           key={candidate.student.id}
                           className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
@@ -436,21 +449,21 @@ export default function PromotionPage() {
                           }`}
                         >
                           <TableCell className="px-4 py-3">
-                            {candidate.status === "PROMOTED" && (
-                              <input
-                                type="checkbox"
-                                checked={selectedStudents.has(candidate.student.id)}
-                                onChange={() => handleSelectStudent(candidate.student.id)}
-                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                              />
-                            )}
+                            <span className="inline-flex min-w-[52px] justify-center rounded-md bg-slate-100 px-2 py-1 text-center text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                              {candidate.student.rollNumber || "-"}
+                            </span>
                           </TableCell>
                           <TableCell className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-sm font-medium">
-                                {candidate.student.name?.charAt(0) || "?"}
-                              </div>
-                              <span className="font-medium text-slate-900 dark:text-white text-sm">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <Avatar className="h-8 w-8 shrink-0">
+                                {candidate.student.avatarUrl ? (
+                                  <AvatarImage src={candidate.student.avatarUrl} alt={candidate.student.name} />
+                                ) : null}
+                                <AvatarFallback className="text-sm font-medium">
+                                  {candidate.student.name?.charAt(0) || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="truncate font-medium text-slate-900 dark:text-white text-sm">
                                 {candidate.student.name}
                               </span>
                             </div>

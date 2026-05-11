@@ -550,9 +550,40 @@ export class ReportCardService {
       where: { classId, academicYear },
       include: {
         student: {
-          select: { id: true, name: true, avatarUrl: true },
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+            studentProfile: {
+              select: {
+                rollNumber: true,
+              },
+            },
+          },
         },
       },
+    });
+
+    const sortedStudents = students.slice().sort((a, b) => {
+      const aRoll = Number.parseInt(a.student.studentProfile?.rollNumber || '', 10);
+      const bRoll = Number.parseInt(b.student.studentProfile?.rollNumber || '', 10);
+      const aRank = Number.isNaN(aRoll) ? Number.POSITIVE_INFINITY : aRoll;
+      const bRank = Number.isNaN(bRoll) ? Number.POSITIVE_INFINITY : bRoll;
+
+      if (aRank !== bRank) return aRank - bRank;
+
+      const aLabel = a.student.studentProfile?.rollNumber || '';
+      const bLabel = b.student.studentProfile?.rollNumber || '';
+      if (aLabel !== bLabel) {
+        return aLabel.localeCompare(bLabel, undefined, {
+          numeric: true,
+          sensitivity: 'base',
+        });
+      }
+
+      return a.student.name.localeCompare(b.student.name, undefined, {
+        sensitivity: 'base',
+      });
     });
 
     const candidates: Array<{
@@ -566,7 +597,7 @@ export class ReportCardService {
       reportCardId?: string;
     }> = [];
 
-    for (const sc of students) {
+    for (const sc of sortedStudents) {
       const reportCardWhere: any = {
         studentId: sc.studentId,
         academicYear,
@@ -584,7 +615,12 @@ export class ReportCardService {
       const latestReportCard = reportCards[reportCards.length - 1];
       if (!latestReportCard) {
         candidates.push({
-          student: sc.student,
+          student: {
+            id: sc.student.id,
+            name: sc.student.name,
+            avatarUrl: sc.student.avatarUrl,
+            rollNumber: sc.student.studentProfile?.rollNumber ?? null,
+          },
           status: 'NO_DATA',
           reason: 'No report card generated',
           averageGrade: 0,
@@ -624,7 +660,12 @@ export class ReportCardService {
       }
 
       candidates.push({
-        student: sc.student,
+        student: {
+          id: sc.student.id,
+          name: sc.student.name,
+          avatarUrl: sc.student.avatarUrl,
+          rollNumber: sc.student.studentProfile?.rollNumber ?? null,
+        },
         status,
         reasons,
         averageGrade,
@@ -638,7 +679,7 @@ export class ReportCardService {
       className: classInfo.name,
       academicYear: classInfo.academicYear.name,
       termName,
-      totalStudents: students.length,
+      totalStudents: sortedStudents.length,
       candidates,
     };
   }

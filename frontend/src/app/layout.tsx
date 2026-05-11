@@ -49,6 +49,51 @@ export default function RootLayout({
                     document.documentElement.classList.add('dark');
                   }
                 }
+
+                var brandSettingsRaw = localStorage.getItem('sms-brand-settings');
+                var userRaw = localStorage.getItem('user');
+                if (brandSettingsRaw && userRaw) {
+                  var brandSettings = JSON.parse(brandSettingsRaw);
+                  var user = JSON.parse(userRaw);
+                  var schoolId = user && user.schoolId;
+                  var cached = schoolId ? brandSettings[schoolId] : null;
+                  var themeColor = cached && cached.themeColor;
+
+                  if (/^#([0-9A-Fa-f]{6})$/.test(themeColor)) {
+                    var r = parseInt(themeColor.slice(1, 3), 16);
+                    var g = parseInt(themeColor.slice(3, 5), 16);
+                    var b = parseInt(themeColor.slice(5, 7), 16);
+                    var red = r / 255;
+                    var green = g / 255;
+                    var blue = b / 255;
+                    var max = Math.max(red, green, blue);
+                    var min = Math.min(red, green, blue);
+                    var h = 0;
+                    var s = 0;
+                    var l = (max + min) / 2;
+
+                    if (max !== min) {
+                      var d = max - min;
+                      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                      switch (max) {
+                        case red:
+                          h = ((green - blue) / d + (green < blue ? 6 : 0)) / 6;
+                          break;
+                        case green:
+                          h = ((blue - red) / d + 2) / 6;
+                          break;
+                        default:
+                          h = ((red - green) / d + 4) / 6;
+                          break;
+                      }
+                    }
+
+                    document.documentElement.style.setProperty('--brand-color', themeColor);
+                    document.documentElement.style.setProperty('--brand-color-rgb', r + ', ' + g + ', ' + b);
+                    document.documentElement.style.setProperty('--primary', Math.round(h * 360) + ' ' + Math.round(s * 100) + '% ' + Math.round(l * 100) + '%');
+                    document.documentElement.style.setProperty('--ring', Math.round(h * 360) + ' ' + Math.round(s * 100) + '% ' + Math.round(l * 100) + '%');
+                  }
+                }
               } catch(e) {}
             })();
           `

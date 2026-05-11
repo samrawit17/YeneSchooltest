@@ -1082,7 +1082,7 @@ export default function AttendanceManagementPage() {
                     <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-red-100 text-red-600 text-xs">
+                          <AvatarFallback className="text-xs">
                             {item.studentName.split(' ').map(n => n[0]).join('')}
                           </AvatarFallback>
                         </Avatar>

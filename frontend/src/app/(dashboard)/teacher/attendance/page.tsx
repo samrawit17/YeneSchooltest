@@ -1135,7 +1135,7 @@ export default function TeacherAttendancePage() {
                       <td className="px-2 sm:px-4 py-3">
                         <div className="flex items-center gap-2 sm:gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className="bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] text-xs">
+                            <AvatarFallback className="text-xs">
                               {student.name.split(' ').map(n => n[0]).join('')}
                             </AvatarFallback>
                           </Avatar>

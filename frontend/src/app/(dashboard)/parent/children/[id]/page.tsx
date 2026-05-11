@@ -311,7 +311,7 @@ const ChildDetailPage = () => {
                 {/* Left - Student Photo and Basic Info */}
                 <div className="flex items-center gap-4">
                   <Avatar className="w-24 h-24">
-                    <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-3xl">
+                    <AvatarFallback className="text-3xl">
                       {child.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>

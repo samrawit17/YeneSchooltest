@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
-import { studentsAPI } from "@/lib/api";
+import { parentsAPI, studentsAPI } from "@/lib/api";
 
 interface RecipientOption {
   id: string;
@@ -12,6 +12,8 @@ interface RecipientOption {
   section?: string;
   childName?: string;
   subjectNames?: string[];
+  relationType?: "HOMEROOM" | "TEACHING";
+  targetStudentId?: string;
 }
 
 interface NewMessageModalProps {
@@ -49,64 +51,34 @@ export default function NewMessageModal({
     try {
       setLoadingStudents(true);
       if (isParent) {
-        const response = await studentsAPI.getChildren();
-        const children = response.data?.children || response.data || [];
-        const teacherMap = new Map<string, RecipientOption>();
-        for (const child of children) {
-          const relatedTeachers = [
-            ...(child.homeroomTeacher
-              ? [{ ...child.homeroomTeacher, subjects: [] }]
-              : []),
-            ...(Array.isArray(child.teachingTeachers)
-              ? child.teachingTeachers
-              : []),
-          ];
+        const response = await parentsAPI.getRelatedTeachers();
+        const teachers = response.data?.teachers || response.data || [];
+        const mapped = teachers.map((teacher: any) => ({
+          id: `${teacher.studentId}:${teacher.teacherId}:${teacher.relationType}`,
+          name: teacher.teacherName,
+          childName: teacher.childName,
+          className: teacher.className,
+          section: teacher.section,
+          subjectNames: Array.isArray(teacher.subjects) ? teacher.subjects : [],
+          relationType: teacher.relationType,
+          targetStudentId: teacher.studentId,
+        }));
 
-          for (const teacher of relatedTeachers) {
-            if (!teacher?.id || !teacher?.name) continue;
-
-            const existing = teacherMap.get(teacher.id);
-            const incomingSubjects = Array.isArray(teacher.subjects)
-              ? teacher.subjects.filter(Boolean)
-              : [];
-
-            if (existing) {
-              if (child.name && !existing.childName?.includes(child.name)) {
-                existing.childName = existing.childName
-                  ? `${existing.childName}, ${child.name}`
-                  : child.name;
-              }
-              if (incomingSubjects.length > 0) {
-                existing.subjectNames = Array.from(
-                  new Set([
-                    ...(existing.subjectNames || []),
-                    ...incomingSubjects,
-                  ]),
-                );
-              }
-              continue;
-            }
-
-            teacherMap.set(teacher.id, {
-              id: teacher.id,
-              name: teacher.name,
-              childName: child.name,
-              subjectNames: incomingSubjects,
-            });
-          }
-        }
-        const query = searchQuery.trim().toLowerCase();
-        const filtered = Array.from(teacherMap.values()).filter(
-          (teacher) =>
+        const query = (queryOverride ?? searchQuery).trim().toLowerCase();
+        const filtered = mapped.filter(
+          (teacher: RecipientOption) =>
             !query ||
             teacher.name.toLowerCase().includes(query) ||
             teacher.childName?.toLowerCase().includes(query) ||
+            teacher.className?.toLowerCase().includes(query) ||
             teacher.subjectNames?.some((subject) =>
               subject.toLowerCase().includes(query),
             ),
         );
-        setAllStudents(Array.from(teacherMap.values()));
+
+        setAllStudents(mapped);
         setStudents(filtered);
+        setShowDropdown(true);
       } else if (isTeacher) {
         const response = await studentsAPI.getAll({
           search: queryOverride ?? searchQuery,
@@ -198,12 +170,15 @@ export default function NewMessageModal({
   }, []);
 
   const handleSubmit = () => {
-    if (!studentId.trim() || !subject.trim() || !message.trim()) {
+    const selectedRecipient = students.find((student) => student.id === studentId);
+    const targetStudentId = selectedRecipient?.targetStudentId || studentId;
+
+    if (!targetStudentId.trim() || !subject.trim() || !message.trim()) {
       toast.error("Please fill in all fields and select a student");
       return;
     }
 
-    onSubmit(studentId, subject, message);
+    onSubmit(targetStudentId, subject, message);
   };
 
   const selectedStudent = students.find((student) => student.id === studentId);
@@ -329,6 +304,12 @@ export default function NewMessageModal({
                                 : student.childName || ""}
                               {!student.className && student.subjectNames?.length
                                 ? `${student.childName ? " • " : ""}${student.subjectNames.join(", ")}`
+                                : ""}
+                              {student.className && student.subjectNames?.length
+                                ? ` • ${student.subjectNames.join(", ")}`
+                                : ""}
+                              {student.relationType
+                                ? ` • ${student.relationType === "HOMEROOM" ? "Homeroom" : "Teaching"}`
                                 : ""}
                             </span>
                           </div>

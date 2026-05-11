@@ -47,7 +47,7 @@ export interface GradeDetail {
 }
 
 export interface PromotionCandidate {
-  student: { id: string; name: string; avatarUrl?: string };
+  student: { id: string; name: string; avatarUrl?: string; rollNumber?: string | null };
   status: "PROMOTED" | "RETAINED" | "NO_DATA";
   reasons?: string[];
   averageGrade: number;

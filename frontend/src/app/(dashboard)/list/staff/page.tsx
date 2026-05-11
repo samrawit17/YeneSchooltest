@@ -234,11 +234,11 @@ export default function StaffPage() {
                         <div className="flex items-center gap-3">
                           <Avatar className="w-10 h-10">
                             {item.avatarUrl ? (
-                              <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                              <AvatarFallback className="text-sm">
                                 {getInitials(item.name)}
                               </AvatarFallback>
                             ) : (
-                              <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                              <AvatarFallback className="text-sm">
                                 {getInitials(item.name)}
                               </AvatarFallback>
                             )}

@@ -296,7 +296,7 @@ const ParentListPage = () => {
                       >
                         <TableCell className="px-4 py-3">
                           <Avatar className="w-10 h-10">
-                            <AvatarFallback className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-sm">
+                            <AvatarFallback className="text-sm">
                               {getInitials(parent.name || "?")}
                             </AvatarFallback>
                           </Avatar>

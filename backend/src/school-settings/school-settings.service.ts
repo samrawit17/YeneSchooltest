@@ -247,14 +247,7 @@ export class SchoolSettingsService {
       return normalizedValue;
     }
 
-    if (
-      key === SCHOOL_SETTING_KEYS.THEME_COLOR ||
-      key === SCHOOL_SETTING_KEYS.NAVIGATION_BG_COLOR ||
-      key === SCHOOL_SETTING_KEYS.NAVBAR_BG_COLOR ||
-      key === SCHOOL_SETTING_KEYS.MENU_BG_COLOR ||
-      key === SCHOOL_SETTING_KEYS.LAYOUT_BG_COLOR ||
-      key === SCHOOL_SETTING_KEYS.FOOTER_BG_COLOR
-    ) {
+    if (key === SCHOOL_SETTING_KEYS.THEME_COLOR) {
       const normalizedValue = String(value || '').trim();
       const isValidHexColor = /^#([0-9A-Fa-f]{6})$/.test(normalizedValue);
       if (!isValidHexColor) {
