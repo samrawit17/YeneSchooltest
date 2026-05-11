@@ -330,7 +330,7 @@ const MyClassesPage = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar className="bg-blue-100 w-12 h-12">
-                      <AvatarFallback className="text-blue-600 font-bold text-lg">
+                      <AvatarFallback className="font-bold text-lg">
                         {cls.grade}
                       </AvatarFallback>
                     </Avatar>

@@ -229,7 +229,7 @@ const ParentChildrenPage = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 min-w-0">
                         <Avatar className="h-12 w-12 ring-2 ring-[#e35336]/20">
-                          <AvatarFallback className="bg-[#e35336] text-white font-semibold">
+                          <AvatarFallback className="font-semibold">
                             {child.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>

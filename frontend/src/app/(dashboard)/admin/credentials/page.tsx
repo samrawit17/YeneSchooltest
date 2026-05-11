@@ -155,7 +155,7 @@ export default function CredentialsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Credentials Management</h1>
+            <h1 className="text-2xl font-bold text-black dark:text-white">Credentials Management</h1>
             <p className="text-gray-500">View and manage generated user credentials</p>
           </div>
           <Button onClick={loadData} variant="outline">

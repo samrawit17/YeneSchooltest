@@ -545,7 +545,7 @@ const ProfilePage = () => {
                       {user?.avatarUrl ? (
                         <AvatarImage src={user.avatarUrl} alt={user.name} />
                       ) : (
-                        <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white text-2xl">
+                        <AvatarFallback className="text-2xl">
                           {user?.name?.charAt(0)}
                         </AvatarFallback>
                       )}

@@ -404,7 +404,7 @@ const StudentsListPage = () => {
                     <TableRow key={student.id} className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                       <TableCell className="px-4 py-3">
                         <Avatar className="w-10 h-10">
-                          <AvatarFallback className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-sm">
+                          <AvatarFallback className="text-sm">
                             {student.user?.name ? getInitials(student.user.name) : "S"}
                           </AvatarFallback>
                         </Avatar>

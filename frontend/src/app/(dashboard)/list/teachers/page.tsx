@@ -471,7 +471,7 @@ const TeachersListPage = () => {
                           {(teacher.img || teacher.avatarUrl) ? (
                             <AvatarImage src={teacher.img || teacher.avatarUrl} alt={teacher.name} />
                           ) : null}
-                          <AvatarFallback className="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-sm">
+                          <AvatarFallback className="text-sm">
                             {getInitials(teacher.name)}
                           </AvatarFallback>
                         </Avatar>

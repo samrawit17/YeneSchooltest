@@ -317,7 +317,7 @@ const ClassStudentsPage = () => {
                           <div className="flex items-center gap-3 min-w-[200px]">
                             <Avatar className="h-9 w-9">
                               <AvatarImage src={student.avatarUrl} />
-                              <AvatarFallback className="text-xs bg-blue-500 text-white">
+                              <AvatarFallback className="text-xs">
                                 {getInitials(student.name)}
                               </AvatarFallback>
                             </Avatar>

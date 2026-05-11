@@ -57,6 +57,15 @@ export class ParentController {
     return { children };
   }
 
+  @Get('me/teachers')
+  @Roles(Role.PARENT)
+  async getMyRelatedTeachers(@Request() req) {
+    const teachers = await this.parentService.getRelatedTeachersByParentUserId(
+      req.user.id,
+    );
+    return { teachers };
+  }
+
   /**
    * Get a specific child details for current parent
    * Parent can only view their own children's details

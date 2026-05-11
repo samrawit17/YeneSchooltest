@@ -7,6 +7,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import Menu from "@/components/Menu";
 import Navbar from "@/components/Navbar";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import FloatingAiAssistant from "@/components/FloatingAiAssistant";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { schoolsAPI, schoolSettingsAPI } from "@/lib/api";
@@ -19,11 +20,55 @@ import { queryKeys } from "@/lib/query-keys";
 const isValidHexColor = (value?: string | null): value is string =>
   !!value && /^#([0-9A-Fa-f]{6})$/.test(value);
 
+const BRAND_SETTINGS_STORAGE_KEY = "sms-brand-settings";
+
 const hexToRgb = (hex: string) => ({
   r: parseInt(hex.slice(1, 3), 16),
   g: parseInt(hex.slice(3, 5), 16),
   b: parseInt(hex.slice(5, 7), 16),
 });
+
+const normalizeBrandNavigationSetting = (value: unknown, fallback = true): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return fallback;
+};
+
+interface CachedBrandSettings {
+  themeColor?: string;
+  useBrandNavigation?: boolean;
+}
+
+const readCachedBrandSettings = (schoolId?: string): CachedBrandSettings | null => {
+  if (typeof window === "undefined" || !schoolId) return null;
+
+  try {
+    const raw = window.localStorage.getItem(BRAND_SETTINGS_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Record<string, CachedBrandSettings>;
+    return parsed?.[schoolId] ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedBrandSettings = (schoolId: string, settings: CachedBrandSettings) => {
+  if (typeof window === "undefined" || !schoolId) return;
+
+  try {
+    const raw = window.localStorage.getItem(BRAND_SETTINGS_STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, CachedBrandSettings>) : {};
+    parsed[schoolId] = settings;
+    window.localStorage.setItem(BRAND_SETTINGS_STORAGE_KEY, JSON.stringify(parsed));
+  } catch {
+    // Ignore storage failures and continue with runtime state.
+  }
+};
 
 
 export default function DashboardLayout({
@@ -69,6 +114,11 @@ export default function DashboardLayout({
   }, [school?.logoUrl]);
 
   // Fetch brand color and apply CSS variables
+  const cachedBrandSettings = useMemo(
+    () => readCachedBrandSettings(user?.schoolId),
+    [user?.schoolId]
+  );
+
   const { data: brandColor } = useQuery({
     queryKey: queryKeys.school.setting('theme_color', user?.schoolId),
     queryFn: async () => {
@@ -82,6 +132,7 @@ export default function DashboardLayout({
     },
     enabled: !!user?.schoolId,
     staleTime: 60000,
+    initialData: cachedBrandSettings?.themeColor,
   });
 
   const { data: useBrandColorInNavigation } = useQuery({
@@ -97,7 +148,13 @@ export default function DashboardLayout({
     },
     enabled: !!user?.schoolId,
     staleTime: 60000,
+    initialData: cachedBrandSettings?.useBrandNavigation,
   });
+
+  const brandNavigationEnabled = normalizeBrandNavigationSetting(
+    useBrandColorInNavigation,
+    cachedBrandSettings?.useBrandNavigation ?? true
+  );
 
 
   useEffect(() => {
@@ -135,6 +192,15 @@ export default function DashboardLayout({
       root.style.setProperty('--ring', '10 75% 55%');
     }
   }, [brandColor]);
+
+  useEffect(() => {
+    if (!user?.schoolId) return;
+
+    writeCachedBrandSettings(user.schoolId, {
+      themeColor: isValidHexColor(brandColor) ? brandColor : "#e35336",
+      useBrandNavigation: brandNavigationEnabled,
+    });
+  }, [brandColor, brandNavigationEnabled, user?.schoolId]);
 
 
 
@@ -186,14 +252,14 @@ export default function DashboardLayout({
       {/* Desktop Sidebar */}
       <aside
         className={`hidden md:flex flex-col shadow-sm border-r dark:bg-[#111827] dark:border-[#334155] transition-all duration-300 ease-in-out relative ${
-          useBrandColorInNavigation !== false
+          brandNavigationEnabled
             ? 'bg-[rgba(var(--brand-color-rgb),0.18)] border-[rgba(var(--brand-color-rgb),0.22)]'
             : 'bg-[#F1F5F9] border-gray-200'
         } ${sidebarCollapsed ? 'w-20' : 'w-64'}`}
       >
         {/* Logo */}
         <div className={`flex items-center justify-center p-4 border-b dark:border-[#334155] shrink-0 ${
-          useBrandColorInNavigation !== false
+          brandNavigationEnabled
             ? 'border-[rgba(var(--brand-color-rgb),0.18)]'
             : 'border-gray-200'
         }`}>
@@ -226,13 +292,13 @@ export default function DashboardLayout({
         <div className="flex-1 overflow-y-auto m-4">
           <Menu
             collapsed={sidebarCollapsed}
-            useBrandNavigation={useBrandColorInNavigation !== false}
+            useBrandNavigation={brandNavigationEnabled}
           />
         </div>
 
         {/* User Info */}
         <div className={`m-4 border-t dark:border-[#334155] ${
-          useBrandColorInNavigation !== false
+          brandNavigationEnabled
             ? 'border-[rgba(var(--brand-color-rgb),0.18)]'
             : 'border-gray-200'
         }`}>
@@ -279,7 +345,7 @@ export default function DashboardLayout({
         {/* Top Navbar */}
         <Navbar
           sidebarCollapsed={sidebarCollapsed}
-          useBrandNavigation={useBrandColorInNavigation !== false}
+          useBrandNavigation={brandNavigationEnabled}
         />
 
         {/* Breadcrumb Navigation */}
@@ -307,6 +373,8 @@ export default function DashboardLayout({
             </div>
           </div>
         </footer>
+
+        <FloatingAiAssistant role={user?.role} />
       </main>
     </div>
   );
