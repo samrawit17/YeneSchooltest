@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
+body {
+  font-family: var(--font-sans), sans-serif;
+}
+
 .react-calendar {
   width: 100% !important;
   border: none !important;
@@ -218,6 +223,8 @@ h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, 
 @layer base {
   :root {
     /* Light Mode - Clean Modern School SaaS */
+    --brand-color: #e35336;
+    --brand-color-rgb: 227, 83, 54;
     --background: 210 20% 98%; /* #F8FAFC - Very soft gray */
     --foreground: 222.2 84% 4.9%;
     
@@ -263,6 +270,8 @@ h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, 
   
   .dark {
     /* Dark Mode - Professional SaaS Style (Slate 900) */
+    --brand-color: #e35336;
+    --brand-color-rgb: 227, 83, 54;
     --background: 222.2 47% 11.2%; /* #0F172A - Dark slate blue-gray */
     --foreground: 210 40% 98%; /* #F1F5F9 - Primary Text */
     

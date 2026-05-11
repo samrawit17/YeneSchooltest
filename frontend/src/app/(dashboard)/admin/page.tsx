@@ -222,7 +222,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
         <div className="max-w-7xl mx-auto space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <Card key={i}>
                 <CardContent className="pt-6">
@@ -336,72 +336,71 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
             </div>
           )}
 
-          {/* Top KPI Row - 4 Primary Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* KPI Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             {/* Total Students */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-
-              <CardContent className="p-4">
+            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardContent className="p-2.5">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Total Students</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
                       {(stats?.students ?? 0).toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">Enrolled students</p>
                   </div>
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
-                    <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg shrink-0">
+                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Total Teachers */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-4">
+            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardContent className="p-2.5">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Total Teachers</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
                       {(stats?.teachers ?? 0).toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">Active teachers</p>
                   </div>
-                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
-                    <GraduationCap className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg shrink-0">
+                    <GraduationCap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Total Classes */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-4">
+            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardContent className="p-2.5">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Classes</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
                       {(stats?.classes ?? 0).toLocaleString()}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                       {(stats?.sections ?? 0)} sections
                     </p>
                   </div>
-                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg">
-                    <LayoutGrid className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg shrink-0">
+                    <LayoutGrid className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Attendance Today */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-4">
+            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardContent className="p-2.5">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Attendance Today</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
                       {stats?.attendanceRate ?? 0}%
                     </p>
                     <div className="flex items-center gap-2 mt-1">
@@ -413,23 +412,20 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
                       </span>
                     </div>
                   </div>
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-                    <ClipboardCheck className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg shrink-0">
+                    <ClipboardCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Secondary Stats Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {/* Pending Enrollments */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-4">
+            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardContent className="p-2.5">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Pending Enrollments</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
                       {stats?.pendingEnrollments ?? 0}
                     </p>
                     <p className="text-xs mt-1">
@@ -440,26 +436,26 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
                       )}
                     </p>
                   </div>
-                  <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg">
-                    <FileText className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg shrink-0">
+                    <FileText className="w-4 h-4 text-red-600 dark:text-red-400" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Upcoming Exams */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-4">
+            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardContent className="p-2.5">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Upcoming Exams</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
                       {stats?.upcomingExams ?? 0}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">Within next 7 days</p>
                   </div>
-                  <div className="p-2 bg-cyan-100 dark:bg-cyan-900/50 rounded-lg">
-                    <Calendar className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                  <div className="p-2 bg-cyan-100 dark:bg-cyan-900/50 rounded-lg shrink-0">
+                    <Calendar className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                   </div>
                 </div>
               </CardContent>

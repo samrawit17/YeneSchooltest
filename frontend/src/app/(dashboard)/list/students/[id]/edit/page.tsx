@@ -377,7 +377,7 @@ export default function EditStudentPage() {
 
   if (isLoadingStudent) {
     return (
-      <div className="flex-1 p-6 flex items-center justify-center" style={{ fontFamily: "Inter, sans-serif" }}>
+      <div className="flex-1 p-6 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           <p className="text-gray-600 font-medium">Loading student data...</p>
@@ -388,7 +388,7 @@ export default function EditStudentPage() {
 
   if (!student || studentError) {
     return (
-      <div className="flex-1 p-6 flex items-center justify-center" style={{ fontFamily: "Inter, sans-serif" }}>
+      <div className="flex-1 p-6 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
           <p className="text-red-600 font-medium">Error loading student data</p>
           <p className="text-sm text-gray-500">{(studentError as any)?.message || "Student not found"}</p>
@@ -399,7 +399,7 @@ export default function EditStudentPage() {
   }
 
   return (
-    <div className="flex-1 p-6" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="flex-1 p-6" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#e35336]">Edit Student</h1>

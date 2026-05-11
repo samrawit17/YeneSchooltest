@@ -735,7 +735,7 @@ const Menu = ({
   // Render skeleton loading state
   if (isLoading) {
     return (
-      <div className="mt-6 font-sans">
+      <div className="mt-6">
         <div className="flex flex-col gap-2 mb-6">
           <Skeleton className="h-4 w-12 ml-4" />
           {Array.from({ length: 8 }).map((_, index) => (
@@ -759,7 +759,7 @@ const Menu = ({
   }
 
   return (
-    <div className="mt-6 font-sans">
+    <div className="mt-6">
       {menuItems.map((section) => (
         <div className="flex flex-col gap-2 mb-6" key={section.title}>
           <span className={`text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider px-4 py-2 ${collapsed ? 'hidden' : ''}`}>

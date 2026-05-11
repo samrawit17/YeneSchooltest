@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Lexend_Deca } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ToastProvider } from "@/components/ToastProvider";
@@ -7,9 +7,10 @@ import { BreadcrumbProvider } from "@/context/BreadcrumbContext";
 import { AcademicYearProvider } from "@/context/AcademicYearContext";
 import PushNotificationManager from "@/components/PushNotificationManager";
 
-const inter = Inter({
+const lexendDeca = Lexend_Deca({
   subsets: ["latin"],
   display: "swap",
+  variable: "--font-sans",
 });
 
 // Force dynamic rendering to avoid static generation issues with useSearchParams
@@ -31,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${lexendDeca.variable} ${lexendDeca.className}`}>
         <script dangerouslySetInnerHTML={{
           __html: `
             (function() {

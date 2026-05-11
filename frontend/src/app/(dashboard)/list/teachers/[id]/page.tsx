@@ -97,7 +97,7 @@ function TeacherDetailContent({ teacherId }: { teacherId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "Inter, sans-serif" }}>
+      <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           <p className="text-gray-600 font-medium">Loading teacher data...</p>
@@ -108,7 +108,7 @@ function TeacherDetailContent({ teacherId }: { teacherId: string }) {
 
   if (error || !teacher) {
     return (
-      <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "Inter, sans-serif" }}>
+      <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
           <p className="text-red-600 font-medium">Error loading teacher data</p>
           <p className="text-sm text-gray-500">{(error as any)?.message || "Teacher not found"}</p>

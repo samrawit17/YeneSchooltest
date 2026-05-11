@@ -331,7 +331,7 @@ export default function UserDetailPage({
   const StatusIcon = statusBadge.icon;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
       <div className="p-4 md:p-6">
         <div className="max-w-6xl mx-auto space-y-6">
           {/* Profile Header Card */}

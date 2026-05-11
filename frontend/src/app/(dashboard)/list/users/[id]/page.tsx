@@ -84,7 +84,7 @@ function UserDetailContent({ userId }: { userId: string }) {
     return (
       <div
         className="flex-1 p-4 flex items-center justify-center"
-        style={{ fontFamily: "Inter, sans-serif" }}
+        style={{ fontFamily: "var(--font-sans), sans-serif" }}
       >
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -98,7 +98,7 @@ function UserDetailContent({ userId }: { userId: string }) {
     return (
       <div
         className="flex-1 p-4 flex items-center justify-center"
-        style={{ fontFamily: "Inter, sans-serif" }}
+        style={{ fontFamily: "var(--font-sans), sans-serif" }}
       >
         <div className="flex flex-col items-center gap-4">
           <p className="text-red-600 font-medium">Error loading user data</p>
