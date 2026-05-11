@@ -179,9 +179,9 @@ const STATUS_META: Record<
   { label: string; color: string; icon: React.ReactNode }
 > = {
   DRAFT: { label: "Draft", color: "text-gray-500 dark:text-gray-400", icon: <Clock className="w-3 h-3" /> },
-  ACTIVE: { label: "Active", color: "text-green-600 dark:text-green-400", icon: <CheckCircle2 className="w-3 h-3" /> },
-  LOCKED: { label: "Locked", color: "text-red-500 dark:text-red-400", icon: <Lock className="w-3 h-3" /> },
-  COMPLETED: { label: "Completed", color: "text-blue-500 dark:text-blue-400", icon: <CheckCircle2 className="w-3 h-3" /> },
+  ACTIVE: { label: "Active", color: "text-[var(--brand-color)]", icon: <CheckCircle2 className="w-3 h-3" /> },
+  LOCKED: { label: "Locked", color: "text-[var(--brand-color)]", icon: <Lock className="w-3 h-3" /> },
+  COMPLETED: { label: "Completed", color: "text-[var(--brand-color)]", icon: <CheckCircle2 className="w-3 h-3" /> },
 };
 
 function uid() {
@@ -335,7 +335,7 @@ function SubjectRow({
           type="button"
           onClick={() => onRemove(entry.id)}
           disabled={!canRemove}
-          className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="rounded p-1 text-gray-400 transition-colors hover:bg-[rgba(var(--brand-color-rgb),0.12)] hover:text-[var(--brand-color)] disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -409,7 +409,7 @@ function AssessmentCard({
                 e.stopPropagation();
                 onLock(assessment.id);
               }}
-              className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+              className="flex items-center gap-1 text-xs text-gray-400 transition-colors hover:text-[var(--brand-color)]"
               title="Lock assessment"
             >
               <Lock className="w-3.5 h-3.5" />
@@ -456,9 +456,9 @@ function AssessmentCard({
                   <div className="flex items-center justify-end gap-1.5">
                     <span className="text-xs text-gray-500 dark:text-gray-400">{sub._count.scores}</span>
                     {sub._count.scores > 0 ? (
-                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      <CheckCircle2 className="w-3 h-3 text-[var(--brand-color)]" />
                     ) : (
-                      <AlertCircle className="w-3 h-3 text-amber-400" />
+                      <AlertCircle className="w-3 h-3 text-[rgba(var(--brand-color-rgb),0.72)]" />
                     )}
                   </div>
                 </div>
@@ -671,6 +671,21 @@ export default function AssessmentManagementPage() {
     subjects: assessments.reduce((sum, a) => sum + a.subjects.length, 0),
   };
 
+  const brandSolidStyle = {
+    backgroundColor: "var(--brand-color)",
+    borderColor: "var(--brand-color)",
+  } as const;
+
+  const brandTextStyle = {
+    color: "var(--brand-color)",
+  } as const;
+
+  const brandSoftStyle = {
+    color: "var(--brand-color)",
+    borderColor: "rgba(var(--brand-color-rgb),0.24)",
+    backgroundColor: "rgba(var(--brand-color-rgb),0.12)",
+  } as const;
+
   if (isLoading || !isAuthenticated) return null;
 
   return (
@@ -685,7 +700,8 @@ export default function AssessmentManagementPage() {
         </div>
         <Button
           onClick={() => setModalOpen(true)}
-          className="bg-[#e35336] hover:bg-[#c94526] text-white self-start md:self-auto"
+          className="self-start text-white shadow-sm hover:opacity-90 md:self-auto"
+          style={brandSolidStyle}
         >
           <Plus className="w-4 h-4 mr-2" />
           New Assessment
@@ -696,9 +712,9 @@ export default function AssessmentManagementPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Total", value: stats.total, color: "text-gray-700 dark:text-gray-300", bg: "bg-white dark:bg-slate-800", icon: <ClipboardList className="w-4 h-4 text-gray-400" /> },
-          { label: "Active", value: stats.active, color: "text-green-700 dark:text-green-400", bg: "bg-green-50 dark:bg-green-950/30", icon: <CheckCircle2 className="w-4 h-4 text-green-500" /> },
-          { label: "Locked", value: stats.locked, color: "text-red-700 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/30", icon: <Lock className="w-4 h-4 text-red-400" /> },
-          { label: "Subjects Assigned", value: stats.subjects, color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/30", icon: <BookOpen className="w-4 h-4 text-blue-400" /> },
+          { label: "Active", value: stats.active, color: "text-[var(--brand-color)]", bg: "bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]", icon: <CheckCircle2 className="w-4 h-4 text-[var(--brand-color)]" /> },
+          { label: "Locked", value: stats.locked, color: "text-[var(--brand-color)]", bg: "bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]", icon: <Lock className="w-4 h-4 text-[var(--brand-color)]" /> },
+          { label: "Subjects Assigned", value: stats.subjects, color: "text-[var(--brand-color)]", bg: "bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]", icon: <BookOpen className="w-4 h-4 text-[var(--brand-color)]" /> },
         ].map((s) => (
           <Card key={s.label} className={`${s.bg} border border-gray-200 dark:border-slate-700 shadow-sm`}>
             <CardContent className="pt-4 pb-3">
@@ -720,9 +736,10 @@ export default function AssessmentManagementPage() {
           onClick={() => setFilterType("ALL")}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
             filterType === "ALL"
-              ? "bg-[#e35336] text-white border-[#e35336]"
+              ? "text-white"
               : "bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600"
           }`}
+          style={filterType === "ALL" ? brandSolidStyle : undefined}
         >
           All types
         </button>
@@ -735,9 +752,10 @@ export default function AssessmentManagementPage() {
               onClick={() => setFilterType(t)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border flex items-center gap-1.5 ${
                 active
-                  ? `${m.bg} ${m.color} ${m.border}`
+                  ? ""
                   : "bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600"
               }`}
+              style={active ? brandSoftStyle : undefined}
             >
               {m.icon}
               {m.label}
@@ -748,7 +766,7 @@ export default function AssessmentManagementPage() {
 
         <div className="ml-auto">
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-8 text-xs w-32 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+            <SelectTrigger className="h-8 w-32 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-xs dark:bg-slate-800 dark:border-[rgba(var(--brand-color-rgb),0.22)]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -780,8 +798,9 @@ export default function AssessmentManagementPage() {
             {assessments.length === 0 && (
               <Button
                 size="sm"
-                className="mt-4 bg-[#e35336] hover:bg-[#c94526] text-white"
+                className="mt-4 text-white shadow-sm hover:opacity-90"
                 onClick={() => setModalOpen(true)}
+                style={brandSolidStyle}
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
                 Create Assessment
@@ -805,9 +824,9 @@ export default function AssessmentManagementPage() {
 
       {/* ── Create Assessment Modal ── */}
       <Dialog open={modalOpen} onOpenChange={(o) => { setModalOpen(o); if (!o) resetForm(); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+        <DialogContent className="max-h-[90vh] w-[96vw] max-w-6xl overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-[#e35336] dark:text-[#e35336]">
+            <DialogTitle className="flex items-center gap-2" style={brandTextStyle}>
               <Plus className="w-5 h-5" />
               New Assessment
             </DialogTitle>
@@ -853,9 +872,19 @@ export default function AssessmentManagementPage() {
                           onClick={() => setFormData((p) => ({ ...p, type: t }))}
                           className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition-all ${
                             selected
-                              ? `${m.bg} ${m.border} ${m.color} ring-1 ring-offset-1 ring-current`
-                              : "border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800"
+                              ? "ring-1 ring-offset-1"
+                              : "border-gray-200 bg-white hover:border-[rgba(var(--brand-color-rgb),0.28)] hover:bg-[rgba(var(--brand-color-rgb),0.04)] dark:border-slate-700 dark:bg-slate-800 dark:hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.08)]"
                           }`}
+                          style={
+                            selected
+                              ? {
+                                  color: "var(--brand-color)",
+                                  borderColor: "rgba(var(--brand-color-rgb),0.28)",
+                                  backgroundColor: "rgba(var(--brand-color-rgb),0.1)",
+                                  boxShadow: "0 0 0 1px rgba(var(--brand-color-rgb),0.32)",
+                                }
+                              : undefined
+                          }
                         >
                           <div className="flex items-center gap-1.5 mb-0.5">
                             {m.icon}
@@ -885,7 +914,7 @@ export default function AssessmentManagementPage() {
                         setFormData((p) => ({ ...p, academicYearId: v, termId: "" }))
                       }
                     >
-                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100">
+                      <SelectTrigger className="mt-1 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-gray-900 dark:border-[rgba(var(--brand-color-rgb),0.22)] dark:bg-slate-800 dark:text-gray-100">
                         <SelectValue placeholder="Select academic year" />
                       </SelectTrigger>
                       <SelectContent>
@@ -906,7 +935,7 @@ export default function AssessmentManagementPage() {
                       onValueChange={(v) => setFormData((p) => ({ ...p, termId: v }))}
                       disabled={!formData.academicYearId || terms.length === 0}
                     >
-                      <SelectTrigger className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100">
+                      <SelectTrigger className="mt-1 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-gray-900 dark:border-[rgba(var(--brand-color-rgb),0.22)] dark:bg-slate-800 dark:text-gray-100">
                         <SelectValue
                           placeholder={
                             !formData.academicYearId
@@ -969,7 +998,8 @@ export default function AssessmentManagementPage() {
                 <button
                   type="button"
                   onClick={addSubjectEntry}
-                  className="text-xs text-[#e35336] hover:text-[#c94526] flex items-center gap-1 font-medium"
+                  className="flex items-center gap-1 text-xs font-medium hover:opacity-80"
+                  style={brandTextStyle}
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add row
@@ -1020,14 +1050,19 @@ export default function AssessmentManagementPage() {
               variant="outline"
               onClick={() => { setModalOpen(false); resetForm(); }}
               disabled={submitting}
-              className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300"
+              className="bg-white hover:opacity-90 dark:bg-slate-800"
+              style={{
+                color: "var(--brand-color)",
+                borderColor: "rgba(var(--brand-color-rgb),0.24)",
+              }}
             >
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="bg-[#e35336] hover:bg-[#c94526] text-white min-w-[120px]"
+              className="min-w-[120px] text-white shadow-sm hover:opacity-90"
+              style={brandSolidStyle}
             >
               {submitting ? (
                 <>
@@ -1050,7 +1085,7 @@ export default function AssessmentManagementPage() {
         <AlertDialogContent className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-              <Lock className="w-4 h-4 text-red-500" />
+              <Lock className="w-4 h-4" style={brandTextStyle} />
               Lock assessment?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-500 dark:text-gray-400">
@@ -1060,11 +1095,21 @@ export default function AssessmentManagementPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={locking} className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300">Cancel</AlertDialogCancel>
+            <AlertDialogCancel
+              disabled={locking}
+              className="bg-white hover:opacity-90 dark:bg-slate-800"
+              style={{
+                color: "var(--brand-color)",
+                borderColor: "rgba(var(--brand-color-rgb),0.24)",
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLock}
               disabled={locking}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="text-white shadow-sm hover:opacity-90"
+              style={brandSolidStyle}
             >
               {locking ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Lock assessment

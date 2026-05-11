@@ -193,7 +193,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "Inter, sans-serif" }}>
+      <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
           <p className="text-gray-600 dark:text-gray-400 font-medium">Loading student data...</p>
@@ -204,7 +204,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
   if (error || !student) {
     return (
-      <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "Inter, sans-serif" }}>
+      <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
           <p className="text-red-600 dark:text-red-400 font-medium">Error loading student data</p>
           <p className="text-sm text-gray-500 dark:text-gray-400">{(error as any)?.message || "Student not found"}</p>
