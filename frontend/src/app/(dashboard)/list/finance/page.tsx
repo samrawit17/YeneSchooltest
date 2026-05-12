@@ -484,10 +484,10 @@ export default function FinanceListPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-3 sm:p-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Academic Year" />
               </SelectTrigger>
               <SelectContent>
@@ -499,7 +499,7 @@ export default function FinanceListPage() {
 
             {terms.length > 0 && (
               <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder={`${curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'}`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -511,15 +511,17 @@ export default function FinanceListPage() {
               </Select>
             )}
 
-            <TableSearch
-              search={searchTerm}
-              setSearch={setSearchTerm}
-              placeholder="Search..."
-              className="flex-1 min-w-[200px]"
-            />
+            <div className="col-span-2 sm:col-span-1">
+              <TableSearch
+                search={searchTerm}
+                setSearch={setSearchTerm}
+                placeholder="Search..."
+                className="w-full"
+              />
+            </div>
 
             <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Grade" />
               </SelectTrigger>
               <SelectContent>
@@ -531,7 +533,7 @@ export default function FinanceListPage() {
             </Select>
 
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>

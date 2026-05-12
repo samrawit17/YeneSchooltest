@@ -106,19 +106,19 @@ export function SirenEventHistory() {
   };
 
   return (
-    <Card>
+    <Card className="max-w-full overflow-hidden">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <History className="w-5 h-5" />
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <CardTitle className="flex min-w-0 items-center gap-2">
+              <History className="h-5 w-5 shrink-0" />
               Siren Events
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="break-words">
               View audit log of all siren triggers
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -142,17 +142,17 @@ export function SirenEventHistory() {
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="min-w-0">
         <div className="space-y-4">
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Input
               placeholder="Search events..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="max-w-xs"
+              className="w-full sm:max-w-xs"
             />
             <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -173,8 +173,8 @@ export function SirenEventHistory() {
               <p className="text-muted-foreground">No events found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="max-w-full overflow-x-auto">
+              <Table className="min-w-[720px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Type</TableHead>
@@ -233,7 +233,7 @@ export function SirenEventHistory() {
             </div>
           )}
 
-          <div className="flex justify-between items-center pt-4 text-sm text-muted-foreground">
+          <div className="flex min-w-0 justify-between items-center pt-4 text-sm text-muted-foreground">
             <div>
               Showing {filteredEvents.length} of {events.length} events
             </div>

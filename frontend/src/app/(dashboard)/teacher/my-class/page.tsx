@@ -216,25 +216,11 @@ const MyClassesPage = () => {
     } catch (error: any) {
       console.error('Failed to fetch classes:', error);
       toast.error('Failed to load classes');
-      setMockData();
+      setClasses([]);
     } finally {
       setLoading(false);
     }
   };
-
-  const setMockData = () => {
-    setClasses([
-      { id: '1', classSubjectId: 'cs1', name: '5A', grade: 5, section: 'A', subject: 'Mathematics', studentCount: 25, schedule: 'Monday 09:00-10:00', room: 'Room 101', type: 'teaching' },
-      { id: '2', classSubjectId: 'cs2', name: '5B', grade: 5, section: 'B', subject: 'Mathematics', studentCount: 22, schedule: 'Monday 10:30-11:30', room: 'Room 102', type: 'teaching' },
-      { id: '3', classSubjectId: 'cs3', name: '6A', grade: 6, section: 'A', subject: 'Physics', studentCount: 28, schedule: 'Tuesday 13:00-14:00', room: 'Lab 1', type: 'homeroom' },
-      { id: '4', classSubjectId: 'cs4', name: '6B', grade: 6, section: 'B', subject: 'Physics', studentCount: 24, schedule: 'Tuesday 14:30-15:30', room: 'Lab 1', type: 'teaching' },
-      { id: '5', classSubjectId: 'cs5', name: '7A', grade: 7, section: 'A', subject: 'Mathematics', studentCount: 20, schedule: 'Wednesday 09:00-10:00', room: 'Room 201', type: 'teaching' },
-      { id: '6', classSubjectId: 'cs6', name: '7B', grade: 7, section: 'B', subject: 'Physics', studentCount: 18, schedule: 'Thursday 11:00-12:00', room: 'Lab 2', type: 'homeroom' },
-    ]);
-  };
-
-  const grades = Array.from(new Set(classes.map(cls => cls.grade))).sort((a, b) => a - b);
-  const subjects = Array.from(new Set(classes.map(cls => cls.subject))).sort();
 
   if (loading || isLoading) {
     return (
@@ -263,62 +249,6 @@ const MyClassesPage = () => {
           <Calendar className="w-4 h-4 mr-2" />
           View Timetable
         </Button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Total Classes</p>
-                <p className="text-2xl font-bold">{classes.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Total Students</p>
-                <p className="text-2xl font-bold">{classes.reduce((acc, cls) => acc + cls.studentCount, 0)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Subjects</p>
-                <p className="text-2xl font-bold">{subjects.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Grades</p>
-                <p className="text-2xl font-bold">{grades.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Classes Grid */}
@@ -434,7 +364,6 @@ const MyClassesPage = () => {
               <p className="text-gray-500 mb-4">
                 You have not been assigned to any classes yet
               </p>
-              )}
             </div>
           </CardContent>
         </Card>

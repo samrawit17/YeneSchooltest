@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { parentsAPI } from "@/lib/api/people";
@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import FormModal from "@/components/FormModal";
 import TableSearch from "@/components/TableSearch";
-import { useDebounce } from "@/hooks/useDebounce";
 import Pagination from "@/components/Pagination";
 
 // Shadcn/ui Components
@@ -43,6 +42,8 @@ type LinkedChild = {
   studentId: string;
   studentName: string;
   studentCode: string;
+  className?: string;
+  section?: string;
   relation: string;
   isPrimary: boolean;
   emergencyContact: boolean;
@@ -65,6 +66,7 @@ type Parent = {
 const ParentListPage = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const hasLoadedRef = useRef(false);
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
@@ -77,9 +79,6 @@ const ParentListPage = () => {
   const [modalType, setModalType] = useState<"create" | "update">("create");
   const [showLinkModal, setShowLinkModal] = useState(false);
   
-  // Debounce the search query
-  const debouncedSearch = useDebounce(searchInput, 500);
-
   // Filter states
   const [statusFilter, setStatusFilter] = useState("");
   const [childrenFilter, setChildrenFilter] = useState("");
@@ -88,9 +87,11 @@ const ParentListPage = () => {
   useEffect(() => {
     const fetchParents = async () => {
       try {
-        setLoading(true);
+        if (!hasLoadedRef.current) {
+          setLoading(true);
+        }
         const response = await parentsAPI.getAll({
-          search: debouncedSearch,
+          search: searchInput,
           page: currentPage,
           limit,
         });
@@ -114,13 +115,15 @@ const ParentListPage = () => {
               address: p.address ?? p.user?.address ?? "",
               occupation: p.occupation ?? "",
               isActive: p.user?.isActive ?? true,
-              children: (p.children || []).map((c: any) => ({
-                id: c.id,
-                studentId: c.studentId,
-                studentName: c.student?.className ?? c.student?.studentCode ?? "Unknown",
-                studentCode: c.student?.studentCode ?? "",
-                relation: c.relation,
-                isPrimary: c.isPrimary,
+	              children: (p.children || []).map((c: any) => ({
+	                id: c.id,
+	                studentId: c.studentId,
+	                studentName: c.student?.user?.name ?? c.studentName ?? c.student?.className ?? c.student?.studentCode ?? "Unknown",
+	                studentCode: c.student?.studentCode ?? "",
+	                className: c.student?.className ?? c.className ?? c.grade ?? "",
+	                section: c.student?.section ?? c.section ?? "",
+	                relation: c.relation,
+	                isPrimary: c.isPrimary,
                 emergencyContact: c.emergencyContact,
               })),
               createdAt: p.createdAt,
@@ -133,17 +136,28 @@ const ParentListPage = () => {
         toast.error("Failed to fetch parents from server");
         setParents([]);
       } finally {
+        hasLoadedRef.current = true;
         setLoading(false);
       }
     };
 
     fetchParents();
-  }, [debouncedSearch, currentPage, limit]);
+  }, [searchInput, currentPage, limit]);
 
-  // Reset page when filters change
-  useEffect(() => {
+  const updateSearch = (value: string) => {
+    setSearchInput(value);
     setCurrentPage(1);
-  }, [debouncedSearch, statusFilter, childrenFilter]);
+  };
+
+  const updateStatusFilter = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const updateChildrenFilter = (value: string) => {
+    setChildrenFilter(value);
+    setCurrentPage(1);
+  };
 
   // Filter parents locally
   const filteredParents = parents.filter((parent) => {
@@ -224,23 +238,23 @@ const ParentListPage = () => {
 
           {/* Filters Section */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 w-full">
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row gap-4">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-row flex-wrap items-center gap-3">
                 {/* Search Bar */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-[160px]">
                   <TableSearch
                     search={searchInput}
-                    setSearch={setSearchInput}
+                    setSearch={updateSearch}
                     placeholder="Search by name, email, or phone..."
                     className="w-full"
                   />
                 </div>
 
                 {/* Filter Dropdowns */}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-row flex-wrap gap-2">
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) => updateStatusFilter(e.target.value)}
                     className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                   >
                     <option value="">All Status</option>
@@ -250,7 +264,7 @@ const ParentListPage = () => {
 
                   <select
                     value={childrenFilter}
-                    onChange={(e) => setChildrenFilter(e.target.value)}
+                    onChange={(e) => updateChildrenFilter(e.target.value)}
                     className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                   >
                     <option value="">All Parents</option>
@@ -279,12 +293,13 @@ const ParentListPage = () => {
                 <Table className="w-full">
                   <TableHeader className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
                     <TableRow className="border-b border-gray-100 dark:border-slate-700">
-                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Photo</TableHead>
-                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent Name</TableHead>
-                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">ID</TableHead>
-                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Phone</TableHead>
-                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Children</TableHead>
-                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Status</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Photo</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent Name</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Phone</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Children</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Grade</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Section</TableHead>
+	                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Status</TableHead>
                       <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -307,13 +322,8 @@ const ParentListPage = () => {
                             <p className="text-xs text-gray-500 dark:text-gray-400">{parent.email}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3">
-                          <span className="text-sm text-gray-700 dark:text-gray-300 font-mono">
-                            {parent.username}
-                          </span>
-                        </TableCell>
-                        <TableCell className="px-4 py-3">
-                          {parent.phone ? (
+	                        <TableCell className="px-4 py-3">
+	                          {parent.phone ? (
                             <div className="flex items-center gap-2">
                               <Phone className="w-4 h-4 text-gray-400" />
                               <span className="text-sm text-gray-700 dark:text-gray-300">{parent.phone}</span>
@@ -326,12 +336,12 @@ const ParentListPage = () => {
                           <div className="flex flex-wrap gap-1">
                             {parent.children.length > 0 ? (
                               <>
-                                {parent.children.slice(0, 2).map((child, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
-                                    {child.studentName}
-                                    {child.isPrimary && " ★"}
-                                  </Badge>
-                                ))}
+	                                {parent.children.slice(0, 2).map((child, idx) => (
+	                                  <Badge key={idx} variant="outline" className="text-xs">
+	                                    {child.studentName}
+	                                    {child.isPrimary && " ★"}
+	                                  </Badge>
+	                                ))}
                                 {parent.children.length > 2 && (
                                   <Badge variant="outline" className="text-xs">
                                     +{parent.children.length - 2}
@@ -341,9 +351,49 @@ const ParentListPage = () => {
                             ) : (
                               <span className="text-sm text-gray-400">No children linked</span>
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-center">
+	                          </div>
+	                        </TableCell>
+	                        <TableCell className="px-4 py-3">
+	                          <div className="flex flex-wrap gap-1">
+	                            {parent.children.length > 0 ? (
+	                              <>
+	                                {parent.children.slice(0, 2).map((child, idx) => (
+	                                  <Badge key={idx} variant="outline" className="text-xs">
+	                                    {child.className || "—"}
+	                                  </Badge>
+	                                ))}
+	                                {parent.children.length > 2 && (
+	                                  <Badge variant="outline" className="text-xs">
+	                                    +{parent.children.length - 2}
+	                                  </Badge>
+	                                )}
+	                              </>
+	                            ) : (
+	                              <span className="text-sm text-gray-400">—</span>
+	                            )}
+	                          </div>
+	                        </TableCell>
+	                        <TableCell className="px-4 py-3">
+	                          <div className="flex flex-wrap gap-1">
+	                            {parent.children.length > 0 ? (
+	                              <>
+	                                {parent.children.slice(0, 2).map((child, idx) => (
+	                                  <Badge key={idx} variant="outline" className="text-xs">
+	                                    {child.section || "—"}
+	                                  </Badge>
+	                                ))}
+	                                {parent.children.length > 2 && (
+	                                  <Badge variant="outline" className="text-xs">
+	                                    +{parent.children.length - 2}
+	                                  </Badge>
+	                                )}
+	                              </>
+	                            ) : (
+	                              <span className="text-sm text-gray-400">—</span>
+	                            )}
+	                          </div>
+	                        </TableCell>
+	                        <TableCell className="px-4 py-3 text-center">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium border inline-flex items-center gap-1 ${getStatusBadge(parent.isActive)}`}
                           >

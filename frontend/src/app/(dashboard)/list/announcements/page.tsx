@@ -191,8 +191,8 @@ const AnnouncementListPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-2 mb-4">
-        <div className="relative flex-1">
+      <div className="flex flex-row flex-wrap items-center gap-2 mb-4">
+        <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search announcements..."
@@ -212,7 +212,7 @@ const AnnouncementListPage = () => {
             setCurrentPage(1);
           }}
         >
-          <SelectTrigger className="w-full sm:w-32">
+          <SelectTrigger className="w-[120px] sm:w-32">
             <SelectValue placeholder="Audience" />
           </SelectTrigger>
           <SelectContent>
@@ -230,7 +230,7 @@ const AnnouncementListPage = () => {
             setCurrentPage(1);
           }}
         >
-          <SelectTrigger className="w-full sm:w-32">
+          <SelectTrigger className="w-[120px] sm:w-32">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -242,7 +242,7 @@ const AnnouncementListPage = () => {
         </Select>
 
         {hasActiveFilters && (
-          <Button variant="ghost" onClick={clearFilters} size="sm" className="gap-1">
+          <Button variant="ghost" onClick={clearFilters} size="sm" className="gap-1 shrink-0">
             <X className="h-4 w-4" />
             Clear
           </Button>

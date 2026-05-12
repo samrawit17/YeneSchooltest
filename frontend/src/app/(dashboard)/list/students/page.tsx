@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { studentsAPI } from "@/lib/api";
 import { bulkUploadAPI } from "@/lib/api/bulk-upload";
@@ -9,7 +9,6 @@ import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
-import { useDebounce } from "@/hooks/useDebounce";
 import { useAuth } from "@/context/AuthContext";
 import { Filters, useFilters } from "@/components/filters/Filters";
 import {
@@ -108,9 +107,6 @@ const StudentsListPage = () => {
     setSelectedStatus: setStatusFilter,
   } = useFilters();
 
-  // Debounce the search query with 500ms delay
-  const debouncedSearch = useDebounce(searchInput, 500);
-
   // Add Student state
   const [addStudentDialogOpen, setAddStudentDialogOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({
@@ -125,7 +121,7 @@ const StudentsListPage = () => {
   const { data: studentsData, isLoading } = useQuery<StudentsResponse>({
     queryKey: queryKeys.students.list(
       currentPage,
-      debouncedSearch,
+      searchInput,
       statusFilter,
       gradeFilter,
       sectionFilter,
@@ -136,7 +132,8 @@ const StudentsListPage = () => {
         status: statusFilter, 
         grade: gradeFilter, 
         section: sectionFilter, 
-        year: yearFilter 
+        year: yearFilter,
+        search: searchInput,
       });
       const response = await studentsAPI.getAll({
         status: statusFilter || undefined,
@@ -145,16 +142,38 @@ const StudentsListPage = () => {
         year: yearFilter || undefined,
         page: currentPage.toString(),
         limit: '10',
-        search: debouncedSearch || undefined,
+        search: searchInput || undefined,
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
 
-  // Reset to page 1 when search or filters change
-  useEffect(() => {
+  const updateSearch = (value: string) => {
+    setSearchInput(value);
     setCurrentPage(1);
-  }, [debouncedSearch, statusFilter, gradeFilter, sectionFilter, yearFilter]);
+  };
+
+  const updateYearFilter = (value: string) => {
+    setYearFilter(value);
+    setCurrentPage(1);
+  };
+
+  const updateGradeFilter = (value: string) => {
+    setGradeFilter(value);
+    setSectionFilter("");
+    setCurrentPage(1);
+  };
+
+  const updateSectionFilter = (value: string) => {
+    setSectionFilter(value);
+    setCurrentPage(1);
+  };
+
+  const updateStatusFilter = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
 
   // Delete student mutation
   const deleteMutation = useMutation({
@@ -311,8 +330,8 @@ const StudentsListPage = () => {
       <div className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Top Section - Title and Buttons */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h1 className="text-2xl font-bold text-black">Students Management</h1>
+          <div className="flex flex-row flex-wrap items-center justify-between gap-3">
+            <h1 className="text-xl md:text-2xl font-bold text-black">Students Management</h1>
             <div className="flex items-center gap-3">
               {user?.role === 'REGISTRAR' && (
                 <>
@@ -339,20 +358,20 @@ const StudentsListPage = () => {
 
           {/* Filters Section */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-row flex-wrap items-center gap-3">
                 {/* Search Bar using TableSearch Component */}
-                <div className="w-full lg:flex-1">
+                <div className="flex-1 min-w-[160px]">
                   <TableSearch
                     search={searchInput}
-                    setSearch={setSearchInput}
+                    setSearch={updateSearch}
                     placeholder="Search by student name, email, or student ID..."
                     className="w-full"
                   />
                 </div>
 
                 {/* Centralized Filters */}
-                <div className="w-full lg:w-auto lg:min-w-[60%]">
+                <div className="flex-1 min-w-[200px]">
                   <Filters
                     config={{
                       academicYear: true,
@@ -361,14 +380,14 @@ const StudentsListPage = () => {
                       status: true,
                     }}
                     selectedYear={yearFilter}
-                    onYearChange={setYearFilter}
+                    onYearChange={updateYearFilter}
                     selectedGrade={gradeFilter}
-                    onGradeChange={(val) => { setGradeFilter(val); setSectionFilter(""); }}
+                    onGradeChange={updateGradeFilter}
                     selectedSection={sectionFilter}
-                    onSectionChange={setSectionFilter}
+                    onSectionChange={updateSectionFilter}
                     sectionMode="name"
                     selectedStatus={statusFilter}
-                    onStatusChange={setStatusFilter}
+                    onStatusChange={updateStatusFilter}
                     options={{
                       statusOptions: [
                         { value: "Active", label: "Active" },

@@ -59,6 +59,12 @@ export class CreateGradeDto {
   @IsOptional()
   @IsString()
   remark?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GradeComponentScoreDto)
+  componentScores?: GradeComponentScoreDto[];
 }
 
 export class UpdateGradeDto {
@@ -91,6 +97,17 @@ export class BulkGradeEntryDto {
   @ValidateNested({ each: true })
   @Type(() => CreateGradeDto)
   grades: CreateGradeDto[];
+}
+
+export class GradeComponentScoreDto {
+  @IsString()
+  code: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  score?: number | null;
 }
 
 export class GradeFilterDto {

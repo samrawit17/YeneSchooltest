@@ -7,7 +7,6 @@ import {
 import { 
   AssessmentStatus, 
   AssessmentScoreStatus, 
-  AssessmentType 
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcademicYearService } from '../academic-year/academic-year.service';
@@ -58,6 +57,129 @@ export class GradingService {
 
   private getSchoolGradesNamespace(schoolId: string) {
     return `grades:school:${schoolId}`;
+  }
+
+  private async getSchoolGradingComponentsMap(schoolId: string) {
+    const assessmentTypesRaw = await this.getAssessmentTypes(schoolId);
+    const assessmentTypes: Array<{
+      code: string;
+      name: string;
+      percentage: number;
+    }> = Array.isArray(assessmentTypesRaw)
+      ? assessmentTypesRaw.flatMap((item) => {
+          if (
+            item &&
+            typeof item === 'object' &&
+            'code' in item &&
+            'name' in item &&
+            'percentage' in item
+          ) {
+            return [
+              {
+                code: String(item.code),
+                name: String(item.name),
+                percentage: Number(item.percentage),
+              },
+            ];
+          }
+          return [];
+        })
+      : [];
+    const componentMap = new Map<string, any>();
+
+    for (const item of assessmentTypes) {
+      const code = String(item.code).toUpperCase();
+      const component = await this.prisma.gradingComponent.upsert({
+        where: {
+          schoolId_code: {
+            schoolId,
+            code,
+          },
+        },
+        update: {
+          name: item.name,
+          percentage: item.percentage,
+          isActive: true,
+        },
+        create: {
+          schoolId,
+          code,
+          name: item.name,
+          percentage: item.percentage,
+          isActive: true,
+        },
+      });
+      componentMap.set(code, component);
+    }
+
+    return componentMap;
+  }
+
+  private buildLegacyScoresFromComponents(
+    componentScores: Array<{ code: string; score: number | null | undefined }>,
+  ) {
+    let caScore = 0;
+    let midScore = 0;
+    let finalScore = 0;
+
+    for (const item of componentScores) {
+      const score = item.score ?? 0;
+      const code = String(item.code).toUpperCase();
+      if (code === 'FINAL') {
+        finalScore += score;
+      } else if (code === 'MID') {
+        midScore += score;
+      } else {
+        caScore += score;
+      }
+    }
+
+    return {
+      caScore: caScore > 0 ? caScore : null,
+      midScore: midScore > 0 ? midScore : null,
+      finalScore: finalScore > 0 ? finalScore : null,
+    };
+  }
+
+  private async normalizeComponentPayload(
+    schoolId: string,
+    componentScores?: Array<{ code: string; score?: number | null }>,
+  ) {
+    if (!componentScores || componentScores.length === 0) {
+      return [];
+    }
+
+    const componentMap = await this.getSchoolGradingComponentsMap(schoolId);
+
+    return componentScores
+      .filter((item) => item && item.code)
+      .map((item) => {
+        const code = String(item.code).toUpperCase();
+        const component = componentMap.get(code);
+        const maxScore = Number(component?.percentage ?? 100);
+        const score = item.score ?? null;
+
+        if (score !== null && (score < 0 || score > maxScore)) {
+          throw new BadRequestException(`${code} max score is ${maxScore}`);
+        }
+
+        return {
+          code,
+          score,
+          maxScore,
+          componentId: component?.id ?? null,
+        };
+      });
+  }
+
+  private calculateTotalFromComponentScores(
+    componentScores: Array<{ score: number | null | undefined }>,
+  ) {
+    const hasAny = componentScores.some((item) => item.score !== null && item.score !== undefined);
+    if (!hasAny) return null;
+
+    const total = componentScores.reduce((sum, item) => sum + (item.score ?? 0), 0);
+    return Math.round(total * 100) / 100;
   }
 
   private async invalidateGradeCaches(input: {
@@ -462,6 +584,56 @@ export class GradingService {
       }),
       120,
       async () => {
+        const assessmentSubjects = await this.prisma.assessmentSubject.findMany({
+          where: {
+            classId,
+            sectionId,
+            subjectId,
+            assessment: {
+              academicYearId: academicYear,
+              termId,
+            },
+          },
+          include: {
+            assessment: {
+              select: {
+                type: true,
+                startDate: true,
+                status: true,
+              },
+            },
+          },
+          orderBy: [{ assessment: { startDate: 'asc' } }],
+        });
+
+        const componentAvailability = Array.from(
+          assessmentSubjects.reduce((map, item) => {
+            const code = String(item.assessment.type).toUpperCase();
+            const started = item.assessment.startDate <= new Date();
+            const existing = map.get(code);
+
+            if (!existing || (!existing.started && started)) {
+              map.set(code, {
+                code,
+                assessmentSubjectId: item.id,
+                startDate: item.assessment.startDate.toISOString(),
+                status: item.assessment.status,
+                started,
+                maxScore: item.maxScore,
+              });
+            }
+
+            return map;
+          }, new Map<string, {
+            code: string;
+            assessmentSubjectId: string;
+            startDate: string;
+            status: string;
+            started: boolean;
+            maxScore: number;
+          }>()),
+        ).map(([_, value]) => value);
+
         const studentClasses = await this.prisma.studentClass.findMany({
           where: {
             academicYear,
@@ -485,6 +657,13 @@ export class GradingService {
             classId,
             sectionId,
             teacherId,
+          },
+          include: {
+            gradeScores: {
+              include: {
+                component: true,
+              },
+            },
           },
         });
 
@@ -523,7 +702,7 @@ export class GradingService {
               include: { user: { select: { id: true, name: true } } },
             });
 
-            return profileStudents.map((sp) => {
+            const students = profileStudents.map((sp) => {
               const grade = existingGrades.find((g) => g.studentId === sp.userId);
               return {
                 studentId: sp.userId,
@@ -539,13 +718,20 @@ export class GradingService {
                 registrarComment: grade?.registrarComment ?? null,
                 isLocked: grade?.isLocked ?? false,
                 gradeId: grade?.id ?? null,
+                componentScores:
+                  grade?.gradeScores?.map((item) => ({
+                    code: item.component.code,
+                    score: item.score,
+                    maxScore: item.maxScore,
+                  })) ?? [],
               };
             });
+            return { students, componentAvailability };
           }
-          return [];
+          return { students: [], componentAvailability };
         }
 
-        return studentClasses.map((sc) => {
+        const students = studentClasses.map((sc) => {
           const grade = existingGrades.find((g) => g.studentId === sc.studentId);
           return {
             studentId: sc.studentId,
@@ -561,8 +747,15 @@ export class GradingService {
             registrarComment: grade?.registrarComment ?? null,
             isLocked: grade?.isLocked ?? false,
             gradeId: grade?.id ?? null,
+            componentScores:
+              grade?.gradeScores?.map((item) => ({
+                code: item.component.code,
+                score: item.score,
+                maxScore: item.maxScore,
+              })) ?? [],
           };
         });
+        return { students, componentAvailability };
       },
     );
   }
@@ -670,13 +863,41 @@ export class GradingService {
       dto.academicYear,
     );
 
-    // Calculate total and grade using dynamic weights from school config
-    const { totalScore, gradeLetter, gradePoint } = await this.calculateGrade(
+    const normalizedComponentScores = await this.normalizeComponentPayload(
       access.schoolId,
-      dto.caScore,
-      dto.midScore,
-      dto.finalScore,
+      dto.componentScores,
     );
+
+    const derivedLegacyScores =
+      normalizedComponentScores.length > 0
+        ? this.buildLegacyScoresFromComponents(normalizedComponentScores)
+        : {
+            caScore: dto.caScore ?? null,
+            midScore: dto.midScore ?? null,
+            finalScore: dto.finalScore ?? null,
+          };
+
+    const componentTotal =
+      normalizedComponentScores.length > 0
+        ? this.calculateTotalFromComponentScores(normalizedComponentScores)
+        : null;
+    const hasLegacyValue =
+      derivedLegacyScores.caScore !== null ||
+      derivedLegacyScores.midScore !== null ||
+      derivedLegacyScores.finalScore !== null;
+
+    const totalScore =
+      componentTotal ??
+      (hasLegacyValue
+        ? (derivedLegacyScores.caScore ?? 0) +
+          (derivedLegacyScores.midScore ?? 0) +
+          (derivedLegacyScores.finalScore ?? 0)
+        : null);
+
+    const { gradeLetter, gradePoint } =
+      totalScore === null
+        ? { gradeLetter: null, gradePoint: null }
+        : await this.getGradeFromScore(access.schoolId, totalScore);
 
     // Check if grade already exists
     const existingGrade = await this.prisma.subjectGrade.findUnique({
@@ -710,33 +931,33 @@ export class GradingService {
       // Update existing grade with audit logging
       const updated = await this.prisma.$transaction(async (tx) => {
         // Log changes for each field
-        if (existingGrade.caScore !== dto.caScore) {
+        if (existingGrade.caScore !== derivedLegacyScores.caScore) {
           await this.logGradeChange(
             tx,
             existingGrade.id,
             'caScore',
             existingGrade.caScore,
-            dto.caScore,
+            derivedLegacyScores.caScore,
             teacherId,
           );
         }
-        if (existingGrade.midScore !== dto.midScore) {
+        if (existingGrade.midScore !== derivedLegacyScores.midScore) {
           await this.logGradeChange(
             tx,
             existingGrade.id,
             'midScore',
             existingGrade.midScore,
-            dto.midScore,
+            derivedLegacyScores.midScore,
             teacherId,
           );
         }
-        if (existingGrade.finalScore !== dto.finalScore) {
+        if (existingGrade.finalScore !== derivedLegacyScores.finalScore) {
           await this.logGradeChange(
             tx,
             existingGrade.id,
             'finalScore',
             existingGrade.finalScore,
-            dto.finalScore,
+            derivedLegacyScores.finalScore,
             teacherId,
           );
         }
@@ -764,9 +985,9 @@ export class GradingService {
         return tx.subjectGrade.update({
           where: { id: existingGrade.id },
           data: {
-            caScore: dto.caScore,
-            midScore: dto.midScore,
-            finalScore: dto.finalScore,
+            caScore: derivedLegacyScores.caScore,
+            midScore: derivedLegacyScores.midScore,
+            finalScore: derivedLegacyScores.finalScore,
             totalScore,
             gradeLetter,
             gradePoint,
@@ -779,6 +1000,22 @@ export class GradingService {
           },
         });
       });
+
+      if (normalizedComponentScores.length > 0) {
+        await this.prisma.gradeScore.deleteMany({
+          where: { subjectGradeId: updated.id },
+        });
+        await this.prisma.gradeScore.createMany({
+          data: normalizedComponentScores
+            .filter((item) => item.componentId)
+            .map((item) => ({
+              subjectGradeId: updated.id,
+              gradingComponentId: item.componentId as string,
+              score: item.score ?? null,
+              maxScore: item.maxScore,
+            })),
+        });
+      }
 
       await this.invalidateGradeCaches({
         schoolId: access.schoolId,
@@ -798,9 +1035,9 @@ export class GradingService {
         sectionId: dto.sectionId,
         academicYear: dto.academicYear,
         termId: dto.termId,
-        caScore: dto.caScore,
-        midScore: dto.midScore,
-        finalScore: dto.finalScore,
+        caScore: derivedLegacyScores.caScore,
+        midScore: derivedLegacyScores.midScore,
+        finalScore: derivedLegacyScores.finalScore,
         totalScore,
         gradeLetter,
         gradePoint,
@@ -813,6 +1050,19 @@ export class GradingService {
         subject: true,
       },
     });
+
+    if (normalizedComponentScores.length > 0) {
+      await this.prisma.gradeScore.createMany({
+        data: normalizedComponentScores
+          .filter((item) => item.componentId)
+          .map((item) => ({
+            subjectGradeId: grade.id,
+            gradingComponentId: item.componentId as string,
+            score: item.score ?? null,
+            maxScore: item.maxScore,
+          })),
+      });
+    }
 
     await this.invalidateGradeCaches({
       schoolId: access.schoolId,
@@ -866,14 +1116,35 @@ export class GradingService {
         
         // Skip enrollment check since students are loaded via profile-based fallback for grade entry
 
-        // Calculate grade using dynamic weights
-        const { totalScore, gradeLetter, gradePoint } =
-          await this.calculateGrade(
-            access.schoolId,
-            gradeDto.caScore,
-            gradeDto.midScore,
-            gradeDto.finalScore,
-          );
+        const normalizedComponentScores = await this.normalizeComponentPayload(
+          access.schoolId,
+          gradeDto.componentScores,
+        );
+        const derivedLegacyScores =
+          normalizedComponentScores.length > 0
+            ? this.buildLegacyScoresFromComponents(normalizedComponentScores)
+            : {
+                caScore: gradeDto.caScore ?? null,
+                midScore: gradeDto.midScore ?? null,
+                finalScore: gradeDto.finalScore ?? null,
+              };
+        const hasLegacyValue =
+          derivedLegacyScores.caScore !== null ||
+          derivedLegacyScores.midScore !== null ||
+          derivedLegacyScores.finalScore !== null;
+        const componentTotal =
+          normalizedComponentScores.length > 0
+            ? this.calculateTotalFromComponentScores(normalizedComponentScores)
+            : null;
+        const totalScore = componentTotal ?? (hasLegacyValue
+          ? (derivedLegacyScores.caScore ?? 0) +
+            (derivedLegacyScores.midScore ?? 0) +
+            (derivedLegacyScores.finalScore ?? 0)
+          : null);
+        const { gradeLetter, gradePoint } =
+          totalScore === null
+            ? { gradeLetter: null, gradePoint: null }
+            : await this.getGradeFromScore(access.schoolId, totalScore);
 
         // Check if grade exists
         const existingGrade = await tx.subjectGrade.findUnique({
@@ -900,9 +1171,9 @@ export class GradingService {
           const updated = await tx.subjectGrade.update({
             where: { id: existingGrade.id },
             data: {
-              caScore: gradeDto.caScore,
-              midScore: gradeDto.midScore,
-              finalScore: gradeDto.finalScore,
+              caScore: derivedLegacyScores.caScore,
+              midScore: derivedLegacyScores.midScore,
+              finalScore: derivedLegacyScores.finalScore,
               totalScore,
               gradeLetter,
               gradePoint,
@@ -910,6 +1181,25 @@ export class GradingService {
               teacherId,
             },
           });
+          if (normalizedComponentScores.length > 0) {
+            await tx.gradeScore.deleteMany({
+              where: { subjectGradeId: existingGrade.id },
+            });
+            if (
+              normalizedComponentScores.some((item) => item.componentId)
+            ) {
+              await tx.gradeScore.createMany({
+                data: normalizedComponentScores
+                  .filter((item) => item.componentId)
+                  .map((item) => ({
+                    subjectGradeId: existingGrade.id,
+                    gradingComponentId: item.componentId as string,
+                    score: item.score ?? null,
+                    maxScore: item.maxScore,
+                  })),
+              });
+            }
+          }
           gradeResults.push({
             success: true,
             studentId: gradeDto.studentId,
@@ -925,9 +1215,9 @@ export class GradingService {
               sectionId: gradeDto.sectionId,
               academicYear: gradeDto.academicYear,
               termId: gradeDto.termId,
-              caScore: gradeDto.caScore,
-              midScore: gradeDto.midScore,
-              finalScore: gradeDto.finalScore,
+              caScore: derivedLegacyScores.caScore,
+              midScore: derivedLegacyScores.midScore,
+              finalScore: derivedLegacyScores.finalScore,
               totalScore,
               gradeLetter,
               gradePoint,
@@ -936,6 +1226,21 @@ export class GradingService {
               status: GradeStatus.DRAFT,
             },
           });
+          if (
+            normalizedComponentScores.length > 0 &&
+            normalizedComponentScores.some((item) => item.componentId)
+          ) {
+            await tx.gradeScore.createMany({
+              data: normalizedComponentScores
+                .filter((item) => item.componentId)
+                .map((item) => ({
+                  subjectGradeId: grade.id,
+                  gradingComponentId: item.componentId as string,
+                  score: item.score ?? null,
+                  maxScore: item.maxScore,
+                })),
+            });
+          }
           gradeResults.push({
             success: true,
             studentId: gradeDto.studentId,
@@ -1593,7 +1898,11 @@ export class GradingService {
     if (weights.length > 0) {
       return weights.map(w => ({
         code: w.type,
-        name: w.type,
+        name: w.type
+          .toLowerCase()
+          .split('_')
+          .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' '),
         percentage: w.percentage,
       }));
     }
@@ -1632,7 +1941,7 @@ export class GradingService {
         where: {
           schoolId_type: {
             schoolId,
-            type: type.code as any,
+            type: type.code as never,
           },
         },
       });
@@ -1650,7 +1959,7 @@ export class GradingService {
         result = await this.prisma.assessmentWeight.create({
           data: {
             schoolId,
-            type: type.code as any,
+            type: type.code as never,
             percentage: type.percentage,
             isActive: true,
           },

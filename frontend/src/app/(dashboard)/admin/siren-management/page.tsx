@@ -64,62 +64,64 @@ export default function SirenManagementPage() {
   };
 
   return (
-    <div className="w-full space-y-6 p-4 md:p-8">
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Siren Management</h1>
-          <p className="text-muted-foreground mt-2">
+    <div className="min-w-0 max-w-full overflow-x-hidden space-y-6 p-3 sm:p-4 md:p-8">
+      <div className="mb-8 flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <h1 className="break-words text-2xl font-bold tracking-tight md:text-3xl">Siren Management</h1>
+          <p className="mt-2 break-words text-muted-foreground">
             Configure period times, static schedules, and hardware integration for
             school sirens
           </p>
         </div>
 
-        <Button onClick={handleRing} disabled={ringing} className="gap-2 self-start">
-          {ringing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
-          Ring
-        </Button>
-        {!audioEnabled && (
-          <Button variant="outline" onClick={unlockAudio} className="gap-2 self-start">
-            <Volume2 className="h-4 w-4" />
-            Enable Audio
+        <div className="flex w-full flex-wrap gap-2 md:w-auto md:shrink-0 md:justify-end">
+          <Button onClick={handleRing} disabled={ringing} className="gap-2">
+            {ringing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+            Ring
           </Button>
-        )}
+          {!audioEnabled && (
+            <Button variant="outline" onClick={unlockAudio} className="gap-2">
+              <Volume2 className="h-4 w-4" />
+              Enable Audio
+            </Button>
+          )}
+        </div>
       </div>
 
-      <Tabs defaultValue="periods" className="w-full">
+      <Tabs defaultValue="periods" className="w-full min-w-0 max-w-full">
         <TabsList className="grid w-full grid-cols-3 rounded-xl border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.08)] p-1">
           <TabsTrigger
             value="periods"
-            className="gap-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            className="min-w-0 gap-2 px-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
           >
-            <Clock className="w-4 h-4" />
+            <Clock className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Periods</span>
           </TabsTrigger>
           <TabsTrigger
             value="schedules"
-            className="gap-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            className="min-w-0 gap-2 px-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
           >
-            <Bell className="w-4 h-4" />
+            <Bell className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Schedules</span>
           </TabsTrigger>
           <TabsTrigger
             value="hardware"
-            className="gap-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            className="min-w-0 gap-2 px-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
           >
-            <Zap className="w-4 h-4" />
+            <Zap className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Hardware</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="periods" className="mt-6">
+        <TabsContent value="periods" className="mt-6 min-w-0 max-w-full">
           <PeriodTimeManagement />
         </TabsContent>
 
-        <TabsContent value="schedules" className="mt-6">
+        <TabsContent value="schedules" className="mt-6 min-w-0 max-w-full">
           <SirenScheduleManagement />
         </TabsContent>
 
-        <TabsContent value="hardware" className="mt-6">
+        <TabsContent value="hardware" className="mt-6 min-w-0 max-w-full">
           <SirenHardwareConfig />
         </TabsContent>
       </Tabs>

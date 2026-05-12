@@ -27,7 +27,7 @@ export class CommunicationService {
 
   /**
    * Create a new communication entry
-   * Teachers, Admins can create communications
+   * Teachers, Admins, and Parents can create communications
    */
   async createCommunication(
     schoolId: string,
@@ -192,23 +192,43 @@ export class CommunicationService {
       }
     }
 
-    // If parent, verify they are the parent of this student
-    if (creatorRole === 'PARENT' && isTargetStudent) {
-      const parentRelation = await this.prisma.parentStudent.findFirst({
-        where: {
-          parentId: (
-            await this.prisma.parentProfile.findUnique({
-              where: { userId: createdById },
-            })
-          )?.id,
-          studentId: targetUser.studentProfile?.id,
-        },
-      });
+    // Parents can only message their own children or teachers linked to them.
+    if (creatorRole === 'PARENT') {
+      if (isTargetStudent) {
+        const parentRelation = await this.prisma.parentStudent.findFirst({
+          where: {
+            parentId: (
+              await this.prisma.parentProfile.findUnique({
+                where: { userId: createdById },
+              })
+            )?.id,
+            studentId: targetUser.studentProfile?.id,
+          },
+        });
 
-      if (!parentRelation) {
-        throw new ForbiddenException(
-          'You can only create communications for your own children',
+        if (!parentRelation) {
+          throw new ForbiddenException(
+            'You can only create communications for your own children',
+          );
+        }
+      } else {
+        if (targetUser.role !== 'TEACHER') {
+          throw new ForbiddenException(
+            'Parents can only create communications for their own children or related teachers',
+          );
+        }
+
+        const isRelatedTeacher = await this.isTeacherLinkedToParentChildren(
+          createdById,
+          targetUser.id,
+          resolvedSchoolId,
         );
+
+        if (!isRelatedTeacher) {
+          throw new ForbiddenException(
+            'You can only create communications for teachers linked to your children',
+          );
+        }
       }
     }
 
@@ -887,13 +907,36 @@ export class CommunicationService {
         ],
       };
     } else if (userRole === 'TEACHER') {
-      // Teachers see conversations they created and direct threads addressed to them.
+      const accessibleStudentIds = await this.getTeacherAccessibleStudentIds(
+        schoolId,
+        userId,
+      );
+
+      // Teachers see conversations they created, direct threads addressed to
+      // them, and parent-created communications about students they teach.
       return {
         schoolId,
         AND: [
           { schoolId },
           {
-            OR: [{ createdById: userId }, { studentId: userId }],
+            OR: [
+              { createdById: userId },
+              { studentId: userId },
+              ...(accessibleStudentIds.length > 0
+                ? [
+                    {
+                      AND: [
+                        { studentId: { in: accessibleStudentIds } },
+                        {
+                          createdBy: {
+                            role: 'PARENT',
+                          },
+                        },
+                      ],
+                    },
+                  ]
+                : []),
+            ],
           },
         ],
       };
@@ -988,9 +1031,16 @@ export class CommunicationService {
 
     // Teachers can also access direct threads addressed to them.
     if (userRole === 'TEACHER') {
+      const accessibleStudentIds = await this.getTeacherAccessibleStudentIds(
+        communication.schoolId,
+        userId,
+      );
+
       if (
         communication.createdById === userId ||
-        communication.studentId === userId
+        communication.studentId === userId ||
+        (communication.createdBy?.role === 'PARENT' &&
+          accessibleStudentIds.includes(communication.studentId))
       ) {
         return true;
       }
@@ -1007,6 +1057,154 @@ export class CommunicationService {
     }
 
     return `${normalized.slice(0, maxLength)}...`;
+  }
+
+  private async isTeacherLinkedToParentChildren(
+    parentUserId: string,
+    teacherUserId: string,
+    schoolId: string,
+  ): Promise<boolean> {
+    const parentProfile = await this.prisma.parentProfile.findUnique({
+      where: { userId: parentUserId },
+      include: {
+        children: {
+          select: {
+            student: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const childUserIds =
+      parentProfile?.children
+        .map((child) => child.student.userId)
+        .filter(Boolean) || [];
+
+    if (childUserIds.length === 0) {
+      return false;
+    }
+
+    const linkedStudentClass = await this.prisma.studentClass.findFirst({
+      where: {
+        schoolId,
+        studentId: { in: childUserIds },
+        OR: [
+          {
+            class: {
+              homeroomTeacherId: teacherUserId,
+            },
+          },
+          {
+            section: {
+              homeroomTeacherId: teacherUserId,
+            },
+          },
+          {
+            class: {
+              ClassSubject: {
+                some: {
+                  teacherId: teacherUserId,
+                },
+              },
+            },
+          },
+          {
+            section: {
+              classSubjects: {
+                some: {
+                  teacherId: teacherUserId,
+                },
+              },
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+
+    return Boolean(linkedStudentClass);
+  }
+
+  private async getTeacherAccessibleStudentIds(
+    schoolId: string,
+    teacherUserId: string,
+  ): Promise<string[]> {
+    const [homeroomSections, classSubjectAssignments, timetableAssignments] =
+      await Promise.all([
+        this.prisma.section.findMany({
+          where: {
+            homeroomTeacherId: teacherUserId,
+            class: {
+              schoolId,
+            },
+          },
+          select: {
+            id: true,
+            classId: true,
+          },
+        }),
+        this.prisma.classSubject.findMany({
+          where: {
+            teacherId: teacherUserId,
+            class: {
+              schoolId,
+            },
+          },
+          select: {
+            classId: true,
+            sectionId: true,
+          },
+        }),
+        this.prisma.timetableSlot.findMany({
+          where: {
+            teacherId: teacherUserId,
+            class: {
+              schoolId,
+            },
+          },
+          select: {
+            classId: true,
+            sectionId: true,
+          },
+        }),
+      ]);
+
+    const assignedPairs = [
+      ...homeroomSections.map((item) => ({
+        classId: item.classId,
+        sectionId: item.id,
+      })),
+      ...classSubjectAssignments.map((item) => ({
+        classId: item.classId,
+        sectionId: item.sectionId,
+      })),
+      ...timetableAssignments.map((item) => ({
+        classId: item.classId,
+        sectionId: item.sectionId,
+      })),
+    ];
+
+    if (assignedPairs.length === 0) {
+      return [];
+    }
+
+    const studentClasses = await this.prisma.studentClass.findMany({
+      where: {
+        schoolId,
+        OR: assignedPairs,
+      },
+      select: {
+        studentId: true,
+      },
+    });
+
+    return Array.from(
+      new Set(studentClasses.map((item) => item.studentId).filter(Boolean)),
+    );
   }
 
   private getTeacherIncomingWhereClause(schoolId: string, userId: string) {

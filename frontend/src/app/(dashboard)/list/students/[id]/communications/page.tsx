@@ -401,7 +401,7 @@ function CommunicationsContent({ studentId }: { studentId: string }) {
       </div>
 
       <div className="flex-1 overflow-hidden flex">
-        <div className="w-[400px] border-r border-[#E2E8F0] bg-white overflow-y-auto">
+        <div className="w-full md:w-[400px] border-r border-[#E2E8F0] bg-white overflow-y-auto">
           {filteredCommunications.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-6 text-center">
               <MessageSquare className="w-12 h-12 text-gray-300 mb-3" /><p className="text-gray-500 text-sm">No communications found</p>

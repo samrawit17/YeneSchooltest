@@ -10,9 +10,6 @@ import { toEthiopian } from "ethiopian-calendar-new";
 import {
   Calendar,
   Users,
-  UserCheck,
-  UserX,
-  Clock,
   ChevronLeft,
   ChevronRight,
   Save,
@@ -76,21 +73,13 @@ interface ClassOption {
 
 interface StudentAttendance {
   id: string;
-  studentId: string;
+  rollNumber: string;
   name: string;
   gender: 'MALE' | 'FEMALE';
   avatarUrl?: string;
   status: AttendanceStatus;
   remark: string;
   lastUpdated: string;
-}
-
-interface AttendanceStats {
-  total: number;
-  present: number;
-  absent: number;
-  late: number;
-  unmarked: number;
 }
 
 // Mock data removed - now fetching from API
@@ -338,7 +327,7 @@ export default function TeacherAttendancePage() {
             // Transform to attendance format - always start as UNMARKED
             const attendanceStudents: StudentAttendance[] = rawStudents.map((student: any) => ({
               id: student.userId || student.id,
-              studentId: student.studentCode || student.rollNumber || student.userId || 'N/A',
+              rollNumber: student.rollNumber || 'N/A',
               name: student.user?.name || student.name || 'Unknown',
               gender: student.gender || 'MALE',
               avatarUrl: student.avatarUrl,
@@ -373,7 +362,7 @@ export default function TeacherAttendancePage() {
             // Use existing records with their explicit status
             const attendanceStudents: StudentAttendance[] = session.attendanceRecords.map((record: any) => ({
               id: record.studentId,
-              studentId: record.student?.studentProfile?.studentCode || record.student?.studentProfile?.rollNumber || record.studentId,
+              rollNumber: record.student?.studentProfile?.rollNumber || 'N/A',
               name: record.student?.name || 'Unknown',
               gender: record.student?.studentProfile?.gender || 'MALE',
               avatarUrl: record.student?.avatarUrl,
@@ -560,18 +549,6 @@ export default function TeacherAttendancePage() {
     return selectedDate >= today && !isSubmitted && !isWeekendSelection;
   };
 
-  // Calculate stats
-  const stats: AttendanceStats = {
-    total: students.length,
-    present: students.filter(s => s.status === 'PRESENT').length,
-    absent: students.filter(s => s.status === 'ABSENT').length,
-    late: students.filter(s => s.status === 'LATE').length,
-    unmarked: students.filter(s => s.status === 'UNMARKED').length,
-  };
-
-  const presentPercentage = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
-  const absentPercentage = stats.total > 0 ? Math.round((stats.absent / stats.total) * 100) : 0;
-  const latePercentage = stats.total > 0 ? Math.round((stats.late / stats.total) * 100) : 0;
   const selectedClassMeta = classOptions.find((c) => c.key === selectedClass);
   const selectedSectionLabel = selectedClassMeta?.sectionName?.trim() || 'A';
   const selectedClassLabel = selectedClassMeta
@@ -581,7 +558,7 @@ export default function TeacherAttendancePage() {
   // Filter students
   const filteredStudents = students.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.studentId.toLowerCase().includes(searchTerm.toLowerCase())
+    s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Handlers
@@ -784,13 +761,12 @@ export default function TeacherAttendancePage() {
       PRESENT: { label: 'Present', color: 'bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] border-[rgba(var(--brand-color-rgb),0.18)] hover:bg-[rgba(var(--brand-color-rgb),0.18)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.3)]', selectedColor: 'bg-[var(--brand-color,#e35336)] text-white border-[var(--brand-color,#e35336)]' },
       ABSENT: { label: 'Absent', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/50', selectedColor: 'bg-red-600 text-white border-red-600' },
       LATE: { label: 'Late', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800 hover:bg-orange-200 dark:hover:bg-orange-900/50', selectedColor: 'bg-orange-500 text-white border-orange-500' },
-      EXCUSED: { label: 'Excused', color: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600', selectedColor: 'bg-gray-600 text-white border-gray-600' },
       UNMARKED: { label: 'Unmarked', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-200 dark:hover:bg-yellow-900/50', selectedColor: 'bg-yellow-500 text-white border-yellow-500' },
     };
 
     return (
       <div className="flex flex-wrap items-center gap-1">
-        {(Object.keys(statusConfig) as AttendanceStatus[]).filter(s => s !== 'UNMARKED').map((s) => (
+        {(Object.keys(statusConfig) as AttendanceStatus[]).filter(s => s !== 'UNMARKED' && s !== 'EXCUSED').map((s) => (
           <button
             key={s}
             type="button"
@@ -866,45 +842,45 @@ export default function TeacherAttendancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0F172A]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:p-6">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#0F172A]">
+      <div className="mx-auto w-full max-w-7xl min-w-0 px-3 sm:px-6 lg:p-6">
         {/* Top Header */}
-        <div className="bg-white dark:bg-[#1E293B] rounded-lg border border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] p-3 sm:p-6 mb-6 shadow-sm">
+        <div className="mb-4 min-w-0 rounded-lg border border-[rgba(var(--brand-color-rgb),0.16)] bg-white p-3 shadow-sm dark:border-[#334155] dark:bg-[#1E293B] sm:mb-6 sm:p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             {/* Title */}
-            <div className="order-1">
+            <div className="min-w-0 order-1">
               <h1 className="text-2xl font-bold text-black">Attendance</h1>
               <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Mark and monitor daily student attendance</p>
               {isWeekendSelection && (
-                <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm">
+                <div className="mt-2 inline-flex max-w-full items-start gap-1 rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                   <span>Attendance is locked on Saturday and Sunday</span>
                 </div>
               )}
               {isSubmitted && (
-                <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] rounded-full text-sm">
-                  <CheckCircle className="w-4 h-4" />
+                <div className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-[rgba(var(--brand-color-rgb),0.14)] px-3 py-1 text-sm text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.22)]">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
                   <span>Attendance Submitted</span>
                 </div>
               )}
               {/* Offline indicator */}
               {!isOnline && (
-                <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-full text-sm">
-                  <WifiOff className="w-4 h-4" />
+                <div className="mt-2 inline-flex max-w-full items-start gap-1 rounded-full bg-orange-100 px-3 py-1 text-sm text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                  <WifiOff className="w-4 h-4 shrink-0" />
                   <span>Offline - Changes will sync when online</span>
                 </div>
               )}
               {isOnline && pendingOfflineCount > 0 && (
-                <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] rounded-full text-sm">
-                  <AlertTriangle className="w-4 h-4" />
+                <div className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-[rgba(var(--brand-color-rgb),0.14)] px-3 py-1 text-sm text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.22)]">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>{pendingOfflineCount} records pending sync</span>
                 </div>
               )}
             </div>
 
             {/* Filters */}
-            <div className="flex flex-row items-center gap-2 sm:gap-3 order-2 w-auto overflow-x-auto pb-2 sm:pb-0">
+            <div className="order-2 grid w-full min-w-0 grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-row sm:items-center sm:gap-3">
               {/* Connection Status Badge */}
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+              <div className={`inline-flex w-fit items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
                 isOnline 
                   ? 'bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)]' 
                   : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
@@ -914,7 +890,7 @@ export default function TeacherAttendancePage() {
               </div>
 
               {/* Date Picker - Ethiopian Calendar Only */}
-              <div className="flex items-center gap-0.5 sm:gap-1 bg-[rgba(var(--brand-color-rgb),0.08)] dark:bg-[rgba(var(--brand-color-rgb),0.16)] rounded-lg border border-[rgba(var(--brand-color-rgb),0.2)] dark:border-[rgba(var(--brand-color-rgb),0.3)] p-0.5 sm:p-1">
+              <div className="flex min-w-0 items-center justify-between gap-0.5 rounded-lg border border-[rgba(var(--brand-color-rgb),0.2)] bg-[rgba(var(--brand-color-rgb),0.08)] p-0.5 dark:border-[rgba(var(--brand-color-rgb),0.3)] dark:bg-[rgba(var(--brand-color-rgb),0.16)] sm:gap-1 sm:p-1">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -927,9 +903,9 @@ export default function TeacherAttendancePage() {
                 >
                   <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
-                <div className="flex items-center gap-1 px-0.5 sm:px-2">
+                <div className="flex min-w-0 flex-1 items-center justify-center gap-1 px-0.5 sm:px-2">
                   <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-[var(--brand-color,#e35336)] hidden sm:block" />
-                  <span className="text-xs sm:text-sm font-medium text-[var(--brand-color,#e35336)] min-w-[80px] sm:min-w-[120px] text-center">
+                  <span className="min-w-0 truncate text-center text-xs font-medium text-[var(--brand-color,#e35336)] sm:min-w-[120px] sm:text-sm">
                     {ethiopianDate || getEthiopianDate(selectedDate) || 'Loading...'}
                   </span>
                 </div>
@@ -953,7 +929,7 @@ export default function TeacherAttendancePage() {
                 onValueChange={setSelectedClass}
                 disabled={isLoadingClasses}
               >
-                <SelectTrigger className="w-[140px] sm:w-[180px] border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white">
+                <SelectTrigger className="w-full border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white sm:w-[180px]">
                   <SelectValue placeholder={isLoadingClasses ? "Loading..." : "Class"} />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-[#1E293B] dark:border-[#334155]">
@@ -970,92 +946,8 @@ export default function TeacherAttendancePage() {
           </div>
         </div>
 
-        {/* Attendance Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          {/* Total Students */}
-          <Card className="border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Students</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.total}</p>
-                </div>
-                <div className="w-12 h-12 bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] rounded-full flex items-center justify-center">
-                  <Users className="w-6 h-6 text-[var(--brand-color,#e35336)]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Present */}
-          <Card className="border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Present</p>
-                  <p className="text-2xl font-bold text-[var(--brand-color,#e35336)] mt-1">{stats.present}</p>
-                  <p className="text-xs text-[var(--brand-color,#e35336)] mt-1">{presentPercentage}%</p>
-                </div>
-                <div className="w-12 h-12 bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] rounded-full flex items-center justify-center">
-                  <UserCheck className="w-6 h-6 text-[var(--brand-color,#e35336)]" />
-                </div>
-              </div>
-              <div className="mt-2 h-1.5 bg-gray-100 dark:bg-[#334155] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[var(--brand-color,#e35336)] rounded-full transition-all duration-500"
-                  style={{ width: `${presentPercentage}%` }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Absent */}
-          <Card className="border-[#E2E8F0] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Absent</p>
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{stats.absent}</p>
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">{absentPercentage}%</p>
-                </div>
-                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                  <UserX className="w-6 h-6 text-red-600 dark:text-red-400" />
-                </div>
-              </div>
-              <div className="mt-2 h-1.5 bg-gray-100 dark:bg-[#334155] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-red-500 rounded-full transition-all duration-500"
-                  style={{ width: `${absentPercentage}%` }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Late */}
-          <Card className="border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] shadow-sm dark:bg-[#1E293B]">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Late</p>
-                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{stats.late}</p>
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">{latePercentage}%</p>
-                </div>
-                <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                </div>
-              </div>
-              <div className="mt-2 h-1.5 bg-gray-100 dark:bg-[#334155] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-orange-500 rounded-full transition-all duration-500"
-                  style={{ width: `${latePercentage}%` }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Main Body - Student Attendance Table */}
-        <Card className="border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] shadow-sm mb-6 dark:bg-[#1E293B]">
+        <Card className="mb-6 min-w-0 overflow-hidden border-[rgba(var(--brand-color-rgb),0.16)] shadow-sm dark:border-[#334155] dark:bg-[#1E293B]">
           <CardHeader className="border-b border-[rgba(var(--brand-color-rgb),0.14)] dark:border-[#334155] pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1063,7 +955,7 @@ export default function TeacherAttendancePage() {
                 <span className="sm:hidden">Student Attendance</span>
               </CardTitle>
               {/* Search */}
-              <div className="relative w-full sm:w-64">
+              <div className="relative w-full sm:w-80 lg:w-96">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   placeholder="Search students..."
@@ -1075,12 +967,58 @@ export default function TeacherAttendancePage() {
             </div>
           </CardHeader>
 
+          <div className="space-y-3 p-3 sm:hidden">
+            {isLoadingStudents ? (
+              <div className="flex items-center justify-center gap-2 py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-[var(--brand-color,#e35336)]" />
+                <span className="text-sm text-gray-500 dark:text-gray-400">Loading students...</span>
+              </div>
+            ) : filteredStudents.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <Users className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {!selectedClass ? "No class selected" : searchTerm.trim().length > 0 ? "No students found" : `No students found for ${selectedClassLabel}.`}
+                </p>
+              </div>
+            ) : (
+              filteredStudents.map((student) => (
+                <div key={student.id} className="rounded-lg border border-[#E2E8F0] bg-white p-3 dark:border-[#334155] dark:bg-[#0F172A]">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarFallback className="text-xs">
+                        {student.name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{student.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Roll {student.rollNumber}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <StatusPill
+                      status={student.status}
+                      onChange={(status) => handleStatusChange(student.id, status)}
+                      disabled={!canEdit()}
+                    />
+                  </div>
+                  <Input
+                    placeholder="Remark..."
+                    value={student.remark}
+                    onChange={(e) => handleRemarkChange(student.id, e.target.value)}
+                    disabled={!canEdit()}
+                    className="mt-3 h-9 border-[rgba(var(--brand-color-rgb),0.18)] text-xs focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white"
+                  />
+                </div>
+              ))
+            )}
+          </div>
+
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[700px] sm:min-w-full">
               <thead className="bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[#0F172A] border-b border-[rgba(var(--brand-color-rgb),0.14)] dark:border-[#334155]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Roll Number</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Gender</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
@@ -1131,7 +1069,7 @@ export default function TeacherAttendancePage() {
                 ) : (
                   filteredStudents.map((student) => (
                     <tr key={student.id} className="hover:bg-[rgba(var(--brand-color-rgb),0.05)] dark:hover:bg-[#334155]">
-                      <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{student.studentId}</td>
+                      <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{student.rollNumber}</td>
                       <td className="px-2 sm:px-4 py-3">
                         <div className="flex items-center gap-2 sm:gap-3">
                           <Avatar className="h-8 w-8">

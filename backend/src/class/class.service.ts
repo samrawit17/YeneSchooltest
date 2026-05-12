@@ -359,6 +359,21 @@ export class ClassService {
                   studentCode: true,
                   rollNumber: true,
                   gender: true,
+                  parents: {
+                    take: 1,
+                    select: {
+                      parent: {
+                        select: {
+                          user: {
+                            select: {
+                              name: true,
+                              phone: true,
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -390,6 +405,10 @@ export class ClassService {
         avatarUrl: sc.student.avatarUrl,
         studentCode: sc.student.studentProfile?.studentCode,
         rollNumber: sc.student.studentProfile?.rollNumber,
+        parentName:
+          sc.student.studentProfile?.parents?.[0]?.parent?.user?.name || null,
+        parentPhone:
+          sc.student.studentProfile?.parents?.[0]?.parent?.user?.phone || null,
         section: sc.section,
       }));
     } else {
@@ -434,6 +453,21 @@ export class ClassService {
               avatarUrl: true,
             },
           },
+          parents: {
+            take: 1,
+            select: {
+              parent: {
+                select: {
+                  user: {
+                    select: {
+                      name: true,
+                      phone: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         skip,
         take: limit,
@@ -452,6 +486,8 @@ export class ClassService {
         avatarUrl: sp.user.avatarUrl,
         studentCode: sp.studentCode,
         rollNumber: sp.rollNumber,
+        parentName: sp.parents?.[0]?.parent?.user?.name || null,
+        parentPhone: sp.parents?.[0]?.parent?.user?.phone || null,
         section: {
           id: sectionId || '',
           name: sp.section || sectionName,

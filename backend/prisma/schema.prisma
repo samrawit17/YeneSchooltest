@@ -821,7 +821,7 @@ model Assessment {
   academicYearId String
   termId         String?
   title          String
-  type           AssessmentType
+  type           String
   status         AssessmentStatus    @default(DRAFT)
   startDate      DateTime
   endDate        DateTime
@@ -894,7 +894,7 @@ model StudentAssessmentScore {
 model AssessmentWeight {
   id         String         @id @default(cuid())
   schoolId   String
-  type       AssessmentType
+  type       String
   percentage Float
   isActive   Boolean        @default(true)
   createdAt  DateTime       @default(now())
@@ -1810,14 +1810,6 @@ enum ExamType {
   QUIZ
   PRACTICAL
   ASSIGNMENT
-}
-
-enum AssessmentType {
-  QUIZ
-  TEST
-  MID
-  FINAL
-  ATTENDANCE
 }
 
 enum AssessmentStatus {

@@ -261,26 +261,26 @@ export function SirenScheduleManagement() {
   };
 
   return (
-    <Card>
+    <Card className="max-w-full overflow-hidden">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="w-5 h-5" />
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <CardTitle className="flex min-w-0 items-center gap-2">
+              <Bell className="h-5 w-5 shrink-0" />
               Siren Schedules
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="break-words">
               Manage static siren triggers (assembly, breaks, lunch, etc.)
             </CardDescription>
           </div>
           <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
-                <Plus className="w-4 h-4" />
+              <Button size="sm" className="gap-2 self-start sm:self-auto">
+                <Plus className="h-4 w-4 shrink-0" />
                 Add Schedule
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Edit Schedule" : "Add Siren Schedule"}
@@ -303,7 +303,7 @@ export function SirenScheduleManagement() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="type">Type</Label>
                     <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
@@ -335,7 +335,7 @@ export function SirenScheduleManagement() {
 
                 <div>
                   <Label>Days</Label>
-                  <div className="grid grid-cols-2 gap-3 p-3 border rounded-md bg-muted/50">
+                  <div className="grid grid-cols-1 gap-3 rounded-md border bg-muted/50 p-3 sm:grid-cols-2">
                     {DAYS.map((day) => (
                       <div key={day.value} className="flex items-center gap-2">
                         <Checkbox
@@ -355,7 +355,7 @@ export function SirenScheduleManagement() {
                 </div>
               </div>
 
-              <div className="flex gap-2 justify-end pt-4">
+              <div className="flex flex-wrap justify-end gap-2 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => handleOpenChange(false)}
@@ -372,7 +372,7 @@ export function SirenScheduleManagement() {
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="min-w-0">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -385,8 +385,8 @@ export function SirenScheduleManagement() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="max-w-full overflow-x-auto">
+            <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -416,7 +416,7 @@ export function SirenScheduleManagement() {
                     <TableCell>
                       {schedule.isActive ? (
                         <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="font-mono text-sm font-medium text-primary">
                             {countdowns[schedule.id] || "--:--:--"}
                           </span>

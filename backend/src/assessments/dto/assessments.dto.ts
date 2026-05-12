@@ -14,7 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { AssessmentScoreStatus, AssessmentType, AssessmentStatus } from '@prisma/client';
+import { AssessmentScoreStatus, AssessmentStatus } from '@prisma/client';
 
 export class CreateAssessmentSubjectDto {
   @IsString()
@@ -56,8 +56,9 @@ export class CreateAssessmentDto {
   @IsNotEmpty()
   title: string;
 
-  @IsEnum(AssessmentType)
-  type: AssessmentType;
+  @IsString()
+  @IsNotEmpty()
+  type: string;
 
   @IsString()
   @IsNotEmpty()
@@ -126,8 +127,9 @@ export class SaveAssessmentScoresDto {
 }
 
 export class AssessmentWeightDto {
-  @IsEnum(AssessmentType)
-  type: AssessmentType;
+  @IsString()
+  @IsNotEmpty()
+  type: string;
 
   @Type(() => Number)
   @IsNumber()
@@ -154,8 +156,8 @@ export class ListAssessmentsFilterDto {
   termId?: string;
 
   @IsOptional()
-  @IsEnum(AssessmentType)
-  type?: AssessmentType;
+  @IsString()
+  type?: string;
 
   @IsOptional()
   @IsEnum(AssessmentStatus)

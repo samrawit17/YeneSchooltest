@@ -7,9 +7,9 @@ import {
 import {
   AssessmentScoreStatus,
   AssessmentStatus,
-  AssessmentType,
   Prisma,
 } from '@prisma/client';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import {
@@ -21,13 +21,16 @@ import {
   UpdateAssessmentWeightsDto,
 } from './dto/assessments.dto';
 
-const DEFAULT_ASSESSMENT_WEIGHTS: Record<AssessmentType, number> = {
+const DEFAULT_ASSESSMENT_WEIGHTS: Record<string, number> = {
   QUIZ: 20,
   TEST: 20,
   MID: 30,
   FINAL: 30,
   ATTENDANCE: 0,
 };
+
+const TEACHER_MANAGED_ASSESSMENT_TYPES = new Set(['QUIZ', 'TEST']);
+const READ_ONLY_ASSESSMENT_TYPES = new Set(['MID', 'FINAL']);
 
 @Injectable()
 export class AssessmentsService {
@@ -47,6 +50,196 @@ export class AssessmentsService {
     }
 
     return merged;
+  }
+
+  private getEffectiveMaxScore(
+    storedMaxScore: number,
+    assessmentType: string,
+    weights: Record<string, number>,
+  ) {
+    const configuredMax = weights[String(assessmentType).toUpperCase()];
+    if (
+      storedMaxScore === 100 &&
+      configuredMax !== undefined &&
+      configuredMax > 0 &&
+      configuredMax <= 100
+    ) {
+      return configuredMax;
+    }
+
+    return storedMaxScore;
+  }
+
+  private buildTypeScoreMap(
+    items: Array<{ type: string; score: number | null; maxScore: number; isAbsent: boolean }>,
+  ) {
+    const byType = new Map<string, number[]>();
+
+    for (const item of items) {
+      if (item.isAbsent || item.score === null) continue;
+      const normalizedType = String(item.type).toUpperCase();
+      const normalizedScore =
+        item.maxScore > 0 ? (item.score / item.maxScore) * 100 : 0;
+      const bucket = byType.get(normalizedType) ?? [];
+      bucket.push(Math.max(0, Math.min(100, normalizedScore)));
+      byType.set(normalizedType, bucket);
+    }
+
+    return byType;
+  }
+
+  private average(values: number[]) {
+    return values.length
+      ? values.reduce((sum, value) => sum + value, 0) / values.length
+      : null;
+  }
+
+  private isAssessmentDue(startDate: Date) {
+    return startDate.getTime() <= Date.now();
+  }
+
+  private async notifyTeachersForAssessmentStart(
+    schoolId: string,
+    assessment: {
+      id: string;
+      title: string;
+      type: string;
+      startDate: Date;
+    },
+    subjects: Array<{
+      id: string;
+      teacherId: string | null;
+      className: string;
+      subjectName: string;
+    }>,
+  ) {
+    if (!this.isAssessmentDue(assessment.startDate)) {
+      return;
+    }
+
+    for (const item of subjects) {
+      if (!item.teacherId) continue;
+
+      const existing = await this.prisma.notification.findFirst({
+        where: {
+          schoolId,
+          userId: item.teacherId,
+          type: 'ASSESSMENT_CREATED',
+          metadata: {
+            contains: `"assessmentSubjectId":"${item.id}"`,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (existing) continue;
+
+      await this.notificationService.notifyAssessmentStarted(
+        schoolId,
+        [item.teacherId],
+        assessment.title,
+        assessment.type,
+        item.className,
+        item.subjectName,
+        {
+          assessmentId: assessment.id,
+          assessmentSubjectId: item.id,
+          startDate: assessment.startDate.toISOString(),
+        },
+      );
+    }
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async notifyDueAssessmentStarts() {
+    const dueSubjects = await this.prisma.assessmentSubject.findMany({
+      where: {
+        teacherId: { not: null },
+        assessment: {
+          status: AssessmentStatus.ACTIVE,
+          startDate: { lte: new Date() },
+        },
+      },
+      include: {
+        assessment: {
+          select: {
+            id: true,
+            schoolId: true,
+            title: true,
+            type: true,
+            startDate: true,
+          },
+        },
+        class: { select: { name: true } },
+        subject: { select: { name: true } },
+      },
+    });
+
+    for (const item of dueSubjects) {
+      await this.notifyTeachersForAssessmentStart(
+        item.assessment.schoolId,
+        item.assessment,
+        [
+          {
+            id: item.id,
+            teacherId: item.teacherId,
+            className: item.class.name,
+            subjectName: item.subject.name,
+          },
+        ],
+      );
+    }
+  }
+
+  private computeWeightedAssessmentSummary(
+    byType: Map<string, number[]>,
+    weights: Record<string, number>,
+  ) {
+    let total = 0;
+    let hasAny = false;
+
+    for (const [type, percentage] of Object.entries(weights)) {
+      const average = this.average(byType.get(String(type).toUpperCase()) ?? []);
+      if (average !== null) {
+        hasAny = true;
+        total += average * (percentage / 100);
+      }
+    }
+
+    const quizAverage = this.average(byType.get('QUIZ') ?? []);
+    const testAverage = this.average(byType.get('TEST') ?? []);
+    const midAverage = this.average(byType.get('MID') ?? []);
+    const finalAverage = this.average(byType.get('FINAL') ?? []);
+
+    const caContributors = Array.from(byType.entries()).filter(
+      ([type]) => !['MID', 'FINAL', 'ATTENDANCE'].includes(type),
+    );
+    const caWeightedTotal = caContributors.reduce((sum, [type, values]) => {
+      const average = this.average(values);
+      const weight = weights[type] ?? 0;
+      return average === null ? sum : sum + average * weight;
+    }, 0);
+    const caWeightTotal = caContributors.reduce(
+      (sum, [type, values]) =>
+        this.average(values) === null ? sum : sum + (weights[type] ?? 0),
+      0,
+    );
+
+    return {
+      totalScore: hasAny ? Math.round(total * 100) / 100 : null,
+      caScore:
+        caWeightTotal > 0
+          ? Math.round((caWeightedTotal / caWeightTotal) * 100) / 100
+          : null,
+      midScore: midAverage !== null ? Math.round(midAverage * 100) / 100 : null,
+      finalScore:
+        finalAverage !== null ? Math.round(finalAverage * 100) / 100 : null,
+      quizAverage,
+      testAverage,
+      midAverage,
+      finalAverage,
+      hasAny,
+    };
   }
 
   private async getGradeFromScore(schoolId: string, score: number) {
@@ -198,8 +391,8 @@ export class AssessmentsService {
 if (
       role === 'TEACHER' &&
       (assessment.createdBy !== userId ||
-        ![AssessmentType.QUIZ, AssessmentType.TEST].some(
-          (t) => t === assessment.type,
+        !TEACHER_MANAGED_ASSESSMENT_TYPES.has(
+          String(assessment.type).toUpperCase(),
         ))
     ) {
       throw new ForbiddenException(
@@ -332,58 +525,21 @@ if (
       },
     });
 
-    const typeScores = new Map<AssessmentType, number[]>();
-    for (const type of Object.values(AssessmentType)) {
-      typeScores.set(type, []);
-    }
-
-    for (const row of scoreRows) {
-      if (row.isAbsent || row.score === null || row.score === undefined) {
-        continue;
-      }
-
-      const normalized =
-        row.assessmentSubject.maxScore > 0
-          ? (row.score / row.assessmentSubject.maxScore) * 100
-          : 0;
-      typeScores
-        .get(row.assessmentSubject.assessment.type)!
-        .push(Math.max(0, Math.min(100, normalized)));
-    }
-
-    const average = (values: number[]) =>
-      values.length
-        ? values.reduce((sum, value) => sum + value, 0) / values.length
-        : null;
-
-    const quizAverage = average(typeScores.get(AssessmentType.QUIZ)!);
-    const testAverage = average(typeScores.get(AssessmentType.TEST)!);
-    const midAverage = average(typeScores.get(AssessmentType.MID)!);
-    const finalAverage = average(typeScores.get(AssessmentType.FINAL)!);
-    const attendanceAverage = average(
-      typeScores.get(AssessmentType.ATTENDANCE)!,
-    );
-
     const weights = await this.getWeightMap(
       assessmentSubject.assessment.schoolId,
     );
-    const weightedTotal =
-      (quizAverage ?? 0) * (weights.QUIZ / 100) +
-      (testAverage ?? 0) * (weights.TEST / 100) +
-      (midAverage ?? 0) * (weights.MID / 100) +
-      (finalAverage ?? 0) * (weights.FINAL / 100) +
-      (attendanceAverage ?? 0) * (weights.ATTENDANCE / 100);
-
-    const hasAnyScore = [
-      quizAverage,
-      testAverage,
-      midAverage,
-      finalAverage,
-      attendanceAverage,
-    ].some((value) => value !== null);
-    const totalScore = hasAnyScore
-      ? Math.round(weightedTotal * 100) / 100
-      : null;
+    const summary = this.computeWeightedAssessmentSummary(
+      this.buildTypeScoreMap(
+        scoreRows.map((row) => ({
+          type: row.assessmentSubject.assessment.type,
+          score: row.score,
+          maxScore: row.assessmentSubject.maxScore,
+          isAbsent: row.isAbsent,
+        })),
+      ),
+      weights,
+    );
+    const totalScore = summary.totalScore;
 
     const { gradeLetter, gradePoint } =
       totalScore === null
@@ -392,16 +548,6 @@ if (
             assessmentSubject.assessment.schoolId,
             totalScore,
           );
-
-    const caNumerator =
-      (quizAverage ?? 0) * weights.QUIZ + (testAverage ?? 0) * weights.TEST;
-    const caDenominator =
-      (quizAverage !== null ? weights.QUIZ : 0) +
-      (testAverage !== null ? weights.TEST : 0);
-    const caScore =
-      caDenominator > 0
-        ? Math.round((caNumerator / caDenominator) * 100) / 100
-        : null;
 
     return this.prisma.subjectGrade.upsert({
       where: {
@@ -416,9 +562,9 @@ if (
         classId: assessmentSubject.classId,
         sectionId: resolvedSectionId,
         teacherId: assessmentSubject.teacherId,
-        caScore,
-        midScore: midAverage,
-        finalScore: finalAverage,
+        caScore: summary.caScore,
+        midScore: summary.midScore,
+        finalScore: summary.finalScore,
         totalScore,
         gradeLetter,
         gradePoint,
@@ -432,9 +578,9 @@ if (
         academicYear: assessmentSubject.assessment.academicYearId,
         termId: assessmentSubject.assessment.termId,
         teacherId: assessmentSubject.teacherId,
-        caScore,
-        midScore: midAverage,
-        finalScore: finalAverage,
+        caScore: summary.caScore,
+        midScore: summary.midScore,
+        finalScore: summary.finalScore,
         totalScore,
         gradeLetter,
         gradePoint,
@@ -541,6 +687,61 @@ if (
     }));
   }
 
+  private async attachFallbackTeachersToAssessments(assessments: any[]) {
+    const missing = assessments.flatMap((assessment) =>
+      (assessment.subjects || [])
+        .filter((subject: any) => !subject.teacherId)
+        .map((subject: any) => ({
+          subjectId: subject.subjectId,
+          classId: subject.classId,
+          sectionId: subject.sectionId ?? null,
+          academicYearId: assessment.academicYearId,
+        })),
+    );
+
+    if (missing.length === 0) {
+      return assessments;
+    }
+
+    const fallbackAssignments = await Promise.all(
+      missing.map((item) =>
+        this.prisma.classSubject.findFirst({
+          where: {
+            academicYear: item.academicYearId,
+            classId: item.classId,
+            sectionId: item.sectionId ?? undefined,
+            subjectId: item.subjectId,
+            teacherId: { not: null },
+          },
+          include: {
+            teacher: {
+              select: { id: true, name: true },
+            },
+          },
+        }),
+      ),
+    );
+
+    const fallbackMap = new Map<string, { id: string; name: string }>();
+    for (let index = 0; index < missing.length; index += 1) {
+      const assignment = fallbackAssignments[index];
+      if (!assignment?.teacher) continue;
+      const item = missing[index];
+      const key = `${item.academicYearId}:${item.classId}:${item.sectionId ?? "null"}:${item.subjectId}`;
+      fallbackMap.set(key, assignment.teacher);
+    }
+
+    return assessments.map((assessment) => ({
+      ...assessment,
+      subjects: (assessment.subjects || []).map((subject: any) => {
+        if (subject.teacher) return subject;
+        const key = `${assessment.academicYearId}:${subject.classId}:${subject.sectionId ?? "null"}:${subject.subjectId}`;
+        const teacher = fallbackMap.get(key);
+        return teacher ? { ...subject, teacherId: teacher.id, teacher } : subject;
+      }),
+    }));
+  }
+
   async createAssessment(
     schoolId: string,
     userId: string,
@@ -549,7 +750,7 @@ if (
   ) {
     if (
       role === 'TEACHER' &&
-      ![AssessmentType.QUIZ, AssessmentType.TEST].some((t) => t === dto.type)
+      !TEACHER_MANAGED_ASSESSMENT_TYPES.has(String(dto.type).toUpperCase())
     ) {
       throw new ForbiddenException(
         'Teachers can only create quizzes and tests',
@@ -558,18 +759,20 @@ if (
 
     await this.validateAssessmentContext(schoolId, dto);
 
+    const assessmentData: Prisma.AssessmentUncheckedCreateInput = {
+      schoolId,
+      academicYearId: dto.academicYearId,
+      termId: dto.termId ?? null,
+      title: dto.title,
+      type: dto.type,
+      status: AssessmentStatus.ACTIVE,
+      startDate: new Date(dto.startDate),
+      endDate: new Date(dto.endDate),
+      createdBy: userId,
+    };
+
     const assessment = await this.prisma.assessment.create({
-      data: {
-        schoolId,
-        academicYearId: dto.academicYearId,
-        termId: dto.termId,
-        title: dto.title,
-        type: dto.type,
-        status: AssessmentStatus.ACTIVE,
-        startDate: new Date(dto.startDate),
-        endDate: new Date(dto.endDate),
-        createdBy: userId,
-      },
+      data: assessmentData,
     });
 
     if (dto.subjects?.length) {
@@ -581,27 +784,7 @@ if (
         role,
       );
 
-      const teacherMap = new Map<string, { className: string; subjectName: string }>();
-      for (const item of createdSubjects) {
-        const teacherId = item.teacherId;
-        if (teacherId && !teacherMap.has(teacherId)) {
-          teacherMap.set(teacherId, {
-            className: item.className,
-            subjectName: item.subjectName,
-          });
-        }
-      }
-
-      for (const [teacherId, data] of teacherMap) {
-        await this.notificationService.notifyAssessmentCreated(
-          schoolId,
-          [teacherId],
-          dto.title,
-          dto.type,
-          data.className,
-          data.subjectName,
-        );
-      }
+      await this.notifyTeachersForAssessmentStart(schoolId, assessment, createdSubjects);
     }
 
     return this.getAssessmentById(schoolId, assessment.id);
@@ -629,27 +812,7 @@ if (
       role,
     );
 
-    const teacherMap = new Map<string, { className: string; subjectName: string }>();
-    for (const item of createdSubjects) {
-      const teacherId = item.teacherId;
-      if (teacherId && !teacherMap.has(teacherId)) {
-        teacherMap.set(teacherId, {
-          className: item.className,
-          subjectName: item.subjectName,
-        });
-      }
-    }
-
-    for (const [teacherId, data] of teacherMap) {
-      await this.notificationService.notifyAssessmentCreated(
-        schoolId,
-        [teacherId],
-        assessment.title,
-        assessment.type,
-        data.className,
-        data.subjectName,
-      );
-    }
+    await this.notifyTeachersForAssessmentStart(schoolId, assessment, createdSubjects);
 
     return this.getAssessmentById(schoolId, assessmentId);
   }
@@ -687,7 +850,7 @@ if (
     if (query.type) where.type = query.type;
     if (query.status) where.status = query.status;
 
-    return this.prisma.assessment.findMany({
+    const assessments = await this.prisma.assessment.findMany({
       where,
       include: {
         academicYear: { select: { id: true, name: true } },
@@ -697,12 +860,15 @@ if (
             class: { select: { id: true, name: true } },
             section: { select: { id: true, name: true } },
             subject: { select: { id: true, name: true } },
+            teacher: { select: { id: true, name: true } },
             _count: { select: { scores: true } },
           },
         },
       },
       orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
     });
+
+    return this.attachFallbackTeachersToAssessments(assessments);
   }
 
   async getTeacherAssessments(
@@ -711,7 +877,14 @@ if (
     query: ListAssessmentsFilterDto,
   ) {
     const assignments = await this.prisma.teacherSubjectAssignment.findMany({
-      where: { teacherId, schoolId, isActive: true },
+      where: {
+        teacherId,
+        schoolId,
+        isActive: true,
+        ...(query.academicYearId
+          ? { academicYear: query.academicYearId }
+          : {}),
+      },
       select: {
         subjectId: true,
         classId: true,
@@ -729,17 +902,7 @@ if (
       { subjectId: string; classId: string; sectionId: string | null }
     >();
     for (const assignment of assignments) {
-      const baseKey = `${assignment.classId}:${assignment.subjectId}`;
-      const nullSectionKey = `${baseKey}:null`;
-      const sectionKey = `${baseKey}:${assignment.sectionId}`;
-
-      if (!assignmentCriteriaMap.has(nullSectionKey)) {
-        assignmentCriteriaMap.set(nullSectionKey, {
-          subjectId: assignment.subjectId,
-          classId: assignment.classId,
-          sectionId: null,
-        });
-      }
+      const sectionKey = `${assignment.classId}:${assignment.subjectId}:${assignment.sectionId}`;
 
       if (!assignmentCriteriaMap.has(sectionKey)) {
         assignmentCriteriaMap.set(sectionKey, {
@@ -750,7 +913,7 @@ if (
       }
     }
 
-    const assessmentSubjects = await this.prisma.assessmentSubject.findMany({
+    const assessmentSubjectArgs = Prisma.validator<Prisma.AssessmentSubjectFindManyArgs>()({
       where: {
         assessment: {
           schoolId,
@@ -758,16 +921,14 @@ if (
             ? { academicYearId: query.academicYearId }
             : {}),
           ...(query.termId ? { termId: query.termId } : {}),
-          ...(query.type ? { type: query.type as AssessmentType } : {}),
+          ...(query.type ? { type: query.type } : {}),
         },
         OR: [
           { teacherId },
           ...Array.from(assignmentCriteriaMap.values()).map((assignment) => ({
             subjectId: assignment.subjectId,
             classId: assignment.classId,
-            ...(assignment.sectionId === null
-              ? {}
-              : { sectionId: assignment.sectionId }),
+            sectionId: assignment.sectionId,
           })),
         ],
       },
@@ -785,6 +946,10 @@ if (
       },
       orderBy: [{ assessment: { startDate: 'desc' } }],
     });
+
+    const assessmentSubjects = await this.prisma.assessmentSubject.findMany(
+      assessmentSubjectArgs,
+    );
 
     // Get score status for each assessment
     const scoreStatusMap = new Map<string, { status: string; count: number }>();
@@ -816,12 +981,19 @@ if (
       }
     }
 
+    const weights = await this.getWeightMap(schoolId);
+
     return assessmentSubjects.map((item) => {
       const scoreInfo = scoreStatusMap.get(item.id);
       let scoreStatus = 'NOT_STARTED';
       if (scoreInfo) {
         scoreStatus = scoreInfo.status;
       }
+      const effectiveMaxScore = this.getEffectiveMaxScore(
+        item.maxScore,
+        item.assessment.type,
+        weights,
+      );
       
       return {
         id: item.id,
@@ -834,17 +1006,17 @@ if (
         class: item.class,
         section: item.section,
         subject: item.subject,
-        maxScore: item.maxScore,
+        maxScore: effectiveMaxScore,
         startDate: item.assessment.startDate,
         endDate: item.assessment.endDate,
         scoreEntries: item._count.scores,
         scoreStatus: scoreStatus,
-        canCreate: [AssessmentType.QUIZ, AssessmentType.TEST].some(
-          (t) => t === item.assessment.type,
+        canCreate: TEACHER_MANAGED_ASSESSMENT_TYPES.has(
+          String(item.assessment.type).toUpperCase(),
         ),
         canEditScores: item.assessment.status !== AssessmentStatus.LOCKED,
-        isReadOnly: [AssessmentType.MID, AssessmentType.FINAL].some(
-          (t) => t === item.assessment.type,
+        isReadOnly: READ_ONLY_ASSESSMENT_TYPES.has(
+          String(item.assessment.type).toUpperCase(),
         ),
       };
     });
@@ -911,6 +1083,13 @@ if (
       orderBy: { createdAt: 'asc' },
     });
 
+    const weights = await this.getWeightMap(schoolId);
+    const effectiveMaxScore = this.getEffectiveMaxScore(
+      assessmentSubject.maxScore,
+      assessmentSubject.assessment.type,
+      weights,
+    );
+
     const existing = await this.prisma.studentAssessmentScore.findMany({
       where: { assessmentSubjectId },
     });
@@ -920,7 +1099,7 @@ if (
 
     return {
       id: assessmentSubject.id,
-      maxScore: assessmentSubject.maxScore,
+      maxScore: effectiveMaxScore,
       subject: assessmentSubject.subject,
       class: assessmentSubject.class,
       section: assessmentSubject.section,
@@ -971,6 +1150,13 @@ if (
       throw new ForbiddenException('Assessment scores are locked');
     }
 
+    const weights = await this.getWeightMap(schoolId);
+    const effectiveMaxScore = this.getEffectiveMaxScore(
+      assessmentSubject.maxScore,
+      assessmentSubject.assessment.type,
+      weights,
+    );
+
     const academicYearRecord = await this.prisma.academicYear.findUnique({
       where: { id: assessmentSubject.assessment.academicYearId },
       select: { name: true },
@@ -997,10 +1183,10 @@ if (
       if (
         score.score !== undefined &&
         score.score !== null &&
-        score.score > assessmentSubject.maxScore
+        score.score > effectiveMaxScore
       ) {
         throw new BadRequestException(
-          `Score cannot exceed ${assessmentSubject.maxScore}`,
+          `Score cannot exceed ${effectiveMaxScore}`,
         );
       }
     }
@@ -1167,7 +1353,7 @@ if (
           where: {
             schoolId_type: {
               schoolId,
-              type: row.type,
+              type: row.type as never,
             },
           },
           update: {
@@ -1176,7 +1362,7 @@ if (
           },
           create: {
             schoolId,
-            type: row.type,
+            type: row.type as never,
             percentage: row.percentage,
           },
         }),
@@ -1336,42 +1522,22 @@ if (
       };
     }> = [];
     for (const group of grouped.values()) {
-      const byType = new Map<AssessmentType, number[]>();
-      for (const type of Object.values(AssessmentType)) byType.set(type, []);
-
-      for (const item of group.assessments) {
-        const typed = item as {
-          type: AssessmentType;
-          score: number | null;
-          maxScore: number;
-          isAbsent: boolean;
-        };
-
-        if (typed.isAbsent || typed.score === null) continue;
-        byType.get(typed.type)!.push((typed.score / typed.maxScore) * 100);
-      }
-
-      const avg = (values: number[]) =>
-        values.length
-          ? values.reduce((sum, value) => sum + value, 0) / values.length
-          : null;
-
-      const quiz = avg(byType.get(AssessmentType.QUIZ)!);
-      const test = avg(byType.get(AssessmentType.TEST)!);
-      const mid = avg(byType.get(AssessmentType.MID)!);
-      const final = avg(byType.get(AssessmentType.FINAL)!);
-      const attendance = avg(byType.get(AssessmentType.ATTENDANCE)!);
-
-      const total =
-        (quiz ?? 0) * (weights.QUIZ / 100) +
-        (test ?? 0) * (weights.TEST / 100) +
-        (mid ?? 0) * (weights.MID / 100) +
-        (final ?? 0) * (weights.FINAL / 100) +
-        (attendance ?? 0) * (weights.ATTENDANCE / 100);
-
-      const hasAny = [quiz, test, mid, final, attendance].some(
-        (value) => value !== null,
+      const weightedSummary = this.computeWeightedAssessmentSummary(
+        this.buildTypeScoreMap(
+          group.assessments.map((item) => {
+            const typed = item as {
+              type: string;
+              score: number | null;
+              maxScore: number;
+              isAbsent: boolean;
+            };
+            return typed;
+          }),
+        ),
+        weights,
       );
+      const total = weightedSummary.totalScore ?? 0;
+      const hasAny = weightedSummary.hasAny;
       const summary =
         hasAny && group.assessments.length
           ? await this.getGradeFromScore(schoolId, total)
@@ -1380,11 +1546,11 @@ if (
       response.push({
         ...group,
         summary: {
-          quizAverage: quiz,
-          testAverage: test,
-          midAverage: mid,
-          finalAverage: final,
-          totalScore: hasAny ? Math.round(total * 100) / 100 : null,
+          quizAverage: weightedSummary.quizAverage,
+          testAverage: weightedSummary.testAverage,
+          midAverage: weightedSummary.midAverage,
+          finalAverage: weightedSummary.finalAverage,
+          totalScore: weightedSummary.totalScore,
           gradeLetter: summary.gradeLetter,
           gradePoint: summary.gradePoint,
         },

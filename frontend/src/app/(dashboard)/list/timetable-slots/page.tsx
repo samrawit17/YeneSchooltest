@@ -198,11 +198,11 @@ export default function TimetableSlotsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex flex-row flex-wrap items-center gap-2 mb-6">
         <select
           value={selectedClass}
           onChange={(e) => setSelectedClass(e.target.value)}
-          className="border rounded px-3 py-2"
+          className="border rounded px-3 py-2 w-full sm:w-auto"
         >
           <option value="">All Classes</option>
           {classes.map(cls => (
@@ -214,7 +214,7 @@ export default function TimetableSlotsPage() {
         <select
           value={selectedDay}
           onChange={(e) => setSelectedDay(e.target.value)}
-          className="border rounded px-3 py-2"
+          className="border rounded px-3 py-2 w-full sm:w-auto"
         >
           <option value="">All Days</option>
           {DAYS.map(day => (
@@ -225,7 +225,7 @@ export default function TimetableSlotsPage() {
         </select>
         <button
           onClick={fetchSlots}
-          className="bg-gray-100 px-4 py-2 rounded hover:bg-gray-200"
+          className="bg-gray-100 px-4 py-2 rounded hover:bg-gray-200 w-full sm:w-auto"
         >
           Filter
         </button>
@@ -364,7 +364,7 @@ export default function TimetableSlotsPage() {
       {loading ? (
         <div className="text-center py-8">Loading...</div>
       ) : (
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 gap-2">
           {DAYS.map(day => (
             <div key={day.value} className="border rounded-lg overflow-hidden">
               <div className="bg-gray-100 px-3 py-2 font-medium text-center">

@@ -176,7 +176,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   "teacher": { label: "Teacher Portal", href: "/teacher", parent: "dashboard" },
   "teacher-my-class": { label: "My Class", href: "/teacher/my-class", parent: "teacher" },
   "teacher-my-class-detail": { label: "Class Details", parent: "teacher-my-class" },
-  "teacher-exams": { label: "Exams", href: "/teacher/exams", parent: "teacher" },
+  "teacher-exams": { label: "Grade Entry", href: "/teacher/grading", parent: "teacher" },
   "teacher-attendance": { label: "My Attendance", href: "/teacher/attendance", parent: "teacher" },
   "teacher-timetable": { label: "My Timetable", href: "/teacher/timetable", parent: "teacher" },
 

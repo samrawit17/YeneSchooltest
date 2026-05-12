@@ -1,6 +1,6 @@
 import api from "./core";
 
-export type AssessmentType = "QUIZ" | "TEST" | "MID" | "FINAL" | "ATTENDANCE";
+export type AssessmentType = string;
 
 export interface EntryProgressRow {
   assessmentSubjectId: string;

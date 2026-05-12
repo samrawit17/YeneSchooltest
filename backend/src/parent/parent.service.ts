@@ -328,10 +328,11 @@ export class ParentService {
               select: {
                 user: {
                   select: { name: true },
-                },
-                className: true,
-              },
-            },
+	                },
+	                className: true,
+	                section: true,
+	              },
+	            },
           },
         },
       },
@@ -684,12 +685,12 @@ export class ParentService {
       }),
     );
 
-    const childrenWithFees = children.map((child: any) => {
+    const childrenWithFees = await Promise.all(children.map(async (child: any) => {
       const studentId = child.student.userId;
       const studentFeeItems = studentFees.filter(
         (sf: any) => sf.studentId === studentId,
       );
-      const teacherData = studentTeacherMap.get(studentId) || {
+      let teacherData = studentTeacherMap.get(studentId) || {
         homeroomTeacher: null,
         teachingTeachers: [],
       };
@@ -787,11 +788,175 @@ export class ParentService {
       const gradeName = studentProfile?.className || null;
       const section = studentProfile?.section || 'A';
 
+      if (!teacherData.homeroomTeacher && gradeName) {
+        const possibleClassNames = [
+          gradeName,
+          gradeName.replace('Grade ', ''),
+          `Grade ${gradeName.replace('Grade ', '')}`,
+        ].filter((value, index, array) => array.indexOf(value) === index);
+
+        const fallbackClass = await this.prismaService.class.findFirst({
+          where: {
+            schoolId: parentProfile.schoolId,
+            ...(academicYear?.id ? { academicYearId: academicYear.id } : {}),
+            name: { in: possibleClassNames },
+          },
+          select: {
+            id: true,
+            homeroomTeacher: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+            ClassSubject: {
+              where: {
+                teacherId: { not: null },
+                ...(academicYear?.id ? { academicYear: academicYear.id } : {}),
+              },
+              select: {
+                teacher: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phone: true,
+                  },
+                },
+                subject: {
+                  select: {
+                    name: true,
+                    code: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const fallbackSection =
+          fallbackClass && section
+            ? await this.prismaService.section.findFirst({
+                where: {
+                  classId: fallbackClass.id,
+                  name: section,
+                },
+                select: {
+                  homeroomTeacher: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                      phone: true,
+                    },
+                  },
+                  classSubjects: {
+                    where: {
+                      teacherId: { not: null },
+                    },
+                    select: {
+                      teacher: {
+                        select: {
+                          id: true,
+                          name: true,
+                          email: true,
+                          phone: true,
+                        },
+                      },
+                      subject: {
+                        select: {
+                          name: true,
+                          code: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              })
+            : null;
+
+        const fallbackTeacher =
+          fallbackSection?.homeroomTeacher ||
+          fallbackClass?.homeroomTeacher ||
+          null;
+
+        if (fallbackTeacher) {
+          teacherData = {
+            ...teacherData,
+            homeroomTeacher: {
+              id: fallbackTeacher.id,
+              name: fallbackTeacher.name,
+              email: fallbackTeacher.email,
+              phone: fallbackTeacher.phone || null,
+            },
+          };
+        }
+
+        if (teacherData.teachingTeachers.length === 0) {
+          const fallbackAssignments = [
+            ...(fallbackSection?.classSubjects || []),
+            ...(fallbackClass?.ClassSubject || []),
+          ];
+          const teachingTeacherMap = new Map<string, any>();
+
+          for (const assignment of fallbackAssignments) {
+            const teacher = assignment.teacher;
+            if (!teacher?.id) continue;
+
+            const subjectName = assignment.subject?.name || null;
+            const existing = teachingTeacherMap.get(teacher.id);
+
+            if (existing) {
+              if (subjectName && !existing.subjects.includes(subjectName)) {
+                existing.subjects.push(subjectName);
+              }
+              continue;
+            }
+
+            teachingTeacherMap.set(teacher.id, {
+              id: teacher.id,
+              name: teacher.name,
+              email: teacher.email,
+              phone: teacher.phone || null,
+              subjects: subjectName ? [subjectName] : [],
+            });
+          }
+
+          teacherData = {
+            ...teacherData,
+            teachingTeachers: Array.from(teachingTeacherMap.values()),
+          };
+        }
+      }
+
+      let bloodGroup: string | null = null;
+      if (studentProfile?.medicalInfo) {
+        try {
+          const medicalInfo = JSON.parse(studentProfile.medicalInfo);
+          bloodGroup =
+            medicalInfo?.bloodGroup || medicalInfo?.blood_group || null;
+        } catch {
+          bloodGroup = null;
+        }
+      }
+
       return {
         ...child,
         name: child.student.user?.name || 'Unknown',
         className: gradeName || 'N/A',
         section: section,
+        studentCode: studentProfile?.studentCode || undefined,
+        dateOfBirth: null,
+        gender: studentProfile?.gender || null,
+        bloodGroup,
+        address: studentProfile?.address || null,
+        phone: studentProfile?.phone || null,
+        email: child.student.user?.email || null,
+        admissionDate: studentProfile?.createdAt || null,
+        academicYear: studentProfile?.academicYear || null,
+        enrollmentStatus: studentProfile?.enrollmentStatus || null,
         student: {
           ...child.student,
           id: child.student.userId,
@@ -810,7 +975,7 @@ export class ParentService {
           breakdown,
         },
       };
-    });
+    }));
 
     return childrenWithFees;
   }
@@ -1197,42 +1362,22 @@ export class ParentService {
   }
 
   async getChildByIdForParent(parentUserId: string, childId: string) {
-    let parentProfile = await this.prismaService.parentProfile.findUnique({
-      where: { userId: parentUserId },
-    });
+    const children = await this.getChildrenByParentUserId(parentUserId);
 
-    if (!parentProfile) {
-      const user = await this.prismaService.user.findUnique({
-        where: { id: parentUserId },
-      });
+    const child = children.find(
+      (item: any) =>
+        item.studentId === childId ||
+        item.id === childId ||
+        item.student?.id === childId ||
+        item.student?.userId === childId ||
+        item.userId === childId,
+    );
 
-      if (user) {
-        parentProfile = await this.prismaService.parentProfile.findFirst({
-          where: { user: { email: user.email } },
-        });
-      }
-    }
-
-    if (!parentProfile) {
-      throw new NotFoundException('Parent profile not found');
-    }
-
-    const parentStudent = await this.prismaService.parentStudent.findFirst({
-      where: { parentId: parentProfile.id, studentId: childId },
-      include: {
-        student: {
-          include: {
-            user: { select: { id: true, name: true, email: true } },
-          },
-        },
-      },
-    });
-
-    if (!parentStudent) {
+    if (!child) {
       throw new NotFoundException('Child not linked to this parent');
     }
 
-    return parentStudent;
+    return child;
   }
 
   async deleteParent(parentId: string, schoolId: string) {

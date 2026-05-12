@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { classesAPI } from "@/lib/api";
@@ -108,9 +108,9 @@ const ClassStudentsPage = () => {
     }
   }, [isAuthenticated, isLoading, classId]);
 
-  const fetchStudents = async (search?: string) => {
+  const fetchStudents = async (search?: string, showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await classesAPI.getStudents(classId, {
         search: search || searchTerm || undefined,
         limit: "100",
@@ -133,13 +133,16 @@ const ClassStudentsPage = () => {
       console.error("Failed to fetch students:", error);
       toast.error("Failed to load students");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
-  const handleSearch = () => {
-    fetchStudents(searchTerm);
-  };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStudents(searchTerm, false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const filteredStudents = students
     .filter((student) => {
@@ -162,18 +165,6 @@ const ClassStudentsPage = () => {
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
-
-  const getGenderBadgeColor = (gender?: string) => {
-    if (!gender) return "text-gray-600 dark:text-gray-400 border-none";
-    switch (gender.toLowerCase()) {
-      case "male":
-        return "text-blue-700 dark:text-blue-400 border-none";
-      case "female":
-        return "text-pink-700 dark:text-pink-400 border-none";
-      default:
-        return "text-gray-600 dark:text-gray-400 border-none";
-    }
   };
 
   if (loading || isLoading) {
@@ -218,10 +209,6 @@ const ClassStudentsPage = () => {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> {students.length}</span>
-              <span className="flex items-center gap-1.5"><GraduationCap className="w-4 h-4" /> {sections.length}</span>
-              <span className="flex items-center gap-1 text-black">{students.filter(s => s.gender?.toLowerCase() === "female").length}F</span>
-              <span className="flex items-center gap-1 text-black">{students.filter(s => s.gender?.toLowerCase() === "male").length}M</span>
             </div>
             {classData?.homeroomTeacherId === user?.id && (
               <Button
@@ -236,48 +223,6 @@ const ClassStudentsPage = () => {
           </div>
         </div>
 
-        {/* Inline filters */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search student..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="pl-9 h-9 text-sm"
-            />
-          </div>
-          <Select value={filterGender} onValueChange={setFilterGender}>
-            <SelectTrigger className="w-[120px] h-9 text-sm">
-              <SelectValue placeholder="Gender" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="male">Male</SelectItem>
-              <SelectItem value="female">Female</SelectItem>
-            </SelectContent>
-          </Select>
-          {sections.length > 0 && (
-            <Select value={filterSection} onValueChange={setFilterSection}>
-              <SelectTrigger className="w-[140px] h-9 text-sm">
-                <SelectValue placeholder="Section" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sections</SelectItem>
-                {sections.filter((section) => section.id).map((section) => (
-                  <SelectItem key={section.id} value={section.id}>
-                    {section.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <Button size="sm" onClick={handleSearch} className="h-9">
-            Search
-          </Button>
-        </div>
-
         {/* Students Table */}
         <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader className="py-3 px-5 border-b dark:border-slate-800">
@@ -285,6 +230,42 @@ const ClassStudentsPage = () => {
               <CardTitle className="text-base font-semibold">
                 Students ({filteredStudents.length})
               </CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search student..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 h-8 text-sm w-[500px]"
+                  />
+                </div>
+                <Select value={filterGender} onValueChange={setFilterGender}>
+                  <SelectTrigger className="w-[110px] h-8 text-sm">
+                    <SelectValue placeholder="Gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+                {sections.length > 0 && (
+                  <Select value={filterSection} onValueChange={setFilterSection}>
+                    <SelectTrigger className="w-[130px] h-8 text-sm">
+                      <SelectValue placeholder="Section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sections</SelectItem>
+                      {sections.filter((section) => section.id).map((section) => (
+                        <SelectItem key={section.id} value={section.id}>
+                          {section.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -334,7 +315,7 @@ const ClassStudentsPage = () => {
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           {student.gender ? (
-                            <Badge className={`${getGenderBadgeColor(student.gender)} text-xs px-2.5 py-1 min-w-[60px] justify-center`}>
+                            <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400 text-xs px-2.5 py-1 min-w-[60px] justify-center">
                               {student.gender === 'MALE' ? 'Male' : student.gender === 'FEMALE' ? 'Female' : student.gender}
                             </Badge>
                           ) : (

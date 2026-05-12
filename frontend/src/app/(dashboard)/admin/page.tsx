@@ -218,11 +218,11 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
   // Loading skeleton
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4 md:p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="min-h-screen overflow-x-hidden bg-gray-50 p-3 dark:bg-slate-900 sm:p-4 md:p-6">
+        <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <Card key={i}>
                 <CardContent className="pt-6">
@@ -231,7 +231,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
               </Card>
             ))}
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
             {[1, 2, 3, 4].map((i) => (
               <Card key={i}>
                 <CardContent className="pt-6">
@@ -272,16 +272,16 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
   const isITManagerDashboard = dashboardRole === "IT_MANAGER";
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
-      <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50 transition-colors dark:bg-slate-900">
+      <div className="p-3 sm:p-4 md:p-6">
+        <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
           {/* Header */}
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-black">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-black sm:text-2xl">
                 {isITManagerDashboard ? "IT Manager Dashboard" : "Admin Dashboard"}
               </h1>
-              <p className="text-gray-500 dark:text-gray-400 mt-1">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 sm:text-base">
                 Welcome back{user?.name ? `, ${user.name}` : ""}!{" "}
                 {isITManagerDashboard
                   ? "Here's the current state of your school's systems and operations."
@@ -294,8 +294,8 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
               )}
             </div>
             {displayTermName && (
-              <div className="text-right">
-                <p className="text-xl font-bold text-black">{displayTermName}</p>
+              <div className="shrink-0 text-left sm:text-right">
+                <p className="text-base font-bold text-black sm:text-xl">{displayTermName}</p>
               </div>
             )}
 
@@ -310,10 +310,10 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
                 return (
                   <div
                     key={index}
-                    className={`flex items-center gap-3 p-3 rounded-lg border ${alertStyle.bg}`}
+                    className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center ${alertStyle.bg}`}
                   >
                     <AlertIcon className={`w-5 h-5 flex-shrink-0 ${alertStyle.iconColor}`} />
-                    <div className="flex-1 flex items-center gap-3">
+                    <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                       <p className="text-sm text-gray-800 dark:text-gray-200">{alert.message}</p>
                       <Badge className={`text-xs ${getPriorityBadge(alert.priority)}`}>
                         {alert.priority}
@@ -324,7 +324,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => router.push(alert.actionUrl!)}
-                        className="flex items-center gap-1 text-xs"
+                        className="flex w-full items-center justify-center gap-1 text-xs sm:w-auto"
                       >
                         {alert.actionLabel}
                         <ExternalLink className="w-3 h-3" />
@@ -337,17 +337,17 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
           )}
 
           {/* KPI Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {/* Total Students */}
-            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-2.5">
-                <div className="flex items-start justify-between">
-                  <div>
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Total Students</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {(stats?.students ?? 0).toLocaleString()}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">Enrolled students</p>
+                    <p className="mt-1 hidden text-xs text-gray-400 sm:block lg:hidden xl:block">Enrolled students</p>
                   </div>
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg shrink-0">
                     <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -357,15 +357,15 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
             </Card>
 
             {/* Total Teachers */}
-            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-2.5">
-                <div className="flex items-start justify-between">
-                  <div>
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Total Teachers</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {(stats?.teachers ?? 0).toLocaleString()}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">Active teachers</p>
+                    <p className="mt-1 hidden text-xs text-gray-400 sm:block lg:hidden xl:block">Active teachers</p>
                   </div>
                   <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg shrink-0">
                     <GraduationCap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -375,15 +375,15 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
             </Card>
 
             {/* Total Classes */}
-            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-2.5">
-                <div className="flex items-start justify-between">
-                  <div>
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Classes</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {(stats?.classes ?? 0).toLocaleString()}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="mt-1 text-xs text-gray-400">
                       {(stats?.sections ?? 0)} sections
                     </p>
                   </div>
@@ -395,15 +395,15 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
             </Card>
 
             {/* Attendance Today */}
-            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-2.5">
-                <div className="flex items-start justify-between">
-                  <div>
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Attendance Today</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats?.attendanceRate ?? 0}%
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
                         <UserCheck className="w-3 h-3" /> {stats?.presentToday ?? 0}
                       </span>
@@ -420,12 +420,12 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
             </Card>
 
             {/* Pending Enrollments */}
-            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-2.5">
-                <div className="flex items-start justify-between">
-                  <div>
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Pending Enrollments</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats?.pendingEnrollments ?? 0}
                     </p>
                     <p className="text-xs mt-1">
@@ -444,15 +444,15 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
             </Card>
 
             {/* Upcoming Exams */}
-            <Card className="min-w-0 max-w-[170px] w-full justify-self-center shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-2.5">
-                <div className="flex items-start justify-between">
-                  <div>
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Upcoming Exams</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats?.upcomingExams ?? 0}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">Within next 7 days</p>
+                    <p className="mt-1 hidden text-xs text-gray-400 sm:block lg:hidden xl:block">Within next 7 days</p>
                   </div>
                   <div className="p-2 bg-cyan-100 dark:bg-cyan-900/50 rounded-lg shrink-0">
                     <Calendar className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
@@ -463,22 +463,22 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
           </div>
 
           {/* Charts Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             {/* Weekly Attendance Chart */}
 
             {charts.attendance && (
-              <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                <CardContent className="p-4">
-                  <DynamicChart chartData={charts.attendance} height={280} />
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <CardContent className="p-3 sm:p-4">
+                  <DynamicChart chartData={charts.attendance} height={240} />
                 </CardContent>
               </Card>
             )}
 
             {/* Users by Role Distribution */}
             {charts.userDistribution && (
-              <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                <CardContent className="p-4">
-                  <DynamicChart chartData={charts.userDistribution} height={280} />
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <CardContent className="p-3 sm:p-4">
+                  <DynamicChart chartData={charts.userDistribution} height={240} />
                 </CardContent>
               </Card>
             )}
@@ -486,9 +486,9 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
 
           {/* Sections per Class - Full Width */}
           {charts.classDistribution && (
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardContent className="p-4">
-                <DynamicChart chartData={charts.classDistribution} height={280} />
+            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardContent className="p-3 sm:p-4">
+                <DynamicChart chartData={charts.classDistribution} height={240} />
               </CardContent>
             </Card>
           )}
@@ -497,9 +497,9 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
           <div className="grid grid-cols-1 gap-6">
             {/* School Overview Pie Chart */}
             {charts.overview && (
-              <Card className="lg:col-span-2 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                <CardContent className="p-4">
-                  <DynamicChart chartData={charts.overview} height={300} />
+              <Card className="min-w-0 overflow-hidden lg:col-span-2 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <CardContent className="p-3 sm:p-4">
+                  <DynamicChart chartData={charts.overview} height={260} />
                 </CardContent>
               </Card>
             )}

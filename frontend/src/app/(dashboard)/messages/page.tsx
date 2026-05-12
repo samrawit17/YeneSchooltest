@@ -255,13 +255,13 @@ export default function MessagesPage() {
     <div className="p-3 md:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:gap-4 mb-3 md:mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">Messages</h1>
+          <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">Messages</h1>
           <p className="text-xs md:text-sm text-gray-500 hidden sm:block">Internal staff messaging</p>
         </div>
 
         <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#e35336] hover:bg-[#e35336] text-sm">
+            <Button className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-sm text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]">
               <Plus className="w-4 h-4 mr-1 md:mr-2" />
               <span className="hidden sm:inline">New conversation</span>
               <span className="sm:hidden">New</span>
@@ -337,7 +337,7 @@ export default function MessagesPage() {
                   })
                 }
                 disabled={selectedStaffIds.length === 0 || createConversationMutation.isPending}
-                className="bg-[#1E3A8A] hover:bg-[#162f6b]"
+                className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]"
               >
                 {createConversationMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 Create
@@ -380,7 +380,7 @@ export default function MessagesPage() {
                       type="button"
                       onClick={() => router.push(`/messages?conversationId=${c.conversationId}`)}
                       className={`w-full p-2 md:p-4 border-b text-left hover:bg-gray-50 transition-colors ${
-                        active ? "bg-blue-50" : "bg-white"
+                        active ? "bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "bg-white"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -391,7 +391,7 @@ export default function MessagesPage() {
                           </p>
                         </div>
                         {c.unreadCount > 0 && (
-                          <span className="bg-blue-600 text-white text-[10px] md:text-[11px] font-bold min-w-[18px] md:min-w-[20px] h-[18px] md:h-[20px] rounded-md flex items-center justify-center px-0.5 md:px-1 flex-shrink-0">
+                          <span className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] text-[10px] md:text-[11px] font-bold min-w-[18px] md:min-w-[20px] h-[18px] md:h-[20px] rounded-md flex items-center justify-center px-0.5 md:px-1 flex-shrink-0">
                             {c.unreadCount > 99 ? "99+" : c.unreadCount}
                           </span>
                         )}
@@ -433,8 +433,10 @@ export default function MessagesPage() {
                       return (
                         <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                           <div
-                            className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
-                              mine ? "bg-[#1E3A8A] text-white" : "bg-gray-100 text-gray-900"
+                            className={`max-w-[75%] rounded-lg border px-3 py-2 text-sm ${
+                              mine
+                                ? "border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.10)] text-[var(--brand-color,#e35336)] dark:border-[rgba(var(--brand-color-rgb),0.24)] dark:bg-[rgba(var(--brand-color-rgb),0.12)] dark:text-white/90"
+                                : "border-gray-200 bg-gray-100 text-gray-900 dark:border-slate-700 dark:bg-slate-700 dark:text-white"
                             }`}
                           >
                             {!mine && (
@@ -479,7 +481,7 @@ export default function MessagesPage() {
                 sendMessageMutation.mutate(contentToSend);
               }}
               disabled={!selectedConversationId || !draft.trim() || sendMessageMutation.isPending}
-              className="bg-[#e35336] hover:bg-[#162f6b] h-9 md:h-9 w-9 md:w-9"
+              className="h-9 w-9 border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)] md:h-9 md:w-9"
             >
               {sendMessageMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

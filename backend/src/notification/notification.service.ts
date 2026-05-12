@@ -1444,22 +1444,29 @@ export class NotificationService {
   /**
    * Notify teachers of new assessment created by admin
    */
-  async notifyAssessmentCreated(
+  async notifyAssessmentStarted(
     schoolId: string,
     teacherIds: string[],
     assessmentTitle: string,
     assessmentType: string,
     className: string,
     subjectName: string,
+    metadata?: Record<string, unknown>,
   ) {
     return this.createBulkNotifications({
       schoolId,
       userIds: teacherIds,
-      title: 'New Assessment',
-      message: `New ${assessmentType} "${assessmentTitle}" has been created for ${className} - ${subjectName}. Please enter scores.`,
+      title: 'Assessment Started',
+      message: `${assessmentType} "${assessmentTitle}" is now active for ${className} - ${subjectName}. Please enter scores.`,
       type: NotificationType.ASSESSMENT_CREATED,
       actionUrl: '/teacher/exams',
-      metadata: { assessmentTitle, assessmentType, className, subjectName },
+      metadata: {
+        assessmentTitle,
+        assessmentType,
+        className,
+        subjectName,
+        ...metadata,
+      },
     });
   }
 

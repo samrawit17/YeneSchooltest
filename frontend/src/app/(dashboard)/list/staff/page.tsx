@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { authAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -90,7 +90,13 @@ export default function StaffPage() {
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
+
+  const updateSearch = (value: string) => {
+    setSearchInput(value);
+    setPage(1);
+  };
 
   const staffList = data?.data || [];
   const total = data?.total || 0;
@@ -161,8 +167,8 @@ export default function StaffPage() {
       <div className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Top Section - Title and Buttons */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h1 className="text-2xl font-bold text-black">Staff Management</h1>
+          <div className="flex flex-row flex-wrap items-center justify-between gap-3">
+            <h1 className="text-xl md:text-2xl font-bold text-black">Staff Management</h1>
             <div className="flex items-center gap-3">
               {canManageStaff && (
                 <Button
@@ -182,33 +188,31 @@ export default function StaffPage() {
 
           {/* Filters Section */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-                <div className="w-full lg:flex-1">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-row flex-wrap items-center gap-3">
+                <div className="flex-1 min-w-[160px]">
                   <TableSearch
                     search={searchInput}
-                    setSearch={setSearchInput}
+                    setSearch={updateSearch}
                     placeholder="Search by name or email..."
                     className="w-full"
                   />
                 </div>
-                <div className="w-full lg:w-auto">
-                  <div className="flex flex-wrap gap-3">
-                    <select
-                      value={selectedRole}
-                      onChange={(e) => {
-                        setSelectedRole(e.target.value);
-                        setPage(1);
-                      }}
-                      className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
-                    >
-                      <option value="">All Roles</option>
-                      <option value="TEACHER">Teacher</option>
-                      <option value="IT_MANAGER">IT Manager</option>
-                      <option value="REGISTRAR">Registrar</option>
-                      <option value="FINANCE">Finance</option>
-                    </select>
-                  </div>
+                <div className="flex-shrink-0">
+                  <select
+                    value={selectedRole}
+                    onChange={(e) => {
+                      setSelectedRole(e.target.value);
+                      setPage(1);
+                    }}
+                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
+                  >
+                    <option value="">All Roles</option>
+                    <option value="TEACHER">Teacher</option>
+                    <option value="IT_MANAGER">IT Manager</option>
+                    <option value="REGISTRAR">Registrar</option>
+                    <option value="FINANCE">Finance</option>
+                  </select>
                 </div>
               </div>
             </CardContent>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { authAPI, classesAPI, sectionsAPI, subjectsAPI, teachersAPI } from "@/lib/api";
@@ -11,7 +11,6 @@ import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import TableSearch from "@/components/TableSearch";
 import Pagination from "@/components/Pagination";
-import { useDebounce } from "@/hooks/useDebounce";
 
 // Shadcn/ui Components
 import {
@@ -88,9 +87,6 @@ const TeachersListPage = () => {
   const [sectionFilter, setSectionFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   
-  // Debounce the search query
-  const debouncedSearch = useDebounce(searchInput, 500);
-  
   // Add Teacher state
   const [addTeacherDialogOpen, setAddTeacherDialogOpen] = useState(false);
   const [newTeacher, setNewTeacher] = useState({
@@ -141,7 +137,7 @@ const TeachersListPage = () => {
   const { data: teachersData, isLoading, error } = useQuery<TeachersResponse>({
     queryKey: queryKeys.teachers.list(
       currentPage,
-      debouncedSearch,
+      searchInput,
       statusFilter,
       classFilter,
       sectionFilter,
@@ -151,7 +147,7 @@ const TeachersListPage = () => {
       const response = await teachersAPI.getAll({ 
         page: currentPage, 
         limit: 10, 
-        search: debouncedSearch || undefined,
+        search: searchInput || undefined,
         status: statusFilter || undefined,
         classId: classFilter || undefined,
         sectionId: sectionFilter || undefined,
@@ -159,7 +155,34 @@ const TeachersListPage = () => {
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
+
+  const updateSearch = (value: string) => {
+    setSearchInput(value);
+    setCurrentPage(1);
+  };
+
+  const updateSubjectFilter = (value: string) => {
+    setSubjectFilter(value);
+    setCurrentPage(1);
+  };
+
+  const updateClassFilter = (value: string) => {
+    setClassFilter(value);
+    setSectionFilter("");
+    setCurrentPage(1);
+  };
+
+  const updateSectionFilter = (value: string) => {
+    setSectionFilter(value);
+    setCurrentPage(1);
+  };
+
+  const updateStatusFilter = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
 
   // Fetch subjects for filter dropdown
   const { data: subjectsData } = useQuery({
@@ -369,80 +392,74 @@ const TeachersListPage = () => {
 
           {/* Filters Section */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+            <CardContent className="p-3 sm:p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
                 {/* Search Bar */}
-                <div className="w-full lg:flex-1">
+                <div className="col-span-2 sm:col-span-1 lg:col-span-2">
                   <TableSearch
                     search={searchInput}
-                    setSearch={setSearchInput}
+                    setSearch={updateSearch}
                     placeholder="Search by name, staff ID..."
                     className="w-full"
                   />
                 </div>
 
-                {/* Filter Dropdowns */}
-                <div className="w-full lg:w-auto lg:min-w-[60%]">
-                  <div className="flex flex-wrap gap-3">
-                    <select
-                      value={subjectFilter}
-                      onChange={(e) => setSubjectFilter(e.target.value)}
-                      className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
-                    >
-                      <option value="">All Subjects</option>
-                      {(subjectsData || [])?.map((subject: any) => (
-                        <option key={subject.id} value={subject.name}>
-                          {subject.name}
-                        </option>
-                      ))}
-                    </select>
+                <select
+                  value={subjectFilter}
+                  onChange={(e) => updateSubjectFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                >
+                  <option value="">All Subjects</option>
+                  {(subjectsData || [])?.map((subject: any) => (
+                    <option key={subject.id} value={subject.name}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
 
-                    <select
-                      value={classFilter}
-                      onChange={(e) => {
-                        setClassFilter(e.target.value);
-                        setSectionFilter("");
-                      }}
-                      className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
-                    >
-                      <option value="">All Classes</option>
-                      {(classesData || [])?.map((cls: any) => {
-                        const gradeStr = cls.grade ? `Grade ${cls.grade}` : cls.name;
-                        return (
-                          <option key={cls.id} value={cls.id}>
-                            {gradeStr}
-                          </option>
-                        );
-                      })}
-                    </select>
+                <select
+                  value={classFilter}
+                  onChange={(e) => updateClassFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                >
+                  <option value="">All Classes</option>
+                  {(classesData || [])?.map((cls: any) => {
+                    const gradeStr = cls.grade ? `Grade ${cls.grade}` : cls.name;
+                    return (
+                      <option key={cls.id} value={cls.id}>
+                        {gradeStr}
+                      </option>
+                    );
+                  })}
+                </select>
 
-                    {classFilter && (
-                      <select
-                        value={sectionFilter}
-                        onChange={(e) => setSectionFilter(e.target.value)}
-                        className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
-                      >
-                        <option value="">All Sections</option>
-                        {(filterSectionsData || [])?.map((section: any) => (
-                          <option key={section.id} value={section.id}>
-                            Section {section.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                {classFilter ? (
+                  <select
+                    value={sectionFilter}
+                    onChange={(e) => updateSectionFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                  >
+                    <option value="">All Sections</option>
+                    {(filterSectionsData || [])?.map((section: any) => (
+                      <option key={section.id} value={section.id}>
+                        Section {section.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="hidden sm:block" />
+                )}
 
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
-                    >
-                      <option value="">All Status</option>
-                      <option value="Active">Active</option>
-                      <option value="On Leave">On Leave</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
-                  </div>
-                </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => updateStatusFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                >
+                  <option value="">All Status</option>
+                  <option value="Active">Active</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
             </CardContent>
           </Card>

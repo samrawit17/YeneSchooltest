@@ -86,11 +86,13 @@ const ResultListPage = () => {
   return (
     <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
       {/* TOP */}
-      <div className="flex items-center justify-between">
-        <h1 className="hidden md:block text-lg font-semibold dark:text-white">All Results</h1>
-        <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-          <TableSearch />
-          <div className="flex items-center gap-4 self-end">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold dark:text-white">All Results</h1>
+        <div className="flex flex-row flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex-1 sm:flex-initial">
+            <TableSearch />
+          </div>
+          <div className="flex items-center gap-2">
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow dark:bg-amber-600">
               <Filter className="w-4 h-4 text-gray-700 dark:text-white" />
             </button>

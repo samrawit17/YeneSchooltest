@@ -255,7 +255,7 @@ export default function DashboardLayout({
           brandNavigationEnabled
             ? 'bg-[rgba(var(--brand-color-rgb),0.18)] border-[rgba(var(--brand-color-rgb),0.22)]'
             : 'bg-[#F1F5F9] border-gray-200'
-        } ${sidebarCollapsed ? 'w-20' : 'w-64'}`}
+        } ${sidebarCollapsed ? 'w-20' : 'w-64'} group/sidebar`}
       >
         {/* Logo */}
         <div className={`flex items-center justify-center p-4 border-b dark:border-[#334155] shrink-0 ${
@@ -338,6 +338,7 @@ export default function DashboardLayout({
             <ChevronLeft className="w-4 h-4 text-slate-700 dark:text-white" />
           )}
         </button>
+
       </aside>
 
       {/* Main Content */}
@@ -374,7 +375,11 @@ export default function DashboardLayout({
           </div>
         </footer>
 
-        <FloatingAiAssistant role={user?.role} />
+        <div className="pointer-events-none fixed bottom-20 right-0 z-40 hidden overflow-visible md:block">
+          <div className="pointer-events-auto">
+            <FloatingAiAssistant role={user?.role} />
+          </div>
+        </div>
       </main>
     </div>
   );

@@ -14,12 +14,13 @@ interface RecipientOption {
   subjectNames?: string[];
   relationType?: "HOMEROOM" | "TEACHING";
   targetStudentId?: string;
+  targetUserId?: string;
 }
 
 interface NewMessageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (studentId: string, subject: string, message: string) => void;
+  onSubmit: (targetUserId: string, subject: string, message: string) => void;
   isSending: boolean;
   preselectedStudentId?: string | null;
   preselectedStudentName?: string | null;
@@ -62,6 +63,7 @@ export default function NewMessageModal({
           subjectNames: Array.isArray(teacher.subjects) ? teacher.subjects : [],
           relationType: teacher.relationType,
           targetStudentId: teacher.studentId,
+          targetUserId: teacher.teacherId,
         }));
 
         const query = (queryOverride ?? searchQuery).trim().toLowerCase();
@@ -170,15 +172,24 @@ export default function NewMessageModal({
   }, []);
 
   const handleSubmit = () => {
-    const selectedRecipient = students.find((student) => student.id === studentId);
-    const targetStudentId = selectedRecipient?.targetStudentId || studentId;
+    const selectedRecipient =
+      students.find((student) => student.id === studentId) ||
+      allStudents.find((student) => student.id === studentId);
+    const targetUserId =
+      selectedRecipient?.targetUserId ||
+      selectedRecipient?.targetStudentId ||
+      studentId;
 
-    if (!targetStudentId.trim() || !subject.trim() || !message.trim()) {
-      toast.error("Please fill in all fields and select a student");
+    if (!targetUserId.trim() || !subject.trim() || !message.trim()) {
+      toast.error(
+        isParent
+          ? "Please fill in all fields and select a teacher"
+          : "Please fill in all fields and select a student",
+      );
       return;
     }
 
-    onSubmit(targetStudentId, subject, message);
+    onSubmit(targetUserId, subject, message);
   };
 
   const selectedStudent = students.find((student) => student.id === studentId);
