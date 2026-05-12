@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 @Injectable()
 export class PrismaService
@@ -9,18 +10,10 @@ export class PrismaService
 {
   constructor() {
     const pooledDatabaseUrl = process.env.DATABASE_POOL_URL;
+    const url = pooledDatabaseUrl || process.env.DATABASE_URL;
+    const adapter = new PrismaPg(url || 'postgresql://hanania:Han271619.@localhost:5432/sms_db');
 
-    super(
-      pooledDatabaseUrl
-        ? {
-            datasources: {
-              db: {
-                url: pooledDatabaseUrl,
-              },
-            },
-          }
-        : undefined,
-    );
+    super({ adapter });
   }
 
   async onModuleInit() {
