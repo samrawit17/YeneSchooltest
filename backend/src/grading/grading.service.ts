@@ -182,6 +182,27 @@ export class GradingService {
     return Math.round(total * 100) / 100;
   }
 
+  private getEffectiveGradeTotalScore(grade: {
+    caScore?: number | null;
+    midScore?: number | null;
+    finalScore?: number | null;
+    totalScore?: number | null;
+  }) {
+    const componentSum =
+      (grade.caScore ?? 0) + (grade.midScore ?? 0) + (grade.finalScore ?? 0);
+    const storedTotal = grade.totalScore ?? null;
+
+    if (storedTotal === null || storedTotal === undefined) {
+      return componentSum > 0 ? componentSum : null;
+    }
+
+    if (componentSum > 0 && storedTotal < componentSum) {
+      return componentSum;
+    }
+
+    return storedTotal;
+  }
+
   private async invalidateGradeCaches(input: {
     schoolId: string;
     teacherId?: string | null;
@@ -2589,6 +2610,8 @@ export class GradingService {
       throw new NotFoundException('Academic year not found');
     }
 
+    const academicYearName = academicYear.name;
+
     // Get all classes in the school
     const classes = await this.prisma.class.findMany({
       where: {
@@ -2623,6 +2646,9 @@ export class GradingService {
         where: gradeWhere,
         select: {
           studentId: true,
+          caScore: true,
+          midScore: true,
+          finalScore: true,
           totalScore: true,
         },
       });
@@ -2631,7 +2657,7 @@ export class GradingService {
       const studentClassesRaw = await this.prisma.studentClass.findMany({
         where: {
           classId: classItem.id,
-          academicYear: academicYearId,
+          academicYear: academicYearName,
           ...(sectionId ? { sectionId } : {}),
         },
         include: {
@@ -2666,12 +2692,16 @@ export class GradingService {
       >();
 
       for (const sg of studentGrades) {
+        const effectiveTotal = this.getEffectiveGradeTotalScore(sg);
+        if (effectiveTotal === null) {
+          continue;
+        }
         const current = studentAverages.get(sg.studentId) || {
           total: 0,
           count: 0,
         };
         studentAverages.set(sg.studentId, {
-          total: current.total + (sg.totalScore || 0),
+          total: current.total + effectiveTotal,
           count: current.count + 1,
         });
       }

@@ -666,8 +666,8 @@ function CommunicationsContent() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-[280px_1fr] xl:grid-cols-[360px_1fr]">
-        <Card className="order-1 h-[calc(100vh-180px)] md:order-1 md:h-[calc(100vh-220px)]">
-          <CardHeader className="pb-2 md:pb-3">
+        <Card className="order-1 h-[calc(100vh-180px)] flex flex-col md:order-1 md:h-[calc(100vh-220px)]">
+          <CardHeader className="pb-2 md:pb-3 shrink-0">
             <CardTitle className="text-base">Inbox</CardTitle>
             <div className="mt-2 flex items-center gap-2">
               <Search className="h-4 w-4 text-gray-400" />
@@ -679,17 +679,19 @@ function CommunicationsContent() {
               />
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <ConversationList
-              conversations={conversations}
-              loading={loading}
-              error={error}
-              selectedId={selectedConversation?.id || null}
-              onSelect={setSelectedConversation}
-              onRefresh={() => fetchCommunications(1)}
-              searchQuery={searchQuery}
-              viewerRole={viewerRole}
-            />
+          <CardContent className="flex-1 min-h-0 p-0">
+            <ScrollArea className="h-full">
+              <ConversationList
+                conversations={conversations}
+                loading={loading}
+                error={error}
+                selectedId={selectedConversation?.id || null}
+                onSelect={setSelectedConversation}
+                onRefresh={() => fetchCommunications(1)}
+                searchQuery={searchQuery}
+                viewerRole={viewerRole}
+              />
+            </ScrollArea>
           </CardContent>
         </Card>
 

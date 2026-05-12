@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { 
   X, 
   Plus, 
@@ -332,10 +333,15 @@ const FormModal = ({
   children,
 }: FormModalProps) => {
   const [internalOpen, setInternalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const queryClient = useQueryClient();
   
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = externalSetOpen || setInternalOpen;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const deleteMutation = useMutation({
     mutationFn: async ({ table, id }: { table: string; id: string | number }) => {
@@ -541,6 +547,42 @@ const FormModal = ({
 };
 
   // Otherwise, render as button that opens modal
+  const modalContent = (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-hidden rounded-2xl border bg-white font-sans shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-[var(--brand-color,#e35336)] rounded-xl flex items-center justify-center shadow-md">
+              {getTableIcon()}
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {type === "create" ? "Create New" : type === "update" ? "Update" : "Delete"} {getTableLabel(table)}
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {getTableDescription(table, type)}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setOpen(false)}
+            className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            aria-label="Close modal"
+          >
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          </button>
+        </div>
+        {/* Content */}
+        <div className="max-h-[calc(90vh-120px)] overflow-y-auto">
+          <div className="p-5">
+            <FormContent />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <button
@@ -551,41 +593,7 @@ const FormModal = ({
       >
         {getTypeIcon()}
       </button>
-      {open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden font-sans border dark:border-slate-700">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-[var(--brand-color,#e35336)] rounded-xl flex items-center justify-center shadow-md">
-                  {getTableIcon()}
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {type === "create" ? "Create New" : type === "update" ? "Update" : "Delete"} {getTableLabel(table)}
-                  </h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {getTableDescription(table, type)}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                aria-label="Close modal"
-              >
-                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </button>
-            </div>
-            {/* Content */}
-            <div className="max-h-[calc(90vh-120px)] overflow-y-auto">
-              <div className="p-5">
-                <FormContent />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {open && mounted ? createPortal(modalContent, document.body) : null}
     </>
   );
 };

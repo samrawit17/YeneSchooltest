@@ -20,8 +20,32 @@ import { Response } from 'express';
 @Injectable()
 export class SeatingService {
   private readonly logger = new Logger(SeatingService.name);
+  private readonly allowedBigExamTypes = new Set([
+    'MID_TERM',
+    'FINAL',
+  ]);
 
   constructor(private prisma: PrismaService) {}
+
+  private isSupportedExamType(examType: string) {
+    const normalized = String(examType || '').toUpperCase();
+    return (
+      normalized === 'MID_TERM' ||
+      normalized === 'FINAL' ||
+      normalized.endsWith('_MID') ||
+      normalized.endsWith('_FINAL')
+    );
+  }
+
+  private isFinalExamType(examType: string) {
+    const normalized = String(examType || '').toUpperCase();
+    return normalized === 'FINAL' || normalized.endsWith('_FINAL');
+  }
+
+  private isMidExamType(examType: string) {
+    const normalized = String(examType || '').toUpperCase();
+    return normalized === 'MID_TERM' || normalized.endsWith('_MID');
+  }
 
   /**
    * Get all seating plans for a school
@@ -108,6 +132,12 @@ export class SeatingService {
     examType: string,
     dto: CreateSeatingPlanDto,
   ): Promise<SeatingPlanResponseDto> {
+    if (!this.isSupportedExamType(examType)) {
+      throw new BadRequestException(
+        'Exam seating is only supported for mid and final exams',
+      );
+    }
+
     // Validate grade range
     if (dto.mode === SeatingMode.GRADE_RANGE) {
       if (!dto.toGrade) {
@@ -144,8 +174,8 @@ export class SeatingService {
         toGrade: dto.toGrade,
         examCapacity: dto.examCapacity || 30,
         shuffle: dto.shuffle,
-        useScoreThresholdFilter: dto.useScoreThresholdFilter || false,
-        scoreThreshold: dto.scoreThreshold || 0,
+        useScoreThresholdFilter: Boolean(dto.useScoreThresholdFilter),
+        scoreThreshold: dto.useScoreThresholdFilter ? dto.scoreThreshold || 0 : 0,
       },
       include: {
         assignments: {
@@ -268,6 +298,12 @@ export class SeatingService {
       );
     }
 
+    if (!this.isSupportedExamType(plan.examType)) {
+      throw new BadRequestException(
+        'Only mid and final exams can use exam seating',
+      );
+    }
+
     // Check if seating has already been generated
     const existingAssignments =
       await this.prisma.examSectionAssignment.findMany({
@@ -284,10 +320,39 @@ export class SeatingService {
       );
     }
 
-    // Get current academic year
-    const activeYear = await this.prisma.academicYear.findFirst({
-      where: { schoolId, isActive: true },
+    // Resolve the academic year from the seating plan's matching assessments first.
+    // Fall back to the school's active year only when needed.
+    const matchingAssessments = await this.prisma.assessment.findMany({
+      where: {
+        schoolId,
+      },
+      select: {
+        academicYearId: true,
+        termId: true,
+        type: true,
+        startDate: true,
+      },
+      orderBy: {
+        startDate: 'desc',
+      },
     });
+
+    const matchingAssessment = matchingAssessments.find((assessment) => {
+      const normalizedType = String(assessment.type || '').toUpperCase();
+      if (plan.examType === 'MID_TERM') return normalizedType === 'MID';
+      if (plan.examType === 'FINAL') return normalizedType === 'FINAL';
+      if (plan.examType.endsWith('_MID')) return normalizedType === 'MID';
+      if (plan.examType.endsWith('_FINAL')) return normalizedType === 'FINAL';
+      return false;
+    });
+
+    const activeYear = matchingAssessment
+      ? await this.prisma.academicYear.findUnique({
+          where: { id: matchingAssessment.academicYearId },
+        })
+      : await this.prisma.academicYear.findFirst({
+          where: { schoolId, isActive: true },
+        });
 
     if (!activeYear) {
       throw new BadRequestException('No active academic year found');
@@ -350,79 +415,48 @@ export class SeatingService {
 
     const students = Array.from(uniqueStudents.values());
 
-    // Apply score threshold filter if enabled
-    let filteredStudents = students;
-    if (plan.useScoreThresholdFilter && plan.scoreThreshold > 0) {
-      const qualifiedIds = await this.getStudentsAboveThreshold(schoolId, plan.scoreThreshold);
-      filteredStudents = students.filter((s) => qualifiedIds.has(s.studentId));
+    let orderedStudents = students;
+    if (plan.useScoreThresholdFilter) {
+      orderedStudents = this.isFinalExamType(plan.examType)
+        ? await this.orderStudentsByMidResult(
+            schoolId,
+            students,
+            activeYear.name,
+            matchingAssessment?.termId ?? null,
+          )
+        : this.isMidExamType(plan.examType)
+          ? await this.orderStudentsByPreviousFinalResult(
+              schoolId,
+              students,
+              activeYear.id,
+              activeYear.name,
+              matchingAssessment?.termId ?? null,
+            )
+          : students;
     }
 
-    const totalStudents = filteredStudents.length;
+    const totalStudents = orderedStudents.length;
     const examCapacity = plan.examCapacity || 30;
 
     // Calculate how many sections needed
     const numSections = Math.ceil(totalStudents / examCapacity);
 
-    // Get existing sections in the grade range
+    // Use only real existing sections in the target academic year.
     let sections = await this.prisma.section.findMany({
       where: {
         class: {
           schoolId,
+          academicYearId: activeYear.id,
           grade: { gte: plan.fromGrade, lte: plan.toGrade },
         },
       },
       include: { class: true },
-      take: numSections,
+      orderBy: [
+        { class: { grade: 'asc' } },
+        { class: { name: 'asc' } },
+        { name: 'asc' },
+      ],
     });
-
-    // If not enough sections, create new ones
-    if (sections.length < numSections) {
-      const classesInRange = await this.prisma.class.findMany({
-        where: {
-          schoolId,
-          academicYearId: activeYear.id,
-          grade: { gte: plan.fromGrade, lte: plan.toGrade },
-        },
-      });
-
-      const sectionsToCreate: {
-        name: string;
-        classId: string;
-        capacity: number;
-      }[] = [];
-      for (let i = 0; i < numSections; i++) {
-        const classItem = classesInRange[i % classesInRange.length];
-        if (classItem) {
-          const sectionName = `Exam Section ${i + 1}`;
-          const exists = sections.find(
-            (s) => s.name === sectionName && s.classId === classItem.id,
-          );
-          if (!exists) {
-            sectionsToCreate.push({
-              name: sectionName,
-              classId: classItem.id,
-              capacity: examCapacity,
-            });
-          }
-        }
-      }
-
-      if (sectionsToCreate.length > 0) {
-        const createdSections = await this.prisma.section.createMany({
-          data: sectionsToCreate,
-        });
-
-        // Get the created sections
-        const newSections = await this.prisma.section.findMany({
-          where: {
-            name: { in: sectionsToCreate.map((s) => s.name) },
-            classId: { in: sectionsToCreate.map((s) => s.classId) },
-          },
-          include: { class: true },
-        });
-        sections = [...sections, ...newSections];
-      }
-    }
 
     if (sections.length === 0) {
       throw new BadRequestException(
@@ -430,8 +464,16 @@ export class SeatingService {
       );
     }
 
+    if (sections.length < numSections) {
+      throw new BadRequestException(
+        `Not enough existing sections for this seating plan. Required: ${numSections}, available: ${sections.length}. Create the academic sections first instead of generating temporary exam sections.`,
+      );
+    }
+
+    sections = sections.slice(0, numSections);
+
     // Shuffle students if required
-    let studentsToAssign = [...filteredStudents];
+    let studentsToAssign = [...orderedStudents];
     if (plan.shuffle) {
       studentsToAssign = this.shuffleArray(studentsToAssign);
     }
@@ -959,43 +1001,145 @@ export class SeatingService {
   /**
    * Get student IDs whose latest exam score meets or exceeds the threshold
    */
-  private async getStudentsAboveThreshold(
+  private async orderStudentsByMidResult(
     schoolId: string,
-    threshold: number,
-  ): Promise<Set<string>> {
-    const results = await this.prisma.examResult.findMany({
+    students: Array<{
+      studentId: string;
+      name: string;
+      email: string | null;
+      className: string;
+      grade: number;
+      sectionName: string;
+    }>,
+    academicYear: string,
+    termId: string | null,
+  ) {
+    if (students.length === 0) {
+      return students;
+    }
+
+    const results = await this.prisma.subjectGrade.findMany({
       where: {
-        exam: { schoolId },
-        marks: { gte: threshold },
+        schoolId,
+        academicYear,
+        studentId: { in: students.map((student) => student.studentId) },
+        ...(termId ? { termId } : {}),
+        midScore: { not: null },
       },
       select: {
         studentId: true,
-        marks: true,
-        exam: {
-          select: { date: true },
-        },
-      },
-      orderBy: {
-        exam: { date: 'desc' },
+        midScore: true,
       },
     });
 
-    // Keep only the latest result per student
-    const latestByStudent = new Map<string, number>();
+    const totals = new Map<string, { sum: number; count: number }>();
     for (const r of results) {
-      if (!latestByStudent.has(r.studentId)) {
-        latestByStudent.set(r.studentId, r.marks);
+      const score = r.midScore ?? null;
+      if (score === null) continue;
+      const current = totals.get(r.studentId) ?? { sum: 0, count: 0 };
+      current.sum += score;
+      current.count += 1;
+      totals.set(r.studentId, current);
+    }
+
+    const rankedStudents = students
+      .map((student) => {
+        const result = totals.get(student.studentId);
+        return {
+          student,
+          rankScore: result && result.count > 0 ? result.sum / result.count : Number.NEGATIVE_INFINITY,
+        };
+      })
+      .sort((a, b) => b.rankScore - a.rankScore || a.student.name.localeCompare(b.student.name));
+
+    if (rankedStudents.every((row) => row.rankScore === Number.NEGATIVE_INFINITY)) {
+      throw new BadRequestException(
+        'No mid exam results were found for these students, so performance-based final seating cannot be generated yet',
+      );
+    }
+
+    return rankedStudents.map((row) => row.student);
+  }
+
+  private async orderStudentsByPreviousFinalResult(
+    schoolId: string,
+    students: Array<{
+      studentId: string;
+      name: string;
+      email: string | null;
+      className: string;
+      grade: number;
+      sectionName: string;
+    }>,
+    academicYearId: string,
+    academicYear: string,
+    currentTermId: string | null,
+  ) {
+    if (students.length === 0) {
+      return students;
+    }
+
+    let referenceTermId: string | null = null;
+    if (currentTermId) {
+      const currentTerm = await this.prisma.term.findUnique({
+        where: { id: currentTermId },
+        select: { id: true, order: true, academicYearId: true },
+      });
+
+      if (currentTerm) {
+        const previousTerm = await this.prisma.term.findFirst({
+          where: {
+            academicYearId: currentTerm.academicYearId,
+            order: { lt: currentTerm.order },
+          },
+          orderBy: { order: 'desc' },
+          select: { id: true },
+        });
+        referenceTermId = previousTerm?.id ?? null;
       }
     }
 
-    // Return students whose latest score meets threshold
-    const qualified = new Set<string>();
-    for (const [studentId, marks] of latestByStudent) {
-      if (marks >= threshold) {
-        qualified.add(studentId);
-      }
+    const results = await this.prisma.subjectGrade.findMany({
+      where: {
+        schoolId,
+        academicYear,
+        studentId: { in: students.map((student) => student.studentId) },
+        ...(referenceTermId ? { termId: referenceTermId } : {}),
+        finalScore: { not: null },
+      },
+      select: {
+        studentId: true,
+        finalScore: true,
+        term: {
+          select: {
+            order: true,
+            academicYearId: true,
+          },
+        },
+      },
+      orderBy: [{ term: { order: 'desc' } }],
+    });
+
+    const latestFinalByStudent = new Map<string, number>();
+    for (const row of results) {
+      if (row.term.academicYearId !== academicYearId) continue;
+      if (row.finalScore === null || latestFinalByStudent.has(row.studentId)) continue;
+      latestFinalByStudent.set(row.studentId, row.finalScore);
     }
 
-    return qualified;
+    const rankedStudents = students
+      .map((student) => ({
+        student,
+        rankScore: latestFinalByStudent.get(student.studentId) ?? Number.NEGATIVE_INFINITY,
+      }))
+      .sort((a, b) => b.rankScore - a.rankScore || a.student.name.localeCompare(b.student.name));
+
+    if (rankedStudents.every((row) => row.rankScore === Number.NEGATIVE_INFINITY)) {
+      throw new BadRequestException(
+        'No previous final results were found for these students, so performance-based mid seating cannot be generated yet',
+      );
+    }
+
+    return rankedStudents.map((row) => row.student);
   }
 }

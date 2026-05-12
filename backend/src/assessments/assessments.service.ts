@@ -1307,6 +1307,14 @@ if (
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
+    const academicYearName = query.academicYearId
+      ? (
+          await this.prisma.academicYear.findFirst({
+            where: { id: query.academicYearId, schoolId },
+            select: { name: true },
+          })
+        )?.name
+      : undefined;
 
     const [assessmentSubjects, total] = await Promise.all([
       this.prisma.assessmentSubject.findMany({
@@ -1347,9 +1355,7 @@ if (
       by: ['classId', 'sectionId'],
       where: {
         schoolId,
-        ...(query.academicYearId
-          ? { academicYear: query.academicYearId }
-          : {}),
+        ...(academicYearName ? { academicYear: academicYearName } : {}),
       },
       _count: { studentId: true },
     });

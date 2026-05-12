@@ -28,6 +28,11 @@ const hexToRgb = (hex: string) => ({
   b: parseInt(hex.slice(5, 7), 16),
 });
 
+const revealTextClass = (expanded: boolean, maxWidth = "max-w-[220px]") =>
+  `overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] duration-200 ease-out ${
+    expanded ? `${maxWidth} opacity-100` : "max-w-0 opacity-0 pointer-events-none"
+  }`;
+
 const normalizeBrandNavigationSetting = (value: unknown, fallback = true): boolean => {
   if (typeof value === "boolean") return value;
   if (typeof value === "string") {
@@ -79,7 +84,7 @@ export default function DashboardLayout({
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   // Track if we've already checked auth to prevent premature redirects
   const hasCheckedAuth = useRef(false);
 
@@ -250,50 +255,59 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
       {/* Desktop Sidebar */}
-      <aside
-        className={`hidden md:flex flex-col shadow-sm border-r dark:bg-[#111827] dark:border-[#334155] transition-all duration-300 ease-in-out relative ${
-          brandNavigationEnabled
-            ? 'bg-[rgba(var(--brand-color-rgb),0.18)] border-[rgba(var(--brand-color-rgb),0.22)]'
-            : 'bg-[#F1F5F9] border-gray-200'
-        } ${sidebarCollapsed ? 'w-20' : 'w-64'} group/sidebar`}
-      >
+      <div className="relative hidden shrink-0 md:block md:w-20">
+        <aside
+          onMouseEnter={() => setIsSidebarHovered(true)}
+          onMouseLeave={() => setIsSidebarHovered(false)}
+          className={`absolute inset-y-0 left-0 z-[60] flex h-full flex-col shadow-sm dark:bg-[#111827] dark:border-[#334155] transition-[width] duration-200 ease-out will-change-transform ${
+            brandNavigationEnabled
+              ? 'bg-[rgba(var(--brand-color-rgb),0.18)] border-r border-[rgba(var(--brand-color-rgb),0.22)]'
+              : 'bg-[#F1F5F9] border-r border-gray-200'
+          } ${isSidebarHovered ? 'w-64' : 'w-20'} group/sidebar`}
+        >
         {/* Logo */}
-        <div className={`flex items-center justify-center p-4 border-b dark:border-[#334155] shrink-0 ${
+        <div className={`flex h-24 items-center px-4 border-b dark:border-[#334155] shrink-0 ${
           brandNavigationEnabled
             ? 'border-[rgba(var(--brand-color-rgb),0.18)]'
             : 'border-gray-200'
         }`}>
           {isSchoolLoading ? (
-            <Skeleton className="h-8 w-8 rounded-xl" />
-          ) : sidebarCollapsed ? (
-            school?.logoUrl ? (
-              <Image
-                src={school.logoUrl}
-                alt={school.name || "School Logo"}
-                width={56}
-                height={56}
-                className="w-14 h-14 rounded-xl object-cover"
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-xl bg-[#e35336] flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">
-                  {school?.name?.charAt(0) || "S"}
-                </span>
-              </div>
-            )
+            <div className={`flex w-full items-center ${isSidebarHovered ? "justify-start gap-3" : "justify-center"}`}>
+              <Skeleton className="h-11 w-11 rounded-xl shrink-0" />
+              <Skeleton className={`h-6 ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`} />
+            </div>
           ) : (
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">
-              {school?.name || "SMS Portal"}
-            </span>
+            <div className={`flex w-full items-center ${isSidebarHovered ? "justify-start gap-3" : "justify-center"}`}>
+              {school?.logoUrl ? (
+                <Image
+                  src={school.logoUrl}
+                  alt={school.name || "School Logo"}
+                  width={44}
+                  height={44}
+                  className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                />
+              ) : (
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e35336]">
+                  <span className="text-xl font-bold text-white">
+                    {school?.name?.charAt(0) || "S"}
+                  </span>
+                </div>
+              )}
+              <span className={`text-base font-bold text-slate-900 dark:text-white ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`}>
+                {school?.name || "SMS Portal"}
+              </span>
+            </div>
           )}
         </div>
 
         {/* Navigation Menu */}
-        <div className="flex-1 overflow-y-auto m-4">
+        <div className="flex flex-1 overflow-y-auto py-4 pl-4">
+          <div className={isSidebarHovered ? 'w-56' : 'w-12'}>
           <Menu
-            collapsed={sidebarCollapsed}
+            collapsed={!isSidebarHovered}
             useBrandNavigation={brandNavigationEnabled}
           />
+          </div>
         </div>
 
         {/* User Info */}
@@ -302,7 +316,7 @@ export default function DashboardLayout({
             ? 'border-[rgba(var(--brand-color-rgb),0.18)]'
             : 'border-gray-200'
         }`}>
-          <div className={`flex items-center gap-3 p-3 rounded-lg mt-4 border border-white/60 bg-white/80 backdrop-blur dark:border-slate-700/70 dark:bg-[#1E293B] ${sidebarCollapsed ? 'justify-center' : ''}`}>
+          <div className={`mt-4 flex min-h-[72px] items-center rounded-lg border border-white/60 bg-white/80 p-3 backdrop-blur dark:border-slate-700/70 dark:bg-[#1E293B] ${isSidebarHovered ? 'justify-start gap-3' : 'justify-center'}`}>
             <Image
               src="/avatar.svg"
               alt={user?.name || "User"}
@@ -310,42 +324,25 @@ export default function DashboardLayout({
               height={32}
               className="rounded-full shrink-0"
             />
-            {!sidebarCollapsed && (
-              <div className="flex-1 min-w-0">
+            <div className={`min-w-0 flex-1 ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`}>
                 <p className="text-sm font-medium text-slate-800 dark:text-white truncate">
                   {user?.name || "User"}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-gray-400 truncate">
                   {user?.email || ""}
                 </p>
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* Collapse Toggle Button */}
-        <button
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className={`absolute top-1/2 -right-3 transform -translate-y-1/2 rounded-full border p-1 shadow-md backdrop-blur transition-colors z-50 dark:border-[#334155] dark:bg-[#1E293B] dark:hover:bg-[#334155] ${
-            useBrandColorInNavigation !== false
-              ? 'border-[rgba(var(--brand-color-rgb),0.22)] bg-white/90 hover:bg-[rgba(var(--brand-color-rgb),0.2)]'
-              : 'border-gray-200 bg-white hover:bg-gray-100'
-          }`}
-        >
-          {sidebarCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-slate-700 dark:text-white" />
-          ) : (
-            <ChevronLeft className="w-4 h-4 text-slate-700 dark:text-white" />
-          )}
-        </button>
-
-      </aside>
+        </aside>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-visible transition-all duration-300 ease-in-out">
+      <main className="flex-1 flex flex-col overflow-visible min-w-0">
         {/* Top Navbar */}
         <Navbar
-          sidebarCollapsed={sidebarCollapsed}
+          sidebarCollapsed={!isSidebarHovered}
           useBrandNavigation={brandNavigationEnabled}
         />
 
@@ -353,7 +350,7 @@ export default function DashboardLayout({
         <Breadcrumb />
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-0 bg-[#F8FAFC] dark:bg-[#0F172A]">
+        <div className="flex-1 overflow-y-auto p-0 bg-[#F8FAFC] dark:bg-[#0F172A] contain-content">
           <div className="w-full overflow-visible">
             {children}
           </div>

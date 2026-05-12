@@ -119,7 +119,7 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
   };
 
   return (
-    <div className="w-full min-w-[320px]">
+    <div className="w-full min-w-0 max-w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-sm text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]">
@@ -169,7 +169,7 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
             <div
               key={index}
               className={`
-                min-h-[60px] p-1 rounded border text-center cursor-pointer transition-all
+                min-h-[60px] min-w-0 p-1 rounded border text-center cursor-pointer transition-all
                 ${today 
                   ? 'border-[var(--brand-color,#e35336)] bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[rgba(var(--brand-color-rgb),0.1)]' 
                   : 'border-gray-200 dark:border-gray-700 hover:border-[var(--brand-color,#e35336)] dark:hover:border-[var(--brand-color,#e35336)]'
@@ -184,11 +184,11 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
                 {formatDayNumber(day)}
               </div>
               {/* Event markers */}
-              <div className="space-y-0.5">
+              <div className="min-w-0 space-y-0.5">
                 {dayEvents.map((event, eventIndex) => (
                   <div
                     key={eventIndex}
-                    className={`text-[10px] px-1 py-0.5 rounded truncate font-medium ${getEventColor(event.eventType)}`}
+                    className={`block max-w-full overflow-hidden truncate whitespace-nowrap rounded px-1 py-0.5 text-[10px] font-medium ${getEventColor(event.eventType)}`}
                     title={event.title}
                   >
                     {event.title}

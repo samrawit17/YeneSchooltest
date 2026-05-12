@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Alert,
   AlertDescription,
@@ -95,6 +96,10 @@ export function SirenHardwareConfig() {
       return;
     }
 
+    if (!schoolId) {
+      toast.error("School not found");
+      return;
+    }
     setSaving(true);
     try {
       if (config) {
@@ -130,11 +135,48 @@ export function SirenHardwareConfig() {
 
   if (loading) {
     return (
-      <Card className="max-w-full overflow-hidden">
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
+      <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
+        <Card className="max-w-full overflow-hidden">
+          <CardHeader className="min-w-0">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-72 mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-32" />
+              <Skeleton className="h-9 w-28" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="max-w-full overflow-hidden">
+          <CardHeader className="min-w-0">
+            <Skeleton className="h-5 w-36" />
+            <Skeleton className="h-4 w-56 mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <div className="grid grid-cols-2 gap-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+            <Skeleton className="h-9 w-24" />
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 

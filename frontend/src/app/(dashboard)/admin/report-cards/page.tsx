@@ -4,24 +4,19 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileText,
-  Download,
   Plus,
   RefreshCw,
   CheckCircle,
   XCircle,
   Eye,
   Trash2,
-  Filter,
-  ChevronDown,
   Loader2,
-  Search,
-  Award,
   BarChart3,
-  Users,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { Breadcrumb } from "@/components/Breadcrumb";
+import { toast } from "sonner";
 import {
   ReportCard,
   ReportCardStatus,
@@ -30,6 +25,7 @@ import {
 import { classesAPI } from "@/lib/api";
 import { termsAPI } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function GradeBadge({ grade }: { grade: string | null }) {
   const configs: Record<string, { bg: string; text: string }> = {
@@ -124,7 +120,10 @@ export default function ReportCardsPage() {
       setError(null);
       const params: any = {};
       if (selectedClass) params.classId = selectedClass;
-      if (selectedTerm) params.term = selectedTerm;
+      if (selectedTerm) {
+        const term = terms.find((t) => t.id === selectedTerm);
+        params.term = term?.name || selectedTerm;
+      }
       if (filterStatus !== "all") params.status = filterStatus;
       if (currentAcademicYear?.name) params.academicYear = currentAcademicYear.name;
 
@@ -157,52 +156,50 @@ export default function ReportCardsPage() {
 
   const handleBulkGenerate = async () => {
     if (!selectedClass || !selectedTerm) {
-      alert("Please select a class and term");
+      toast.error("Please select a class and term");
       return;
     }
     const term = terms.find((t) => t.id === selectedTerm);
-    if (!confirm(`Generate report cards for all students in this class?`)) return;
-
-    setBulkGenerateLoading(true);
-    try {
-      const result = await reportCardsAPI.bulkGenerate({
-        classId: selectedClass,
-        sectionId: "",
-        termId: selectedTerm,
-        termName: term?.name || `Term ${selectedTerm}`,
-      });
-      alert(`Generated: ${result.data.generated}, Failed: ${result.data.failed}`);
-      fetchReportCards();
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to generate report cards");
-    } finally {
-      setBulkGenerateLoading(false);
-    }
-  };
-
-  const handlePublish = async () => {
-    if (selectedCards.size === 0) {
-      alert("Please select report cards to publish");
+    const classRecord = classes.find((cls) => cls.id === selectedClass);
+    const sectionRecord = classRecord?.sections?.find(
+      (section: { name: string; id: string }) => section.name === classRecord.section,
+    ) || classRecord?.sections?.[0];
+    if (!sectionRecord?.id) {
+      toast.error("The selected class does not have a valid section mapping");
       return;
     }
-    if (!confirm(`Publish ${selectedCards.size} report card(s)?`)) return;
 
-    setActionLoading(true);
-    try {
-      const result = await reportCardsAPI.publish(Array.from(selectedCards));
-      alert(`Published ${result.data.published} report card(s)`);
-      setSelectedCards(new Set());
-      fetchReportCards();
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to publish");
-    } finally {
-      setActionLoading(false);
-    }
+    toast("Generate report cards for all students in this class?", {
+      action: {
+        label: "Generate",
+        onClick: async () => {
+          setBulkGenerateLoading(true);
+          try {
+            const result = await reportCardsAPI.bulkGenerate({
+              classId: selectedClass,
+              sectionId: sectionRecord.id,
+              termId: selectedTerm,
+              termName: term?.name || `Term ${selectedTerm}`,
+            });
+            toast.success(`Generated: ${result.data.generated}, Failed: ${result.data.failed}`);
+            fetchReportCards();
+          } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to generate report cards");
+          } finally {
+            setBulkGenerateLoading(false);
+          }
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+    });
   };
 
   const handleUnpublish = async () => {
     if (selectedCards.size === 0) {
-      alert("Please select report cards to unpublish");
+      toast.error("Please select report cards to unpublish");
       return;
     }
     if (!confirm(`Revert ${selectedCards.size} report card(s) to draft?`)) return;
@@ -210,35 +207,11 @@ export default function ReportCardsPage() {
     setActionLoading(true);
     try {
       const result = await reportCardsAPI.unpublish(Array.from(selectedCards));
-      alert(`Unpublished ${result.data.unpublished} report card(s)`);
+      toast.success(`Unpublished ${result.data.unpublished} report card(s)`);
       setSelectedCards(new Set());
       fetchReportCards();
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to unpublish");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleCalculateRanks = async () => {
-    if (!selectedClass || !selectedTerm) {
-      alert("Please select a class and term");
-      return;
-    }
-    if (!confirm("Calculate ranks for all students in this class?")) return;
-
-    setActionLoading(true);
-    try {
-      const term = terms.find((t) => t.id === selectedTerm);
-      await reportCardsAPI.calculateRanks({
-        classId: selectedClass,
-        academicYear: currentAcademicYear?.name || "",
-        term: term?.name || selectedTerm,
-      });
-      alert("Ranks calculated successfully");
-      fetchReportCards();
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to calculate ranks");
+      toast.error(err.response?.data?.message || "Failed to unpublish");
     } finally {
       setActionLoading(false);
     }
@@ -249,9 +222,10 @@ export default function ReportCardsPage() {
 
     try {
       await reportCardsAPI.delete(id);
+      toast.success("Report card deleted");
       fetchReportCards();
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to delete");
+      toast.error(err.response?.data?.message || "Failed to delete");
     }
   };
 
@@ -269,79 +243,19 @@ export default function ReportCardsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <header className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Report Cards</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Generate, publish, and manage student report cards
-              </p>
-            </div>
+      <div className="px-4 sm:px-6 pt-4">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Report Cards</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Generate, publish, and manage student report cards
+            </p>
           </div>
-          {isAdmin && (
-            <button
-              onClick={handleBulkGenerate}
-              disabled={bulkGenerateLoading || !selectedClass}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-500/30 transition-all disabled:opacity-50"
-            >
-              {bulkGenerateLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-              Generate All
-            </button>
-          )}
         </div>
-      </header>
+      </div>
 
       <div className="p-4 sm:p-6 space-y-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Total Cards</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.draft}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Drafts</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.published}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Published</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{stats.avgPercentage.toFixed(1)}%</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Avg Score</p>
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
@@ -350,7 +264,7 @@ export default function ReportCardsPage() {
                 <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   <option value="">All Classes</option>
                   {classes.map((cls) => (
@@ -362,7 +276,7 @@ export default function ReportCardsPage() {
                 <select
                   value={selectedTerm}
                   onChange={(e) => setSelectedTerm(e.target.value)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   <option value="">All Terms</option>
                   {terms.map((term) => (
@@ -374,7 +288,7 @@ export default function ReportCardsPage() {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   <option value="all">All Status</option>
                   <option value="DRAFT">Draft</option>
@@ -383,32 +297,31 @@ export default function ReportCardsPage() {
               </div>
               <div className="flex items-center gap-2">
                 {isAdmin && selectedCards.size > 0 && (
-                  <>
-                    <button
-                      onClick={handlePublish}
-                      disabled={actionLoading}
-                      className="flex items-center gap-2 px-3 py-2 bg-emerald-500 text-white rounded-lg text-sm hover:bg-emerald-600 disabled:opacity-50"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Publish ({selectedCards.size})
-                    </button>
-                    <button
-                      onClick={handleUnpublish}
-                      disabled={actionLoading}
-                      className="flex items-center gap-2 px-3 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 disabled:opacity-50"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Unpublish ({selectedCards.size})
-                    </button>
-                  </>
+                  <button
+                    onClick={handleUnpublish}
+                    disabled={actionLoading}
+                    className="flex items-center gap-2 px-3 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 disabled:opacity-50"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Unpublish ({selectedCards.size})
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={handleBulkGenerate}
+                    disabled={bulkGenerateLoading || !selectedClass}
+                    className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-[var(--brand-color,#e35336)] to-[var(--brand-color,#e35336)] text-white rounded-lg text-sm hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/30 transition-all disabled:opacity-50"
+                  >
+                    {bulkGenerateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Generate All
+                  </button>
                 )}
                 <button
-                  onClick={handleCalculateRanks}
-                  disabled={actionLoading || !selectedClass}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50"
+                  onClick={() => router.push("/admin/exams/publish")}
+                  className="flex items-center gap-2 px-3 py-2 bg-[var(--brand-color,#e35336)] text-white rounded-lg text-sm hover:opacity-90"
                 >
-                  <Award className="w-4 h-4" />
-                  Calculate Ranks
+                  <ExternalLink className="w-4 h-4" />
+                  Open Publish Page
                 </button>
                 <button
                   onClick={fetchReportCards}
@@ -429,7 +342,7 @@ export default function ReportCardsPage() {
                       type="checkbox"
                       checked={selectedCards.size === reportCards.length && reportCards.length > 0}
                       onChange={handleSelectAll}
-                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-[var(--brand-color,#e35336)] focus:ring-[var(--brand-color,#e35336)]"
                     />
                   </TableHead>
                   <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Student</TableHead>
@@ -443,17 +356,23 @@ export default function ReportCardsPage() {
               </TableHeader>
               <TableBody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="px-4 py-12 text-center">
-                      <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mx-auto" />
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Loading report cards...</p>
-                    </TableCell>
-                  </TableRow>
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="px-4 py-3"><Skeleton className="h-4 w-4 rounded" /></TableCell>
+                      <TableCell className="px-4 py-3"><div className="flex items-center gap-3"><Skeleton className="h-8 w-8 rounded-full" /><Skeleton className="h-4 w-32" /></div></TableCell>
+                      <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell className="px-4 py-3"><Skeleton className="h-6 w-14 rounded-full mx-auto" /></TableCell>
+                      <TableCell className="px-4 py-3"><Skeleton className="h-4 w-10 mx-auto" /></TableCell>
+                      <TableCell className="px-4 py-3"><Skeleton className="h-4 w-12 mx-auto" /></TableCell>
+                      <TableCell className="px-4 py-3"><Skeleton className="h-6 w-20 rounded-full mx-auto" /></TableCell>
+                      <TableCell className="px-4 py-3"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
                 ) : error ? (
                   <TableRow>
                     <TableCell colSpan={8} className="px-4 py-12 text-center">
                       <p className="text-sm text-red-500">{error}</p>
-                      <button onClick={fetchReportCards} className="text-indigo-500 text-sm hover:underline mt-2">
+                      <button onClick={fetchReportCards} className="text-[var(--brand-color,#e35336)] text-sm hover:underline mt-2">
                         Try again
                       </button>
                     </TableCell>
@@ -467,7 +386,7 @@ export default function ReportCardsPage() {
                         <button
                           onClick={handleBulkGenerate}
                           disabled={!selectedClass || bulkGenerateLoading}
-                          className="text-indigo-500 text-sm hover:underline mt-2 disabled:opacity-50"
+                          className="text-[var(--brand-color,#e35336)] text-sm hover:underline mt-2 disabled:opacity-50"
                         >
                           Generate report cards for selected class
                         </button>
@@ -482,12 +401,12 @@ export default function ReportCardsPage() {
                           type="checkbox"
                           checked={selectedCards.has(card.id)}
                           onChange={() => handleSelect(card.id)}
-                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-[var(--brand-color,#e35336)] focus:ring-[var(--brand-color,#e35336)]"
                         />
                       </TableCell>
                       <TableCell className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--brand-color,#e35336)] to-[var(--brand-color,#e35336)] flex items-center justify-center text-white text-sm font-medium">
                             {card.student?.name?.charAt(0) || "?"}
                           </div>
                           <span className="font-medium text-slate-900 dark:text-white text-sm">
@@ -514,7 +433,7 @@ export default function ReportCardsPage() {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => router.push(`/admin/report-cards/${card.id}`)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg"
+                            className="p-1.5 text-slate-400 hover:text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.12)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.18)] rounded-lg"
                             title="View"
                           >
                             <Eye className="w-4 h-4" />

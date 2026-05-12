@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   entryProgressAPI,
   termsAPI,
+  academicYearsAPI,
   type EntryProgressAssessmentType as AssessmentType,
   type EntryProgressQuery,
   type EntryProgressRow,
@@ -40,12 +41,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Filters, useFilters } from "@/components/filters/Filters";
+import { useFilters } from "@/components/filters/Filters";
 import Pagination from "@/components/Pagination";
 
 type SortKey = "title" | "subject" | "className" | "progress" | "missing";
 type SortDir = "asc" | "desc";
-type StatusFilter = "ALL" | "COMPLETE" | "PARTIAL" | "EMPTY" | "LOCKED";
+type StatusFilter = "ALL" | "COMPLETE" | "PARTIAL" | "EMPTY" | "LOCKED" | "NO_STUDENTS";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -109,14 +110,14 @@ function getTypeMeta(type: string) {
 
 function getProgressStatus(row: EntryProgressRow): StatusFilter {
   if (row.isLocked) return "LOCKED";
-  if (row.expectedEntries === 0) return "COMPLETE";
+  if (row.expectedEntries === 0) return "NO_STUDENTS";
   if (row.enteredEntries === 0) return "EMPTY";
   if (row.missingEntries === 0) return "COMPLETE";
   return "PARTIAL";
 }
 
 function ProgressBar({ entered, expected }: { entered: number; expected: number }) {
-  const pct = expected === 0 ? 100 : Math.min(100, Math.round((entered / expected) * 100));
+  const pct = expected === 0 ? 0 : Math.min(100, Math.round((entered / expected) * 100));
   const color =
     pct === 100
       ? "bg-emerald-500"
@@ -166,6 +167,12 @@ function StatusChip({ status }: { status: StatusFilter }) {
         <Lock className="w-3 h-3" /> Locked
       </span>
     );
+  if (status === "NO_STUDENTS")
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-2 py-0.5">
+        <Users className="w-3 h-3" /> No students
+      </span>
+    );
   return null;
 }
 
@@ -179,6 +186,7 @@ export default function EntryProgressPage() {
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const [terms, setTerms] = useState<{ id: string; name: string }[]>([]);
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
 
   // Filters
   const { selectedYear, setSelectedYear, selectedTerm, setSelectedTerm } = useFilters({
@@ -200,6 +208,14 @@ export default function EntryProgressPage() {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push("/sign-in");
   }, [isAuthenticated, isLoading, router]);
+
+  // Load academic years on mount
+  useEffect(() => {
+    academicYearsAPI.getAll().then((res) => {
+      const d = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+      setAcademicYears(d);
+    }).catch(() => {});
+  }, []);
 
   // Load terms when year changes
   useEffect(() => {
@@ -264,6 +280,7 @@ export default function EntryProgressPage() {
     const complete = data.filter((r) => getProgressStatus(r) === "COMPLETE").length;
     const partial = data.filter((r) => getProgressStatus(r) === "PARTIAL").length;
     const empty = data.filter((r) => getProgressStatus(r) === "EMPTY").length;
+    const noStudents = data.filter((r) => getProgressStatus(r) === "NO_STUDENTS").length;
     const locked = data.filter((r) => r.isLocked).length;
     const totalMissing = data.reduce((s, r) => s + r.missingEntries, 0);
     const totalExpected = data.reduce((s, r) => s + r.expectedEntries, 0);
@@ -271,7 +288,7 @@ export default function EntryProgressPage() {
     const overallPct =
       totalExpected === 0 ? 0 : Math.round((totalEntered / totalExpected) * 100);
 
-    return { total, complete, partial, empty, locked, totalMissing, overallPct, totalExpected, totalEntered };
+    return { total, complete, partial, empty, noStudents, locked, totalMissing, overallPct, totalExpected, totalEntered };
   }, [data]);
 
   // ── Filtered + sorted rows ──
@@ -339,34 +356,9 @@ export default function EntryProgressPage() {
             Track which subjects still need marks entered by teachers
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fetchData(1)}
-          disabled={loading || !selectedYear}
-          className="self-start sm:self-auto gap-2 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
       </div>
 
-      {/* ── Filters ── */}
-      <Card className="shadow-sm bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
-        <CardContent className="pt-4 pb-4">
-          <div className="flex flex-col gap-3">
-            <Filters
-              config={{ academicYear: true, term: true }}
-              selectedYear={selectedYear}
-              onYearChange={(v) => { setSelectedYear(v); setData([]); setHasFetched(false); }}
-              selectedTerm={selectedTerm}
-              onTermChange={setSelectedTerm}
-              termOptions={terms}
-              className="w-full"
-            />
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* ── Content ── */}
       {loading && !hasFetched ? (
@@ -381,75 +373,7 @@ export default function EntryProgressPage() {
         </div>
       ) : (
         <>
-          {/* ── Summary cards ── */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {[
-              {
-                label: "Overall",
-                value: `${stats.overallPct}%`,
-                sub: `${stats.totalEntered} / ${stats.totalExpected} entries`,
-                color: "text-[#e35336]",
-                bg: "bg-white dark:bg-slate-800",
-                border: "border-gray-200 dark:border-slate-700",
-                bar: true,
-              },
-              {
-                label: "Complete",
-                value: stats.complete,
-                sub: "all scores entered",
-                color: "text-emerald-600 dark:text-emerald-400",
-                bg: "bg-emerald-50 dark:bg-emerald-950/30",
-                border: "border-emerald-200 dark:border-emerald-800",
-                bar: false,
-              },
-              {
-                label: "Partial",
-                value: stats.partial,
-                sub: "some missing",
-                color: "text-amber-600 dark:text-amber-400",
-                bg: "bg-amber-50 dark:bg-amber-950/30",
-                border: "border-amber-200 dark:border-amber-800",
-                bar: false,
-              },
-              {
-                label: "Not started",
-                value: stats.empty,
-                sub: "zero entries",
-                color: "text-red-600 dark:text-red-400",
-                bg: "bg-red-50 dark:bg-red-950/30",
-                border: "border-red-200 dark:border-red-800",
-                bar: false,
-              },
-              {
-                label: "Locked",
-                value: stats.locked,
-                sub: "read-only",
-                color: "text-gray-500 dark:text-gray-400",
-                bg: "bg-gray-50 dark:bg-gray-800/50",
-                border: "border-gray-200 dark:border-gray-700",
-                bar: false,
-              },
-            ].map((s) => (
-              <Card key={s.label} className={`${s.bg} ${s.border} border shadow-sm`}>
-                <CardContent className="pt-4 pb-3 px-4">
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{s.label}</p>
-                  <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-                  {s.bar ? (
-                    <div className="mt-2">
-                      <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-[#e35336] transition-all duration-700"
-                          style={{ width: `${stats.overallPct}%` }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{s.sub}</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
 
           {/* ── Toolbar ── */}
           <div className="flex flex-col sm:flex-row gap-2">
@@ -463,6 +387,30 @@ export default function EntryProgressPage() {
                 className="pl-8 h-8 text-sm bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
               />
             </div>
+
+            {/* Academic Year */}
+            <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); setData([]); setHasFetched(false); }}>
+              <SelectTrigger className="h-8 text-xs w-40 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+                <SelectValue placeholder="Academic Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {academicYears.map((y) => (
+                  <SelectItem key={y.id} value={y.id} className="text-xs">{y.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Term */}
+            <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={!selectedYear || terms.length === 0}>
+              <SelectTrigger className="h-8 text-xs w-36 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+                <SelectValue placeholder="Term" />
+              </SelectTrigger>
+              <SelectContent>
+                {terms.map((t) => (
+                  <SelectItem key={t.id} value={t.id} className="text-xs">{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             {/* Type filter */}
             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -491,18 +439,12 @@ export default function EntryProgressPage() {
                 <SelectItem value="COMPLETE" className="text-xs">Complete</SelectItem>
                 <SelectItem value="PARTIAL" className="text-xs">Partial</SelectItem>
                 <SelectItem value="EMPTY" className="text-xs">Not started</SelectItem>
+                <SelectItem value="NO_STUDENTS" className="text-xs">No students</SelectItem>
                 <SelectItem value="LOCKED" className="text-xs">Locked</SelectItem>
               </SelectContent>
             </Select>
 
-            <div className="sm:ml-auto text-xs text-gray-400 dark:text-gray-500 flex items-center">
-              {rows.length} of {totalCount} rows
-              {stats.totalMissing > 0 && (
-                <span className="ml-2 font-medium text-red-500">
-                  · {stats.totalMissing} total missing
-                </span>
-              )}
-            </div>
+
           </div>
 
           {/* ── Table ── */}
@@ -604,12 +546,6 @@ export default function EntryProgressPage() {
                           {/* Assessment */}
                           <td className="px-4 py-3">
                             <div className="flex items-start gap-2">
-                              <span
-                                className={`mt-0.5 inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded ${typeMeta.bg} ${typeMeta.color} ${typeMeta.border} border shrink-0`}
-                              >
-                                {typeMeta.icon}
-                                {typeMeta.label}
-                              </span>
                               <span className="text-sm font-medium text-gray-800 dark:text-gray-100 leading-tight">
                                 {row.title}
                               </span>
@@ -630,12 +566,7 @@ export default function EntryProgressPage() {
                                 {row.className}
                               </span>
                               {row.sectionName && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs px-1.5 py-0 font-normal text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700"
-                                >
-                                  {row.sectionName}
-                                </Badge>
+                                <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">{row.sectionName}</span>
                               )}
                             </div>
                           </td>
@@ -701,18 +632,16 @@ export default function EntryProgressPage() {
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="px-4 py-3 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center gap-4">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    Page {currentPage} of {totalPages} ({totalCount} total)
-                  </span>
-                  <Pagination
-                    page={currentPage}
-                    setPage={(page) => fetchData(page)}
-                    totalPages={totalPages}
-                  />
-                </div>
-              )}
+              <div className="px-4 py-3 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center gap-4">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Page {currentPage} of {Math.max(totalPages, 1)} ({totalCount} total)
+                </span>
+                <Pagination
+                  page={currentPage}
+                  setPage={(page) => fetchData(page)}
+                  totalPages={Math.max(totalPages, 1)}
+                />
+              </div>
             </Card>
           )}
         </>

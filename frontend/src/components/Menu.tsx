@@ -177,14 +177,6 @@ const menuItems: MenuSection[] = [
             subscriptionFeature: "EXAM_MANAGEMENT",
           },
           {
-            icon: <Trophy className="w-4 h-4" />,
-            label: "Exam Reports",
-            href: "/admin/exams/reports",
-            visible: ["admin", "it_manager"],
-            featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "EXAM_MANAGEMENT",
-          },
-          {
             icon: <Users className="w-4 h-4" />,
             label: "Exam Seating",
             href: "/admin/exams/seating",
@@ -209,21 +201,20 @@ const menuItems: MenuSection[] = [
             subscriptionFeature: "EXAM_MANAGEMENT",
           },
           {
+            icon: <FileText className="w-4 h-4" />,
+            label: "Report Cards",
+            href: "/admin/report-cards",
+            visible: ["admin", "registrar", "it_manager"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "EXAM_MANAGEMENT",
+          },
+          {
             icon: <Trophy className="w-4 h-4" />,
             label: "Grade Review",
             href: "/registrar/grading",
             visible: ["registrar", "admin", "it_manager"],
           },
         ],
-      },
-
-      {
-        icon: <FileText className="w-5 h-5" />,
-        label: "Report Cards",
-        href: "/admin/report-cards",
-        visible: ["admin", "registrar", "it_manager"],
-        featureFlag: "FEATURE_FLAG_GRADING",
-        subscriptionFeature: "GRADE_BOOK",
       },
       {
         icon: <Bell className="w-5 h-5" />,
@@ -458,6 +449,11 @@ const menuItems: MenuSection[] = [
   },
 
 ];
+
+const textRevealClass = (collapsed: boolean, expandedWidth = "max-w-[220px]") =>
+  `overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] duration-200 ease-out ${
+    collapsed ? "max-w-0 opacity-0 pointer-events-none" : `${expandedWidth} opacity-100`
+  }`;
 
 const Menu = ({
   collapsed = false,
@@ -757,12 +753,9 @@ const Menu = ({
   }
 
   return (
-    <div className="mt-6">
+    <div className="mt-6 overflow-x-hidden">
       {menuItems.map((section) => (
-        <div className="flex flex-col gap-2 mb-6" key={section.title}>
-          <span className={`text-xs font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wider px-4 py-2 ${collapsed ? 'hidden' : ''}`}>
-            {section.title}
-          </span>
+        <div className="mb-6 flex flex-col gap-2" key={section.title}>
           {section.items.map((item) => {
             // Check role-based visibility - check both underscore and hyphen formats
             const isRoleVisible = item.visible.includes(userRoleKey) ||
@@ -843,27 +836,60 @@ const Menu = ({
             const hasVisibleChildren = visibleChildren.length > 0;
 
             if (isVisible) {
+              if (collapsed) {
+                const collapsedItemClasses = `flex h-12 w-12 items-center justify-center rounded-lg transition-colors ${
+                  isActive && !parentWithSameChild
+                    ? "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
+                    : useBrandNavigation
+                      ? "text-slate-800 hover:bg-white/55 dark:text-gray-200 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
+                      : "text-slate-800 hover:bg-slate-100 dark:text-gray-200 dark:hover:bg-slate-800"
+                }`;
+
+                return (
+                  <div key={`${item.label}-${item.href}`} className="flex justify-center">
+                    {hasSameHrefChild ? (
+                      <div className={collapsedItemClasses} title={item.label}>
+                        <span className="flex h-5 w-5 items-center justify-center">
+                          {item.icon}
+                        </span>
+                      </div>
+                    ) : (
+                      <Link
+                        href={actualHref}
+                        prefetch
+                        onClick={() => onItemClick?.()}
+                        className={collapsedItemClasses}
+                        title={item.label}
+                      >
+                        <span className="flex h-5 w-5 items-center justify-center">
+                          {item.icon}
+                        </span>
+                      </Link>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <div key={`${item.label}-${item.href}`}>
                   <div
-                    className={`flex items-center justify-start gap-3 py-3 px-4 rounded-lg transition-colors relative ${isActive && !parentWithSameChild
+                    className={`relative flex items-center justify-start gap-3 rounded-lg transition-colors ${isActive && !parentWithSameChild
                       ? useBrandNavigation
                         ? "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
                         : "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
                       : useBrandNavigation
                         ? "text-slate-800 dark:text-gray-200 hover:bg-white/55 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
                         : "text-slate-800 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      } ${collapsed ? 'justify-center' : ''}`}
-                    title={collapsed ? item.label : undefined}
+                      } min-h-12 w-full px-3.5 py-3`}
                   >
                     {hasSameHrefChild ? (
                       <div
-                        className={`flex items-center flex-1 gap-3 cursor-default ${collapsed ? 'justify-center' : ''}`}
+                        className="flex flex-1 items-center gap-3 cursor-default"
                       >
                         <div className="relative text-slate-900 dark:text-white">
                           {item.icon}
                         </div>
-                        <span className={`text-sm ${collapsed ? 'hidden' : ''} ${isActive || submenuActive ? "font-medium" : ""}`}>
+                        <span className={`text-sm ${isActive || submenuActive ? "font-medium" : ""}`}>
                           {displayLabel}
                         </span>
                       </div>
@@ -872,41 +898,41 @@ const Menu = ({
                         href={actualHref}
                         prefetch
                         onClick={() => onItemClick?.()}
-                        className={`flex items-center flex-1 gap-3 ${collapsed ? 'justify-center' : ''}`}
+                        className="flex flex-1 items-center gap-3"
                       >
                         <div className="relative text-slate-900 dark:text-white">
                           {item.icon}
                         </div>
-                        <span className={`text-sm ${collapsed ? 'hidden' : ''} ${isActive && !parentWithSameChild ? "font-medium" : ""}`}>
+                        <span className={`text-sm ${isActive && !parentWithSameChild ? "font-medium" : ""}`}>
                           {displayLabel}
                         </span>
                       </Link>
                     )}
-                    {showBadge && !collapsed && (
-                      <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-                        {showCommBadge ? (openCommunicationsCount > 99 ? '99+' : openCommunicationsCount) :
-                          (eventsCount > 99 ? '9+' : eventsCount)}
-                      </span>
-                    )}
-                    {hasVisibleChildren && !collapsed && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          toggleSubmenu(item.label);
-                        }}
-                        className="ml-auto p-1"
-                      >
-                        {isOpen ? (
-                          <ChevronDown className="w-4 h-4 text-slate-500 dark:text-gray-400" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-slate-500 dark:text-gray-400" />
-                        )}
-                      </button>
-                    )}
-                    {isActive && !collapsed && !showBadge && !hasChildren && !parentWithSameChild && (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--brand-color,#e35336)]" />
-                    )}
+                    <div className="ml-auto flex h-5 w-6 shrink-0 items-center justify-center">
+                      {showBadge ? (
+                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                          {showCommBadge ? (openCommunicationsCount > 99 ? '99+' : openCommunicationsCount) :
+                            (eventsCount > 99 ? '9+' : eventsCount)}
+                        </span>
+                      ) : hasVisibleChildren ? (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleSubmenu(item.label);
+                          }}
+                          className="flex h-6 w-6 items-center justify-center"
+                        >
+                          {isOpen ? (
+                            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                          )}
+                        </button>
+                      ) : isActive && !hasChildren && !parentWithSameChild ? (
+                        <div className="h-1.5 w-1.5 rounded-full bg-[var(--brand-color,#e35336)]" />
+                      ) : null}
+                    </div>
                   </div>
 
                   {/* Related children */}
@@ -921,7 +947,7 @@ const Menu = ({
                             href={childHref}
                             prefetch
                             onClick={() => onItemClick?.()}
-                            className={`flex items-center gap-3 py-2 px-4 rounded-lg transition-colors ${
+                            className={`flex min-h-10 items-center gap-3 rounded-lg px-4 py-2 transition-colors ${
                               isChildActive
                                 ? useBrandNavigation
                                   ? "bg-[rgba(var(--brand-color-rgb),0.34)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.34)] dark:text-white"
@@ -931,13 +957,15 @@ const Menu = ({
                                   : "text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                             }`}
                           >
-                            <div className="text-slate-900 dark:text-white">
+                            <div className="flex h-5 w-5 shrink-0 items-center justify-center text-slate-900 dark:text-white">
                               {child.icon}
                             </div>
-                            <span className="text-sm">{child.label}</span>
-                            {isChildActive && (
-                              <div className="ml-auto w-1 h-1 rounded-full bg-[var(--brand-color,#e35336)]" />
-                            )}
+                            <span className="min-w-0 flex-1 truncate text-sm">{child.label}</span>
+                            <div className="ml-auto flex h-5 w-4 shrink-0 items-center justify-center">
+                              {isChildActive && (
+                                <div className="h-1 w-1 rounded-full bg-[var(--brand-color,#e35336)]" />
+                              )}
+                            </div>
                           </Link>
                         );
                       })}
@@ -958,11 +986,11 @@ const Menu = ({
             onItemClick?.();
             logout();
           }}
-          className={`flex items-center justify-start gap-3 text-slate-700 dark:text-white py-3 px-4 rounded-lg transition-colors w-full ${collapsed ? 'justify-center' : ''} ${useBrandNavigation ? 'hover:bg-white/55 dark:hover:bg-[#1E293B]' : 'hover:bg-slate-100 dark:hover:bg-[#1E293B]'}`}
+          className={`flex min-h-12 w-full items-center justify-start gap-3 rounded-lg py-3 text-slate-700 transition-colors dark:text-white ${collapsed ? 'justify-center px-0' : 'px-4'} ${useBrandNavigation ? 'hover:bg-white/55 dark:hover:bg-[#1E293B]' : 'hover:bg-slate-100 dark:hover:bg-[#1E293B]'}`}
           title={collapsed ? "Logout" : undefined}
         >
           <LogOut className="w-5 h-5 text-slate-500 dark:text-gray-300" />
-          <span className={`text-sm font-medium ${collapsed ? 'hidden' : ''}`}>
+          <span className={`text-sm font-medium ${textRevealClass(collapsed)}`}>
             Logout
           </span>
         </button>

@@ -31,7 +31,7 @@ export class PromotionController {
   async getPromotionCandidates(
     @Request() req,
     @Param('classId') classId: string,
-    @Query() query: { academicYear?: string; termId?: string },
+    @Query() query: { academicYear?: string },
   ) {
     const academicYear =
       query.academicYear ||
@@ -44,28 +44,20 @@ export class PromotionController {
         minAttendance: 75,
         allowFailedSubjects: 2,
       },
-      query.termId,
     );
-  }
-
-  @Get('terms')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
-  @Permissions('promotion:read')
-  async getPromotionTerms(@Request() req) {
-    const academicYear =
-      await this.getActiveAcademicYear(req.user.schoolId);
-    const year = await this.prisma.academicYear.findFirst({
-      where: { schoolId: req.user.schoolId, name: academicYear },
-      include: { terms: true },
-    });
-    return year?.terms || [];
   }
 
   @Get('next-classes/:classId')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
   @Permissions('promotion:read')
-  async getNextClassOptions(@Param('classId') classId: string) {
-    return this.reportCardService.getNextClassOptions(classId);
+  async getNextClassOptions(
+    @Param('classId') classId: string,
+    @Query() query: { toAcademicYear?: string },
+  ) {
+    return this.reportCardService.getNextClassOptions(
+      classId,
+      query.toAcademicYear,
+    );
   }
 
   @Post('single')
@@ -128,7 +120,7 @@ export class PromotionController {
   @Permissions('promotion:read')
   async getPromotionHistory(
     @Request() req,
-    @Query() query: { academicYear?: string; classId?: string },
+    @Query() query: { academicYear?: string; classId?: string; status?: string },
   ) {
     return this.reportCardService.getPromotionHistory(req.user.schoolId, query);
   }

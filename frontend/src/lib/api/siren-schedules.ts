@@ -16,7 +16,7 @@ export const sirenScheduleAPI = {
       params: { schoolId },
       skipAuthErrorRedirect: true,
     }),
-  create: (data: Omit<SirenSchedule, "id"> & { schoolId?: string }) =>
+  create: (data: Omit<SirenSchedule, "id" | "schoolId"> & { schoolId?: string }) =>
     api.post("/api/siren/schedules", data, { skipAuthErrorRedirect: true }),
   update: (id: string, data: Partial<SirenSchedule> & { schoolId?: string }) =>
     api.put(`/api/siren/schedules/${id}`, data, { skipAuthErrorRedirect: true }),

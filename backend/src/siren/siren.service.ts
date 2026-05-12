@@ -43,8 +43,8 @@ export class SirenService {
 
         if (!isStart && !isEnd) continue;
 
-        // Core Logic: Only trigger if TimetableSlot exists for same time AND same dayOfWeek
-        // Since TimetableSlot doesn't have periodNumber, we match by school and time
+        // Core Logic: Only trigger if TimetableSlot exists for same time AND same dayOfWeek.
+        // Notifications are scoped to the teachers assigned to those active slots.
         const slots = await this.prisma.timetableSlot.findMany({
           where: {
             schoolId: school.id,
@@ -52,16 +52,25 @@ export class SirenService {
             startTime: period.startTime,
             endTime: period.endTime,
           },
-          take: 1,
+          select: { teacherId: true },
         });
 
         if (slots.length > 0) {
+          const teacherIds = [
+            ...new Set(
+              slots
+                .map((slot) => slot.teacherId)
+                .filter((teacherId): teacherId is string => Boolean(teacherId)),
+            ),
+          ];
+
           await this.fireSiren(
             school.id,
             isStart ? 'PERIOD_START' : 'PERIOD_END',
             'DYNAMIC',
             period.periodNumber,
             null,
+            teacherIds,
           );
         }
       }
@@ -87,6 +96,7 @@ export class SirenService {
           'STATIC',
           null,
           schedule.id,
+          undefined,
         ),
       ),
     );
@@ -146,7 +156,7 @@ export class SirenService {
   }
 
   async manualTrigger(schoolId: string, type: string) {
-    return this.fireSiren(schoolId, type, 'MANUAL', null, null);
+    return this.fireSiren(schoolId, type, 'MANUAL', null, null, undefined);
   }
 
   async testWebhook(webhookUrl: string, timeout: number) {
@@ -187,6 +197,7 @@ export class SirenService {
     triggerType: string,
     periodNumber: number | null,
     scheduleId: string | null,
+    targetTeacherIds?: string[],
   ) {
     const event = await this.prisma.sirenEvent.create({
       data: {
@@ -209,11 +220,14 @@ export class SirenService {
     }
 
     try {
-      await this.notificationService.notifyTeachersOfSiren(
-        schoolId,
-        type,
-        triggerType,
-      );
+      if (triggerType === 'DYNAMIC') {
+        await this.notificationService.notifyTeachersOfSiren(
+          schoolId,
+          type,
+          triggerType,
+          targetTeacherIds ?? [],
+        );
+      }
     } catch (error) {
       this.logger.error(`Failed to notify teachers of siren: ${error.message}`);
     }

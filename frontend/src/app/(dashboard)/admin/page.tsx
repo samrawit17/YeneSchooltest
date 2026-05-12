@@ -140,6 +140,8 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showCharts, setShowCharts] = useState(false);
+  const charts = dashboardData?.charts || {};
 
   const fetchDashboard = useCallback(async (isRefresh = false) => {
     try {
@@ -167,6 +169,39 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
       fetchDashboard();
     }
   }, [authLoading, isAuthenticated, fetchDashboard]);
+
+  useEffect(() => {
+    setShowCharts(false);
+
+    if (!dashboardData?.charts) return;
+
+    const schedule =
+      typeof window !== "undefined" && "requestIdleCallback" in window
+        ? (window as Window & {
+            requestIdleCallback: (
+              callback: IdleRequestCallback,
+              options?: IdleRequestOptions,
+            ) => number;
+          }).requestIdleCallback(
+            () => setShowCharts(true),
+            { timeout: 300 },
+          )
+        : window.setTimeout(() => setShowCharts(true), 120);
+
+    return () => {
+      if (typeof schedule === "number") {
+        if (
+          typeof window !== "undefined" &&
+          "cancelIdleCallback" in window &&
+          typeof (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback === "function"
+        ) {
+          (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(schedule);
+        } else {
+          window.clearTimeout(schedule);
+        }
+      }
+    };
+  }, [dashboardData]);
 
   const formatCurrency = (amount: number) => {
     return `Brr ${amount.toLocaleString()}`;
@@ -219,7 +254,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
   if (loading || authLoading) {
     return (
       <div className="min-h-screen overflow-x-hidden bg-gray-50 p-3 dark:bg-slate-900 sm:p-4 md:p-6">
-        <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
+        <div className="w-full space-y-5 md:space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -266,15 +301,19 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
 
   const stats = dashboardData?.stats;
   const alerts = dashboardData?.alerts || [];
-  const quickActions = dashboardData?.quickActions || [];
-  const charts = dashboardData?.charts || {};
   const metadata = dashboardData?.metadata;
   const isITManagerDashboard = dashboardRole === "IT_MANAGER";
+  const visibleCharts = {
+    attendance: charts.attendance,
+    userDistribution: charts.userDistribution,
+    classDistribution: charts.classDistribution,
+    overview: charts.overview,
+  };
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-gray-50 transition-colors dark:bg-slate-900">
       <div className="p-3 sm:p-4 md:p-6">
-        <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
+        <div className="w-full space-y-5 md:space-y-6">
           {/* Header */}
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -465,30 +504,41 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
           {/* Charts Section */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             {/* Weekly Attendance Chart */}
-
-            {charts.attendance && (
-              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            {visibleCharts.attendance && (
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
-                  <DynamicChart chartData={charts.attendance} height={240} />
+                  {showCharts ? (
+                    <DynamicChart chartData={visibleCharts.attendance} height={240} />
+                  ) : (
+                    <Skeleton className="h-[240px] w-full" />
+                  )}
                 </CardContent>
               </Card>
             )}
 
             {/* Users by Role Distribution */}
-            {charts.userDistribution && (
-              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            {visibleCharts.userDistribution && (
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
-                  <DynamicChart chartData={charts.userDistribution} height={240} />
+                  {showCharts ? (
+                    <DynamicChart chartData={visibleCharts.userDistribution} height={240} />
+                  ) : (
+                    <Skeleton className="h-[240px] w-full" />
+                  )}
                 </CardContent>
               </Card>
             )}
           </div>
 
           {/* Sections per Class - Full Width */}
-          {charts.classDistribution && (
-            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          {visibleCharts.classDistribution && (
+            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
               <CardContent className="p-3 sm:p-4">
-                <DynamicChart chartData={charts.classDistribution} height={240} />
+                {showCharts ? (
+                  <DynamicChart chartData={visibleCharts.classDistribution} height={240} />
+                ) : (
+                  <Skeleton className="h-[240px] w-full" />
+                )}
               </CardContent>
             </Card>
           )}
@@ -496,10 +546,14 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
           {/* Bottom Section - School Overview */}
           <div className="grid grid-cols-1 gap-6">
             {/* School Overview Pie Chart */}
-            {charts.overview && (
-              <Card className="min-w-0 overflow-hidden lg:col-span-2 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            {visibleCharts.overview && (
+              <Card className="min-w-0 overflow-hidden lg:col-span-2 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
-                  <DynamicChart chartData={charts.overview} height={260} />
+                  {showCharts ? (
+                    <DynamicChart chartData={visibleCharts.overview} height={260} />
+                  ) : (
+                    <Skeleton className="h-[260px] w-full" />
+                  )}
                 </CardContent>
               </Card>
             )}

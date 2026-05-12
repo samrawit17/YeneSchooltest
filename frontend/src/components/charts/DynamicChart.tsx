@@ -138,7 +138,7 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
                       strokeWidth={0}
                       legendType="circle"
                       radius={[4, 4, 0, 0]}
-                      isAnimationActive={true}
+                      isAnimationActive={false}
                     />
                   );
                 })}
@@ -183,7 +183,7 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
                   strokeWidth={isDark ? 2.5 : 3}
                   dot={{ fill: dataset.borderColor || COLORS[index % COLORS.length], strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 7, stroke: isDark ? "#1E293B" : "#fff", strokeWidth: 2, fill: dataset.borderColor || COLORS[index % COLORS.length] }}
-                  isAnimationActive={true}
+                  isAnimationActive={false}
                 />
               ))}
             </LineChart>
@@ -212,7 +212,7 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
                 dataKey="value"
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 labelLine={false}
-                isAnimationActive={true}
+                isAnimationActive={false}
               >
                 {pieData.map((entry, index) => (
                   <Cell 
@@ -264,7 +264,7 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
                 dataKey="value"
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 labelLine={false}
-                isAnimationActive={true}
+                isAnimationActive={false}
               >
                 {doughnutData.map((entry, index) => (
                   <Cell 

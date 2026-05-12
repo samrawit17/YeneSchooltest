@@ -89,29 +89,31 @@ export default function SirenManagementPage() {
       </div>
 
       <Tabs defaultValue="periods" className="w-full min-w-0 max-w-full">
-        <TabsList className="grid w-full grid-cols-3 rounded-xl border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.08)] p-1">
+        <div className="overflow-x-auto">
+          <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0 md:grid md:w-full md:grid-cols-3">
           <TabsTrigger
             value="periods"
-            className="min-w-0 gap-2 px-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
           >
             <Clock className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Periods</span>
+            <span>Periods</span>
           </TabsTrigger>
           <TabsTrigger
             value="schedules"
-            className="min-w-0 gap-2 px-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
           >
             <Bell className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Schedules</span>
+            <span>Schedules</span>
           </TabsTrigger>
           <TabsTrigger
             value="hardware"
-            className="min-w-0 gap-2 px-2 data-[state=active]:bg-[var(--brand-color,#e35336)] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
           >
             <Zap className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Hardware</span>
+            <span>Hardware</span>
           </TabsTrigger>
         </TabsList>
+        </div>
 
         <TabsContent value="periods" className="mt-6 min-w-0 max-w-full">
           <PeriodTimeManagement />

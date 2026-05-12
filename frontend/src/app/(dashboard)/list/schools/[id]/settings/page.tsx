@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TimePicker } from '@/components/ui/TimePicker';
 import { 
   Select,
   SelectContent,
@@ -921,15 +922,26 @@ export default function SchoolSettingsPage() {
     }
 
     if (setting.type === 'time') {
+      const useTimePicker = setting.key === 'SCHOOL_START_TIME' || setting.key === 'SCHOOL_END_TIME';
+
       return (
         <div className="flex w-full items-center gap-2 sm:w-auto">
-          <Input
-            type="time"
-            value={value || setting.systemDefault || '08:00'}
-            onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
-            disabled={isSaving}
-            className="w-full sm:w-32"
-          />
+          {useTimePicker ? (
+            <TimePicker
+              value={value || setting.systemDefault || '08:00'}
+              onChange={(time) => updateDraftSetting(setting.key, time)}
+              disabled={isSaving}
+              className="sm:w-40"
+            />
+          ) : (
+            <Input
+              type="time"
+              value={value || setting.systemDefault || '08:00'}
+              onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
+              disabled={isSaving}
+              className="w-full sm:w-32"
+            />
+          )}
           {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
@@ -937,7 +949,7 @@ export default function SchoolSettingsPage() {
 
     if (setting.type === 'color') {
       return (
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:justify-end sm:gap-3">
           <div className="relative">
             <input
               type="color"
@@ -965,12 +977,12 @@ export default function SchoolSettingsPage() {
                 updateDraftSetting(setting.key, setting.systemDefault ?? '');
               }}
               disabled={isSaving}
-              className="text-xs"
+              className="h-10 shrink-0 text-xs"
             >
               Use Default
             </Button>
           )}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="shrink-0 text-xs">Unsaved</Badge>}
         </div>
       );
     }
@@ -1206,7 +1218,9 @@ export default function SchoolSettingsPage() {
                   {settings.map((setting) => (
                     <div
                       key={setting.key}
-                      className={`flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-start sm:justify-between ${
+                      className={`flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:justify-between ${
+                        setting.key === 'theme_color' ? 'sm:items-center' : 'sm:items-start'
+                      } ${
                         !isSettingVisible(setting) 
                           ? 'bg-slate-50 dark:bg-slate-700/50 opacity-60' 
                           : 'bg-white dark:bg-slate-800/50'
@@ -1228,7 +1242,9 @@ export default function SchoolSettingsPage() {
                           </p>
                         )}
                       </div>
-                      <div className="min-w-0 w-full sm:w-auto sm:shrink-0">
+                      <div className={`min-w-0 w-full sm:w-auto sm:shrink-0 ${
+                        setting.key === 'theme_color' ? 'sm:flex sm:justify-end' : ''
+                      }`}>
                         {renderSettingInput(setting)}
                       </div>
                     </div>
