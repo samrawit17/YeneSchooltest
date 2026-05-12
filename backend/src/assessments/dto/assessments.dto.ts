@@ -74,6 +74,10 @@ export class CreateAssessmentDto {
   @IsDateString()
   endDate: string;
 
+  @IsOptional()
+  @IsBoolean()
+  addToCalendar?: boolean;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateAssessmentSubjectDto)

@@ -36,7 +36,7 @@ interface PromotionParams {
   studentId: string;
   fromClassId: string;
   fromAcademicYear: string;
-  toClassId: string;
+  toClassId?: string | null;
   toAcademicYear: string;
   status: 'PROMOTED' | 'RETAINED' | 'GRADUATED';
 }
@@ -44,7 +44,7 @@ interface PromotionParams {
 interface BulkPromotionParams {
   schoolId: string;
   fromClassId: string;
-  toClassId: string;
+  toClassId?: string | null;
   fromAcademicYear: string;
   toAcademicYear: string;
   studentIds: string[];
@@ -59,9 +59,213 @@ interface PromotionCriteria {
   allowFailedSubjects: number;
 }
 
+interface PromotionReadinessParams {
+  schoolId: string;
+  fromClassId: string;
+  fromAcademicYear: string;
+  studentIds?: string[];
+  promoteAll?: boolean;
+  criteria?: PromotionCriteria;
+}
+
 @Injectable()
 export class ReportCardService {
   constructor(private prisma: PrismaService) {}
+
+  private parseGradeDetails(gradeDetails?: string | null): Array<Record<string, any>> {
+    if (!gradeDetails) return [];
+    try {
+      const parsed = JSON.parse(gradeDetails);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private async ensurePromotionReadiness(params: PromotionReadinessParams) {
+    const {
+      schoolId,
+      fromClassId,
+      fromAcademicYear,
+      studentIds = [],
+      promoteAll = false,
+      criteria,
+    } = params;
+
+    const classInfo = await this.prisma.class.findUnique({
+      where: { id: fromClassId },
+      select: {
+        id: true,
+        name: true,
+        schoolId: true,
+        academicYearId: true,
+      },
+    });
+
+    if (!classInfo || classInfo.schoolId !== schoolId) {
+      throw new NotFoundException('Source class not found');
+    }
+
+    const enrollments = await this.prisma.studentClass.findMany({
+      where: {
+        classId: fromClassId,
+        academicYear: fromAcademicYear,
+        ...(promoteAll ? {} : { studentId: { in: studentIds } }),
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        section: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (enrollments.length === 0) {
+      throw new BadRequestException('No students found for this promotion batch');
+    }
+
+    if (!promoteAll && studentIds.length !== enrollments.length) {
+      throw new BadRequestException(
+        'Some selected students are not enrolled in the chosen source class',
+      );
+    }
+
+    const candidateResponse = await this.getPromotionCandidates(
+      fromClassId,
+      fromAcademicYear,
+      criteria,
+    );
+    const candidateMap = new Map(
+      candidateResponse.candidates.map((candidate) => [
+        candidate.student.id,
+        candidate,
+      ]),
+    );
+
+    const blockedStudents: string[] = [];
+    const missingReportCards: string[] = [];
+    const incompleteAssessments: string[] = [];
+
+    for (const enrollment of enrollments) {
+      const candidate = candidateMap.get(enrollment.studentId);
+      if (!candidate || candidate.status !== 'PROMOTED') {
+        blockedStudents.push(enrollment.student.name);
+        continue;
+      }
+
+      const reportCard = await this.prisma.reportCard.findFirst({
+        where: {
+          schoolId,
+          studentId: enrollment.studentId,
+          classId: fromClassId,
+          academicYear: fromAcademicYear,
+          status: ReportCardStatus.PUBLISHED,
+        },
+        orderBy: [
+          { publishedAt: 'desc' },
+          { updatedAt: 'desc' },
+        ],
+      });
+
+      if (!reportCard) {
+        missingReportCards.push(enrollment.student.name);
+        continue;
+      }
+
+      const gradeDetails = this.parseGradeDetails(reportCard.gradeDetails);
+      if (
+        gradeDetails.length === 0 ||
+        reportCard.percentage === null ||
+        reportCard.attendancePercentage === null
+      ) {
+        incompleteAssessments.push(enrollment.student.name);
+        continue;
+      }
+
+      const expectedSubjects = await this.prisma.classSubject.findMany({
+        where: {
+          classId: fromClassId,
+          sectionId: enrollment.sectionId,
+          academicYear: classInfo.academicYearId,
+        },
+        select: {
+          subjectId: true,
+        },
+      });
+
+      const expectedSubjectIds = new Set(
+        expectedSubjects.map((subject) => subject.subjectId),
+      );
+
+      const reportedSubjectIds = new Set(
+        gradeDetails
+          .map((detail) => String(detail.subjectId || '').trim())
+          .filter(Boolean),
+      );
+
+      if (
+        expectedSubjectIds.size > 0 &&
+        reportedSubjectIds.size < expectedSubjectIds.size
+      ) {
+        incompleteAssessments.push(enrollment.student.name);
+        continue;
+      }
+
+      const approvedGrades = await this.prisma.subjectGrade.findMany({
+        where: {
+          schoolId,
+          studentId: enrollment.studentId,
+          classId: fromClassId,
+          sectionId: enrollment.sectionId,
+          academicYear: fromAcademicYear,
+          status: { in: ['SUBMITTED', 'APPROVED'] as any },
+          totalScore: { not: null },
+        },
+        select: {
+          subjectId: true,
+        },
+      });
+
+      const approvedSubjectIds = new Set(
+        approvedGrades.map((grade) => grade.subjectId),
+      );
+
+      if (
+        expectedSubjectIds.size > 0 &&
+        approvedSubjectIds.size < expectedSubjectIds.size
+      ) {
+        incompleteAssessments.push(enrollment.student.name);
+      }
+    }
+
+    if (missingReportCards.length > 0) {
+      throw new BadRequestException(
+        `Promotion blocked: published report cards are missing for ${missingReportCards.slice(0, 5).join(', ')}${missingReportCards.length > 5 ? ' and others' : ''}`,
+      );
+    }
+
+    if (incompleteAssessments.length > 0) {
+      throw new BadRequestException(
+        `Promotion blocked: some assessments or subject grades are incomplete for ${incompleteAssessments.slice(0, 5).join(', ')}${incompleteAssessments.length > 5 ? ' and others' : ''}`,
+      );
+    }
+
+    if (blockedStudents.length > 0) {
+      throw new BadRequestException(
+        `Promotion blocked: these students are not currently eligible for promotion: ${blockedStudents.slice(0, 5).join(', ')}${blockedStudents.length > 5 ? ' and others' : ''}`,
+      );
+    }
+
+    return { classInfo, enrollments };
+  }
 
   /**
    * Get grade letter from grade scale
@@ -708,6 +912,7 @@ export class ReportCardService {
         schoolId,
         academicYearId,
         grade: currentClass.grade ? { gt: currentClass.grade } : undefined,
+        ...(currentClass.section ? { section: currentClass.section } : {}),
       },
       orderBy: { grade: 'asc' },
     });
@@ -744,18 +949,61 @@ export class ReportCardService {
       status,
     } = params;
 
+    await this.ensurePromotionReadiness({
+      schoolId,
+      fromClassId,
+      fromAcademicYear,
+      studentIds: [studentId],
+      promoteAll: false,
+      criteria: {
+        minAverageGrade: 50,
+        minAttendance: 75,
+        allowFailedSubjects: 2,
+      },
+    });
+
+    if (status === 'GRADUATED' || !toClassId) {
+      return {
+        studentId,
+        fromClassId,
+        toClassId: null,
+        status: 'GRADUATED',
+        promotedAt: new Date(),
+      };
+    }
+
     const toClass = await this.prisma.class.findUnique({
       where: { id: toClassId },
+      include: { sections: true },
     });
     if (!toClass) {
       throw new NotFoundException('Target class not found');
     }
+    if (toClass.id === fromClassId) {
+      throw new BadRequestException('Target class must be different from source class');
+    }
+
+    const sourceEnrollment = await this.prisma.studentClass.findFirst({
+      where: {
+        studentId,
+        classId: fromClassId,
+        academicYear: fromAcademicYear,
+      },
+      include: {
+        section: {
+          select: { name: true },
+        },
+      },
+    });
 
     const existingEnrollment = await this.prisma.studentClass.findFirst({
       where: { studentId, academicYear: toAcademicYear },
     });
 
-    const sectionId = await this.getSectionIdForClass(toClassId);
+    const sectionId = await this.getSectionIdForClass(
+      toClassId,
+      sourceEnrollment?.section?.name,
+    );
 
     if (existingEnrollment) {
       await this.prisma.studentClass.update({
@@ -786,12 +1034,63 @@ export class ReportCardService {
     };
   }
 
-  private async getSectionIdForClass(classId: string): Promise<string> {
-    const section = await this.prisma.section.findFirst({
-      where: { classId },
-      select: { id: true },
+  private async getSectionIdForClass(
+    classId: string,
+    preferredSectionName?: string | null,
+  ): Promise<string> {
+    const targetClass = await this.prisma.class.findUnique({
+      where: { id: classId },
+      include: {
+        sections: true,
+      },
     });
-    return section?.id || '';
+
+    if (!targetClass) {
+      throw new NotFoundException('Target class not found');
+    }
+
+    if (preferredSectionName) {
+      const matchedSection = targetClass.sections.find(
+        (section) =>
+          section.name.toLowerCase() === preferredSectionName.toLowerCase(),
+      );
+      if (matchedSection) {
+        return matchedSection.id;
+      }
+    }
+
+    if (targetClass.section) {
+      const classSection = targetClass.sections.find(
+        (section) =>
+          section.name.toLowerCase() === targetClass.section.toLowerCase(),
+      );
+      if (classSection) {
+        return classSection.id;
+      }
+
+      const createdSection = await this.prisma.section.create({
+        data: {
+          classId: targetClass.id,
+          name: targetClass.section,
+          capacity: 40,
+        },
+      });
+      return createdSection.id;
+    }
+
+    const firstSection = targetClass.sections[0];
+    if (firstSection) {
+      return firstSection.id;
+    }
+
+    const createdSection = await this.prisma.section.create({
+      data: {
+        classId: targetClass.id,
+        name: 'A',
+        capacity: 40,
+      },
+    });
+    return createdSection.id;
   }
 
   /**
@@ -810,11 +1109,31 @@ export class ReportCardService {
       minAttendance,
     } = params;
 
-    const toClass = await this.prisma.class.findUnique({
-      where: { id: toClassId },
+    await this.ensurePromotionReadiness({
+      schoolId,
+      fromClassId,
+      fromAcademicYear,
+      studentIds,
+      promoteAll,
+      criteria: {
+        minAverageGrade: minAverageGrade || 50,
+        minAttendance: minAttendance || 75,
+        allowFailedSubjects: 2,
+      },
     });
-    if (!toClass) {
+
+    const isGraduation = !toClassId || toClassId === 'graduation';
+
+    const toClass = !isGraduation
+      ? await this.prisma.class.findUnique({
+          where: { id: toClassId! },
+        })
+      : null;
+    if (!isGraduation && !toClass) {
       throw new NotFoundException('Target class not found');
+    }
+    if (!isGraduation && toClassId === fromClassId) {
+      throw new BadRequestException('Target class must be different from source class');
     }
 
     const results = {
@@ -849,7 +1168,7 @@ export class ReportCardService {
           orderBy: { createdAt: 'desc' },
         });
 
-        let shouldPromote = promoteAll;
+        let shouldPromote = promoteAll || studentIds.includes(sc.studentId);
 
         if (!shouldPromote && reportCard) {
           const avgGrade = reportCard.percentage || 0;
@@ -869,9 +1188,10 @@ export class ReportCardService {
             studentId: sc.studentId,
             fromClassId,
             fromAcademicYear,
-            toClassId,
+            toClassId: isGraduation ? null : toClassId,
             toAcademicYear,
-            status: toClass.grade ? 'PROMOTED' : 'GRADUATED',
+            status:
+              isGraduation || !toClass?.grade ? 'GRADUATED' : 'PROMOTED',
           });
           results.promoted++;
         } else {

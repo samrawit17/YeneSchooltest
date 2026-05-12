@@ -287,7 +287,7 @@ const StudentsListPage = () => {
   if (isLoading) {
     return (
       <div className="p-6 min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <div className="flex items-center justify-between">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-10 w-32" />
@@ -328,7 +328,7 @@ const StudentsListPage = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] transition-colors">
       <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           {/* Top Section - Title and Buttons */}
           <div className="flex flex-row flex-wrap items-center justify-between gap-3">
             <h1 className="text-xl md:text-2xl font-bold text-black">Students Management</h1>

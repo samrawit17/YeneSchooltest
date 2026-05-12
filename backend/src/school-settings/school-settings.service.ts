@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { DEFAULT_CACHE_TTL_SECONDS } from '../infrastructure/cache/cache.constants';
+import { CredentialService } from '../credential/credential.service';
 
 // Curriculum type enum
 type CurriculumType = 'SEMESTER' | 'QUARTER' | 'TERM' | 'CUSTOM';
@@ -85,6 +86,7 @@ export class SchoolSettingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cacheService: CacheService,
+    private readonly credentialService: CredentialService,
   ) {}
 
   private readonly allowedCalendarTypes = ['GREGORIAN', 'ETHIOPIAN'] as const;
@@ -110,6 +112,24 @@ export class SchoolSettingsService {
     'TERM',
     'YEARLY',
   ] as const;
+
+  private getSectionNameByIndex(index: number) {
+    let current = index;
+    let name = '';
+
+    do {
+      name = String.fromCharCode(65 + (current % 26)) + name;
+      current = Math.floor(current / 26) - 1;
+    } while (current >= 0);
+
+    return name;
+  }
+
+  private normalizeStudentName(name?: string | null) {
+    return String(name || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
   private readonly booleanKeys = new Set([
     SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES,
     SCHOOL_SETTING_KEYS.BRAND_COLOR_IN_NAVIGATION,
@@ -425,46 +445,163 @@ export class SchoolSettingsService {
 
   // Sync all section capacities to match the new DEFAULT_SECTION_CAPACITY setting
   private async syncSectionCapacities(schoolId: string, capacity: number) {
-    // Get all sections for this school
-    const sections = await this.prisma.section.findMany({
-      where: { class: { schoolId } },
+    const studentClasses = await this.prisma.studentClass.findMany({
+      where: { schoolId },
       include: {
+        student: { select: { id: true, name: true } },
         class: {
-          select: { name: true },
-        },
-        _count: {
-          select: { studentClasses: true },
+          select: {
+            id: true,
+            name: true,
+            academicYearId: true,
+            academicYear: { select: { name: true } },
+            grade: true,
+            gradeId: true,
+          },
         },
       },
     });
 
-    const overCapacitySections = sections.filter(
-      (section) => section._count.studentClasses > capacity,
-    );
-
-    if (overCapacitySections.length > 0) {
-      const sectionNames = overCapacitySections
-        .slice(0, 5)
-        .map(
-          (section) =>
-            `${section.class.name}-${section.name} (${section._count.studentClasses})`,
-        )
-        .join(', ');
-
-      throw new BadRequestException(
-        `Cannot set default section capacity to ${capacity}. Some sections already exceed that enrollment: ${sectionNames}`,
-      );
+    const groupedByGradeYear = new Map<string, typeof studentClasses>();
+    for (const row of studentClasses) {
+      const key = `${row.class.academicYearId}:${row.class.name}`;
+      if (!groupedByGradeYear.has(key)) groupedByGradeYear.set(key, []);
+      groupedByGradeYear.get(key)!.push(row);
     }
 
-    // Update all sections to use the new capacity
-    await this.prisma.$transaction(
-      sections.map((section) =>
-        this.prisma.section.update({
-          where: { id: section.id },
-          data: { capacity },
-        }),
-      ),
-    );
+    await this.prisma.$transaction(async (tx) => {
+      for (const [, group] of groupedByGradeYear) {
+        const orderedStudents = [...group].sort((left, right) =>
+          this.normalizeStudentName(left.student?.name).localeCompare(
+            this.normalizeStudentName(right.student?.name),
+            undefined,
+            { sensitivity: 'base' },
+          ),
+        );
+        const totalSections = Math.max(
+          1,
+          Math.ceil(orderedStudents.length / capacity),
+        );
+
+        if (orderedStudents.length === 0) continue;
+
+        const sampleClass = orderedStudents[0].class;
+        let defaultClassConsumed = false;
+
+        for (let index = 0; index < orderedStudents.length; index++) {
+          const item = orderedStudents[index];
+          const sectionName = this.getSectionNameByIndex(
+            index % totalSections,
+          );
+
+          let cls = await tx.class.findFirst({
+            where: {
+              schoolId,
+              academicYearId: sampleClass.academicYearId,
+              name: sampleClass.name,
+              section: sectionName,
+            },
+          });
+
+          if (!cls && !defaultClassConsumed) {
+            const emptyClass = await tx.class.findFirst({
+              where: {
+                schoolId,
+                academicYearId: sampleClass.academicYearId,
+                name: sampleClass.name,
+                section: '',
+              },
+            });
+
+            if (emptyClass) {
+              cls = await tx.class.update({
+                where: { id: emptyClass.id },
+                data: {
+                  section: sectionName,
+                  grade: sampleClass.grade ?? undefined,
+                  gradeId: sampleClass.gradeId ?? undefined,
+                },
+              });
+              defaultClassConsumed = true;
+            }
+          }
+
+          if (!cls) {
+            cls = await tx.class.create({
+              data: {
+                schoolId,
+                academicYearId: sampleClass.academicYearId,
+                name: sampleClass.name,
+                section: sectionName,
+                grade: sampleClass.grade ?? undefined,
+                gradeId: sampleClass.gradeId ?? undefined,
+              },
+            });
+          }
+
+          let sec = await tx.section.findFirst({
+            where: { classId: cls.id, name: sectionName },
+          });
+
+          if (!sec) {
+            sec = await tx.section.create({
+              data: {
+                classId: cls.id,
+                name: sectionName,
+                capacity,
+              },
+            });
+          } else if (sec.capacity !== capacity) {
+            sec = await tx.section.update({
+              where: { id: sec.id },
+              data: { capacity },
+            });
+          }
+
+          await tx.studentClass.update({
+            where: { id: item.id },
+            data: {
+              classId: cls.id,
+              sectionId: sec.id,
+            },
+          });
+
+          await tx.studentProfile.updateMany({
+            where: { userId: item.studentId },
+            data: {
+              className: cls.name,
+              section: sec.name,
+              rollNumber: '0',
+            },
+          });
+        }
+      }
+
+      const sections = await tx.section.findMany({
+        where: { class: { schoolId } },
+      });
+
+      for (const section of sections) {
+        if (section.capacity !== capacity) {
+          await tx.section.update({
+            where: { id: section.id },
+            data: { capacity },
+          });
+        }
+      }
+    });
+
+    const academicYears = await this.prisma.academicYear.findMany({
+      where: { schoolId },
+      select: { name: true },
+    });
+
+    for (const academicYear of academicYears) {
+      await this.credentialService.assignRollNumbersByAlphabet(
+        schoolId,
+        academicYear.name,
+      );
+    }
   }
 
   // Auto-create terms for all academic years when curriculum type changes
@@ -576,31 +713,115 @@ export class SchoolSettingsService {
       });
 
       // Create default classes for this grade only if we have a target academic year.
-      // Note: We create classes without a specific section - sections are created dynamically
-      // when students are added (bulk upload handles section creation based on capacity).
+      // Note: Only create the empty default class when no class for this grade/year exists yet.
+      // If a sectioned class already exists, skip the empty seed row and clean up any stale one.
       for (const yearId of targetYearIds) {
-        await this.prisma.class.upsert({
+        const matchingClasses = await this.prisma.class.findMany({
           where: {
-            schoolId_academicYearId_name_section: {
+            schoolId,
+            academicYearId: yearId,
+            OR: [
+              { name: grade.name },
+              { gradeId: gradeLevel.id },
+              { grade: gradeLevel.level },
+            ],
+          },
+          include: {
+            sections: { select: { id: true } },
+            _count: {
+              select: {
+                sections: true,
+                studentClasses: true,
+                ClassSubject: true,
+                teacherAssignments: true,
+                timetableSlots: true,
+                timetables: true,
+                assessmentSubjects: true,
+                contents: true,
+                enrollmentRequests: true,
+                attendances: true,
+                attendanceSessions: true,
+                exams: true,
+                communications: true,
+                reportCards: true,
+                subjectGrades: true,
+              },
+            },
+          },
+        });
+
+        const emptyDefaultClass = matchingClasses.find(
+          (cls) => cls.name === grade.name && cls.section === '',
+        );
+        const hasRealClassForGrade = matchingClasses.some(
+          (cls) =>
+            cls.id !== emptyDefaultClass?.id &&
+            (cls.section !== '' || cls.sections.length > 0),
+        );
+
+        if (!emptyDefaultClass && !hasRealClassForGrade) {
+          await this.prisma.class.create({
+            data: {
               schoolId,
               academicYearId: yearId,
               name: grade.name,
-              section: '', // No section - sections created dynamically when students added
+              section: '',
+              gradeId: gradeLevel.id,
+              grade: gradeLevel.level,
             },
-          },
-          update: {
-            gradeId: gradeLevel.id,
-            grade: gradeLevel.level,
-          },
-          create: {
-            schoolId,
-            academicYearId: yearId,
-            name: grade.name,
-            section: '', // No section - sections created dynamically when students added
-            gradeId: gradeLevel.id,
-            grade: gradeLevel.level,
-          },
-        });
+          });
+          continue;
+        }
+
+        if (emptyDefaultClass) {
+          await this.prisma.class.update({
+            where: { id: emptyDefaultClass.id },
+            data: {
+              gradeId: gradeLevel.id,
+              grade: gradeLevel.level,
+            },
+          });
+        }
+
+        for (const existingClass of matchingClasses) {
+          if (
+            existingClass.gradeId !== gradeLevel.id ||
+            existingClass.grade !== gradeLevel.level
+          ) {
+            await this.prisma.class.update({
+              where: { id: existingClass.id },
+              data: {
+                gradeId: gradeLevel.id,
+                grade: gradeLevel.level,
+              },
+            });
+          }
+        }
+
+        if (emptyDefaultClass && hasRealClassForGrade) {
+          const dependencyCount =
+            emptyDefaultClass._count.sections +
+            emptyDefaultClass._count.studentClasses +
+            emptyDefaultClass._count.ClassSubject +
+            emptyDefaultClass._count.teacherAssignments +
+            emptyDefaultClass._count.timetableSlots +
+            emptyDefaultClass._count.timetables +
+            emptyDefaultClass._count.assessmentSubjects +
+            emptyDefaultClass._count.contents +
+            emptyDefaultClass._count.enrollmentRequests +
+            emptyDefaultClass._count.attendances +
+            emptyDefaultClass._count.attendanceSessions +
+            emptyDefaultClass._count.exams +
+            emptyDefaultClass._count.communications +
+            emptyDefaultClass._count.reportCards +
+            emptyDefaultClass._count.subjectGrades;
+
+          if (dependencyCount === 0) {
+            await this.prisma.class.delete({
+              where: { id: emptyDefaultClass.id },
+            });
+          }
+        }
       }
     }
 

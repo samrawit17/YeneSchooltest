@@ -360,11 +360,19 @@ export class GradingController {
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async calculateRankings(
     @Request() req: AuthRequest,
-    @Body() body: { academicYearId: string; termId?: string },
+    @Body()
+    body: {
+      academicYearId: string;
+      termId?: string;
+      classId?: string;
+      sectionId?: string;
+    },
   ) {
     return this.gradingService.calculatePeriodRankings(
       body.academicYearId,
       body.termId,
+      body.classId,
+      body.sectionId,
     );
   }
 

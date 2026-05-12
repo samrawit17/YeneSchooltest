@@ -94,6 +94,11 @@ export default function StudentRankingsPage() {
       toast.error('Please select an academic year');
       return;
     }
+
+    if (!selectedGrade) {
+      toast.error('Please select a class before calculating rankings');
+      return;
+    }
     
     setLoading(true);
     try {
@@ -101,10 +106,18 @@ export default function StudentRankingsPage() {
         academicYearId: selectedYear,
         termId: selectedTerm || undefined,
         classId: selectedGrade || undefined,
+        sectionId: selectedSection || undefined,
       });
-      
+
+      const results = Array.isArray(res.data?.results) ? res.data.results : [];
+      if (results.length === 0) {
+        setRankingsResult(null);
+        toast.error('No ranking data available for the selected class/section');
+        return;
+      }
+
       setRankingsResult(res.data);
-      toast.success(`Rankings calculated for ${res.data.results?.length || 0} student records`);
+      toast.success(`Rankings calculated for ${results.length} student records`);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.response?.data?.message || 'Failed to calculate rankings');
@@ -156,7 +169,11 @@ export default function StudentRankingsPage() {
             className="w-full"
           />
           <div className="mt-4 flex justify-end">
-            <Button onClick={calculateRankings} disabled={loading || !selectedYear} className="bg-amber-600 hover:bg-amber-700">
+            <Button
+              onClick={calculateRankings}
+              disabled={loading || !selectedYear || !selectedGrade}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trophy className="w-4 h-4 mr-2" />}
               Calculate Rankings
             </Button>

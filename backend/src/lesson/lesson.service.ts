@@ -141,6 +141,24 @@ export class LessonService {
     return date.getDay();
   }
 
+  private buildHomeworkFromLesson(lesson: {
+    id: string;
+    title?: string | null;
+    description?: string | null;
+    instructions?: string | null;
+  }) {
+    const title = lesson.description?.trim();
+    const description = lesson.instructions?.trim();
+
+    if (!title && !description) return null;
+
+    return {
+      id: lesson.id,
+      title: title || `Homework for ${lesson.title || 'lesson'}`,
+      description: description || '',
+    };
+  }
+
   /**
    * Create Lesson Bundle - All-in-One lesson creation
    */
@@ -214,6 +232,11 @@ export class LessonService {
           subjectId: data.subjectId,
           teacherId,
           title: data.title,
+          description: data.homework?.title || null,
+          instructions:
+            data.homework?.description ||
+            data.homework?.instructions ||
+            null,
           objective: data.objective,
           lessonContent: data.lessonContent,
           lessonDate,
@@ -233,31 +256,11 @@ export class LessonService {
         },
       });
 
-      let homework = null;
-      if (data.homework) {
-        homework = await (tx.content as any).create({
-          data: {
-            lessonId: lesson.id,
-            schoolId,
-            type: 'HOMEWORK' as any,
-            title: data.homework.title || `Homework for ${data.title}`,
-            description: data.homework.description,
-            instructions: data.homework.instructions,
-            dueDate: data.homework.dueDate
-              ? new Date(data.homework.dueDate)
-              : null,
-            totalPoints: data.homework.totalPoints,
-            isExamPrep: data.homework.isExamPrep || false,
-            isLocked: data.homework.isLocked || false,
-          },
-        });
-      }
-
       let resources: any[] = [];
       if (data.resources && data.resources.length > 0) {
       }
 
-      return { lesson, homework, resources };
+      return { lesson, resources };
     });
 
     return result;
@@ -285,6 +288,9 @@ export class LessonService {
       where: { id: lessonId },
       data: {
         title: data.title,
+        description: data.homework?.title,
+        instructions:
+          data.homework?.description || data.homework?.instructions,
         objective: data.objective,
         lessonContent: data.lessonContent,
         periodNumber: data.periodNumber,
@@ -357,14 +363,9 @@ export class LessonService {
     // Notify parents of lesson publication
     await this.notifyLessonPublished(updated);
 
-    // Notify parents of homework if exists
-    try {
-      const homework = await (this.prisma as any).homework.findFirst({
-        where: { lessonId },
-      });
-      if (homework) await this.notifyParents(updated, homework);
-    } catch (e) {
-      console.error('Notification error:', e);
+    const homework = this.buildHomeworkFromLesson(updated);
+    if (homework) {
+      await this.notifyParents(updated, homework);
     }
 
     return updated;
@@ -490,14 +491,8 @@ export class LessonService {
     if (!lesson || lesson.type !== ContentType.LESSON)
       throw new NotFoundException('Lesson not found');
 
-    const homework = await (this.prisma as any).homework.findFirst({
-      where: { lessonId },
-    });
-    const submission = homework
-      ? await (this.prisma as any).homeworkSubmission.findFirst({
-          where: { homeworkId: homework.id, studentId },
-        })
-      : null;
+    const homework = this.buildHomeworkFromLesson(lesson);
+    const submission = null;
 
     const studentFees = await this.prisma.studentFee.findMany({
       where: { studentId, schoolId, status: { in: ['OVERDUE', 'PENDING'] } },
@@ -519,7 +514,7 @@ export class LessonService {
 
     return {
       ...lesson,
-      homework: homework || null,
+      homework,
       submission,
       isLocked: false,
     };

@@ -660,7 +660,7 @@ export default function AttendanceManagementPage() {
   if (isLoading || loading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto p-2 space-y-6">
+        <div className="w-full p-2 space-y-6">
           {/* Header Skeleton */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-[#E2E8F0] dark:border-gray-700 p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -791,7 +791,7 @@ export default function AttendanceManagementPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto p-2">
+      <div className="w-full p-2">
         {/* Top Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-[#E2E8F0] dark:border-gray-700 p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

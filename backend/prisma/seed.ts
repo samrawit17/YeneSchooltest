@@ -1,9 +1,7 @@
 import { PrismaClient, Role } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
 
-const adapter = new PrismaPg(process.env.DATABASE_URL || 'postgresql://hanania:Han271619.@localhost:5432/sms_db');
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function main() {
   console.log('Seeding schools...');

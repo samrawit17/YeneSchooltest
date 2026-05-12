@@ -110,13 +110,13 @@ export const promotionAPI = {
   promoteSingle: (data: {
     studentId: string;
     fromClassId: string;
-    toClassId: string;
+    toClassId?: string | null;
     fromAcademicYear: string;
     toAcademicYear: string;
   }) => api.post("/promotion/single", data),
   bulkPromote: (data: {
     fromClassId: string;
-    toClassId: string;
+    toClassId?: string | null;
     fromAcademicYear: string;
     toAcademicYear: string;
     studentIds: string[];

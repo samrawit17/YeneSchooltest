@@ -9,7 +9,23 @@ export const assessmentsAPI = {
     status?: string;
   }) => api.get('/assessments', { params }),
   getById: (id: string) => api.get(`/assessments/${id}`),
-  create: (data: any) => api.post('/assessments', data),
+  create: (data: {
+    title: string;
+    type: string;
+    academicYearId: string;
+    termId?: string;
+    startDate: string;
+    endDate: string;
+    addToCalendar?: boolean;
+    subjects?: Array<{
+      subjectId: string;
+      classId: string;
+      sectionId?: string;
+      teacherId?: string;
+      maxScore: number;
+      passMark?: number;
+    }>;
+  }) => api.post('/assessments', data),
   addSubjects: (id: string, data: any) => api.post(`/assessments/${id}/subjects`, data),
   lock: (id: string) => api.post(`/assessments/${id}/lock`),
   getTeacherAssessments: (params?: { academicYearId?: string; termId?: string; type?: string }) =>
@@ -99,10 +115,17 @@ export const gradingAPI = {
     classId?: string;
     sectionId?: string;
   }) => api.get('/grading/admin/publish-checklist', { params }),
-  calculateRankings: (params: { academicYearId: string; termId?: string; classId?: string }) =>
+  calculateRankings: (params: {
+    academicYearId: string;
+    termId?: string;
+    classId?: string;
+    sectionId?: string;
+  }) =>
     api.post('/grading/admin/calculate-rankings', {
       academicYearId: params.academicYearId,
       termId: params.termId,
+      classId: params.classId,
+      sectionId: params.sectionId,
     }),
   publishResults: (data: { academicYear: string; termId: string; classId: string }) =>
     api.post('/exams/publish', data),

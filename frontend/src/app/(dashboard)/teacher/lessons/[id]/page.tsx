@@ -69,10 +69,10 @@ const LessonDetailPage = () => {
     }
   };
 
-  const handlePublish = async () => {
+  const handleSubmitForReview = async () => {
     try {
       await lessonsAPI.publish(lessonId);
-      toast.success("Lesson published successfully!");
+      toast.success("Lesson submitted for review successfully!");
       fetchLesson();
     } catch (error: any) {
       console.error("Failed to publish lesson:", error);
@@ -116,7 +116,7 @@ const LessonDetailPage = () => {
   }
 
   const isOwner = user?.id === lesson.teacherId;
-  const canEdit = isOwner && lesson.status !== "PUBLISHED";
+  const canEdit = isOwner && lesson.status !== "PUBLISHED" && lesson.status !== "PENDING_REVIEW";
   const canPublish = isOwner && lesson.status === "DRAFT";
 
   return (
@@ -145,9 +145,9 @@ const LessonDetailPage = () => {
         </div>
         <div className="flex items-center gap-2">
           {canPublish && (
-            <Button onClick={handlePublish}>
+            <Button onClick={handleSubmitForReview}>
               <Send className="w-4 h-4 mr-2" />
-              Publish
+              Submit for Review
             </Button>
           )}
           {canEdit && (
@@ -200,7 +200,7 @@ const LessonDetailPage = () => {
           </Card>
 
           {/* Homework */}
-          {lesson.homework && (
+          {(lesson.homework || lesson.instructions) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -209,13 +209,13 @@ const LessonDetailPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 dark:text-gray-300">{lesson.homework}</p>
+                <p className="text-gray-700 dark:text-gray-300">{lesson.homework || lesson.instructions}</p>
               </CardContent>
             </Card>
           )}
 
           {/* Attachments */}
-          {lesson.attachments && lesson.attachments.length > 0 && (
+          {((lesson as any).attachmentsNew || lesson.attachments) && (((lesson as any).attachmentsNew || lesson.attachments).length > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -225,7 +225,7 @@ const LessonDetailPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {lesson.attachments.map((attachment) => (
+                  {(((lesson as any).attachmentsNew || lesson.attachments) as any[]).map((attachment) => (
                     <div
                       key={attachment.id}
                       className="flex items-center justify-between p-3 border rounded-lg"
@@ -233,7 +233,7 @@ const LessonDetailPage = () => {
                       <div className="flex items-center gap-3">
                         <FileText className="w-5 h-5 text-gray-500" />
                         <div>
-                          <p className="font-medium">{attachment.fileName}</p>
+                          <p className="font-medium">{attachment.fileName || attachment.name}</p>
                           <p className="text-xs text-gray-500">
                             {attachment.fileSize && (attachment.fileSize / 1024).toFixed(1)} KB
                           </p>

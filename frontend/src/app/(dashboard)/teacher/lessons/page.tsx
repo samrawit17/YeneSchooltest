@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
-import { lessonsAPI } from "@/lib/api/content";
+import { lessonsAPI, CreateLessonDto } from "@/lib/api/content";
 import { toast } from "sonner";
 import TableSearch from "@/components/TableSearch";
+import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
 import {
   BookText,
   Plus,
@@ -19,7 +20,9 @@ import {
   Trash2,
   Eye,
   Clock,
-  CheckCircle
+  CheckCircle,
+  Save,
+  X,
 } from "lucide-react";
 
 // Shadcn/ui Components
@@ -33,6 +36,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +53,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface Lesson {
   id: string;
@@ -56,7 +68,7 @@ interface Lesson {
   className: string | { id: string; name: string; section: string };
   date: string;
   duration: number;
-  status: 'DRAFT' | 'PUBLISHED' | 'COMPLETED';
+  status: 'DRAFT' | 'PUBLISHED' | 'PENDING_REVIEW' | 'COVERED' | 'MISSED' | 'RESCHEDULED';
   objective: string;
   lessonContent: string;
   homework: string;
@@ -84,6 +96,20 @@ const TeacherLessonsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterClass, setFilterClass] = useState<string>("all");
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [formTitle, setFormTitle] = useState("");
+  const [formObjective, setFormObjective] = useState("");
+  const [formContent, setFormContent] = useState("");
+  const [formHomework, setFormHomework] = useState("");
+  const [formGrade, setFormGrade] = useState<string>("");
+  const [formSection, setFormSection] = useState<string>("");
+  const [formAcademicYearId, setFormAcademicYearId] = useState<string>("");
+  const [formSubjectId, setFormSubjectId] = useState<string>("");
+  const [formLessonDate, setFormLessonDate] = useState("");
+  const [formPeriodNumber, setFormPeriodNumber] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formDataResponse, setFormDataResponse] = useState<any>(null);
+  const [formDataLoading, setFormDataLoading] = useState(false);
 
   // Set breadcrumbs
   useEffect(() => {
@@ -103,8 +129,46 @@ const TeacherLessonsPage = () => {
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       fetchLessons();
+      fetchFormData();
     }
   }, [isAuthenticated, isLoading]);
+
+  useEffect(() => {
+    if (createModalOpen && formDataResponse) {
+      setFormTitle("");
+      setFormObjective("");
+      setFormContent("");
+      setFormHomework("");
+      setFormLessonDate(new Date().toISOString().split("T")[0]);
+      if (formDataResponse.activeAcademicYearId) setFormAcademicYearId(formDataResponse.activeAcademicYearId);
+      else if (formDataResponse.academicYears?.length) setFormAcademicYearId(formDataResponse.academicYears[0].id);
+      if (formDataResponse.grades?.length && !formGrade) setFormGrade(formDataResponse.grades[0].toString());
+      if (formDataResponse.periods?.length) setFormPeriodNumber(formDataResponse.periods[0].value.toString());
+    }
+  }, [createModalOpen]);
+
+  const fetchFormData = async () => {
+    try {
+      setFormDataLoading(true);
+      const response = await lessonsAPI.getFormData();
+      const data = response.data;
+      setFormDataResponse(data);
+      if (data.activeAcademicYearId) setFormAcademicYearId(data.activeAcademicYearId);
+      else if (data.academicYears?.length) setFormAcademicYearId(data.academicYears[0].id);
+      if (data.grades?.length) setFormGrade(data.grades[0].toString());
+      if (data.teacherSubjects?.length === 1) {
+        setFormSubjectId(data.teacherSubjects[0].id);
+        if (data.teacherSubjects[0].grade) setFormGrade(data.teacherSubjects[0].grade.toString());
+        if (data.teacherSubjects[0].section) setFormSection(data.teacherSubjects[0].section);
+      }
+      if (data.periods?.length) setFormPeriodNumber(data.periods[0].value.toString());
+      setFormLessonDate(new Date().toISOString().split("T")[0]);
+    } catch (error) {
+      console.error("Failed to fetch form data:", error);
+    } finally {
+      setFormDataLoading(false);
+    }
+  };
 
   const fetchLessons = async () => {
     try {
@@ -117,6 +181,43 @@ const TeacherLessonsPage = () => {
       setLessons([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateLesson = async () => {
+    if (!formTitle || !formSubjectId || !formGrade || !formSection || !formAcademicYearId) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await lessonsAPI.create({
+        title: formTitle,
+        objective: formObjective || undefined,
+        lessonContent: formContent || undefined,
+        grade: parseInt(formGrade),
+        section: formSection,
+        academicYearId: formAcademicYearId,
+        subjectId: formSubjectId,
+        lessonDate: new Date(formLessonDate).toISOString(),
+        periodNumber: parseInt(formPeriodNumber) || 1,
+        status: "DRAFT",
+        homework: formHomework ? { title: formTitle, description: formHomework } : undefined,
+      });
+      toast.success("Lesson created successfully!");
+      setCreateModalOpen(false);
+      setFormTitle("");
+      setFormObjective("");
+      setFormContent("");
+      setFormHomework("");
+      setFormGrade("");
+      setFormSection("");
+      setFormSubjectId("");
+      fetchLessons();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to create lesson");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -147,7 +248,7 @@ const TeacherLessonsPage = () => {
     total: lessons.length,
     draft: lessons.filter(l => l.status === 'DRAFT').length,
     published: lessons.filter(l => l.status === 'PUBLISHED').length,
-    completed: lessons.filter(l => l.status === 'COMPLETED').length,
+    covered: lessons.filter(l => l.status === 'COVERED').length,
   };
 
   const getStatusBadge = (status: string) => {
@@ -156,8 +257,14 @@ const TeacherLessonsPage = () => {
         return <Badge variant="secondary">Draft</Badge>;
       case 'PUBLISHED':
         return <Badge variant="default">Published</Badge>;
-      case 'COMPLETED':
-        return <Badge variant="outline">Completed</Badge>;
+      case 'PENDING_REVIEW':
+        return <Badge variant="secondary">Pending Review</Badge>;
+      case 'COVERED':
+        return <Badge variant="outline">Covered</Badge>;
+      case 'MISSED':
+        return <Badge variant="destructive">Missed</Badge>;
+      case 'RESCHEDULED':
+        return <Badge variant="outline">Rescheduled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -165,8 +272,20 @@ const TeacherLessonsPage = () => {
 
   if (loading || isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-12 h-12 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin"></div>
+      <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
+        <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+        <div className="h-4 w-72 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+          ))}
+        </div>
+        <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -183,7 +302,7 @@ const TeacherLessonsPage = () => {
           <h1 className="text-2xl font-bold text-black">Lesson Plans</h1>
           <p className="text-gray-500">Create and manage your lesson plans</p>
         </div>
-        <Button onClick={() => router.push('/teacher/lessons/create')}>
+        <Button onClick={() => setCreateModalOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Create Lesson
         </Button>
@@ -229,8 +348,8 @@ const TeacherLessonsPage = () => {
             <div className="flex items-center gap-3">
               <CheckCircle className="w-5 h-5 text-green-500" />
               <div>
-                <p className="text-sm text-gray-500">Completed</p>
-                <p className="text-xl font-bold">{stats.completed}</p>
+                <p className="text-sm text-gray-500">Covered</p>
+                <p className="text-xl font-bold">{stats.covered}</p>
               </div>
             </div>
           </CardContent>
@@ -252,8 +371,11 @@ const TeacherLessonsPage = () => {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="DRAFT">Draft</SelectItem>
+            <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
             <SelectItem value="PUBLISHED">Published</SelectItem>
-            <SelectItem value="COMPLETED">Completed</SelectItem>
+            <SelectItem value="COVERED">Covered</SelectItem>
+            <SelectItem value="MISSED">Missed</SelectItem>
+            <SelectItem value="RESCHEDULED">Rescheduled</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterClass} onValueChange={setFilterClass}>
@@ -351,6 +473,166 @@ const TeacherLessonsPage = () => {
           <p className="text-gray-500">Try adjusting your search or filters</p>
         </div>
       )}
+
+      <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Lesson Plan</DialogTitle>
+            <DialogDescription>Create a new lesson plan for your class</DialogDescription>
+          </DialogHeader>
+          {formDataLoading ? (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                    <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+                  </div>
+                ))}
+              </div>
+              <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-10 w-full bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+              <div className="h-24 w-full bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+              <div className="h-16 w-full bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+            </div>
+          ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Academic Year *</Label>
+                <Select value={formAcademicYearId} onValueChange={setFormAcademicYearId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select academic year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(formDataResponse?.academicYears || []).map((year: any) => (
+                      <SelectItem key={year.id} value={year.id}>
+                        {year.name} {year.isActive && "(Active)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Subject *</Label>
+                <Select value={formSubjectId} onValueChange={(val) => {
+                  setFormSubjectId(val);
+                  const sub = formDataResponse?.teacherSubjects?.find((s: any) => s.id === val);
+                  if (sub?.grade) setFormGrade(sub.grade.toString());
+                  if (sub?.section) setFormSection(sub.section);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(formDataResponse?.teacherSubjects || []).map((subject: any) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name} {subject.code && `(${subject.code})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Grade *</Label>
+                <Select value={formGrade} onValueChange={setFormGrade}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(formDataResponse?.grades || []).map((g: number) => (
+                      <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Section *</Label>
+                <Select value={formSection} onValueChange={setFormSection}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(formDataResponse?.sectionsByGrade?.[parseInt(formGrade)] || []).map((s: any) => (
+                      <SelectItem key={s.id} value={s.name}>Section {s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Lesson Date</Label>
+                <CalendarDatePicker
+                  value={formLessonDate ? new Date(formLessonDate) : undefined}
+                  onChange={(date) => setFormLessonDate(date ? date.toISOString().split("T")[0] : "")}
+                  placeholder="Select lesson date"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Period Number</Label>
+                <Select value={formPeriodNumber} onValueChange={setFormPeriodNumber}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(formDataResponse?.periods || []).map((p: any) => (
+                      <SelectItem key={p.value} value={p.value.toString()}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="modal-title">Title *</Label>
+              <Input
+                id="modal-title"
+                placeholder="Enter lesson title"
+                value={formTitle}
+                onChange={(e) => setFormTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="modal-objective">Learning Objective</Label>
+              <Textarea
+                id="modal-objective"
+                placeholder="What will students learn from this lesson?"
+                value={formObjective}
+                onChange={(e) => setFormObjective(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="modal-content">Lesson Content</Label>
+              <Textarea
+                id="modal-content"
+                placeholder="Detailed lesson content and activities..."
+                value={formContent}
+                onChange={(e) => setFormContent(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="modal-homework">Homework</Label>
+              <Textarea
+                id="modal-homework"
+                placeholder="Assignments for students..."
+                value={formHomework}
+                onChange={(e) => setFormHomework(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateLesson} disabled={submitting}>
+                <Save className="w-4 h-4 mr-2" />
+                {submitting ? "Saving..." : "Save Lesson"}
+              </Button>
+            </div>
+          </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

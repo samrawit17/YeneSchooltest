@@ -23,7 +23,8 @@ import {
   X,
   ChevronRight,
   ChevronDown,
-  Link
+  Link,
+  Search
 } from "lucide-react";
 
 import {
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
@@ -53,7 +55,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { classesAPI, sectionsAPI } from "@/lib/api/academics";
+import { classesAPI, sectionsAPI, academicYearsAPI } from "@/lib/api/academics";
 import { authAPI } from "@/lib/api/auth";
 import { classSubjectsAPI } from "@/lib/api/admin";
 import { Filters, useFilters } from "@/components/filters/Filters";
@@ -81,6 +83,7 @@ const TeacherAssignmentPage = () => {
   // Data State
   const [matrixData, setMatrixData] = useState<any>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { selectedYear, setSelectedYear, selectedSearch, setSelectedSearch } = useFilters({ academicYear: true, search: true });
@@ -129,16 +132,28 @@ const TeacherAssignmentPage = () => {
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const teachersRes = await authAPI.getTeachers({ limit: "200" });
+      const [teachersRes, yearsRes] = await Promise.all([
+        authAPI.getTeachers({ limit: "200" }),
+        academicYearsAPI.getAll({ schoolId: user?.schoolId }),
+      ]);
       const teachersData = Array.isArray(teachersRes.data) ? teachersRes.data : teachersRes.data?.data || [];
+      const yearsData = Array.isArray(yearsRes.data) ? yearsRes.data : yearsRes.data?.data || [];
       setTeachers(teachersData);
+      setAcademicYears(yearsData);
+
+      if (!selectedYear && yearsData.length > 0) {
+        const defaultYear = yearsData.find((year: any) => year.isActive)?.id || yearsData[0]?.id;
+        if (defaultYear) {
+          setSelectedYear(defaultYear);
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch initial assignment data", error);
       toast.error("Failed to load setup data");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedYear, setSelectedYear, user?.schoolId]);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
@@ -320,33 +335,33 @@ const TeacherAssignmentPage = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <Card className="shadow-sm bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
-        <CardContent className="pt-4 pb-4">
-          <Filters
-            config={{ academicYear: true, search: true }}
-            selectedYear={selectedYear}
-            onYearChange={setSelectedYear}
-            selectedSearch={selectedSearch}
-            onSearchChange={setSelectedSearch}
-            searchPlaceholder="Search classes or sections..."
-            className="w-full"
-          />
-        </CardContent>
-      </Card>
-
       {/* MATRIX GRID VIEW */}
       <Card className="border-none shadow-xl bg-white dark:bg-slate-800 overflow-hidden">
         <CardHeader className="border-b bg-slate-50/50 dark:bg-slate-700/50">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <CardTitle className="text-lg dark:text-white">Assignment Matrix</CardTitle>
-            <div className="flex gap-2">
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-100 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700">
-                {filteredSections.length} Rows
-              </Badge>
-              <Badge variant="secondary" className="bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-100 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700">
-                {matrixSubjects.length} Subjects
-              </Badge>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search classes or sections..."
+                  value={selectedSearch}
+                  onChange={(e) => setSelectedSearch(e.target.value)}
+                  className="pl-9 h-8 w-[500px] max-w-full dark:bg-slate-800 dark:border-slate-700"
+                />
+              </div>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="h-8 w-[160px] dark:bg-slate-800 dark:border-slate-700">
+                  <SelectValue placeholder="Academic Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicYears?.map((y: any) => (
+                    <SelectItem key={y.id} value={y.id}>
+                      {y.name} {y.isActive ? "✓" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>

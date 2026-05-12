@@ -237,6 +237,11 @@ export class UpdateLessonBundleDto {
   @IsOptional()
   competency?: string;
 
+  @ValidateNested()
+  @Type(() => CreateHomeworkDto)
+  @IsOptional()
+  homework?: CreateHomeworkDto;
+
   @IsEnum(LessonStatus)
   @IsOptional()
   status?: LessonStatus;

@@ -62,9 +62,12 @@ export interface Event {
   location?: string;
   startDate: string;
   endDate: string | null;
-  allDay: boolean;
-  eventType: "ACADEMIC" | "EXTRACURRICULAR" | "ADMINISTRATIVE" | "SPORTS" | "OTHER";
-  visibleTo: string[] | null;
+  allDay?: boolean;
+  eventType?: "ACADEMIC" | "EXTRACURRICULAR" | "ADMINISTRATIVE" | "SPORTS" | "OTHER";
+  visibleTo?: string[] | null;
+  audience?: string[] | null;
+  category?: "ACADEMIC" | "SPORTS" | "CULTURAL" | "HOLIDAY" | "OTHER";
+  color?: string | null;
   createdById: string;
   createdBy?: { id: string; name: string; email: string };
   school?: { id: string; name: string };
@@ -81,6 +84,9 @@ export interface CreateEventDto {
   allDay?: boolean;
   eventType?: "ACADEMIC" | "EXTRACURRICULAR" | "ADMINISTRATIVE" | "SPORTS" | "OTHER";
   visibleTo?: string[];
+  audience?: string[];
+  category?: "ACADEMIC" | "SPORTS" | "CULTURAL" | "HOLIDAY" | "OTHER";
+  color?: string;
 }
 
 export interface UpdateEventDto {
@@ -92,6 +98,9 @@ export interface UpdateEventDto {
   allDay?: boolean;
   eventType?: "ACADEMIC" | "EXTRACURRICULAR" | "ADMINISTRATIVE" | "SPORTS" | "OTHER";
   visibleTo?: string[];
+  audience?: string[];
+  category?: "ACADEMIC" | "SPORTS" | "CULTURAL" | "HOLIDAY" | "OTHER";
+  color?: string;
 }
 
 export const eventsAPI = {
@@ -120,6 +129,8 @@ export interface Lesson {
   objective?: string;
   lessonContent?: string;
   homework?: string;
+  description?: string;
+  instructions?: string;
   lessonDate: string;
   periodNumber: number;
   status: "DRAFT" | "PUBLISHED" | "COVERED" | "MISSED" | "RESCHEDULED";
@@ -176,6 +187,21 @@ export interface UpdateLessonDto {
   status?: "DRAFT" | "PUBLISHED" | "COVERED" | "MISSED" | "RESCHEDULED";
 }
 
+export interface UpdateLessonBundleDto {
+  title?: string;
+  objective?: string;
+  lessonContent?: string;
+  periodNumber?: number;
+  unitNumber?: number;
+  topicName?: string;
+  topicId?: string;
+  competency?: string;
+  status?: "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" | "COVERED" | "MISSED" | "RESCHEDULED";
+  isExamPrep?: boolean;
+  syllabusMappingId?: string;
+  homework?: { title?: string; description?: string };
+}
+
 export interface LessonCoverageReport {
   bySubject: Array<{
     subject: string;
@@ -221,6 +247,8 @@ export const lessonsAPI = {
   }) => api.get<{ data: Lesson[]; meta: any }>("/lessons", { params }),
   getById: (id: string) => api.get<Lesson>(`/lessons/${id}`),
   update: (id: string, data: UpdateLessonDto) => api.put<Lesson>(`/lessons/${id}`, data),
+  updateBundle: (id: string, data: UpdateLessonBundleDto) =>
+    api.put<{ lesson: Lesson }>(`/lessons/bundle/${id}`, data),
   delete: (id: string) => api.delete(`/lessons/${id}`),
   publish: (id: string) => api.patch<Lesson>(`/lessons/${id}/submit-review`),
   getCoverageReport: (academicYearId: string, semesterId?: string) =>

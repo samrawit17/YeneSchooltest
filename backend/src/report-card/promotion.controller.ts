@@ -77,7 +77,7 @@ export class PromotionController {
     body: {
       studentId: string;
       fromClassId: string;
-      toClassId: string;
+      toClassId?: string | null;
       fromAcademicYear: string;
       toAcademicYear: string;
     },
@@ -101,7 +101,7 @@ export class PromotionController {
     @Body()
     body: {
       fromClassId: string;
-      toClassId: string;
+      toClassId?: string | null;
       fromAcademicYear: string;
       toAcademicYear: string;
       studentIds: string[];
