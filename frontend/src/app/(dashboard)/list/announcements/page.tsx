@@ -174,17 +174,19 @@ const AnnouncementListPage = () => {
                 Create
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
+            <DialogContent className="max-h-[82vh] w-[min(94vw,900px)] max-w-none overflow-hidden p-0">
+              <DialogHeader className="border-b bg-[rgba(var(--brand-color-rgb),0.08)] px-5 py-4 dark:border-slate-700">
                 <DialogTitle className="text-gray-900 dark:text-white">Create Announcement</DialogTitle>
                 <DialogDescription className="text-gray-500 dark:text-gray-400">
                   Create an announcement visible to selected users
                 </DialogDescription>
               </DialogHeader>
-              <CreateAnnouncementForm 
-                onSuccess={() => setShowCreateModal(false)}
-                onCancel={() => setShowCreateModal(false)}
-              />
+              <div className="max-h-[calc(82vh-88px)] overflow-y-auto px-5 py-4">
+                <CreateAnnouncementForm
+                  onSuccess={() => setShowCreateModal(false)}
+                  onCancel={() => setShowCreateModal(false)}
+                />
+              </div>
             </DialogContent>
           </Dialog>
         )}

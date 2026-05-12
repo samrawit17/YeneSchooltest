@@ -12,6 +12,7 @@ import {
   XCircle,
   Loader2,
   Filter,
+  RefreshCw,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -297,13 +298,22 @@ export default function RegistrarGradingPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-black flex items-center gap-2">
-              
               Grade Review
             </h1>
             <p className="text-sm text-muted-foreground">
               Review and approve submitted grades from teachers
             </p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchSubmissions}
+            disabled={filterLoading}
+            className="dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${filterLoading ? "animate-spin" : ""}`} />
+            Reload
+          </Button>
         </div>
 
         {/* Filters - Compact */}

@@ -400,7 +400,7 @@ const ProfilePage = () => {
   if (isLoading) {
     return (
       <div className="flex-1 p-4 md:p-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full">
           {/* Header Skeleton */}
           <div className="mb-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -457,7 +457,7 @@ const ProfilePage = () => {
 
   return (
     <div className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-6">
-      <div className="mx-auto w-full min-w-0 max-w-6xl">
+      <div className="w-full">
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

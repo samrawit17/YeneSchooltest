@@ -393,9 +393,8 @@ const TeachersListPage = () => {
           {/* Filters Section */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <CardContent className="p-3 sm:p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-                {/* Search Bar */}
-                <div className="col-span-2 sm:col-span-1 lg:col-span-2">
+              <div className="flex flex-row flex-wrap items-center gap-3">
+                <div className="flex-1 min-w-[160px]">
                   <TableSearch
                     search={searchInput}
                     setSearch={updateSearch}
@@ -407,7 +406,7 @@ const TeachersListPage = () => {
                 <select
                   value={subjectFilter}
                   onChange={(e) => updateSubjectFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                  className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
                 >
                   <option value="">All Subjects</option>
                   {(subjectsData || [])?.map((subject: any) => (
@@ -420,7 +419,7 @@ const TeachersListPage = () => {
                 <select
                   value={classFilter}
                   onChange={(e) => updateClassFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                  className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
                 >
                   <option value="">All Classes</option>
                   {(classesData || [])?.map((cls: any) => {
@@ -433,11 +432,11 @@ const TeachersListPage = () => {
                   })}
                 </select>
 
-                {classFilter ? (
+                {classFilter && (
                   <select
                     value={sectionFilter}
                     onChange={(e) => updateSectionFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
                   >
                     <option value="">All Sections</option>
                     {(filterSectionsData || [])?.map((section: any) => (
@@ -446,14 +445,12 @@ const TeachersListPage = () => {
                       </option>
                     ))}
                   </select>
-                ) : (
-                  <div className="hidden sm:block" />
                 )}
 
                 <select
                   value={statusFilter}
                   onChange={(e) => updateStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                  className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
                 >
                   <option value="">All Status</option>
                   <option value="Active">Active</option>

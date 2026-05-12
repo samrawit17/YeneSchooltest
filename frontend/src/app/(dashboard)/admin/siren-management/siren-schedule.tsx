@@ -6,16 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {
   Bell,
+  Clock,
+  ToggleRight,
   Plus,
   Edit2,
   Trash2,
   Save,
   X,
   AlertCircle,
-  Loader2,
-  ToggleRight,
-  ToggleLeft,
-  Clock,
 } from "lucide-react";
 import {
   Card,
@@ -27,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -178,6 +177,11 @@ export function SirenScheduleManagement() {
   const handleSave = async () => {
     if (!form.name || !form.ringTime || form.daysOfWeek.length === 0) {
       toast.error("All fields are required");
+      return;
+    }
+
+    if (!schoolId) {
+      toast.error("School not found");
       return;
     }
 
@@ -374,8 +378,31 @@ export function SirenScheduleManagement() {
 
       <CardContent className="min-w-0">
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <div className="max-w-full overflow-x-auto">
+            <Table className="min-w-[760px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Days</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-12 rounded-full" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ) : schedules.length === 0 ? (
           <div className="text-center py-8">

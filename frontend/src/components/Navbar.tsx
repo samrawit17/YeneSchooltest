@@ -676,7 +676,7 @@ const Navbar = ({
                       </div>
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-2 sm:p-3 bg-white dark:bg-gray-800" align="center">
+                  <PopoverContent className="w-[360px] max-w-[92vw] p-2 sm:p-3 bg-white dark:bg-gray-800" align="center">
                     <WeeklyCalendar events={events} onEventClick={() => { setCalendarOpen(false); router.push('/list/calendar'); }} />
                   </PopoverContent>
                 </Popover>

@@ -56,6 +56,19 @@ export interface PromotionCandidate {
   reportCardId?: string;
 }
 
+export interface ReportPublishSummaryRow {
+  classId: string;
+  className: string;
+  grade: number | null;
+  sectionName: string | null;
+  expectedEntries: number;
+  generatedEntries: number;
+  publishedEntries: number;
+  draftEntries: number;
+  missingEntries: number;
+  status: "published" | "ready" | "has_issues" | "no_students";
+}
+
 export const reportCardsAPI = {
   getAll: (params?: {
     classId?: string;
@@ -78,6 +91,18 @@ export const reportCardsAPI = {
   publish: (ids: string[]) => api.put<{ published: number }>("/report-cards/publish", { ids }),
   unpublish: (ids: string[]) =>
     api.put<{ unpublished: number }>("/report-cards/unpublish", { ids }),
+  getPublishSummary: (params: { academicYearId: string; termId: string }) =>
+    api.get<ReportPublishSummaryRow[]>("/report-cards/publish-summary", { params }),
+  publishClassResults: (data: {
+    academicYearId: string;
+    termId: string;
+    classId: string;
+    notifyStudents?: boolean;
+    notifyParents?: boolean;
+  }) => api.post<{ published: number; notifiedStudents: number; notifiedParents: number }>(
+    "/report-cards/publish/class",
+    data
+  ),
   calculateRanks: (data: { classId: string; academicYear: string; term: string }) =>
     api.post<number>("/report-cards/calculate-ranks", data),
   updateRemarks: (
@@ -100,13 +125,13 @@ export const promotionAPI = {
       totalStudents: number;
       candidates: PromotionCandidate[];
     }>(`/promotion/candidates/${classId}`, { params }),
-  getNextClasses: (classId: string) =>
+  getNextClasses: (classId: string, params?: { toAcademicYear?: string }) =>
     api.get<{
       currentClass: { id: string; name: string; grade: number | null };
       nextClasses: { id: string; name: string; grade: number | null }[];
       isLastGrade: boolean;
       graduationEnabled: boolean;
-    }>(`/promotion/next-classes/${classId}`),
+    }>(`/promotion/next-classes/${classId}`, { params }),
   promoteSingle: (data: {
     studentId: string;
     fromClassId: string;

@@ -96,6 +96,20 @@ export class ReportCardController {
     return this.reportCardService.getReportCards(req.user.schoolId, query);
   }
 
+  @Get('publish-summary')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('report_card:read')
+  async getPublishSummary(
+    @Request() req,
+    @Query() query: { academicYearId: string; termId: string },
+  ) {
+    return this.reportCardService.getPublishSummary(
+      req.user.schoolId,
+      query.academicYearId,
+      query.termId,
+    );
+  }
+
   @Get('student/:studentId')
   @Permissions('report_card:read')
   async getStudentReportCards(
@@ -148,6 +162,30 @@ export class ReportCardController {
   @Permissions('report_card:publish')
   async publishReportCards(@Body() body: { ids: string[] }) {
     return this.reportCardService.publishReportCards(body.ids);
+  }
+
+  @Post('publish/class')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('report_card:publish')
+  async publishResultsForClass(
+    @Request() req,
+    @Body()
+    body: {
+      academicYearId: string;
+      termId: string;
+      classId: string;
+      notifyStudents?: boolean;
+      notifyParents?: boolean;
+    },
+  ) {
+    return this.reportCardService.publishResultsForClass({
+      schoolId: req.user.schoolId,
+      academicYearId: body.academicYearId,
+      termId: body.termId,
+      classId: body.classId,
+      notifyStudents: body.notifyStudents,
+      notifyParents: body.notifyParents,
+    });
   }
 
   @Put('unpublish')

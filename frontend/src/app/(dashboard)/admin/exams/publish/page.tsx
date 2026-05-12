@@ -1,599 +1,404 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { academicYearsAPI, reportCardsAPI, termsAPI, type ReportPublishSummaryRow } from "@/lib/api";
 import { toast } from "sonner";
-import { examsAPI, gradingAPI, termsAPI } from "@/lib/api";
-import { Filters } from "@/components/filters/Filters";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  CheckCircle2,
+  AlertTriangle,
+  Lock,
+  Loader2,
+  Send,
+  Users,
+  XCircle,
+  FileText,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Loader2,
-  CheckCircle,
-  AlertTriangle,
-  AlertCircle,
-  Eye,
-  Send,
-  FileCheck,
-  Users,
-  BookOpen,
-  Lock,
-  Unlock,
-} from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface ExamItem {
-  id: string;
-  title: string;
-  subject: { name: string };
-  class: { name: string; grade: string; academicYearId: string };
-  section: { name: string } | null;
-  type: string;
-  date: string;
-  maxMarks: number;
-  published: boolean;
-  description: string | null;
-}
-
-interface ClassSummary {
-  classId: string;
-  className: string;
-  grade: string;
-  totalExams: number;
-  publishedExams: number;
-  unpublishedExams: number;
-  hasResults: boolean;
-  status: "ready" | "has_issues" | "published";
+function getStatusMeta(status: ReportPublishSummaryRow["status"]) {
+  switch (status) {
+    case "published":
+      return {
+        label: "Published",
+        icon: <Lock className="h-4 w-4 text-blue-500" />,
+        badge: <Badge className="bg-blue-100 text-blue-700">Published</Badge>,
+      };
+    case "ready":
+      return {
+        label: "Ready",
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+        badge: <Badge className="bg-emerald-100 text-emerald-700">Ready to Publish</Badge>,
+      };
+    case "no_students":
+      return {
+        label: "No students",
+        icon: <Users className="h-4 w-4 text-slate-500" />,
+        badge: <Badge variant="outline">No students</Badge>,
+      };
+    default:
+      return {
+        label: "Has issues",
+        icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
+        badge: <Badge className="bg-amber-100 text-amber-700">Has Issues</Badge>,
+      };
+  }
 }
 
 export default function PublishResultsPage() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { currentAcademicYear } = useAcademicYear();
   const router = useRouter();
-  const { currentAcademicYear, getTermsForYear } = useAcademicYear();
 
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedTerm, setSelectedTerm] = useState("");
+  const [terms, setTerms] = useState<{ id: string; name: string; startDate?: string; endDate?: string }[]>([]);
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive?: boolean }[]>([]);
+  const [rows, setRows] = useState<ReportPublishSummaryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
-  const [selectedTerm, setSelectedTerm] = useState<string>("");
-  const [terms, setTerms] = useState<any[]>([]);
-  const [exams, setExams] = useState<ExamItem[]>([]);
-  const [classSummaries, setClassSummaries] = useState<ClassSummary[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-  const [previewMode, setPreviewMode] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/sign-in");
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    if (isAuthenticated && currentAcademicYear?.id) {
-      loadTerms();
-    }
-  }, [isAuthenticated, currentAcademicYear]);
-
-  useEffect(() => {
-    if (selectedTerm && currentAcademicYear?.id) {
-      loadExams();
-    }
-  }, [selectedTerm, currentAcademicYear]);
-
-  async function loadTerms() {
-    if (!currentAcademicYear?.id) {
-      setLoading(false);
-      return;
-    }
-    try {
-      const termData = await termsAPI.getAll({ academicYearId: currentAcademicYear.id });
-      const termList = termData.data?.data || termData.data || [];
-      setTerms(termList);
-      // Auto-select current term based on dates
-      const now = new Date();
-      const currentTerm = termList.find((t: { startDate?: string; endDate?: string; isCurrent?: boolean }) => {
-        if (t.isCurrent) return true;
-        if (!t.startDate || !t.endDate) return false;
-        const start = new Date(t.startDate);
-        const end = new Date(t.endDate);
-        return now >= start && now <= end;
-      });
-      if (currentTerm) {
-        setSelectedTerm(currentTerm.id);
-      } else if (termList.length > 0) {
-        setSelectedTerm(termList[0].id);
-      } else {
-        setLoading(false);
+    academicYearsAPI.getAll().then((res) => {
+      const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setAcademicYears(data);
+      if (!selectedYear) {
+        const active = data.find((y: any) => y.isActive) || data[0];
+        if (active) setSelectedYear(active.id);
       }
-    } catch (error) {
-      console.error("Failed to load terms", error);
-      toast.error("Failed to load terms");
-      setLoading(false);
-    }
-  }
+    }).catch(() => {});
+  }, []);
 
-  async function loadExams() {
-    if (!currentAcademicYear?.id || !selectedTerm) {
+  useEffect(() => {
+    if (currentAcademicYear?.id && !selectedYear) {
+      setSelectedYear(currentAcademicYear.id);
+    }
+  }, [currentAcademicYear?.id, selectedYear]);
+
+  useEffect(() => {
+    if (!selectedYear) return;
+    setSelectedTerm("");
+    setTerms([]);
+    termsAPI
+      .getAll({ academicYearId: selectedYear })
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setTerms(data);
+        const now = new Date();
+        const currentTerm =
+          data.find((term: { startDate?: string; endDate?: string }) => {
+            if (!term.startDate || !term.endDate) return false;
+            return now >= new Date(term.startDate) && now <= new Date(term.endDate);
+          }) || data[0];
+        if (currentTerm) setSelectedTerm(currentTerm.id);
+      })
+      .catch(() => {
+        setTerms([]);
+      });
+  }, [selectedYear]);
+
+  useEffect(() => {
+    if (!selectedYear || !selectedTerm) {
+      setRows([]);
       setLoading(false);
       return;
     }
     setLoading(true);
-    try {
-      // Get the term details to filter by date range
-      const termRes = await termsAPI.getById(selectedTerm);
-      const term = termRes.data?.data || termRes.data;
+    reportCardsAPI
+      .getPublishSummary({ academicYearId: selectedYear, termId: selectedTerm })
+      .then((res) => {
+        setRows(Array.isArray(res.data) ? res.data : []);
+        setSelectedClasses([]);
+      })
+      .catch((error: any) => {
+        toast.error(error?.response?.data?.message || "Failed to load publish summary");
+        setRows([]);
+      })
+      .finally(() => setLoading(false));
+  }, [selectedYear, selectedTerm]);
 
-// Fetch all exams for the school in this academic year
-      const response = await examsAPI.getAll({
-        academicYearId: currentAcademicYear.id,
-        termId: selectedTerm,
-      });
+  const readyRows = useMemo(() => rows.filter((row) => row.status === "ready"), [rows]);
+  const publishedRows = useMemo(() => rows.filter((row) => row.status === "published"), [rows]);
+  const issueRows = useMemo(() => rows.filter((row) => row.status === "has_issues"), [rows]);
 
-      const examList: ExamItem[] = response.data?.data || response.data || [];
-      setExams(examList);
+  const toggleClass = (classId: string) => {
+    setSelectedClasses((prev) =>
+      prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId],
+    );
+  };
 
-      // Group by class and compute summary
-      const classMap = new Map<string, ClassSummary>();
+  const toggleAll = () => {
+    const selectable = readyRows.map((row) => row.classId);
+    setSelectedClasses((prev) =>
+      prev.length === selectable.length ? [] : selectable,
+    );
+  };
 
-      for (const exam of examList) {
-        const classId = exam.class?.name || exam.classId || "unknown";
-        const existing = classMap.get(classId);
-
-        if (existing) {
-          existing.totalExams++;
-          if (exam.published) {
-            existing.publishedExams++;
-          } else {
-            existing.unpublishedExams++;
-          }
-        } else {
-          classMap.set(classId, {
-            classId: exam.class?.name || classId,
-            className: exam.class?.name || "Unknown Class",
-            grade: exam.class?.grade || "",
-            totalExams: 1,
-            publishedExams: exam.published ? 1 : 0,
-            unpublishedExams: exam.published ? 0 : 1,
-            hasResults: false, // Would need exam/:id endpoint to check results
-            status: exam.published ? "published" : "ready",
-          });
-        }
-      }
-
-      // Update status based on publish state
-      const summaries = Array.from(classMap.values()).map((summary) => {
-        if (summary.publishedExams === summary.totalExams && summary.totalExams > 0) {
-          summary.status = "published";
-        } else if (summary.unpublishedExams > 0) {
-          summary.status = "ready";
-        }
-        return summary;
-      });
-
-      setClassSummaries(summaries);
-    } catch (error: any) {
-      console.error("Failed to load exams", error);
-      toast.error("Failed to load exams");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handlePublishClass(classId: string) {
-    if (!currentAcademicYear?.id || !selectedTerm) {
-      toast.error("Missing academic year or term");
-      return;
-    }
-
+  const publishClass = async (classId: string) => {
+    if (!selectedYear || !selectedTerm) return;
     setPublishing(true);
     try {
-      // Backend expects: { academicYear: string, termId: string, classId: string }
-      // Note: The backend uses classId from the exam table, but we may need to map className to actual class ID
-      const targetClass = classSummaries.find(c => c.classId === classId || c.className === classId);
-
-      const response = await gradingAPI.publishResults({
-        academicYear: currentAcademicYear.id,
+      const res = await reportCardsAPI.publishClassResults({
+        academicYearId: selectedYear,
         termId: selectedTerm,
-        classId: targetClass?.classId || classId,
+        classId,
+        notifyStudents: true,
+        notifyParents: true,
       });
-
-      toast.success(response.data?.message || "Results published successfully");
-      loadExams();
+      toast.success(
+        `Published ${res.data.published} report cards. Notifications sent to ${res.data.notifiedStudents} students and ${res.data.notifiedParents} parents.`,
+      );
+      const summary = await reportCardsAPI.getPublishSummary({
+        academicYearId: selectedYear,
+        termId: selectedTerm,
+      });
+      setRows(Array.isArray(summary.data) ? summary.data : []);
       setSelectedClasses((prev) => prev.filter((id) => id !== classId));
     } catch (error: any) {
-      console.error("Failed to publish", error);
       toast.error(error?.response?.data?.message || "Failed to publish results");
     } finally {
       setPublishing(false);
     }
-  }
+  };
 
-  async function handleBulkPublish() {
-    if (selectedClasses.length === 0) {
-      toast.error("Please select at least one class to publish");
-      return;
-    }
-
+  const publishSelected = async () => {
+    if (selectedClasses.length === 0) return;
     setPublishing(true);
     try {
-      // Publish each selected class sequentially
+      let published = 0;
+      let notifiedStudents = 0;
+      let notifiedParents = 0;
       for (const classId of selectedClasses) {
-        await handlePublishClass(classId);
+        const res = await reportCardsAPI.publishClassResults({
+          academicYearId: selectedYear,
+          termId: selectedTerm,
+          classId,
+          notifyStudents: true,
+          notifyParents: true,
+        });
+        published += res.data.published;
+        notifiedStudents += res.data.notifiedStudents;
+        notifiedParents += res.data.notifiedParents;
       }
-      toast.success("All selected classes published successfully");
+      toast.success(
+        `Published ${published} report cards. Notifications sent to ${notifiedStudents} students and ${notifiedParents} parents.`,
+      );
+      const summary = await reportCardsAPI.getPublishSummary({
+        academicYearId: selectedYear,
+        termId: selectedTerm,
+      });
+      setRows(Array.isArray(summary.data) ? summary.data : []);
       setSelectedClasses([]);
     } catch (error: any) {
-      console.error("Bulk publish failed", error);
-      toast.error("Some classes failed to publish");
+      toast.error(error?.response?.data?.message || "Failed to publish selected classes");
     } finally {
       setPublishing(false);
     }
-  }
-
-  function toggleClass(classId: string) {
-    setSelectedClasses((prev) =>
-      prev.includes(classId) ? prev.filter((x) => x !== classId) : [...prev, classId]
-    );
-  }
-
-  function toggleAll() {
-    const selectable = classSummaries.filter(c => c.status !== "published");
-    if (selectedClasses.length === selectable.length) {
-      setSelectedClasses([]);
-    } else {
-      setSelectedClasses(selectable.map((a) => a.classId));
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "ready":
-        return <Unlock className="h-4 w-4 text-green-500" />;
-      case "has_issues":
-        return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-      case "published":
-        return <Lock className="h-4 w-4 text-blue-500" />;
-      default:
-        return <AlertCircle className="h-4 w-4 text-gray-500" />;
-    }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "ready":
-        return <Badge className="bg-green-100 text-green-700">Ready to Publish</Badge>;
-      case "has_issues":
-        return <Badge className="bg-amber-100 text-amber-700">Has Issues</Badge>;
-      case "published":
-        return <Badge className="bg-blue-100 text-blue-700">Published & Locked</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const readyCount = classSummaries.filter((a) => a.status === "ready").length;
-  const issuesCount = classSummaries.filter((a) => a.status === "has_issues").length;
-  const publishedCount = classSummaries.filter((a) => a.status === "published").length;
-
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <div className="mx-auto max-w-7xl px-6 py-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-4">
-                <Skeleton className="h-12 w-12 rounded-2xl" />
-                <div className="space-y-2">
-                  <Skeleton className="h-7 w-40" />
-                  <Skeleton className="h-4 w-64" />
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-10 w-32" />
-                <Skeleton className="h-10 w-28" />
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="mx-auto max-w-7xl px-6 py-6">
-          <div className="space-y-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) return null;
+  if (authLoading || !isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-6 py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-4">
-
-              <div>
-                <h1 className="text-2xl font-bold text-black">
-                  Publish Results
-                </h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Publish and lock exam results by class for a term
-                </p>
-              </div>
+      <div className="bg-transparent">
+        <div className="w-full px-6 py-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-black dark:text-white">Publish Results</h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Release completed report cards to students and parents, and notify them immediately.
+              </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Filters
-                config={{ academicYear: true, term: true }}
-                selectedYear={currentAcademicYear?.id || ""}
-                onYearChange={() => {}}
-                selectedTerm={selectedTerm}
-                onTermChange={setSelectedTerm}
-                termOptions={terms}
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="h-9 w-[180px]">
+                  <SelectValue placeholder="Academic Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicYears.map((year) => (
+                    <SelectItem key={year.id} value={year.id}>
+                      {year.name} {year.isActive ? "(Active)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                <SelectTrigger className="h-9 w-[160px]">
+                  <SelectValue placeholder="Term" />
+                </SelectTrigger>
+                <SelectContent>
+                  {terms.map((term) => (
+                    <SelectItem key={term.id} value={term.id}>
+                      {term.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
-                onClick={() => setPreviewMode(!previewMode)}
-                className="dark:bg-slate-800 dark:text-white dark:border-slate-700"
+                size="sm"
+                onClick={() => router.push("/admin/report-cards")}
+                className="dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
-                <Eye className="h-4 w-4 mr-2" />
-                {previewMode ? "Exit Preview" : "Preview"}
+                <FileText className="mr-2 h-4 w-4" />
+                Open Report Cards
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
-            <CardContent className="pt-5">
-              <div className="flex items-center gap-3">
-                <Users className="h-8 w-8 text-blue-500" />
-                <div>
-                  <p className="text-2xl font-bold dark:text-white">{classSummaries.length}</p>
-                  <p className="text-sm text-gray-500">Total Classes</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
-            <CardContent className="pt-5">
-              <div className="flex items-center gap-3">
-                <Unlock className="h-8 w-8 text-green-500" />
-                <div>
-                  <p className="text-2xl font-bold dark:text-white">{readyCount}</p>
-                  <p className="text-sm text-gray-500">Ready to Publish</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
-            <CardContent className="pt-5">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-8 w-8 text-amber-500" />
-                <div>
-                  <p className="text-2xl font-bold dark:text-white">{issuesCount}</p>
-                  <p className="text-sm text-gray-500">Has Issues</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
-            <CardContent className="pt-5">
-              <div className="flex items-center gap-3">
-                <Lock className="h-8 w-8 text-blue-500" />
-                <div>
-                  <p className="text-2xl font-bold dark:text-white">{publishedCount}</p>
-                  <p className="text-sm text-gray-500">Published & Locked</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {previewMode && (
-          <Card className="mb-6 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-            <CardContent className="py-4">
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
-                <Eye className="h-5 w-5" />
-                <span className="font-medium">Preview Mode</span>
-              </div>
-              <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
-                This shows how the publish status will appear. Publishing locks all exams for the selected class and term.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="dark:text-white">Class Publish Status</CardTitle>
-                <CardDescription className="dark:text-gray-400">
-                  Select classes to publish all exam results for the term
-                </CardDescription>
-              </div>
-              {readyCount > 0 && (
-                <Button
-                  onClick={handleBulkPublish}
-                  disabled={publishing || selectedClasses.length === 0}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {publishing ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Publish Selected ({selectedClasses.length})
-                </Button>
-              )}
+      <div className="w-full px-6 py-6 space-y-6">
+        {loading ? (
+          <>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {[1, 2, 3].map((n) => (
+                <Card key={n}>
+                  <CardContent className="pt-6">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="mt-3 h-8 w-16" />
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </CardHeader>
-          <CardContent>
-            {classSummaries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <BookOpen className="h-12 w-12 text-gray-300 mb-4" />
-                <p className="text-gray-500">No exams found for selected term</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-100 dark:bg-slate-800">
-                    <TableHead className="w-12 dark:text-gray-200">
-                      <Checkbox
-                        checked={
-                          selectedClasses.length === classSummaries.filter(c => c.status !== "published").length &&
-                          classSummaries.filter(c => c.status !== "published").length > 0
-                        }
-                        onCheckedChange={toggleAll}
-                      />
-                    </TableHead>
-                    <TableHead className="dark:text-gray-200">Class</TableHead>
-                    <TableHead className="dark:text-gray-200">Grade</TableHead>
-                    <TableHead className="text-center dark:text-gray-200">Total Exams</TableHead>
-                    <TableHead className="text-center dark:text-gray-200">Published</TableHead>
-                    <TableHead className="text-center dark:text-gray-200">Unpublished</TableHead>
-                    <TableHead className="text-center dark:text-gray-200">Status</TableHead>
-                    <TableHead className="text-center dark:text-gray-200">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {classSummaries.map((item) => (
-                    <TableRow
-                      key={item.classId}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedClasses.includes(item.classId)}
-                          onCheckedChange={() => toggleClass(item.classId)}
-                          disabled={item.status === "published"}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium dark:text-white">
-                        {item.className}
-                      </TableCell>
-                      <TableCell className="dark:text-gray-300">{item.grade}</TableCell>
-                      <TableCell className="text-center dark:text-gray-300">
-                        {item.totalExams}
-                      </TableCell>
-                      <TableCell className="text-center text-blue-600 font-medium">
-                        {item.publishedExams}
-                      </TableCell>
-                      <TableCell className={`text-center ${item.unpublishedExams > 0 ? "text-amber-600 font-medium" : "dark:text-gray-300"}`}>
-                        {item.unpublishedExams}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {getStatusIcon(item.status)}
-                          {getStatusBadge(item.status)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {item.status !== "published" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handlePublishClass(item.classId)}
-                            disabled={publishing}
-                            className="h-8"
-                          >
-                            {publishing ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Lock className="h-3 w-3 mr-1" />
-                            )}
-                            Publish
-                          </Button>
-                        ) : (
-                          <span className="text-sm text-gray-400">Locked</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Exam Detail View */}
-        {exams.length > 0 && (
-          <Card className="dark:bg-slate-900 dark:border-slate-800 mt-6">
-            <CardHeader>
-              <CardTitle className="dark:text-white">Exam Details</CardTitle>
-              <CardDescription className="dark:text-gray-400">
-                All exams for the selected term
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-100 dark:bg-slate-800">
-                    <TableHead className="dark:text-gray-200">Title</TableHead>
-                    <TableHead className="dark:text-gray-200">Subject</TableHead>
-                    <TableHead className="dark:text-gray-200">Class</TableHead>
-                    <TableHead className="dark:text-gray-200">Type</TableHead>
-                    <TableHead className="dark:text-gray-200">Date</TableHead>
-                    <TableHead className="text-center dark:text-gray-200">Max Marks</TableHead>
-                    <TableHead className="text-center dark:text-gray-200">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {exams.map((exam) => (
-                    <TableRow
-                      key={exam.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <TableCell className="font-medium dark:text-white">{exam.title}</TableCell>
-                      <TableCell className="dark:text-gray-300">{exam.subject?.name}</TableCell>
-                      <TableCell className="dark:text-gray-300">{exam.class?.name}</TableCell>
-                      <TableCell className="dark:text-gray-300">{exam.type}</TableCell>
-                      <TableCell className="dark:text-gray-300">
-                        {new Date(exam.date).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-center dark:text-gray-300">{exam.maxMarks}</TableCell>
-                      <TableCell className="text-center">
-                        {exam.published ? (
-                          <Badge className="bg-blue-100 text-blue-700">
-                            <Lock className="h-3 w-3 mr-1" />
-                            Published
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-green-600 border-green-300">
-                            <Unlock className="h-3 w-3 mr-1" />
-                            Open
-                          </Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <Skeleton className="h-72 w-full" />
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card className="dark:border-slate-800 dark:bg-slate-900">
+              <CardHeader>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <CardTitle className="dark:text-white">Class Release Status</CardTitle>
+                    <CardDescription className="dark:text-slate-400">
+                      A class becomes publishable only when every enrolled student has a complete report card.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    onClick={publishSelected}
+                    disabled={publishing || selectedClasses.length === 0}
+                    className="bg-[var(--brand-color)] text-white hover:opacity-90"
+                  >
+                    {publishing ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="mr-2 h-4 w-4" />
+                    )}
+                    Publish Selected ({selectedClasses.length})
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {rows.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <XCircle className="mb-3 h-10 w-10 text-slate-300" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      No report-card data found for the selected academic year and term.
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={readyRows.length > 0 && selectedClasses.length === readyRows.length}
+                            onCheckedChange={toggleAll}
+                          />
+                        </TableHead>
+                        <TableHead>Class</TableHead>
+                        <TableHead>Expected</TableHead>
+                        <TableHead>Generated</TableHead>
+                        <TableHead>Published</TableHead>
+                        <TableHead>Missing</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((row) => {
+                        const status = getStatusMeta(row.status);
+                        return (
+                          <TableRow key={row.classId}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedClasses.includes(row.classId)}
+                                onCheckedChange={() => toggleClass(row.classId)}
+                                disabled={row.status !== "ready" || publishing}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium text-slate-900 dark:text-white">
+                                {row.className}
+                                {row.sectionName ? ` - ${row.sectionName}` : ""}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                Grade {row.grade ?? "—"}
+                              </div>
+                            </TableCell>
+                            <TableCell>{row.expectedEntries}</TableCell>
+                            <TableCell>{row.generatedEntries}</TableCell>
+                            <TableCell>{row.publishedEntries}</TableCell>
+                            <TableCell>{row.missingEntries}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {status.icon}
+                                {status.badge}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {row.status === "ready" ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => publishClass(row.classId)}
+                                  disabled={publishing}
+                                  className="bg-[var(--brand-color)] text-white hover:opacity-90"
+                                >
+                                  {publishing ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Send className="mr-1.5 h-3.5 w-3.5" />
+                                      Publish
+                                    </>
+                                  )}
+                                </Button>
+                              ) : row.status === "published" ? (
+                                <span className="text-sm text-slate-500 dark:text-slate-400">Released</span>
+                              ) : (
+                                <span className="text-sm text-amber-600 dark:text-amber-400">
+                                  Complete all report cards first
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </div>

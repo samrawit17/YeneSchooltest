@@ -4,6 +4,8 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+import { NotificationService, NotificationType } from '../notification/notification.service';
 
 export enum ReportCardStatus {
   DRAFT = 'DRAFT',
@@ -70,7 +72,32 @@ interface PromotionReadinessParams {
 
 @Injectable()
 export class ReportCardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+  ) {}
+
+  private async resolveAcademicYearName(schoolId: string, academicYearId: string) {
+    const year = await this.prisma.academicYear.findFirst({
+      where: { id: academicYearId, schoolId },
+      select: { id: true, name: true },
+    });
+    if (!year) {
+      throw new NotFoundException('Academic year not found');
+    }
+    return year.name;
+  }
+
+  private async resolveTermName(termId: string) {
+    const term = await this.prisma.term.findUnique({
+      where: { id: termId },
+      select: { id: true, name: true },
+    });
+    if (!term) {
+      throw new NotFoundException('Term not found');
+    }
+    return term.name;
+  }
 
   private parseGradeDetails(gradeDetails?: string | null): Array<Record<string, any>> {
     if (!gradeDetails) return [];
@@ -80,6 +107,47 @@ export class ReportCardService {
     } catch {
       return [];
     }
+  }
+
+  private async recordPromotionHistory(input: {
+    schoolId: string;
+    studentId: string;
+    fromClassId: string;
+    toClassId?: string | null;
+    fromAcademicYear: string;
+    toAcademicYear: string;
+    status: string;
+    reportCardId?: string | null;
+    averageGrade?: number | null;
+    attendance?: number | null;
+  }) {
+    await this.prisma.$executeRaw`
+      INSERT INTO "PromotionRecord"
+        ("id", "schoolId", "studentId", "fromClassId", "toClassId", "fromAcademicYear", "toAcademicYear", "status", "reportCardId", "averageGrade", "attendance", "promotedAt", "createdAt", "updatedAt")
+      VALUES
+        (gen_random_uuid()::text, ${input.schoolId}, ${input.studentId}, ${input.fromClassId}, ${input.toClassId ?? null}, ${input.fromAcademicYear}, ${input.toAcademicYear}, ${input.status}, ${input.reportCardId ?? null}, ${input.averageGrade ?? null}, ${input.attendance ?? null}, NOW(), NOW(), NOW())
+    `;
+  }
+
+  private getEffectiveSubjectTotalScore(grade: {
+    caScore?: number | null;
+    midScore?: number | null;
+    finalScore?: number | null;
+    totalScore?: number | null;
+  }): number | null {
+    const componentSum =
+      (grade.caScore ?? 0) + (grade.midScore ?? 0) + (grade.finalScore ?? 0);
+    const storedTotal = grade.totalScore ?? null;
+
+    if (storedTotal === null || storedTotal === undefined) {
+      return componentSum > 0 ? componentSum : null;
+    }
+
+    if (componentSum > 0 && storedTotal < componentSum) {
+      return componentSum;
+    }
+
+    return storedTotal;
   }
 
   private async ensurePromotionReadiness(params: PromotionReadinessParams) {
@@ -390,10 +458,11 @@ export class ReportCardService {
     const gradeDetails: Record<string, any>[] = [];
 
     for (const sg of subjectGrades) {
-      if (sg.totalScore !== null && sg.totalScore !== undefined) {
+      const effectiveTotalScore = this.getEffectiveSubjectTotalScore(sg);
+      if (effectiveTotalScore !== null && effectiveTotalScore !== undefined) {
         const { letter, point } = await this.getGradeLetter(
           schoolId,
-          sg.totalScore,
+          effectiveTotalScore,
         );
         gradeDetails.push({
           subjectId: sg.subjectId,
@@ -402,12 +471,12 @@ export class ReportCardService {
           caScore: sg.caScore,
           midScore: sg.midScore,
           finalScore: sg.finalScore,
-          totalScore: sg.totalScore,
+          totalScore: effectiveTotalScore,
           gradeLetter: letter,
           gradePoint: point,
           status: sg.status,
         });
-        totalMarks += sg.totalScore;
+        totalMarks += effectiveTotalScore;
         subjectCount++;
       }
     }
@@ -419,7 +488,14 @@ export class ReportCardService {
     );
 
     const existingReportCard = await this.prisma.reportCard.findFirst({
-      where: { studentId, academicYear, term: termName },
+      where: {
+        schoolId,
+        studentId,
+        classId,
+        sectionId,
+        academicYear,
+        term: termName,
+      },
     });
 
     let reportCard;
@@ -479,7 +555,7 @@ export class ReportCardService {
     } = params;
 
     const students = await this.prisma.studentClass.findMany({
-      where: { classId, academicYear },
+      where: { schoolId, classId, sectionId, academicYear },
       include: {
         student: { select: { id: true, name: true } },
       },
@@ -556,6 +632,104 @@ export class ReportCardService {
     }));
   }
 
+  async getPublishSummary(
+    schoolId: string,
+    academicYearId: string,
+    termId: string,
+  ) {
+    const [academicYearName, termName] = await Promise.all([
+      this.resolveAcademicYearName(schoolId, academicYearId),
+      this.resolveTermName(termId),
+    ]);
+
+    const [classes, enrollments, reportCards] = await Promise.all([
+      this.prisma.class.findMany({
+        where: { schoolId, academicYearId },
+        select: { id: true, name: true, grade: true, section: true },
+        orderBy: [{ grade: 'asc' }, { name: 'asc' }],
+      }),
+      this.prisma.studentClass.groupBy({
+        by: ['classId'],
+        where: {
+          schoolId,
+          academicYear: academicYearName,
+        },
+        _count: { studentId: true },
+      }),
+      this.prisma.reportCard.findMany({
+        where: {
+          schoolId,
+          academicYear: academicYearName,
+          term: termName,
+        },
+        include: {
+          class: {
+            select: { id: true, name: true, grade: true, section: true },
+          },
+        },
+      }),
+    ]);
+
+    const expectedByClass = new Map(
+      enrollments.map((row) => [row.classId, row._count.studentId]),
+    );
+    const cardsByClass = new Map<string, typeof reportCards>();
+    for (const card of reportCards) {
+      const bucket = cardsByClass.get(card.classId) ?? [];
+      bucket.push(card);
+      cardsByClass.set(card.classId, bucket);
+    }
+
+    return classes.map((cls) => {
+      const classCards = cardsByClass.get(cls.id) ?? [];
+      const expectedEntries = expectedByClass.get(cls.id) ?? 0;
+      const publishedEntries = classCards.filter(
+        (card) => card.status === ReportCardStatus.PUBLISHED,
+      ).length;
+      const generatedEntries = classCards.length;
+      const missingEntries = Math.max(expectedEntries - generatedEntries, 0);
+      const hasIncompleteCards = classCards.some((card) => {
+        const details = this.parseGradeDetails(card.gradeDetails);
+        return (
+          details.length === 0 ||
+          card.percentage === null ||
+          card.totalMarks === null ||
+          card.attendancePercentage === null
+        );
+      });
+
+      let status: 'published' | 'ready' | 'has_issues' | 'no_students' =
+        'has_issues';
+      if (expectedEntries === 0) {
+        status = 'no_students';
+      } else if (
+        publishedEntries === expectedEntries &&
+        generatedEntries === expectedEntries
+      ) {
+        status = 'published';
+      } else if (
+        generatedEntries === expectedEntries &&
+        missingEntries === 0 &&
+        !hasIncompleteCards
+      ) {
+        status = 'ready';
+      }
+
+      return {
+        classId: cls.id,
+        className: cls.name,
+        grade: cls.grade,
+        sectionName: cls.section ?? null,
+        expectedEntries,
+        generatedEntries,
+        publishedEntries,
+        draftEntries: Math.max(generatedEntries - publishedEntries, 0),
+        missingEntries,
+        status,
+      };
+    });
+  }
+
   /**
    * Get single report card by ID
    */
@@ -614,6 +788,158 @@ export class ReportCardService {
     });
 
     return { published: updated.count };
+  }
+
+  async publishResultsForClass(params: {
+    schoolId: string;
+    academicYearId: string;
+    termId: string;
+    classId: string;
+    notifyStudents?: boolean;
+    notifyParents?: boolean;
+  }) {
+    const {
+      schoolId,
+      academicYearId,
+      termId,
+      classId,
+      notifyStudents = true,
+      notifyParents = true,
+    } = params;
+
+    const [academicYearName, termName, classRecord] = await Promise.all([
+      this.resolveAcademicYearName(schoolId, academicYearId),
+      this.resolveTermName(termId),
+      this.prisma.class.findFirst({
+        where: { id: classId, schoolId, academicYearId },
+        select: { id: true, name: true, grade: true, section: true },
+      }),
+    ]);
+
+    if (!classRecord) {
+      throw new NotFoundException('Class not found');
+    }
+
+    const [enrollments, reportCards] = await Promise.all([
+      this.prisma.studentClass.findMany({
+        where: {
+          schoolId,
+          classId,
+          academicYear: academicYearName,
+        },
+        select: { studentId: true },
+      }),
+      this.prisma.reportCard.findMany({
+        where: {
+          schoolId,
+          classId,
+          academicYear: academicYearName,
+          term: termName,
+        },
+        include: {
+          student: {
+            select: {
+              id: true,
+              name: true,
+              studentProfile: {
+                select: {
+                  id: true,
+                  parents: {
+                    select: {
+                      parent: {
+                        select: {
+                          userId: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (enrollments.length === 0) {
+      throw new BadRequestException('No enrolled students found for this class');
+    }
+
+    if (reportCards.length !== enrollments.length) {
+      throw new BadRequestException(
+        'Results cannot be published yet because some students are still missing report cards',
+      );
+    }
+
+    const incomplete = reportCards.filter((card) => {
+      const details = this.parseGradeDetails(card.gradeDetails);
+      return (
+        details.length === 0 ||
+        card.percentage === null ||
+        card.totalMarks === null ||
+        card.attendancePercentage === null
+      );
+    });
+
+    if (incomplete.length > 0) {
+      throw new BadRequestException(
+        'Results cannot be published yet because some report cards are incomplete',
+      );
+    }
+
+    const reportCardIds = reportCards.map((card) => card.id);
+    await this.prisma.reportCard.updateMany({
+      where: { id: { in: reportCardIds } },
+      data: {
+        status: ReportCardStatus.PUBLISHED,
+        publishedAt: new Date(),
+      },
+    });
+
+    const classLabel = classRecord.section
+      ? `${classRecord.name} ${classRecord.section}`
+      : classRecord.name;
+
+    const studentUserIds = Array.from(
+      new Set(reportCards.map((card) => card.studentId).filter(Boolean)),
+    );
+    const parentUserIds = Array.from(
+      new Set(
+        reportCards.flatMap((card) =>
+          card.student.studentProfile?.parents.map((relation) => relation.parent.userId) ?? [],
+        ),
+      ),
+    );
+
+    if (notifyStudents && studentUserIds.length > 0) {
+      await this.notificationService.createBulkNotifications({
+        schoolId,
+        userIds: studentUserIds,
+        title: 'Results Published',
+        message: `Your ${termName} results for ${classLabel} have been published.`,
+        type: NotificationType.RESULT_PUBLISHED,
+        actionUrl: '/student/grades',
+        metadata: { term: termName, className: classLabel, classId },
+      });
+    }
+
+    if (notifyParents && parentUserIds.length > 0) {
+      await this.notificationService.createBulkNotifications({
+        schoolId,
+        userIds: parentUserIds,
+        title: 'Child Results Published',
+        message: `${termName} results for ${classLabel} have been published.`,
+        type: NotificationType.RESULT_PUBLISHED,
+        actionUrl: '/parent/children',
+        metadata: { term: termName, className: classLabel, classId },
+      });
+    }
+
+    return {
+      published: reportCardIds.length,
+      notifiedStudents: notifyStudents ? studentUserIds.length : 0,
+      notifiedParents: notifyParents ? parentUserIds.length : 0,
+    };
   }
 
   /**
@@ -728,7 +1054,6 @@ export class ReportCardService {
     classId: string,
     academicYear: string,
     criteria?: PromotionCriteria,
-    termId?: string,
   ) {
     const classInfo = await this.prisma.class.findUnique({
       where: { id: classId },
@@ -739,15 +1064,6 @@ export class ReportCardService {
 
     if (!classInfo) {
       throw new NotFoundException('Class not found');
-    }
-
-    let termName: string | undefined;
-    if (termId) {
-      const term = await this.prisma.term.findUnique({
-        where: { id: termId },
-        select: { name: true },
-      });
-      termName = term?.name;
     }
 
     const students = await this.prisma.studentClass.findMany({
@@ -804,13 +1120,10 @@ export class ReportCardService {
     for (const sc of sortedStudents) {
       const reportCardWhere: any = {
         studentId: sc.studentId,
+        classId,
         academicYear,
         status: ReportCardStatus.PUBLISHED,
       };
-
-      if (termId) {
-        reportCardWhere.termId = termId;
-      }
 
       const reportCards = await this.prisma.reportCard.findMany({
         where: reportCardWhere,
@@ -882,7 +1195,6 @@ export class ReportCardService {
     return {
       className: classInfo.name,
       academicYear: classInfo.academicYear.name,
-      termName,
       totalStudents: sortedStudents.length,
       candidates,
     };
@@ -891,7 +1203,7 @@ export class ReportCardService {
   /**
    * Get next class options for promotion
    */
-  async getNextClassOptions(classId: string) {
+  async getNextClassOptions(classId: string, toAcademicYear?: string) {
     const currentClass = await this.prisma.class.findUnique({
       where: { id: classId },
       include: {
@@ -905,12 +1217,20 @@ export class ReportCardService {
     }
 
     const schoolId = currentClass.schoolId;
-    const academicYearId = currentClass.academicYearId;
+    const targetAcademicYearName =
+      toAcademicYear || String((parseInt(currentClass.academicYear.name, 10) || 0) + 1);
+    const targetAcademicYear = await this.prisma.academicYear.findFirst({
+      where: {
+        schoolId,
+        name: targetAcademicYearName,
+      },
+      select: { id: true, name: true },
+    });
 
     const nextClasses = await this.prisma.class.findMany({
       where: {
         schoolId,
-        academicYearId,
+        academicYearId: targetAcademicYear?.id || currentClass.academicYearId,
         grade: currentClass.grade ? { gt: currentClass.grade } : undefined,
         ...(currentClass.section ? { section: currentClass.section } : {}),
       },
@@ -949,6 +1269,17 @@ export class ReportCardService {
       status,
     } = params;
 
+    const latestReportCard = await this.prisma.reportCard.findFirst({
+      where: {
+        schoolId,
+        studentId,
+        classId: fromClassId,
+        academicYear: fromAcademicYear,
+        status: ReportCardStatus.PUBLISHED,
+      },
+      orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }],
+    });
+
     await this.ensurePromotionReadiness({
       schoolId,
       fromClassId,
@@ -963,6 +1294,18 @@ export class ReportCardService {
     });
 
     if (status === 'GRADUATED' || !toClassId) {
+      await this.recordPromotionHistory({
+        schoolId,
+        studentId,
+        fromClassId,
+        toClassId: null,
+        fromAcademicYear,
+        toAcademicYear,
+        status: 'GRADUATED',
+        reportCardId: latestReportCard?.id,
+        averageGrade: latestReportCard?.percentage ?? null,
+        attendance: latestReportCard?.attendancePercentage ?? null,
+      });
       return {
         studentId,
         fromClassId,
@@ -1024,6 +1367,19 @@ export class ReportCardService {
         },
       });
     }
+
+    await this.recordPromotionHistory({
+      schoolId,
+      studentId,
+      fromClassId,
+      toClassId,
+      fromAcademicYear,
+      toAcademicYear,
+      status,
+      reportCardId: latestReportCard?.id,
+      averageGrade: latestReportCard?.percentage ?? null,
+      attendance: latestReportCard?.attendancePercentage ?? null,
+    });
 
     return {
       studentId,
@@ -1157,30 +1513,29 @@ export class ReportCardService {
           include: { student: { select: { id: true, name: true } } },
         });
 
+    const candidateResponse = await this.getPromotionCandidates(
+      fromClassId,
+      fromAcademicYear,
+      {
+        minAverageGrade: minAverageGrade || 50,
+        minAttendance: minAttendance || 75,
+        allowFailedSubjects: 2,
+      },
+    );
+    const candidateMap = new Map(
+      candidateResponse.candidates.map((candidate) => [
+        candidate.student.id,
+        candidate,
+      ]),
+    );
+
     for (const sc of students) {
       try {
-        const reportCard = await this.prisma.reportCard.findFirst({
-          where: {
-            studentId: sc.studentId,
-            academicYear: fromAcademicYear,
-            status: ReportCardStatus.PUBLISHED,
-          },
-          orderBy: { createdAt: 'desc' },
-        });
-
-        let shouldPromote = promoteAll || studentIds.includes(sc.studentId);
-
-        if (!shouldPromote && reportCard) {
-          const avgGrade = reportCard.percentage || 0;
-          const attend = reportCard.attendancePercentage || 0;
-
-          if (minAverageGrade && avgGrade < minAverageGrade) {
-            shouldPromote = false;
-          }
-          if (minAttendance && attend < minAttendance) {
-            shouldPromote = false;
-          }
-        }
+        const candidate = candidateMap.get(sc.studentId);
+        const explicitlySelected = studentIds.includes(sc.studentId);
+        const shouldPromote = promoteAll
+          ? candidate?.status === 'PROMOTED'
+          : explicitlySelected && candidate?.status === 'PROMOTED';
 
         if (shouldPromote) {
           await this.promoteStudent({
@@ -1220,32 +1575,50 @@ export class ReportCardService {
     const whereClause: any = { schoolId };
 
     if (filters.academicYear) {
-      const currentYear = filters.academicYear;
-      const nextYear = String(parseInt(currentYear) + 1);
-
-      const fromClasses = await this.prisma.class.findMany({
-        where: { schoolId, academicYear: { name: { contains: currentYear } } },
-        select: { id: true },
-      });
-
-      if (fromClasses.length > 0) {
-        whereClause.studentId = {
-          in: await this.prisma.studentClass
-            .findMany({
-              where: {
-                classId: { in: fromClasses.map((c) => c.id) },
-                academicYear: currentYear,
-              },
-              select: { studentId: true },
-            })
-            .then((r) => r.map((s) => s.studentId)),
-        };
-      }
+      whereClause.fromAcademicYear = filters.academicYear;
+    }
+    if (filters.classId) {
+      whereClause.fromClassId = filters.classId;
+    }
+    if (filters.status) {
+      whereClause.status = filters.status;
     }
 
-    return {
-      message: 'Promotion history tracking not yet implemented',
-      filters: whereClause,
-    };
+    const conditions: Prisma.Sql[] = [Prisma.sql`pr."schoolId" = ${schoolId}`];
+    if (filters.academicYear) {
+      conditions.push(Prisma.sql`pr."fromAcademicYear" = ${filters.academicYear}`);
+    }
+    if (filters.classId) {
+      conditions.push(Prisma.sql`pr."fromClassId" = ${filters.classId}`);
+    }
+    if (filters.status) {
+      conditions.push(Prisma.sql`pr."status" = ${filters.status}`);
+    }
+
+    const whereSql = Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`;
+
+    return this.prisma.$queryRaw(
+      Prisma.sql`
+        SELECT
+          pr.*,
+          json_build_object('id', u.id, 'name', u.name, 'avatarUrl', u."avatarUrl", 'username', u.username) AS student,
+          json_build_object('id', fc.id, 'name', fc.name, 'section', fc.section, 'grade', fc.grade) AS "fromClass",
+          CASE
+            WHEN tc.id IS NULL THEN NULL
+            ELSE json_build_object('id', tc.id, 'name', tc.name, 'section', tc.section, 'grade', tc.grade)
+          END AS "toClass",
+          CASE
+            WHEN rc.id IS NULL THEN NULL
+            ELSE json_build_object('id', rc.id, 'overallGrade', rc."overallGrade", 'percentage', rc.percentage)
+          END AS "reportCard"
+        FROM "PromotionRecord" pr
+        JOIN "User" u ON u.id = pr."studentId"
+        JOIN "Class" fc ON fc.id = pr."fromClassId"
+        LEFT JOIN "Class" tc ON tc.id = pr."toClassId"
+        LEFT JOIN "ReportCard" rc ON rc.id = pr."reportCardId"
+        ${whereSql}
+        ORDER BY pr."promotedAt" DESC
+      `,
+    );
   }
 }

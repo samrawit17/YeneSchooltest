@@ -21,6 +21,7 @@ import { classesAPI } from "@/lib/api";
 import { promotionAPI, PromotionCandidate } from "@/lib/api/reporting";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface NextClass {
   id: string;
@@ -100,7 +101,10 @@ export default function PromotionPage() {
 
   const fetchNextClasses = async () => {
     try {
-      const response = await promotionAPI.getNextClasses(selectedClass);
+      const nextYear = String(parseInt(currentAcademicYear?.name || "2026", 10) + 1);
+      const response = await promotionAPI.getNextClasses(selectedClass, {
+        toAcademicYear: nextYear,
+      });
       setNextClasses(response.data.nextClasses || []);
       if (response.data.nextClasses?.length > 0) {
         setSelectedNextClass(response.data.nextClasses[0].id);
@@ -321,44 +325,66 @@ export default function PromotionPage() {
 
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
               <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <h2 className="font-semibold text-slate-900 dark:text-white">
-                    Promotion Candidates - {promotionData?.className}
-                  </h2>
-                  <span className="text-sm text-slate-500 dark:text-slate-400">
-                    Academic Year: {promotionData?.academicYear}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                    <input
-                      type="checkbox"
-                      checked={promoteAll}
-                      onChange={(e) => {
-                        setPromoteAll(e.target.checked);
-                        if (e.target.checked) {
-                          setSelectedStudents(new Set(promotableStudents.map((s) => s.student.id)));
-                        } else {
-                          setSelectedStudents(new Set());
-                        }
-                      }}
-                      className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                    />
-                    Promote All Eligible
-                  </label>
-                  <button
-                    onClick={fetchPromotionData}
-                    className="p-2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
-                  >
-                    <RefreshCw className="w-5 h-5" />
-                  </button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
+                  <div className="flex items-center gap-4">
+                    <h2 className="font-semibold text-slate-900 dark:text-white">
+                      Promotion Candidates - {promotionData?.className}
+                    </h2>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                      Academic Year: {promotionData?.academicYear}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800/70">
+                      <div className="text-slate-500 dark:text-slate-400">Eligible</div>
+                      <div className="font-semibold text-slate-900 dark:text-white">{stats.promoted}</div>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800/70">
+                      <div className="text-slate-500 dark:text-slate-400">Retained</div>
+                      <div className="font-semibold text-slate-900 dark:text-white">{stats.retained}</div>
+                    </div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800/70">
+                      <div className="text-slate-500 dark:text-slate-400">No Data</div>
+                      <div className="font-semibold text-slate-900 dark:text-white">{stats.noData}</div>
+                    </div>
+                    <button
+                      onClick={fetchPromotionData}
+                      className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {loading ? (
-                <div className="p-12 text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-emerald-500 mx-auto" />
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Loading candidates...</p>
+                <div className="overflow-x-auto">
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Roll No.</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Student</TableHead>
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Average</TableHead>
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Attendance</TableHead>
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Grade</TableHead>
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Status</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Reason</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="px-4 py-3"><Skeleton className="h-5 w-12 rounded mx-auto" /></TableCell>
+                          <TableCell className="px-4 py-3"><div className="flex items-center gap-3"><Skeleton className="h-8 w-8 rounded-full" /><Skeleton className="h-4 w-32" /></div></TableCell>
+                          <TableCell className="px-4 py-3"><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
+                          <TableCell className="px-4 py-3"><Skeleton className="h-4 w-14 mx-auto" /></TableCell>
+                          <TableCell className="px-4 py-3"><Skeleton className="h-6 w-10 rounded-full mx-auto" /></TableCell>
+                          <TableCell className="px-4 py-3"><Skeleton className="h-6 w-16 rounded-full mx-auto" /></TableCell>
+                          <TableCell className="px-4 py-3"><Skeleton className="h-4 w-24" /></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               ) : !promotionData || promotionData.candidates.length === 0 ? (
                 <div className="p-12 text-center">
@@ -490,10 +516,36 @@ export default function PromotionPage() {
               )}
 
               <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setPromoteAll(true);
+                        setSelectedStudents(new Set(promotableStudents.map((s) => s.student.id)));
+                      }}
+                      disabled={promotableStudents.length === 0}
+                      className="inline-flex items-center gap-2 rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <GraduationCap className="h-4 w-4" />
+                      Promote All Eligible
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPromoteAll(false);
+                        handleSelectAll();
+                      }}
+                      disabled={promotableStudents.length === 0}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      {selectedStudents.size === promotableStudents.length && promotableStudents.length > 0
+                        ? "Clear Selection"
+                        : "Select Eligible"}
+                    </button>
+                  </div>
                   <div className="text-sm text-slate-500 dark:text-slate-400">
                     {promoteAll
-                      ? `All ${promotableStudents.length} eligible students will be promoted`
+                      ? `Ready to promote all ${promotableStudents.length} eligible students`
                       : `${selectedStudents.size} of ${promotableStudents.length} eligible students selected`}
                   </div>
                   <div className="flex items-center gap-3">

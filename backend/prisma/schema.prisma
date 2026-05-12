@@ -58,6 +58,7 @@ model School {
   pendingCredentials         PendingCredential[]
   receipts                   Receipt[]
   reportCards                ReportCard[]
+  promotionRecords           PromotionRecord[]
   schoolEvents               SchoolEvent[]
   studentClasses             StudentClass[]
   studentFees                StudentFee[]
@@ -226,6 +227,8 @@ model User {
   studentReceipts             Receipt[]                  @relation("StudentReceipts")
   generatedReportCards        ReportCard[]               @relation("GeneratedReportCards")
   reportCards                 ReportCard[]
+  promotedRecords             PromotionRecord[]          @relation("PromotedStudents")
+  promotionHistory            PromotionRecord[]
   createdSchoolEvents         SchoolEvent[]
   homeroomSections            Section[]                  @relation("SectionHomeroomTeacher")
   studentClasses              StudentClass[]
@@ -534,6 +537,8 @@ model Class {
   communications     Communication[]
   exams              Exam[]
   reportCards        ReportCard[]
+  promotionSourceRecords PromotionRecord[]              @relation("PromotionFromClass")
+  promotionTargetRecords PromotionRecord[]              @relation("PromotionToClass")
   sections           Section[]
   studentClasses     StudentClass[]
   subjectGrades      SubjectGrade[]
@@ -719,6 +724,7 @@ model ReportCard {
   section              Section          @relation(map: "sectionId_fk_42", fields: [sectionId], references: [id])
   student              User             @relation(map: "studentId_fk_43", fields: [studentId], references: [id], onDelete: Cascade)
   StudentProfile       StudentProfile?  @relation(map: "studentProfileId_fk_44", fields: [studentProfileId], references: [id])
+  promotionRecords     PromotionRecord[]
 
   @@unique([studentId, academicYear, term])
   @@index([schoolId, classId, academicYear])
@@ -728,6 +734,36 @@ model ReportCard {
   @@index([generatedById], map: "ReportCard_generatedById_fkey")
   @@index([sectionId], map: "ReportCard_sectionId_fkey")
   @@index([studentProfileId], map: "ReportCard_studentProfileId_fkey")
+}
+
+model PromotionRecord {
+  id                String   @id @default(cuid())
+  schoolId          String
+  studentId         String
+  fromClassId       String
+  toClassId         String?
+  fromAcademicYear  String
+  toAcademicYear    String
+  status            String
+  reportCardId      String?
+  averageGrade      Float?
+  attendance        Float?
+  promotedById      String?
+  promotedAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student           User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  fromClass         Class    @relation("PromotionFromClass", fields: [fromClassId], references: [id], onDelete: Cascade)
+  toClass           Class?   @relation("PromotionToClass", fields: [toClassId], references: [id], onDelete: SetNull)
+  reportCard        ReportCard? @relation(fields: [reportCardId], references: [id], onDelete: SetNull)
+  promotedBy        User?    @relation("PromotedStudents", fields: [promotedById], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, fromAcademicYear])
+  @@index([studentId])
+  @@index([fromClassId])
+  @@index([toClassId])
+  @@index([promotedAt])
 }
 
 model Grade {

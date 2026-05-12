@@ -100,7 +100,6 @@ interface SeatingPlan {
   examCapacity: number;
   shuffle: boolean;
   useScoreThresholdFilter?: boolean;
-  scoreThreshold?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -320,6 +319,19 @@ function mapAssessmentToSeatingType(
   return assessmentBaseType;
 }
 
+function isBigSeatingExamType(value: string) {
+  return (
+    value === "MID_TERM" ||
+    value === "FINAL" ||
+    value.endsWith("_MID") ||
+    value.endsWith("_FINAL")
+  );
+}
+
+function isFinalSeatingExamType(value: string) {
+  return value === "FINAL" || value.endsWith("_FINAL");
+}
+
 /**
  * Get a human-readable label for an exam type value
  */
@@ -371,11 +383,13 @@ export default function ExamSeatingPage() {
   const [toGrade, setToGrade] = useState<number>(12);
   const [examCapacity, setExamCapacity] = useState<number>(30);
   const [shuffle, setShuffle] = useState<boolean>(true);
+  const [useScoreThresholdFilter, setUseScoreThresholdFilter] = useState<boolean>(false);
   const [savedSettings, setSavedSettings] = useState<{
     fromGrade: number;
     toGrade: number;
     examCapacity: number;
     shuffle: boolean;
+    useScoreThresholdFilter: boolean;
   } | null>(null);
 
   /* -------------------- UI state -------------------- */
@@ -392,9 +406,33 @@ export default function ExamSeatingPage() {
       fromGrade !== savedSettings.fromGrade ||
       toGrade !== savedSettings.toGrade ||
       examCapacity !== savedSettings.examCapacity ||
-      shuffle !== savedSettings.shuffle
+      shuffle !== savedSettings.shuffle ||
+      useScoreThresholdFilter !== savedSettings.useScoreThresholdFilter
     );
-  }, [fromGrade, toGrade, examCapacity, shuffle, savedSettings, seatingPlan]);
+  }, [
+    fromGrade,
+    toGrade,
+    examCapacity,
+    shuffle,
+    useScoreThresholdFilter,
+    savedSettings,
+    seatingPlan,
+  ]);
+
+  const isFinalExamType = useMemo(
+    () => isFinalSeatingExamType(selectedExamType),
+    [selectedExamType]
+  );
+
+  const canUseResultFilter = isFinalExamType;
+
+  const resultFilterTitle = isFinalExamType
+    ? "Group by Mid Exam Result"
+    : "Group by Previous Final Result";
+
+  const resultFilterDescription = isFinalExamType
+    ? "Seats higher-performing students together first, then the next result group, based on mid exam averages."
+    : "Seats higher-performing students together first, then the next result group, based on previous final exam averages.";
 
   const selectedTypeInfo = useMemo(
     () => examTypes.find((et) => et.type === selectedExamType),
@@ -450,11 +488,13 @@ export default function ExamSeatingPage() {
           setToGrade(plan.toGrade);
           setExamCapacity(plan.examCapacity || 30);
           setShuffle(plan.shuffle);
+          setUseScoreThresholdFilter(Boolean(plan.useScoreThresholdFilter));
           setSavedSettings({
             fromGrade: plan.fromGrade,
             toGrade: plan.toGrade,
             examCapacity: plan.examCapacity || 30,
             shuffle: plan.shuffle,
+            useScoreThresholdFilter: Boolean(plan.useScoreThresholdFilter),
           });
 
           // Fetch overview in parallel
@@ -502,6 +542,7 @@ export default function ExamSeatingPage() {
     setToGrade(range.max);
     setExamCapacity(30);
     setShuffle(true);
+    setUseScoreThresholdFilter(false);
   }, [schoolSettings]);
 
   /* -------------------- Data fetching -------------------- */
@@ -628,6 +669,9 @@ export default function ExamSeatingPage() {
       // Show all exam types that have any exams or plans (not just future exams)
       const types: ExamTypeInfo[] = generatedTypes
         .filter((et) => {
+          if (!isBigSeatingExamType(et.value)) {
+            return false;
+          }
           const hasExams = (groupedByType[et.value] || []).length > 0;
           const hasPlan = plans.some((p) => p.examType === et.value);
           return hasExams || hasPlan;
@@ -639,7 +683,7 @@ export default function ExamSeatingPage() {
         }));
 
       // Also add legacy seating types that still have matching assessment data or plans.
-      const legacyTypes = ["MID_TERM", "FINAL", "QUIZ"];
+      const legacyTypes = ["MID_TERM", "FINAL"];
       for (const legacyType of legacyTypes) {
         const hasExams = (groupedByType[legacyType] || []).length > 0;
         const hasPlan = plans.some((p) => p.examType === legacyType);
@@ -727,6 +771,7 @@ export default function ExamSeatingPage() {
           toGrade,
           examCapacity: examCapacity || 30,
           shuffle,
+          useScoreThresholdFilter: canUseResultFilter ? useScoreThresholdFilter : false,
         }
       );
 
@@ -737,6 +782,7 @@ export default function ExamSeatingPage() {
         toGrade: plan.toGrade,
         examCapacity: plan.examCapacity || 30,
         shuffle: plan.shuffle,
+        useScoreThresholdFilter: Boolean(plan.useScoreThresholdFilter),
       });
 
       const genRes = await examSeatingAPI.generateSeating(plan.id);
@@ -780,6 +826,7 @@ export default function ExamSeatingPage() {
             toGrade,
             examCapacity: examCapacity || 30,
             shuffle,
+            useScoreThresholdFilter: canUseResultFilter ? useScoreThresholdFilter : false,
           }
         );
 
@@ -790,6 +837,7 @@ export default function ExamSeatingPage() {
           toGrade: plan.toGrade,
           examCapacity: plan.examCapacity || 30,
           shuffle: plan.shuffle,
+          useScoreThresholdFilter: Boolean(plan.useScoreThresholdFilter),
         });
 
         const genRes = await examSeatingAPI.generateSeating(plan.id);
@@ -909,7 +957,7 @@ export default function ExamSeatingPage() {
   /* -------------------- Render guards -------------------- */
   if (isLoading || loadingInitial) {
     return (
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="p-6 w-full space-y-6">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-4 w-1/2" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -932,7 +980,7 @@ export default function ExamSeatingPage() {
   /* -------------------- JSX -------------------- */
   return (
     <FeatureGuard feature="EXAM_SEATING" showUpgradePrompt={false} fallback={<AccessDenied />}>
-      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="p-6 space-y-6 w-full">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -941,27 +989,7 @@ export default function ExamSeatingPage() {
               Configure and generate seating for students across multiple grades
             </p>
           </div>
-          {seatingOverview && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className="text-primary border-primary bg-primary/5 dark:text-blue-400 dark:border-blue-400 dark:bg-blue-950/30">
-                <UserCheck className="w-3 h-3 mr-1" />
-                {seatingOverview.totalStudents} Students
-              </Badge>
-              <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50 dark:text-green-400 dark:border-green-400 dark:bg-green-950/30">
-                <LayoutGrid className="w-3 h-3 mr-1" />
-                {seatingOverview.totalSections} Sections
-              </Badge>
-              {isDirty && (
-                <Badge
-                  variant="outline"
-                  className="text-amber-600 border-amber-600 bg-amber-50 dark:text-amber-400 dark:border-amber-400 dark:bg-amber-950/30"
-                >
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  Unsaved Changes
-                </Badge>
-              )}
-            </div>
-          )}
+
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1139,6 +1167,24 @@ export default function ExamSeatingPage() {
                     disabled={generating}
                   />
                 </div>
+
+                {canUseResultFilter && (
+                  <div className="space-y-3 rounded-lg border bg-slate-50 p-3 dark:bg-slate-900">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <Label className="font-medium">{resultFilterTitle}</Label>
+                        <p className="text-xs text-gray-500">
+                          {resultFilterDescription}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={useScoreThresholdFilter}
+                        onCheckedChange={setUseScoreThresholdFilter}
+                        disabled={generating}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Dirty warning */}
                 {seatingPlan && isDirty && (

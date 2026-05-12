@@ -1723,30 +1723,46 @@ export class NotificationService {
     schoolId: string,
     type: string,
     triggerType: string,
+    targetTeacherIds?: string[],
   ) {
-    const teachers = await this.prisma.user.findMany({
-      where: {
-        schoolId,
-        role: 'TEACHER',
-      },
-      select: { id: true },
-    });
+    const teacherIds = targetTeacherIds !== undefined
+      ? [...new Set(targetTeacherIds)]
+      : (
+          await this.prisma.user.findMany({
+            where: {
+              schoolId,
+              role: 'TEACHER',
+            },
+            select: { id: true },
+          })
+        ).map((teacher) => teacher.id);
 
-    if (teachers.length === 0) return;
+    if (teacherIds.length === 0) return;
 
     const sirenLabel = this.formatSirenLabel(type);
-    const source =
-      triggerType === 'DYNAMIC'
-        ? 'automatic timetable bell'
-        : triggerType === 'STATIC'
-          ? 'scheduled bell'
-          : 'manual bell';
+    const isDynamic = triggerType === 'DYNAMIC';
+    const isPeriodStart = type === 'PERIOD_START';
+    const isPeriodEnd = type === 'PERIOD_END';
+    const title = isDynamic
+      ? isPeriodStart
+        ? 'Your Class Is Starting'
+        : isPeriodEnd
+          ? 'Your Class Has Ended'
+          : 'Class Bell'
+      : 'School Bell';
+    const message = isDynamic
+      ? isPeriodStart
+        ? 'The bell has rung for your current class. Please proceed to your classroom.'
+        : isPeriodEnd
+          ? 'The bell has rung to end your current class.'
+          : `${sirenLabel} bell has rung for your timetable.`
+      : 'The school bell has been triggered.';
 
     return this.createBulkNotifications({
       schoolId,
-      userIds: teachers.map((teacher) => teacher.id),
-      title: 'School Siren Alert',
-      message: `${sirenLabel} triggered via ${source}.`,
+      userIds: teacherIds,
+      title,
+      message,
       type: NotificationType.SIREN_ALERT,
       actionUrl: '/teacher',
       metadata: {

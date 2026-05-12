@@ -304,10 +304,11 @@ const AdminTimetablePage = () => {
   useEffect(() => {
     if (selectedClassId && classes.length > 0 && !fetchingData && !selectedSection) {
       const classInfo = classes.find(c => c.id === selectedClassId);
-      if (classInfo?.sections?.length > 0) {
-        const firstSectionName = classInfo.sections[0].name;
+      const sections = classInfo?.sections;
+      if (sections && sections.length > 0) {
+        const firstSectionName = sections[0].name;
         setSelectedSection(firstSectionName);
-        setSelectedSectionId(classInfo.sections[0].id);
+        setSelectedSectionId(sections[0].id);
       }
     }
   }, [selectedClassId, classes, fetchingData, selectedSection]);
@@ -343,7 +344,6 @@ const AdminTimetablePage = () => {
       setLoading(true);
 
       const classSubjectsRes = await adminTimetableAPI.getClassSubjects({
-        schoolId: user?.schoolId,
         academicYearId: selectedYear,
       });
 
@@ -675,7 +675,7 @@ const AdminTimetablePage = () => {
                     </CardTitle>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4 ml-auto">
+                  <div className="flex flex-wrap items-center gap-4">
                     {selectedClassId && selectedSectionId && (
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-32 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -691,7 +691,6 @@ const AdminTimetablePage = () => {
                     <Filters
                       config={{ academicYear: true, grade: true, section: true }}
                       sectionMode="name"
-                      className="!w-auto"
                       selectedYear={selectedYear}
                       onYearChange={setSelectedYear}
                       selectedGrade={selectedGrade}
@@ -878,9 +877,6 @@ const AdminTimetablePage = () => {
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                       No Class Selected
                     </h3>
-                    <p className="text-gray-500 dark:text-gray-400 text-center max-w-sm mb-6">
-                      Please select a grade and section from the sidebar to view and edit the timetable
-                    </p>
                     <div className="flex items-center gap-2 text-sm text-[var(--brand-color,#e35336)]">
                       <ArrowRight className="w-4 h-4 animate-bounce" />
                       <span>Start by selecting a class</span>
@@ -908,7 +904,6 @@ const AdminTimetablePage = () => {
               )}
             </Card>
           </div>
-
         </div>
       </div>
     </TooltipProvider>

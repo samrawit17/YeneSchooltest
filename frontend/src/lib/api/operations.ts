@@ -12,18 +12,22 @@ export const calendarAPI = {
 
 export const examSeatingAPI = {
   getSeatingPlans: () => api.get("/exams/seating/plans"),
-  getSeatingPlanByType: (examType: string) => api.get(`/exams/seating/type/${examType}/seating-plan`),
+  getSeatingPlanByType: (examType: string) =>
+    api.get(`/exams/seating/type/${encodeURIComponent(examType)}/seating-plan`),
   getSeatingPlanByExam: (examId: string) => api.get(`/exams/seating/${examId}/seating-plan`),
   createSeatingPlan: (
-    examId: string,
+    examType: string,
     data: {
       mode: "SINGLE_GRADE" | "GRADE_RANGE";
       fromGrade: number;
       toGrade?: number;
+      examCapacity?: number;
       shuffle: boolean;
-      sectionIds: string[];
+      sectionIds?: string[];
+      useScoreThresholdFilter?: boolean;
+      scoreThreshold?: number;
     }
-  ) => api.post(`/exams/seating/${examId}/seating-plan`, data),
+  ) => api.post(`/exams/seating/type/${encodeURIComponent(examType)}/seating-plan`, data),
   generateSeating: (planId: string) => api.post(`/exams/seating/plan/${planId}/generate`),
   getSeatingOverview: (planId: string) => api.get(`/exams/seating/plan/${planId}`),
   clearGeneratedStudents: (planId: string) => api.delete(`/exams/seating/plan/${planId}/students`),
