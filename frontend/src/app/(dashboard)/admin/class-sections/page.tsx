@@ -21,8 +21,6 @@ import {
   Layers,
   GraduationCap,
   Plus,
-  Search,
-  RefreshCw,
   Loader2,
   MoreHorizontal,
   ChevronRight,
@@ -262,6 +260,21 @@ export default function AcademicStructurePage() {
     ? classes.filter((cls) => cls.grade !== null && gradeLevels.includes(cls.grade))
     : classes;
 
+  const dedupedGradeFilteredClasses = gradeFilteredClasses.filter((cls) => {
+    const isEmptyDefaultClass =
+      cls.section === "" && (!cls.sections || cls.sections.length === 0);
+    if (!isEmptyDefaultClass) return true;
+
+    return !gradeFilteredClasses.some(
+      (candidate) =>
+        candidate.id !== cls.id &&
+        candidate.academicYearId === cls.academicYearId &&
+        candidate.name === cls.name &&
+        (candidate.section !== "" ||
+          (candidate.sections && candidate.sections.length > 0)),
+    );
+  });
+
   // Fetch sections
   const {
     data: sections = [],
@@ -331,6 +344,21 @@ export default function AcademicStructurePage() {
     ? searchedClasses.filter((cls) => cls.grade !== null && gradeLevels.includes(cls.grade))
     : searchedClasses;
 
+  const dedupedGradeFilteredSearchedClasses = gradeFilteredSearchedClasses.filter((cls) => {
+    const isEmptyDefaultClass =
+      cls.section === "" && (!cls.sections || cls.sections.length === 0);
+    if (!isEmptyDefaultClass) return true;
+
+    return !gradeFilteredSearchedClasses.some(
+      (candidate) =>
+        candidate.id !== cls.id &&
+        candidate.academicYearId === cls.academicYearId &&
+        candidate.name === cls.name &&
+        (candidate.section !== "" ||
+          (candidate.sections && candidate.sections.length > 0)),
+    );
+  });
+
   // Server-side search for sections
   const {
     data: searchedSections = [],
@@ -380,8 +408,8 @@ export default function AcademicStructurePage() {
 
   // Filtered data - use server-side search if available, otherwise use client-side filtering
   const filteredClasses = debouncedSearch.length >= 2 
-    ? gradeFilteredSearchedClasses 
-    : gradeFilteredClasses.filter((c) => {
+    ? dedupedGradeFilteredSearchedClasses 
+    : dedupedGradeFilteredClasses.filter((c) => {
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
         return (
@@ -427,14 +455,13 @@ export default function AcademicStructurePage() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Header */}
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-6 py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-4">
-
-              <div>
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        {/* Header */}
+        <div className="border-b border-slate-200 dark:border-slate-800">
+          <div className="w-full px-6 py-6">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0">
                 <h1 className="text-2xl font-bold text-black">
                   All Classes and Sections
                 </h1>
@@ -442,61 +469,38 @@ export default function AcademicStructurePage() {
                   Manage classes, sections, and subjects in one place
                 </p>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh
-              </Button>
+              <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[720px] xl:items-end">
+                <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center xl:w-auto xl:justify-end">
+                  <TabsList className="h-auto w-full justify-start rounded-xl border bg-white p-1 shadow-sm dark:bg-slate-900 sm:w-auto">
+                    <TabsTrigger value="classes" className="rounded-lg gap-1.5 text-slate-600 dark:text-slate-300 data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.1)] data-[state=active]:text-[var(--brand-color)] data-[state=active]:shadow-sm dark:data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                      <School className="w-4 h-4" /> Classes ({gradeFilteredClasses.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="sections" className="rounded-lg gap-1.5 text-slate-600 dark:text-slate-300 data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.1)] data-[state=active]:text-[var(--brand-color)] data-[state=active]:shadow-sm dark:data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                      <Layers className="w-4 h-4" /> Sections ({totalSections})
+                    </TabsTrigger>
+                    <TabsTrigger value="subjects" className="rounded-lg gap-1.5 text-slate-600 dark:text-slate-300 data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.1)] data-[state=active]:text-[var(--brand-color)] data-[state=active]:shadow-sm dark:data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                      <BookOpen className="w-4 h-4" /> Subjects ({subjects.length})
+                    </TabsTrigger>
+                  </TabsList>
+                  <Select value={academicYearId} onValueChange={setAcademicYearId}>
+                    <SelectTrigger className="h-8 w-full sm:w-44 dark:bg-slate-900 dark:border-slate-700">
+                      <SelectValue placeholder="Academic Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {academicYears?.map((y: any) => (
+                        <SelectItem key={y.id} value={y.id}>
+                          {y.name} {y.isActive ? "✓" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search classes, sections, or subjects..."
-              className="pl-9 dark:bg-slate-900 dark:border-slate-700"
-            />
-          </div>
-          <Select value={academicYearId} onValueChange={setAcademicYearId}>
-            <SelectTrigger className="w-full md:w-52 dark:bg-slate-900 dark:border-slate-700">
-              <SelectValue placeholder="Academic Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {academicYears?.map((y: any) => (
-                <SelectItem key={y.id} value={y.id}>
-                  {y.name} {y.isActive ? "✓" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-auto p-1 bg-white dark:bg-slate-900 border rounded-xl shadow-sm">
-            <TabsTrigger value="classes" className="rounded-lg gap-1.5 data-[state=active]:shadow-sm">
-              <School className="w-4 h-4" /> Classes ({gradeFilteredClasses.length})
-            </TabsTrigger>
-            <TabsTrigger value="sections" className="rounded-lg gap-1.5 data-[state=active]:shadow-sm">
-              <Layers className="w-4 h-4" /> Sections ({totalSections})
-            </TabsTrigger>
-            <TabsTrigger value="subjects" className="rounded-lg gap-1.5 data-[state=active]:shadow-sm">
-              <BookOpen className="w-4 h-4" /> Subjects ({subjects.length})
-            </TabsTrigger>
-          </TabsList>
+        <div className="px-6 py-6 space-y-6">
 
           {/* ========== CLASSES TAB ========== */}
           <TabsContent value="classes">
@@ -760,8 +764,8 @@ export default function AcademicStructurePage() {
               )}
             </div>
           </TabsContent>
-        </Tabs>
+        </div>
       </div>
-    </div>
+    </Tabs>
   );
 }

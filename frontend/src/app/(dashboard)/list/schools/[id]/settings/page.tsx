@@ -216,7 +216,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     description: 'Maximum number of students per section',
     type: 'number',
     category: 'classes',
-    systemDefault: 40,
+    systemDefault: 20,
     validation: {
       min: 1,
       max: 200,
@@ -362,8 +362,11 @@ export default function SchoolSettingsPage() {
   const { user, updateUser } = useAuth();
   const { setItems } = useBreadcrumb();
   const [settings, setSettings] = useState<Record<string, any>>({});
+  const [draftSettings, setDraftSettings] = useState<Record<string, any>>({});
+  const [numberDrafts, setNumberDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
   const [activeTab, setActiveTab] = useState('academic');
   const [error, setError] = useState<string | null>(null);
 
@@ -423,7 +426,7 @@ export default function SchoolSettingsPage() {
   }, [user?.role, schoolPlan]);
 
   // Get current calendar type from settings
-  const calendarType = settings['calendar_type'] || 'ETHIOPIAN';
+  const calendarType = draftSettings['calendar_type'] || 'ETHIOPIAN';
 
   // Filter academic years based on calendar type
   const filteredAcademicYears = academicYears.filter(
@@ -464,6 +467,20 @@ export default function SchoolSettingsPage() {
       setLoading(true);
       const response = await schoolSettingsAPI.getAll(schoolId);
       setSettings(response.data);
+      setDraftSettings(response.data);
+      setNumberDrafts((prev) => {
+        const next = { ...prev };
+        for (const setting of SETTINGS_CONFIG) {
+          if (setting.type !== 'number') continue;
+          const rawValue = response.data[setting.key];
+          const resolvedValue =
+            rawValue !== undefined && rawValue !== null && rawValue !== ''
+              ? String(rawValue)
+              : String(setting.systemDefault ?? '');
+          next[setting.key] = resolvedValue;
+        }
+        return next;
+      });
     } catch (err: any) {
       setError('Failed to load settings');
       console.error(err);
@@ -519,10 +536,10 @@ export default function SchoolSettingsPage() {
   }, [schoolInfo?.name, schoolId, setItems]);
 
   useEffect(() => {
-    if (settings['calendar_type']) {
+    if (calendarType) {
       fetchAcademicYears();
     }
-  }, [settings['calendar_type'], fetchAcademicYears]);
+  }, [calendarType, fetchAcademicYears]);
 
   const handleLogoSave = async () => {
     try {
@@ -636,6 +653,38 @@ export default function SchoolSettingsPage() {
     }
   };
 
+  const updateDraftSetting = (key: string, value: any) => {
+    setDraftSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const getEffectiveSettingValue = (
+    source: Record<string, any>,
+    key: string,
+    setting: SettingItem,
+  ) => {
+    const value = source[key];
+    if (value !== undefined && value !== null && value !== '') {
+      return value;
+    }
+    if (setting.type === 'boolean') {
+      return setting.systemDefault ?? true;
+    }
+    if (setting.type === 'number') {
+      return setting.systemDefault ?? '';
+    }
+    return '';
+  };
+
+  const areValuesEqual = (left: any, right: any, setting: SettingItem) => {
+    if (setting.type === 'number') {
+      return Number(left) === Number(right);
+    }
+    if (setting.type === 'boolean') {
+      return Boolean(left) === Boolean(right);
+    }
+    return String(left ?? '') === String(right ?? '');
+  };
+
   const handleResetSetting = async (key: string, setting: SettingItem) => {
     try {
       setSaving(key);
@@ -646,6 +695,17 @@ export default function SchoolSettingsPage() {
         delete next[key];
         return next;
       });
+      setDraftSettings((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      if (setting.type === 'number') {
+        setNumberDrafts((prev) => ({
+          ...prev,
+          [key]: String(setting.systemDefault ?? ''),
+        }));
+      }
       queryClient.removeQueries({ queryKey: queryKeys.school.setting(key, schoolId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
 
@@ -668,23 +728,111 @@ export default function SchoolSettingsPage() {
   };
 
   const getSettingValue = (key: string, setting: SettingItem) => {
-    const value = settings[key];
-    // Check for null, undefined, or empty string
-    if (value !== undefined && value !== null && value !== '') {
-      return value;
+    return getEffectiveSettingValue(draftSettings, key, setting);
+  };
+
+  const commitNumberSetting = async (setting: SettingItem) => {
+    const draft = numberDrafts[setting.key]?.trim();
+    const fallbackValue = String(setting.systemDefault ?? '');
+    const nextDraft = draft === '' ? fallbackValue : draft;
+    const nextValue = Number(nextDraft);
+
+    if (Number.isNaN(nextValue)) {
+      toast.error('Please enter a valid number');
+      setNumberDrafts((prev) => ({ ...prev, [setting.key]: fallbackValue }));
+      return;
     }
-    // For booleans, default to systemDefault so switches appear ON by default
-    if (setting.type === 'boolean') {
-      return setting.systemDefault ?? true;
+
+    if (setting.validation?.min !== undefined && nextValue < setting.validation.min) {
+      toast.error(`Value must be at least ${setting.validation.min}`);
+      setNumberDrafts((prev) => ({
+        ...prev,
+        [setting.key]: String(getSettingValue(setting.key, setting)),
+      }));
+      return;
     }
-    // For academic settings, don't return default - show "Select an option..." until admin chooses
-    // Only use default after user has explicitly saved a value
-    return '';
+
+    if (setting.validation?.max !== undefined && nextValue > setting.validation.max) {
+      toast.error(`Value must be at most ${setting.validation.max}`);
+      setNumberDrafts((prev) => ({
+        ...prev,
+        [setting.key]: String(getSettingValue(setting.key, setting)),
+      }));
+      return;
+    }
+
+    const currentValue = Number(getEffectiveSettingValue(draftSettings, setting.key, setting));
+    if (currentValue === nextValue && String(currentValue) === nextDraft) {
+      return;
+    }
+
+    setNumberDrafts((prev) => ({ ...prev, [setting.key]: String(nextValue) }));
+    updateDraftSetting(setting.key, nextValue);
+  };
+
+  const hasSettingChanged = (setting: SettingItem) => {
+    const currentValue = getEffectiveSettingValue(settings, setting.key, setting);
+    const draftValue =
+      setting.type === 'number'
+        ? numberDrafts[setting.key] ?? String(getEffectiveSettingValue(draftSettings, setting.key, setting))
+        : getEffectiveSettingValue(draftSettings, setting.key, setting);
+
+    return !areValuesEqual(currentValue, draftValue, setting);
+  };
+
+  const hasUnsavedChanges = SETTINGS_CONFIG.some((setting) => hasSettingChanged(setting));
+
+  const handleSaveAllChanges = async () => {
+    const changedSettings = SETTINGS_CONFIG.filter((setting) => hasSettingChanged(setting));
+    if (changedSettings.length === 0) return;
+
+    try {
+      setSavingAll(true);
+      setError(null);
+
+      for (const setting of changedSettings) {
+        let nextValue: any =
+          setting.type === 'number'
+            ? Number(numberDrafts[setting.key] ?? getEffectiveSettingValue(draftSettings, setting.key, setting))
+            : getEffectiveSettingValue(draftSettings, setting.key, setting);
+
+        if (setting.type === 'select' && nextValue === '__select__') {
+          nextValue = '';
+        }
+
+        const rawCurrentValue = settings[setting.key];
+        const shouldResetToDefault =
+          rawCurrentValue !== undefined &&
+          rawCurrentValue !== null &&
+          rawCurrentValue !== '' &&
+          areValuesEqual(nextValue, setting.systemDefault ?? '', setting);
+
+        if (shouldResetToDefault) {
+          await schoolSettingsAPI.delete(schoolId, setting.key);
+          setSettings((prev) => {
+            const next = { ...prev };
+            delete next[setting.key];
+            return next;
+          });
+          continue;
+        }
+
+        await handleSettingChange(setting.key, nextValue, setting);
+      }
+
+      toast.success('School settings saved successfully');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to save settings';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setSavingAll(false);
+    }
   };
 
   const renderSettingInput = (setting: SettingItem) => {
     const value = getSettingValue(setting.key, setting);
-    const isSaving = saving === setting.key;
+    const isSaving = saving === setting.key || savingAll;
     const hasCustomValue =
       settings[setting.key] !== undefined &&
       settings[setting.key] !== null &&
@@ -706,10 +854,10 @@ export default function SchoolSettingsPage() {
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
           <Switch
             checked={value === true || value === 'true'}
-            onCheckedChange={(checked) => handleSettingChange(setting.key, checked, setting)}
+            onCheckedChange={(checked) => updateDraftSetting(setting.key, checked)}
             disabled={isSaving}
           />
-          {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
     }
@@ -723,7 +871,7 @@ export default function SchoolSettingsPage() {
         <div className="flex w-full items-center gap-2 sm:w-auto">
           <Select
             value={String(value || '')}
-            onValueChange={(val) => handleSettingChange(setting.key, val, setting)}
+            onValueChange={(val) => updateDraftSetting(setting.key, val === '__select__' ? '' : val)}
             disabled={isSaving}
           >
             <SelectTrigger className="w-full bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white sm:w-48">
@@ -738,7 +886,7 @@ export default function SchoolSettingsPage() {
               ))}
             </SelectContent>
           </Select>
-          {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
     }
@@ -748,14 +896,26 @@ export default function SchoolSettingsPage() {
         <div className="flex w-full items-center gap-2 sm:w-auto">
           <Input
             type="number"
-            value={value}
+            value={numberDrafts[setting.key] ?? String(value)}
             min={setting.validation?.min}
             max={setting.validation?.max}
-            onChange={(e) => handleSettingChange(setting.key, Number(e.target.value), setting)}
+            onChange={(e) =>
+              setNumberDrafts((prev) => ({
+                ...prev,
+                [setting.key]: e.target.value,
+              }))
+            }
+            onBlur={() => void commitNumberSetting(setting)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void commitNumberSetting(setting);
+              }
+            }}
             disabled={isSaving}
             className="w-full sm:w-24"
           />
-          {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
     }
@@ -766,11 +926,11 @@ export default function SchoolSettingsPage() {
           <Input
             type="time"
             value={value || setting.systemDefault || '08:00'}
-            onChange={(e) => handleSettingChange(setting.key, e.target.value, setting)}
+            onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
             disabled={isSaving}
             className="w-full sm:w-32"
           />
-          {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
     }
@@ -782,7 +942,7 @@ export default function SchoolSettingsPage() {
             <input
               type="color"
               value={value || setting.systemDefault || '#e35336'}
-              onChange={(e) => handleSettingChange(setting.key, e.target.value, setting)}
+              onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
               disabled={isSaving}
               className="w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer disabled:opacity-50"
             />
@@ -792,9 +952,7 @@ export default function SchoolSettingsPage() {
             value={value || setting.systemDefault || '#e35336'}
             onChange={(e) => {
               const val = e.target.value;
-              if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-                handleSettingChange(setting.key, val, setting);
-              }
+              updateDraftSetting(setting.key, val);
             }}
             disabled={isSaving}
             className="w-24 font-mono text-sm sm:w-28"
@@ -803,14 +961,16 @@ export default function SchoolSettingsPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => handleResetSetting(setting.key, setting)}
+              onClick={() => {
+                updateDraftSetting(setting.key, setting.systemDefault ?? '');
+              }}
               disabled={isSaving}
               className="text-xs"
             >
               Use Default
             </Button>
           )}
-          {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
     }
@@ -820,7 +980,7 @@ export default function SchoolSettingsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-3 sm:max-w-6xl sm:p-4 md:p-6">
+      <div className="mx-auto w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-3 sm:p-4 md:p-6">
         <Skeleton className="h-24 w-full rounded-xl" />
         <div className="flex gap-2">
           <Skeleton className="h-9 w-24 rounded-md" />
@@ -838,7 +998,7 @@ export default function SchoolSettingsPage() {
   }
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden p-3 sm:max-w-6xl sm:p-4 md:p-6">
+    <div className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden p-3 sm:p-4 md:p-6">
       {/* School Header */}
       {schoolInfo && (
         <Card className="mb-6 max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
@@ -994,19 +1154,30 @@ export default function SchoolSettingsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 max-w-full">
         <div className="mb-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <h2 className="min-w-0 text-lg font-semibold text-slate-900 dark:text-white">School Settings</h2>
-          <div className="-mx-3 max-w-[100vw] overflow-x-auto overflow-y-hidden px-3 pb-1 sm:-mx-4 sm:px-4 md:mx-0 md:max-w-full md:px-0 lg:w-auto">
-            <TabsList className="flex h-auto w-max min-w-0 flex-nowrap justify-start gap-1">
-              {visibleCategories.slice(0, 6).map((category) => {
-                const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
-                const Icon = config?.icon || SettingsIcon;
-                return (
-                  <TabsTrigger key={category} value={category} className="shrink-0 gap-2 px-3 text-xs sm:text-sm">
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{config?.label || category}</span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
+          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+            <Button
+              type="button"
+              onClick={handleSaveAllChanges}
+              disabled={!hasUnsavedChanges || savingAll}
+              className="w-full sm:w-auto"
+            >
+              {savingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save Changes
+            </Button>
+            <div className="-mx-3 max-w-[100vw] overflow-x-auto overflow-y-hidden px-3 pb-1 sm:-mx-4 sm:px-4 md:mx-0 md:max-w-full md:px-0 lg:w-auto">
+              <TabsList className="flex h-auto w-max min-w-0 flex-nowrap justify-start gap-1">
+                {visibleCategories.slice(0, 6).map((category) => {
+                  const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
+                  const Icon = config?.icon || SettingsIcon;
+                  return (
+                    <TabsTrigger key={category} value={category} className="shrink-0 gap-2 px-3 text-xs sm:text-sm">
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{config?.label || category}</span>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
           </div>
         </div>
 

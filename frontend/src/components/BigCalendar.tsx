@@ -65,7 +65,7 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
   // Transform API events to calendar format
   const calendarEvents = events?.map((event) => ({
     title: event.title,
-    allDay: event.allDay,
+    allDay: false,
     start: new Date(event.startDate),
     end: event.endDate ? new Date(event.endDate) : new Date(event.startDate),
   })) || [];

@@ -21,13 +21,12 @@ import {
   ChevronDown,
   GraduationCap,
   LayoutGrid,
-  Download,
-  Printer,
-  Eye,
   EyeOff,
   Search,
   Filter,
   ArrowRight,
+  Download,
+  Printer,
 } from "lucide-react";
 
 
@@ -64,9 +63,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
@@ -605,11 +602,11 @@ const AdminTimetablePage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.print()}>
                   <Printer className="w-4 h-4 mr-2" />
                   Print Schedule
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.print()}>
                   <Download className="w-4 h-4 mr-2" />
                   Export as PDF
                 </DropdownMenuItem>
@@ -655,112 +652,13 @@ const AdminTimetablePage = () => {
           </div>
         </div>
 
-        {/* Stats Overview */}
-        <div 
-          className="grid grid-cols-2 md:grid-cols-4 gap-3"
-        >
-          {[
-            { label: "Slots Filled", value: `${stats.filledSlots}/${stats.totalSlots}`, icon: LayoutGrid, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-900/20" },
-            { label: "Completion", value: `${stats.percentage}%`, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-900/20" },
-            { label: "Subjects", value: stats.uniqueSubjects, icon: BookOpen, color: "text-violet-600", bg: "bg-violet-50 dark:bg-violet-900/20" },
-            { label: "Teachers", value: stats.uniqueTeachers, icon: User, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/20" },
-          ].map((stat, i) => (
-            <Card key={i} className="border-0 shadow-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className={cn("p-2.5 rounded-lg", stat.bg)}>
-                  <stat.icon className={cn("w-5 h-5", stat.color)} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6">
 
-          {/* Left Sidebar */}
-          <div 
-            className="xl:col-span-1 space-y-4"
-          >
-            {/* Class Selection */}
-            <Card className="border-0 shadow-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm overflow-hidden">
-              <CardHeader className="text-black dark:text-white pb-4">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2 dark:text-white">
-                  <GraduationCap className="w-4 h-4" />
-                  Class Selection
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 space-y-4">
-                <Filters
-                  config={{ academicYear: true, grade: true, section: true }}
-                  sectionMode="name"
-                  selectedYear={selectedYear}
-                  onYearChange={setSelectedYear}
-                  selectedGrade={selectedGrade}
-                  onGradeChange={(val) => { setSelectedGrade(val); setSchedule({}); setUnsavedChanges(false); }}
-                  selectedSection={selectedSection}
-                  onSectionChange={(val) => { setSelectedSection(val); setSchedule({}); setUnsavedChanges(false); }}
-                  className="!grid-cols-1 !sm:grid-cols-1 !md:grid-cols-1 !lg:grid-cols-1"
-                />
-              </CardContent>
-            </Card>
-
-            {/* View Controls */}
-            <Card className="border-0 shadow-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2 dark:text-white">
-                  <Eye className="w-4 h-4 text-gray-500" />
-                  Display Options
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="show-teachers" className="text-sm cursor-pointer dark:text-gray-300">Show Teachers</Label>
-                  <Switch 
-                    id="show-teachers" 
-                    checked={showTeacherNames} 
-                    onCheckedChange={setShowTeacherNames}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="show-rooms" className="text-sm cursor-pointer dark:text-gray-300">Show Rooms</Label>
-                  <Switch 
-                    id="show-rooms" 
-                    checked={showRoomNumbers} 
-                    onCheckedChange={setShowRoomNumbers}
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">View Mode</span>
-                  <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
-                    <button
-                      onClick={() => setViewMode("grid")}
-                      className={cn(
-                        "p-1.5 rounded-md transition-all",
-                        viewMode === "grid" ? "bg-white dark:bg-slate-600 shadow-sm" : "text-gray-400"
-                      )}
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setViewMode("compact")}
-                      className={cn(
-                        "p-1.5 rounded-md transition-all",
-                        viewMode === "compact" ? "bg-white dark:bg-slate-600 shadow-sm" : "text-gray-400"
-                      )}
-                    >
-                      <Clock className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
+          {/* Main Timetable */}
+          <div>
           </div>
 
           {/* Main Timetable */}
@@ -769,40 +667,39 @@ const AdminTimetablePage = () => {
           >
             <Card className="border-0 shadow-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm overflow-hidden">
               <CardHeader className="border-b bg-gray-50/50 dark:bg-slate-800/50">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2 dark:text-white">
                       <Clock className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
                       Weekly Schedule
                     </CardTitle>
-                    <CardDescription className="mt-1">
-                      {selectedClassId && selectedSectionId ? (
-                        <span className="flex items-center gap-2">
-                          <Badge variant="outline" className="font-medium">
-                            Grade {selectedGrade}
-                          </Badge>
-                          <Badge variant="outline" className="font-medium">
-                            Section {selectedSection}
-                          </Badge>
-                          <span className="text-gray-400">|</span>
-                          <span>{stats.filledSlots} of {stats.totalSlots} slots filled</span>
-                        </span>
-                      ) : (
-                        "Select a class and section to begin editing"
-                      )}
-                    </CardDescription>
                   </div>
 
-                  {selectedClassId && selectedSectionId && (
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-32 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-[var(--brand-color,#e35336)] rounded-full"
-                        />
+                  <div className="flex flex-wrap items-center gap-4 ml-auto">
+                    {selectedClassId && selectedSectionId && (
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 w-32 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[var(--brand-color,#e35336)] rounded-full"
+                            style={{ width: `${stats.percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-gray-500">{stats.percentage}%</span>
                       </div>
-                      <span className="text-xs font-medium text-gray-500">{stats.percentage}%</span>
-                    </div>
-                  )}
+                    )}
+                    
+                    <Filters
+                      config={{ academicYear: true, grade: true, section: true }}
+                      sectionMode="name"
+                      className="!w-auto"
+                      selectedYear={selectedYear}
+                      onYearChange={setSelectedYear}
+                      selectedGrade={selectedGrade}
+                      onGradeChange={(val) => { setSelectedGrade(val); setSchedule({}); setUnsavedChanges(false); }}
+                      selectedSection={selectedSection}
+                      onSectionChange={(val) => { setSelectedSection(val); setSchedule({}); setUnsavedChanges(false); }}
+                    />
+                  </div>
                 </div>
               </CardHeader>
 
@@ -1011,6 +908,7 @@ const AdminTimetablePage = () => {
               )}
             </Card>
           </div>
+
         </div>
       </div>
     </TooltipProvider>

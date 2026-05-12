@@ -18,7 +18,6 @@ import {
   CheckCircle, 
   Clock, 
   Mail,
-  Search,
   RefreshCw,
   Copy,
   Trash2,
@@ -47,7 +46,7 @@ const roleColors: Record<string, string> = {
 export default function CredentialsPage() {
   const [credentials, setCredentials] = useState<PendingCredential[]>([]);
   const [stats, setStats] = useState<CredentialStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -64,11 +63,11 @@ export default function CredentialsPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    loadData();
+    loadData(false);
   }, [currentPage, statusFilter, roleFilter]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const [credRes, statsRes] = await Promise.all([
         credentialsAPI.list({
@@ -92,21 +91,24 @@ export default function CredentialsPage() {
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to load credentials');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
-  const handleSearch = () => {
-    setCurrentPage(1);
-    loadData();
-  };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      loadData(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleMarkAsSent = async (id: string) => {
     setActionLoading(true);
     try {
       await credentialsAPI.markAsSent(id);
       toast.success('Credential marked as sent');
-      loadData();
+      loadData(false);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to update');
     } finally {
@@ -121,7 +123,7 @@ export default function CredentialsPage() {
     try {
       await credentialsAPI.delete(id);
       toast.success('Credential deleted');
-      loadData();
+      loadData(false);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to delete');
     } finally {
@@ -151,99 +153,38 @@ export default function CredentialsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-black dark:text-white">Credentials Management</h1>
             <p className="text-gray-500">View and manage generated user credentials</p>
           </div>
-          <Button onClick={loadData} variant="outline">
+          <Button onClick={() => loadData(false)} variant="outline">
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
         </div>
 
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Total Credentials</p>
-                    <p className="text-2xl font-bold dark:text-white">{stats.total}</p>
-                  </div>
-                  <Key className="w-8 h-8 text-gray-400" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-yellow-600 dark:text-yellow-400">Pending</p>
-                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</p>
-                  </div>
-                  <Clock className="w-8 h-8 text-yellow-400" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-green-600 dark:text-green-400">Sent</p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.sent}</p>
-                  </div>
-                  <Send className="w-8 h-8 text-green-400" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">By Role</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {stats.byRole.map((r) => (
-                        <Badge key={r.role} variant="outline" className="text-xs">
-                          {r.role}: {r.count}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <Users className="w-8 h-8 text-blue-400" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
-        {/* Filters */}
+
+        {/* Credentials Table */}
         <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardContent className="pt-4">
-            <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
-                <Label className="dark:text-gray-200">Search</Label>
-                <div className="flex gap-2 mt-1">
-                  <Input
-                    placeholder="Search by name, username, or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    className="dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                  />
-                  <Button onClick={handleSearch} variant="secondary">
-                    <Search className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="w-[150px]">
-                <Label className="dark:text-gray-200">Status</Label>
+          <CardHeader>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <CardTitle className="text-lg dark:text-white">
+                Credentials List ({totalItems} total)
+              </CardTitle>
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  placeholder="Search by name, username, or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-8 w-[350px] dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                />
                 <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as any); setCurrentPage(1); }}>
-                  <SelectTrigger className="mt-1 dark:bg-slate-800 dark:border-slate-700">
-                    <SelectValue />
+                  <SelectTrigger className="h-8 w-[120px] dark:bg-slate-800 dark:border-slate-700">
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All</SelectItem>
@@ -251,12 +192,9 @@ export default function CredentialsPage() {
                     <SelectItem value="sent">Sent</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="w-[150px]">
-                <Label className="dark:text-gray-200">Role</Label>
                 <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="mt-1 dark:bg-slate-800 dark:border-slate-700">
-                    <SelectValue />
+                  <SelectTrigger className="h-8 w-[130px] dark:bg-slate-800 dark:border-slate-700">
+                    <SelectValue placeholder="Role" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Roles</SelectItem>
@@ -269,15 +207,6 @@ export default function CredentialsPage() {
                 </Select>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Credentials Table */}
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardHeader>
-            <CardTitle className="text-lg dark:text-white">
-              Credentials List ({totalItems} total)
-            </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (

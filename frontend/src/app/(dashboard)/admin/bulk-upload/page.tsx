@@ -522,65 +522,58 @@ export default function BulkUploadPage() {
     : 0;
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-950">
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-6 py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-4">
-        
-              <div>
-                <h1 className="text-2xl font-bold text-black">
-                  User Provisioning
-                </h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Create one user, import many. Credentials are stored in the Credentials page.
-                </p>
-              </div>
-            </div>
-          </div>
+    <div className="w-full space-y-6 px-4 py-6 sm:px-6">
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+            User Provisioning
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Create one user or import many. Generated credentials remain available in the credentials page.
+          </p>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-8">
+      <div>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid h-auto w-full max-w-xl grid-cols-2 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <TabsTrigger value="import" className="rounded-lg py-2.5">Bulk Import</TabsTrigger>
-            <TabsTrigger value="create" className="rounded-lg py-2.5">Create One</TabsTrigger>
+          <TabsList className="grid h-auto w-full max-w-md grid-cols-2 rounded-lg border border-slate-200 bg-transparent p-1 dark:border-slate-800">
+            <TabsTrigger value="import" className="rounded-md py-2.5 data-[state=active]:bg-[color:rgba(var(--brand-color-rgb),0.12)] data-[state=active]:text-[var(--brand-color)] dark:data-[state=active]:bg-[color:rgba(var(--brand-color-rgb),0.18)]">Bulk Import</TabsTrigger>
+            <TabsTrigger value="create" className="rounded-md py-2.5 data-[state=active]:bg-[color:rgba(var(--brand-color-rgb),0.12)] data-[state=active]:text-[var(--brand-color)] dark:data-[state=active]:bg-[color:rgba(var(--brand-color-rgb),0.18)]">Create One</TabsTrigger>
           </TabsList>
 
           <TabsContent value="import" className="mt-6 space-y-6">
-            <div className="flex flex-col lg:flex-row gap-6">
-              <Card className="w-full lg:w-80 shrink-0 border-slate-200 dark:border-slate-800 dark:bg-slate-900">
-                <CardHeader>
-                  <CardTitle className="text-base">Import Setup</CardTitle>
-                  <CardDescription>Select what you want to import and the academic year context.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">Bulk Import</h2>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Select the import target, choose the school year, then upload the CSV.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
                   <div className="space-y-2">
                     <Label>Import Type</Label>
-                    <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
                       {[
-                        { id: "staff", label: "Staff", note: "Teachers, admins, registrars" },
-                        { id: "students-auto", label: "Students and Parent", note: "Auto-assign sections and auto-create parents" },
+                        { id: "staff", label: "Staff" },
+                        { id: "students-auto", label: "Students and Parent" },
                       ].map((item) => (
                         <button
                           key={item.id}
                           type="button"
                           onClick={() => setUploadType(item.id as UploadType)}
-                          className={`w-full rounded-xl border p-3 text-left transition ${
+                          className={`h-10 rounded-lg border px-4 text-sm font-medium transition ${
                             uploadType === item.id
-                              ? "border-primary bg-primary/5"
-                              : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
+                              ? "border-[color:rgba(var(--brand-color-rgb),0.35)] bg-[color:rgba(var(--brand-color-rgb),0.08)] text-[var(--brand-color)]"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-600"
                           }`}
                         >
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white">{item.label}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{item.note}</p>
+                          {item.label}
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  <div className="space-y-2">
+                  <div className="space-y-2 lg:min-w-[220px]">
                     <Label>Academic Year</Label>
                     <Select value={selectedYear} onValueChange={setSelectedYear}>
                       <SelectTrigger>
@@ -595,22 +588,46 @@ export default function BulkUploadPage() {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  <Button variant="outline" className="w-full" onClick={downloadTemplate}>
+                  <Button variant="outline" className="h-10" onClick={downloadTemplate}>
                     <Download className="mr-2 h-4 w-4" />
                     Download Template
                   </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+                  <p className="text-xs font-medium text-slate-500">Mode</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                    {uploadType === "staff" ? "Staff accounts" : "Students and parents"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+                  <p className="text-xs font-medium text-slate-500">Academic Year</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                    {academicYears.find((year) => year.id === selectedYear)?.name || "Not selected"}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+                  <p className="text-xs font-medium text-slate-500">Template</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">CSV import file</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
+                  <p className="text-xs font-medium text-slate-500">Status</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                    {importFile ? "File ready" : "Waiting for file"}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-              <div className="flex-1 space-y-6 min-w-0">
+            <div className="min-w-0 space-y-6">
                 {/* Upload Area */}
                 {!uploadResult ? (
                   <>
                     <Card
-                      className={`border-2 border-dashed transition ${
+                      className={`overflow-hidden border shadow-none transition ${
                         isDragging
-                          ? "border-primary bg-primary/5"
+                          ? "border-[color:rgba(var(--brand-color-rgb),0.45)] bg-[color:rgba(var(--brand-color-rgb),0.06)]"
                           : "border-slate-200 dark:border-slate-800 dark:bg-slate-900"
                       }`}
                       onDragOver={(event) => {
@@ -629,23 +646,28 @@ export default function BulkUploadPage() {
                         }
                       }}
                     >
-                      <CardContent className="flex flex-col items-center gap-5 p-12 text-center">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
-                          {importFile ? (
-                            <CheckCircle2 className="h-10 w-10 text-emerald-500" />
-                          ) : (
-                            <Upload className="h-10 w-10 text-primary" />
-                          )}
-                        </div>
-                        <div>
-                          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                            {importFile ? importFile.name : "Drop CSV or browse files"}
-                          </h2>
-                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            {importFile
-                              ? "Preview and confirm when ready."
-                              : "Templates are tuned for the selected import type."}
-                          </p>
+                      <CardContent className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center">
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[color:rgba(var(--brand-color-rgb),0.1)]">
+                            {importFile ? (
+                              <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                            ) : (
+                              <Upload className="h-6 w-6 text-[var(--brand-color)]" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <h2 className="truncate text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
+                              {importFile ? importFile.name : "Upload CSV file"}
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                              {importFile
+                                ? "Preview the parsed rows, then confirm the import."
+                                : "Use the template above, then drop the CSV here or pick it manually."}
+                            </p>
+                            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                              Supported format: `.csv`
+                            </p>
+                          </div>
                         </div>
                         <input
                           ref={fileInputRef}
@@ -659,7 +681,7 @@ export default function BulkUploadPage() {
                             }
                           }}
                         />
-                        <div className="flex gap-3">
+                        <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                           <Button onClick={() => fileInputRef.current?.click()}>
                             <FileSpreadsheet className="mr-2 h-4 w-4" />
                             Choose File
@@ -680,9 +702,9 @@ export default function BulkUploadPage() {
                     </Card>
 
                     {previewData.length > 0 ? (
-                      <Card className="border-slate-200 dark:border-slate-800 dark:bg-slate-900">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                          <div>
+                      <Card className="overflow-hidden border-slate-200 shadow-none dark:border-slate-800 dark:bg-slate-900">
+                        <CardHeader className="flex flex-col gap-3 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+                          <div className="min-w-0">
                             <CardTitle className="text-base">Preview</CardTitle>
                             <CardDescription>First {previewData.length} rows from the selected file.</CardDescription>
                           </div>
@@ -716,10 +738,10 @@ export default function BulkUploadPage() {
                               </div>
                             </div>
                           )}
-                          <div className="overflow-x-auto">
+                          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
                             <Table className="min-w-[600px]">
                             <TableHeader>
-                              <TableRow className="border-b border-slate-200 text-left dark:border-slate-800 whitespace-nowrap">
+                              <TableRow className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-800 dark:bg-slate-900/80 whitespace-nowrap">
                                 {Object.keys(previewData[0]).map((header) => (
                                   <TableHead key={header} className="px-3 py-2 font-semibold text-slate-500">
                                     {header}
@@ -729,7 +751,7 @@ export default function BulkUploadPage() {
                             </TableHeader>
                             <TableBody>
                               {previewData.map((row, index) => (
-                                <TableRow key={index} className="border-b border-slate-100 dark:border-slate-800 whitespace-nowrap">
+                                <TableRow key={index} className="border-b border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/70 whitespace-nowrap">
                                   {Object.entries(row).map(([key, value]) => (
                                     <TableCell key={`${index}-${key}`} className="px-3 py-2 text-slate-700 dark:text-slate-300">
                                       {String(value || "—")}
@@ -745,8 +767,8 @@ export default function BulkUploadPage() {
                     ) : null}
                   </>
                 ) : (
-                  <Card className="border-slate-200 dark:border-slate-800 dark:bg-slate-900">
-                    <CardHeader>
+                  <Card className="overflow-hidden border-slate-200 shadow-none dark:border-slate-800 dark:bg-slate-900">
+                    <CardHeader className="border-b border-slate-100 dark:border-slate-800">
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <CardTitle className="text-base">Import Result</CardTitle>
@@ -759,9 +781,9 @@ export default function BulkUploadPage() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="grid gap-4 sm:grid-cols-3">
-                        <Card><CardContent className="p-4"><p className="text-xs text-slate-500">Total</p><p className="text-3xl font-bold">{uploadSummary.totalRecords}</p></CardContent></Card>
-                        <Card><CardContent className="p-4"><p className="text-xs text-slate-500">Created</p><p className="text-3xl font-bold text-emerald-600">{uploadSummary.successfulCount}</p></CardContent></Card>
-                        <Card><CardContent className="p-4"><p className="text-xs text-slate-500">Failed</p><p className="text-3xl font-bold text-red-600">{uploadSummary.failedCount}</p></CardContent></Card>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"><p className="text-xs text-slate-500">Total</p><p className="text-3xl font-semibold text-slate-900 dark:text-white">{uploadSummary.totalRecords}</p></div>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"><p className="text-xs text-slate-500">Created</p><p className="text-3xl font-semibold text-emerald-600">{uploadSummary.successfulCount}</p></div>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"><p className="text-xs text-slate-500">Failed</p><p className="text-3xl font-semibold text-red-600">{uploadSummary.failedCount}</p></div>
                       </div>
 
                       <div className="space-y-2">
@@ -850,43 +872,42 @@ export default function BulkUploadPage() {
                     </CardContent>
                   </Card>
                 )}
-              </div>
             </div>
           </TabsContent>
 
           <TabsContent value="create" className="mt-6 space-y-6">
-            <div className="flex flex-col lg:flex-row gap-6">
-              <Card className="w-full lg:w-96 shrink-0 border-slate-200 dark:border-slate-800 dark:bg-slate-900">
-                <CardHeader>
-                  <CardTitle className="text-base">Creation Mode</CardTitle>
-                  <CardDescription>Create a single account and surface the credential immediately.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">Single User Creation</h2>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Create one account and surface the generated credential immediately.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
                   <div className="space-y-2">
                     <Label>User Type</Label>
-                    <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
                       {[
-                        { id: "student", label: "Student", note: "Optional class and section assignment" },
-                        { id: "staff", label: "Staff", note: "Teacher, admin, or registrar" },
+                        { id: "student", label: "Student" },
+                        { id: "staff", label: "Staff" },
                       ].map((item) => (
                         <button
                           key={item.id}
                           type="button"
                           onClick={() => setCreateType(item.id as CreateType)}
-                          className={`w-full rounded-xl border p-3 text-left transition ${
+                          className={`h-10 rounded-lg border px-4 text-sm font-medium transition ${
                             createType === item.id
-                              ? "border-primary bg-primary/5"
-                              : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600"
+                              ? "border-[color:rgba(var(--brand-color-rgb),0.35)] bg-[color:rgba(var(--brand-color-rgb),0.08)] text-[var(--brand-color)]"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-600"
                           }`}
                         >
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white">{item.label}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{item.note}</p>
+                          {item.label}
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  <div className="space-y-2">
+                  <div className="space-y-2 lg:min-w-[220px]">
                     <Label>Academic Year</Label>
                     <Select value={selectedYear} onValueChange={setSelectedYear}>
                       <SelectTrigger>
@@ -901,16 +922,16 @@ export default function BulkUploadPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                Credentials are auto-generated, stored in the pending credentials list, and shown once after creation.
+              </div>
+            </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                    Credentials are auto-generated, stored in the pending credentials list, and shown once after creation.
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="space-y-6">
-                <Card className="border-slate-200 dark:border-slate-800 dark:bg-slate-900">
-                  <CardHeader>
+            <div className="space-y-6">
+                <Card className="border-slate-200 shadow-none dark:border-slate-800 dark:bg-slate-900">
+                  <CardHeader className="border-b border-slate-100 dark:border-slate-800">
                     <CardTitle className="text-base">
                       {createType === "student" ? "Create Student" : "Create Staff"}
                     </CardTitle>
@@ -1086,7 +1107,6 @@ export default function BulkUploadPage() {
                     </CardContent>
                   </Card>
                 ) : null}
-              </div>
             </div>
           </TabsContent>
         </Tabs>

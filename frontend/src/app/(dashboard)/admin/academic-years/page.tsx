@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { MoreHorizontal } from 'lucide-react';
 import { academicYearsAPI } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
 import { toast } from 'sonner';
@@ -10,6 +12,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { FormattedDate } from '@/components/ui/FormattedDate';
 import { CalendarDatePicker } from '@/components/ui/CalendarDatePicker';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Term {
   id: string;
@@ -61,6 +69,7 @@ export default function AcademicYearsPage() {
   const [saving, setSaving] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTermModal, setShowTermModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [editingTerm, setEditingTerm] = useState<Term | null>(null);
   const [schoolCurriculumType, setSchoolCurriculumType] = useState<string>('QUARTER');
 
@@ -104,6 +113,10 @@ export default function AcademicYearsPage() {
       fetchAcademicYears(user.schoolId);
     }
   }, [user]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const calendarType = user?.calendarType || 'ETHIOPIAN';
 
@@ -196,6 +209,14 @@ export default function AcademicYearsPage() {
       setSaving(true);
       await academicYearsAPI.activate(id);
       await fetchAcademicYears(schoolId);
+      setSelectedYear((prev) =>
+        prev
+          ? {
+              ...prev,
+              isActive: prev.id === id,
+            }
+          : prev,
+      );
       await refreshAcademicContext();
       toast.success('Academic year activated successfully');
     } catch (error) {
@@ -314,7 +335,7 @@ export default function AcademicYearsPage() {
 
   const getTermStatusColor = (status: string) => {
     switch (status) {
-      case 'Active': return 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400';
+      case 'Active': return 'bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.18)] text-[var(--brand-color)]';
       case 'Locked': return 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400';
       case 'Completed': return 'bg-gray-100 dark:bg-gray-900/50 text-gray-700 dark:text-gray-400';
       default: return 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400';
@@ -334,7 +355,7 @@ export default function AcademicYearsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="mt-3 text-2xl font-bold text-[var(--brand-color,#e35336)]">Unified Academic Management</h1>
+          <h1 className="mt-3 text-2xl font-bold text-black">Academic Management</h1>
           <p className="text-gray-600 dark:text-gray-400">Configure your school's academic structure and calendars</p>
         </div>
         <button
@@ -345,47 +366,33 @@ export default function AcademicYearsPage() {
         </button>
       </div>
 
-      {/* Academic Year Selection */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6 border dark:border-slate-800">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Select Academic Year
-        </label>
-        <select
-          value={selectedYear?.id || ''}
-          onChange={(e) => {
-            const year = academicYears.find(y => y.id === e.target.value);
-            setSelectedYear(year || null);
-          }}
-          className="w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-        >
-          {academicYears.map(year => {
-              const status = getYearStatus(year);
-              return (
-                <option key={year.id} value={year.id}>
-                  {year.name} ({year.calendarType || 'ETHIOPIAN'}) - {status}
-                </option>
-              );
-            })}
-        </select>
-      </div>
-
       {selectedYear && (
         <>
           {/* Periods/Terms */}
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6 border dark:border-slate-800">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
               <h2 className="text-lg font-semibold dark:text-white">
                 Periods ({schoolCurriculumType})
               </h2>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {selectedYear.terms.length} period(s) auto-created
-              </span>
-            </div>
-
-            {/* Weight Summary */}
-            <div className={`mb-4 p-3 rounded-lg ${getTotalWeight() === 100 ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-              }`}>
-              Total Weight: {getTotalWeight()}% {getTotalWeight() === 100 ? '✓' : '(Should be 100%)'}
+              <div className="w-full md:w-auto md:min-w-[340px]">
+                <select
+                  value={selectedYear?.id || ''}
+                  onChange={(e) => {
+                    const year = academicYears.find(y => y.id === e.target.value);
+                    setSelectedYear(year || null);
+                  }}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                >
+                  {academicYears.map(year => {
+                      const status = getYearStatus(year);
+                      return (
+                        <option key={year.id} value={year.id}>
+                          {year.name} ({year.calendarType || 'ETHIOPIAN'}) - {status}
+                        </option>
+                      );
+                    })}
+                </select>
+              </div>
             </div>
 
             {/* Terms Table */}
@@ -395,7 +402,6 @@ export default function AcademicYearsPage() {
                   <TableRow className="bg-gray-50 dark:bg-slate-800">
                     <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Period Name</TableHead>
                     <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Order</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Weight %</TableHead>
                     <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Start Date</TableHead>
                     <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">End Date</TableHead>
                     <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Status</TableHead>
@@ -407,17 +413,16 @@ export default function AcademicYearsPage() {
                     const status = getTermStatus(term);
                     const isCurrent = status === 'Active';
                     return (
-                      <TableRow key={term.id} className={`${term.isLocked ? 'bg-gray-50 dark:bg-slate-800' : 'dark:hover:bg-slate-800/50'} ${isCurrent ? 'ring-2 ring-inset ring-green-500' : ''}`}>
+                      <TableRow key={term.id} className={`${term.isLocked ? 'bg-gray-50 dark:bg-slate-800' : 'dark:hover:bg-slate-800/50'} ${isCurrent ? 'ring-2 ring-inset ring-[var(--brand-color)]' : ''}`}>
                         <TableCell className="px-4 py-3 font-medium dark:text-white">
                           <div className="flex items-center gap-2">
                             {term.name}
                             {isCurrent && (
-                              <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                              <span className="flex h-2 w-2 rounded-full bg-[var(--brand-color)] animate-pulse" />
                             )}
                           </div>
                         </TableCell>
                         <TableCell className="px-4 py-3 dark:text-gray-300">{term.order}</TableCell>
-                        <TableCell className="px-4 py-3 dark:text-gray-300">{term.percentageWeight}%</TableCell>
                         <TableCell className="px-4 py-3 dark:text-gray-300"><FormattedDate date={term.startDate} /></TableCell>
                         <TableCell className="px-4 py-3 dark:text-gray-300"><FormattedDate date={term.endDate} /></TableCell>
                         <TableCell className="px-4 py-3">
@@ -426,28 +431,37 @@ export default function AcademicYearsPage() {
                           </span>
                         </TableCell>
                         <TableCell className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => openEditTerm(term)}
-                              disabled={term.isLocked}
-                              className="text-[var(--brand-color,#e35336)] hover:opacity-80 disabled:opacity-50"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleLockTerm(term.id, term.isLocked)}
-                              className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                            >
-                              {term.isLocked ? 'Unlock' : 'Lock'}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTerm(term.id)}
-                              disabled={term.isLocked}
-                              className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                            >
-                              Delete
-                            </button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-slate-800 dark:hover:text-gray-200"
+                                aria-label="Open actions"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => openEditTerm(term)}
+                                disabled={term.isLocked}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleLockTerm(term.id, term.isLocked)}
+                              >
+                                {term.isLocked ? 'Unlock' : 'Lock'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteTerm(term.id)}
+                                disabled={term.isLocked}
+                                className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );
@@ -484,8 +498,8 @@ export default function AcademicYearsPage() {
       )}
 
       {/* Create Academic Year Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {showCreateModal && mounted && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-lg p-6 w-full max-w-md border dark:border-slate-800">
             <h3 className="text-lg font-semibold mb-4 dark:text-white">Create Academic Year</h3>
             <form onSubmit={handleCreateAcademicYear} className="space-y-4">
@@ -516,22 +530,6 @@ export default function AcademicYearsPage() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Curriculum Type</label>
-                <div className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-gray-400 text-sm">
-                  {newYear.curriculumType === 'QUARTER' && 'Quarter (4 periods) - Auto-created'}
-                  {newYear.curriculumType === 'TERM' && 'Term (3 periods) - Auto-created'}
-                  {newYear.curriculumType === 'SEMESTER' && 'Semester (2 periods) - Auto-created'}
-                  {newYear.curriculumType === 'CUSTOM' && 'Custom (No auto-creation)'}
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Periods are automatically created based on this selection</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Calendar Type</label>
-                <div className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400">
-                  {user?.calendarType || 'ETHIOPIAN'} (Inherited from School Settings)
-                </div>
-              </div>
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
@@ -550,12 +548,13 @@ export default function AcademicYearsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Create/Edit Term Modal */}
-      {showTermModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {showTermModal && mounted && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-lg p-6 w-full max-w-md border dark:border-slate-800">
             <h3 className="text-lg font-semibold mb-4 dark:text-white">
               {editingTerm ? 'Edit Period' : 'Add Period'}
@@ -635,7 +634,8 @@ export default function AcademicYearsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -56,6 +56,52 @@ export class BulkUploadService {
     private credentialService: CredentialService,
   ) {}
 
+  private getSectionNameByIndex(index: number) {
+    let current = index;
+    let name = '';
+
+    do {
+      name = String.fromCharCode(65 + (current % 26)) + name;
+      current = Math.floor(current / 26) - 1;
+    } while (current >= 0);
+
+    return name;
+  }
+
+  private getNormalizedStudentName(record: {
+    full_name?: string;
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
+  }) {
+    const joined =
+      [
+        record.first_name,
+        record.middle_name,
+        record.last_name,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .trim() || record.full_name || '';
+
+    return joined.replace(/\s+/g, ' ').trim();
+  }
+
+  private sortRecordsAlphabetically<T extends {
+    full_name?: string;
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
+  }>(records: T[]) {
+    return [...records].sort((left, right) =>
+      this.getNormalizedStudentName(left).localeCompare(
+        this.getNormalizedStudentName(right),
+        undefined,
+        { sensitivity: 'base' },
+      ),
+    );
+  }
+
   private normalizeStudentAndParentNames(
     fullName?: string,
     explicitParentName?: string,
@@ -647,14 +693,16 @@ export class BulkUploadService {
       gradeInfoMap.set(gradeKey, gradeInfo);
     }
 
+    const processedGradeNames = new Set<string>();
+
     // Process each grade group
     for (const [gradeName, group] of Object.entries(gradeGroups)) {
       const gradeInfo = gradeInfoMap.get(gradeName);
-      // Shuffle students within the grade group
-      const shuffled = [...group].sort(() => Math.random() - 0.5);
+      // Keep section assignment deterministic and alphabetical.
+      const orderedStudents = this.sortRecordsAlphabetically(group);
 
-      for (let i = 0; i < shuffled.length; i++) {
-        const record = shuffled[i];
+      for (let i = 0; i < orderedStudents.length; i++) {
+        const record = orderedStudents[i];
         try {
           const normalizedEmail = record.email?.toLowerCase();
           if (normalizedEmail) {
@@ -1003,11 +1051,20 @@ export class BulkUploadService {
             );
           });
           successfulCount++;
+          if (gradeName !== 'Unassigned') {
+            processedGradeNames.add(gradeName);
+          }
         } catch (err) {
           failedRecords.push({ record, error: err.message });
         }
       }
     }
+
+    for (const gradeName of processedGradeNames) {
+      await this.rebalanceGradeSections(schoolId, yearName, gradeName);
+    }
+
+    await this.credentialService.assignRollNumbersByAlphabet(schoolId, yearName);
 
     return {
       status:
@@ -1016,7 +1073,7 @@ export class BulkUploadService {
           : failedRecords.length
             ? 'partial'
             : 'success',
-      message: `Processed ${successfulCount} students with random section assignment${skippedCount ? `, skipped ${skippedCount} existing records` : ''}`,
+      message: `Processed ${successfulCount} students with mixed alphabetical section assignment${skippedCount ? `, skipped ${skippedCount} existing records` : ''}`,
       totalRecords: records.length,
       successfulCount,
       failedCount: failedRecords.length,
@@ -1150,15 +1207,26 @@ export class BulkUploadService {
         message: `No students found in ${normalizedGrade}`,
       };
 
-    // Shuffle for randomness
-    const shuffled = [...students].sort(() => Math.random() - 0.5);
+    const orderedStudents = [...students].sort((left, right) =>
+      (left.student?.name || '').localeCompare(
+        right.student?.name || '',
+        undefined,
+        {
+          sensitivity: 'base',
+        },
+      ),
+    );
+    const totalSections = Math.max(
+      1,
+      Math.ceil(orderedStudents.length / sectionCapacity),
+    );
 
     // Re-assign
     await this.prismaService.$transaction(async (tx) => {
-      for (let i = 0; i < shuffled.length; i++) {
-        const item = shuffled[i];
-        const sectionIndex = Math.floor(i / sectionCapacity);
-        const sectionName = String.fromCharCode(65 + sectionIndex);
+      for (let i = 0; i < orderedStudents.length; i++) {
+        const item = orderedStudents[i];
+        const sectionIndex = i % totalSections;
+        const sectionName = this.getSectionNameByIndex(sectionIndex);
 
         // First try to find a class with the specific section
         let cls = await tx.class.findFirst({
@@ -1247,15 +1315,21 @@ export class BulkUploadService {
         if (item.student?.studentProfile?.[0]) {
           await tx.studentProfile.update({
             where: { id: item.student.studentProfile[0].id },
-            data: { className: cls.name, section: sec.name },
+            data: {
+              className: cls.name,
+              section: sec.name,
+              rollNumber: '0',
+            },
           });
         }
       }
     });
 
+    await this.credentialService.assignRollNumbersByAlphabet(schoolId, yearName);
+
     return {
       status: 'success',
-      message: `Successfully rebalanced ${students.length} students in ${normalizedGrade} into sections of ${sectionCapacity}`,
+      message: `Successfully rebalanced ${students.length} students in ${normalizedGrade} across ${totalSections} mixed sections of ${sectionCapacity}`,
     };
   }
 }

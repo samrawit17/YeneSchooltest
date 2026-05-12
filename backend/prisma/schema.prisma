@@ -818,6 +818,7 @@ model Assessment {
   schoolId       String
   academicYearId String
   termId         String?
+  calendarEventId String?            @unique
   title          String
   type           String
   status         AssessmentStatus    @default(DRAFT)
@@ -831,6 +832,7 @@ model Assessment {
   creator        User                @relation("CreatedAssessments", fields: [createdBy], references: [id])
   school         School              @relation(map: "schoolId_fk_56", fields: [schoolId], references: [id], onDelete: Cascade)
   term           Term?               @relation(map: "termId_fk_57", fields: [termId], references: [id], onDelete: SetNull)
+  calendarEvent  SchoolEvent?        @relation("AssessmentCalendarEvent", fields: [calendarEventId], references: [id], onDelete: SetNull)
   subjects       AssessmentSubject[]
 
   @@index([schoolId, academicYearId])
@@ -1629,6 +1631,7 @@ model SchoolEvent {
   createdById String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  assessment  Assessment? @relation("AssessmentCalendarEvent")
   createdBy   User      @relation(map: "createdById_fk_151", fields: [createdById], references: [id])
   school      School    @relation(map: "schoolId_fk_152", fields: [schoolId], references: [id], onDelete: Cascade)
 

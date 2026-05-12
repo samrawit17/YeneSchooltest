@@ -2569,7 +2569,18 @@ export class GradingService {
   /**
    * Calculate rankings for all students when a curriculum period ends
    */
-  async calculatePeriodRankings(academicYearId: string, termId?: string) {
+  async calculatePeriodRankings(
+    academicYearId: string,
+    termId?: string,
+    classId?: string,
+    sectionId?: string,
+  ) {
+    if (!classId) {
+      throw new BadRequestException(
+        'Class selection is required before calculating rankings',
+      );
+    }
+
     const academicYear = await this.prisma.academicYear.findUnique({
       where: { id: academicYearId },
     });
@@ -2580,7 +2591,11 @@ export class GradingService {
 
     // Get all classes in the school
     const classes = await this.prisma.class.findMany({
-      where: { schoolId: academicYear.schoolId },
+      where: {
+        schoolId: academicYear.schoolId,
+        academicYearId,
+        ...(classId ? { id: classId } : {}),
+      },
       include: {
         sections: { select: { name: true } },
       },
@@ -2600,6 +2615,9 @@ export class GradingService {
       if (termId) {
         gradeWhere.termId = termId;
       }
+      if (sectionId) {
+        gradeWhere.sectionId = sectionId;
+      }
 
       const studentGrades = await this.prisma.subjectGrade.findMany({
         where: gradeWhere,
@@ -2614,9 +2632,18 @@ export class GradingService {
         where: {
           classId: classItem.id,
           academicYear: academicYearId,
+          ...(sectionId ? { sectionId } : {}),
         },
         include: {
-          student: true,
+          student: {
+            include: {
+              studentProfile: {
+                select: {
+                  rollNumber: true,
+                },
+              },
+            },
+          },
           section: true,
         },
       });
@@ -2626,7 +2653,8 @@ export class GradingService {
         const studentName = sc.student?.name || sc.student?.email || 'Unknown';
         studentMap.set(sc.studentId, {
           name: studentName,
-          admissionNo: sc.student?.email || '',
+          rollNumber: sc.student?.studentProfile?.rollNumber || '',
+          sectionId: sc.sectionId,
           sectionName: sc.section?.name || '',
         });
       }
@@ -2655,9 +2683,10 @@ export class GradingService {
           return {
             studentId,
             studentName: studentInfo?.name || 'Unknown',
-            admissionNo: studentInfo?.admissionNo || '',
+            rollNumber: studentInfo?.rollNumber || '',
             className: classItem.name,
             classId: classItem.id,
+            sectionId: studentInfo?.sectionId || '',
             sectionName: studentInfo?.sectionName || '',
             average: Math.round((data.total / data.count) * 100) / 100,
           };
@@ -2669,10 +2698,11 @@ export class GradingService {
         results.push({
           classId: rank.classId,
           className: rank.className,
+          sectionId: rank.sectionId,
           sectionName: rank.sectionName,
           studentId: rank.studentId,
           studentName: rank.studentName,
-          admissionNo: rank.admissionNo,
+          rollNumber: rank.rollNumber,
           academicYear: academicYearId,
           termId: termId || null,
           rank: index + 1,
@@ -2682,18 +2712,30 @@ export class GradingService {
       });
     }
 
-    // Calculate additional stats
-    const allStudentAverages = results.map(r => r.average);
-    const classAverage = allStudentAverages.length > 0 
-      ? Math.round((allStudentAverages.reduce((a, b) => a + b, 0) / allStudentAverages.length) * 100) / 100 
-      : 0;
-    const totalStudents = results.length;
-    const passRate = allStudentAverages.length > 0 
-      ? Math.round((allStudentAverages.filter(a => a >= 50).length / allStudentAverages.length) * 100) 
-      : 0;
-    
-    // Get top 10 students
-    const topStudents = results
+    const filteredResults = sectionId
+      ? results.filter((result) => result.sectionId === sectionId)
+      : results;
+
+    const allStudentAverages = filteredResults.map((r) => r.average);
+    const classAverage =
+      allStudentAverages.length > 0
+        ? Math.round(
+            (allStudentAverages.reduce((a, b) => a + b, 0) /
+              allStudentAverages.length) *
+              100,
+          ) / 100
+        : 0;
+    const totalStudents = filteredResults.length;
+    const passRate =
+      allStudentAverages.length > 0
+        ? Math.round(
+            (allStudentAverages.filter((a) => a >= 50).length /
+              allStudentAverages.length) *
+              100,
+          )
+        : 0;
+
+    const topStudents = filteredResults
       .sort((a, b) => b.average - a.average)
       .slice(0, 10)
       .map((r, index) => ({
@@ -2708,7 +2750,7 @@ export class GradingService {
       calculated: new Date().toISOString(),
       academicYear: academicYear.name,
       termId: termId || 'All Terms',
-      results,
+      results: filteredResults,
       topStudents,
       totalStudents,
       classAverage,

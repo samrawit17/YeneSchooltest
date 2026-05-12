@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { academicYearsAPI } from '@/lib/api';
 import {
   enrollmentAPI,
@@ -104,16 +104,23 @@ export default function AdminEnrollmentPage() {
     loadYears();
   }, []);
 
+  const hasInitiallyLoaded = useRef(false);
+
   // Load data
   useEffect(() => {
-    if (!selectedYear) return;
-    loadData();
+    if (!selectedYear || !user?.schoolId) return;
+    if (!hasInitiallyLoaded.current) {
+      hasInitiallyLoaded.current = true;
+      loadData();
+    } else {
+      loadData(false);
+    }
   }, [selectedYear, selectedStatus, selectedGrade, searchTerm, currentPage, user?.schoolId]);
 
-  const loadData = async () => {
+  const loadData = async (showLoading = true) => {
     if (!user?.schoolId) return;
     
-    setLoading(true);
+    if (showLoading) setLoading(true);
     try {
       const [statsRes, requestsRes] = await Promise.all([
         enrollmentAPI.getStats(user.schoolId, selectedYear),
@@ -136,7 +143,7 @@ export default function AdminEnrollmentPage() {
       console.error('Failed to load enrollment data:', error);
       toast.error('Failed to load enrollment data');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -155,7 +162,7 @@ export default function AdminEnrollmentPage() {
       setCredentialsDialogOpen(true);
       setApproveDialogOpen(false);
       toast.success('Enrollment approved! Credentials generated.');
-      loadData();
+      loadData(false);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to approve enrollment');
     } finally {
@@ -172,7 +179,7 @@ export default function AdminEnrollmentPage() {
       setRejectDialogOpen(false);
       setRejectReason('');
       toast.success('Enrollment rejected');
-      loadData();
+      loadData(false);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to reject enrollment');
     } finally {
@@ -184,7 +191,7 @@ export default function AdminEnrollmentPage() {
     try {
       await enrollmentAPI.waitlistEnrollment(request.id, user!.schoolId!);
       toast.success('Student added to waitlist');
-      loadData();
+      loadData(false);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to waitlist enrollment');
     }
@@ -210,7 +217,7 @@ export default function AdminEnrollmentPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -223,131 +230,62 @@ export default function AdminEnrollmentPage() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">Total</p>
-                    <p className="text-2xl font-bold">{stats.total}</p>
-                  </div>
-                  <Users className="w-8 h-8 text-gray-400" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-yellow-600">Pending</p>
-                    <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-                  </div>
-                  <Clock className="w-8 h-8 text-yellow-400" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-green-600">Approved</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
-                  </div>
-                  <CheckCircle className="w-8 h-8 text-green-400" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-red-600">Rejected</p>
-                    <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
-                  </div>
-                  <XCircle className="w-8 h-8 text-red-400" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-blue-600">Waitlisted</p>
-                    <p className="text-2xl font-bold text-blue-600">{stats.waitlisted}</p>
-                  </div>
-                  <AlertCircle className="w-8 h-8 text-blue-400" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
-        {/* Filters */}
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Academic Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYears.map(year => (
-                    <SelectItem key={year.id} value={year.id}>
-                      {year.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedStatus} onValueChange={(v) => { setSelectedStatus(v); setCurrentPage(1); }}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="REJECTED">Rejected</SelectItem>
-                  <SelectItem value="WAITLISTED">Waitlisted</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedGrade} onValueChange={(v) => { setSelectedGrade(v); setCurrentPage(1); }}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Grade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(g => (
-                    <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <div className="flex-1 min-w-[200px]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    placeholder="Search by name, email, phone..."
-                    value={searchTerm}
-                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Requests Table */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Enrollment Requests</span>
-              <Badge variant="secondary">{totalItems} total</Badge>
-            </CardTitle>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <CardTitle>
+                <span>Enrollment Requests</span>
+              </CardTitle>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                    className="pl-9 h-8 w-[350px]"
+                  />
+                </div>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="h-8 w-[150px]">
+                    <SelectValue placeholder="Academic Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicYears.map(year => (
+                      <SelectItem key={year.id} value={year.id}>
+                        {year.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedStatus} onValueChange={(v) => { setSelectedStatus(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="h-8 w-[130px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="APPROVED">Approved</SelectItem>
+                    <SelectItem value="REJECTED">Rejected</SelectItem>
+                    <SelectItem value="WAITLISTED">Waitlisted</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={selectedGrade} onValueChange={(v) => { setSelectedGrade(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="h-8 w-[130px]">
+                    <SelectValue placeholder="Grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Grades</SelectItem>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map(g => (
+                      <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (

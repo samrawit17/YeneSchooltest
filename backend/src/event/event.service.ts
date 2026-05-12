@@ -13,6 +13,22 @@ export class EventService {
     private notificationService: NotificationService,
   ) {}
 
+  private parseAudience(audience: string | null | undefined): string[] {
+    if (!audience) return [];
+
+    try {
+      const parsed = JSON.parse(audience);
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === 'string')
+        : [];
+    } catch {
+      return audience
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  }
+
   async create(data: CreateEventDto, userId: string, schoolId: string) {
     const event = await this.prisma.schoolEvent.create({
       data: {
@@ -128,7 +144,7 @@ export class EventService {
     // Filter by role if userRole is provided
     if (userRole) {
       return events.filter((event) => {
-        const audience = (event.audience as unknown as string[]) || [];
+        const audience = this.parseAudience(event.audience);
         if (!audience || audience.length === 0) {
           return true;
         }

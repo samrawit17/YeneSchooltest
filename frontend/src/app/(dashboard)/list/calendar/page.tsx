@@ -11,6 +11,24 @@ import { Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 
+const getEventCategoryLabel = (event: Event) => event.category || "OTHER";
+
+const getEventCategoryBadge = (event: Event) => {
+  const category = getEventCategoryLabel(event);
+  switch (category) {
+    case "ACADEMIC":
+      return "bg-blue-100 text-blue-800";
+    case "SPORTS":
+      return "bg-orange-100 text-orange-800";
+    case "CULTURAL":
+      return "bg-green-100 text-green-800";
+    case "HOLIDAY":
+      return "bg-amber-100 text-amber-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+};
+
 const CalendarSkeleton = () => (
   <div className="space-y-4">
     <div className="flex items-center justify-between mb-3">
@@ -58,7 +76,8 @@ const EventListPage = () => {
     queryFn: async () => {
       try {
         const response = await eventsAPI.getAll();
-        return response.data?.data || response.data;
+        const payload = response.data as Event[] | { data?: Event[] };
+        return Array.isArray(payload) ? payload : payload.data || [];
       } catch (error) {
         console.error("Failed to fetch events:", error);
         return [];
@@ -71,13 +90,13 @@ const EventListPage = () => {
   });
 
   // Filter activities in the next month
-  const upcomingActivities = eventsData?.filter((event) => {
+  const upcomingActivities = (eventsData || []).filter((event: Event) => {
     const eventDate = new Date(event.startDate);
     const now = new Date();
     const oneMonthLater = new Date();
     oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
     return eventDate >= now && eventDate <= oneMonthLater;
-  }).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()) || [];
+  }).sort((a: Event, b: Event) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
 
   const eventCount = upcomingActivities.length;
 
@@ -131,18 +150,16 @@ const EventListPage = () => {
               >
                 <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
                   <h3 className="font-semibold text-xs sm:text-sm text-gray-800 dark:text-white line-clamp-1 flex-1">{event.title}</h3>
-                  <span className={`px-1 py-0.5 rounded-full text-[9px] sm:text-xs flex-shrink-0 leading-tight ${event.eventType === 'ACADEMIC' ? 'bg-blue-100 text-blue-800' :
-                      event.eventType === 'EXTRACURRICULAR' ? 'bg-green-100 text-green-800' :
-                        event.eventType === 'SPORTS' ? 'bg-orange-100 text-orange-800' :
-                          event.eventType === 'ADMINISTRATIVE' ? 'bg-purple-100 text-purple-800' :
-                            'bg-gray-100 text-gray-800'
-                    }`}>
-                    {event.eventType}
+                    <span className={`px-1 py-0.5 rounded-full text-[9px] sm:text-xs flex-shrink-0 leading-tight ${getEventCategoryBadge(event)}`}>
+                    {getEventCategoryLabel(event)}
                   </span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 mb-1 sm:mb-1.5">
                   <span className="text-[10px] sm:text-xs">📅</span>
-                  <span className="truncate">{new Date(event.startDate).toLocaleDateString()}</span>
+                  <span className="truncate">
+                    {new Date(event.startDate).toLocaleDateString()}
+                    {event.endDate ? ` - ${new Date(event.endDate).toLocaleDateString()}` : ""}
+                  </span>
                 </div>
                 {event.location && (
                   <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 mb-1 sm:mb-1.5">

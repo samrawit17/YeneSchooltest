@@ -31,6 +31,13 @@ const DEFAULT_ASSESSMENT_WEIGHTS: Record<string, number> = {
 
 const TEACHER_MANAGED_ASSESSMENT_TYPES = new Set(['QUIZ', 'TEST']);
 const READ_ONLY_ASSESSMENT_TYPES = new Set(['MID', 'FINAL']);
+const CALENDAR_DEFAULT_ASSESSMENT_TYPES = new Set([
+  'MID',
+  'MID_EXAM',
+  'FINAL',
+  'FINAL_EXAM',
+  'TEST',
+]);
 
 @Injectable()
 export class AssessmentsService {
@@ -96,6 +103,27 @@ export class AssessmentsService {
 
   private isAssessmentDue(startDate: Date) {
     return startDate.getTime() <= Date.now();
+  }
+
+  private shouldAddAssessmentToCalendar(
+    type: string,
+    addToCalendar?: boolean,
+  ) {
+    if (typeof addToCalendar === 'boolean') {
+      return addToCalendar;
+    }
+
+    return CALENDAR_DEFAULT_ASSESSMENT_TYPES.has(
+      String(type).toUpperCase(),
+    );
+  }
+
+  private formatAssessmentTypeLabel(type: string) {
+    return String(type)
+      .toLowerCase()
+      .split('_')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
   }
 
   private async notifyTeachersForAssessmentStart(
@@ -771,8 +799,34 @@ if (
       createdBy: userId,
     };
 
-    const assessment = await this.prisma.assessment.create({
-      data: assessmentData,
+    const assessment = await this.prisma.$transaction(async (tx) => {
+      const createdAssessment = await tx.assessment.create({
+        data: assessmentData,
+      });
+
+      if (!this.shouldAddAssessmentToCalendar(dto.type, dto.addToCalendar)) {
+        return createdAssessment;
+      }
+
+      const calendarEvent = await tx.schoolEvent.create({
+        data: {
+          schoolId,
+          createdById: userId,
+          title: dto.title,
+          description: `${this.formatAssessmentTypeLabel(dto.type)} scheduled for score entry and school calendar visibility.`,
+          startDate: new Date(dto.startDate),
+          endDate: new Date(dto.endDate),
+          audience: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT'] as any,
+          category: 'ACADEMIC',
+          color: '#e35336',
+        },
+        select: { id: true },
+      });
+
+      return tx.assessment.update({
+        where: { id: createdAssessment.id },
+        data: { calendarEventId: calendarEvent.id },
+      });
     });
 
     if (dto.subjects?.length) {

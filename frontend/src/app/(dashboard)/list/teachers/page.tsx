@@ -299,7 +299,7 @@ const TeachersListPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
         <div className="p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <Card className="dark:border-slate-700 dark:bg-slate-800">
               <CardContent className="p-6">
                 <div className="text-center">
@@ -319,7 +319,7 @@ const TeachersListPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
         <div className="p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <Card className="dark:border-slate-700 dark:bg-slate-800">
               <CardContent className="p-6">
                 <div className="text-center">
@@ -337,7 +337,7 @@ const TeachersListPage = () => {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
         <div className="p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <div className="flex items-center justify-between mb-6">
               <Skeleton className="h-8 w-48" />
               <div className="flex gap-3">
@@ -362,7 +362,7 @@ const TeachersListPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
       <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           {/* Top Section - Title and Buttons */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h1 className="text-2xl font-bold text-black">Teachers</h1>

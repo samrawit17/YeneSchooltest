@@ -159,7 +159,7 @@ const AnnouncementListPage = () => {
   const hasActiveFilters = searchQuery || audienceFilter !== "all" || statusFilter !== "all";
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
