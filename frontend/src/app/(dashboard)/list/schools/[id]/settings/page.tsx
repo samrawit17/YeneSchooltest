@@ -693,7 +693,7 @@ export default function SchoolSettingsPage() {
     // Render upgrade badge for hidden features
     if (!isSettingVisible(setting)) {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
             Upgrade Required
           </Badge>
@@ -703,7 +703,7 @@ export default function SchoolSettingsPage() {
 
     if (setting.type === 'boolean') {
       return (
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
           <Switch
             checked={value === true || value === 'true'}
             onCheckedChange={(checked) => handleSettingChange(setting.key, checked, setting)}
@@ -720,13 +720,13 @@ export default function SchoolSettingsPage() {
         : [];
 
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Select
             value={String(value || '')}
             onValueChange={(val) => handleSettingChange(setting.key, val, setting)}
             disabled={isSaving}
           >
-            <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white">
+            <SelectTrigger className="w-full bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white sm:w-48">
               <SelectValue placeholder="Select an option..." />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-800">
@@ -745,7 +745,7 @@ export default function SchoolSettingsPage() {
 
     if (setting.type === 'number') {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Input
             type="number"
             value={value}
@@ -753,7 +753,7 @@ export default function SchoolSettingsPage() {
             max={setting.validation?.max}
             onChange={(e) => handleSettingChange(setting.key, Number(e.target.value), setting)}
             disabled={isSaving}
-            className="w-24"
+            className="w-full sm:w-24"
           />
           {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
         </div>
@@ -762,13 +762,13 @@ export default function SchoolSettingsPage() {
 
     if (setting.type === 'time') {
       return (
-        <div className="flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Input
             type="time"
             value={value || setting.systemDefault || '08:00'}
             onChange={(e) => handleSettingChange(setting.key, e.target.value, setting)}
             disabled={isSaving}
-            className="w-32"
+            className="w-full sm:w-32"
           />
           {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
         </div>
@@ -777,7 +777,7 @@ export default function SchoolSettingsPage() {
 
     if (setting.type === 'color') {
       return (
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
           <div className="relative">
             <input
               type="color"
@@ -797,7 +797,7 @@ export default function SchoolSettingsPage() {
               }
             }}
             disabled={isSaving}
-            className="w-28 font-mono text-sm"
+            className="w-24 font-mono text-sm sm:w-28"
           />
           {setting.key === 'theme_color' && hasCustomValue && (
             <Button
@@ -820,7 +820,7 @@ export default function SchoolSettingsPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 max-w-6xl space-y-6">
+      <div className="mx-auto w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-3 sm:max-w-6xl sm:p-4 md:p-6">
         <Skeleton className="h-24 w-full rounded-xl" />
         <div className="flex gap-2">
           <Skeleton className="h-9 w-24 rounded-md" />
@@ -838,12 +838,12 @@ export default function SchoolSettingsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden p-3 sm:max-w-6xl sm:p-4 md:p-6">
       {/* School Header */}
       {schoolInfo && (
-        <Card className="mb-6 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
+        <Card className="mb-6 max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <CardContent className="min-w-0 p-4 sm:p-6">
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
               {/* Logo */}
               <div className="shrink-0">
                 {isEditingLogo ? (
@@ -882,15 +882,15 @@ export default function SchoolSettingsPage() {
 
               {/* Name and Code */}
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{schoolInfo.name}</h1>
-                <div className="flex items-center gap-4 mt-1">
+                <h1 className="break-words text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">{schoolInfo.name}</h1>
+                <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                   {isEditingCode ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Input
                         value={schoolCode}
                         onChange={(e) => setSchoolCode(e.target.value)}
                         placeholder="School Code"
-                        className="h-8 w-32 font-mono text-sm bg-white dark:bg-slate-700"
+                        className="h-8 w-full font-mono text-sm bg-white dark:bg-slate-700 sm:w-32"
                         disabled={savingSchoolCode}
                         autoFocus
                       />
@@ -917,13 +917,13 @@ export default function SchoolSettingsPage() {
                     </div>
                   ) : (
                     <div 
-                      className="flex items-center gap-2 cursor-pointer group"
+                      className="flex min-w-0 flex-wrap items-center gap-2 cursor-pointer group"
                       onClick={() => setIsEditingCode(true)}
                       title="Click to edit school code"
                     >
                       <span className="text-sm text-slate-500 dark:text-slate-400">Code:</span>
                       {schoolInfo.code ? (
-                        <span className="font-mono font-medium text-sm bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
+                        <span className="max-w-full break-all font-mono font-medium text-sm bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
                           {schoolInfo.code}
                         </span>
                       ) : (
@@ -932,7 +932,7 @@ export default function SchoolSettingsPage() {
                     </div>
                   )}
                   {schoolPlan && (
-                    <Badge className={`${
+                    <Badge className={`max-w-full whitespace-normal break-words ${
                       schoolPlan.tier === 'CORE' ? 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300' :
                       schoolPlan.tier === 'STANDARD' ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300' :
                       'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300'
@@ -944,7 +944,7 @@ export default function SchoolSettingsPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
                 {isEditingLogo && selectedLogoFile && (
                   <>
                     <Button onClick={handleLogoSave} disabled={savingLogo} size="sm">
@@ -967,11 +967,11 @@ export default function SchoolSettingsPage() {
             </div>
 
             {/* Academic Year Display */}
-            <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="mt-4 flex flex-col gap-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-700/50 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 <span className="text-sm text-slate-600 dark:text-slate-300">Current Academic Year:</span>
-                <span className="font-medium">
+                <span className="break-words font-medium">
                   {loadingAcademicYears ? (
                     <Loader2 className="w-4 h-4 animate-spin inline" />
                   ) : (
@@ -991,21 +991,23 @@ export default function SchoolSettingsPage() {
       )}
 
       {/* Settings Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">School Settings</h2>
-          <TabsList>
-            {visibleCategories.slice(0, 6).map((category) => {
-              const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
-              const Icon = config?.icon || SettingsIcon;
-              return (
-                <TabsTrigger key={category} value={category} className="gap-2">
-                  <Icon className="w-4 h-4" />
-                  {config?.label || category}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 max-w-full">
+        <div className="mb-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <h2 className="min-w-0 text-lg font-semibold text-slate-900 dark:text-white">School Settings</h2>
+          <div className="-mx-3 max-w-[100vw] overflow-x-auto overflow-y-hidden px-3 pb-1 sm:-mx-4 sm:px-4 md:mx-0 md:max-w-full md:px-0 lg:w-auto">
+            <TabsList className="flex h-auto w-max min-w-0 flex-nowrap justify-start gap-1">
+              {visibleCategories.slice(0, 6).map((category) => {
+                const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
+                const Icon = config?.icon || SettingsIcon;
+                return (
+                  <TabsTrigger key={category} value={category} className="shrink-0 gap-2 px-3 text-xs sm:text-sm">
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{config?.label || category}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
         </div>
 
         {visibleCategories.map((category) => {
@@ -1014,48 +1016,48 @@ export default function SchoolSettingsPage() {
           const settings = groupedSettings[category] || [];
 
           return (
-            <TabsContent key={category} value={category} className="mt-4">
-              <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-10 h-10 rounded-lg ${config?.bgColor || 'bg-gray-100'} flex items-center justify-center`}>
+            <TabsContent key={category} value={category} className="mt-4 min-w-0 max-w-full">
+              <Card className="max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <CardHeader className="min-w-0">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <div className={`h-10 w-10 shrink-0 rounded-lg ${config?.bgColor || 'bg-gray-100'} flex items-center justify-center`}>
                       <Icon className={`w-5 h-5 ${config?.color || 'text-gray-600'}`} />
                     </div>
-                    <div>
-                      <CardTitle className="text-slate-900 dark:text-white">{config?.label || category}</CardTitle>
-                      <CardDescription className="text-slate-500 dark:text-slate-400">
+                    <div className="min-w-0">
+                      <CardTitle className="break-words text-slate-900 dark:text-white">{config?.label || category}</CardTitle>
+                      <CardDescription className="break-words text-slate-500 dark:text-slate-400">
                         Configure {config?.label?.toLowerCase() || category} settings for your school
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="min-w-0 space-y-4">
                   {settings.map((setting) => (
                     <div
                       key={setting.key}
-                      className={`flex items-start justify-between p-4 rounded-lg border ${
+                      className={`flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-start sm:justify-between ${
                         !isSettingVisible(setting) 
                           ? 'bg-slate-50 dark:bg-slate-700/50 opacity-60' 
                           : 'bg-white dark:bg-slate-800/50'
                       }`}
                     >
-                      <div className="flex-1 pr-4">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium text-slate-900 dark:text-white">{setting.label}</h4>
+                      <div className="min-w-0 flex-1 sm:pr-4">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <h4 className="break-words font-medium text-slate-900 dark:text-white">{setting.label}</h4>
                           {setting.requiredTier && (
-                            <Badge variant="outline" className="text-xs">
+                            <Badge variant="outline" className="whitespace-normal break-words text-xs">
                               {setting.requiredTier}
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{setting.description}</p>
+                        <p className="mt-0.5 break-words text-sm text-slate-500 dark:text-slate-400">{setting.description}</p>
                         {!isSettingVisible(setting) && (
                           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                             Requires {setting.requiredFeature ? `${setting.requiredFeature} feature` : `${setting.requiredTier} plan`}
                           </p>
                         )}
                       </div>
-                      <div className="shrink-0">
+                      <div className="min-w-0 w-full sm:w-auto sm:shrink-0">
                         {renderSettingInput(setting)}
                       </div>
                     </div>
@@ -1069,24 +1071,24 @@ export default function SchoolSettingsPage() {
 
       {/* All Settings View (if more than 6 categories) */}
       {visibleCategories.length > 6 && (
-        <Card className="mt-4 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-          <CardHeader>
+        <Card className="mt-4 max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <CardHeader className="min-w-0">
             <CardTitle className="text-slate-900 dark:text-white">All Settings</CardTitle>
-            <CardDescription className="text-slate-500 dark:text-slate-400">Complete list of all configurable settings</CardDescription>
+            <CardDescription className="break-words text-slate-500 dark:text-slate-400">Complete list of all configurable settings</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
+          <CardContent className="min-w-0">
+            <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
               {SETTINGS_CONFIG.filter(s => isSettingVisible(s)).map((setting) => (
                 <div
                   key={setting.key}
-                  className="p-3 rounded-lg border bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+                  className="min-w-0 rounded-lg border bg-white p-3 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium text-slate-900 dark:text-white">{setting.label}</h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{setting.description}</p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <h4 className="break-words text-sm font-medium text-slate-900 dark:text-white">{setting.label}</h4>
+                      <p className="break-words text-xs text-slate-500 dark:text-slate-400">{setting.description}</p>
                     </div>
-                    <div className="ml-2">
+                    <div className="min-w-0 sm:ml-2">
                       {renderSettingInput(setting)}
                     </div>
                   </div>

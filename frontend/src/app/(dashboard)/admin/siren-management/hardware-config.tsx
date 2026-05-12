@@ -130,7 +130,7 @@ export function SirenHardwareConfig() {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="max-w-full overflow-hidden">
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </CardContent>
@@ -139,19 +139,19 @@ export function SirenHardwareConfig() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
       {/* Main Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="w-5 h-5" />
+      <Card className="max-w-full overflow-hidden">
+        <CardHeader className="min-w-0">
+          <CardTitle className="flex min-w-0 items-center gap-2 break-words">
+            <Zap className="h-5 w-5 shrink-0" />
             Electric Siren Configuration
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="break-words">
             Configure webhook for electric siren integration via relay
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="min-w-0 space-y-6">
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>How it works</AlertTitle>
@@ -202,7 +202,7 @@ export function SirenHardwareConfig() {
 
             <div>
               <Label>Status</Label>
-              <div className="mt-2 flex items-center gap-3 p-3 border rounded-md bg-muted/50">
+              <div className="mt-2 flex flex-col gap-3 rounded-md border bg-muted/50 p-3 sm:flex-row sm:items-center">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -223,7 +223,7 @@ export function SirenHardwareConfig() {
                     </>
                   )}
                 </Button>
-                <p className="text-sm text-muted-foreground">
+                <p className="break-words text-sm text-muted-foreground">
                   {form.isEnabled
                     ? "Hardware integration is active"
                     : "Hardware integration is inactive"}
@@ -234,7 +234,7 @@ export function SirenHardwareConfig() {
 
           <Separator />
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button onClick={handleSave} disabled={saving} className="gap-2">
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               <Save className="w-4 h-4" />
@@ -255,14 +255,14 @@ export function SirenHardwareConfig() {
       </Card>
 
       {/* Webhook Format Reference */}
-      <Card>
-        <CardHeader>
+      <Card className="max-w-full overflow-hidden">
+        <CardHeader className="min-w-0">
           <CardTitle className="text-lg">Webhook Format Reference</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="min-w-0 space-y-4">
           <div>
             <h4 className="font-semibold mb-2">Activation Request</h4>
-            <pre className="bg-muted p-3 rounded text-xs overflow-auto">
+            <pre className="max-w-full overflow-x-auto rounded bg-muted p-3 text-xs">
               {`POST /api/siren
 Content-Type: application/json
 
@@ -276,7 +276,7 @@ Content-Type: application/json
 
           <div>
             <h4 className="font-semibold mb-2">Deactivation Request</h4>
-            <pre className="bg-muted p-3 rounded text-xs overflow-auto">
+            <pre className="max-w-full overflow-x-auto rounded bg-muted p-3 text-xs">
               {`POST /api/siren
 Content-Type: application/json
 
@@ -290,7 +290,7 @@ Content-Type: application/json
 
           <div>
             <h4 className="font-semibold mb-2">Expected Response</h4>
-            <pre className="bg-muted p-3 rounded text-xs overflow-auto">
+            <pre className="max-w-full overflow-x-auto rounded bg-muted p-3 text-xs">
               {`HTTP/1.1 200 OK
 Content-Type: application/json
 

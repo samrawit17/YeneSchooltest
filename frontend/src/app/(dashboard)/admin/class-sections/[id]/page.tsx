@@ -4,19 +4,15 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useRouter, useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { classesAPI, sectionsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { 
   ArrowLeft, 
-  Users, 
-  UserCheck, 
-  UserX, 
   Search, 
   Loader2,
   Mail,
   Phone,
-  Hash,
   X,
   School,
 } from "lucide-react";
@@ -25,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -33,6 +30,8 @@ type Student = {
   name: string;
   email: string | null;
   phone: string | null;
+  parentName?: string | null;
+  parentPhone?: string | null;
   gender: string | null;
   avatarUrl: string | null;
   studentCode: string | null;
@@ -73,8 +72,7 @@ export default function ClassDetailPage() {
   const classId = params.id as string;
 
   const [page, setPage] = useState(1);
-  const [globalSearchTerm, setGlobalSearchTerm] = useState("");
-  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -93,50 +91,32 @@ export default function ClassDetailPage() {
   });
 
   // Fetch sections for the class
-  const { data: sectionsData } = useQuery({
-    queryKey: queryKeys.classSections.sectionsByClass(classId),
-    queryFn: async () => {
-      const response = await sectionsAPI.getAll({ classId });
-      return response.data?.data || response.data || [];
-    },
-    enabled: !!classId,
-  });
-
   // Fetch students
-  const { data: studentsData, isLoading: studentsLoading, refetch: refetchStudents } = useQuery({
-    queryKey: queryKeys.classSections.students(classId, "", "", page),
+  const { data: studentsData, isLoading: studentsLoading } = useQuery({
+    queryKey: queryKeys.classSections.students(classId, "", searchTerm, page),
     queryFn: async () => {
-      const params: { page?: string; limit?: string; orderBy?: string } = {
+      const params: { page?: string; limit?: string; orderBy?: string; search?: string } = {
         page: page.toString(),
         limit: "50",
         orderBy: "rollNumber",
       };
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
       return classesAPI.getStudents(classId, params);
     },
     enabled: !!classId,
+    placeholderData: keepPreviousData,
   });
-
-  const { data: globalSearchResults, isLoading: globalSearchLoading } = useQuery({
-    queryKey: queryKeys.classSections.globalSearch(globalSearchTerm),
-    queryFn: async () => {
-      if (!globalSearchTerm || globalSearchTerm.length < 2) {
-        return { classes: [], sections: [] };
-      }
-      const [classesRes, sectionsRes] = await Promise.all([
-        classesAPI.search({ q: globalSearchTerm }),
-        sectionsAPI.search({ search: globalSearchTerm }),
-      ]);
-      return {
-        classes: classesRes.data || [],
-        sections: sectionsRes.data || [],
-      };
-    },
-    enabled: !!globalSearchTerm && globalSearchTerm.length >= 2,
-  });
-
-  const stats = statsData?.data?.stats;
   const classInfo = statsData?.data?.class;
-  const students: Student[] = studentsData?.data?.students || [];
+  const students: Student[] = useMemo(() => {
+    const rows: Student[] = studentsData?.data?.students || [];
+    return [...rows].sort((a, b) => {
+      const rollA = a.rollNumber ?? "";
+      const rollB = b.rollNumber ?? "";
+      return String(rollA).localeCompare(String(rollB), undefined, { numeric: true, sensitivity: "base" });
+    });
+  }, [studentsData?.data?.students]);
   const pagination = studentsData?.data?.pagination;
   const displayedHomeroomTeacher = useMemo(() => {
     if (classInfo?.homeroomTeacher) {
@@ -149,6 +129,14 @@ export default function ClassDetailPage() {
 
     return matchingSection?.homeroomTeacher || null;
   }, [classInfo]);
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
 
   useEffect(() => {
     if (!classInfo) return;
@@ -169,18 +157,8 @@ export default function ClassDetailPage() {
     return () => setItems(null);
   }, [classInfo, setItems]);
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".global-search-container")) {
-        setShowGlobalSearch(false);
-      }
-    };
-
-    if (showGlobalSearch) {
-      document.addEventListener("click", handleClickOutside);
-      return () => document.removeEventListener("click", handleClickOutside);
-    }
-  }, [showGlobalSearch]);
+    setPage(1);
+  }, [searchTerm]);
 
   if (authLoading) {
     return (
@@ -234,244 +212,107 @@ export default function ClassDetailPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {statsLoading ? (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16" />
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{stats?.totalStudents || 0}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Male Students</CardTitle>
-                <UserCheck className="h-4 w-4 text-blue-500 dark:text-blue-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats?.maleCount || 0}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Female Students</CardTitle>
-                <UserX className="h-4 w-4 text-pink-500 dark:text-pink-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-pink-600 dark:text-pink-400">{stats?.femaleCount || 0}</div>
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
-
-      <div className="relative global-search-container">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search classes or sections..."
-            value={globalSearchTerm}
-            onChange={(e) => {
-              setGlobalSearchTerm(e.target.value);
-              setShowGlobalSearch(true);
-            }}
-            onFocus={() => setShowGlobalSearch(true)}
-            className="w-full max-w-md pl-9"
-          />
-          {globalSearchTerm && (
-            <button
-              onClick={() => {
-                setGlobalSearchTerm("");
-                setShowGlobalSearch(false);
-              }}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2"
-            >
-              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            </button>
-          )}
-        </div>
-        {showGlobalSearch && globalSearchTerm.length >= 2 && (
-          <div className="absolute left-0 top-full mt-2 w-full max-w-md bg-white dark:bg-slate-900 border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-            {globalSearchLoading ? (
-              <div className="p-4 flex items-center justify-center">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
-            ) : (
-              <>
-                {globalSearchResults?.classes?.length === 0 && globalSearchResults?.sections?.length === 0 ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    No results found
-                  </div>
-                ) : (
-                  <>
-                    {globalSearchResults?.classes?.length > 0 && (
-                      <div className="p-2">
-                        <div className="text-xs font-semibold text-muted-foreground px-2 py-1">Classes</div>
-                        {globalSearchResults.classes.slice(0, 5).map((cls: any) => (
-                          <div
-                            key={cls.id}
-                            onClick={() => {
-                              window.location.href = `/admin/class-sections/${cls.id}`;
-                            }}
-                            className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
-                          >
-                            <Users className="h-4 w-4" />
-                            <span>{cls.name}</span>
-                            <span className="text-xs text-muted-foreground">Grade {cls.grade}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {globalSearchResults?.sections?.length > 0 && (
-                      <div className="p-2 border-t">
-                        <div className="text-xs font-semibold text-muted-foreground px-2 py-1">Sections</div>
-                        {globalSearchResults.sections.slice(0, 5).map((section: any) => (
-                          <div
-                            key={section.id}
-                            onClick={() => {
-                              window.location.href = `/admin/class-sections/${section.class?.id}`;
-                            }}
-                            className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
-                          >
-                            <Hash className="h-4 w-4" />
-                            <span>Section {section.name}</span>
-                            <span className="text-xs text-muted-foreground">{section.class?.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Students Table Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Students List</CardTitle>
+      <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+        <CardHeader className="border-b border-gray-200 dark:border-slate-700">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Students List</CardTitle>
+            <div className="relative w-full sm:w-auto sm:min-w-[420px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search students by name, code, email, or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-9 dark:bg-slate-900 dark:border-slate-700"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {studentsLoading ? (
-            // Card-level skeleton - just show loading indicator in the card
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="p-4">
+              <div className="space-y-3">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <Skeleton className="h-5 flex-1" />
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-5 w-48" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : students.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="py-12 text-center text-muted-foreground">
               No students found in this class.
             </div>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <Table className="w-full">
-                  <TableHeader>
-                    <TableRow className="border-b">
-                      <TableHead className="text-left p-3 font-medium">Roll No.</TableHead>
-                      <TableHead className="text-left p-3 font-medium">Student</TableHead>
-                      <TableHead className="text-left p-3 font-medium">Code</TableHead>
-                      <TableHead className="text-left p-3 font-medium">Section</TableHead>
-                      <TableHead className="text-left p-3 font-medium">Gender</TableHead>
-                      <TableHead className="text-left p-3 font-medium">Contact</TableHead>
+                  <TableHeader className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
+                    <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Roll No.</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Student</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Code</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Section</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Gender</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Phone Number</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {students.map((student, index) => (
-                      <TableRow key={student.id} className="border-b hover:bg-muted/50">
-                        <TableCell className="p-3">{student.rollNumber || (page - 1) * 50 + index + 1}</TableCell>
-                        <TableCell className="p-3">
+                      <TableRow key={student.id} className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          {student.rollNumber || (page - 1) * 50 + index + 1}
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
                           <div 
                             onClick={() => router.push(`/list/students/${student.id}`)}
-                            className="flex items-center gap-3 cursor-pointer hover:underline"
+                            className="flex items-center gap-3 cursor-pointer"
                           >
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                              {student.avatarUrl ? (
-                                <img 
-                                  src={student.avatarUrl} 
-                                  alt={student.name}
-                                  className="w-8 h-8 rounded-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-xs font-medium">
-                                  {student.name.charAt(0).toUpperCase()}
-                                </span>
-                              )}
-                            </div>
+                            <Avatar className="w-10 h-10">
+                              <AvatarFallback className="text-sm">
+                                {getInitials(student.name)}
+                              </AvatarFallback>
+                            </Avatar>
                             <div>
-                              <div className="font-medium">{student.name}</div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">{student.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{student.email || "-"}</p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="p-3">
-                          <Badge variant="outline">{student.studentCode || "N/A"}</Badge>
+                        <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          {student.studentCode || "N/A"}
                         </TableCell>
-                        <TableCell className="p-3">
-                          <Badge variant="secondary">
-                            {student.section?.name || "N/A"}
-                          </Badge>
+                        <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          {student.section?.name || "N/A"}
                         </TableCell>
-                        <TableCell className="p-3">
+                        <TableCell className="px-4 py-3">
                           {student.gender === "MALE" || student.gender === "Male" || student.gender === "male" ? (
-                            <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 border-none">Male</Badge>
+                            <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">Male</Badge>
                           ) : student.gender === "FEMALE" || student.gender === "Female" || student.gender === "female" ? (
-                            <Badge className="bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-400 border-none">Female</Badge>
+                            <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">Female</Badge>
                           ) : (
-                            <Badge variant="outline">N/A</Badge>
+                            <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">N/A</Badge>
                           )}
                         </TableCell>
-                        <TableCell className="p-3">
-                          <div className="flex flex-col gap-1 text-sm">
-                            {student.email && (
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Mail className="w-3 h-3" />
-                                <span className="truncate max-w-[150px]">{student.email}</span>
-                              </div>
-                            )}
-                            {student.phone && (
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Phone className="w-3 h-3" />
-                                <span>{student.phone}</span>
-                              </div>
-                            )}
-                          </div>
+                        <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          {student.parentName || "-"}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                          {student.parentPhone || "-"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -481,8 +322,8 @@ export default function ClassDetailPage() {
 
               {/* Pagination */}
               {pagination && pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-muted-foreground">
+                <div className="flex items-center justify-between px-4 py-4">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
                     Showing {((pagination.page - 1) * pagination.limit) + 1} to{" "}
                     {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
                     {pagination.total} results

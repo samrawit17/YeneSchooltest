@@ -70,6 +70,16 @@ interface StudentGrade {
   status: string;
   isLocked?: boolean;
   gradeId: string | null;
+  componentScores?: Record<string, number | null>;
+}
+
+interface ComponentAvailability {
+  code: string;
+  assessmentSubjectId: string;
+  startDate: string;
+  status: string;
+  started: boolean;
+  maxScore: number;
 }
 
 interface AcademicYear {
@@ -84,6 +94,29 @@ interface Term {
   name: string;
   order: number;
 }
+
+const formatAssessmentLabel = (code: string) => {
+  switch (code.toUpperCase()) {
+    case "QUIZ":
+      return "Quiz";
+    case "TEST":
+      return "Test";
+    case "MID":
+      return "Mid Exam";
+    case "FINAL":
+      return "Final Exam";
+    case "ATTENDANCE":
+      return "Attendance";
+    case "CA":
+      return "Continuous Assessment";
+    default:
+      return code
+        .toLowerCase()
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+  }
+};
 
 const normalizeAssignments = (payload: any): TeacherAssignment[] => {
   const root = payload?.data ?? payload;
@@ -166,6 +199,7 @@ export default function TeacherGradingPage() {
   const [students, setStudents] = useState<StudentGrade[]>([]);
   const [isTermLocked, setIsTermLocked] = useState<boolean>(false);
   const [gradingComponents, setGradingComponents] = useState<{ code: string; name: string; percentage: number }[]>([]);
+  const [componentAvailability, setComponentAvailability] = useState<Record<string, ComponentAvailability>>({});
   
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [selectedTerm, setSelectedTerm] = useState<string>("");
@@ -276,11 +310,23 @@ export default function TeacherGradingPage() {
 
       setAcademicYears(years);
 
-      // Fetch assessment types from admin config (QUIZ, TEST, MID, FINAL, ATTENDANCE)
+      // Fetch teacher-visible assessment types without hitting admin-only endpoints
       try {
-        const typesRes = await gradingAPI.getTeacherAssessmentTypes();
-        if (typesRes.status === 200 && typesRes.data && Array.isArray(typesRes.data) && typesRes.data.length > 0) {
-          setGradingComponents(typesRes.data);
+        const weightsRes = await gradingAPI.getTeacherAssessmentTypes();
+        const weightsData = Array.isArray(weightsRes.data)
+          ? weightsRes.data
+          : weightsRes.data?.data ?? [];
+        if (weightsRes.status === 200 && weightsData.length > 0) {
+          setGradingComponents(
+            weightsData.map((item: { code?: string; type?: string; name?: string; percentage: number }) => {
+              const code = item.code ?? item.type ?? "";
+              return {
+                code,
+                name: item.name || formatAssessmentLabel(code),
+                percentage: item.percentage,
+              };
+            }),
+          );
         }
       } catch (err: any) {
         // Silent fail - use defaults
@@ -461,15 +507,79 @@ export default function TeacherGradingPage() {
         subjectId: assignment.subject.id,
       });
       const data = res.data;
+      const currentColumns =
+        gradingComponents.length === 0
+          ? [
+              { code: 'CA', label: 'Quiz', weight: 15 },
+              { code: 'MID', label: 'Mid Exam', weight: 20 },
+              { code: 'FINAL', label: 'Final Exam', weight: 30 },
+            ]
+          : gradingComponents.map((c) => ({
+              code: c.code,
+              label: c.name,
+              weight: c.percentage,
+            }));
       
       console.log("API Response data:", data);
       
       // Handle both {students, isTermLocked} format and direct array response
       const studentData = data?.students || (Array.isArray(data) ? data : (data.data || []));
+      const availabilityData = Array.isArray(data?.componentAvailability)
+        ? data.componentAvailability
+        : [];
       const locked = data?.isTermLocked || false;
       
       console.log("Student data:", studentData);
-      setStudents(studentData as StudentGrade[]);
+      setComponentAvailability(
+        Object.fromEntries(
+          availabilityData.map((item: ComponentAvailability) => [
+            String(item.code).toUpperCase(),
+            item,
+          ]),
+        ),
+      );
+      setStudents(
+        (studentData as any[]).map((student) => {
+          const persistedComponentScores = ((student.componentScores || []) as Array<{ code: string; score: number | null }>);
+          const normalizedComponentScores = Object.fromEntries(
+            persistedComponentScores.map((item) => [
+              String(item.code).toUpperCase(),
+              item.score ?? null,
+            ]),
+          );
+
+          if (persistedComponentScores.length === 0) {
+            let assignedCa = false;
+            for (const column of currentColumns) {
+              const code = column.code.toUpperCase();
+              if (code === "MID") {
+                normalizedComponentScores[code] = student.midScore ?? null;
+              } else if (code === "FINAL") {
+                normalizedComponentScores[code] = student.finalScore ?? null;
+              } else if (!assignedCa) {
+                normalizedComponentScores[code] = student.caScore ?? null;
+                assignedCa = true;
+              } else {
+                normalizedComponentScores[code] = null;
+              }
+            }
+          }
+
+          const totalScore = calculateTotal(
+            normalizedComponentScores,
+            student.caScore ?? null,
+            student.midScore ?? null,
+            student.finalScore ?? null,
+          );
+
+          return {
+            ...student,
+            componentScores: normalizedComponentScores,
+            totalScore,
+            gradeLetter: totalScore !== null ? calculateGrade(totalScore) : student.gradeLetter ?? null,
+          };
+        }) as StudentGrade[],
+      );
       setIsTermLocked(locked);
     } catch (error: any) {
       console.error("Error fetching students:", error);
@@ -478,7 +588,7 @@ export default function TeacherGradingPage() {
     } finally {
       setLoading(false);
     }
-  }, [assignments, selectedClassSectionId, selectedYear, selectedTerm]);
+  }, [assignments, selectedClassSectionId, selectedYear, selectedTerm, gradingComponents]);
 
   useEffect(() => {
     if (selectedYear && selectedTerm && selectedClassSectionId) {
@@ -486,76 +596,99 @@ export default function TeacherGradingPage() {
     }
   }, [selectedYear, selectedTerm, selectedClassSectionId, fetchStudents]);
 
-  const calculateTotal = (ca: number | null, mid: number | null, final: number | null): number | null => {
+  function calculateTotal(componentScores?: Record<string, number | null>, ca?: number | null, mid?: number | null, final?: number | null): number | null {
+    if (componentScores && Object.keys(componentScores).length > 0) {
+      const values = Object.values(componentScores).filter((value) => value !== null && value !== undefined) as number[];
+      if (values.length === 0) return null;
+      return Math.round(values.reduce((sum, value) => sum + value, 0) * 100) / 100;
+    }
+
     if (ca === null && mid === null && final === null) return null;
-    const caVal = ca ?? 0;
-    const midVal = mid ?? 0;
-    const finalVal = final ?? 0;
-    const weights = gradingComponents.length > 0
-      ? gradingComponents.reduce((acc, c) => { acc[c.code] = c.percentage / 100; return acc; }, {} as Record<string, number>)
-      : { CA: 0.3, MID: 0.2, FINAL: 0.5 };
-    return Math.round((caVal * (weights.CA || 0.3) + midVal * (weights.MID || 0.2) + finalVal * (weights.FINAL || 0.5)) * 100) / 100;
-  };
+    return Math.round(((ca ?? 0) + (mid ?? 0) + (final ?? 0)) * 100) / 100;
+  }
 
   // Map assessment types for display
   const assessmentColumns = useMemo(() => {
-    const codeMapping: Record<string, string> = {
-      'QUIZ': 'caScore',
-      'TEST': 'caScore',
-      'MID': 'midScore',
-      'FINAL': 'finalScore',
-      'ATTENDANCE': 'midScore',
-    };
-    
     if (gradingComponents.length === 0) {
       return [
-        { code: 'CA', label: 'Quiz', dbField: 'caScore' as const, weight: 15 },
-        { code: 'MID', label: 'Mid Exam', dbField: 'midScore' as const, weight: 20 },
-        { code: 'FINAL', label: 'Final Exam', dbField: 'finalScore' as const, weight: 30 },
+        { code: 'CA', label: 'Quiz', weight: 15 },
+        { code: 'MID', label: 'Mid Exam', weight: 20 },
+        { code: 'FINAL', label: 'Final Exam', weight: 30 },
       ];
     }
     
     return gradingComponents.map(c => ({
       code: c.code,
       label: c.name,
-      dbField: (codeMapping[c.code] || 'caScore') as 'caScore' | 'midScore' | 'finalScore',
       weight: c.percentage,
     }));
   }, [gradingComponents]);
 
-  const calculateGrade = (total: number | null): string => {
+  function calculateGrade(total: number | null): string {
     if (total === null) return "";
     if (total >= 90) return "A";
     if (total >= 80) return "B";
     if (total >= 70) return "C";
     if (total >= 60) return "D";
     return "F";
-  };
+  }
 
-  const handleScoreChange = (studentId: string, field: "caScore" | "midScore" | "finalScore", value: string) => {
+  const handleScoreChange = (studentId: string, componentCode: string, value: string) => {
     const numValue = value === "" ? null : parseFloat(value);
-    
-    // Get the max weight for this specific field
-    const col = assessmentColumns.find(c => c.dbField === field);
-    const maxWeight = col ? col.weight : 100;
-    
-    // Validate score range based on the specific weight for this assessment type
+
+    const normalizedCode = componentCode.toUpperCase();
+    const availability = componentAvailability[normalizedCode];
+    if (availability && !availability.started) {
+      toast.error(`${formatAssessmentLabel(normalizedCode)} has not started yet`);
+      return;
+    }
+
+    const col = assessmentColumns.find(c => c.code.toUpperCase() === normalizedCode);
+    const maxWeight = availability?.maxScore ?? (col ? col.weight : 100);
+
     if (numValue !== null && (numValue < 0 || numValue > maxWeight)) {
-      toast.error(`${col?.label || field} max score is ${maxWeight}`);
+      toast.error(`${col?.label || normalizedCode} max score is ${maxWeight}`);
       return;
     }
     
     setStudents(prev => prev.map(student => {
       if (student.studentId !== studentId) return student;
-      
-      const newStudent = { ...student, [field]: numValue };
-      const total = calculateTotal(newStudent.caScore, newStudent.midScore, newStudent.finalScore);
+
+      const nextComponentScores = {
+        ...(student.componentScores || {}),
+        [normalizedCode]: numValue,
+      };
+
+      const newStudent = { ...student, componentScores: nextComponentScores };
+      const total = calculateTotal(nextComponentScores, newStudent.caScore, newStudent.midScore, newStudent.finalScore);
       newStudent.totalScore = total;
       newStudent.gradeLetter = total !== null ? calculateGrade(total) : null;
       
       return newStudent;
     }));
   };
+
+  const isComponentStarted = (code: string) =>
+    componentAvailability[code.toUpperCase()]?.started ?? false;
+
+  const getComponentStartLabel = (code: string) => {
+    const availability = componentAvailability[code.toUpperCase()];
+    if (!availability) return "Not scheduled";
+    if (availability.started) return "Started";
+    return `Starts ${formatDate(availability.startDate) || new Date(availability.startDate).toLocaleDateString()}`;
+  };
+
+  const hasStartedAssessment = assessmentColumns.some((col) =>
+    isComponentStarted(col.code),
+  );
+
+  const hasPendingAssessmentStart = assessmentColumns.some(
+    (col) => componentAvailability[col.code.toUpperCase()] && !isComponentStarted(col.code),
+  );
+
+  const gradeEntryStatusMessage = !hasStartedAssessment && hasPendingAssessmentStart
+    ? "Wait until the exams are started to enter marks."
+    : "Enter marks for the assessments that are currently active.";
 
   const handleSaveDraft = async () => {
     setSaving(true);
@@ -565,7 +698,13 @@ export default function TeacherGradingPage() {
 
       // Filter students with at least one score entered
       const gradesToSave = students
-        .filter(s => s.caScore !== null || s.midScore !== null || s.finalScore !== null)
+        .filter(s => {
+          const componentValues = Object.values(s.componentScores || {});
+          if (componentValues.some(value => value !== null && value !== undefined)) {
+            return true;
+          }
+          return s.caScore !== null || s.midScore !== null || s.finalScore !== null;
+        })
         .map(student => ({
           studentId: student.studentId,
           subjectId: assignment.subject.id,
@@ -576,6 +715,10 @@ export default function TeacherGradingPage() {
           caScore: student.caScore,
           midScore: student.midScore,
           finalScore: student.finalScore,
+          componentScores: assessmentColumns.map(col => ({
+            code: col.code,
+            score: student.componentScores?.[col.code.toUpperCase()] ?? null,
+          })),
           remark: student.remark,
         }));
 
@@ -687,30 +830,27 @@ export default function TeacherGradingPage() {
   }
 
   return (
-    <div className="w-full px-4 md:px-6 lg:px-8 py-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden space-y-5 bg-gray-50 px-3 py-4 dark:bg-gray-900 sm:px-4 sm:py-6 md:space-y-6 md:px-6 lg:px-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-<h1 className="text-2xl font-bold flex items-center gap-2 text-black">
+      <div className="min-w-0">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-black sm:text-2xl">
             Grade Entry
           </h1>
-          <p className="text-muted-foreground text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-muted-foreground text-gray-500 dark:text-gray-400 sm:text-base">
             Enter and manage student grades for your assigned subjects
           </p>
         </div>
       </div>
 
       {/* Filters */}
-      <Card className="dark:bg-gray-800">
-        <CardHeader>
-          <CardTitle className="text-lg text-gray-900 dark:text-white">Select Criteria</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden dark:bg-gray-800">
+        <CardContent className="px-4 pb-4 pt-4 sm:px-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div>
               <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">Academic Year</label>
               <Select value={selectedYear} onValueChange={(val) => { setSelectedYear(val); setSelectedSubjectId(""); setSelectedClassSectionId(""); }}>
-                <SelectTrigger className="dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -726,7 +866,7 @@ export default function TeacherGradingPage() {
             <div>
               <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">Term</label>
               <Select value={selectedTerm} onValueChange={(val) => { setSelectedTerm(val); setSelectedClassSectionId(""); }}>
-                <SelectTrigger className="dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600">
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -743,7 +883,7 @@ export default function TeacherGradingPage() {
             <div>
               <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">Subject</label>
               <Select value={selectedSubjectId} onValueChange={(val) => { setSelectedSubjectId(val); setSelectedClassSectionId(""); }}>
-                <SelectTrigger className="dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600">
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -759,7 +899,7 @@ export default function TeacherGradingPage() {
             <div>
               <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">Class - Section</label>
               <Select value={selectedClassSectionId} onValueChange={setSelectedClassSectionId} disabled={!selectedSubjectId}>
-                <SelectTrigger className="dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600">
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
@@ -777,39 +917,38 @@ export default function TeacherGradingPage() {
 
       {/* Grade Entry Table */}
       {selectedAssignmentData && (
-        <Card className="dark:bg-gray-800 w-full">
-          <CardHeader className="flex flex-row items-center justify-between w-full">
-            <div>
-              <CardTitle className="text-lg text-gray-900 dark:text-white">Student Grades</CardTitle>
-              <CardDescription className="text-gray-600 dark:text-gray-400">
-                {gradingComponents.length > 0 
-                  ? gradingComponents.map(c => `${c.name} (${c.percentage}%)`).join(' + ')
-                  : 'CA (30%) + Mid (20%) + Final (50%)'}
+        <Card className="w-full min-w-0 max-w-full overflow-hidden border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <CardHeader className="flex w-full flex-col gap-4 border-b border-gray-100 dark:border-slate-700 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Student Grades</CardTitle>
+              <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
+                {gradeEntryStatusMessage}
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row">
               <Button 
                 variant="outline" 
                 onClick={handleSaveDraft} 
-                disabled={saving || isTermLocked} 
-                className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                disabled={saving || isTermLocked || !hasStartedAssessment} 
+                className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600 sm:w-auto"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                 Save Draft
               </Button>
               <Button 
                 onClick={handleSubmitToRegistrar} 
-                disabled={saving || isTermLocked}
+                disabled={saving || isTermLocked || !hasStartedAssessment}
+                className="w-full sm:w-auto"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                 Submit to Registrar
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-0 w-full">
+          <CardContent className="w-full min-w-0 p-0">
             {isTermLocked && (
-              <div className="mx-6 mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3 text-amber-800 dark:text-amber-300">
-                <AlertCircle className="h-5 w-5" />
+              <div className="mx-4 mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300 sm:mx-6">
+                <AlertCircle className="h-5 w-5 shrink-0" />
                 <p className="text-sm font-medium">This term is locked for grading. You can view existing grades but cannot make changes.</p>
               </div>
             )}
@@ -818,59 +957,111 @@ export default function TeacherGradingPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-<div className="overflow-y-auto max-h-[500px] w-full">
-                <Table className="w-full">
-                <TableHeader>
-                  <TableRow className="bg-slate-100 dark:bg-gray-700 hover:bg-slate-100 dark:hover:bg-gray-700">
-                    <TableHead className="w-12 px-4 py-3 text-sm font-semibold text-slate-700 dark:text-gray-200">#</TableHead>
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-gray-200">Student Name</TableHead>
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-gray-200">Roll No.</TableHead>
+              <>
+                <div className="space-y-3 px-4 pb-4 sm:hidden">
+                  {students.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-gray-200 py-8 text-center text-sm text-muted-foreground dark:border-gray-700 dark:text-gray-400">
+                      No students found for the selected criteria
+                    </div>
+                  ) : (
+                    students.map((student, index) => (
+                      <div key={student.studentId} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">
+                              {index + 1}. {student.studentName}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              Roll {student.rollNumber || "-"}
+                            </p>
+                          </div>
+                          <div className="shrink-0">{getStatusBadge(student.status)}</div>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {assessmentColumns.map(col => (
+                            <label key={col.code} className="min-w-0">
+                              <span className="mb-1 block truncate text-xs font-medium text-gray-500 dark:text-gray-400">
+                                {col.code}
+                              </span>
+                              <Input
+                                type="number"
+                                className="h-9 w-full px-1 text-center text-xs dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                                min="0"
+                                max={componentAvailability[col.code.toUpperCase()]?.maxScore ?? col.weight}
+                                value={student.componentScores?.[col.code.toUpperCase()] ?? ""}
+                                onChange={(e) => handleScoreChange(student.studentId, col.code, e.target.value)}
+                                disabled={student.isLocked || isTermLocked || !isComponentStarted(col.code)}
+                                placeholder={`0-${componentAvailability[col.code.toUpperCase()]?.maxScore ?? col.weight}`}
+                              />
+                            </label>
+                          ))}
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm dark:border-gray-700">
+                          <span className="font-medium text-slate-700 dark:text-gray-300">Total: {student.totalScore ?? "-"}</span>
+                          <span className={`inline-flex min-w-8 justify-center rounded-full px-2 py-1 text-xs font-semibold ${getGradeColor(student.gradeLetter)}`}>
+                            {student.gradeLetter || "-"}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="hidden w-full max-w-full sm:block">
+                <Table className="w-full table-fixed">
+                <TableHeader className="sticky top-0 bg-gray-50 dark:bg-slate-900/50">
+                  <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                    <TableHead className="w-[8%] px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Roll No.</TableHead>
+                    <TableHead className="w-[18%] px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Student</TableHead>
                     {assessmentColumns.map(col => (
-                      <TableHead key={col.code} className="text-center px-4 py-3 text-sm font-semibold text-slate-700 dark:text-gray-200">
-                        {col.label} ({col.weight}%)
+                      <TableHead key={col.code} className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
+                        <span className="block truncate">{col.label} ({col.weight}%)</span>
                       </TableHead>
                     ))}
-                    <TableHead className="text-center px-4 py-3 text-sm font-semibold text-slate-700 dark:text-gray-200">Total</TableHead>
-                    <TableHead className="text-center px-4 py-3 text-sm font-semibold text-slate-700 dark:text-gray-200">Grade</TableHead>
-                    <TableHead className="px-4 py-3 text-sm font-semibold text-slate-700 dark:text-gray-200">Status</TableHead>
+                    <TableHead className="w-[8%] px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Total</TableHead>
+                    <TableHead className="w-[8%] px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Grade</TableHead>
+                    <TableHead className="w-[10%] px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {students.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3 + assessmentColumns.length} className="text-center py-10 text-muted-foreground dark:text-gray-400">
+                      <TableCell colSpan={5 + assessmentColumns.length} className="py-10 text-center text-muted-foreground dark:text-gray-400">
                         No students found for the selected criteria
                       </TableCell>
                     </TableRow>
                   ) : (
-                    students.map((student, index) => (
-                      <TableRow key={student.studentId} className="hover:bg-slate-50 dark:hover:bg-gray-700 border-b border-slate-100 dark:border-gray-600">
-                        <TableCell className="px-4 py-3 text-sm dark:text-gray-300">{index + 1}</TableCell>
-                        <TableCell className="px-4 py-3 font-medium text-sm text-slate-800 dark:text-white">{student.studentName}</TableCell>
-                        <TableCell className="px-4 py-3 text-sm dark:text-gray-300">{student.rollNumber || "-"}</TableCell>
+                    students.map((student) => (
+                      <TableRow key={student.studentId} className="border-b border-gray-100 transition-colors hover:bg-gray-50 dark:border-slate-700/50 dark:hover:bg-slate-700/30">
+                        <TableCell className="px-3 py-3 text-sm text-gray-700 dark:text-gray-300">{student.rollNumber || "-"}</TableCell>
+                        <TableCell className="px-3 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                          <div className="truncate">{student.studentName}</div>
+                        </TableCell>
                         {assessmentColumns.map(col => (
-                          <TableCell key={col.code} className="text-center px-4 py-3">
+                          <TableCell key={col.code} className="px-2 py-3 text-center">
                             <Input
                               type="number"
-                              className="w-20 text-center dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                              className="h-8 w-full min-w-0 border-gray-200 px-1 text-center text-xs dark:border-slate-600 dark:bg-gray-700 dark:text-white"
                               min="0"
-                              max={col.weight}
-                              value={student[col.dbField] ?? ""}
-                              onChange={(e) => handleScoreChange(student.studentId, col.dbField, e.target.value)}
-                              disabled={student.isLocked || isTermLocked}
-                              placeholder={`0-${col.weight}`}
+                              max={componentAvailability[col.code.toUpperCase()]?.maxScore ?? col.weight}
+                              value={student.componentScores?.[col.code.toUpperCase()] ?? ""}
+                              onChange={(e) => handleScoreChange(student.studentId, col.code, e.target.value)}
+                              disabled={student.isLocked || isTermLocked || !isComponentStarted(col.code)}
+                              placeholder={`0-${componentAvailability[col.code.toUpperCase()]?.maxScore ?? col.weight}`}
                             />
                           </TableCell>
                         ))}
-                        <TableCell className="text-center px-4 py-3 font-semibold text-slate-800 dark:text-white">
+                        <TableCell className="px-3 py-3 text-center text-sm font-semibold text-gray-900 dark:text-white">
                           {student.totalScore ?? "-"}
                         </TableCell>
-                        <TableCell className="text-center px-4 py-3">
-                          <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getGradeColor(student.gradeLetter)}`}>
+                        <TableCell className="px-3 py-3 text-center">
+                          <span className={`inline-flex min-w-[40px] justify-center rounded-full px-2 py-1 text-xs font-semibold ${getGradeColor(student.gradeLetter)}`}>
                             {student.gradeLetter || "-"}
                           </span>
                         </TableCell>
-                        <TableCell className="px-4 py-3">
+                        <TableCell className="px-3 py-3">
                           {getStatusBadge(student.status)}
                         </TableCell>
                       </TableRow>
@@ -878,7 +1069,8 @@ export default function TeacherGradingPage() {
                   )}
                 </TableBody>
               </Table>
-              </div>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

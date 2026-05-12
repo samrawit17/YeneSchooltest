@@ -1,0 +1,2 @@
+-- Placeholder migration file restored so Prisma migration history remains readable.
+-- The original SQL was missing from the repository.

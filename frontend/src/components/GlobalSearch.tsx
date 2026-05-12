@@ -68,7 +68,7 @@ const ROLE_QUICK_LINKS: Record<string, { label: string; href: string; icon: Reac
         { label: "Students", href: "/list/students", icon: <GraduationCap className="h-4 w-4" /> },
         { label: "Teachers", href: "/list/teachers", icon: <Users className="h-4 w-4" /> },
         { label: "Classes", href: "/admin/class-sections", icon: <School className="h-4 w-4" /> },
-        { label: "Exams", href: "/admin/exams", icon: <ClipboardList className="h-4 w-4" /> },
+        { label: "Exams", href: "/admin/assessments", icon: <ClipboardList className="h-4 w-4" /> },
         { label: "Attendance", href: "/admin/attendance", icon: <Calendar className="h-4 w-4" /> },
         { label: "Finance", href: "/list/finance", icon: <DollarSign className="h-4 w-4" /> },
         { label: "Announcements", href: "/list/announcements", icon: <Megaphone className="h-4 w-4" /> },
@@ -85,7 +85,6 @@ const ROLE_QUICK_LINKS: Record<string, { label: string; href: string; icon: Reac
     teacher: [
         { label: "Dashboard", href: "/teacher", icon: <School className="h-4 w-4" /> },
         { label: "My Classes", href: "/teacher/my-class", icon: <School className="h-4 w-4" /> },
-        { label: "Exams", href: "/teacher/exams", icon: <ClipboardList className="h-4 w-4" /> },
         { label: "Grade Entry", href: "/teacher/grading", icon: <BookOpen className="h-4 w-4" /> },
         { label: "Attendance", href: "/teacher/attendance", icon: <Calendar className="h-4 w-4" /> },
         { label: "Lessons", href: "/teacher/lessons", icon: <BookOpen className="h-4 w-4" /> },

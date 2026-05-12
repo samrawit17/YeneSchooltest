@@ -52,16 +52,22 @@ export default function FloatingAiAssistant({ role }: { role?: AssistantRole }) 
     [normalizedRole]
   );
 
+  const triggerClassName =
+    "h-11 rounded-r-none rounded-l-xl border border-r-0 border-[rgba(var(--brand-color-rgb),0.24)] bg-[var(--brand-color,#e35336)] px-3 text-white shadow-lg shadow-[var(--brand-color,#e35336)]/20 transition-transform duration-200 ease-out group-hover/assistant:translate-x-0";
+
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button
-          size="icon"
-          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full border border-[rgba(var(--brand-color-rgb),0.24)] bg-[var(--brand-color,#e35336)] text-white shadow-xl shadow-[var(--brand-color,#e35336)]/25 hover:opacity-95"
-          aria-label="Open AI assistant"
-        >
-          <Bot className="h-6 w-6" />
-        </Button>
+        <div className="group/assistant">
+          <Button
+            type="button"
+            className={`${triggerClassName} w-14 translate-x-[calc(100%-14px)] justify-start overflow-hidden hover:opacity-95`}
+            aria-label="Open AI assistant"
+          >
+            <Bot className="h-5 w-5 shrink-0" />
+            <span className="ml-3 whitespace-nowrap text-sm font-medium">AI</span>
+          </Button>
+        </div>
       </SheetTrigger>
       <SheetContent
         side="right"

@@ -113,14 +113,6 @@ const menuItems: MenuSection[] = [
             visible: ["teacher"],
           },
           {
-            icon: <ClipboardList className="w-4 h-4" />,
-            label: "Exams",
-            href: "/teacher/exams",
-            visible: ["teacher"],
-            featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "EXAM_MANAGEMENT",
-          },
-          {
             icon: <BookText className="w-4 h-4" />,
             label: "Lessons",
             href: "/teacher/lessons",
@@ -171,7 +163,7 @@ const menuItems: MenuSection[] = [
       {
         icon: <ClipboardList className="w-5 h-5" />,
         label: "Exams",
-        href: "/admin/exams",
+        href: "/admin/assessments",
         visible: ["admin", "it_manager"],
         featureFlag: "FEATURE_FLAG_EXAMS",
         subscriptionFeature: "EXAM_MANAGEMENT",
@@ -179,7 +171,7 @@ const menuItems: MenuSection[] = [
           {
             icon: <ClipboardList className="w-4 h-4" />,
             label: "Assessment",
-            href: "/admin/exams",
+            href: "/admin/assessments",
             visible: ["admin", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
             subscriptionFeature: "EXAM_MANAGEMENT",
@@ -280,6 +272,12 @@ const menuItems: MenuSection[] = [
         href: "/list/communications",
         visible: ["teacher", "admin", "it_manager", "registrar", "parent"],
         featureFlag: "FEATURE_FLAG_COMMUNICATION_BOOK",
+      },
+      {
+        icon: <MessageSquare className="w-5 h-5" />,
+        label: "Messages",
+        href: "/messages",
+        visible: ["teacher", "admin", "it_manager", "registrar"],
       },
       {
         icon: <UserCircle className="w-5 h-5" />,
@@ -798,14 +796,14 @@ const Menu = ({
             const isChildMatch = pathname?.startsWith(actualHref + "/");
 
             // Special case: /parent should not match /parent/children, /parent/fees, etc.
-            // Also /admin/exams should not match /admin/exams/reports, /admin/exams/seating
+            // Also /admin/assessments should not match /admin/exams/reports, /admin/exams/seating
             const isRootRoute = actualHref === "/parent" || 
               actualHref === "/admin" || 
               actualHref === "/teacher" || 
               actualHref === "/student" || 
               actualHref === "/registrar" || 
               actualHref === "/superadmin" ||
-              actualHref === "/admin/exams";
+              actualHref === "/admin/assessments";
             const isActive = isExactMatch || (isChildMatch && !isRootRoute);
 
             // Don't highlight parent if child has same href (to avoid highlighting parent when child is clicked)

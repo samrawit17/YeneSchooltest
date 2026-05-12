@@ -419,7 +419,7 @@ export default function AcademicStructurePage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
@@ -459,55 +459,6 @@ export default function AcademicStructurePage() {
       </div>
 
       <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            {
-              icon: School,
-              label: "Classes",
-              value: gradeFilteredClasses.length,
-              color: "text-blue-500",
-              bg: "bg-blue-50 dark:bg-blue-950/30",
-            },
-            {
-              icon: Layers,
-              label: "Sections",
-              value: totalSections,
-              color: "text-emerald-500",
-              bg: "bg-emerald-50 dark:bg-emerald-950/30",
-            },
-
-            {
-              icon: Users,
-              label: "Total Capacity",
-              value: `${totalCapacity}`,
-              color: "text-orange-500",
-              bg: "bg-orange-50 dark:bg-orange-950/30",
-            },
-            {
-              icon: Hash,
-              label: "Section Capacity",
-              value: sectionCapacitySetting || 30,
-              color: "text-cyan-500",
-              bg: "bg-cyan-50 dark:bg-cyan-950/30",
-            },
-          ].map((stat) => (
-            <Card key={stat.label} className="dark:bg-slate-900 dark:border-slate-800">
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${stat.bg}`}>
-                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
-                    <p className="text-xl font-bold dark:text-white">{stat.value}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
@@ -549,272 +500,265 @@ export default function AcademicStructurePage() {
 
           {/* ========== CLASSES TAB ========== */}
           <TabsContent value="classes">
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <School className="w-5 h-5 text-blue-500" /> All Classes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {classesLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                  </div>
-                ) : filteredClasses.length === 0 ? (
-                  <div className="text-center py-12">
-                    <School className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-                    <p className="text-gray-500 font-medium">No classes found</p>
-                    <p className="text-sm text-gray-400">Create a class to get started</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table className="w-full">
-                      <TableHeader>
-                        <TableRow className="border-b dark:border-slate-700">
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Class Name</TableHead>
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Grade</TableHead>
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Academic Year</TableHead>
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden lg:table-cell">Sections</TableHead>
-                          <TableHead className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Actions</TableHead>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <School className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">All Classes</h2>
+              </div>
+              {classesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)]" />
+                </div>
+              ) : filteredClasses.length === 0 ? (
+                <div className="text-center py-12">
+                  <School className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                  <p className="text-gray-500 font-medium">No classes found</p>
+                  <p className="text-sm text-gray-400">Create a class to get started</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow className="border-b dark:border-slate-700">
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Class Name</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Grade</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Academic Year</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden lg:table-cell">Sections</TableHead>
+                        <TableHead className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredClasses.map((cls) => (
+                        <TableRow
+                          key={cls.id}
+                          className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                        >
+                          <TableCell className="py-3 px-4">
+                            <div 
+                              onClick={() => window.location.href = `/admin/class-sections/${cls.id}`}
+                              className="flex items-center gap-2 cursor-pointer hover:underline"
+                            >
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
+                                <School className="w-4 h-4 text-[var(--brand-color,#e35336)]" />
+                              </div>
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {cls.name || `Grade ${cls.grade}`}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden md:table-cell">
+                            <Badge variant="outline" className="dark:border-slate-600">{cls.grade}</Badge>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden md:table-cell text-gray-600 dark:text-gray-400">
+                            {cls.academicYear?.name || "—"}
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden lg:table-cell">
+                            <div className="flex gap-1 flex-wrap">
+                              {cls.sections?.length > 0 ? (
+                                cls.sections.map((sec) => (
+                                  <span
+                                    key={sec.id}
+                                    onClick={() => window.location.href = `/admin/class-sections/${cls.id}`}
+                                    className="rounded px-2 py-0.5 text-xs font-medium cursor-pointer hover:underline bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]"
+                                  >
+                                    {sec.name} ({sec.capacity})
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-gray-400 text-xs">No sections</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-right">
+                            <EntityActions
+                              entityLabel="Class"
+                              formTable="class"
+                              data={cls}
+                              onDelete={() => handleDeleteClass(cls.id)}
+                            />
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredClasses.map((cls) => (
-                          <TableRow
-                            key={cls.id}
-                            className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                          >
-                            <TableCell className="py-3 px-4">
-                              <div 
-                                onClick={() => window.location.href = `/admin/class-sections/${cls.id}`}
-                                className="flex items-center gap-2 cursor-pointer hover:underline"
-                              >
-                                <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center">
-                                  <School className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <span className="font-medium text-gray-900 dark:text-white">
-                                  {cls.name || `Grade ${cls.grade}`}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3 px-4 hidden md:table-cell">
-                              <Badge variant="outline" className="dark:border-slate-600">{cls.grade}</Badge>
-                            </TableCell>
-                            <TableCell className="py-3 px-4 hidden md:table-cell text-gray-600 dark:text-gray-400">
-                              {cls.academicYear?.name || "—"}
-                            </TableCell>
-                            <TableCell className="py-3 px-4 hidden lg:table-cell">
-                              <div className="flex gap-1 flex-wrap">
-                                {cls.sections?.length > 0 ? (
-                                  cls.sections.map((sec) => (
-                                    <span
-                                      key={sec.id}
-                                      onClick={() => window.location.href = `/admin/class-sections/${cls.id}`}
-                                      className="px-2 py-0.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 rounded text-xs font-medium hover:underline cursor-pointer"
-                                    >
-                                      {sec.name} ({sec.capacity})
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span className="text-gray-400 text-xs">No sections</span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3 px-4 text-right">
-                              <EntityActions
-                                entityLabel="Class"
-                                formTable="class"
-                                data={cls}
-                                onDelete={() => handleDeleteClass(cls.id)}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* ========== SECTIONS TAB ========== */}
           <TabsContent value="sections">
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Layers className="w-5 h-5 text-emerald-500" /> All Sections
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {sectionsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-                  </div>
-                ) : filteredSections.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Layers className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-                    <p className="text-gray-500 font-medium">No sections found</p>
-                    <p className="text-sm text-gray-400">Create a section to get started</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table className="w-full">
-                      <TableHeader>
-                        <TableRow className="border-b dark:border-slate-700">
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Section</TableHead>
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Class</TableHead>
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Capacity</TableHead>
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Room</TableHead>
-                          <TableHead className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredSections.map((sec) => (
-                          <TableRow
-                            key={sec.id}
-                            className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                          >
-                            <TableCell className="py-3 px-4">
-                              <div 
-                                onClick={() => window.location.href = `/admin/class-sections/${sec.class?.id}`}
-                                className="flex items-center gap-2 cursor-pointer hover:underline"
-                              >
-                                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
-                                  <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                </div>
-                                <span className="font-medium text-gray-900 dark:text-white">{sec.name}</span>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <Layers className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
+                <h2 className="text-base font-semibold text-slate-900 dark:text-white">All Sections</h2>
+              </div>
+              {sectionsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)]" />
+                </div>
+              ) : filteredSections.length === 0 ? (
+                <div className="text-center py-12">
+                  <Layers className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                  <p className="text-gray-500 font-medium">No sections found</p>
+                  <p className="text-sm text-gray-400">Create a section to get started</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow className="border-b dark:border-slate-700">
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Section</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Class</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Capacity</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Room</TableHead>
+                        <TableHead className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSections.map((sec) => (
+                        <TableRow
+                          key={sec.id}
+                          className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                        >
+                          <TableCell className="py-3 px-4">
+                            <div 
+                              onClick={() => window.location.href = `/admin/class-sections/${sec.class?.id}`}
+                              className="flex items-center gap-2 cursor-pointer hover:underline"
+                            >
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
+                                <Layers className="w-4 h-4 text-[var(--brand-color,#e35336)]" />
                               </div>
-                            </TableCell>
-                            <TableCell className="py-3 px-4 hidden md:table-cell">
-                              <div 
-                                onClick={() => window.location.href = `/admin/class-sections/${sec.class?.id}`}
-                                className="text-gray-600 dark:text-gray-400 hover:underline hover:text-blue-600 cursor-pointer"
-                              >
-                                {sec.class?.name || `Grade ${sec.class?.grade}`}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3 px-4 hidden md:table-cell">
+                              <span className="font-medium text-gray-900 dark:text-white">{sec.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden md:table-cell">
+                            <div 
+                              onClick={() => window.location.href = `/admin/class-sections/${sec.class?.id}`}
+                              className="cursor-pointer text-gray-600 hover:text-[var(--brand-color,#e35336)] hover:underline dark:text-gray-400"
+                            >
+                              {sec.class?.name || `Grade ${sec.class?.grade}`}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden md:table-cell">
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-gray-400" />
+                              <span className="text-gray-700 dark:text-gray-300 font-medium">
+                                {sec._count?.studentClasses || 0} / {sec.capacity}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden md:table-cell">
+                            {sec.roomNumber ? (
                               <div className="flex items-center gap-1.5">
-                                <Users className="w-3.5 h-3.5 text-gray-400" />
-                                <span className="text-gray-700 dark:text-gray-300 font-medium">
-                                  {sec._count?.studentClasses || 0} / {sec.capacity}
-                                </span>
+                                <DoorOpen className="w-3.5 h-3.5 text-gray-400" />
+                                <span className="text-gray-600 dark:text-gray-400">{sec.roomNumber}</span>
                               </div>
-                            </TableCell>
-                            <TableCell className="py-3 px-4 hidden md:table-cell">
-                              {sec.roomNumber ? (
-                                <div className="flex items-center gap-1.5">
-                                  <DoorOpen className="w-3.5 h-3.5 text-gray-400" />
-                                  <span className="text-gray-600 dark:text-gray-400">{sec.roomNumber}</span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4 text-right">
-                              <EntityActions
-                                entityLabel="Section"
-                                formTable="section"
-                                data={sec}
-                                onDelete={() => handleDeleteSection(sec.id)}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-right">
+                            <EntityActions
+                              entityLabel="Section"
+                              formTable="section"
+                              data={sec}
+                              onDelete={() => handleDeleteSection(sec.id)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* ========== SUBJECTS TAB ========== */}
           <TabsContent value="subjects">
-            <Card className="dark:bg-slate-900 dark:border-slate-800">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <BookOpen className="w-5 h-5 text-purple-500" /> All Subjects
-                </CardTitle>
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
+                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">All Subjects</h2>
+                </div>
                 <FormModal table="subject" type="create" />
-              </CardHeader>
-              <CardContent>
-                {subjectsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
-                  </div>
-                ) : filteredSubjects.length === 0 ? (
-                  <div className="text-center py-12">
-                    <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-                    <p className="text-gray-500 dark:text-gray-400 font-medium">No subjects found</p>
-                    <p className="text-sm text-gray-400 dark:text-gray-500">Create a subject to get started</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table className="w-full">
-                      <TableHeader>
-                        <TableRow className="border-b dark:border-slate-700">
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Subject Name</TableHead>
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Code</TableHead>
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Status</TableHead>
-                          <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden lg:table-cell">Description</TableHead>
-                          <TableHead className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredSubjects.map((sub) => (
-                          <TableRow
-                            key={sub.id}
-                            className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                          >
-                            <TableCell className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/40 flex items-center justify-center">
-                                  <BookOpen className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                </div>
-                                <span className="font-medium text-gray-900 dark:text-white">
-                                  {sub.name}
-                                </span>
+              </div>
+              {subjectsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)]" />
+                </div>
+              ) : filteredSubjects.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                  <p className="text-gray-500 dark:text-gray-400 font-medium">No subjects found</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">Create a subject to get started</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow className="border-b dark:border-slate-700">
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Subject Name</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Code</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Status</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden lg:table-cell">Description</TableHead>
+                        <TableHead className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSubjects.map((sub) => (
+                        <TableRow
+                          key={sub.id}
+                          className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                        >
+                          <TableCell className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
+                                <BookOpen className="w-4 h-4 text-[var(--brand-color,#e35336)]" />
                               </div>
-                            </TableCell>
-                            <TableCell className="py-3 px-4 hidden md:table-cell">
-                              {sub.code ? (
-                                <span className="font-mono text-gray-600 dark:text-gray-400">{sub.code}</span>
-                              ) : (
-                                <span className="text-gray-400">—</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4 hidden md:table-cell">
-                              {sub.isActive ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
-                                  Active
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
-                                  Inactive
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="py-3 px-4 hidden lg:table-cell text-gray-600 dark:text-gray-400 max-w-[200px] truncate">
-                              {sub.description || <span className="text-gray-400">—</span>}
-                            </TableCell>
-                            <TableCell className="py-3 px-4 text-right">
-                              <EntityActions
-                                entityLabel="Subject"
-                                formTable="subject"
-                                data={sub}
-                                onDelete={() => handleDeleteSubject(sub.id)}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {sub.name}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden md:table-cell">
+                            {sub.code ? (
+                              <span className="font-mono text-gray-600 dark:text-gray-400">{sub.code}</span>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden md:table-cell">
+                            {sub.isActive ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
+                                Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                                Inactive
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden lg:table-cell text-gray-600 dark:text-gray-400 max-w-[200px] truncate">
+                            {sub.description || <span className="text-gray-400">—</span>}
+                          </TableCell>
+                          <TableCell className="py-3 px-4 text-right">
+                            <EntityActions
+                              entityLabel="Subject"
+                              formTable="subject"
+                              data={sub}
+                              onDelete={() => handleDeleteSubject(sub.id)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

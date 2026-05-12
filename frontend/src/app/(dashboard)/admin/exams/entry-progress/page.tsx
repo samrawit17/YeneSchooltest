@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -50,7 +50,7 @@ type StatusFilter = "ALL" | "COMPLETE" | "PARTIAL" | "EMPTY" | "LOCKED";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TYPE_META: Record<
-  AssessmentType,
+  string,
   { label: string; icon: React.ReactNode; color: string; bg: string; border: string }
 > = {
   QUIZ: {
@@ -89,6 +89,23 @@ const TYPE_META: Record<
     border: "border-green-200 dark:border-green-800",
   },
 };
+
+function getTypeMeta(type: string) {
+  const key = String(type).toUpperCase();
+  return (
+    TYPE_META[key] ?? {
+      label: key
+        .toLowerCase()
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" "),
+      icon: <BookOpen className="w-3 h-3" />,
+      color: "text-slate-600 dark:text-slate-300",
+      bg: "bg-slate-50 dark:bg-slate-900/40",
+      border: "border-slate-200 dark:border-slate-700",
+    }
+  );
+}
 
 function getProgressStatus(row: EntryProgressRow): StatusFilter {
   if (row.isLocked) return "LOCKED";
@@ -209,14 +226,9 @@ export default function EntryProgressPage() {
         }
       })
       .catch(() => {});
-  }, [selectedYear]);
+  }, [selectedYear, setSelectedTerm]);
 
-  // Auto-fetch when filters are ready
-  useEffect(() => {
-    if (selectedYear) fetchData(1);
-  }, [selectedYear, selectedTerm]);
-
-  const fetchData = async (page = 1) => {
+  const fetchData = useCallback(async (page = 1) => {
     if (!selectedYear) return;
     setLoading(true);
     try {
@@ -239,7 +251,12 @@ export default function EntryProgressPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTerm, selectedYear]);
+
+  // Auto-fetch when filters are ready
+  useEffect(() => {
+    if (selectedYear) fetchData(1);
+  }, [selectedYear, fetchData]);
 
   // ── Derived stats ──
   const stats = useMemo(() => {
@@ -454,9 +471,11 @@ export default function EntryProgressPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL" className="text-xs">All types</SelectItem>
-                {(["QUIZ", "TEST", "MID", "FINAL", "ATTENDANCE"] as AssessmentType[]).map((t) => (
+                {Array.from(
+                  new Set(data.map((row) => String(row.type).toUpperCase())),
+                ).map((t) => (
                   <SelectItem key={t} value={t} className="text-xs">
-                    {TYPE_META[t].label}
+                    {getTypeMeta(t).label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -567,7 +586,7 @@ export default function EntryProgressPage() {
                   <tbody className="divide-y divide-gray-50 dark:divide-slate-800/60">
                     {rows.map((row) => {
                       const status = getProgressStatus(row);
-                      const typeMeta = TYPE_META[row.type];
+                      const typeMeta = getTypeMeta(row.type);
                       const pct =
                         row.expectedEntries === 0
                           ? 100

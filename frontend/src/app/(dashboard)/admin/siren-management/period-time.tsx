@@ -159,26 +159,26 @@ export function PeriodTimeManagement() {
   };
 
   return (
-    <Card>
+    <Card className="max-w-full overflow-hidden">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <CardTitle className="flex min-w-0 items-center gap-2">
+              <Clock className="h-5 w-5 shrink-0" />
               Period Times
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="break-words">
               Configure school periods and their time slots
             </CardDescription>
           </div>
           <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
-                <Plus className="w-4 h-4" />
+              <Button size="sm" className="gap-2 self-start sm:self-auto">
+                <Plus className="h-4 w-4 shrink-0" />
                 Add Period
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Edit Period" : "Add Period Time"}
@@ -228,7 +228,7 @@ export function PeriodTimeManagement() {
                 </div>
               </div>
 
-              <div className="flex gap-2 justify-end pt-4">
+              <div className="flex flex-wrap justify-end gap-2 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => handleOpenChange(false)}
@@ -245,7 +245,7 @@ export function PeriodTimeManagement() {
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="min-w-0">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -256,7 +256,8 @@ export function PeriodTimeManagement() {
             <p className="text-muted-foreground">No periods configured yet</p>
           </div>
         ) : (
-          <Table>
+          <div className="max-w-full overflow-x-auto">
+            <Table className="min-w-[560px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Period</TableHead>
@@ -309,6 +310,7 @@ export function PeriodTimeManagement() {
                 })}
               </TableBody>
             </Table>
+          </div>
         )}
       </CardContent>
 

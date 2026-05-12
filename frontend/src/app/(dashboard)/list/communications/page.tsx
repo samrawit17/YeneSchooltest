@@ -42,6 +42,10 @@ import {
 } from "@/lib/api/communications";
 import { useAuth } from "@/context/AuthContext";
 import NewMessageModal from "@/components/communications/NewMessageModal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type FilterOption = "all" | "unread" | "open" | "closed" | "today" | "this_week";
 type ViewMode = "inbox" | "starred" | "archived" | "trash";
@@ -113,7 +117,16 @@ function getTeacherDisplayName(conversation: Communication) {
   if (conversation.createdBy?.role === "TEACHER" && conversation.createdBy?.name) {
     return conversation.createdBy.name;
   }
-  return "Teacher";
+  return "";
+}
+
+function getParentDisplayName(conversation: Communication) {
+  const parentReply = conversation.replies?.find((reply) => reply.sender?.role === "PARENT");
+  if (parentReply?.sender?.name) return parentReply.sender.name;
+  if (conversation.createdBy?.role === "PARENT" && conversation.createdBy?.name) {
+    return conversation.createdBy.name;
+  }
+  return "";
 }
 
 function getConversationClassLabel(conversation: ConversationWithParent | Communication) {
@@ -127,8 +140,12 @@ function getConversationClassLabel(conversation: ConversationWithParent | Commun
 }
 
 function getConversationTitle(conversation: ConversationWithParent, viewerRole?: string) {
-  if (viewerRole === "PARENT") return conversation.teacherName || "Teacher";
-  if (viewerRole === "TEACHER") return conversation.parentName || "Parent";
+  if (viewerRole === "PARENT") {
+    return conversation.teacherName || conversation.subject || conversation.student?.name || "Conversation";
+  }
+  if (viewerRole === "TEACHER") {
+    return conversation.parentName || conversation.student?.name || conversation.subject || "Conversation";
+  }
   return conversation.student?.name || conversation.parentName || conversation.teacherName || "Unknown Contact";
 }
 
@@ -137,16 +154,46 @@ function getConversationSubtitle(conversation: ConversationWithParent, viewerRol
   const classLabel = getConversationClassLabel(conversation);
 
   if (viewerRole === "PARENT") {
+    if (conversation.teacherName && conversation.subject) return `${conversation.teacherName} • ${conversation.subject}`;
     if (studentName && classLabel) return `${studentName} • ${classLabel}`;
-    return studentName || classLabel || conversation.subject;
+    return conversation.subject || studentName || classLabel || "";
   }
 
   if (viewerRole === "TEACHER") {
     if (studentName && classLabel) return `${studentName} • ${classLabel}`;
-    return studentName || classLabel || conversation.subject;
+    if (conversation.parentName && conversation.subject) return `${conversation.parentName} • ${conversation.subject}`;
+    return studentName || conversation.subject || classLabel || "";
   }
 
   return classLabel || conversation.subject;
+}
+
+function getInitialMessageSenderName(conversation: ConversationWithParent, viewerRole?: string) {
+  if (conversation.createdBy?.name) return conversation.createdBy.name;
+  if (viewerRole === "PARENT") return conversation.teacherName || conversation.subject || "Conversation";
+  if (viewerRole === "TEACHER") return conversation.parentName || conversation.student?.name || conversation.subject || "Conversation";
+  return getConversationTitle(conversation, viewerRole);
+}
+
+function getInitialMessageSenderRole(conversation: ConversationWithParent) {
+  if (conversation.createdBy?.role) return conversation.createdBy.role;
+  if (conversation.teacherName) return "TEACHER";
+  if (conversation.parentName) return "PARENT";
+  return "CONTACT";
+}
+
+function getReplySenderName(reply: Communication["replies"][number] | undefined, conversation: ConversationWithParent, viewerRole?: string) {
+  if (reply?.sender?.name) return reply.sender.name;
+  if (reply?.sender?.role === "TEACHER") return conversation.teacherName || conversation.subject || "Conversation";
+  if (reply?.sender?.role === "PARENT") return conversation.parentName || conversation.student?.name || conversation.subject || "Conversation";
+  return getConversationTitle(conversation, viewerRole);
+}
+
+function getReplySenderRole(reply: Communication["replies"][number] | undefined, conversation: ConversationWithParent) {
+  if (reply?.sender?.role) return reply.sender.role;
+  if (conversation.teacherName) return "TEACHER";
+  if (conversation.parentName) return "PARENT";
+  return "CONTACT";
 }
 
 function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelete, canDelete }: {
@@ -178,20 +225,10 @@ function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelet
   return (
     <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[75%] group relative ${isMe ? "order-2" : "order-1"}`}>
-        <div className={`rounded-2xl p-3 ${isMe ? "bg-[var(--brand-color,#e35336)] text-white rounded-br-sm" : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-bl-sm shadow-sm"}`}>
-          {!isMe && (
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`font-semibold text-sm ${isMe ? "text-white/90" : "text-slate-900 dark:text-white"}`}>
-                {senderName}
-              </span>
-              <span className={`text-xs px-1.5 py-0.5 rounded ${isMe ? "bg-white/20 text-white/80" : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}>
-                {senderRole}
-              </span>
-            </div>
-          )}
-          <p className={`text-sm leading-relaxed ${isMe ? "text-white/95" : "text-slate-700 dark:text-slate-200"}`}>{message}</p>
-          <div className={`flex items-center gap-1 mt-2 ${isMe ? "justify-end" : "justify-start"}`}>
-            <span className={`text-xs ${isMe ? "text-white/60" : "text-slate-400 dark:text-slate-500"}`}>
+        <div className={`rounded-lg border px-3 py-2 text-sm ${isMe ? "border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.10)] text-[var(--brand-color,#e35336)] dark:border-[rgba(var(--brand-color-rgb),0.24)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "border-gray-200 bg-gray-100 text-gray-900 dark:border-slate-700 dark:bg-slate-700 dark:text-white"}`}>
+          <p className={`whitespace-pre-wrap break-words ${isMe ? "text-[var(--brand-color,#e35336)] dark:text-white/90" : "text-gray-900 dark:text-white"}`}>{message}</p>
+          <div className={`mt-2 flex items-center gap-1 ${isMe ? "justify-end" : "justify-start"}`}>
+            <span className={`text-xs ${isMe ? "text-[rgba(var(--brand-color-rgb),0.75)] dark:text-white/60" : "text-slate-400 dark:text-slate-500"}`}>
               {formatTime(timestamp)}
             </span>
           </div>
@@ -248,66 +285,59 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
   });
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex h-full flex-col">
+      <ScrollArea className="h-full">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full p-6">
-            <Loader2 className="mb-3 h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading conversations...</p>
+          <div className="flex items-center gap-2 p-4 text-sm text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading conversations...
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center h-full p-6">
-            <XCircle className="w-12 h-12 text-red-400 mb-3" />
-            <p className="text-sm text-red-500 mb-3">{error}</p>
-            <button onClick={onRefresh} className="text-sm text-[var(--brand-color,#e35336)] hover:underline">Try again</button>
+          <div className="p-4 text-sm text-red-500">
+            <p>{error}</p>
+            <button onClick={onRefresh} className="mt-2 text-sm text-[var(--brand-color,#e35336)] hover:underline">Try again</button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full p-6">
-            <Inbox className="w-16 h-16 text-slate-300 dark:text-slate-600 mb-3" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">No conversations found</p>
-          </div>
+          <div className="p-4 text-sm text-gray-500">No conversations yet.</div>
         ) : (
-          filtered.map(conv => (
-            <button
-              key={conv.id}
-              onClick={() => onSelect(conv)}
-              className={`w-full border-b border-slate-100 p-3 text-left transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50 ${selectedId === conv.id ? "border-l-4 border-l-[var(--brand-color,#e35336)] bg-[rgba(var(--brand-color-rgb),0.08)] dark:bg-[rgba(var(--brand-color-rgb),0.14)]" : ""}`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="relative">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] text-base font-semibold text-white">
-                    {getConversationTitle(conv, viewerRole).charAt(0) || "C"}
-                  </div>
-                  {conv.unreadCount > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] px-1 text-[10px] font-bold text-white">
-                      {conv.unreadCount > 9 ? "9+" : conv.unreadCount}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+          filtered.map((conv) => {
+            const active = selectedId === conv.id;
+            return (
+              <button
+                key={conv.id}
+                onClick={() => onSelect(conv)}
+                className={`w-full border-b p-2 text-left transition-colors hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-700/40 md:p-4 ${
+                  active ? "bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "bg-white dark:bg-slate-800"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
                       {getConversationTitle(conv, viewerRole)}
-                    </span>
-                    <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
+                      {getConversationSubtitle(conv, viewerRole) || conv.subject}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-gray-400 dark:text-gray-500">
+                      {conv.lastMessage || conv.message}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
                       {new Date(conv.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
+                    {conv.unreadCount > 0 && (
+                      <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-md border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] px-1 text-[10px] font-bold text-[var(--brand-color,#e35336)] md:h-[20px] md:min-w-[20px] md:text-[11px]">
+                        {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 truncate">
-                    {getConversationSubtitle(conv, viewerRole)}
-                  </p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                    {conv.lastMessage || conv.message}
-                  </p>
                 </div>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <StatusBadge status={conv.status} compact />
-              </div>
-            </button>
-          ))
+              </button>
+            );
+          })
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }
@@ -342,105 +372,93 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
 
   if (!conversation) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <div className="text-center">
-
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Select a conversation</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-            Choose a conversation from the list to view messages and reply
-          </p>
-        </div>
+      <div className="flex h-full items-center justify-center p-4 text-center text-sm text-gray-500">
+        Choose a conversation to view messages.
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900">
-      <div className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] text-lg font-bold text-white shadow-lg shadow-[var(--brand-color,#e35336)]/20">
-              {getConversationTitle(conversation, viewerRole).charAt(0) || "C"}
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">{getConversationTitle(conversation, viewerRole)}</h2>
-              {getConversationSubtitle(conversation, viewerRole) && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {getConversationSubtitle(conversation, viewerRole)}
+    <div className="flex h-full flex-col">
+      <div className="flex-1 min-h-0">
+        <ScrollArea className="h-full px-2 md:px-4">
+          <div className="space-y-3 py-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="mb-2 px-1 text-xs text-gray-500 dark:text-gray-400">
+                  {getConversationSubtitle(conversation, viewerRole) || conversation.subject}
                 </p>
-              )}
+                <MessageCard
+                  message={conversation.message}
+                  senderName={getInitialMessageSenderName(conversation, viewerRole)}
+                  senderRole={getInitialMessageSenderRole(conversation)}
+                  timestamp={conversation.createdAt}
+                  isMe={conversation.createdById === currentUserId || conversation.createdBy?.id === currentUserId}
+                />
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {conversation.status === "CLOSED" && isAdmin && (
+                  <Button onClick={onReopen} variant="outline" size="sm">
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                    Reopen
+                  </Button>
+                )}
+                {isAdmin && (
+                  <button onClick={onDelete} className="rounded p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20">
+                    <Trash className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="flex items-center gap-1.5">
-              <CategoryBadge category={conversation.category} />
-              <StatusBadge status={conversation.status} />
-            </div>
-            {conversation.status === "CLOSED" && isAdmin && (
-              <button onClick={onReopen} className="flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-600 transition-colors hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:hover:bg-amber-900/40">
-                <RefreshCw className="h-3.5 w-3.5" />
-                Reopen
-              </button>
-            )}
-            {isAdmin && (
-              <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                <Trash className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        <MessageCard
-          message={conversation.message}
-          senderName={conversation.createdBy?.name || "Teacher"}
-          senderRole={conversation.createdBy?.role || "Teacher"}
-          timestamp={conversation.createdAt}
-          isMe={conversation.createdById === currentUserId || conversation.createdBy?.id === currentUserId}
-        />
-        {conversation.replies?.map(reply => (
-          <MessageCard
-            key={reply.id}
-            message={reply.message}
-            senderName={reply.sender?.name || "Sender"}
-            senderRole={reply.sender?.role || "Parent"}
-            timestamp={reply.createdAt}
-            isMe={reply.sender?.id === currentUserId}
-            onDelete={() => onDeleteReply(reply.id)}
-            canDelete={isAdmin || reply.sender?.id === currentUserId}
-          />
-        ))}
-        <div ref={messagesEndRef} />
+            {conversation.replies?.length === 0 ? (
+              <div className="py-6 text-sm text-gray-500">No messages yet.</div>
+            ) : (
+              conversation.replies?.map((reply) => (
+                <MessageCard
+                  key={reply.id}
+                  message={reply.message}
+                  senderName={getReplySenderName(reply, conversation, viewerRole)}
+                  senderRole={getReplySenderRole(reply, conversation)}
+                  timestamp={reply.createdAt}
+                  isMe={reply.sender?.id === currentUserId}
+                  onDelete={() => onDeleteReply(reply.id)}
+                  canDelete={isAdmin || reply.sender?.id === currentUserId}
+                />
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
       </div>
 
       {(conversation.status !== "CLOSED" || isAdmin) && (
-        <div className="border-t border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+        <div className="border-t p-2 md:p-3">
           <div className="flex items-end gap-2">
             <div className="relative">
               <button
                 onClick={() => setShowQuickReplies(!showQuickReplies)}
-                className="rounded-lg p-2.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-[var(--brand-color,#e35336)] dark:hover:bg-slate-700"
+                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-gray-100 hover:text-[var(--brand-color,#e35336)] dark:hover:bg-slate-700"
                 title="Quick replies"
               >
                 <Zap className="h-4.5 w-4.5" />
               </button>
               {showQuickReplies && (isAdmin || isTeacher) && (
-                <div className="absolute bottom-full left-0 mb-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-20">
-                  <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Quick Replies</p>
+                <div className="absolute bottom-full left-0 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+                  <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quick Replies</p>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
-                    {QUICK_REPLY_TEMPLATES.map(tpl => (
+                    {QUICK_REPLY_TEMPLATES.map((tpl) => (
                       <button
                         key={tpl.id}
                         onClick={() => { setMessageInput(tpl.message); setShowQuickReplies(false); }}
-                        className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-start gap-3 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0"
+                        className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-slate-700/50 dark:hover:bg-slate-700/50 last:border-b-0"
                       >
                         <span className="mt-0.5 text-[var(--brand-color,#e35336)]">{tpl.icon}</span>
                         <div>
                           <p className="text-sm font-semibold text-slate-900 dark:text-white">{tpl.label}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">{tpl.message}</p>
+                          <p className="mt-0.5 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{tpl.message}</p>
                         </div>
                       </button>
                     ))}
@@ -448,24 +466,25 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
                 </div>
               )}
             </div>
-            <div className="flex-1">
-              <textarea
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder="Type your message..."
-                rows={1}
-                className="w-full resize-none rounded-lg border-0 bg-slate-100 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:bg-slate-700 dark:text-white"
-              />
-            </div>
-            <button
+            <Input
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              placeholder="Type a message…"
+              className="text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+            />
+            <Button
               onClick={handleSend}
               disabled={!messageInput.trim() || isSending}
-              className="flex items-center gap-2 rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20 disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-9 w-9 border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)] md:h-9 md:w-9"
             >
-              <Send className="w-4 h-4" />
-              Send
-            </button>
+              {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
           </div>
         </div>
       )}
@@ -473,7 +492,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
       {conversation.status === "CLOSED" && (
         <div className="border-t border-emerald-100 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/50 dark:bg-emerald-900/20">
           <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
-            <CheckCircle className="w-5 h-5" />
+            <CheckCircle className="h-5 w-5" />
             <span className="text-sm font-medium">This conversation has been resolved</span>
           </div>
         </div>
@@ -522,10 +541,9 @@ function CommunicationsContent() {
       
       const transformed: ConversationWithParent[] = data.map((comm: Communication) => {
         const lastReply = comm.replies && comm.replies.length > 0 ? comm.replies[comm.replies.length - 1] : null;
-        const parentReply = comm.replies?.find(r => r.sender?.role === 'PARENT');
         return {
           ...comm,
-          parentName: parentReply?.sender?.name || (comm.createdBy?.role === 'PARENT' ? comm.createdBy?.name : 'Parent'),
+          parentName: getParentDisplayName(comm),
           teacherName: getTeacherDisplayName(comm),
           unreadCount: 0,
           lastMessage: lastReply?.message || comm.message,
@@ -618,10 +636,10 @@ function CommunicationsContent() {
     }
   };
 
-  const handleSendNewMessage = async (studentId: string, subject: string, message: string) => {
+  const handleSendNewMessage = async (targetUserId: string, subject: string, message: string) => {
     setIsSending(true);
     try {
-      await communicationsAPI.create({ studentId, subject, message });
+      await communicationsAPI.create({ studentId: targetUserId, subject, message });
       toast.success("Message sent");
       setShowNewMessageModal(false);
       router.replace('/list/communications');
@@ -634,64 +652,67 @@ function CommunicationsContent() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-slate-50 dark:bg-slate-900">
-      <header className="border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-    
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Communication Book</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Manage communications with parents and guardians</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative w-[280px] max-w-full">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search conversations..."
+    <div className="p-3 md:p-6">
+      <div className="mb-3 flex flex-col gap-3 md:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">Communication Book</h1>
+          <p className="hidden text-xs text-gray-500 sm:block md:text-sm">Manage communications with parents and guardians</p>
+        </div>
+        <Button onClick={() => setShowNewMessageModal(true)} className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-sm text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]">
+          <Plus className="mr-1 h-4 w-4 md:mr-2" />
+          <span className="hidden sm:inline">New Message</span>
+          <span className="sm:hidden">New</span>
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-[280px_1fr] xl:grid-cols-[360px_1fr]">
+        <Card className="order-1 h-[calc(100vh-180px)] md:order-1 md:h-[calc(100vh-220px)]">
+          <CardHeader className="pb-2 md:pb-3">
+            <CardTitle className="text-base">Inbox</CardTitle>
+            <div className="mt-2 flex items-center gap-2">
+              <Search className="h-4 w-4 text-gray-400" />
+              <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg border-0 bg-slate-100 py-2 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:bg-slate-700 dark:text-white"
+                placeholder="Search"
+                className="h-8 text-sm md:h-9"
               />
             </div>
-            <button
-              onClick={() => setShowNewMessageModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
-            >
-              <Plus className="h-4.5 w-4.5" />
-              New Message
-            </button>
-          </div>
-        </div>
-      </header>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ConversationList
+              conversations={conversations}
+              loading={loading}
+              error={error}
+              selectedId={selectedConversation?.id || null}
+              onSelect={setSelectedConversation}
+              onRefresh={() => fetchCommunications(1)}
+              searchQuery={searchQuery}
+              viewerRole={viewerRole}
+            />
+          </CardContent>
+        </Card>
 
-      <div className="flex-1 flex overflow-hidden">
-        <aside className="w-[320px] flex-shrink-0 overflow-hidden border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-          <ConversationList
-            conversations={conversations}
-            loading={loading}
-            error={error}
-            selectedId={selectedConversation?.id || null}
-            onSelect={setSelectedConversation}
-            onRefresh={() => fetchCommunications(1)}
-            searchQuery={searchQuery}
-            viewerRole={viewerRole}
-          />
-        </aside>
-        <main className="flex-1 flex flex-col overflow-hidden">
-          <ChatPanel
-            conversation={selectedConversation}
-            isAdmin={isAdmin}
-            isTeacher={isTeacher || false}
-            currentUserId={user?.id || ""}
-            onSendMessage={handleSendMessage}
-            onReopen={handleReopen}
-            onDeleteReply={handleDeleteReply}
-            onDelete={handleDeleteThread}
-            viewerRole={viewerRole}
-          />
-        </main>
+        <Card className="order-1 flex h-[calc(100vh-180px)] flex-col md:order-2 md:h-[calc(100vh-220px)]">
+          <CardHeader className="shrink-0 pb-2 md:pb-3">
+            <CardTitle className="truncate text-base">
+              {selectedConversation ? getConversationTitle(selectedConversation, viewerRole) : "Select a conversation"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 min-h-0 p-0">
+            <ChatPanel
+              conversation={selectedConversation}
+              isAdmin={isAdmin}
+              isTeacher={isTeacher || false}
+              currentUserId={user?.id || ""}
+              onSendMessage={handleSendMessage}
+              onReopen={handleReopen}
+              onDeleteReply={handleDeleteReply}
+              onDelete={handleDeleteThread}
+              viewerRole={viewerRole}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       <NewMessageModal

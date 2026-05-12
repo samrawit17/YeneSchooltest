@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
+import { toast } from "sonner";
 import { 
   Calendar, 
   BookOpen, 
@@ -24,6 +25,11 @@ import {
 } from "lucide-react";
 import { academicYearsAPI, financeAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
+import { parentsAPI } from "@/lib/api/people";
+import { gradingAPI } from "@/lib/api/assessment";
+import { termsAPI } from "@/lib/api/academics";
+import { communicationsAPI } from "@/lib/api/communications";
+import NewMessageModal from "@/components/communications/NewMessageModal";
 
 import {
   Card,
@@ -53,6 +59,13 @@ interface ChildDetail {
   admissionDate: string;
   academicYear?: string;
   parentName?: string;
+  teachingTeachers?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+    subjects?: string[];
+  }>;
   homeroomTeacher?: {
     id: string;
     name: string;
@@ -70,7 +83,8 @@ interface ChildStats {
   academics: {
     average: number;
     grade: string;
-    ranking?: number;
+    ranking?: number | null;
+    totalStudents?: number | null;
     totalSubjects?: number;
   };
   fees: {
@@ -102,32 +116,29 @@ const ChildDetailPage = () => {
   const [child, setChild] = useState<ChildDetail | null>(null);
   const [stats, setStats] = useState<ChildStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
+  const [currentTermLabel, setCurrentTermLabel] = useState<string | null>(null);
+  const [academicYearLabel, setAcademicYearLabel] = useState<string | null>(null);
+  const [showNewMessageModal, setShowNewMessageModal] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     const fetchChildDetail = async () => {
       try {
-        const [childResponse, dashboardResponse, activeYearResponse] =
+        const [childResponse, dashboardResponse, activeYearResponse, currentTermResponse] =
           await Promise.allSettled([
-            parentDashboardAPI.getChildren(),
+            parentsAPI.getChildById(childId),
             parentDashboardAPI.getDashboard(),
             academicYearsAPI.getActive(),
+            termsAPI.getCurrent(),
           ]);
 
         if (childResponse.status !== "fulfilled") {
           throw new Error("Child details could not be loaded");
         }
 
-        const childrenRows = childResponse.value.data?.children || childResponse.value.data || [];
-        const childData =
-          (Array.isArray(childrenRows) ? childrenRows : []).find((item: any) =>
-            item.studentId === childId ||
-            item.id === childId ||
-            item.student?.id === childId ||
-            item.userId === childId ||
-            item.student?.userId === childId
-          ) || null;
+        const childData = childResponse.value.data || null;
         const studentProfile = childData?.student || {};
         const studentUser = studentProfile?.user || {};
         const studentUserId = studentProfile.userId || studentUser.id;
@@ -147,6 +158,21 @@ const ChildDetailPage = () => {
           activeYearResponse.status === "fulfilled"
             ? activeYearResponse.value.data?.data?.id || activeYearResponse.value.data?.id
             : null;
+        const activeAcademicYear =
+          activeYearResponse.status === "fulfilled"
+            ? activeYearResponse.value.data?.data || activeYearResponse.value.data
+            : null;
+        const currentTerm =
+          currentTermResponse.status === "fulfilled"
+            ? currentTermResponse.value.data?.data || currentTermResponse.value.data
+            : null;
+
+        setCurrentTermLabel(
+          currentTerm?.name && activeAcademicYear?.name
+            ? `${currentTerm.name} - ${activeAcademicYear.name}`
+            : currentTerm?.name || activeAcademicYear?.name || null,
+        );
+        setAcademicYearLabel(activeAcademicYear?.name || null);
 
         if (schoolId && academicYearId && (childData?.studentId || studentUserId)) {
           try {
@@ -165,23 +191,80 @@ const ChildDetailPage = () => {
           }
         }
 
+        let academicSummary: {
+          average: number;
+          grade: string;
+          ranking: number | null;
+          totalStudents: number | null;
+          totalSubjects: number;
+        } = {
+          average: Number.parseFloat(dashboardChild?.grades?.[0]?.average || "0") || 0,
+          grade: dashboardChild?.overallGrade || dashboardChild?.latestGrade || "N/A",
+          ranking: null,
+          totalStudents: null,
+          totalSubjects: 0,
+        };
+
+        if (academicYearId && (childData?.studentId || studentUserId)) {
+          try {
+            const gradesResponse = await gradingAPI.getChildGrades(
+              childData?.studentId || studentUserId,
+              {
+                academicYear: academicYearId,
+                ...(currentTerm?.id ? { termId: currentTerm.id } : {}),
+              },
+            );
+
+            const summary = gradesResponse.data?.summary || {};
+            academicSummary = {
+              average:
+                typeof summary.average === "number"
+                  ? summary.average
+                  : academicSummary.average,
+              grade: academicSummary.grade,
+              ranking:
+                typeof summary.rank === "number" ? summary.rank : null,
+              totalStudents:
+                typeof summary.totalStudents === "number"
+                  ? summary.totalStudents
+                  : null,
+              totalSubjects:
+                typeof summary.totalSubjects === "number"
+                  ? summary.totalSubjects
+                  : 0,
+            };
+          } catch (gradesError) {
+            console.error("Failed to fetch academic summary:", gradesError);
+          }
+        }
+
+        if (!academicSummary.totalSubjects) {
+          const uniqueSubjects = new Set(
+            (childData?.teachingTeachers || [])
+              .flatMap((teacher: any) => teacher.subjects || [])
+              .filter(Boolean),
+          );
+          academicSummary.totalSubjects = uniqueSubjects.size;
+        }
+
         setChild({
           id: childData?.studentId || childData?.id,
           name: childData?.name || studentUser?.name || "Unknown",
-          studentCode: studentProfile?.studentCode || childData?.studentCode || "N/A",
+          studentCode: childData?.studentCode || studentProfile?.studentCode || "N/A",
           className: childData?.className || studentProfile?.className || "N/A",
           section: childData?.section || studentProfile?.section || "N/A",
-          enrollmentStatus: studentProfile?.status || "ACTIVE",
-          dateOfBirth: studentProfile?.dob || "",
-          gender: studentProfile?.gender || "N/A",
-          bloodGroup: studentProfile?.bloodType || null,
-          address: studentProfile?.address || null,
-          phone: studentProfile?.phone || studentUser?.phone || null,
-          email: studentUser?.email || null,
-          admissionDate: studentProfile?.createdAt || "",
-          academicYear: studentProfile?.academicYear || undefined,
+          enrollmentStatus: childData?.enrollmentStatus || studentProfile?.status || "ACTIVE",
+          dateOfBirth: childData?.dateOfBirth || studentProfile?.dob || "",
+          gender: childData?.gender || studentProfile?.gender || "N/A",
+          bloodGroup: childData?.bloodGroup || studentProfile?.bloodType || null,
+          address: childData?.address || null,
+          phone: childData?.phone || studentProfile?.phone || studentUser?.phone || null,
+          email: childData?.email || studentUser?.email || null,
+          admissionDate: childData?.admissionDate || studentProfile?.createdAt || "",
+          academicYear: childData?.academicYear || studentProfile?.academicYear || undefined,
           parentName: childData?.parent?.user?.name || undefined,
-          homeroomTeacher: null,
+          teachingTeachers: childData?.teachingTeachers || [],
+          homeroomTeacher: childData?.homeroomTeacher || null,
         });
 
         setStats({
@@ -190,10 +273,7 @@ const ChildDetailPage = () => {
             totalDays: dashboardChild?.totalDays || 0,
             rate: parseFloat(dashboardChild?.attendance || "0") || 0,
           },
-          academics: {
-            average: Number.parseFloat(dashboardChild?.grades?.[0]?.average || "0") || 0,
-            grade: dashboardChild?.overallGrade || dashboardChild?.latestGrade || "N/A",
-          },
+          academics: academicSummary,
           fees: feeSummary,
         });
 
@@ -260,6 +340,19 @@ const ChildDetailPage = () => {
       age--;
     }
     return age;
+  };
+
+  const handleCreateMessage = async (targetUserId: string, subject: string, message: string) => {
+    setIsSendingMessage(true);
+    try {
+      await communicationsAPI.create({ studentId: targetUserId, subject, message });
+      toast.success("Message sent");
+      setShowNewMessageModal(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to send message");
+    } finally {
+      setIsSendingMessage(false);
+    }
   };
 
   if (loading) {
@@ -330,10 +423,10 @@ const ChildDetailPage = () => {
                         {child.enrollmentStatus === "ACTIVE" ? "Active" : child.enrollmentStatus}
                       </Badge>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
-                        ID: {child.studentCode}
+                        Student Code: {child.studentCode}
                       </span>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {child.academicYear || "-"}
+                        {academicYearLabel || "-"}
                       </span>
                     </div>
                     <div className="mt-4">
@@ -437,13 +530,15 @@ const ChildDetailPage = () => {
                       <p className="text-sm text-gray-600 dark:text-gray-400">{child.phone || "N/A"}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Address</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{child.address || "N/A"}</p>
+                  {child.address && (
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Address</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{child.address}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -461,7 +556,9 @@ const ChildDetailPage = () => {
                     <Clock className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Current Term</p>
-                      <p className="font-medium text-gray-900 dark:text-white">Term 2 - 2025-2026</p>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {currentTermLabel || "-"}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -479,17 +576,14 @@ const ChildDetailPage = () => {
                             size="sm"
                             variant="outline"
                             className="mt-2"
-                            onClick={() => {
-                              if (!child.homeroomTeacher?.id) return;
-                              router.push(`/list/communications?teacherId=${child.homeroomTeacher.id}`);
-                            }}
+                            onClick={() => setShowNewMessageModal(true)}
                           >
                             <Mail className="w-4 h-4 mr-2" />
                             Message via Communication Book
                           </Button>
                         </div>
                       ) : (
-                        <p className="font-medium text-gray-900 dark:text-white">Not assigned</p>
+                        <p className="font-medium text-gray-900 dark:text-white">-</p>
                       )}
                     </div>
                   </div>
@@ -497,7 +591,11 @@ const ChildDetailPage = () => {
                     <BookOpen className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Total Subjects</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{stats?.academics.totalSubjects || 8} subjects</p>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {typeof stats?.academics.totalSubjects === "number"
+                          ? `${stats.academics.totalSubjects} subjects`
+                          : "-"}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -505,7 +603,9 @@ const ChildDetailPage = () => {
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Ranking</p>
                       <p className="font-medium text-gray-900 dark:text-white">
-                        #{stats?.academics.ranking || 5} out of 30 students
+                        {typeof stats?.academics.ranking === "number"
+                          ? `#${stats.academics.ranking}${typeof stats.academics.totalStudents === "number" ? ` out of ${stats.academics.totalStudents} students` : ""}`
+                          : "-"}
                       </p>
                     </div>
                   </div>
@@ -513,7 +613,11 @@ const ChildDetailPage = () => {
                     <TrendingUp className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Overall Average</p>
-                      <p className="font-medium text-gray-900 dark:text-white">{stats?.academics.average || 88}%</p>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {typeof stats?.academics.average === "number"
+                          ? `${stats.academics.average}%`
+                          : "-"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -585,6 +689,16 @@ const ChildDetailPage = () => {
           </Card>
         </div>
       </div>
+
+      <NewMessageModal
+        isOpen={showNewMessageModal}
+        onClose={() => setShowNewMessageModal(false)}
+        onSubmit={handleCreateMessage}
+        isSending={isSendingMessage}
+        preselectedStudentId={child.homeroomTeacher?.id || null}
+        preselectedStudentName={child.homeroomTeacher?.name || child.name}
+        isParent
+      />
     </div>
   );
 };

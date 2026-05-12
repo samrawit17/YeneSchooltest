@@ -64,7 +64,6 @@ const EventListPage = () => {
         return [];
       } finally {
         setInitialLoad(false);
-        setLoadTimeout(false);
       }
     },
     staleTime: 30000,
@@ -83,28 +82,28 @@ const EventListPage = () => {
   const eventCount = upcomingActivities.length;
 
   return (
-    <div className="bg-white dark:bg-[#1E293B] p-2 md:p-4 rounded-md flex-1 m-0 md:m-4 mt-0 md:mt-0 border border-gray-200 dark:border-[#334155] overflow-hidden">
+    <div className="bg-white dark:bg-[#1E293B] p-2 md:p-4 rounded-md flex-1 m-1 sm:m-2 md:m-4 mt-0 border border-gray-200 dark:border-[#334155] overflow-x-hidden">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 md:gap-3 mb-6 md:mb-8">
-        <div>
-          <h1 className="text-lg md:text-xl font-semibold dark:text-white">School Calendar</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 md:gap-3 mb-4 sm:mb-6 md:mb-8">
+        <div className="min-w-0">
+          <h1 className="text-base sm:text-lg md:text-xl font-semibold dark:text-white truncate">School Calendar</h1>
           {role === 'admin' && (
-            <p className="text-sm text-muted-foreground mt-1">View and manage school events, holidays, and important dates on the calendar.</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">View and manage school events, holidays, and important dates on the calendar.</p>
           )}
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto sm:min-w-0">
           <div className="w-full sm:flex-1 order-2 sm:order-1">
             <div className="w-full sm:max-w-md">
               <TableSearch />
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 order-1 sm:order-2">
+          <div className="flex items-center justify-end gap-2 order-1 sm:order-2 shrink-0">
             {role === 'admin' && <FormModal table="event" type="create" />}
           </div>
         </div>
       </div>
 
-      <div className="h-[350px] sm:h-[380px] sm:h-[450px] md:h-[550px] lg:h-[650px]">
+      <div className="min-h-[300px] sm:min-h-[350px] md:min-h-[450px] lg:min-h-[550px]">
         {initialLoad ? (
           <CalendarSkeleton />
         ) : (
@@ -114,25 +113,25 @@ const EventListPage = () => {
 
       {/* UPCOMING EVENTS SECTION */}
       <div className="mt-4 md:mt-6 border-t border-gray-200 dark:border-[#334155] pt-3 md:pt-4">
-        <div className="flex items-center justify-between mb-3 md:mb-4">
-          <h2 className="text-base md:text-xl font-semibold dark:text-white">Upcoming Activities</h2>
-          <span className="text-sm text-gray-500">{eventCount} activities</span>
+        <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+          <h2 className="text-sm sm:text-base md:text-xl font-semibold dark:text-white">Upcoming Activities</h2>
+          <span className="text-[11px] sm:text-sm text-gray-500">{eventCount} activities</span>
         </div>
         
         {eventCount === 0 ? (
-          <div className="text-center p-4 md:p-6 text-sm text-gray-500 dark:text-gray-400">
+          <div className="text-center p-3 sm:p-4 md:p-6 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
             No activities in the next month
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 max-h-[400px] md:max-h-[500px] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4 max-h-[400px] md:max-h-[500px] overflow-y-auto pr-1">
             {upcomingActivities.map((event) => (
               <div
                 key={event.id}
-                className="p-3 md:p-4 rounded-lg border-2 border-[var(--brand-color,#e35336)]/30 hover:border-[var(--brand-color,#e35336)] hover:shadow-md transition-all bg-white dark:bg-[#1E293B] dark:border-[#334155] cursor-pointer"
+                className="p-2.5 sm:p-3 md:p-4 rounded-lg border-2 border-[var(--brand-color,#e35336)]/30 hover:border-[var(--brand-color,#e35336)] hover:shadow-md transition-all bg-white dark:bg-[#1E293B] dark:border-[#334155] cursor-pointer active:scale-[0.98] touch-manipulation"
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-semibold text-sm text-gray-800 dark:text-white line-clamp-1 flex-1">{event.title}</h3>
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] sm:text-xs flex-shrink-0 ${event.eventType === 'ACADEMIC' ? 'bg-blue-100 text-blue-800' :
+                <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                  <h3 className="font-semibold text-xs sm:text-sm text-gray-800 dark:text-white line-clamp-1 flex-1">{event.title}</h3>
+                  <span className={`px-1 py-0.5 rounded-full text-[9px] sm:text-xs flex-shrink-0 leading-tight ${event.eventType === 'ACADEMIC' ? 'bg-blue-100 text-blue-800' :
                       event.eventType === 'EXTRACURRICULAR' ? 'bg-green-100 text-green-800' :
                         event.eventType === 'SPORTS' ? 'bg-orange-100 text-orange-800' :
                           event.eventType === 'ADMINISTRATIVE' ? 'bg-purple-100 text-purple-800' :
@@ -141,17 +140,17 @@ const EventListPage = () => {
                     {event.eventType}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 mb-1.5 md:mb-2">
-                  <span>📅</span>
+                <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 mb-1 sm:mb-1.5">
+                  <span className="text-[10px] sm:text-xs">📅</span>
                   <span className="truncate">{new Date(event.startDate).toLocaleDateString()}</span>
                 </div>
                 {event.location && (
-                  <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 mb-1.5">
-                    <span>📍</span>
+                  <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 mb-1 sm:mb-1.5">
+                    <span className="text-[10px] sm:text-xs">📍</span>
                     <span className="truncate">{event.location}</span>
                   </div>
                 )}
-                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 hidden sm:block">{event.description}</p>
+                <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 line-clamp-2 hidden sm:block">{event.description}</p>
               </div>
             ))}
           </div>

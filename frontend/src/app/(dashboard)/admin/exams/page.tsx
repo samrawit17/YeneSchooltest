@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { assessmentsAPI, termsAPI, classesAPI, subjectsAPI, teachersAPI } from "@/lib/api";
+import { classSubjectsAPI } from "@/lib/api/admin";
 import { toast } from "sonner";
 import {
   Plus,
@@ -36,6 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
 import {
   Select,
   SelectContent,
@@ -64,12 +66,20 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type AssessmentType = "QUIZ" | "TEST" | "MID" | "FINAL" | "ATTENDANCE";
+type AssessmentType = string;
 type AssessmentStatus = "ACTIVE" | "LOCKED" | "COMPLETED" | "DRAFT";
 
 interface Term {
   id: string;
   name: string;
+  isActive?: boolean;
+  startDate?: string;
+  endDate?: string;
+}
+interface AcademicYearOption {
+  id: string;
+  name: string;
+  isActive?: boolean;
 }
 interface ClassItem {
   id: string;
@@ -101,6 +111,17 @@ interface SubjectEntry {
   passMark: number;
 }
 
+interface ClassSubjectAssignment {
+  id: string;
+  classId: string;
+  sectionId: string;
+  subjectId: string;
+  teacherId?: string | null;
+  class?: { id: string; name: string; grade?: number | null };
+  section?: { id: string; name: string };
+  subject?: { id: string; name: string };
+}
+
 interface Assessment {
   id: string;
   title: string;
@@ -121,10 +142,15 @@ interface Assessment {
   }[];
 }
 
+interface AssessmentWeightRow {
+  type: string;
+  percentage: number;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TYPE_META: Record<
-  AssessmentType,
+  string,
   { label: string; color: string; bg: string; border: string; icon: React.ReactNode; description: string; weight: string }
 > = {
   QUIZ: {
@@ -146,16 +172,16 @@ const TYPE_META: Record<
     weight: "25%",
   },
   MID: {
-    label: "Mid Exam",
+    label: "Mid Assessment",
     color: "text-amber-600 dark:text-amber-400",
     bg: "bg-amber-50 dark:bg-amber-950/30",
     border: "border-amber-200 dark:border-amber-800",
     icon: <GraduationCap className="w-4 h-4" />,
-    description: "Semester midpoint exam",
+    description: "Semester midpoint assessment",
     weight: "20%",
   },
   FINAL: {
-    label: "Final Exam",
+    label: "Final Assessment",
     color: "text-red-600 dark:text-red-400",
     bg: "bg-red-50 dark:bg-red-950/30",
     border: "border-red-200 dark:border-red-800",
@@ -172,6 +198,25 @@ const TYPE_META: Record<
     description: "Participation score",
     weight: "10%",
   },
+};
+
+const getTypeMeta = (type: string) => {
+  const key = String(type).toUpperCase();
+  return (
+    TYPE_META[key] ?? {
+      label: key
+        .toLowerCase()
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" "),
+      color: "text-[var(--brand-color)]",
+      bg: "bg-[rgba(var(--brand-color-rgb),0.08)]",
+      border: "border-[rgba(var(--brand-color-rgb),0.18)]",
+      icon: <ClipboardList className="w-4 h-4" />,
+      description: "Custom assessment type",
+      weight: "0%",
+    }
+  );
 };
 
 const STATUS_META: Record<
@@ -355,7 +400,7 @@ function AssessmentCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const type = TYPE_META[assessment.type];
+  const type = getTypeMeta(assessment.type);
   const status = STATUS_META[assessment.status];
   const totalScored = assessment.subjects.reduce((sum, s) => sum + s._count.scores, 0);
   const totalExpected = assessment.subjects.length;
@@ -476,6 +521,7 @@ function AssessmentCard({
 export default function AssessmentManagementPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   // List state
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -487,6 +533,10 @@ export default function AssessmentManagementPage() {
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [weightsOpen, setWeightsOpen] = useState(false);
+  const [weightsSaving, setWeightsSaving] = useState(false);
+  const [assessmentWeights, setAssessmentWeights] = useState<AssessmentWeightRow[]>([]);
+  const [newAssessmentTypeName, setNewAssessmentTypeName] = useState("");
 
   // Lock confirm
   const [lockTarget, setLockTarget] = useState<string | null>(null);
@@ -501,13 +551,19 @@ export default function AssessmentManagementPage() {
     startDate: "",
     endDate: "",
   });
-  const [subjectEntries, setSubjectEntries] = useState<SubjectEntry[]>([
-    { id: uid(), subjectId: "", classId: "", sectionId: "", teacherId: "", maxScore: 100, passMark: 50 },
-  ]);
+  const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+  const [classSubjectAssignments, setClassSubjectAssignments] = useState<ClassSubjectAssignment[]>([]);
+
+  useEffect(() => {
+    if (pathname === "/admin/exams") {
+      router.replace("/admin/assessments");
+    }
+  }, [pathname, router]);
 
   // Lookup data
   const [terms, setTerms] = useState<Term[]>([]);
-  const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
+  const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -523,6 +579,7 @@ export default function AssessmentManagementPage() {
     if (!isAuthenticated) return;
     loadAssessments();
     loadLookups();
+    loadWeights();
   }, [isAuthenticated]);
 
   // ── Load terms when year changes
@@ -531,8 +588,29 @@ export default function AssessmentManagementPage() {
       termsAPI
         .getAll({ academicYearId: formData.academicYearId })
         .then((res) => {
-          const data = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+          const data = (Array.isArray(res.data) ? res.data : res.data.data ?? []) as Term[];
           setTerms(data);
+          setFormData((prev) => {
+            if (!prev.academicYearId || prev.academicYearId !== formData.academicYearId) {
+              return prev;
+            }
+            if (prev.termId && data.some((term) => term.id === prev.termId)) {
+              return prev;
+            }
+
+            const now = new Date();
+            const activeTerm =
+              data.find((term) => term.isActive) ??
+              data.find((term) => {
+                if (!term.startDate || !term.endDate) return false;
+                const start = new Date(term.startDate);
+                const end = new Date(term.endDate);
+                return start <= now && end >= now;
+              }) ??
+              data[0];
+
+            return activeTerm ? { ...prev, termId: activeTerm.id } : prev;
+          });
         })
         .catch(() => {});
     }
@@ -551,6 +629,25 @@ export default function AssessmentManagementPage() {
     }
   };
 
+  const loadWeights = async () => {
+    try {
+      const res = await assessmentsAPI.getWeights();
+      const data = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+      if (data.length > 0) {
+        setAssessmentWeights(data as AssessmentWeightRow[]);
+      } else {
+        setAssessmentWeights(
+          (["QUIZ", "TEST", "MID", "FINAL", "ATTENDANCE"] as AssessmentType[]).map((type) => ({
+            type,
+            percentage: Number(getTypeMeta(type).weight.replace("%", "")),
+          })),
+        );
+      }
+    } catch {
+      toast.error("Failed to load assessment weights");
+    }
+  };
+
   const loadLookups = async () => {
     try {
       const [yearsRes, classesRes, sectionsRes, subjectsRes, teachersRes] = await Promise.all([
@@ -562,7 +659,15 @@ export default function AssessmentManagementPage() {
       ]);
 
       const normalize = (d: any) => (Array.isArray(d) ? d : d?.data ?? []);
-      setAcademicYears(normalize(yearsRes.data));
+      const normalizedYears = normalize(yearsRes.data) as AcademicYearOption[];
+      setAcademicYears(normalizedYears);
+      setFormData((prev) => {
+        if (prev.academicYearId) return prev;
+        const activeYear = normalizedYears.find((year) => year.isActive) ?? normalizedYears[0];
+        return activeYear
+          ? { ...prev, academicYearId: activeYear.id }
+          : prev;
+      });
       setClasses(normalize(classesRes.data));
       setSections(normalize(sectionsRes.data));
       setSubjects(normalize(subjectsRes.data));
@@ -573,22 +678,52 @@ export default function AssessmentManagementPage() {
   };
 
   // ── Subject entry handlers
-  const updateSubjectEntry = (id: string, field: keyof SubjectEntry, value: string | number) => {
-    setSubjectEntries((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e))
+  const toggleGradeSelection = (grade: string) => {
+    setSelectedGrades((prev) =>
+      prev.includes(grade) ? prev.filter((item) => item !== grade) : [...prev, grade],
     );
   };
 
-  const addSubjectEntry = () => {
-    setSubjectEntries((prev) => [
-      ...prev,
-      { id: uid(), subjectId: "", classId: "", sectionId: "", teacherId: "", maxScore: 100, passMark: 50 },
-    ]);
+  const toggleAllGrades = () => {
+    const allGrades = Array.from(
+      new Set(
+        classes
+          .map((item) => item.grade)
+          .filter((grade): grade is number => grade !== null && grade !== undefined)
+          .map(String),
+      ),
+    );
+
+    setSelectedGrades((prev) => (prev.length === allGrades.length ? [] : allGrades));
   };
 
-  const removeSubjectEntry = (id: string) => {
-    setSubjectEntries((prev) => prev.filter((e) => e.id !== id));
+  const toggleSubjectSelection = (subjectId: string) => {
+    setSelectedSubjectIds((prev) =>
+      prev.includes(subjectId) ? prev.filter((item) => item !== subjectId) : [...prev, subjectId],
+    );
   };
+
+  const toggleAllSubjects = () => {
+    const allSubjectIds = Array.from(new Set(subjects.map((subject) => subject.id)));
+    setSelectedSubjectIds((prev) => (prev.length === allSubjectIds.length ? [] : allSubjectIds));
+  };
+
+  useEffect(() => {
+    if (!formData.academicYearId) {
+      setClassSubjectAssignments([]);
+      return;
+    }
+
+    classSubjectsAPI
+      .getAll({ schoolId: user?.schoolId, academicYearId: formData.academicYearId })
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+        setClassSubjectAssignments(data);
+      })
+      .catch(() => {
+        setClassSubjectAssignments([]);
+      });
+  }, [formData.academicYearId, user?.schoolId]);
 
   // ── Submit
   const handleSubmit = async () => {
@@ -599,9 +734,27 @@ export default function AssessmentManagementPage() {
     if (new Date(formData.endDate) < new Date(formData.startDate))
       return toast.error("End date cannot be before start date");
 
-    const validSubjects = subjectEntries.filter(
-      (e) => e.subjectId && e.classId && e.maxScore > 0
-    );
+    if (selectedGrades.length === 0) return toast.error("Select at least one grade");
+    if (selectedSubjectIds.length === 0) return toast.error("Select at least one subject");
+
+    const selectedAssignments = classSubjectAssignments.filter((assignment) => {
+      const grade = assignment.class?.grade;
+      return (
+        grade !== null &&
+        grade !== undefined &&
+        selectedGrades.includes(String(grade)) &&
+        selectedSubjectIds.includes(assignment.subjectId)
+      );
+    });
+
+    if (selectedAssignments.length === 0) {
+      return toast.error("No class subjects found for the selected grades and subjects");
+    }
+
+    const typeMaxScore = getWeightValue(formData.type);
+    if (typeMaxScore <= 0) {
+      return toast.error("Assessment type max mark must be greater than 0");
+    }
 
     setSubmitting(true);
     try {
@@ -612,13 +765,13 @@ export default function AssessmentManagementPage() {
         termId: formData.termId || undefined,
         startDate: formData.startDate,
         endDate: formData.endDate,
-        subjects: validSubjects.map((e) => ({
-          subjectId: e.subjectId,
-          classId: e.classId,
-          sectionId: e.sectionId || undefined,
-          teacherId: e.teacherId || undefined,
-          maxScore: e.maxScore,
-          passMark: e.passMark || undefined,
+        subjects: selectedAssignments.map((assignment) => ({
+          subjectId: assignment.subjectId,
+          classId: assignment.classId,
+          sectionId: assignment.sectionId || undefined,
+          teacherId: assignment.teacherId || undefined,
+          maxScore: typeMaxScore,
+          passMark: Math.min(typeMaxScore, Math.round(typeMaxScore * 0.5 * 100) / 100),
         })),
       });
 
@@ -635,9 +788,75 @@ export default function AssessmentManagementPage() {
 
   const resetForm = () => {
     setFormData({ title: "", type: "", academicYearId: "", termId: "", startDate: "", endDate: "" });
-    setSubjectEntries([
-      { id: uid(), subjectId: "", classId: "", sectionId: "", teacherId: "", maxScore: 100, passMark: 50 },
-    ]);
+    setSelectedGrades([]);
+    setSelectedSubjectIds([]);
+  };
+
+  const getWeightValue = (type: AssessmentType) =>
+    assessmentWeights.find((row) => row.type.toUpperCase() === type.toUpperCase())?.percentage ??
+    Number(getTypeMeta(type).weight.replace("%", ""));
+
+  const updateWeightValue = (type: AssessmentType, value: string) => {
+    const num = Number(value);
+    const nextValue = Number.isNaN(num) ? 0 : Math.min(Math.max(num, 0), 100);
+
+    const otherTotal = assessmentWeights.reduce(
+      (sum, row) => (row.type === type ? sum : sum + row.percentage),
+      0,
+    );
+
+    if (otherTotal + nextValue > 100) {
+      toast.error("Total assessment weight cannot exceed 100%");
+      return;
+    }
+
+    setAssessmentWeights((prev) =>
+      prev.map((row) => (row.type === type ? { ...row, percentage: nextValue } : row)),
+    );
+  };
+
+  const handleAddAssessmentType = () => {
+    const normalizedType = newAssessmentTypeName
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+    if (!normalizedType) {
+      toast.error("Enter a valid assessment type name");
+      return;
+    }
+
+    if (assessmentWeights.some((row) => row.type.toUpperCase() === normalizedType)) {
+      toast.error("Assessment type already exists");
+      return;
+    }
+
+    setAssessmentWeights((prev) => [...prev, { type: normalizedType, percentage: 0 }]);
+    setNewAssessmentTypeName("");
+  };
+
+  const handleSaveWeights = async () => {
+    const total = assessmentWeights.reduce((sum, row) => sum + row.percentage, 0);
+    if (Math.round(total * 100) / 100 !== 100) {
+      toast.error("Assessment weights must total 100");
+      return;
+    }
+
+    setWeightsSaving(true);
+    try {
+      const res = await assessmentsAPI.updateWeights(
+        assessmentWeights.map((row) => ({ type: row.type, percentage: row.percentage })),
+      );
+      const data = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+      setAssessmentWeights(data as AssessmentWeightRow[]);
+      setWeightsOpen(false);
+      toast.success("Assessment weights updated");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? "Failed to update assessment weights");
+    } finally {
+      setWeightsSaving(false);
+    }
   };
 
   // ── Lock
@@ -686,7 +905,14 @@ export default function AssessmentManagementPage() {
     backgroundColor: "rgba(var(--brand-color-rgb),0.12)",
   } as const;
 
+  const configuredAssessmentTypes =
+    assessmentWeights.length > 0
+      ? assessmentWeights.map((row) => row.type.toUpperCase())
+      : (["QUIZ", "TEST", "MID", "FINAL", "ATTENDANCE"] as string[]);
+
   if (isLoading || !isAuthenticated) return null;
+
+  if (pathname === "/admin/exams") return null;
 
   return (
     <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A] min-h-screen">
@@ -695,17 +921,28 @@ export default function AssessmentManagementPage() {
         <div>
           <h1 className="text-2xl font-bold text-black">Assessment Management</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            One unified workflow for quizzes, tests, mid exams, and final exams
+            One unified workflow for quizzes, tests, mid assessments, and final assessments
           </p>
         </div>
-        <Button
-          onClick={() => setModalOpen(true)}
-          className="self-start text-white shadow-sm hover:opacity-90 md:self-auto"
-          style={brandSolidStyle}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Assessment
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setWeightsOpen(true)}
+            className="self-start bg-white shadow-sm hover:opacity-90 md:self-auto dark:bg-slate-800"
+            style={brandSoftStyle}
+          >
+            <Pencil className="w-4 h-4 mr-2" />
+            Edit Assessment Weight
+          </Button>
+          <Button
+            onClick={() => setModalOpen(true)}
+            className="self-start text-white shadow-sm hover:opacity-90 md:self-auto"
+            style={brandSolidStyle}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            New Assessment
+          </Button>
+        </div>
       </div>
 
       {/* ── Stats ── */}
@@ -743,8 +980,8 @@ export default function AssessmentManagementPage() {
         >
           All types
         </button>
-        {(Object.keys(TYPE_META) as AssessmentType[]).map((t) => {
-          const m = TYPE_META[t];
+        {configuredAssessmentTypes.map((t) => {
+          const m = getTypeMeta(t);
           const active = filterType === t;
           return (
             <button
@@ -759,7 +996,7 @@ export default function AssessmentManagementPage() {
             >
               {m.icon}
               {m.label}
-              <span className="opacity-60">{m.weight}</span>
+              <span className="opacity-60">{getWeightValue(t)}%</span>
             </button>
           );
         })}
@@ -823,6 +1060,78 @@ export default function AssessmentManagementPage() {
       )}
 
       {/* ── Create Assessment Modal ── */}
+      <Dialog open={weightsOpen} onOpenChange={setWeightsOpen}>
+        <DialogContent className="max-w-lg bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle>Edit Assessment Weight</DialogTitle>
+            <DialogDescription>
+              Update the current assessment percentages. Total must equal 100.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {assessmentWeights.map((row) => {
+              const type = row.type;
+              return (
+              <div key={type} className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {getTypeMeta(type).label}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {getTypeMeta(type).description}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={getWeightValue(type)}
+                    onChange={(e) => updateWeightValue(type, e.target.value)}
+                    className="h-9 w-24 text-right"
+                  />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">%</span>
+                </div>
+              </div>
+              );
+            })}
+            <div className="rounded-lg border border-dashed border-gray-200 p-3 dark:border-slate-700">
+              <p className="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                Add new assessment type
+              </p>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newAssessmentTypeName}
+                  onChange={(e) => setNewAssessmentTypeName(e.target.value)}
+                  placeholder="e.g. Project"
+                  className="h-9"
+                />
+                <Button type="button" variant="outline" onClick={handleAddAssessmentType}>
+                  Add
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm dark:border-slate-700">
+              <span className="text-gray-500 dark:text-gray-400">Total</span>
+              <span className="font-semibold text-gray-900 dark:text-gray-100">
+                {assessmentWeights.reduce((sum, row) => sum + row.percentage, 0)}%
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWeightsOpen(false)} disabled={weightsSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveWeights} disabled={weightsSaving} style={brandSolidStyle}>
+              {weightsSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={modalOpen} onOpenChange={(o) => { setModalOpen(o); if (!o) resetForm(); }}>
         <DialogContent className="max-h-[90vh] w-[96vw] max-w-6xl overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
           <DialogHeader>
@@ -831,7 +1140,7 @@ export default function AssessmentManagementPage() {
               New Assessment
             </DialogTitle>
             <DialogDescription className="text-gray-500 dark:text-gray-400">
-              Fill in the details below. Subjects can be added now or after creation.
+              Set the assessment details, schedule, and target grades in one place.
             </DialogDescription>
           </DialogHeader>
 
@@ -849,7 +1158,7 @@ export default function AssessmentManagementPage() {
                   </Label>
                   <Input
                     id="title"
-                    placeholder="e.g. Grade 10 — Mathematics Mid Exam, Semester 1"
+                    placeholder="e.g. Grade 10 — Mathematics Mid Assessment, Semester 1"
                     value={formData.title}
                     onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
                     className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
@@ -862,8 +1171,8 @@ export default function AssessmentManagementPage() {
                     Assessment type <span className="text-red-400">*</span>
                   </Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
-                    {(Object.keys(TYPE_META) as AssessmentType[]).map((t) => {
-                      const m = TYPE_META[t];
+                    {configuredAssessmentTypes.map((t) => {
+                      const m = getTypeMeta(t);
                       const selected = formData.type === t;
                       return (
                         <button
@@ -964,11 +1273,21 @@ export default function AssessmentManagementPage() {
                   <Label htmlFor="startDate" className="text-sm text-gray-700 dark:text-gray-300">
                     Start date <span className="text-red-400">*</span>
                   </Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
+                  <CalendarDatePicker
+                    value={formData.startDate ? new Date(formData.startDate) : undefined}
+                    onChange={(value) =>
+                      setFormData((p) => ({
+                        ...p,
+                        startDate: value ? value.toISOString().split("T")[0] : "",
+                        endDate:
+                          p.endDate &&
+                          value &&
+                          p.endDate < value.toISOString().split("T")[0]
+                            ? value.toISOString().split("T")[0]
+                            : p.endDate,
+                      }))
+                    }
+                    placeholder="Select start date"
                     className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -976,72 +1295,151 @@ export default function AssessmentManagementPage() {
                   <Label htmlFor="endDate" className="text-sm text-gray-700 dark:text-gray-300">
                     End date <span className="text-red-400">*</span>
                   </Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={formData.endDate}
-                    min={formData.startDate}
-                    onChange={(e) => setFormData((p) => ({ ...p, endDate: e.target.value }))}
+                  <CalendarDatePicker
+                    value={formData.endDate ? new Date(formData.endDate) : undefined}
+                    onChange={(value) =>
+                      setFormData((p) => ({
+                        ...p,
+                        endDate: value ? value.toISOString().split("T")[0] : "",
+                      }))
+                    }
+                    placeholder="Select end date"
                     className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
             </div>
 
-            {/* ── Step 2: Subjects ── */}
+            {/* ── Step 2: Grades ── */}
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  2 · Subject assignments{" "}
-                  <span className="normal-case font-normal text-gray-300 dark:text-gray-600">(optional now)</span>
+                  2 · Grade ranges
                 </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  A quiz or test created here will be applied to all assigned subjects in the selected grades.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={addSubjectEntry}
-                  className="flex items-center gap-1 text-xs font-medium hover:opacity-80"
-                  style={brandTextStyle}
+                  onClick={toggleAllGrades}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
+                    selectedGrades.length > 0 &&
+                    selectedGrades.length ===
+                      Array.from(
+                        new Set(
+                          classes
+                            .map((item) => item.grade)
+                            .filter((grade): grade is number => grade !== null && grade !== undefined),
+                        ),
+                      ).length
+                      ? "text-white"
+                      : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-slate-800 dark:text-gray-300"
+                  }`}
+                  style={
+                    selectedGrades.length > 0 &&
+                    selectedGrades.length ===
+                      Array.from(
+                        new Set(
+                          classes
+                            .map((item) => item.grade)
+                            .filter((grade): grade is number => grade !== null && grade !== undefined),
+                        ),
+                      ).length
+                      ? brandSolidStyle
+                      : undefined
+                  }
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add row
+                  All Grades
                 </button>
+                {Array.from(
+                  new Set(
+                    classes
+                      .map((item) => item.grade)
+                      .filter((grade): grade is number => grade !== null && grade !== undefined),
+                  ),
+                )
+                  .sort((a, b) => a - b)
+                  .map((grade) => {
+                    const value = String(grade);
+                    const selected = selectedGrades.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => toggleGradeSelection(value)}
+                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
+                          selected
+                            ? "text-white"
+                            : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-slate-800 dark:text-gray-300"
+                        }`}
+                        style={selected ? brandSolidStyle : undefined}
+                      >
+                        Grade {grade}
+                      </button>
+                    );
+                  })}
               </div>
 
-              {/* Column labels */}
-              <div className="grid grid-cols-12 gap-2 px-3 mb-1">
-                {["#", "Subject", "Class", "Section", "Teacher", "Max", "Pass", ""].map(
-                  (h, i) => (
-                    <span
-                      key={i}
-                      className={`text-xs font-medium text-gray-400 dark:text-gray-500 ${
-                        i === 0 || i === 7 ? "col-span-1 text-center" : "col-span-2"
-                      }`}
-                    >
-                      {h}
-                    </span>
-                  )
-                )}
+              <div className="mt-5">
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                  Subjects
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleAllSubjects}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
+                      selectedSubjectIds.length > 0 && selectedSubjectIds.length === subjects.length
+                        ? "text-white"
+                        : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-slate-800 dark:text-gray-300"
+                    }`}
+                    style={
+                      selectedSubjectIds.length > 0 && selectedSubjectIds.length === subjects.length
+                        ? brandSolidStyle
+                        : undefined
+                    }
+                  >
+                    All Subjects
+                  </button>
+                  {subjects.map((subject) => {
+                    const selected = selectedSubjectIds.includes(subject.id);
+                    return (
+                      <button
+                        key={subject.id}
+                        type="button"
+                        onClick={() => toggleSubjectSelection(subject.id)}
+                        className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
+                          selected
+                            ? "text-white"
+                            : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-slate-800 dark:text-gray-300"
+                        }`}
+                        style={selected ? brandSolidStyle : undefined}
+                      >
+                        {subject.name}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div className="space-y-2">
-                {subjectEntries.map((entry, idx) => (
-                  <SubjectRow
-                    key={entry.id}
-                    entry={entry}
-                    index={idx}
-                    classes={classes}
-                    sections={sections}
-                    subjects={subjects}
-                    teachers={teachers}
-                    onChange={updateSubjectEntry}
-                    onRemove={removeSubjectEntry}
-                    canRemove={subjectEntries.length > 1}
-                  />
-                ))}
+              <div className="mt-4 rounded-xl border border-dashed border-gray-200 p-4 dark:border-slate-700">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {selectedGrades.length === 0 || selectedSubjectIds.length === 0
+                    ? "Select grades and subjects to preview the scope."
+                    : `${classSubjectAssignments.filter((assignment) => {
+                        const grade = assignment.class?.grade;
+                        return (
+                          grade !== null &&
+                          grade !== undefined &&
+                          selectedGrades.includes(String(grade)) &&
+                          selectedSubjectIds.includes(assignment.subjectId)
+                        );
+                      }).length} class-subject assignments will be included.`}
+                </p>
               </div>
-
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                Rows with no subject or class selected will be skipped.
-              </p>
             </div>
           </div>
 

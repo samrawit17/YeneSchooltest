@@ -136,6 +136,7 @@ const Navbar = ({
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [mobileCalendarOpen, setMobileCalendarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [communicationsOpen, setCommunicationsOpen] = useState(false);
 
@@ -577,7 +578,7 @@ const Navbar = ({
       <div className="w-full h-14 sm:h-16 md:h-18">
         <div className="flex items-center justify-between h-full gap-1 sm:gap-2 md:gap-4 px-2 sm:px-3 md:px-4 overflow-hidden">
           {/* Left: Mobile Menu Button and Logo */}
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0 min-w-0">
+          <div className="relative z-20 flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -633,6 +634,23 @@ const Navbar = ({
               </SheetContent>
             </Sheet>
 
+            <Popover open={mobileCalendarOpen} onOpenChange={setMobileCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`sm:hidden relative h-8 w-8 text-slate-900 hover:text-slate-900 dark:text-white dark:hover:bg-slate-800 dark:hover:text-white ${
+                    useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-slate-100"
+                  }`}
+                  aria-label="Weekly calendar"
+                >
+                  <Calendar className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[min(92vw,360px)] p-2 bg-white dark:bg-gray-800" align="start">
+                <WeeklyCalendar events={events} onEventClick={() => { setMobileCalendarOpen(false); router.push('/list/calendar'); }} />
+              </PopoverContent>
+            </Popover>
 
           </div>
 
@@ -647,15 +665,16 @@ const Navbar = ({
               <div className="flex items-center gap-1 sm:gap-2">
                 <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                   <PopoverTrigger asChild>
-                    <div className={`flex items-center gap-1 dark:hover:bg-gray-800 p-1 rounded ${useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-gray-100"}`}>
-                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
-<div className="flex flex-col text-left hidden lg:flex">
-                          <span className="text-slate-700 dark:text-gray-300 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">Today: {currentDate || '--'}</span>
-                          <span className="text-slate-500 dark:text-gray-400 text-[10px] truncate max-w-[160px] sm:max-w-[200px]">
-                            {formattedYearLabel}{displayTermName ? ` | ${displayTermName}` : ""}
-                          </span>
-                        </div>
-                    </div>
+                    <button className={`flex items-center gap-1 dark:hover:bg-gray-800 p-1 rounded cursor-pointer ${useBrandNavigation ? "hover:bg-[rgba(var(--brand-color-rgb),0.12)]" : "hover:bg-gray-100"}`}>
+                      <Calendar className="sm:hidden h-5 w-5 text-slate-500 dark:text-gray-400" />
+                      <Calendar className="hidden sm:block h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
+                      <div className="flex flex-col text-left hidden lg:flex">
+                        <span className="text-slate-700 dark:text-gray-300 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">Today: {currentDate || '--'}</span>
+                        <span className="text-slate-500 dark:text-gray-400 text-[10px] truncate max-w-[160px] sm:max-w-[200px]">
+                          {formattedYearLabel}{displayTermName ? ` | ${displayTermName}` : ""}
+                        </span>
+                      </div>
+                    </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-2 sm:p-3 bg-white dark:bg-gray-800" align="center">
                     <WeeklyCalendar events={events} onEventClick={() => { setCalendarOpen(false); router.push('/list/calendar'); }} />
@@ -670,7 +689,7 @@ const Navbar = ({
           </div>
 
           {/* Right Section: Search and User Menu */}
-          <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2 md:gap-4 min-w-0">
+          <div className="relative z-10 ml-1 flex flex-1 items-center justify-end gap-1.5 sm:ml-0 sm:gap-2 md:gap-4 min-w-0">
             {/* Desktop Search - Fluid width that expands/shrinks with available space */}
             {isLoading ? (
               <div className="hidden sm:flex flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl">
@@ -682,13 +701,13 @@ const Navbar = ({
               </div>
             )}
 
-          {/* Mobile Search - Compact on xs, expands on focus if needed */}
+          {/* Mobile Search */}
           {isLoading ? (
-            <div className="sm:hidden flex-1 min-w-0 max-w-[100px]">
+            <div className="sm:hidden flex-1 min-w-0 max-w-none">
               <Skeleton className="h-8 w-full" />
             </div>
           ) : user && (
-            <div className="sm:hidden flex-1 min-w-0 max-w-[100px]">
+            <div className="sm:hidden flex-1 min-w-0 max-w-none">
               <GlobalSearch />
             </div>
           )}
@@ -720,8 +739,6 @@ const Navbar = ({
               </div>
             ) : user && (
               <div className="flex items-center gap-1 sm:gap-2">
-
-
                 {/* Notifications Dropdown */}
                 <DropdownMenu
                   open={notificationsOpen}

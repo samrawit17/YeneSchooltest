@@ -178,7 +178,7 @@ const SchoolsPage = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 space-y-6 font-sans">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-row flex-wrap items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-[#e35336]">Schools Management</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1 font-medium">Manage all educational institutions in the system</p>
