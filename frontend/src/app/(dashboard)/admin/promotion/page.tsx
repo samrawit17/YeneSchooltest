@@ -58,7 +58,7 @@ export default function PromotionPage() {
   const [minAverageGrade, setMinAverageGrade] = useState<number>(50);
   const [minAttendance, setMinAttendance] = useState<number>(75);
 
-  const isAdmin = ((user?.role === "ADMIN" || user?.role === "IT_MANAGER") || user?.role === "IT_MANAGER") || user?.role === "SUPER_ADMIN";
+  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN";
 
   useEffect(() => {
     fetchClasses();

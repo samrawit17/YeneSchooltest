@@ -209,6 +209,22 @@ const menuItems: MenuSection[] = [
             subscriptionFeature: "EXAM_MANAGEMENT",
           },
           {
+            icon: <FileText className="w-4 h-4" />,
+            label: "Certificate Template",
+            href: "/admin/report-cards/certificate-template",
+            visible: ["admin", "registrar", "it_manager"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "EXAM_MANAGEMENT",
+          },
+          {
+            icon: <Settings className="w-4 h-4" />,
+            label: "Template Manager",
+            href: "/admin/templates",
+            visible: ["admin", "registrar", "it_manager"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "EXAM_MANAGEMENT",
+          },
+          {
             icon: <Trophy className="w-4 h-4" />,
             label: "Grade Review",
             href: "/registrar/grading",

@@ -10,7 +10,14 @@ import {
   UseGuards,
   Request,
   Inject,
+  UseInterceptors,
+  UploadedFile,
+  HttpException,
+  HttpStatus,
+  Res,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { ReportCardService, ReportCardStatus } from './report-card.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -133,6 +140,84 @@ export class ReportCardController {
       academicYear: query.academicYear,
       term: query.term,
     });
+  }
+
+  @Get('certificate-template')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('report_card:read')
+  async getCertificateTemplate(@Request() req) {
+    return this.reportCardService.getCertificateTemplate(req.user.schoolId);
+  }
+
+  @Put('certificate-template')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('report_card:update')
+  async saveCertificateTemplate(@Request() req, @Body() body: { template: Record<string, any> }) {
+    return this.reportCardService.saveCertificateTemplate(
+      req.user.schoolId,
+      body.template || {},
+    );
+  }
+
+  @Post('certificate-template/upload')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('report_card:update')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadCertificateTemplate(
+    @Request() req,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    try {
+      if (!file) {
+        throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
+      }
+      const url = await this.reportCardService.uploadCertificateTemplate(
+        req.user.schoolId,
+        file,
+      );
+      return { url };
+    } catch (error) {
+      throw new HttpException(
+        'Failed to upload certificate template: ' + error.message,
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get(':id/certificate')
+  @Permissions('report_card:read')
+  async getCertificatePayload(@Request() req, @Param('id') id: string) {
+    return this.reportCardService.getCertificatePayload(id, req.user.schoolId);
+  }
+
+  @Get(':id/certificate-pdf')
+  @Permissions('report_card:read')
+  async generateCertificatePdf(
+    @Request() req,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const pdf = await this.reportCardService.generateCertificatePdf(req.user.schoolId, id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="certificate-${id}.pdf"`);
+    res.send(pdf);
+  }
+
+  @Post('certificate-pdf/bulk')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('report_card:read')
+  async generateCertificateBulkZip(
+    @Request() req,
+    @Body() body: { reportCardIds: string[] },
+    @Res() res: Response,
+  ) {
+    const zip = await this.reportCardService.generateCertificateBulkZip(
+      req.user.schoolId,
+      body.reportCardIds || [],
+    );
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="certificates.zip"');
+    res.send(zip);
   }
 
   @Get(':id')

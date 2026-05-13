@@ -49,6 +49,29 @@ export const studentsAPI = {
     search?: string;
     studentIds?: string;
   }) => api.get('/students/id-cards', { params }),
+  getIdCardTemplate: () => api.get('/students/id-cards/template'),
+  saveIdCardTemplate: (template: {
+    title: string;
+    themeColor: string;
+    templateBackgroundUrl: string;
+    schoolName: string;
+    schoolPhone: string;
+    schoolAddress: string;
+    schoolEmail: string;
+    schoolLogoUrl: string;
+  }) => api.put('/students/id-cards/template', { template }),
+  uploadIdCardTemplate: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/students/id-cards/template/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  downloadIdCardPdf: (studentId: string) =>
+    api.get(`/students/id-cards/${studentId}/pdf`, { responseType: 'blob' }),
+  downloadIdCardsBulkPdf: (studentIds: string[]) =>
+    api.post('/students/id-cards/bulk-pdf', { studentIds }, { responseType: 'blob' }),
 };
 
 export const registrarAPI = {

@@ -29,6 +29,10 @@ export class EventService {
     }
   }
 
+  private serializeAudience(audience: string[] | undefined): string | null {
+    return audience?.length ? JSON.stringify(audience) : null;
+  }
+
   async create(data: CreateEventDto, userId: string, schoolId: string) {
     const event = await this.prisma.schoolEvent.create({
       data: {
@@ -37,7 +41,7 @@ export class EventService {
         location: data.location,
         startDate: new Date(data.startDate),
         endDate: data.endDate ? new Date(data.endDate) : null,
-        audience: data.audience as any,
+        audience: this.serializeAudience(data.audience),
         category: data.category || 'OTHER',
         color: data.color,
         createdById: userId,
@@ -205,7 +209,9 @@ export class EventService {
         ...(data.endDate !== undefined && {
           endDate: data.endDate ? new Date(data.endDate) : null,
         }),
-        ...(data.audience && { audience: data.audience as any }),
+        ...(data.audience !== undefined && {
+          audience: this.serializeAudience(data.audience),
+        }),
         ...(data.category && { category: data.category }),
         ...(data.color !== undefined && { color: data.color }),
       },
@@ -278,7 +284,7 @@ export class EventService {
         where: { id: { in: events.map((e) => e.id) } },
       });
       return fullEvents.filter((event) => {
-        const audience = (event.audience as unknown as string[]) || [];
+        const audience = this.parseAudience(event.audience);
         if (!audience || audience.length === 0) {
           return true;
         }

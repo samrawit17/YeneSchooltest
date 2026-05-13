@@ -935,45 +935,44 @@ export class AttendanceService {
     const parsedDate = date ? new Date(date) : new Date();
     parsedDate.setHours(0, 0, 0, 0);
 
-    // For homeroom slots, check by classId; for regular slots, check by timetableSlotId
-    let existingSession;
-    if (isHomeroomSlot && classId) {
-      existingSession = await this.prisma.attendanceSession.findFirst({
-        where: {
-          classId: classId,
-          date: parsedDate,
-        },
-        include: {
-          attendanceRecords: {
-            include: {
-              student: {
-                include: {
-                  studentProfile: true,
+    // The database enforces one attendance session per class per date.
+    // Always check by class/date first so regular-slot opens and homeroom opens
+    // converge on the same session instead of racing into a unique violation.
+    const existingSession = classId
+      ? await this.prisma.attendanceSession.findFirst({
+          where: {
+            classId,
+            date: parsedDate,
+          },
+          include: {
+            attendanceRecords: {
+              include: {
+                student: {
+                  include: {
+                    studentProfile: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
-    } else {
-      existingSession = await this.prisma.attendanceSession.findFirst({
-        where: {
-          timetableSlotId: slotId,
-          date: parsedDate,
-        },
-        include: {
-          attendanceRecords: {
-            include: {
-              student: {
-                include: {
-                  studentProfile: true,
+        })
+      : await this.prisma.attendanceSession.findFirst({
+          where: {
+            timetableSlotId: slotId,
+            date: parsedDate,
+          },
+          include: {
+            attendanceRecords: {
+              include: {
+                student: {
+                  include: {
+                    studentProfile: true,
+                  },
                 },
               },
             },
           },
-        },
-      });
-    }
+        });
 
     if (existingSession) {
       // Return existing session (whether DRAFT or SUBMITTED for viewing)
@@ -986,16 +985,33 @@ export class AttendanceService {
     // New sessions remain editable until explicit submission.
     // Create new session - for homeroom slots, use classId; for regular slots, use timetableSlotId.
     // Store sectionId for homeroom sessions to track which section the teacher is homeroom for
-    const session = await this.prisma.attendanceSession.create({
-      data: {
-        schoolId,
-        timetableSlotId: isHomeroomSlot ? null : slotId,
-        classId: isHomeroomSlot ? classId : null,
-        date: parsedDate,
-        status: 'NOT_SUBMITTED',
-        takenById: user.id,
-      },
-    });
+    let session;
+    try {
+      session = await this.prisma.attendanceSession.create({
+        data: {
+          schoolId,
+          timetableSlotId: isHomeroomSlot ? null : slotId,
+          classId: classId || null,
+          date: parsedDate,
+          status: 'NOT_SUBMITTED',
+          takenById: user.id,
+        },
+      });
+    } catch (error: any) {
+      if (error?.code === 'P2002' && classId) {
+        const concurrentSession =
+          await this.prisma.attendanceSession.findFirst({
+            where: {
+              classId,
+              date: parsedDate,
+            },
+          });
+        if (concurrentSession) {
+          return this.getSession(concurrentSession.id, user);
+        }
+      }
+      throw error;
+    }
 
     // Get students for this class/section - use StudentClass table first
     let students: Array<{
@@ -2850,9 +2866,9 @@ export class AttendanceService {
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
     const targetDateStr = targetDate.toISOString().split('T')[0];
-    const dayOfWeek = targetDate.getDay() || 7;
 
-    // Get all homeroom classes with no attendance
+    // Match the same class/session logic used by getMissingClasses, but only
+    // notify classes that actually have a homeroom teacher assigned.
     const classes = await this.prisma.class.findMany({
       where: {
         schoolId: user.schoolId,
@@ -2871,16 +2887,23 @@ export class AttendanceService {
         schoolId: user.schoolId,
         date: targetDate,
       },
+      include: {
+        timetableSlot: {
+          include: {
+            class: true,
+          },
+        },
+      },
     });
 
-    // Find classes with no submitted attendance (check only SUBMITTED status)
+    // Find classes with no submitted attendance. A submitted session can be
+    // attached directly to classId or indirectly through timetableSlot.classId.
     const missingClasses = classes.filter((cls) => {
       const hasSubmittedSession = targetSessions.some(
         (session) =>
-          session.classId === cls.id &&
-          session.status === 'SUBMITTED' &&
-          session.date &&
-          session.date.toISOString().split('T')[0] === targetDateStr,
+          (session.classId === cls.id ||
+            session.timetableSlot?.classId === cls.id) &&
+          session.status === 'SUBMITTED',
       );
       return !hasSubmittedSession;
     });
@@ -2895,7 +2918,8 @@ export class AttendanceService {
     }> = [];
     for (const cls of missingClasses) {
       if (cls.homeroomTeacherId && cls.grade !== null) {
-        await this.notificationService.notifyHomeroomMissingAttendance(
+        const created =
+          await this.notificationService.notifyHomeroomMissingAttendance(
           user.schoolId,
           cls.homeroomTeacherId,
           cls.name,
@@ -2903,13 +2927,15 @@ export class AttendanceService {
           cls.section,
           targetDateStr,
         );
-        notifications.push({
-          teacherId: cls.homeroomTeacherId,
-          teacherName: cls.homeroomTeacher?.name,
-          className: cls.name,
-          grade: cls.grade,
-          section: cls.section,
-        });
+        if (created) {
+          notifications.push({
+            teacherId: cls.homeroomTeacherId,
+            teacherName: cls.homeroomTeacher?.name,
+            className: cls.name,
+            grade: cls.grade,
+            section: cls.section,
+          });
+        }
       }
     }
 

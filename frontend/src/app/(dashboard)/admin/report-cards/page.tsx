@@ -13,6 +13,8 @@ import {
   Loader2,
   BarChart3,
   ExternalLink,
+  Settings,
+  Download,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
@@ -77,7 +79,7 @@ export default function ReportCardsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [bulkGenerateLoading, setBulkGenerateLoading] = useState(false);
 
-  const isAdmin = ((user?.role === "ADMIN" || user?.role === "IT_MANAGER") || user?.role === "IT_MANAGER") || user?.role === "SUPER_ADMIN";
+  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN";
 
   useEffect(() => {
     fetchClasses();
@@ -229,6 +231,41 @@ export default function ReportCardsPage() {
     }
   };
 
+  const handleDownloadCertificate = async (id: string) => {
+    try {
+      const resp = await reportCardsAPI.downloadCertificatePdf(id);
+      const blob = new Blob([resp.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `certificate-${id}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to download certificate");
+    }
+  };
+
+  const handleBulkDownloadCertificates = async () => {
+    const ids = Array.from(selectedCards);
+    if (!ids.length) {
+      toast.error("Select report cards first");
+      return;
+    }
+    try {
+      const resp = await reportCardsAPI.downloadCertificateBulkZip(ids);
+      const blob = new Blob([resp.data], { type: "application/zip" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "certificates.zip";
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to download certificates");
+    }
+  };
+
   const filteredCards = reportCards;
 
   const stats = {
@@ -298,6 +335,15 @@ export default function ReportCardsPage() {
               <div className="flex items-center gap-2">
                 {isAdmin && selectedCards.size > 0 && (
                   <button
+                    onClick={handleBulkDownloadCertificates}
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                  >
+                    <Download className="w-4 h-4" />
+                    Certificates ({selectedCards.size})
+                  </button>
+                )}
+                {isAdmin && selectedCards.size > 0 && (
+                  <button
                     onClick={handleUnpublish}
                     disabled={actionLoading}
                     className="flex items-center gap-2 px-3 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 disabled:opacity-50"
@@ -316,6 +362,13 @@ export default function ReportCardsPage() {
                     Generate All
                   </button>
                 )}
+                <button
+                  onClick={() => router.push("/admin/report-cards/certificate-template")}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-800"
+                >
+                  <Settings className="w-4 h-4" />
+                  Certificate Template
+                </button>
                 <button
                   onClick={() => router.push("/admin/exams/publish")}
                   className="flex items-center gap-2 px-3 py-2 bg-[var(--brand-color,#e35336)] text-white rounded-lg text-sm hover:opacity-90"
@@ -431,6 +484,13 @@ export default function ReportCardsPage() {
                       </TableCell>
                       <TableCell className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleDownloadCertificate(card.id)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                            title="Download Certificate"
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => router.push(`/admin/report-cards/${card.id}`)}
                             className="p-1.5 text-slate-400 hover:text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.12)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.18)] rounded-lg"

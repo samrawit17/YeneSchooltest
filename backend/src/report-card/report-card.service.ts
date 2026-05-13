@@ -6,6 +6,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { NotificationService, NotificationType } from '../notification/notification.service';
+import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
+import * as fs from 'fs';
+import * as path from 'path';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import archiver from 'archiver';
+import { TemplatesService } from '../templates/templates.service';
 
 export enum ReportCardStatus {
   DRAFT = 'DRAFT',
@@ -75,6 +81,7 @@ export class ReportCardService {
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
+    private templatesService: TemplatesService,
   ) {}
 
   private async resolveAcademicYearName(schoolId: string, academicYearId: string) {
@@ -765,6 +772,299 @@ export class ReportCardService {
         ? JSON.parse(reportCard.gradeDetails)
         : [],
     };
+  }
+
+  async getCertificateTemplate(schoolId: string) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { name: true, phone: true, address: true, logoUrl: true },
+    });
+
+    const stored = await this.prisma.schoolSetting.findFirst({
+      where: { schoolId, key: SCHOOL_SETTING_KEYS.CERTIFICATE_TEMPLATE },
+      select: { value: true },
+    });
+
+    let template: any = {};
+    if (stored?.value) {
+      try {
+        template = JSON.parse(stored.value);
+      } catch {
+        template = {};
+      }
+    }
+
+    return {
+      schoolId,
+      title: template.title || 'Student Result Certificate',
+      themeColor: template.themeColor || '#1f2937',
+      templateBackgroundUrl: template.templateBackgroundUrl || '',
+      principalName: template.principalName || '',
+      schoolName: template.schoolName || school?.name || '',
+      schoolPhone: template.schoolPhone || school?.phone || '',
+      schoolAddress: template.schoolAddress || school?.address || '',
+      schoolLogoUrl: template.schoolLogoUrl || school?.logoUrl || '',
+    };
+  }
+
+  async saveCertificateTemplate(schoolId: string, value: Record<string, any>) {
+    const normalized = {
+      title: String(value.title || 'Student Result Certificate').trim(),
+      themeColor: String(value.themeColor || '#1f2937').trim(),
+      templateBackgroundUrl: String(value.templateBackgroundUrl || '').trim(),
+      principalName: String(value.principalName || '').trim(),
+      schoolName: String(value.schoolName || '').trim(),
+      schoolPhone: String(value.schoolPhone || '').trim(),
+      schoolAddress: String(value.schoolAddress || '').trim(),
+      schoolLogoUrl: String(value.schoolLogoUrl || '').trim(),
+    };
+
+    const existing = await this.prisma.schoolSetting.findFirst({
+      where: { schoolId, key: SCHOOL_SETTING_KEYS.CERTIFICATE_TEMPLATE },
+      select: { id: true },
+    });
+
+    if (existing) {
+      await this.prisma.schoolSetting.update({
+        where: { id: existing.id },
+        data: { value: JSON.stringify(normalized) },
+      });
+    } else {
+      await this.prisma.schoolSetting.create({
+        data: {
+          schoolId,
+          key: SCHOOL_SETTING_KEYS.CERTIFICATE_TEMPLATE,
+          value: JSON.stringify(normalized),
+        },
+      });
+    }
+
+    return this.getCertificateTemplate(schoolId);
+  }
+
+  async getCertificatePayload(reportCardId: string, schoolId: string) {
+    const template = await this.getCertificateTemplate(schoolId);
+    const reportCard = await this.prisma.reportCard.findFirst({
+      where: { id: reportCardId, schoolId },
+      include: {
+        student: { select: { id: true, name: true, avatarUrl: true } },
+        class: { select: { id: true, name: true, section: true, grade: true } },
+      },
+    });
+
+    if (!reportCard) {
+      throw new NotFoundException('Report card not found');
+    }
+
+    return {
+      template,
+      reportCard: {
+        id: reportCard.id,
+        term: reportCard.term,
+        academicYear: reportCard.academicYear,
+        rankInClass: reportCard.rankInClass,
+        totalMarks: reportCard.totalMarks,
+        percentage: reportCard.percentage,
+        overallGrade: reportCard.overallGrade,
+        student: reportCard.student,
+        class: reportCard.class,
+        gradeDetails: this.parseGradeDetails(reportCard.gradeDetails),
+      },
+    };
+  }
+
+  async uploadCertificateTemplate(
+    schoolId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    const backendPublicDir = path.join(
+      process.cwd(),
+      'public',
+      'uploads',
+      'certificate-templates',
+    );
+    const frontendPublicDir = path.join(
+      process.cwd(),
+      '..',
+      'frontend',
+      'public',
+      'uploads',
+      'certificate-templates',
+    );
+
+    if (!fs.existsSync(backendPublicDir)) {
+      fs.mkdirSync(backendPublicDir, { recursive: true });
+    }
+    if (!fs.existsSync(frontendPublicDir)) {
+      fs.mkdirSync(frontendPublicDir, { recursive: true });
+    }
+
+    const fileName = `${schoolId}-${Date.now()}${path.extname(file.originalname)}`;
+    const backendFilePath = path.join(backendPublicDir, fileName);
+    const frontendFilePath = path.join(frontendPublicDir, fileName);
+
+    fs.writeFileSync(backendFilePath, file.buffer);
+    fs.copyFileSync(backendFilePath, frontendFilePath);
+
+    return `/uploads/certificate-templates/${fileName}`;
+  }
+
+  private resolvePublicAssetPath(urlPath: string): string {
+    const clean = String(urlPath || '').trim().replace(/^\/+/, '');
+    return path.join(process.cwd(), '..', 'frontend', 'public', clean);
+  }
+
+  async generateCertificatePdf(schoolId: string, reportCardId: string): Promise<Buffer> {
+    const activeTemplate = await this.templatesService.getActiveTemplate(schoolId, 'CERTIFICATE');
+    if (!activeTemplate?.backgroundUrl) {
+      throw new BadRequestException('Activate a certificate template first');
+    }
+    const templatePath = this.resolvePublicAssetPath(activeTemplate.backgroundUrl);
+    if (!fs.existsSync(templatePath)) {
+      throw new NotFoundException('Certificate template file not found');
+    }
+
+    const payload = await this.getCertificatePayload(reportCardId, schoolId);
+    const templateBytes = fs.readFileSync(templatePath);
+    const pdfDoc = await PDFDocument.load(templateBytes);
+    const page = pdfDoc.getPage(0);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const { width, height } = page.getSize();
+    const fieldMap: any[] = (() => {
+      try {
+        return activeTemplate.fieldMapJson ? JSON.parse(activeTemplate.fieldMapJson) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    const valueFor = (key: string) => {
+      const studentName = payload.reportCard.student?.name || '';
+      const className = payload.reportCard.class?.name || '';
+      const year = payload.reportCard.academicYear || '';
+      const term = payload.reportCard.term || '';
+      const totalMarks = payload.reportCard.totalMarks ?? '-';
+      const rank = payload.reportCard.rankInClass ?? '-';
+      const schoolName = payload.template.schoolName || '';
+      switch (key) {
+        case 'student_name': return studentName;
+        case 'class':
+        case 'grade': return className;
+        case 'section': return payload.reportCard.class?.section || '';
+        case 'academic_year': return year;
+        case 'issue_date': return new Date().toISOString().slice(0, 10);
+        case 'cert_id': return payload.reportCard.id || '';
+        case 'school_name': return schoolName;
+        case 'term': return term;
+        case 'total_marks': return String(totalMarks);
+        case 'ranking':
+        case 'rank': return String(rank);
+        case 'school_address': return payload.template.schoolAddress || '';
+        case 'school_phone': return payload.template.schoolPhone || '';
+        case 'school_email': return '';
+        case 'title': return payload.template.title || 'Student Result Certificate';
+        default: return '';
+      }
+    };
+
+    const drawGradesTable = (x: number, yTop: number, w: number, h: number) => {
+      const startY = yTop;
+      const bottomY = yTop - h;
+      let rowY = startY;
+      const col1 = x;
+      const col2 = x + w * 0.66;
+      const col3 = x + w * 0.84;
+      page.drawText('Subject', { x: col1, y: rowY, size: 10, font: bold });
+      page.drawText('Total', { x: col2, y: rowY, size: 10, font: bold });
+      page.drawText('Grade', { x: col3, y: rowY, size: 10, font: bold });
+      rowY -= 14;
+      for (const g of (payload.reportCard.gradeDetails || []).slice(0, 24)) {
+        if (rowY < bottomY + 10) break;
+        page.drawText(String(g.subjectName || ''), { x: col1, y: rowY, size: 9, font });
+        page.drawText(String(g.totalScore ?? ''), { x: col2, y: rowY, size: 9, font });
+        page.drawText(String(g.gradeLetter || ''), { x: col3, y: rowY, size: 9, font });
+        rowY -= 12;
+      }
+    };
+
+    if (Array.isArray(fieldMap) && fieldMap.length > 0) {
+      for (const f of fieldMap) {
+        const x = width * (Number(f.x_percent ?? 0) / 100);
+        const y = height * (1 - Number(f.y_percent ?? 0) / 100);
+        const w = width * (Number(f.width_percent ?? 0) / 100 || 0.16);
+        const h = height * (Number(f.height_percent ?? 0) / 100 || 0.14);
+        const size = Number(f.font_size ?? 10);
+        const raw = String(f.font_color || '#000000').replace('#', '');
+        const r = parseInt(raw.slice(0, 2) || '00', 16) / 255;
+        const g = parseInt(raw.slice(2, 4) || '00', 16) / 255;
+        const b = parseInt(raw.slice(4, 6) || '00', 16) / 255;
+        const key = String(f.field_key || '');
+
+        if (key === 'marks_table') {
+          drawGradesTable(x, y, w, h);
+          continue;
+        }
+
+        if (key === 'school_logo' && payload.template.schoolLogoUrl) {
+          try {
+            const logoPath = this.resolvePublicAssetPath(payload.template.schoolLogoUrl);
+            if (fs.existsSync(logoPath)) {
+              const logoBytes = fs.readFileSync(logoPath);
+              const isPng = payload.template.schoolLogoUrl.toLowerCase().endsWith('.png');
+              const img = isPng ? await pdfDoc.embedPng(logoBytes) : await pdfDoc.embedJpg(logoBytes);
+              page.drawImage(img, { x, y: y - h, width: w, height: h });
+            }
+          } catch {}
+          continue;
+        }
+
+        const text = String(valueFor(key));
+        if (!text) continue;
+        page.drawText(text, {
+          x,
+          y,
+          size,
+          font: f.bold ? bold : font,
+          color: rgb(r, g, b),
+        });
+      }
+    } else {
+      page.drawText(payload.template.title || 'Student Result Certificate', {
+        x: width * 0.07, y: height * 0.9, size: 16, font: bold, color: rgb(0, 0, 0),
+      });
+      page.drawText(payload.template.schoolName || '', { x: width * 0.07, y: height * 0.865, size: 11, font });
+      page.drawText(`${payload.template.schoolAddress || ''} ${payload.template.schoolPhone || ''}`.trim(), {
+        x: width * 0.07, y: height * 0.845, size: 9, font,
+      });
+
+      page.drawText(`Student: ${payload.reportCard.student?.name || ''}`, { x: width * 0.07, y: height * 0.78, size: 12, font: bold });
+      page.drawText(`Class: ${payload.reportCard.class?.name || ''}`, { x: width * 0.07, y: height * 0.755, size: 10, font });
+      page.drawText(`Academic Year: ${payload.reportCard.academicYear || ''}`, { x: width * 0.07, y: height * 0.735, size: 10, font });
+      page.drawText(`Term: ${payload.reportCard.term || ''}`, { x: width * 0.07, y: height * 0.715, size: 10, font });
+      page.drawText(`Total Marks: ${payload.reportCard.totalMarks ?? '-'}`, { x: width * 0.07, y: height * 0.695, size: 10, font });
+      page.drawText(`Rank: ${payload.reportCard.rankInClass ?? '-'}`, { x: width * 0.07, y: height * 0.675, size: 10, font });
+      drawGradesTable(width * 0.07, height * 0.62, width * 0.78, height * 0.5);
+    }
+
+    return Buffer.from(await pdfDoc.save());
+  }
+
+  async generateCertificateBulkZip(schoolId: string, reportCardIds: string[]): Promise<Buffer> {
+    const ids = (reportCardIds || []).filter(Boolean);
+    if (!ids.length) throw new BadRequestException('No report card IDs provided');
+    const chunks: Buffer[] = [];
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.on('data', (d) => chunks.push(d));
+    await Promise.all(ids.map(async (id) => {
+      const pdf = await this.generateCertificatePdf(schoolId, id);
+      archive.append(pdf, { name: `certificate-${id}.pdf` });
+    }));
+    await archive.finalize();
+    return await new Promise<Buffer>((resolve, reject) => {
+      archive.on('end', () => resolve(Buffer.concat(chunks)));
+      archive.on('error', reject);
+    });
   }
 
   /**

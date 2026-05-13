@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Printer,
   Download,
@@ -15,13 +15,8 @@ import {
   Hash,
   Users,
   CheckCircle,
-  Upload,
-  Settings,
   Eye,
   RotateCcw,
-  FileJson,
-  Palette,
-  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -160,12 +155,12 @@ const defaultSchoolInfo: SchoolInfo = {
 };
 
 const defaultStudentData: StudentIdCardData = {
-  studentId: "student-001",
-  studentCode: "SCH-2025-001",
-  name: "Student Name",
-  grade: 10,
-  section: "A",
-  academicYear: "2025-2026",
+  studentId: "",
+  studentCode: "",
+  name: "",
+  grade: 0,
+  section: "",
+  academicYear: "",
   gender: "Male",
   photoUrl: "",
 };
@@ -573,24 +568,38 @@ ${(() => {
 interface StudentIdCardGeneratorProps {
   students?: StudentIdCardData[];
   school?: SchoolInfo;
+  templateConfig?: {
+    title?: string;
+    themeColor?: string;
+    templateBackgroundUrl?: string;
+  };
+  autoDownload?: boolean;
 }
 
 export default function StudentIdCardGenerator({
   students = [defaultStudentData],
   school = defaultSchoolInfo,
+  templateConfig,
+  autoDownload = false,
 }: StudentIdCardGeneratorProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState<IdCardTemplate>(cardTemplates[0]);
+  const [selectedTemplate] = useState<IdCardTemplate>(cardTemplates[0]);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [previewStudent, setPreviewStudent] = useState<StudentIdCardData>(students[0] || defaultStudentData);
   const [localSchool, setLocalSchool] = useState<SchoolInfo>(school);
-  const [isEditingSchool, setIsEditingSchool] = useState(false);
   const [activeTab, setActiveTab] = useState("preview");
   const [showCardBack, setShowCardBack] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Sync school info if prop changes
-  useState(() => { setLocalSchool(school); });
-  useState(() => { if (students.length > 0) setPreviewStudent(students[0]); });
+  useEffect(() => {
+    setLocalSchool(school);
+  }, [school]);
+  useEffect(() => {
+    if (students.length > 0) setPreviewStudent(students[0]);
+  }, [students]);
+  useEffect(() => {
+    if (!templateConfig?.themeColor) return;
+    const theme = templateConfig.themeColor;
+    (selectedTemplate as any).primaryColor = theme;
+    (selectedTemplate as any).secondaryColor = theme;
+  }, [templateConfig, selectedTemplate]);
 
   const handlePrintAll = useCallback(() => {
     const toPrint = students.filter(
@@ -622,37 +631,8 @@ export default function StudentIdCardGenerator({
     );
   };
 
-  const exportTemplate = () => {
-    const config = { template: selectedTemplate, school: localSchool };
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `id-card-template-${selectedTemplate.id}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Template exported!");
-  };
-
-  const importTemplate = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const config = JSON.parse(ev.target?.result as string);
-        if (config.template) setSelectedTemplate({ ...selectedTemplate, ...config.template });
-        if (config.school) setLocalSchool({ ...localSchool, ...config.school });
-        toast.success("Template imported successfully!");
-      } catch {
-        toast.error("Invalid template file");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
-
   const printCount = selectedStudents.length || students.length;
+  const actionLabel = autoDownload ? "Download ID Cards" : `Print ${printCount} Card${printCount !== 1 ? "s" : ""}`;
 
   return (
     <div className="space-y-6">
@@ -660,8 +640,6 @@ export default function StudentIdCardGenerator({
         <TabsList className="h-auto p-1 bg-white dark:bg-slate-900 border rounded-xl shadow-sm">
           <TabsTrigger value="preview" className="rounded-lg gap-1.5"><Eye className="w-4 h-4" /> Preview</TabsTrigger>
           <TabsTrigger value="students" className="rounded-lg gap-1.5"><Users className="w-4 h-4" /> Students ({students.length})</TabsTrigger>
-          <TabsTrigger value="school" className="rounded-lg gap-1.5"><Building2 className="w-4 h-4" /> School Info</TabsTrigger>
-          <TabsTrigger value="settings" className="rounded-lg gap-1.5"><Palette className="w-4 h-4" /> Templates</TabsTrigger>
         </TabsList>
 
         {/* ---- PREVIEW TAB ---- */}
@@ -717,13 +695,15 @@ export default function StudentIdCardGenerator({
 
               <div className="mt-6 flex justify-center gap-3">
                 <Button onClick={handlePrintAll} className="shadow-md">
-                  <Printer className="w-4 h-4 mr-2" />
-                  Print {printCount} Card{printCount !== 1 ? "s" : ""}
+                  {autoDownload ? <Download className="w-4 h-4 mr-2" /> : <Printer className="w-4 h-4 mr-2" />}
+                  {actionLabel}
                 </Button>
-                <Button variant="outline" onClick={handlePrintAll}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download PDF
-                </Button>
+                {!autoDownload && (
+                  <Button variant="outline" onClick={handlePrintAll}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -785,148 +765,6 @@ export default function StudentIdCardGenerator({
           </Card>
         </TabsContent>
 
-        {/* ---- SCHOOL INFO TAB ---- */}
-        <TabsContent value="school">
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2"><Building2 className="w-5 h-5" /> School Information</span>
-                <Button variant="outline" size="sm" onClick={() => setIsEditingSchool(!isEditingSchool)}>
-                  {isEditingSchool ? "Done" : "Edit"}
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { label: "School Name", key: "name" as const, placeholder: "School Name" },
-                  { label: "Tagline", key: "tagline" as const, placeholder: "Excellence in Education" },
-                  { label: "Address", key: "address" as const, placeholder: "City, Country" },
-                  { label: "Phone", key: "phone" as const, placeholder: "+000 00 000 0000" },
-                  { label: "Email", key: "email" as const, placeholder: "info@school.edu" },
-                  { label: "Website", key: "website" as const, placeholder: "www.school.edu" },
-                ].map((field) => (
-                  <div key={field.key} className="space-y-1.5">
-                    <Label className="text-xs">{field.label}</Label>
-                    <Input
-                      value={(localSchool as any)[field.key] || ""}
-                      onChange={(e) => setLocalSchool({ ...localSchool, [field.key]: e.target.value })}
-                      disabled={!isEditingSchool}
-                      placeholder={field.placeholder}
-                      className="dark:bg-slate-800"
-                    />
-                  </div>
-                ))}
-                <div className="space-y-1.5 col-span-2">
-                  <Label className="text-xs">Logo URL</Label>
-                  <Input
-                    value={localSchool.logo || ""}
-                    onChange={(e) => setLocalSchool({ ...localSchool, logo: e.target.value })}
-                    disabled={!isEditingSchool}
-                    placeholder="https://example.com/logo.png"
-                    className="dark:bg-slate-800"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ---- TEMPLATES TAB ---- */}
-        <TabsContent value="settings">
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2"><Palette className="w-5 h-5" /> Card Templates</span>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={exportTemplate}>
-                    <Download className="w-3.5 h-3.5 mr-1" /> Export
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="w-3.5 h-3.5 mr-1" /> Import
-                  </Button>
-                  <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={importTemplate} />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Template Grid */}
-              <div>
-                <Label className="text-xs text-gray-500 mb-2 block">Select Template</Label>
-                <div className="grid grid-cols-4 lg:grid-cols-8 gap-2">
-                  {cardTemplates.map((tmpl) => (
-                    <div
-                      key={tmpl.id}
-                      className={`p-2.5 rounded-xl border-2 cursor-pointer transition-all ${
-                        selectedTemplate.id === tmpl.id
-                          ? "border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800 scale-[1.02]"
-                          : "border-gray-200 dark:border-slate-700 hover:border-gray-300"
-                      }`}
-                      onClick={() => setSelectedTemplate(tmpl)}
-                    >
-                      <div
-                        className="w-full h-10 rounded-lg mb-1.5"
-                        style={{ background: `linear-gradient(135deg, ${tmpl.primaryColor}, ${tmpl.secondaryColor})` }}
-                      />
-                      <p className="text-[10px] text-center font-semibold dark:text-white">{tmpl.name}</p>
-                      <p className="text-[8px] text-center text-gray-500">{tmpl.type}</p>
-                      {tmpl.showQR && <Star className="w-2.5 h-2.5 mx-auto mt-0.5 text-amber-400" />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Color Customization */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Primary Color</Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={selectedTemplate.primaryColor}
-                      onChange={(e) => setSelectedTemplate({ ...selectedTemplate, primaryColor: e.target.value })}
-                      className="w-10 h-10 rounded cursor-pointer border-0"
-                    />
-                    <Input
-                      value={selectedTemplate.primaryColor}
-                      onChange={(e) => setSelectedTemplate({ ...selectedTemplate, primaryColor: e.target.value })}
-                      className="dark:bg-slate-800"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Secondary Color</Label>
-                  <div className="flex gap-2">
-                    <input
-                      type="color"
-                      value={selectedTemplate.secondaryColor}
-                      onChange={(e) => setSelectedTemplate({ ...selectedTemplate, secondaryColor: e.target.value })}
-                      className="w-10 h-10 rounded cursor-pointer border-0"
-                    />
-                    <Input
-                      value={selectedTemplate.secondaryColor}
-                      onChange={(e) => setSelectedTemplate({ ...selectedTemplate, secondaryColor: e.target.value })}
-                      className="dark:bg-slate-800"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Options */}
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedTemplate.showQR ?? false}
-                    onChange={(e) => setSelectedTemplate({ ...selectedTemplate, showQR: e.target.checked })}
-                    className="rounded accent-blue-600"
-                  />
-                  Show QR Code
-                </label>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
