@@ -780,8 +780,9 @@ export class NotificationService {
     type: string;
     actionUrl?: string;
     metadata?: any;
+    bypassPreferences?: boolean;
   }) {
-    if (data.userId) {
+    if (data.userId && !data.bypassPreferences) {
       const preferences = await this.getNotificationPreferences(
         data.userId,
         '',
@@ -1334,6 +1335,7 @@ export class NotificationService {
       type: NotificationType.ATTENDANCE_SESSION_OPENED,
       actionUrl: '/teacher/attendance',
       metadata: { className, grade, section, date },
+      bypassPreferences: true,
     });
   }
 

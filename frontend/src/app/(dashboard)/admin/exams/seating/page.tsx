@@ -461,7 +461,7 @@ export default function ExamSeatingPage() {
   useEffect(() => {
     if (
       isAuthenticated &&
-      (((user?.role === "ADMIN" || user?.role === "IT_MANAGER") || user?.role === "IT_MANAGER") || user?.role === "SUPER_ADMIN") &&
+      (user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN") &&
       currentAcademicYear?.id
     ) {
       loadInitialData();
@@ -972,7 +972,7 @@ export default function ExamSeatingPage() {
     );
   }
 
-  const hasPermission = ((user?.role === "ADMIN" || user?.role === "IT_MANAGER") || user?.role === "IT_MANAGER") || user?.role === "SUPER_ADMIN";
+  const hasPermission = user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN";
   if (!isAuthenticated || !hasPermission) {
     return <AccessDenied />;
   }

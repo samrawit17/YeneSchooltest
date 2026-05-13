@@ -186,7 +186,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
             () => setShowCharts(true),
             { timeout: 300 },
           )
-        : window.setTimeout(() => setShowCharts(true), 120);
+        : setTimeout(() => setShowCharts(true), 120);
 
     return () => {
       if (typeof schedule === "number") {

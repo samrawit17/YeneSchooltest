@@ -89,8 +89,8 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
   const handleNotifyAllTeachers = async () => {
     try {
       setNotifying(true);
-      await attendanceAPI.checkReminders();
-      toast.success('Notifications sent to all teachers with missing attendance');
+      await attendanceAPI.notifyMissingAttendance({ date });
+      toast.success('Notifications sent to homeroom teachers with missing attendance');
     } catch (e) {
       toast.error('Failed to send notifications');
     } finally {
@@ -250,7 +250,7 @@ export default function AttendanceManagementPage() {
   const [viewMode, setViewMode] = useState<'date' | 'period'>('date');
 
   const isAdmin =
-    (user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'IT_MANAGER') ||
+    user?.role?.toUpperCase() === 'ADMIN' ||
     user?.role?.toUpperCase() === 'IT_MANAGER' ||
     user?.role?.toUpperCase() === 'SUPER_ADMIN';
   const { currentAcademicYear, currentTerm, getAllAcademicYears, getTermsForYear } = useAcademicYear();
@@ -791,9 +791,9 @@ export default function AttendanceManagementPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-900">
-      <div className="w-full p-2">
+      <div className="min-w-0 max-w-full overflow-x-hidden space-y-6 p-3 sm:p-4 md:p-8">
         {/* Top Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-[#E2E8F0] dark:border-gray-700 p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-[#E2E8F0] dark:border-gray-700 p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-black">Attendance Dashboard</h1>

@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import {
   Communication,
+  CommunicationReply,
   CommunicationStatus,
   CommunicationCategory,
   communicationsAPI,
@@ -182,14 +183,14 @@ function getInitialMessageSenderRole(conversation: ConversationWithParent) {
   return "CONTACT";
 }
 
-function getReplySenderName(reply: Communication["replies"][number] | undefined, conversation: ConversationWithParent, viewerRole?: string) {
+function getReplySenderName(reply: CommunicationReply | undefined, conversation: ConversationWithParent, viewerRole?: string) {
   if (reply?.sender?.name) return reply.sender.name;
   if (reply?.sender?.role === "TEACHER") return conversation.teacherName || conversation.subject || "Conversation";
   if (reply?.sender?.role === "PARENT") return conversation.parentName || conversation.student?.name || conversation.subject || "Conversation";
   return getConversationTitle(conversation, viewerRole);
 }
 
-function getReplySenderRole(reply: Communication["replies"][number] | undefined, conversation: ConversationWithParent) {
+function getReplySenderRole(reply: CommunicationReply | undefined, conversation: ConversationWithParent) {
   if (reply?.sender?.role) return reply.sender.role;
   if (conversation.teacherName) return "TEACHER";
   if (conversation.parentName) return "PARENT";
@@ -519,7 +520,7 @@ function CommunicationsContent() {
   const [totalPages, setTotalPages] = useState(1);
   const autoMarkedConversationRef = useRef<string | null>(null);
 
-  const isAdmin = ((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') || user?.role === 'SUPER_ADMIN';
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'IT_MANAGER' || user?.role === 'SUPER_ADMIN';
   const isTeacher = user?.role === 'TEACHER';
   const viewerRole = user?.role;
 
@@ -540,7 +541,7 @@ function CommunicationsContent() {
       setTotalPages(meta.totalPages);
       
       const transformed: ConversationWithParent[] = data.map((comm: Communication) => {
-        const lastReply = comm.replies && comm.replies.length > 0 ? comm.replies[comm.replies.length - 1] : null;
+        const lastReply = comm.replies?.at(-1) ?? null;
         return {
           ...comm,
           parentName: getParentDisplayName(comm),

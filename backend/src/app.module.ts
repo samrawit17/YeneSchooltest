@@ -42,6 +42,7 @@ import { ReportCardModule } from './report-card/report-card.module';
 import { DisciplineModule } from './discipline/discipline.module';
 import { SirenModule } from './siren/siren.module';
 import { PeriodTimeModule } from './period-time/period-time.module';
+import { TemplatesModule } from './templates/templates.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { PeriodTimeModule } from './period-time/period-time.module';
     DisciplineModule,
     SirenModule,
     PeriodTimeModule,
+    TemplatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

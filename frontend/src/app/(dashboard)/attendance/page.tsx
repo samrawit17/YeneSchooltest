@@ -17,7 +17,7 @@ export default function AttendanceRootPage() {
         router.push('/student/attendance');
       } else if (user?.role === 'PARENT') {
         router.push('/parent/attendance');
-      } else if (((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') || user?.role === 'SUPER_ADMIN') {
+      } else if (user?.role === 'ADMIN' || user?.role === 'IT_MANAGER' || user?.role === 'SUPER_ADMIN') {
         router.push('/admin/attendance');
       } else {
         router.push('/');

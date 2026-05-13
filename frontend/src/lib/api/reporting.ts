@@ -115,6 +115,42 @@ export const reportCardsAPI = {
     }
   ) => api.put<ReportCard>(`/report-cards/${id}/remarks`, data),
   delete: (id: string) => api.delete(`/report-cards/${id}`),
+  getCertificateTemplate: () =>
+    api.get<{
+      schoolId: string;
+      title: string;
+      themeColor: string;
+      templateBackgroundUrl: string;
+      principalName: string;
+      schoolName: string;
+      schoolPhone: string;
+      schoolAddress: string;
+      schoolLogoUrl: string;
+    }>('/report-cards/certificate-template'),
+  saveCertificateTemplate: (template: {
+    title: string;
+    themeColor: string;
+    templateBackgroundUrl: string;
+    principalName: string;
+    schoolName: string;
+    schoolPhone: string;
+    schoolAddress: string;
+    schoolLogoUrl: string;
+  }) => api.put('/report-cards/certificate-template', { template }),
+  uploadCertificateTemplate: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/report-cards/certificate-template/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  getCertificatePayload: (reportCardId: string) =>
+    api.get(`/report-cards/${reportCardId}/certificate`),
+  downloadCertificatePdf: (reportCardId: string) =>
+    api.get(`/report-cards/${reportCardId}/certificate-pdf`, { responseType: 'blob' }),
+  downloadCertificateBulkZip: (reportCardIds: string[]) =>
+    api.post('/report-cards/certificate-pdf/bulk', { reportCardIds }, { responseType: 'blob' }),
 };
 
 export const promotionAPI = {

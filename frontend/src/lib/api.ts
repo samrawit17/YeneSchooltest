@@ -93,6 +93,7 @@ export {
   type ReportCard,
   type GradeDetail,
   type PromotionCandidate,
+  type ReportPublishSummaryRow,
 } from "./api/reporting";
 export {
   enrollmentAPI,

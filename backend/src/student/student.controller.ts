@@ -10,7 +10,13 @@ import {
   UseGuards,
   Request,
   BadRequestException,
+  UseInterceptors,
+  UploadedFile,
+  HttpException,
+  HttpStatus,
+  Res,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { StudentService } from './student.service';
 import type {
   CreateStudentDto,
@@ -24,6 +30,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
+import type { Response } from 'express';
 
 @Controller('students')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -115,6 +122,68 @@ export class StudentController {
         ? studentIds.split(',').filter(Boolean)
         : undefined,
     });
+  }
+
+  @Get('id-cards/template')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  async getIdCardTemplate(@Request() req) {
+    return this.studentService.getIdCardTemplate(req.user.schoolId);
+  }
+
+  @Put('id-cards/template')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  async saveIdCardTemplate(@Request() req, @Body() body: { template: Record<string, any> }) {
+    return this.studentService.saveIdCardTemplate(req.user.schoolId, body.template || {});
+  }
+
+  @Post('id-cards/template/upload')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadIdCardTemplate(
+    @Request() req,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    try {
+      if (!file) {
+        throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
+      }
+      const url = await this.studentService.uploadIdCardTemplate(req.user.schoolId, file);
+      return { url };
+    } catch (error) {
+      throw new HttpException(
+        'Failed to upload ID card template: ' + error.message,
+        error.status || HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get('id-cards/:studentId/pdf')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  async generateIdCardPdf(
+    @Request() req,
+    @Param('studentId') studentId: string,
+    @Res() res: Response,
+  ) {
+    const pdf = await this.studentService.generateIdCardPdf(req.user.schoolId, studentId);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="id-card-${studentId}.pdf"`);
+    res.send(pdf);
+  }
+
+  @Post('id-cards/bulk-pdf')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  async generateIdCardsBulkPdf(
+    @Request() req,
+    @Body() body: { studentIds: string[] },
+    @Res() res: Response,
+  ) {
+    const zip = await this.studentService.generateIdCardBulkZip(
+      req.user.schoolId,
+      body.studentIds || [],
+    );
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="id-cards.zip"');
+    res.send(zip);
   }
 
   @Get(':id')

@@ -816,7 +816,7 @@ if (
           description: `${this.formatAssessmentTypeLabel(dto.type)} scheduled for score entry and school calendar visibility.`,
           startDate: new Date(dto.startDate),
           endDate: new Date(dto.endDate),
-          audience: ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT'] as any,
+          audience: JSON.stringify(['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']),
           category: 'ACADEMIC',
           color: '#e35336',
         },

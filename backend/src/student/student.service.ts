@@ -3,11 +3,18 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import * as QRCode from 'qrcode';
+import archiver from 'archiver';
 import { PrismaService } from '../prisma/prisma.service';
 import { CredentialService } from '../credential/credential.service';
 import { Role, EnrollmentStatus } from '@prisma/client';
 import { ClassService } from '../class/class.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
+import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
+import { TemplatesService } from '../templates/templates.service';
 
 export interface CreateStudentDto {
   email?: string;
@@ -103,6 +110,7 @@ export class StudentService {
     private credentialService: CredentialService,
     private classService: ClassService, // Fixed param order
     private cacheService: CacheService,
+    private templatesService: TemplatesService,
   ) {}
 
   private getStudentListNamespace(schoolId: string) {
@@ -893,6 +901,234 @@ export class StudentService {
       academicYear: academicYearName,
       total: students.length,
     };
+  }
+
+  async getIdCardTemplate(schoolId: string) {
+    const school = await this.prismaService.school.findUnique({
+      where: { id: schoolId },
+      select: { name: true, phone: true, address: true, email: true, logoUrl: true },
+    });
+
+    const stored = await this.prismaService.schoolSetting.findFirst({
+      where: { schoolId, key: SCHOOL_SETTING_KEYS.ID_CARD_TEMPLATE },
+      select: { value: true },
+    });
+
+    let template: any = {};
+    if (stored?.value) {
+      try {
+        template = JSON.parse(stored.value);
+      } catch {
+        template = {};
+      }
+    }
+
+    return {
+      schoolId,
+      title: template.title || 'Student ID Card',
+      themeColor: template.themeColor || '#1f2937',
+      templateBackgroundUrl: template.templateBackgroundUrl || '',
+      schoolName: template.schoolName || school?.name || '',
+      schoolPhone: template.schoolPhone || school?.phone || '',
+      schoolAddress: template.schoolAddress || school?.address || '',
+      schoolEmail: template.schoolEmail || school?.email || '',
+      schoolLogoUrl: template.schoolLogoUrl || school?.logoUrl || '',
+    };
+  }
+
+  async saveIdCardTemplate(schoolId: string, value: Record<string, any>) {
+    const normalized = {
+      title: String(value.title || 'Student ID Card').trim(),
+      themeColor: String(value.themeColor || '#1f2937').trim(),
+      templateBackgroundUrl: String(value.templateBackgroundUrl || '').trim(),
+      schoolName: String(value.schoolName || '').trim(),
+      schoolPhone: String(value.schoolPhone || '').trim(),
+      schoolAddress: String(value.schoolAddress || '').trim(),
+      schoolEmail: String(value.schoolEmail || '').trim(),
+      schoolLogoUrl: String(value.schoolLogoUrl || '').trim(),
+    };
+
+    const existing = await this.prismaService.schoolSetting.findFirst({
+      where: { schoolId, key: SCHOOL_SETTING_KEYS.ID_CARD_TEMPLATE },
+      select: { id: true },
+    });
+
+    if (existing) {
+      await this.prismaService.schoolSetting.update({
+        where: { id: existing.id },
+        data: { value: JSON.stringify(normalized) },
+      });
+    } else {
+      await this.prismaService.schoolSetting.create({
+        data: {
+          schoolId,
+          key: SCHOOL_SETTING_KEYS.ID_CARD_TEMPLATE,
+          value: JSON.stringify(normalized),
+        },
+      });
+    }
+
+    return this.getIdCardTemplate(schoolId);
+  }
+
+  async uploadIdCardTemplate(schoolId: string, file: Express.Multer.File): Promise<string> {
+    const backendPublicDir = path.join(
+      process.cwd(),
+      'public',
+      'uploads',
+      'id-card-templates',
+    );
+    const frontendPublicDir = path.join(
+      process.cwd(),
+      '..',
+      'frontend',
+      'public',
+      'uploads',
+      'id-card-templates',
+    );
+
+    if (!fs.existsSync(backendPublicDir)) {
+      fs.mkdirSync(backendPublicDir, { recursive: true });
+    }
+    if (!fs.existsSync(frontendPublicDir)) {
+      fs.mkdirSync(frontendPublicDir, { recursive: true });
+    }
+
+    const fileName = `${schoolId}-${Date.now()}${path.extname(file.originalname)}`;
+    const backendFilePath = path.join(backendPublicDir, fileName);
+    const frontendFilePath = path.join(frontendPublicDir, fileName);
+
+    fs.writeFileSync(backendFilePath, file.buffer);
+    fs.copyFileSync(backendFilePath, frontendFilePath);
+
+    return `/uploads/id-card-templates/${fileName}`;
+  }
+
+  private resolvePublicAssetPath(urlPath: string): string {
+    const clean = String(urlPath || '').trim().replace(/^\/+/, '');
+    return path.join(process.cwd(), '..', 'frontend', 'public', clean);
+  }
+
+  private async renderIdCardPdfFromTemplate(templatePath: string, payload: {
+    title: string;
+    schoolName: string;
+    schoolAddress: string;
+    schoolPhone: string;
+    schoolEmail: string;
+    studentName: string;
+    studentCode: string;
+    classLabel: string;
+    photoUrl?: string;
+    fieldMap?: Array<Record<string, any>>;
+  }): Promise<Buffer> {
+    const templateBytes = fs.readFileSync(templatePath);
+    const pdfDoc = await PDFDocument.load(templateBytes);
+    const page = pdfDoc.getPage(0);
+    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const normal = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const { width, height } = page.getSize();
+
+    const getVal = (k: string) => ({
+      title: payload.title,
+      school_name: payload.schoolName,
+      school_phone: payload.schoolPhone,
+      school_address: payload.schoolAddress,
+      school_email: payload.schoolEmail,
+      student_name: payload.studentName,
+      cert_id: payload.studentCode,
+      grade: payload.classLabel,
+    } as any)[k] || '';
+
+    const fields = Array.isArray(payload.fieldMap) ? payload.fieldMap : [];
+    if (fields.length > 0) {
+      for (const f of fields) {
+        const x = (Number(f.x_percent || 0) / 100) * width;
+        const y = height - (Number(f.y_percent || 0) / 100) * height;
+        const w = (Number(f.width_percent ?? f.w_percent ?? 0) / 100) * width || width * 0.16;
+        const h = (Number(f.height_percent ?? f.h_percent ?? 0) / 100) * height || height * 0.16;
+        const size = Number(f.font_size || 10);
+        const color = String(f.font_color || '#000000').replace('#', '');
+        const r = parseInt(color.slice(0, 2) || '00', 16) / 255;
+        const g = parseInt(color.slice(2, 4) || '00', 16) / 255;
+        const b = parseInt(color.slice(4, 6) || '00', 16) / 255;
+        if (f.field_key === 'photo' && payload.photoUrl) {
+          try {
+            const photoPath = this.resolvePublicAssetPath(payload.photoUrl);
+            if (fs.existsSync(photoPath)) {
+              const photoBytes = fs.readFileSync(photoPath);
+              const isPng = payload.photoUrl.toLowerCase().endsWith('.png');
+              const img = isPng ? await pdfDoc.embedPng(photoBytes) : await pdfDoc.embedJpg(photoBytes);
+              page.drawImage(img, { x, y: y - h, width: w, height: h });
+            }
+          } catch {}
+          continue;
+        }
+        if (f.field_key === 'qr_code') {
+          const qrDataUrl = await QRCode.toDataURL(payload.studentCode || payload.studentName || 'id');
+          const qrBytes = Buffer.from(qrDataUrl.split(',')[1], 'base64');
+          const qrImage = await pdfDoc.embedPng(qrBytes);
+          page.drawImage(qrImage, { x, y: y - h, width: w, height: h });
+          continue;
+        }
+        page.drawText(String(getVal(String(f.field_key || ''))), { x, y, size, font: f.bold ? font : normal, color: rgb(r, g, b) });
+      }
+    } else {
+      page.drawText(payload.title || 'Student ID Card', { x: width * 0.06, y: height * 0.9, size: 14, font, color: rgb(0, 0, 0) });
+      page.drawText(payload.schoolName || '', { x: width * 0.06, y: height * 0.86, size: 10, font: normal });
+      page.drawText(`${payload.schoolAddress || ''} ${payload.schoolPhone || ''}`.trim(), { x: width * 0.06, y: height * 0.84, size: 9, font: normal });
+      if (payload.schoolEmail) page.drawText(payload.schoolEmail, { x: width * 0.06, y: height * 0.82, size: 9, font: normal });
+      page.drawText(payload.studentName || '', { x: width * 0.06, y: height * 0.72, size: 13, font });
+      page.drawText(payload.studentCode || '', { x: width * 0.06, y: height * 0.685, size: 10, font: normal });
+      page.drawText(payload.classLabel || '', { x: width * 0.06, y: height * 0.655, size: 10, font: normal });
+    }
+
+    return Buffer.from(await pdfDoc.save());
+  }
+
+  async generateIdCardPdf(schoolId: string, studentId: string): Promise<Buffer> {
+    const template = await this.getIdCardTemplate(schoolId);
+    const activeTemplate = await this.templatesService.getActiveTemplate(schoolId, 'ID_CARD');
+    if (!activeTemplate?.backgroundUrl) {
+      throw new BadRequestException('Activate an ID card template first');
+    }
+    const templatePath = this.resolvePublicAssetPath(activeTemplate.backgroundUrl);
+    if (!fs.existsSync(templatePath)) {
+      throw new NotFoundException('ID card template file not found');
+    }
+    const list = await this.getStudentsForIdCards(schoolId, { studentIds: [studentId] });
+    const student = list.students?.[0];
+    if (!student) throw new NotFoundException('Student not found for ID card');
+    return this.renderIdCardPdfFromTemplate(templatePath, {
+      title: template.title,
+      schoolName: template.schoolName,
+      schoolAddress: template.schoolAddress,
+      schoolPhone: template.schoolPhone,
+      schoolEmail: template.schoolEmail,
+      studentName: student.name,
+      studentCode: student.studentCode,
+      classLabel: `Grade ${student.grade} - ${student.section}`,
+      photoUrl: student.photoUrl,
+      fieldMap: (() => {
+        try { return activeTemplate.fieldMapJson ? JSON.parse(activeTemplate.fieldMapJson) : []; } catch { return []; }
+      })(),
+    });
+  }
+
+  async generateIdCardBulkZip(schoolId: string, studentIds: string[]): Promise<Buffer> {
+    const ids = studentIds.filter(Boolean);
+    if (!ids.length) throw new BadRequestException('No student IDs provided');
+    const chunks: Buffer[] = [];
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.on('data', (d) => chunks.push(d));
+    await Promise.all(ids.map(async (id) => {
+      const pdf = await this.generateIdCardPdf(schoolId, id);
+      archive.append(pdf, { name: `id-card-${id}.pdf` });
+    }));
+    await archive.finalize();
+    return await new Promise<Buffer>((resolve, reject) => {
+      archive.on('end', () => resolve(Buffer.concat(chunks)));
+      archive.on('error', reject);
+    });
   }
 
   async updateStudent(
