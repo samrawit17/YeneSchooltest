@@ -51,10 +51,7 @@ export interface SearchResult {
     | "class"
     | "section"
     | "subject"
-    | "grade"
-    | "attendance"
-    | "payment"
-    | "message";
+    | "grade";
   id: string;
   title: string;
   subtitle?: string;
@@ -73,13 +70,8 @@ export type SearchableEntity =
   | "classes"
   | "sections"
   | "subjects"
-  | "grades"
-  | "attendance"
-  | "payments"
-  | "messages"
-  | "finance";
+  | "grades";
 
 export const searchAPI = {
   globalSearch: (query: string) => api.get("/search", { params: { q: query } }),
-  getCategories: () => api.get("/search/categories"),
 };

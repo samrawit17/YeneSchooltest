@@ -102,6 +102,7 @@ async function main() {
     { name: 'finance:student_fees:generate', module: 'finance', action: 'student_fees:generate', description: 'Generate student fees' },
     { name: 'finance:student_fees:read', module: 'finance', action: 'student_fees:read', description: 'Read student fees' },
     { name: 'finance:payments:record', module: 'finance', action: 'payments:record', description: 'Record payments' },
+    { name: 'finance:payments:reverse', module: 'finance', action: 'payments:reverse', description: 'Reverse recorded payments' },
     { name: 'finance:reports:read', module: 'finance', action: 'reports:read', description: 'View finance reports' },
 
     // Announcements permissions
@@ -165,7 +166,7 @@ async function main() {
     // Finance module
     'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete',
     'finance:student_fees:generate', 'finance:student_fees:read',
-    'finance:payments:record', 'finance:reports:read',
+    'finance:payments:record', 'finance:payments:reverse', 'finance:reports:read',
     // Dashboard
     'dashboard:view',
   ];
@@ -186,7 +187,7 @@ async function main() {
     'academic_year:create', 'academic_year:read', 'academic_year:update', 'academic_year:delete',
     'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete',
     'finance:student_fees:generate', 'finance:student_fees:read',
-    'finance:payments:record', 'finance:reports:read',
+    'finance:payments:record', 'finance:payments:reverse', 'finance:reports:read',
     'dashboard:view',
   ];
 
@@ -264,6 +265,7 @@ async function main() {
     { role: Role.FINANCE, permissionName: 'finance:student_fees:generate' },
     { role: Role.FINANCE, permissionName: 'finance:student_fees:read' },
     { role: Role.FINANCE, permissionName: 'finance:payments:record' },
+    { role: Role.FINANCE, permissionName: 'finance:payments:reverse' },
     { role: Role.FINANCE, permissionName: 'finance:reports:read' },
   ];
 

@@ -37,10 +37,10 @@ const roleIcons: Record<string, React.ReactNode> = {
 };
 
 const roleColors: Record<string, string> = {
-  STUDENT: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800',
-  TEACHER: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800',
-  PARENT: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-400 dark:border-purple-800',
-  ADMIN: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-400 dark:border-orange-800',
+  STUDENT: 'text-blue-700 dark:text-blue-400',
+  TEACHER: 'text-green-700 dark:text-green-400',
+  PARENT: 'text-purple-700 dark:text-purple-400',
+  ADMIN: 'text-orange-700 dark:text-orange-400',
 };
 
 export default function CredentialsPage() {
@@ -248,7 +248,7 @@ export default function CredentialsPage() {
                           </code>
                         </TableCell>
                         <TableCell className="py-3 px-4">
-                          <Badge className={roleColors[cred.role] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}>
+                          <Badge variant="outline" className={roleColors[cred.role] || 'text-gray-700 dark:text-gray-300'}>
                             {roleIcons[cred.role]}
                             <span className="ml-1">{cred.role}</span>
                           </Badge>
@@ -328,7 +328,7 @@ export default function CredentialsPage() {
                 </div>
                 <div>
                   <p className="font-semibold dark:text-white">{selectedCredential.name}</p>
-                  <Badge className={roleColors[selectedCredential.role]}>
+                  <Badge variant="outline" className={roleColors[selectedCredential.role]}>
                     {selectedCredential.role}
                   </Badge>
                 </div>

@@ -78,6 +78,31 @@ export interface UserDetailData {
   staffId?: string;
   subjects?: string[];
   assignedClasses?: string[];
+  teacherAssignments?: {
+    teachingClasses?: Array<{
+      id: string;
+      class?: { id: string; name?: string; grade?: number | null; section?: string | null };
+      section?: { id: string; name?: string; roomNumber?: string | null } | null;
+      subject?: { id: string; name?: string; code?: string | null } | null;
+      room?: string | null;
+      studentCount?: number;
+      schedules?: string[];
+    }>;
+    homeroomClasses?: Array<{
+      id: string;
+      name?: string;
+      grade?: number | null;
+      studentCount?: number;
+    }>;
+    homeroomSections?: Array<{
+      id: string;
+      name?: string;
+      roomNumber?: string | null;
+      capacity?: number | null;
+      studentCount?: number;
+      class?: { id: string; name?: string; grade?: number | null };
+    }>;
+  };
   employmentType?: string;
   joiningDate?: string;
 
@@ -134,6 +159,7 @@ export interface UserDetailData {
     totalAmount: number;
     paidAmount: number;
     outstandingAmount: number;
+    periodLabel?: string | null;
     fees?: any[];
   };
 
@@ -205,6 +231,7 @@ interface UserDetailPageProps {
   backUrl: string;
   backLabel: string;
   viewerRole?: string;
+  fullWidth?: boolean;
   onEdit?: () => void;
   onResetPassword?: () => void;
   onDeactivate?: () => void;
@@ -213,7 +240,7 @@ interface UserDetailPageProps {
   childrenTabActions?: ReactNode;
 }
 
-type TabKey = "overview" | "academic" | "attendance" | "fees" | "children" | "activity" | "documents" | "parentInfo" | "transactions";
+type TabKey = "overview" | "academic" | "assignments" | "attendance" | "fees" | "children" | "activity" | "documents" | "parentInfo" | "transactions";
 
 const getInitials = (name: string) => {
   return name
@@ -280,6 +307,7 @@ export default function UserDetailPage({
   backUrl,
   backLabel,
   viewerRole,
+  fullWidth = false,
   onEdit,
   onResetPassword,
   onDeactivate,
@@ -307,6 +335,7 @@ export default function UserDetailPage({
       tabs.push({ key: "parentInfo", label: "Parent Info" });
     } else if (role === "TEACHER") {
       tabs.push({ key: "academic", label: "Work Info" });
+      tabs.push({ key: "assignments", label: "Assignments" });
     } else if (["FINANCE", "REGISTRAR", "STAFF", "ADMIN", "IT_MANAGER"].includes(role)) {
       tabs.push({ key: "academic", label: "Work Info" });
       tabs.push({ key: "transactions", label: "Transactions" });
@@ -333,7 +362,19 @@ export default function UserDetailPage({
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-900" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
       <div className="p-4 md:p-6">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className={`${fullWidth ? "w-full" : "max-w-6xl mx-auto"} space-y-6`}>
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+              onClick={() => router.push(backUrl)}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to {backLabel}</span>
+            </Button>
+          </div>
+
           {/* Profile Header Card */}
           <Card className="shadow-sm dark:bg-slate-800 dark:border-slate-700">
             <CardContent className="p-4 sm:p-6">
@@ -430,6 +471,7 @@ export default function UserDetailPage({
           <div>
             {activeTab === "overview" && <OverviewTab user={user} />}
             {activeTab === "academic" && <AcademicTab user={user} />}
+            {activeTab === "assignments" && <TeacherAssignmentsTab user={user} />}
             {activeTab === "attendance" && <AttendanceTab user={user} />}
             {activeTab === "fees" && <FeesTab user={user} />}
             {activeTab === "children" && <ChildrenTab user={user} actions={childrenTabActions} />}
@@ -713,6 +755,133 @@ function AcademicTab({ user }: { user: UserDetailData }) {
   return null;
 }
 
+// ==================== TEACHER ASSIGNMENTS TAB ====================
+function TeacherAssignmentsTab({ user }: { user: UserDetailData }) {
+  const assignments = user.teacherAssignments;
+  const teachingClasses = assignments?.teachingClasses || [];
+  const homeroomSections = assignments?.homeroomSections || [];
+  const homeroomClasses = assignments?.homeroomClasses || [];
+
+  const formatClassLabel = (item: {
+    class?: { name?: string; grade?: number | null; section?: string | null };
+    section?: { name?: string } | null;
+  }) => {
+    const className =
+      item.class?.name ||
+      (item.class?.grade ? `Grade ${item.class.grade}` : "Class");
+    return `${className}${item.section?.name ? ` - ${item.section.name}` : item.class?.section ? ` - ${item.class.section}` : ""}`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card className="shadow-sm dark:bg-slate-800 dark:border-slate-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+            Teaching Assignments
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {teachingClasses.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-500 dark:border-slate-700 dark:text-gray-400">
+                    <th className="py-2 pr-4">Subject</th>
+                    <th className="py-2 pr-4">Class - Section</th>
+                    <th className="py-2 pr-4">Room</th>
+                    <th className="py-2 pr-4">Students</th>
+                    <th className="py-2">Schedule</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teachingClasses.map((item) => (
+                    <tr key={item.id} className="border-b border-gray-50 dark:border-slate-700/60">
+                      <td className="py-3 pr-4 font-medium text-gray-900 dark:text-white">
+                        {item.subject?.name || "Unassigned Subject"}
+                        {item.subject?.code && (
+                          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                            {item.subject.code}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-700 dark:text-gray-300">
+                        {formatClassLabel(item)}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-600 dark:text-gray-400">
+                        {item.room || item.section?.roomNumber || "-"}
+                      </td>
+                      <td className="py-3 pr-4 text-gray-600 dark:text-gray-400">
+                        {item.studentCount ?? 0}
+                      </td>
+                      <td className="py-3 text-gray-600 dark:text-gray-400">
+                        {item.schedules?.length ? item.schedules.join(", ") : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm italic text-gray-500 dark:text-gray-400">
+              No subject teaching assignments found.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm dark:bg-slate-800 dark:border-slate-700">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+            Homeroom Responsibility
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {homeroomSections.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {homeroomSections.map((section) => {
+                const className =
+                  section.class?.name ||
+                  (section.class?.grade ? `Grade ${section.class.grade}` : "Class");
+                return (
+                  <div
+                    key={section.id}
+                    className="rounded-lg border border-gray-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/40"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {className} - Section {section.name || "-"}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Room {section.roomNumber || "-"} · Capacity {section.capacity ?? "-"}
+                        </p>
+                      </div>
+                      <Badge variant="outline">{section.studentCount ?? 0} students</Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : homeroomClasses.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {homeroomClasses.map((cls) => (
+                <Badge key={cls.id} variant="outline" className="text-sm px-3 py-1">
+                  <Users className="w-3.5 h-3.5 mr-1.5" />
+                  {cls.name || (cls.grade ? `Grade ${cls.grade}` : "Class")} · {cls.studentCount ?? 0} students
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm italic text-gray-500 dark:text-gray-400">
+              No homeroom class or section assigned.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ==================== ATTENDANCE TAB ====================
 function AttendanceTab({ user }: { user: UserDetailData }) {
   const attendanceRate = user.attendanceRate ?? 0;
@@ -822,6 +991,11 @@ function FeesTab({ user }: { user: UserDetailData }) {
   return (
     <div className="space-y-6">
       {/* Fee Summary Cards */}
+      {feeSummary.periodLabel && (
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Showing fees for <span className="font-medium text-gray-900 dark:text-white">{feeSummary.periodLabel}</span>
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="shadow-sm dark:bg-slate-800 dark:border-slate-700">
           <CardContent className="p-4">
@@ -856,6 +1030,7 @@ function FeesTab({ user }: { user: UserDetailData }) {
               <thead>
                 <tr className="border-b dark:border-slate-700">
                   <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Fee Type</th>
+                  <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Period</th>
                   <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Academic Year</th>
                   <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Amount</th>
                   <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Paid</th>
@@ -873,6 +1048,7 @@ function FeesTab({ user }: { user: UserDetailData }) {
                   return (
                     <tr key={fee.id} className="border-b dark:border-slate-700">
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{fee.feeType || 'Tuition Fee'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{fee.scopeLabel || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{fee.academicYear || '-'}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 text-right">{formatCurrency(amount || 0)}</td>
                       <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 text-right">{formatCurrency(paidAmount || 0)}</td>

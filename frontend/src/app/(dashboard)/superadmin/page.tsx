@@ -11,8 +11,6 @@ import {
   Shield,
   TrendingUp,
   CreditCard,
-  CheckCircle,
-  XCircle,
   Plus,
   ArrowRight,
   Settings,
@@ -266,79 +264,7 @@ const SuperAdminPage = () => {
             </CardContent>
           </Card>
 
-          {/* Recent Schools */}
-          <Card className="lg:col-span-2 dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Recent Schools
-                </CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-purple-600 dark:text-purple-400"
-                  onClick={() => router.push("/list/schools")}
-                >
-                  View All
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                { name: "Green Valley Academy", status: "active", users: 450, plan: "Premium" },
-                { name: "St. Mary's College", status: "active", users: 320, plan: "Standard" },
-                { name: "International School", status: "active", users: 580, plan: "Ultimate" },
-                { name: "Modern High School", status: "inactive", users: 0, plan: "Basic" },
-              ].map((school, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                      <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">{school.name}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{school.users} users • {school.plan}</p>
-                    </div>
-                  </div>
-                  {school.status === 'active' ? (
-                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Active
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-gray-500">
-                      <XCircle className="w-3 h-3 mr-1" />
-                      Inactive
-                    </Badge>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
         </div>
-
-        {/* Platform Info */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between text-sm">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-600 dark:text-gray-400">All Systems Operational</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500 dark:text-gray-500">Platform v2.5.0</span>
-                </div>
-              </div>
-              <div className="text-gray-500 dark:text-gray-500 mt-2 md:mt-0">
-                Last updated: {new Date().toLocaleString()}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

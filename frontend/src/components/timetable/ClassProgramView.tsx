@@ -208,65 +208,6 @@ export default function ClassProgramView({
         </CardHeader>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="dark:bg-[#1E293B] dark:border-[#334155]">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Weekly Classes</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{weekdaySlots.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-[#1E293B] dark:border-[#334155]">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                <Clock className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Study Hours</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{(totalTeachingMinutes / 60).toFixed(1)} hrs</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-[#1E293B] dark:border-[#334155]">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-                <Calendar className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Active Days</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">
-                  {new Set(weekdaySlots.map((slot) => slot.dayOfWeek)).size}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-[#1E293B] dark:border-[#334155]">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
-                <UserRound className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Teachers</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">
-                  {new Set(weekdaySlots.map((slot) => slot.teacher?.id).filter(Boolean)).size}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card className="overflow-hidden dark:bg-[#1E293B] dark:border-[#334155]">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Weekly Class Program</CardTitle>
@@ -349,47 +290,6 @@ export default function ClassProgramView({
         </CardContent>
       </Card>
 
-      <Card className="dark:bg-[#1E293B] dark:border-[#334155]">
-        <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Today&apos;s Classes</CardTitle>
-          <CardDescription>
-            {todayIsWeekday
-              ? "Today’s learning plan based on the published timetable."
-              : "Weekend days do not display class sessions."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!todayIsWeekday || todayClasses.length === 0 ? (
-            <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-              <Calendar className="mx-auto mb-3 h-10 w-10 opacity-30" />
-              <p>{todayIsWeekday ? "No classes scheduled for today." : "No classes scheduled on weekends."}</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {todayClasses.map((slot) => (
-                <div
-                  key={slot.id}
-                  className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 md:flex-row md:items-center dark:border-[#334155] dark:bg-[#111827]"
-                >
-                  <div className="min-w-[110px]">
-                    <Badge variant="outline">
-                      {slot.startTime} - {slot.endTime}
-                    </Badge>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 dark:text-white">
-                      {slot.subject?.name || "Subject"}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {slot.teacher?.name || "Teacher pending"} • {slot.room || "Room not set"}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

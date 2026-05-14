@@ -11,8 +11,9 @@ import {
   TrendingUp,
   FileText
 } from "lucide-react";
-import { academicYearsAPI, gradingAPI, termsAPI } from "@/lib/api";
+import { academicYearsAPI, gradingAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
+import { reportCardsAPI } from "@/lib/api/reporting";
 
 // Shadcn/ui Components
 import {
@@ -41,8 +42,12 @@ interface SubjectResult {
   subjectName: string;
   subjectCode: string;
   teacherName: string;
-  continuousAssessment: number | null;
-  examScore: number | null;
+  assessments: Array<{
+    assessmentSubjectId: string;
+    title: string;
+    maxScore: number;
+    score: number | null;
+  }>;
   totalScore: number | null;
   grade: string | null;
   remarks: string | null;
@@ -76,6 +81,11 @@ interface TermOption {
   name: string;
 }
 
+interface PaymentGate {
+  blocked: boolean;
+  message: string;
+}
+
 const ChildResultsPage = () => {
   const params = useParams();
   const router = useRouter();
@@ -86,6 +96,7 @@ const ChildResultsPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTerm, setSelectedTerm] = useState<string>("all");
   const [terms, setTerms] = useState<TermOption[]>([]);
+  const [paymentGate, setPaymentGate] = useState<PaymentGate>({ blocked: false, message: "" });
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -122,33 +133,86 @@ const ChildResultsPage = () => {
           return;
         }
 
-        const termsRes = await termsAPI.getAll({ academicYearId: activeYear.id });
-        const termRows = Array.isArray(termsRes.data) ? termsRes.data : (termsRes.data?.data || []);
-        setTerms(termRows.map((term: any) => ({ id: term.id, name: term.name })));
+        const gradesRes = await gradingAPI.getChildGrades(
+          selectedChild?.studentId || selectedChild?.userId || childId,
+          { academicYear: activeYear.id },
+        );
+        const periods = Array.isArray(gradesRes.data?.periods) ? gradesRes.data.periods : [];
+        const termRows = periods.map((period: any) => ({
+          id: period.termId || period.period,
+          name: period.period || "Unnamed Period",
+        }));
+        setTerms(termRows);
+        const effectiveSelectedTerm =
+          selectedTerm !== "all" && termRows.some((term: any) => term.id === selectedTerm)
+            ? selectedTerm
+            : gradesRes.data?.currentPeriodTermId || termRows[0]?.id || "all";
+        if (effectiveSelectedTerm !== selectedTerm) {
+          setSelectedTerm(effectiveSelectedTerm);
+        }
 
-        const gradeRes = await gradingAPI.getChildGrades(
+        const clearanceTermId =
+          effectiveSelectedTerm === "all"
+            ? gradesRes.data?.currentPeriodTermId || undefined
+            : effectiveSelectedTerm;
+        if (clearanceTermId) {
+          const clearanceRes = await gradingAPI.verifyFinancialClearance({
+            studentId: selectedChild?.studentId || selectedChild?.userId || childId,
+            academicYear: activeYear.id,
+            termId: clearanceTermId,
+            checkOverdueOnly: false,
+          });
+          if (!clearanceRes.data?.isCleared) {
+            const blockedTermName =
+              termRows.find((term: any) => term.id === clearanceTermId)?.name || "current period";
+            setPaymentGate({
+              blocked: true,
+              message: `Results are locked until the ${blockedTermName} fees are paid.`,
+            });
+            setResults(null);
+            return;
+          }
+        }
+        setPaymentGate({ blocked: false, message: "" });
+
+        const publishedCardsRes = await reportCardsAPI.getPublishedForParent(
           selectedChild?.studentId || selectedChild?.userId || childId,
           {
-          academicYear: activeYear.id,
-          ...(selectedTerm !== "all" ? { termId: selectedTerm } : {}),
+            ...(activeYear?.name ? { academicYear: activeYear.name } : {}),
+            ...(selectedTerm !== "all"
+              ? { term: termRows.find((term: any) => term.id === selectedTerm)?.name || selectedTerm }
+              : {}),
           },
         );
-        const gradeRows = Array.isArray(gradeRes.data)
-          ? gradeRes.data
-          : Array.isArray(gradeRes.data?.grades)
-            ? gradeRes.data.grades
-            : [];
+        const publishedCards = Array.isArray(publishedCardsRes.data)
+          ? publishedCardsRes.data
+          : [];
+        const latestPublishedCard = publishedCards.sort((a, b) =>
+          new Date(b.publishedAt || b.updatedAt).getTime() -
+          new Date(a.publishedAt || a.updatedAt).getTime(),
+        )[0];
 
-        const subjectRows: SubjectResult[] = gradeRows.map((grade: any) => ({
-          id: grade.id,
-          subjectName: grade.subject?.name || "N/A",
-          subjectCode: grade.subject?.code || grade.subject?.name?.slice(0, 4)?.toUpperCase() || "SUBJ",
-          teacherName: grade.teacher?.name || "N/A",
-          continuousAssessment: grade.caScore,
-          examScore: grade.finalScore,
+        const details = Array.isArray(latestPublishedCard?.gradeDetails)
+          ? latestPublishedCard.gradeDetails
+          : [];
+
+        const subjectRows: SubjectResult[] = details.map((grade: any, index: number) => ({
+          id: grade.subjectId || `subject-${index}`,
+          subjectName: grade.subjectName || "N/A",
+          subjectCode: grade.subjectCode || grade.subjectName?.slice(0, 4)?.toUpperCase() || "SUBJ",
+          teacherName: "N/A",
+          assessments: Array.isArray(grade.assessmentBreakdown)
+            ? grade.assessmentBreakdown.map((assessment: any, assessmentIndex: number) => ({
+                assessmentSubjectId:
+                  assessment.assessmentSubjectId || `${grade.subjectId || index}-${assessmentIndex}`,
+                title: assessment.title || assessment.type || "Assessment",
+                maxScore: Number(assessment.maxScore) || 0,
+                score: typeof assessment.score === "number" ? assessment.score : null,
+              }))
+            : [],
           totalScore: grade.totalScore,
           grade: grade.gradeLetter,
-          remarks: grade.remark,
+          remarks: grade.status || null,
         }));
 
         const scoreRows = subjectRows
@@ -168,11 +232,11 @@ const ChildResultsPage = () => {
           academicYear: activeYear.name,
           results: subjectRows,
           summary: {
-            gpa: gradeRes.data?.summary?.gpa || gpa,
-            rank: gradeRes.data?.summary?.rank || 0,
+            gpa,
+            rank: latestPublishedCard?.rankInClass || 0,
             totalSubjects: subjectRows.length,
             overallPerformance,
-            average: gradeRes.data?.summary?.average || average,
+            average: Number(latestPublishedCard?.percentage) || average,
           },
         });
       } catch (error) {
@@ -192,6 +256,17 @@ const ChildResultsPage = () => {
     score: subject.totalScore || 0,
     fullMark: 100,
   })) || [];
+
+  const assessmentColumns = Array.from(
+    new Map(
+      (results?.results || [])
+        .flatMap((subject) => subject.assessments)
+        .map((assessment) => [
+          assessment.title,
+          { title: assessment.title, maxScore: assessment.maxScore },
+        ]),
+    ).values(),
+  );
 
   const getGradeColor = (grade: string | null) => {
     if (!grade) return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
@@ -366,8 +441,16 @@ const ChildResultsPage = () => {
             </Card>
           </div>
 
+          {paymentGate.blocked && (
+            <Card className="shadow-sm border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20">
+              <CardContent className="py-6 text-center text-amber-800 dark:text-amber-300">
+                {paymentGate.message}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Results Table and Chart */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {!paymentGate.blocked && <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Results Table */}
             <Card className="lg:col-span-2 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
               <CardHeader className="pb-2">
@@ -379,55 +462,65 @@ const ChildResultsPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-b border-gray-100 dark:border-slate-700">
-                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Subject</TableHead>
-                        <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">CA</TableHead>
-                        <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Exam</TableHead>
-                        <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Total</TableHead>
-                        <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Grade</TableHead>
-                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Teacher Remark</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {results?.results.map((subject) => (
-                        <TableRow key={subject.id} className="border-b border-gray-50 dark:border-slate-700/50 last:border-0">
-                          <TableCell className="py-3">
-                            <div>
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">{subject.subjectName}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{subject.teacherName}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-3 text-center">
-                            <span className={`text-sm font-medium ${getStatusColor(subject.continuousAssessment)}`}>
-                              {subject.continuousAssessment !== null ? subject.continuousAssessment : "-"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-center">
-                            <span className={`text-sm font-medium ${getStatusColor(subject.examScore)}`}>
-                              {subject.examScore !== null ? subject.examScore : "-"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-center">
-                            <span className={`text-sm font-bold ${getStatusColor(subject.totalScore)}`}>
-                              {subject.totalScore !== null ? subject.totalScore : "-"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3 text-center">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getGradeColor(subject.grade)}`}>
-                              {subject.grade || "-"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-3">
-                            <p className="text-xs text-gray-600 dark:text-gray-400">{subject.remarks || "-"}</p>
-                          </TableCell>
+                {assessmentColumns.length === 0 ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
+                    This published report card does not yet contain the admin assessment breakdown. Regenerate and republish the report card to display the real assessment names here.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                          <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Subject</TableHead>
+                          {assessmentColumns.map((column) => (
+                            <TableHead key={column.title} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
+                              <div>{column.title}</div>
+                              {column.maxScore > 0 && <div className="text-[10px]">/ {column.maxScore}</div>}
+                            </TableHead>
+                          ))}
+                          <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Total</TableHead>
+                          <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Grade</TableHead>
+                          <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Teacher Remark</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {results?.results.map((subject) => (
+                          <TableRow key={subject.id} className="border-b border-gray-50 dark:border-slate-700/50 last:border-0">
+                            <TableCell className="py-3">
+                              <div>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">{subject.subjectName}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{subject.teacherName}</p>
+                              </div>
+                            </TableCell>
+                            {assessmentColumns.map((column) => {
+                              const assessment = subject.assessments.find((item) => item.title === column.title);
+                              return (
+                                <TableCell key={column.title} className="py-3 text-center">
+                                  <span className={`text-sm font-medium ${getStatusColor(assessment?.score ?? null)}`}>
+                                    {assessment?.score ?? "-"}
+                                  </span>
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="py-3 text-center">
+                              <span className={`text-sm font-bold ${getStatusColor(subject.totalScore)}`}>
+                                {subject.totalScore !== null ? subject.totalScore : "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-3 text-center">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getGradeColor(subject.grade)}`}>
+                                {subject.grade || "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <p className="text-xs text-gray-600 dark:text-gray-400">{subject.remarks || "-"}</p>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -461,7 +554,7 @@ const ChildResultsPage = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-          </div>
+          </div>}
 
           {/* Grading Scale */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">

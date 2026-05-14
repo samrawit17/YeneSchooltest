@@ -82,6 +82,12 @@ interface ComponentAvailability {
   maxScore: number;
 }
 
+interface AssessmentColumn {
+  code: string;
+  label: string;
+  maxScore: number;
+}
+
 interface AcademicYear {
   id: string;
   name: string;
@@ -249,7 +255,7 @@ export default function TeacherGradingPage() {
       : nonHomeroomAssignments;
     console.log("Filtered assignments:", filtered.length);
     // Sort by class name and section
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const gradeA = parseInt(a.class?.name?.replace('Grade ', '') || '0') || 0;
       const gradeB = parseInt(b.class?.name?.replace('Grade ', '') || '0') || 0;
       if (gradeA !== gradeB) return gradeA - gradeB;
@@ -510,14 +516,14 @@ export default function TeacherGradingPage() {
       const currentColumns =
         gradingComponents.length === 0
           ? [
-              { code: 'CA', label: 'Quiz', weight: 15 },
-              { code: 'MID', label: 'Mid Exam', weight: 20 },
-              { code: 'FINAL', label: 'Final Exam', weight: 30 },
+              { code: 'CA', label: 'Quiz', maxScore: 15 },
+              { code: 'MID', label: 'Mid Exam', maxScore: 20 },
+              { code: 'FINAL', label: 'Final Exam', maxScore: 30 },
             ]
           : gradingComponents.map((c) => ({
               code: c.code,
               label: c.name,
-              weight: c.percentage,
+              maxScore: c.percentage,
             }));
       
       console.log("API Response data:", data);
@@ -539,46 +545,62 @@ export default function TeacherGradingPage() {
         ),
       );
       setStudents(
-        (studentData as any[]).map((student) => {
-          const persistedComponentScores = ((student.componentScores || []) as Array<{ code: string; score: number | null }>);
-          const normalizedComponentScores = Object.fromEntries(
-            persistedComponentScores.map((item) => [
-              String(item.code).toUpperCase(),
-              item.score ?? null,
-            ]),
-          );
+        (studentData as any[])
+          .map((student) => {
+            const persistedComponentScores = ((student.componentScores || []) as Array<{ code: string; score: number | null }>);
+            const normalizedComponentScores = Object.fromEntries(
+              persistedComponentScores.map((item) => [
+                String(item.code).toUpperCase(),
+                item.score ?? null,
+              ]),
+            );
 
-          if (persistedComponentScores.length === 0) {
-            let assignedCa = false;
-            for (const column of currentColumns) {
-              const code = column.code.toUpperCase();
-              if (code === "MID") {
-                normalizedComponentScores[code] = student.midScore ?? null;
-              } else if (code === "FINAL") {
-                normalizedComponentScores[code] = student.finalScore ?? null;
-              } else if (!assignedCa) {
-                normalizedComponentScores[code] = student.caScore ?? null;
-                assignedCa = true;
-              } else {
-                normalizedComponentScores[code] = null;
+            if (persistedComponentScores.length === 0) {
+              let assignedCa = false;
+              for (const column of currentColumns) {
+                const code = column.code.toUpperCase();
+                if (code === "MID") {
+                  normalizedComponentScores[code] = student.midScore ?? null;
+                } else if (code === "FINAL") {
+                  normalizedComponentScores[code] = student.finalScore ?? null;
+                } else if (!assignedCa) {
+                  normalizedComponentScores[code] = student.caScore ?? null;
+                  assignedCa = true;
+                } else {
+                  normalizedComponentScores[code] = null;
+                }
               }
             }
-          }
 
-          const totalScore = calculateTotal(
-            normalizedComponentScores,
-            student.caScore ?? null,
-            student.midScore ?? null,
-            student.finalScore ?? null,
-          );
+            const totalScore = calculateTotal(
+              normalizedComponentScores,
+              student.caScore ?? null,
+              student.midScore ?? null,
+              student.finalScore ?? null,
+            );
 
-          return {
-            ...student,
-            componentScores: normalizedComponentScores,
-            totalScore,
-            gradeLetter: totalScore !== null ? calculateGrade(totalScore) : student.gradeLetter ?? null,
-          };
-        }) as StudentGrade[],
+            return {
+              ...student,
+              componentScores: normalizedComponentScores,
+              totalScore,
+              gradeLetter: totalScore !== null ? calculateGrade(totalScore) : student.gradeLetter ?? null,
+            };
+          })
+          .sort((a, b) => {
+            const aRoll = Number(a.rollNumber);
+            const bRoll = Number(b.rollNumber);
+            const aHasNumericRoll = Number.isFinite(aRoll) && String(a.rollNumber ?? "").trim() !== "";
+            const bHasNumericRoll = Number.isFinite(bRoll) && String(b.rollNumber ?? "").trim() !== "";
+
+            if (aHasNumericRoll && bHasNumericRoll) {
+              return aRoll - bRoll;
+            }
+
+            if (aHasNumericRoll) return -1;
+            if (bHasNumericRoll) return 1;
+
+            return String(a.studentName || "").localeCompare(String(b.studentName || ""));
+          }) as StudentGrade[],
       );
       setIsTermLocked(locked);
     } catch (error: any) {
@@ -608,19 +630,19 @@ export default function TeacherGradingPage() {
   }
 
   // Map assessment types for display
-  const assessmentColumns = useMemo(() => {
+  const assessmentColumns = useMemo<AssessmentColumn[]>(() => {
     if (gradingComponents.length === 0) {
       return [
-        { code: 'CA', label: 'Quiz', weight: 15 },
-        { code: 'MID', label: 'Mid Exam', weight: 20 },
-        { code: 'FINAL', label: 'Final Exam', weight: 30 },
+        { code: 'CA', label: 'Quiz', maxScore: 15 },
+        { code: 'MID', label: 'Mid Exam', maxScore: 20 },
+        { code: 'FINAL', label: 'Final Exam', maxScore: 30 },
       ];
     }
     
     return gradingComponents.map(c => ({
       code: c.code,
       label: c.name,
-      weight: c.percentage,
+      maxScore: c.percentage,
     }));
   }, [gradingComponents]);
 
@@ -634,8 +656,6 @@ export default function TeacherGradingPage() {
   }
 
   const handleScoreChange = (studentId: string, componentCode: string, value: string) => {
-    const numValue = value === "" ? null : parseFloat(value);
-
     const normalizedCode = componentCode.toUpperCase();
     const availability = componentAvailability[normalizedCode];
     if (availability && !availability.started) {
@@ -644,11 +664,26 @@ export default function TeacherGradingPage() {
     }
 
     const col = assessmentColumns.find(c => c.code.toUpperCase() === normalizedCode);
-    const maxWeight = availability?.maxScore ?? (col ? col.weight : 100);
+    const maxWeight = col?.maxScore;
+    const parsedValue = value === "" ? null : parseFloat(value);
+    let numValue = parsedValue;
 
-    if (numValue !== null && (numValue < 0 || numValue > maxWeight)) {
-      toast.error(`${col?.label || normalizedCode} max score is ${maxWeight}`);
+    if (maxWeight === undefined) {
+      toast.error(`${col?.label || normalizedCode} max score is not available`);
       return;
+    }
+
+    if (numValue !== null && Number.isNaN(numValue)) {
+      return;
+    }
+
+    if (numValue !== null && numValue < 0) {
+      numValue = 0;
+    }
+
+    if (numValue !== null && numValue > maxWeight) {
+      toast.error(`${col?.label || normalizedCode} max score is ${maxWeight}`);
+      numValue = maxWeight;
     }
     
     setStudents(prev => prev.map(student => {
@@ -670,6 +705,26 @@ export default function TeacherGradingPage() {
 
   const isComponentStarted = (code: string) =>
     componentAvailability[code.toUpperCase()]?.started ?? false;
+
+  const getComponentMaxScore = (code: string) =>
+    assessmentColumns.find((column) => column.code.toUpperCase() === code.toUpperCase())?.maxScore;
+
+  const canEditComponent = (code: string) =>
+    isComponentStarted(code) && getComponentMaxScore(code) !== undefined;
+
+  const clampScoreInput = (rawValue: string, code: string) => {
+    if (rawValue === "") return "";
+
+    const maxScore = getComponentMaxScore(code);
+    if (maxScore === undefined) return "";
+
+    const parsedValue = parseFloat(rawValue);
+    if (Number.isNaN(parsedValue)) return "";
+
+    if (parsedValue < 0) return "0";
+    if (parsedValue > maxScore) return String(maxScore);
+    return rawValue;
+  };
 
   const getComponentStartLabel = (code: string) => {
     const availability = componentAvailability[code.toUpperCase()];
@@ -715,10 +770,14 @@ export default function TeacherGradingPage() {
           caScore: student.caScore,
           midScore: student.midScore,
           finalScore: student.finalScore,
-          componentScores: assessmentColumns.map(col => ({
-            code: col.code,
-            score: student.componentScores?.[col.code.toUpperCase()] ?? null,
-          })),
+          componentScores: assessmentColumns
+            .filter((col) => canEditComponent(col.code))
+            .map(col => ({
+              code: col.code,
+              score: student.componentScores?.[col.code.toUpperCase()] ?? null,
+              assessmentSubjectId:
+                componentAvailability[col.code.toUpperCase()]?.assessmentSubjectId,
+            })),
           remark: student.remark,
         }));
 
@@ -905,7 +964,7 @@ export default function TeacherGradingPage() {
                 <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                   {classSectionOptions.map(cls => (
                     <SelectItem key={cls.id} value={cls.id} className="dark:text-white dark:focus:bg-gray-700">
-                      Grade {cls.className} - Section {cls.sectionName}
+                      {cls.class?.name || "Unknown Class"} - Section {cls.section?.name || "Unknown Section"}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -988,11 +1047,20 @@ export default function TeacherGradingPage() {
                                 type="number"
                                 className="h-9 w-full px-1 text-center text-xs dark:bg-gray-700 dark:text-white dark:border-gray-600"
                                 min="0"
-                                max={componentAvailability[col.code.toUpperCase()]?.maxScore ?? col.weight}
+                                max={getComponentMaxScore(col.code)}
                                 value={student.componentScores?.[col.code.toUpperCase()] ?? ""}
+                                onInput={(e) => {
+                                  const nextValue = clampScoreInput(
+                                    e.currentTarget.value,
+                                    col.code,
+                                  );
+                                  if (nextValue !== e.currentTarget.value) {
+                                    e.currentTarget.value = nextValue;
+                                  }
+                                }}
                                 onChange={(e) => handleScoreChange(student.studentId, col.code, e.target.value)}
-                                disabled={student.isLocked || isTermLocked || !isComponentStarted(col.code)}
-                                placeholder={`0-${componentAvailability[col.code.toUpperCase()]?.maxScore ?? col.weight}`}
+                                disabled={student.isLocked || isTermLocked || !canEditComponent(col.code)}
+                                placeholder={getComponentMaxScore(col.code) !== undefined ? `0-${getComponentMaxScore(col.code)}` : "N/A"}
                               />
                             </label>
                           ))}
@@ -1017,7 +1085,7 @@ export default function TeacherGradingPage() {
                     <TableHead className="w-[18%] px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Student</TableHead>
                     {assessmentColumns.map(col => (
                       <TableHead key={col.code} className="px-2 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
-                        <span className="block truncate">{col.label} ({col.weight}%)</span>
+                        <span className="block truncate">{col.label} (Max {col.maxScore})</span>
                       </TableHead>
                     ))}
                     <TableHead className="w-[8%] px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Total</TableHead>
@@ -1045,11 +1113,20 @@ export default function TeacherGradingPage() {
                               type="number"
                               className="h-8 w-full min-w-0 border-gray-200 px-1 text-center text-xs dark:border-slate-600 dark:bg-gray-700 dark:text-white"
                               min="0"
-                              max={componentAvailability[col.code.toUpperCase()]?.maxScore ?? col.weight}
+                              max={getComponentMaxScore(col.code)}
                               value={student.componentScores?.[col.code.toUpperCase()] ?? ""}
+                              onInput={(e) => {
+                                const nextValue = clampScoreInput(
+                                  e.currentTarget.value,
+                                  col.code,
+                                );
+                                if (nextValue !== e.currentTarget.value) {
+                                  e.currentTarget.value = nextValue;
+                                }
+                              }}
                               onChange={(e) => handleScoreChange(student.studentId, col.code, e.target.value)}
-                              disabled={student.isLocked || isTermLocked || !isComponentStarted(col.code)}
-                              placeholder={`0-${componentAvailability[col.code.toUpperCase()]?.maxScore ?? col.weight}`}
+                              disabled={student.isLocked || isTermLocked || !canEditComponent(col.code)}
+                              placeholder={getComponentMaxScore(col.code) !== undefined ? `0-${getComponentMaxScore(col.code)}` : "N/A"}
                             />
                           </TableCell>
                         ))}

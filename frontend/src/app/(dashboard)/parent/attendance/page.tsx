@@ -10,6 +10,7 @@ import { Calendar, User, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { academicYearsAPI } from "@/lib/api";
 
 const buildMonthOptions = (
@@ -281,10 +282,10 @@ export default function ParentAttendancePage() {
 
   return (
     <div className="p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
+      <div>
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#e35336]">Child Attendance</h1>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-color, #e35336)' }}>Child Attendance</h1>
           <p className="text-gray-500 mt-1">View your children's attendance records</p>
         </div>
 
@@ -292,28 +293,32 @@ export default function ParentAttendancePage() {
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Child</label>
-            <select
+            <Select
               value={selectedChild?.id || ""}
-              onChange={(e) => {
-                const child = children.find((c) => c.id === e.target.value);
+              onValueChange={(value) => {
+                const child = children.find((c) => c.id === value);
                 setSelectedChild(child || null);
               }}
-              className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 w-full bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
             >
-              {children.map((child) => (
-                <option key={child.id} value={child.id}>
-                  {child.name} - {child.className} ({child.section})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a child" />
+              </SelectTrigger>
+              <SelectContent>
+                {children.map((child) => (
+                  <SelectItem key={child.id} value={child.id}>
+                    {child.name} - {child.className} ({child.section})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Academic Year</label>
-            <select
+            <Select
               value={selectedYear}
-              onChange={(e) => {
-                setSelectedYear(e.target.value);
-                const year = academicYears.find(y => y.id === e.target.value);
+              onValueChange={(value) => {
+                setSelectedYear(value);
+                const year = academicYears.find(y => y.id === value);
                 if (year?.startDate) {
                   const startDate = new Date(year.startDate);
                   const currentDate = new Date();
@@ -322,28 +327,36 @@ export default function ParentAttendancePage() {
                   setSelectedMonth(currentMonth >= startMonth ? currentMonth : startMonth);
                 }
               }}
-              className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
             >
-              {academicYears.map((year) => (
-                <option key={year.id} value={year.id}>
-                  {year.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                {academicYears.map((year) => (
+                  <SelectItem key={year.id} value={year.id}>
+                    {year.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Month</label>
-            <select
+            <Select
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
+              onValueChange={setSelectedMonth}
             >
-              {monthOptions.map((month) => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select month" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -355,7 +368,7 @@ export default function ParentAttendancePage() {
                 <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Attendance</p>
-                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{summary.attendancePercentage}%</p>
+                    <p className="text-2xl font-bold" style={{ color: 'var(--brand-color, #e35336)' }}>{summary.attendancePercentage}%</p>
                   </CardContent>
                 </Card>
                 <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
@@ -402,7 +415,7 @@ export default function ParentAttendancePage() {
             {loading ? (
               <Card>
                 <CardContent className="py-8 text-center">
-                  <div className="w-8 h-8 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin mx-auto" style={{ borderColor: 'var(--brand-color, #e35336)', borderTopColor: 'transparent' }}></div>
                 </CardContent>
               </Card>
             ) : attendance.length === 0 ? (

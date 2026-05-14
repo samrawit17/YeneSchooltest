@@ -529,6 +529,7 @@ model Term {
   contents         Content[]
   feeStructures    FeeStructure[]
   studentFees      StudentFee[]
+  payments         Payment[]
 
   @@unique([academicYearId, name])
   @@index([academicYearId])
@@ -1227,16 +1228,19 @@ model Payment {
   receivedById         String
   schoolId             String
   studentFeeId         String
+  termId               String?
   transactionReference String?
   receivedBy           User       @relation("PaymentReceivedBy", map: "payment_received_by_fk", fields: [receivedById], references: [id])
   school               School     @relation(map: "schoolId_fk_105", fields: [schoolId], references: [id], onDelete: Cascade)
   studentFee           StudentFee @relation(map: "studentFeeId_fk_106", fields: [studentFeeId], references: [id], onDelete: Cascade)
+  term                 Term?      @relation(map: "payment_term_fk", fields: [termId], references: [id], onDelete: SetNull)
   student              User       @relation("StudentPayments", fields: [studentId], references: [id], onDelete: Cascade)
   receipt              Receipt?
 
   @@index([schoolId])
   @@index([studentId])
   @@index([studentFeeId])
+  @@index([termId])
   @@index([paymentDate])
   @@index([receiptNumber])
   @@index([receivedById], map: "Payment_receivedById_fkey")

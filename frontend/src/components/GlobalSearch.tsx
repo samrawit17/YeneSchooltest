@@ -18,22 +18,17 @@ import {
   School,
   DollarSign,
   Settings,
-  CreditCard,
   BarChart3,
-  Clock,
-  MessageSquare,
+  CreditCard,
   Shield,
   X,
-  Lock
 } from "lucide-react";
 import { Command as CommandPrimitive } from "cmdk";
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 
@@ -49,16 +44,11 @@ type SearchableEntity =
     | 'classes'
     | 'sections'
     | 'subjects'
-    | 'grades'
-    | 'attendance'
-    | 'payments'
-    | 'messages'
-    | 'finance';
+    | 'grades';
 
 interface SearchResponse {
     data: SearchResult[];
     permissions?: SearchableEntity[];
-    labels?: Record<string, string>;
 }
 
 // Role-based quick links
@@ -129,10 +119,6 @@ const typeIcons: Record<string, React.ReactNode> = {
     section: <Users className="h-3.5 w-3.5 shrink-0" />,
     subject: <BookOpen className="h-3.5 w-3.5 shrink-0" />,
     grade: <BarChart3 className="h-3.5 w-3.5 shrink-0" />,
-    attendance: <Clock className="h-3.5 w-3.5 shrink-0" />,
-    payment: <CreditCard className="h-3.5 w-3.5 shrink-0" />,
-    message: <MessageSquare className="h-3.5 w-3.5 shrink-0" />,
-    finance: <DollarSign className="h-3.5 w-3.5 shrink-0" />,
 };
 
 const typeLabels: Record<string, string> = {
@@ -148,10 +134,6 @@ const typeLabels: Record<string, string> = {
     section: "Sections",
     subject: "Subjects",
     grade: "Grades",
-    attendance: "Attendance",
-    payment: "Payments",
-    message: "Messages",
-    finance: "Finance",
 };
 
 interface GlobalSearchProps {
@@ -161,10 +143,10 @@ interface GlobalSearchProps {
 export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");
+    const [lastSearchedQuery, setLastSearchedQuery] = useState("");
     const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [permissions, setPermissions] = useState<string[]>([]);
-    const [labels, setLabels] = useState<Record<string, string>>({});
     const [mounted, setMounted] = useState(false);
     const router = useRouter();
     const inputRef = useRef<HTMLInputElement>(null);
@@ -195,9 +177,6 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                 const data = response.data as SearchResponse;
                 if (data.permissions) {
                     setPermissions(data.permissions);
-                }
-                if (data.labels) {
-                    setLabels(data.labels);
                 }
             } catch (error) {
                 console.error("Failed to fetch search permissions:", error);
@@ -250,14 +229,10 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
             setLoading(true);
             try {
                 const response = await searchAPI.globalSearch(query);
-                console.log('Search response:', response.data);
                 const searchResults = response.data as SearchResponse;
                 setResults(searchResults.data || []);
                 if (searchResults.permissions) {
                     setPermissions(searchResults.permissions);
-                }
-                if (searchResults.labels) {
-                    setLabels(searchResults.labels);
                 }
             } catch (error) {
                 console.error("Search error:", error);
@@ -272,6 +247,9 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     }, [query]);
 
     const handleSelect = (result: SearchResult) => {
+        if (query.trim()) {
+            setLastSearchedQuery(query.trim());
+        }
         setOpen(false);
         setQuery("");
         router.push(result.href);
@@ -324,6 +302,8 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         return acc;
     }, [results, navigationResults]);
 
+    const hasDisplayResults = navigationResults.length > 0 || results.length > 0;
+
     // Get allowed entity types for the user's role
     const allowedEntities = [
         { key: 'students', icon: <GraduationCap className="h-3 w-3" />, label: 'Students' },
@@ -336,12 +316,8 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         { key: 'sections', icon: <Users className="h-3 w-3" />, label: 'Sections' },
         { key: 'subjects', icon: <BookOpen className="h-3 w-3" />, label: 'Subjects' },
         { key: 'grades', icon: <BarChart3 className="h-3 w-3" />, label: 'Grades' },
-        { key: 'attendance', icon: <Clock className="h-3 w-3" />, label: 'Attendance' },
         { key: 'announcements', icon: <Megaphone className="h-3 w-3" />, label: 'Announcements' },
         { key: 'events', icon: <Calendar className="h-3 w-3" />, label: 'Calendar' },
-        { key: 'payments', icon: <CreditCard className="h-3 w-3" />, label: 'Payments' },
-        { key: 'messages', icon: <MessageSquare className="h-3 w-3" />, label: 'Messages' },
-        { key: 'finance', icon: <DollarSign className="h-3 w-3" />, label: 'Finance' },
     ].filter(entity => permissions.includes(entity.key));
 
     return (
@@ -360,7 +336,10 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
 
                     <CommandPrimitive.Input
                         ref={inputRef}
-                        placeholder={`Search ${allowedEntities.slice(0, 3).map(e => e.label.toLowerCase()).join(', ')}...`}
+                        placeholder={
+                            lastSearchedQuery ||
+                            `Search ${allowedEntities.slice(0, 3).map(e => e.label.toLowerCase()).join(', ')}...`
+                        }
                         value={query}
                         onValueChange={(val) => {
                             setQuery(val);
@@ -445,11 +424,21 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                             {/* Search results */}
                             {query && (
                                 <div>
+                                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/40">
+                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                                            <Search className="h-4 w-4 text-gray-500" />
+                                            <span>Search for</span>
+                                            <span className="font-semibold text-gray-900 dark:text-white">
+                                                {query}
+                                            </span>
+                                        </div>
+                                    </div>
+
                                     {loading ? (
                                         <div className="flex items-center justify-center py-8">
                                             <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
                                         </div>
-                                    ) : results.length === 0 ? (
+                                    ) : !hasDisplayResults ? (
                                         <div className="py-8 text-center text-gray-500 dark:text-gray-400">
                                             <p>No results found for "{query}"</p>
                                             <p className="text-xs mt-1">Try searching with different keywords</p>

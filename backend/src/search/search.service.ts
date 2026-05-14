@@ -15,10 +15,7 @@ export interface SearchResult {
     | 'class'
     | 'subject'
     | 'section'
-    | 'grade'
-    | 'attendance'
-    | 'payment'
-    | 'message';
+    | 'grade';
   id: string;
   title: string;
   subtitle?: string;
@@ -37,11 +34,7 @@ export type SearchableEntity =
   | 'classes'
   | 'sections'
   | 'subjects'
-  | 'grades'
-  | 'attendance'
-  | 'payments'
-  | 'messages'
-  | 'finance';
+  | 'grades';
 
 // Role-based search permissions configuration
 const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
@@ -58,10 +51,6 @@ const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
     'sections',
     'subjects',
     'grades',
-    'attendance',
-    'payments',
-    'messages',
-    'finance',
   ],
   [Role.ADMIN]: [
     'students',
@@ -76,9 +65,6 @@ const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
     'sections',
     'subjects',
     'grades',
-    'attendance',
-    'messages',
-    'finance',
   ],
   [Role.IT_MANAGER]: [
     'students',
@@ -93,72 +79,20 @@ const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
     'sections',
     'subjects',
     'grades',
-    'attendance',
-    'messages',
-    'finance',
   ],
   [Role.REGISTRAR]: [
     'students',
-    'teachers',
-    'parents',
-    'staff',
     'exams',
     'classes',
     'sections',
     'subjects',
     'grades',
-    'attendance',
     'announcements',
   ],
-  [Role.TEACHER]: [
-    'students',
-    'classes',
-    'sections',
-    'subjects',
-    'exams',
-    'lessons',
-    'grades',
-    'attendance',
-  ],
-  [Role.STUDENT]: [
-    'classes',
-    'subjects',
-    'exams',
-    'lessons',
-    'grades',
-    'announcements',
-    'events',
-  ],
-  [Role.PARENT]: [
-    'students',
-    'grades',
-    'attendance',
-    'exams',
-    'announcements',
-    'events',
-    'payments',
-    'messages',
-  ],
-  [Role.FINANCE]: ['students', 'parents', 'payments', 'finance'],
-};
-
-const ENTITY_LABELS: Record<SearchableEntity, string> = {
-  students: 'Students',
-  teachers: 'Teachers',
-  parents: 'Parents',
-  staff: 'Staff',
-  exams: 'Exams',
-  lessons: 'Lessons',
-  announcements: 'Announcements',
-  events: 'Events',
-  classes: 'Classes',
-  sections: 'Sections',
-  subjects: 'Subjects',
-  grades: 'Grades',
-  attendance: 'Attendance',
-  payments: 'Payments',
-  messages: 'Messages',
-  finance: 'Finance',
+  [Role.TEACHER]: ['students', 'classes', 'sections', 'subjects', 'exams', 'lessons', 'grades'],
+  [Role.STUDENT]: ['classes', 'subjects', 'exams', 'lessons', 'announcements', 'events', 'grades'],
+  [Role.PARENT]: ['announcements', 'events', 'exams'],
+  [Role.FINANCE]: ['students', 'parents'],
 };
 
 @Injectable()
@@ -194,17 +128,6 @@ export class SearchService {
     }
   }
 
-  private getPaymentsHref(userRole: string): string {
-    switch (userRole) {
-      case Role.PARENT:
-        return '/parent/fees';
-      case Role.STUDENT:
-        return '/student/fees';
-      default:
-        return '/list/finance';
-    }
-  }
-
   async globalSearch(
     query: string,
     schoolId: string | null,
@@ -237,7 +160,7 @@ export class SearchService {
       searchPromises.push(this.searchEvents(query, schoolId));
     }
     if (permissions.includes('classes') || permissions.includes('sections')) {
-      searchPromises.push(this.searchClasses(query, schoolId, userRole));
+      searchPromises.push(this.searchClassesAndSections(query, schoolId, userRole));
     }
     if (permissions.includes('subjects')) {
       searchPromises.push(this.searchSubjects(query, schoolId, userRole));
@@ -245,20 +168,15 @@ export class SearchService {
     if (permissions.includes('grades')) {
       searchPromises.push(this.searchGrades(query, schoolId, userRole));
     }
-    if (permissions.includes('attendance')) {
-      searchPromises.push(this.searchAttendance(query, schoolId, userRole));
-    }
-    if (permissions.includes('payments')) {
-      searchPromises.push(this.searchPayments(query, schoolId, userRole));
-    }
 
-    let results: SearchResult[] = [];
-    try {
-      results = (await Promise.all(searchPromises)).flat().filter(Boolean);
-    } catch (error) {
-      console.error('Global search data fetching error:', error);
-      // Continue with empty results or whatever we have partially
-    }
+    const settledResults = await Promise.allSettled(searchPromises);
+    const results = settledResults.flatMap((result) => {
+      if (result.status === 'fulfilled') {
+        return result.value.filter(Boolean);
+      }
+      console.error('Global search data fetching error:', result.reason);
+      return [];
+    });
 
     // Sort by relevance (title starts with query first)
     results.sort((a, b) => {
@@ -524,88 +442,118 @@ export class SearchService {
     return results;
   }
 
-  private async searchClasses(
+  private async searchClassesAndSections(
     query: string,
     schoolId: string | null,
     userRole: string,
   ): Promise<SearchResult[]> {
     try {
-      const whereClause: any = {
+      const classWhereClause: any = {
         OR: [{ name: { contains: query, mode: 'insensitive' } }],
       };
 
       if (schoolId) {
-        whereClause.schoolId = schoolId;
+        classWhereClause.schoolId = schoolId;
       }
 
       const classes = await this.prisma.class.findMany({
-        where: whereClause,
+        where: classWhereClause,
         take: 3,
         select: {
           id: true,
           name: true,
           grade: true,
+          sections: {
+            select: {
+              name: true,
+            },
+            orderBy: {
+              name: 'asc',
+            },
+            take: 6,
+          },
         },
       });
 
-      // Get class IDs to fetch their sections
-      const classIds = classes.map((cls) => cls.id);
+      const sectionWhereClause: any = {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { roomNumber: { contains: query, mode: 'insensitive' } },
+          { class: { name: { contains: query, mode: 'insensitive' } } },
+        ],
+      };
 
-      const sectionsMap = new Map<string, any[]>();
-      if (classIds.length > 0) {
-        const sections = await this.prisma.section.findMany({
-          where: {
-            classId: { in: classIds },
-          },
-          select: {
-            id: true,
-            name: true,
-            classId: true,
-            class: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        });
-
-        for (const section of sections) {
-          const existing = sectionsMap.get(section.classId) || [];
-          existing.push(section);
-          sectionsMap.set(section.classId, existing);
-        }
+      if (schoolId) {
+        sectionWhereClause.class = {
+          ...(sectionWhereClause.class || {}),
+          schoolId,
+        };
       }
 
-      const results: SearchResult[] = [];
+      const sections = await this.prisma.section.findMany({
+        where: sectionWhereClause,
+        take: 5,
+        select: {
+          id: true,
+          name: true,
+          roomNumber: true,
+          classId: true,
+          class: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
 
-      // Determine href based on role
+      const results: SearchResult[] = [];
+      const seen = new Set<string>();
+
       let baseHref = '/admin/class-sections';
       if (userRole === Role.TEACHER) {
         baseHref = '/teacher/my-class';
       }
 
       for (const cls of classes) {
-        const sections = sectionsMap.get(cls.id) || [];
-
-        if (sections.length > 0) {
-          for (const section of sections) {
-            results.push({
-              type: 'section',
-              id: section.id,
-              title: `Section ${section.name}`,
-              subtitle: section.class?.name || cls.name,
-              href: `${baseHref}/${cls.id}`,
-            });
-          }
-        } else {
-          results.push({
-            type: 'class',
-            id: cls.id,
-            title: cls.name,
-            subtitle: cls.grade ? `Grade ${cls.grade}` : undefined,
-            href: `${baseHref}/${cls.id}`,
-          });
+        const sectionLetters = cls.sections
+          .map((section) => section.name?.trim())
+          .filter(Boolean);
+        const subtitleParts: string[] = [];
+        if (cls.grade) {
+          subtitleParts.push(`Grade ${cls.grade}`);
         }
+        if (sectionLetters.length > 0) {
+          subtitleParts.push(`Sections: ${sectionLetters.join(', ')}`);
+        }
+
+        results.push({
+          type: 'class',
+          id: cls.id,
+          title: cls.name,
+          subtitle: subtitleParts.join(' • ') || undefined,
+          href: `${baseHref}/${cls.id}`,
+        });
+        seen.add(`class:${cls.id}`);
+      }
+
+      for (const section of sections) {
+        const key = `section:${section.id}`;
+        if (seen.has(key)) continue;
+        if (seen.has(`class:${section.classId}`)) continue;
+
+        const subtitleParts = [section.class?.name];
+        if (section.roomNumber) {
+          subtitleParts.push(`Room ${section.roomNumber}`);
+        }
+
+        results.push({
+          type: 'section',
+          id: section.id,
+          title: `Section ${section.name}`,
+          subtitle: subtitleParts.filter(Boolean).join(' • '),
+          href: `${baseHref}/${section.classId}`,
+        });
+        seen.add(key);
       }
 
       return results;
@@ -662,7 +610,10 @@ export class SearchService {
     userRole: string,
   ): Promise<SearchResult[]> {
     const whereClause: any = {
-      OR: [{ student: { name: { contains: query, mode: 'insensitive' } } }],
+      OR: [
+        { student: { name: { contains: query, mode: 'insensitive' } } },
+        { subject: { name: { contains: query, mode: 'insensitive' } } },
+      ],
     };
 
     if (schoolId) {
@@ -671,7 +622,7 @@ export class SearchService {
 
     const grades = await this.prisma.grade.findMany({
       where: whereClause,
-      take: 3,
+      take: 5,
       include: {
         student: {
           select: { name: true, id: true },
@@ -685,7 +636,6 @@ export class SearchService {
     const results: SearchResult[] = [];
 
     for (const grade of grades) {
-      // Determine href based on role
       let href = '/registrar/grading';
       if (userRole === Role.TEACHER) {
         href = '/teacher/grading';
@@ -698,7 +648,9 @@ export class SearchService {
       results.push({
         type: 'grade',
         id: grade.id,
-        title: `Grade: ${grade.subject?.name || 'Subject'}`,
+        title: grade.subject?.name
+          ? `Grade: ${grade.subject.name}`
+          : 'Grade Record',
         subtitle: `Student: ${grade.student?.name || 'Unknown'}`,
         href,
       });
@@ -707,108 +659,16 @@ export class SearchService {
     return results;
   }
 
-  private async searchAttendance(
-    query: string,
+  getSearchCategories(
     schoolId: string | null,
     userRole: string,
-  ): Promise<SearchResult[]> {
-    const whereClause: any = {
-      OR: [{ student: { name: { contains: query, mode: 'insensitive' } } }],
-    };
-
-    if (schoolId) {
-      whereClause.schoolId = schoolId;
-    }
-
-    const attendance = await this.prisma.attendance.findMany({
-      where: whereClause,
-      take: 3,
-      include: {
-        student: {
-          select: { name: true },
-        },
-      },
-    });
-
-    const results: SearchResult[] = [];
-
-    for (const record of attendance) {
-      // Determine href based on role
-      let href = '/admin/attendance';
-      if (userRole === Role.TEACHER) {
-        href = '/teacher/attendance';
-      } else if (userRole === Role.PARENT) {
-        href = '/parent/attendance';
-      }
-
-      results.push({
-        type: 'attendance',
-        id: record.id,
-        title: `Attendance Record`,
-        subtitle: `Student: ${record.student?.name || 'Unknown'} • ${new Date(record.date).toLocaleDateString()}`,
-        href,
-      });
-    }
-
-    return results;
-  }
-
-  private async searchPayments(
-    query: string,
-    schoolId: string | null,
-    userRole: string,
-  ): Promise<SearchResult[]> {
-    const whereClause: any = {
-      OR: [
-        { student: { name: { contains: query, mode: 'insensitive' } } },
-        { receiptNumber: { contains: query, mode: 'insensitive' } },
-      ],
-    };
-
-    if (schoolId) {
-      whereClause.schoolId = schoolId;
-    }
-
-    const payments = await this.prisma.payment.findMany({
-      where: whereClause,
-      take: 3,
-      include: {
-        student: {
-          select: { name: true },
-        },
-      },
-    });
-
-    const results: SearchResult[] = [];
-
-    for (const payment of payments) {
-      results.push({
-        type: 'payment',
-        id: payment.id,
-        title: `Payment: $${payment.amountPaid.toFixed(2)}`,
-        subtitle: `Student: ${payment.student?.name || 'Unknown'} • ${payment.receiptNumber || ''}`,
-        href: this.getPaymentsHref(userRole),
-      });
-    }
-
-    return results;
-  }
-
-  // Get available search categories for the frontend
-  async getSearchCategories(
-    schoolId: string | null,
-    userRole: string,
-  ): Promise<{
-    categories: SearchableEntity[];
-    labels: Record<string, string>;
-  }> {
+  ): SearchableEntity[] {
     const permissions = this.getSearchPermissions(userRole);
 
-    // Only super_admin can search across all schools
     if (userRole !== Role.SUPER_ADMIN && !schoolId) {
-      return { categories: [], labels: ENTITY_LABELS };
+      return [];
     }
 
-    return { categories: permissions, labels: ENTITY_LABELS };
+    return permissions;
   }
 }

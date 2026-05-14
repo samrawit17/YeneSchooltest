@@ -118,7 +118,7 @@ const GLOBAL_NOTIFICATION_READS_KEY = "global_notification_reads";
 
 const Navbar = ({
   sidebarCollapsed = false,
-  useBrandNavigation = true,
+  useBrandNavigation = false,
 }: NavbarProps) => {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
@@ -155,8 +155,7 @@ const Navbar = ({
       const now = new Date();
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      setCurrentTime(`${hours}:${minutes}:${seconds}`);
+      setCurrentTime(`${hours}:${minutes}`);
       setCurrentDate(formatSchoolDate(now));
     };
 
@@ -682,7 +681,7 @@ const Navbar = ({
                 </Popover>
                 <div className="hidden md:flex items-center gap-1">
                   <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
-                  <span className="font-bold text-slate-800 dark:text-gray-100 text-xs sm:text-sm">{currentTime || '--:--:--'}</span>
+                  <span className="font-bold text-slate-800 dark:text-gray-100 text-xs sm:text-sm">{currentTime || '--:--'}</span>
                 </div>
               </div>
             )}
@@ -721,12 +720,10 @@ const Navbar = ({
                 variant="default"
                 size="sm"
                 className="hidden sm:flex gap-2 text-xs sm:text-sm h-8 sm:h-9"
-                asChild
+                onClick={() => router.push("/enroll")}
               >
-                <Link href="/enroll">
-                  <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Enroll Now</span>
-                </Link>
+                <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Enroll Now</span>
               </Button>
             )}
 
@@ -1100,8 +1097,13 @@ const Navbar = ({
                 <Button variant="ghost" size="sm" className="text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3" asChild>
                   <Link href="/sign-in">Sign In</Link>
                 </Button>
-                <Button variant="default" size="sm" className="text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3" asChild>
-                  <Link href="/sign-up">Sign Up</Link>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3"
+                  onClick={() => router.push("/enroll")}
+                >
+                  Enroll Now
                 </Button>
               </div>
             )}

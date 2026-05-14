@@ -116,6 +116,36 @@ export class ReportCardService {
     }
   }
 
+  private async verifyParentChild(parentId: string, childId: string) {
+    const parentProfile = await this.prisma.parentProfile.findUnique({
+      where: { userId: parentId },
+      select: { id: true },
+    });
+    if (!parentProfile) {
+      throw new NotFoundException('Parent profile not found');
+    }
+
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: { OR: [{ id: childId }, { userId: childId }] },
+      select: { id: true },
+    });
+    if (!studentProfile) {
+      throw new NotFoundException('Student profile not found');
+    }
+
+    const link = await this.prisma.parentStudent.findFirst({
+      where: { parentId: parentProfile.id, studentId: studentProfile.id },
+      select: { id: true, student: { select: { userId: true } } },
+    });
+    if (!link?.student?.userId) {
+      throw new BadRequestException('You are not linked to this student');
+    }
+
+    return {
+      studentUserId: link.student.userId,
+    };
+  }
+
   private async recordPromotionHistory(input: {
     schoolId: string;
     studentId: string;
@@ -436,6 +466,20 @@ export class ReportCardService {
       generatedById,
     } = params;
 
+    const academicYearRecord = await this.prisma.academicYear.findFirst({
+      where: {
+        schoolId,
+        OR: [{ id: academicYear }, { name: academicYear }],
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const academicYearId = academicYearRecord?.id ?? academicYear;
+    const academicYearName = academicYearRecord?.name ?? academicYear;
+
     const student = await this.prisma.user.findFirst({
       where: { id: studentId, schoolId },
     });
@@ -448,12 +492,24 @@ export class ReportCardService {
       where: {
         studentId,
         classId,
-        academicYear,
+        academicYear: academicYearId,
         termId,
       },
       include: {
         subject: {
           select: { id: true, name: true, code: true },
+        },
+        gradeScores: {
+          include: {
+            component: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: [{ component: { createdAt: 'asc' } }],
         },
       },
     });
@@ -475,6 +531,14 @@ export class ReportCardService {
           subjectId: sg.subjectId,
           subjectName: sg.subject.name,
           subjectCode: sg.subject.code,
+          assessmentBreakdown: (sg.gradeScores || []).map((item) => ({
+            assessmentSubjectId: item.id,
+            title: item.component?.name || item.component?.code || 'Assessment',
+            type: item.component?.code || '',
+            maxScore: item.maxScore,
+            score: item.score ?? null,
+            status: sg.status,
+          })),
           caScore: sg.caScore,
           midScore: sg.midScore,
           finalScore: sg.finalScore,
@@ -500,7 +564,7 @@ export class ReportCardService {
         studentId,
         classId,
         sectionId,
-        academicYear,
+        academicYear: academicYearName,
         term: termName,
       },
     });
@@ -528,7 +592,7 @@ export class ReportCardService {
           studentId,
           classId,
           sectionId,
-          academicYear,
+          academicYear: academicYearName,
           term: termName,
           status: ReportCardStatus.DRAFT,
           totalMarks,
@@ -639,6 +703,90 @@ export class ReportCardService {
     }));
   }
 
+  async getPublishedReportCardsForParent(
+    parentId: string,
+    childId: string,
+    filters?: {
+      academicYear?: string;
+      term?: string;
+    },
+  ) {
+    const { studentUserId } = await this.verifyParentChild(parentId, childId);
+    const whereClause: any = {
+      studentId: studentUserId,
+      status: ReportCardStatus.PUBLISHED,
+    };
+
+    if (filters?.academicYear) whereClause.academicYear = filters.academicYear;
+    if (filters?.term) whereClause.term = filters.term;
+
+    const reportCards = await this.prisma.reportCard.findMany({
+      where: whereClause,
+      include: {
+        student: {
+          select: { id: true, name: true, avatarUrl: true },
+        },
+        class: {
+          select: { id: true, name: true, section: true, grade: true },
+        },
+        generatedBy: {
+          select: { id: true, name: true },
+        },
+      },
+      orderBy: [
+        { publishedAt: 'desc' },
+        { updatedAt: 'desc' },
+      ],
+    });
+
+    return reportCards.map((rc) => ({
+      ...rc,
+      gradeDetails: rc.gradeDetails ? JSON.parse(rc.gradeDetails) : [],
+    }));
+  }
+
+  async getPublishedReportCardsForStudent(
+    schoolId: string,
+    studentId: string,
+    filters?: {
+      academicYear?: string;
+      term?: string;
+    },
+  ) {
+    const whereClause: any = {
+      schoolId,
+      studentId,
+      status: ReportCardStatus.PUBLISHED,
+    };
+
+    if (filters?.academicYear) whereClause.academicYear = filters.academicYear;
+    if (filters?.term) whereClause.term = filters.term;
+
+    const reportCards = await this.prisma.reportCard.findMany({
+      where: whereClause,
+      include: {
+        student: {
+          select: { id: true, name: true, avatarUrl: true },
+        },
+        class: {
+          select: { id: true, name: true, section: true, grade: true },
+        },
+        generatedBy: {
+          select: { id: true, name: true },
+        },
+      },
+      orderBy: [
+        { publishedAt: 'desc' },
+        { updatedAt: 'desc' },
+      ],
+    });
+
+    return reportCards.map((rc) => ({
+      ...rc,
+      gradeDetails: rc.gradeDetails ? JSON.parse(rc.gradeDetails) : [],
+    }));
+  }
+
   async getPublishSummary(
     schoolId: string,
     academicYearId: string,
@@ -648,6 +796,9 @@ export class ReportCardService {
       this.resolveAcademicYearName(schoolId, academicYearId),
       this.resolveTermName(termId),
     ]);
+    const academicYearKeys = Array.from(
+      new Set([academicYearId, academicYearName].filter(Boolean)),
+    );
 
     const [classes, enrollments, reportCards] = await Promise.all([
       this.prisma.class.findMany({
@@ -655,18 +806,17 @@ export class ReportCardService {
         select: { id: true, name: true, grade: true, section: true },
         orderBy: [{ grade: 'asc' }, { name: 'asc' }],
       }),
-      this.prisma.studentClass.groupBy({
-        by: ['classId'],
+      this.prisma.studentClass.findMany({
         where: {
           schoolId,
-          academicYear: academicYearName,
+          academicYear: { in: academicYearKeys },
         },
-        _count: { studentId: true },
+        select: { classId: true, studentId: true },
       }),
       this.prisma.reportCard.findMany({
         where: {
           schoolId,
-          academicYear: academicYearName,
+          academicYear: { in: academicYearKeys },
           term: termName,
         },
         include: {
@@ -677,9 +827,18 @@ export class ReportCardService {
       }),
     ]);
 
-    const expectedByClass = new Map(
-      enrollments.map((row) => [row.classId, row._count.studentId]),
-    );
+    const expectedByClass = new Map<string, number>();
+    const studentIdsByClass = new Map<string, Set<string>>();
+    for (const enrollment of enrollments) {
+      const bucket =
+        studentIdsByClass.get(enrollment.classId) ?? new Set<string>();
+      bucket.add(enrollment.studentId);
+      studentIdsByClass.set(enrollment.classId, bucket);
+    }
+    for (const [classId, studentIds] of studentIdsByClass.entries()) {
+      expectedByClass.set(classId, studentIds.size);
+    }
+
     const cardsByClass = new Map<string, typeof reportCards>();
     for (const card of reportCards) {
       const bucket = cardsByClass.get(card.classId) ?? [];
@@ -1115,6 +1274,9 @@ export class ReportCardService {
         select: { id: true, name: true, grade: true, section: true },
       }),
     ]);
+    const academicYearKeys = Array.from(
+      new Set([academicYearId, academicYearName].filter(Boolean)),
+    );
 
     if (!classRecord) {
       throw new NotFoundException('Class not found');
@@ -1125,7 +1287,7 @@ export class ReportCardService {
         where: {
           schoolId,
           classId,
-          academicYear: academicYearName,
+          academicYear: { in: academicYearKeys },
         },
         select: { studentId: true },
       }),
@@ -1133,7 +1295,7 @@ export class ReportCardService {
         where: {
           schoolId,
           classId,
-          academicYear: academicYearName,
+          academicYear: { in: academicYearKeys },
           term: termName,
         },
         include: {
@@ -1160,8 +1322,11 @@ export class ReportCardService {
         },
       }),
     ]);
+    const uniqueEnrollmentStudentIds = new Set(
+      enrollments.map((enrollment) => enrollment.studentId),
+    );
 
-    if (enrollments.length === 0) {
+    if (uniqueEnrollmentStudentIds.size === 0) {
       throw new BadRequestException('No enrolled students found for this class');
     }
 
@@ -1185,6 +1350,23 @@ export class ReportCardService {
       throw new BadRequestException(
         'Results cannot be published yet because some report cards are incomplete',
       );
+    }
+
+    const rankedReportCards = [...reportCards].sort((a, b) => {
+      const percentageDiff = (b.percentage ?? 0) - (a.percentage ?? 0);
+      if (percentageDiff !== 0) return percentageDiff;
+      return a.student.name.localeCompare(b.student.name);
+    });
+
+    for (const [index, card] of rankedReportCards.entries()) {
+      const rank = index + 1;
+      await this.prisma.reportCard.update({
+        where: { id: card.id },
+        data: {
+          rank,
+          rankInClass: rank,
+        },
+      });
     }
 
     const reportCardIds = reportCards.map((card) => card.id);
@@ -1237,6 +1419,7 @@ export class ReportCardService {
 
     return {
       published: reportCardIds.length,
+      ranked: rankedReportCards.length,
       notifiedStudents: notifyStudents ? studentUserIds.length : 0,
       notifiedParents: notifyParents ? parentUserIds.length : 0,
     };

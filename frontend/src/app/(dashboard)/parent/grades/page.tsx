@@ -1,16 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { academicYearsAPI, gradingAPI } from "@/lib/api";
+import { academicYearsAPI, gradingAPI, reportCardsAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
-import { BookOpen, Loader2, Award, Download, Star, Target, Calendar, CheckCircle, AlertCircle, Clock } from "lucide-react";
-
+import { BookOpen, Download, Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -23,25 +21,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface SubjectGrade {
-  id: string;
-  subject: { id: string; name: string };
-  class: { id: string; name: string };
-  section: { id: string; name: string };
-  term: { id: string; name: string };
-  caScore: number | null;
-  midScore: number | null;
-  finalScore: number | null;
-  totalScore: number | null;
-  gradeLetter: string | null;
-  gradePoint: number | null;
-  remark: string | null;
-}
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface AcademicYear {
+  id: string;
+  name: string;
+}
+
+interface TermOption {
   id: string;
   name: string;
 }
@@ -56,34 +50,71 @@ interface Child {
   section: string;
 }
 
-interface PeriodGrades {
-  period: string;
-  periodIndex: number;
-  grades: SubjectGrade[];
-  average: number;
-  gpa: string;
-  rank: number | null;
-  totalStudents: number;
-  hasGrades: boolean;
+interface GradeRow {
+  subjectId: string;
+  termName: string;
+  subjectName: string;
+  subjectCode?: string;
+  assessments: Array<{
+    assessmentSubjectId: string;
+    title: string;
+    type: string;
+    maxScore: number;
+    score: number | null;
+    status: string;
+  }>;
+  totalScore: number | null;
+  gradeLetter: string | null;
+  remark: string | null;
 }
 
-const CURRICULUM_PERIODS: Record<string, string[]> = {
-  QUARTER: ["Q1", "Q2", "Q3", "Q4"],
-  SEMESTER: ["Semester 1", "Semester 2"],
-  TERM: ["Term 1", "Term 2", "Term 3"],
-  MONTHLY: ["Month 1", "Month 2", "Month 3", "Month 4", "Month 5", "Month 6"],
-  YEARLY: ["Full Year"],
+interface GradingComponent {
+  code: string;
+  name: string;
+  percentage: number;
+}
+
+interface PaymentGate {
+  blocked: boolean;
+  message: string;
+}
+
+interface RankSummary {
+  rank: number | null;
+  termName: string | null;
+}
+
+const gradeBadgeClass = (grade: string | null) => {
+  switch (grade) {
+    case "A":
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
+    case "B":
+      return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300";
+    case "C":
+      return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
+    case "D":
+      return "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300";
+    case "F":
+      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
+    default:
+      return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+  }
 };
 
-const normalizeCurriculumType = (type: string | undefined): string => {
-  const map: Record<string, string> = {
-    QUARTER: "QUARTER",
-    SEMESTER: "SEMESTER",
-    TERM: "TERM",
-    MONTH: "MONTHLY",
-    YEAR: "YEARLY",
-  };
-  return map[type || ""] || type || "TERM";
+const calculateAverage = (rows: GradeRow[]) => {
+  const scores = rows
+    .map((row) => row.totalScore)
+    .filter((score): score is number => typeof score === "number");
+  if (scores.length === 0) return 0;
+  return Math.round((scores.reduce((sum, value) => sum + value, 0) / scores.length) * 100) / 100;
+};
+
+const calculateGradePoint = (average: number) => {
+  if (average >= 90) return "4.0";
+  if (average >= 80) return "3.5";
+  if (average >= 70) return "3.0";
+  if (average >= 60) return "2.5";
+  return "0.0";
 };
 
 export default function ParentGradesPage() {
@@ -91,12 +122,16 @@ export default function ParentGradesPage() {
   const router = useRouter();
 
   const [children, setChildren] = useState<Child[]>([]);
-  const [selectedChildId, setSelectedChildId] = useState<string>("");
+  const [selectedChildId, setSelectedChildId] = useState("");
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  const [grades, setGrades] = useState<SubjectGrade[]>([]);
-  const [curriculumType, setCurriculumType] = useState<string>("TERM");
-  
+  const [selectedYear, setSelectedYear] = useState("");
+  const [terms, setTerms] = useState<TermOption[]>([]);
+  const [selectedTerm, setSelectedTerm] = useState("all");
+  const [periodLabel, setPeriodLabel] = useState("Curriculum Period");
+  const [gradeRows, setGradeRows] = useState<GradeRow[]>([]);
+  const [rankSummary, setRankSummary] = useState<RankSummary>({ rank: null, termName: null });
+  const [gradingComponents, setGradingComponents] = useState<GradingComponent[]>([]);
+  const [paymentGate, setPaymentGate] = useState<PaymentGate>({ blocked: false, message: "" });
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
 
@@ -120,8 +155,8 @@ export default function ParentGradesPage() {
               section: child.section || child.student?.section || "N/A",
             }))
           : [];
-        setChildren(normalizedChildren);
 
+        setChildren(normalizedChildren);
         if (normalizedChildren.length > 0) {
           const firstChild = normalizedChildren[0];
           setSelectedChildId(firstChild.profileId || firstChild.userId || firstChild.id);
@@ -139,7 +174,6 @@ export default function ParentGradesPage() {
       try {
         const activeYearRes = await academicYearsAPI.getActive();
         const activeYear = activeYearRes.data?.data || activeYearRes.data;
-
         if (activeYear?.id) {
           setSelectedYear(activeYear.id);
           if (years.length === 0) {
@@ -148,24 +182,25 @@ export default function ParentGradesPage() {
         } else if (years.length > 0) {
           setSelectedYear(years[0].id);
         }
-      } catch (error) {
+      } catch {
         if (years.length > 0) setSelectedYear(years[0].id);
       }
 
-      // Get curriculum type from school settings
       try {
-        const schoolSettings = await parentDashboardAPI.getSchoolSettings(user?.schoolId!);
-        const cType = schoolSettings.data?.curriculum_type || "TERM";
-        setCurriculumType(normalizeCurriculumType(cType));
-      } catch (error) {
-        console.log("Using default curriculum type");
+        const gradingComponentsRes = await gradingAPI.getParentGradingComponents();
+        const gradingComponentsData = Array.isArray(gradingComponentsRes.data)
+          ? gradingComponentsRes.data
+          : gradingComponentsRes.data?.data || [];
+        setGradingComponents(gradingComponentsData);
+      } catch {
+        setGradingComponents([]);
       }
     } catch (error) {
       console.error("Error fetching initial data:", error);
     } finally {
       setInitialLoad(false);
     }
-  }, [user?.schoolId]);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -179,53 +214,134 @@ export default function ParentGradesPage() {
     }
 
     fetchInitialData();
-  }, [user, authLoading, router, fetchInitialData]);
+  }, [authLoading, fetchInitialData, router, user]);
 
   const fetchGrades = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await gradingAPI.getChildGrades(selectedChildId, {
+      const response = await gradingAPI.getChildGrades(selectedChildId, {
         academicYear: selectedYear,
       });
-      
-      const data = res.data;
-      const gradeRows = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.grades)
-          ? data.grades
-          : [];
+      const periods = Array.isArray(response.data?.periods) ? response.data.periods : [];
+      const curriculumType = String(response.data?.curriculumType || "").toUpperCase();
+      setPeriodLabel(
+        curriculumType.includes("SEMESTER")
+          ? "Semester"
+          : curriculumType.includes("TERM")
+            ? "Term"
+            : "Curriculum Period",
+      );
+      const nextTerms: TermOption[] = periods.map((period: any) => ({
+        id: period.termId || period.period,
+        name: period.period || period.termName || "Unnamed Period",
+      }));
+      setTerms(nextTerms);
+      const effectiveSelectedTerm =
+        selectedTerm !== "all" && nextTerms.some((term) => term.id === selectedTerm)
+          ? selectedTerm
+          : response.data?.currentPeriodTermId || nextTerms[0]?.id || "all";
+      setSelectedTerm(effectiveSelectedTerm);
+      const visiblePeriods =
+        effectiveSelectedTerm === "all"
+          ? periods
+          : periods.filter(
+              (period: any) =>
+                (period.termId || period.period || period.termName || "") === effectiveSelectedTerm,
+            );
 
-      if (gradeRows.length > 0 || data?.grades) {
-        setGrades(gradeRows as SubjectGrade[]);
-        
-        // Set curriculum type from API
-        if (data.curriculumType) {
-          setCurriculumType(normalizeCurriculumType(data.curriculumType));
+      const clearanceTermId =
+        effectiveSelectedTerm === "all" ? response.data?.currentPeriodTermId || undefined : effectiveSelectedTerm;
+      if (clearanceTermId) {
+        const clearanceRes = await gradingAPI.verifyFinancialClearance({
+          studentId: selectedChildId,
+          academicYear: selectedYear,
+          termId: clearanceTermId,
+          checkOverdueOnly: false,
+        });
+        const clearance = clearanceRes.data;
+        if (!clearance?.isCleared) {
+          const blockedTermName =
+            nextTerms.find((term) => term.id === clearanceTermId)?.name || periodLabel;
+          setPaymentGate({
+            blocked: true,
+            message: `Results are locked until the ${blockedTermName} fees are paid.`,
+          });
+          setGradeRows([]);
+          setRankSummary({ rank: null, termName: null });
+          return;
         }
-        
-        // Calculate period ranking from the API data
-        if (data.periods && data.periods.length > 0) {
-          const periodStudentAverages = data.periods
-            .filter((p: any) => p.average > 0)
-            .map((p: any, idx: number) => ({ periodIndex: idx, average: p.average }))
-            .sort((a: any, b: any) => b.average - a.average);
-          
-          data.periods = data.periods.map((p: any, idx: number) => ({
-            ...p,
-            rank: periodStudentAverages.findIndex((a: any) => a.periodIndex === idx) + 1 || null,
-            totalStudents: periodStudentAverages.length,
-          }));
-        }
-      } else {
-        setGrades([]);
       }
+
+      setPaymentGate({ blocked: false, message: "" });
+      const selectedChild = children.find(
+        (child) => (child.profileId || child.userId || child.id) === selectedChildId,
+      );
+      const selectedYearName =
+        academicYears.find((year) => year.id === selectedYear)?.name || selectedYear;
+      const selectedTermName =
+        effectiveSelectedTerm !== "all"
+          ? nextTerms.find((term) => term.id === effectiveSelectedTerm)?.name || effectiveSelectedTerm
+          : undefined;
+
+      try {
+        const publishedCardsRes = await reportCardsAPI.getPublishedForParent(
+          selectedChild?.userId || selectedChildId,
+          {
+            academicYear: selectedYearName,
+            ...(selectedTermName ? { term: selectedTermName } : {}),
+          },
+        );
+        const publishedCards = Array.isArray(publishedCardsRes.data)
+          ? publishedCardsRes.data
+          : [];
+        const latestPublishedCard = publishedCards.sort(
+          (a, b) =>
+            new Date(b.publishedAt || b.updatedAt).getTime() -
+            new Date(a.publishedAt || a.updatedAt).getTime(),
+        )[0];
+
+        setRankSummary({
+          rank:
+            typeof latestPublishedCard?.rankInClass === "number"
+              ? latestPublishedCard.rankInClass
+              : null,
+          termName: latestPublishedCard?.term || selectedTermName || null,
+        });
+      } catch (rankError) {
+        console.error("Error fetching published report card rank:", rankError);
+        setRankSummary({ rank: null, termName: null });
+      }
+
+      const rows: GradeRow[] = visiblePeriods.flatMap((period: any) =>
+        (Array.isArray(period.grades) ? period.grades : []).map((grade: any) => ({
+          subjectId: grade.subjectId,
+          termName: grade.term?.name || period.period || "Published",
+          subjectName: grade.subject?.name || "N/A",
+          subjectCode: grade.subject?.code || undefined,
+          assessments: Array.isArray(grade.gradeScores)
+            ? grade.gradeScores.map((item: any, index: number) => ({
+                assessmentSubjectId: item.id || `${grade.id}-${index}`,
+                title: item.component?.name || item.component?.code || "Assessment",
+                type: item.component?.code || "",
+                maxScore: Number(item.maxScore) || 0,
+                score: typeof item.score === "number" ? item.score : null,
+                status: grade.status || "SUBMITTED",
+              }))
+            : [],
+          totalScore: typeof grade.totalScore === "number" ? grade.totalScore : null,
+          gradeLetter: grade.gradeLetter ?? null,
+          remark: grade.status || null,
+        }),
+      ));
+      setGradeRows(rows);
     } catch (error) {
       console.error("Error fetching grades:", error);
-      setGrades([]);
+      setGradeRows([]);
+      setRankSummary({ rank: null, termName: null });
     } finally {
       setLoading(false);
     }
-  }, [selectedChildId, selectedYear]);
+  }, [academicYears, children, selectedChildId, selectedTerm, selectedYear]);
 
   useEffect(() => {
     if (selectedChildId && selectedYear) {
@@ -233,156 +349,93 @@ export default function ParentGradesPage() {
     }
   }, [fetchGrades, selectedChildId, selectedYear]);
 
-  const getGradeColor = (grade: string | null) => {
-    if (!grade) return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
-    switch (grade) {
-      case "A": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
-      case "B": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
-      case "C": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
-      case "D": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300";
-      case "F": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
-      default: return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
-    }
-  };
+  const selectedChild = useMemo(
+    () => children.find((child) => (child.profileId || child.userId || child.id) === selectedChildId),
+    [children, selectedChildId],
+  );
 
-  const calculateAverage = (gradeList: SubjectGrade[]) => {
-    const totalScores = gradeList.filter(g => g.totalScore !== null).map(g => g.totalScore!);
-    if (totalScores.length === 0) return 0;
-    return Math.round((totalScores.reduce((a, b) => a + b, 0) / totalScores.length) * 100) / 100;
-  };
-
-  const calculateGPA = (avg: number) => {
-    if (avg >= 90) return "4.0";
-    if (avg >= 80) return "3.5";
-    if (avg >= 70) return "3.0";
-    if (avg >= 60) return "2.5";
-    return "0.0";
-  };
-
-  const getGPAColor = (gpa: number) => {
-    if (gpa >= 3.5) return "text-green-600 dark:text-green-400";
-    if (gpa >= 3.0) return "text-blue-600 dark:text-blue-400";
-    if (gpa >= 2.5) return "text-yellow-600 dark:text-yellow-400";
-    if (gpa >= 2.0) return "text-orange-600 dark:text-orange-400";
-    return "text-red-600 dark:text-red-400";
-  };
-
-  const groupedByTerm = grades.reduce((acc, grade) => {
-    const termName = grade.term.name;
-    if (!acc[termName]) acc[termName] = [];
-    acc[termName].push(grade);
-    return acc;
-  }, {} as Record<string, SubjectGrade[]>);
-
-  // Group by curriculum period
-  const periodTitles = CURRICULUM_PERIODS[curriculumType] || CURRICULUM_PERIODS["TERM"];
-  
-  const getPeriodGrades = (): PeriodGrades[] => {
-    // First, collect all student averages for ranking
-    const allStudentAverages = new Map<string, number>();
-    
-    // Calculate period averages for each student
-    const periodStudentAverages = periodTitles.map(period => {
-      const periodIndex = periodTitles.indexOf(period);
-      const periodGrades = grades.filter((_, idx) => {
-        const termNum = idx + 1;
-        const periodNum = periodIndex + 1;
-        const map: Record<string, number> = { QUARTER: 4, SEMESTER: 2, TERM: 3, MONTHLY: 12, YEARLY: 1 };
-        const count = map[curriculumType] || 3;
-        const perPeriod = Math.ceil(grades.length / count);
-        const startIdx = periodIndex * perPeriod;
-        const endIdx = startIdx + perPeriod;
-        return idx >= startIdx && idx < endIdx;
-      });
-      return periodGrades;
-    });
-
-    // Simple ranking based on average
-    const averages = periodStudentAverages
-      .map((pg, idx) => ({
-        periodIndex: idx,
-        average: calculateAverage(pg),
+  const assessmentColumns = useMemo(() => {
+    const preferredOrder = ["ATTENDANCE", "WORKSHEET", "QUIZ", "TEST", "MID", "FINAL"];
+    return gradingComponents
+      .map((component) => ({
+        code: String(component.code).toUpperCase(),
+        label: component.name,
+        maxScore: Number(component.percentage) || 0,
       }))
-      .filter(p => p.average > 0)
-      .sort((a, b) => b.average - a.average);
-
-    return periodTitles.map((period, periodIndex) => {
-      const periodGrades = grades.filter((g, idx) => {
-        const map: Record<string, number> = { QUARTER: 4, SEMESTER: 2, TERM: 3, MONTHLY: 12, YEARLY: 1 };
-        const count = map[curriculumType] || 3;
-        const perPeriod = Math.ceil(grades.length / count);
-        const startIdx = periodIndex * perPeriod;
-        const endIdx = startIdx + perPeriod;
-        return idx >= startIdx && idx < endIdx;
+      .sort((a, b) => {
+        const aIndex = preferredOrder.indexOf(a.code);
+        const bIndex = preferredOrder.indexOf(b.code);
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        return a.label.localeCompare(b.label);
       });
+  }, [gradingComponents]);
 
-      const avg = calculateAverage(periodGrades);
-      const gpa = calculateGPA(avg);
-      
-      // Calculate rank
-      const rank = averages.findIndex(a => a.periodIndex === periodIndex) + 1;
-      const totalWithGrades = averages.length;
-
+  const groupedByTerm = useMemo(() => {
+    const groups = new Map<string, GradeRow[]>();
+    for (const row of gradeRows) {
+      const bucket = groups.get(row.termName) ?? [];
+      bucket.push(row);
+      groups.set(row.termName, bucket);
+    }
+    return Array.from(groups.entries()).map(([termName, rows]) => {
+      const average = calculateAverage(rows);
       return {
-        period,
-        periodIndex,
-        grades: periodGrades,
-        average: avg,
-        gpa,
-        rank: rank > 0 ? rank : null,
-        totalStudents: totalWithGrades,
-        hasGrades: periodGrades.length > 0,
+        termName,
+        rows,
+        average,
+        gradePoint: calculateGradePoint(average),
       };
     });
-  };
+  }, [gradeRows]);
 
-  const periodGrades = getPeriodGrades();
-
-  const overallAverage = calculateAverage(grades);
-  const overallGPA = calculateGPA(overallAverage);
-  const scores = grades.filter(g => g.totalScore !== null).map(g => g.totalScore!);
-  const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
-  const selectedChild = children.find(
-    (c) => (c.profileId || c.userId || c.id) === selectedChildId,
-  );
+  const overallAverage = calculateAverage(gradeRows);
+  const overallGradePoint = calculateGradePoint(overallAverage);
+  const highestScore = gradeRows.reduce((highest, row) => {
+    const score = row.totalScore ?? 0;
+    return score > highest ? score : highest;
+  }, 0);
 
   if (authLoading || initialLoad) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex min-h-[420px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-            <BookOpen className="h-6 w-6" />
-            My Children's Grades & Results
-          </h1>
-          <p className="text-muted-foreground text-slate-500 dark:text-slate-400">
-            View your children's academic performance by {curriculumType} period
-          </p>
+    <div className="px-4 py-6 md:px-6 lg:px-8">
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white">
+              <BookOpen className="h-6 w-6 text-[var(--brand-color,#e35336)]" />
+              Published Results
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              View published subject results in a simple table layout.
+            </p>
+          </div>
+          <Button variant="outline" disabled>
+            <Download className="mr-2 h-4 w-4" />
+            Download Report Card
+          </Button>
         </div>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Download Report Card
-        </Button>
-      </div>
 
-      <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <CardContent className="grid gap-4 pt-6 md:grid-cols-3">
             <div>
-              <label className="text-sm font-medium mb-2 block text-slate-700 dark:text-slate-300">Child</label>
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Child
+              </label>
               <Select value={selectedChildId} onValueChange={setSelectedChildId}>
-                <SelectTrigger className="bg-white dark:bg-slate-700">
-                  <SelectValue placeholder="Select Child" />
+                <SelectTrigger>
+                  <SelectValue placeholder="Select child" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800">
-                  {children.map(child => (
+                <SelectContent>
+                  {children.map((child) => (
                     <SelectItem
                       key={child.profileId || child.id}
                       value={child.profileId || child.userId || child.id}
@@ -395,13 +448,15 @@ export default function ParentGradesPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block text-slate-700 dark:text-slate-300">Academic Year</label>
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Academic Year
+              </label>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="bg-white dark:bg-slate-700">
-                  <SelectValue placeholder="Select Year" />
+                <SelectTrigger>
+                  <SelectValue placeholder="Select academic year" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-800">
-                  {academicYears.map(year => (
+                <SelectContent>
+                  {academicYears.map((year) => (
                     <SelectItem key={year.id} value={year.id}>
                       {year.name}
                     </SelectItem>
@@ -409,253 +464,184 @@ export default function ParentGradesPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {grades.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">GPA</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-4xl font-bold ${getGPAColor(parseFloat(overallGPA))}`}>
-                {overallGPA}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Out of 4.0</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">Average</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-slate-900 dark:text-white">
-                {overallAverage}%
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">Highest</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-green-600 dark:text-green-400">
-                {highestScore}%
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">Subjects</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-slate-900 dark:text-white">
-                {grades.length}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : grades.length === 0 ? (
-        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-          <CardContent className="py-10 text-center text-slate-500 dark:text-slate-400">
-            No grades found for the selected criteria
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {periodLabel}
+              </label>
+              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Periods</SelectItem>
+                  {terms.map((term) => (
+                    <SelectItem key={term.id} value={term.id}>
+                      {term.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Calendar className="w-4 h-4 text-slate-500" />
-            <span className="font-medium text-slate-700 dark:text-slate-300">
-              Grade Breakdown by {curriculumType} Period
-            </span>
-          </div>
 
-          <div className={`grid gap-4 ${
-            periodTitles.length === 4 ? "grid-cols-2 md:grid-cols-4" :
-            periodTitles.length === 3 ? "grid-cols-1 md:grid-cols-3" :
-            periodTitles.length === 2 ? "grid-cols-2" : "grid-cols-3 md:grid-cols-6"
-          }`}>
-            {periodGrades.map((pg, idx) => (
-              <Card 
-                key={idx} 
-                className={` border-2 ${
-                  pg.hasGrades 
-                    ? pg.average >= 90 
-                      ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20"
-                      : pg.average >= 70
-                      ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20"
-                      : "border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20"
-                    : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                }`}
+        {paymentGate.blocked && (
+          <Card className="border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <CardContent className="py-6 text-center text-amber-800 dark:text-amber-300">
+              {paymentGate.message}
+            </CardContent>
+          </Card>
+        )}
+
+        {selectedChild && (
+          <Card className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+            <CardContent className="grid gap-4 pt-6 md:grid-cols-5">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Student</p>
+                <p className="mt-1 font-semibold text-slate-900 dark:text-white">{selectedChild.name}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{selectedChild.studentCode}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Class</p>
+                <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+                  {selectedChild.className} - Section {selectedChild.section}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Average / GPA</p>
+                <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+                  {overallAverage}% / {overallGradePoint}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Ranking</p>
+                <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+                  {typeof rankSummary.rank === "number" ? `#${rankSummary.rank}` : "-"}
+                </p>
+                {rankSummary.termName && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{rankSummary.termName}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Subjects / Highest</p>
+                <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+                  {gradeRows.length} / {highestScore}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-14">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
+          </div>
+        ) : paymentGate.blocked ? null : gradeRows.length === 0 ? (
+          <Card className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+            <CardContent className="py-14 text-center text-slate-500 dark:text-slate-400">
+              No published results found for the selected child and academic year.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {groupedByTerm.map((group) => (
+              <Card
+                key={group.termName}
+                className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
               >
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">
-                      {pg.period}
+                <CardHeader className="pb-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <CardTitle className="text-lg text-slate-900 dark:text-white">
+                      {group.termName}
                     </CardTitle>
-                    {pg.hasGrades ? (
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                    ) : (
-                      <Clock className="w-4 h-4 text-slate-400" />
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">Average {group.average}%</Badge>
+                      <Badge className="bg-[var(--brand-color,#e35336)] text-white hover:bg-[var(--brand-color,#e35336)]">
+                        GPA {group.gradePoint}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  {pg.hasGrades ? (
-                    <>
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                            {pg.average}%
-                          </div>
-                          <div className={`text-xs font-medium ${getGPAColor(parseFloat(pg.gpa))}`}>
-                            GPA {pg.gpa}
-                          </div>
-                        </div>
-                        {pg.rank && pg.totalStudents > 0 && (
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                              #{pg.rank}
-                            </div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">
-                              of {pg.totalStudents}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                        {pg.grades.length} subject{pg.grades.length !== 1 ? 's' : ''}
-                      </div>
-                      <Progress 
-                        value={(parseFloat(pg.gpa) / 4) * 100} 
-                        className="h-1.5" 
-                      />
-                      {pg.rank && (
-                        <div className="mt-2 text-xs text-center">
-                          {pg.rank === 1 ? (
-                            <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-                              🏆 1st Place
-                            </Badge>
-                          ) : pg.rank <= 3 ? (
-                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                              Top 3
-                            </Badge>
-                          ) : (
-                            <span className="text-slate-500 dark:text-slate-400">
-                              Rank {pg.rank} of {pg.totalStudents}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </>
+                <CardContent className="pt-0">
+                  {assessmentColumns.length === 0 ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
+                      Assessment types are not available for this school yet.
+                    </div>
                   ) : (
-                    <div className="text-center py-4">
-                      <Clock className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        No grades yet
-                      </p>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Subject</TableHead>
+                            {assessmentColumns.map((column) => (
+                              <TableHead key={column.code} className="text-center">
+                                <div className="inline-flex min-w-[88px] flex-col items-center gap-1 rounded-md bg-slate-50 px-2 py-2 dark:bg-slate-800/80">
+                                  <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                                    {column.label}
+                                  </span>
+                                  {column.maxScore > 0 && (
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 shadow-sm dark:bg-slate-700 dark:text-slate-300">
+                                      Max {column.maxScore}
+                                    </span>
+                                  )}
+                                </div>
+                              </TableHead>
+                            ))}
+                            <TableHead className="text-center">Total</TableHead>
+                            <TableHead className="text-center">Grade</TableHead>
+                            <TableHead>Remark</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {group.rows.map((row) => (
+                            <TableRow key={`${group.termName}-${row.subjectId}`}>
+                              <TableCell className="font-medium text-slate-900 dark:text-white">
+                                {row.subjectName}
+                              </TableCell>
+                              {assessmentColumns.map((column) => {
+                                const scores = row.assessments
+                                  .filter(
+                                    (assessment) =>
+                                      String(assessment.type).toUpperCase() === column.code &&
+                                      typeof assessment.score === "number",
+                                  )
+                                  .map((assessment) => assessment.score as number);
+                                const value =
+                                  scores.length > 0
+                                    ? Math.round(scores.reduce((sum, score) => sum + score, 0) * 100) / 100
+                                    : null;
+                                return (
+                                  <TableCell key={column.code} className="text-center">
+                                    {value ?? "-"}
+                                  </TableCell>
+                                );
+                              })}
+                              <TableCell className="text-center font-medium">
+                                {row.totalScore ?? "-"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span
+                                  className={`inline-flex min-w-10 items-center justify-center rounded-full px-2 py-1 text-xs font-semibold ${gradeBadgeClass(row.gradeLetter)}`}
+                                >
+                                  {row.gradeLetter || "-"}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-slate-500 dark:text-slate-400">
+                                {row.remark || "-"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     </div>
                   )}
                 </CardContent>
               </Card>
             ))}
           </div>
-        </div>
-      )}
-
-      {grades.length > 0 && (
-        <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-lg text-slate-900 dark:text-white">Subject Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4">
-              {grades.map(grade => (
-                <div
-                  key={grade.id}
-                  className="flex items-center justify-between p-4 border rounded-lg bg-slate-50 dark:bg-slate-700/50"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold ${getGradeColor(grade.gradeLetter)}`}>
-                      {grade.gradeLetter || "-"}
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-slate-900 dark:text-white">{grade.subject.name}</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {grade.class.name} - {grade.section.name}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">CA</p>
-                      <p className="font-medium text-slate-900 dark:text-white">{grade.caScore ?? "-"}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Mid</p>
-                      <p className="font-medium text-slate-900 dark:text-white">{grade.midScore ?? "-"}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Final</p>
-                      <p className="font-medium text-slate-900 dark:text-white">{grade.finalScore ?? "-"}</p>
-                    </div>
-                    <div className="text-center min-w-[80px]">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-                      <p className="font-bold text-lg text-slate-900 dark:text-white">{grade.totalScore ?? "-"}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-lg text-slate-900 dark:text-white">Grade Scale</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-5 gap-2 md:gap-4">
-            <div className="text-center p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-green-800 dark:text-green-300">A</div>
-              <div className="text-sm text-green-700 dark:text-green-400">90-100</div>
-              <div className="text-xs text-green-600 dark:text-green-500">4.0</div>
-            </div>
-            <div className="text-center p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">B</div>
-              <div className="text-sm text-blue-700 dark:text-blue-400">80-89</div>
-              <div className="text-xs text-blue-600 dark:text-blue-500">3.5</div>
-            </div>
-            <div className="text-center p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-800 dark:text-yellow-300">C</div>
-              <div className="text-sm text-yellow-700 dark:text-yellow-400">70-79</div>
-              <div className="text-xs text-yellow-600 dark:text-yellow-500">3.0</div>
-            </div>
-            <div className="text-center p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-orange-800 dark:text-orange-300">D</div>
-              <div className="text-sm text-orange-700 dark:text-orange-400">60-69</div>
-              <div className="text-xs text-orange-600 dark:text-orange-500">2.5</div>
-            </div>
-            <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-red-800 dark:text-red-300">F</div>
-              <div className="text-sm text-red-700 dark:text-red-400">0-59</div>
-              <div className="text-xs text-red-600 dark:text-red-500">0.0</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 }

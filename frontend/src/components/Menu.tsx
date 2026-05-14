@@ -132,32 +132,27 @@ const menuItems: MenuSection[] = [
             href: "/teacher/grading",
             visible: ["teacher"],
           },
-          {
-            icon: <BookText className="w-4 h-4" />,
-            label: "Lessons",
-            href: "/student/lessons",
-            visible: ["student"],
-            featureFlag: "FEATURE_FLAG_LESSONS",
-          },
-          {
-            icon: <DollarSign className="w-4 h-4" />,
-            label: "My Fees",
-            href: "/student/fees",
-            visible: ["student"],
-          },
-          {
-            icon: <Calendar className="w-4 h-4" />,
-            label: "My Timetable",
-            href: "/student/timetable",
-            visible: ["student"],
-          },
-          {
-            icon: <Trophy className="w-4 h-4" />,
-            label: "My Grades",
-            href: "/student/grades",
-            visible: ["student"],
-          },
         ],
+      },
+
+      {
+        icon: <BookText className="w-5 h-5" />,
+        label: "Lessons",
+        href: "/student/lessons",
+        visible: ["student"],
+        featureFlag: "FEATURE_FLAG_LESSONS",
+      },
+      {
+        icon: <Calendar className="w-5 h-5" />,
+        label: "My Timetable",
+        href: "/student/timetable",
+        visible: ["student"],
+      },
+      {
+        icon: <Trophy className="w-5 h-5" />,
+        label: "My Grades",
+        href: "/student/grades",
+        visible: ["student"],
       },
 
       {
@@ -212,7 +207,7 @@ const menuItems: MenuSection[] = [
             icon: <FileText className="w-4 h-4" />,
             label: "Certificate Template",
             href: "/admin/report-cards/certificate-template",
-            visible: ["admin", "registrar", "it_manager"],
+            visible: ["admin", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
             subscriptionFeature: "EXAM_MANAGEMENT",
           },
@@ -220,7 +215,7 @@ const menuItems: MenuSection[] = [
             icon: <Settings className="w-4 h-4" />,
             label: "Template Manager",
             href: "/admin/templates",
-            visible: ["admin", "registrar", "it_manager"],
+            visible: ["admin", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
             subscriptionFeature: "EXAM_MANAGEMENT",
           },
@@ -277,38 +272,38 @@ const menuItems: MenuSection[] = [
         icon: <MessageSquare className="w-5 h-5" />,
         label: "Communication Book",
         href: "/list/communications",
-        visible: ["teacher", "admin", "it_manager", "registrar", "parent"],
+        visible: ["teacher", "admin", "it_manager", "parent"],
         featureFlag: "FEATURE_FLAG_COMMUNICATION_BOOK",
       },
       {
         icon: <MessageSquare className="w-5 h-5" />,
         label: "Messages",
         href: "/messages",
-        visible: ["teacher", "admin", "it_manager", "registrar"],
+        visible: ["teacher", "admin", "it_manager"],
       },
       {
         icon: <UserCircle className="w-5 h-5" />,
         label: "People",
         href: "/list/staff",
-        visible: ["admin", "it_manager", "registrar"],
+        visible: ["admin", "it_manager"],
         children: [
           {
             icon: <Users className="w-4 h-4" />,
             label: "Staff",
             href: "/list/staff",
-            visible: ["admin", "it_manager", "registrar"],
+            visible: ["admin", "it_manager"],
           },
           {
             icon: <Users className="w-4 h-4" />,
             label: "Teachers",
             href: "/list/teachers",
-            visible: ["admin", "registrar", "it_manager"],
+            visible: ["admin", "it_manager"],
           },
           {
             icon: <Users className="w-4 h-4" />,
             label: "Parents",
             href: "/list/parents",
-            visible: ["admin", "registrar", "it_manager"],
+            visible: ["admin", "it_manager"],
           },
         ],
       },
@@ -438,16 +433,10 @@ const menuItems: MenuSection[] = [
         visible: ["super_admin"],
       },
       {
-        icon: <Shield className="w-5 h-5" />,
-        label: "Roles & Permissions",
-        href: "/list/roles",
-        visible: ["super_admin"],
-      },
-      {
         icon: <ShieldCheck className="w-5 h-5" />,
         label: "Bulk User Creation",
         href: "/admin/bulk-upload",
-        visible: ["admin", "registrar", "it_manager"],
+        visible: ["admin", "it_manager"],
       },
       {
         icon: <Settings className="w-5 h-5" />,
@@ -474,7 +463,7 @@ const textRevealClass = (collapsed: boolean, expandedWidth = "max-w-[220px]") =>
 const Menu = ({
   collapsed = false,
   onItemClick,
-  useBrandNavigation = true,
+  useBrandNavigation = false,
 }: {
   collapsed?: boolean;
   onItemClick?: () => void;
@@ -855,7 +844,9 @@ const Menu = ({
               if (collapsed) {
                 const collapsedItemClasses = `flex h-12 w-12 items-center justify-center rounded-lg transition-colors ${
                   isActive && !parentWithSameChild
-                    ? "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
+                    ? useBrandNavigation
+                      ? "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
+                      : "bg-slate-200 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
                     : useBrandNavigation
                       ? "text-slate-800 hover:bg-white/55 dark:text-gray-200 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
                       : "text-slate-800 hover:bg-slate-100 dark:text-gray-200 dark:hover:bg-slate-800"
@@ -892,7 +883,7 @@ const Menu = ({
                     className={`relative flex items-center justify-start gap-3 rounded-lg transition-colors ${isActive && !parentWithSameChild
                       ? useBrandNavigation
                         ? "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
-                        : "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
+                        : "bg-slate-200 text-slate-900 font-medium shadow-sm dark:bg-slate-800 dark:text-white"
                       : useBrandNavigation
                         ? "text-slate-800 dark:text-gray-200 hover:bg-white/55 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
                         : "text-slate-800 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -946,7 +937,7 @@ const Menu = ({
                           )}
                         </button>
                       ) : isActive && !hasChildren && !parentWithSameChild ? (
-                        <div className="h-1.5 w-1.5 rounded-full bg-[var(--brand-color,#e35336)]" />
+                        <div className={`h-1.5 w-1.5 rounded-full ${useBrandNavigation ? "bg-[var(--brand-color,#e35336)]" : "bg-slate-500 dark:bg-slate-300"}`} />
                       ) : null}
                     </div>
                   </div>
@@ -967,7 +958,7 @@ const Menu = ({
                               isChildActive
                                 ? useBrandNavigation
                                   ? "bg-[rgba(var(--brand-color-rgb),0.34)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.34)] dark:text-white"
-                                  : "bg-[rgba(var(--brand-color-rgb),0.34)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.34)] dark:text-white"
+                                  : "bg-slate-200 text-slate-900 font-medium shadow-sm dark:bg-slate-800 dark:text-white"
                                 : useBrandNavigation
                                   ? "text-slate-600 dark:text-gray-300 hover:bg-white/55 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
                                   : "text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -979,7 +970,7 @@ const Menu = ({
                             <span className="min-w-0 flex-1 truncate text-sm">{child.label}</span>
                             <div className="ml-auto flex h-5 w-4 shrink-0 items-center justify-center">
                               {isChildActive && (
-                                <div className="h-1 w-1 rounded-full bg-[var(--brand-color,#e35336)]" />
+                                <div className={`h-1 w-1 rounded-full ${useBrandNavigation ? "bg-[var(--brand-color,#e35336)]" : "bg-slate-500 dark:bg-slate-300"}`} />
                               )}
                             </div>
                           </Link>

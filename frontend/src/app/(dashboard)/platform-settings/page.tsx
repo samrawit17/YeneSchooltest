@@ -2,36 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { platformSettingsAPI } from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { 
   Settings,
-  Save,
-  CheckCircle,
   AlertCircle,
   Building2,
   Mail,
-  MessageSquare,
-  CreditCard,
-  Shield,
   Wrench,
-  Palette,
-  Globe,
   Bell,
   Loader2,
-  FileJson,
-  BookOpen,
-  Truck,
-  Database,
-  Lock,
-  Zap
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface SettingItem {
   key: string;
@@ -60,33 +45,6 @@ const PLATFORM_SETTINGS_CONFIG: SettingItem[] = [
     category: 'platform',
     icon: <Wrench className="w-5 h-5" />,
   },
-  {
-    key: 'PLATFORM_VERSION',
-    label: 'Platform Version',
-    description: 'Current version of the platform',
-    type: 'string',
-    category: 'platform',
-    icon: <Database className="w-5 h-5" />,
-  },
-
-  // Branding
-  {
-    key: 'SAAS_NAME',
-    label: 'Platform Name',
-    description: 'Name of the SaaS platform displayed to users',
-    type: 'string',
-    category: 'branding',
-    icon: <Globe className="w-5 h-5" />,
-  },
-  {
-    key: 'SAAS_LOGO_URL',
-    label: 'Logo URL',
-    description: 'URL of the platform logo',
-    type: 'string',
-    category: 'branding',
-    icon: <Palette className="w-5 h-5" />,
-  },
-
   // Integrations
   {
     key: 'EMAIL_PROVIDER',
@@ -104,27 +62,14 @@ const PLATFORM_SETTINGS_CONFIG: SettingItem[] = [
     category: 'integrations',
     icon: <Bell className="w-5 h-5" />,
   },
-
-  // Security
-  {
-    key: 'DEFAULT_PERMISSIONS_TEMPLATE',
-    label: 'Default Permissions',
-    description: 'Default permission template for new schools',
-    type: 'json',
-    category: 'security',
-    icon: <Shield className="w-5 h-5" />,
-  },
 ];
 
 const CATEGORIES = [
   { id: 'platform', label: 'Platform', icon: <Settings className="w-4 h-4" /> },
-  { id: 'branding', label: 'Branding', icon: <Palette className="w-4 h-4" /> },
   { id: 'integrations', label: 'Integrations', icon: <Settings className="w-4 h-4" /> },
-  { id: 'security', label: 'Security', icon: <Lock className="w-4 h-4" /> },
 ];
 
 export default function PlatformSettingsPage() {
-  const { user } = useAuth();
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -256,7 +201,7 @@ export default function PlatformSettingsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-        <div className="max-w-6xl mx-auto">
+        <div>
           <div className="animate-pulse space-y-6">
             <div className="h-32 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -271,7 +216,7 @@ export default function PlatformSettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="space-y-6">
         {/* Header */}
         <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700">
           <CardContent className="p-6">

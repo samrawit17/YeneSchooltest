@@ -114,14 +114,6 @@ const SETTINGS_CONFIG: SettingItem[] = [
     systemDefault: true,
   },
   {
-    key: 'LATE_MARKING',
-    label: 'Late Marking',
-    description: 'Mark students as late if they arrive after threshold time',
-    type: 'boolean',
-    category: 'attendance',
-    systemDefault: true,
-  },
-  {
     key: 'ATTENDANCE_CUTOFF_TIME',
     label: 'Attendance Cutoff Time',
     description: 'Time after which missing attendance is marked (24-hour format)',
@@ -244,15 +236,6 @@ const SETTINGS_CONFIG: SettingItem[] = [
 
   // Advanced Settings (Ultimate only)
   {
-    key: 'ADVANCED_ANALYTICS',
-    label: 'Advanced Analytics',
-    description: 'Enable advanced analytics and reporting features',
-    type: 'boolean',
-    category: 'advanced',
-    systemDefault: false,
-    requiredTier: 'ULTIMATE',
-  },
-  {
     key: 'CUSTOM_BRANDING',
     label: 'Custom Branding',
     description: 'Enable custom branding and white-label options',
@@ -277,7 +260,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     description: 'Apply the brand accent tint to the navbar and sidebar menu',
     type: 'boolean',
     category: 'branding',
-    systemDefault: true,
+    systemDefault: false,
   },
 ];
 
@@ -1176,14 +1159,14 @@ export default function SchoolSettingsPage() {
               {savingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save Changes
             </Button>
-            <div className="-mx-3 max-w-[100vw] overflow-x-auto overflow-y-hidden px-3 pb-1 sm:-mx-4 sm:px-4 md:mx-0 md:max-w-full md:px-0 lg:w-auto">
-              <TabsList className="flex h-auto w-max min-w-0 flex-nowrap justify-start gap-1">
+            <div className="-mx-4 max-w-[100vw] overflow-x-auto overflow-y-hidden px-4 pb-2 md:mx-0 md:max-w-full md:px-0 lg:w-auto">
+              <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
                 {visibleCategories.slice(0, 6).map((category) => {
                   const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
                   const Icon = config?.icon || SettingsIcon;
                   return (
-                    <TabsTrigger key={category} value={category} className="shrink-0 gap-2 px-3 text-xs sm:text-sm">
-                      <Icon className="h-4 w-4 shrink-0" />
+                    <TabsTrigger key={category} value={category} className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
+                      <Icon className="h-3 w-3 shrink-0 md:h-4 md:w-4" />
                       <span>{config?.label || category}</span>
                     </TabsTrigger>
                   );

@@ -60,8 +60,6 @@ function UserDetailContent({ userId }: { userId: string }) {
 
   useEffect(() => {
     const userName = user?.name || "User Profile";
-    const canSeeUsersList =
-      currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "ADMIN";
 
     if (!breadcrumbSetRef.current && user) {
       breadcrumbSetRef.current = true;
@@ -70,7 +68,6 @@ function UserDetailContent({ userId }: { userId: string }) {
         { label: "List", isCurrent: false },
         {
           label: "Users",
-          href: canSeeUsersList ? "/list/users" : undefined,
           isCurrent: false,
         },
         { label: userName, isCurrent: true },
@@ -142,8 +139,9 @@ function UserDetailContent({ userId }: { userId: string }) {
   return (
     <UserDetailPage
       user={userDetail}
-      backUrl="/list/users"
-      backLabel="Users"
+      backUrl="/settings"
+      backLabel="Settings"
+      fullWidth
       onEdit={
         isViewedAdmin ? () => router.push(`/list/users/${userId}/edit`) : undefined
       }

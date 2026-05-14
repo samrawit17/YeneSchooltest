@@ -113,6 +113,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
     'finance:student_fees:generate',
     'finance:student_fees:read',
     'finance:payments:record',
+    'finance:payments:reverse',
     'finance:reports:read',
   ],
   [Role.IT_MANAGER]: [
@@ -161,6 +162,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
     'finance:student_fees:generate',
     'finance:student_fees:read',
     'finance:payments:record',
+    'finance:payments:reverse',
     'finance:reports:read',
   ],
   [Role.REGISTRAR]: [
@@ -300,6 +302,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
     'finance:student_fees:read',
     // Payments
     'finance:payments:record',
+    'finance:payments:reverse',
     // Reports
     'finance:reports:read',
     // Dashboard

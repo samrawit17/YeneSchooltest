@@ -24,10 +24,15 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
+    const normalizedUserRole = String(user?.role || '').trim().toUpperCase();
 
     // Logging removed for production
 
-    const isAllowed = user && requiredRoles.some((role) => role === user.role);
+    const isAllowed =
+      user &&
+      requiredRoles.some(
+        (role) => String(role || '').trim().toUpperCase() === normalizedUserRole,
+      );
     // Logging removed for production
 
     return isAllowed;

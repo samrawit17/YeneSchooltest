@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { authAPI, classesAPI, sectionsAPI } from "@/lib/api";
+import { authAPI, classesAPI, sectionsAPI, teachersAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useAuth } from "@/context/AuthContext";
@@ -79,6 +79,15 @@ function TeacherDetailContent({ teacherId }: { teacherId: string }) {
     enabled: !!teacher,
   });
 
+  const { data: teacherAssignments } = useQuery({
+    queryKey: [...queryKeys.teachers.detail(teacherId), "assignments"],
+    queryFn: async () => {
+      const response = await teachersAPI.getAssignments(teacherId);
+      return response.data;
+    },
+    enabled: !!teacher,
+  });
+
   // Set breadcrumbs with teacher name
   useEffect(() => {
     const teacherName = teacher?.name || "Teacher Profile";
@@ -137,6 +146,7 @@ function TeacherDetailContent({ teacherId }: { teacherId: string }) {
     staffId: teacherProfile.staffId || teacher.staffId,
     subjects: teacherProfile.subjects || [],
     assignedClasses,
+    teacherAssignments,
     employmentType: teacherProfile.employmentType || teacherProfile.employmentStatus,
     joiningDate: teacherProfile.joiningDate || teacher.createdAt,
     attendanceRate: teacherProfile.attendanceRate,
@@ -148,6 +158,7 @@ function TeacherDetailContent({ teacherId }: { teacherId: string }) {
   return (
     <UserDetailPage
       user={userDetail}
+      fullWidth
       backUrl="/list/teachers"
       backLabel="Teachers"
       onEdit={() => router.push(`/list/teachers/${teacherId}/edit`)}

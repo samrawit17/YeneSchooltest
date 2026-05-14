@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { parentsAPI } from "@/lib/api/people";
@@ -22,7 +22,6 @@ const SingleParentPage = ({ params }: PageProps) => {
   const [linkChildOpen, setLinkChildOpen] = useState(false);
   const { user } = useAuth();
   const { setItems } = useBreadcrumb();
-  const breadcrumbSetRef = useRef(false);
 
   const { data: parent, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.parents.detail(parentId),
@@ -37,8 +36,7 @@ const SingleParentPage = ({ params }: PageProps) => {
     const parentName = parent?.user?.name || parent?.name || "Parent Profile";
     const isAdmin = ((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') || user?.role === 'SUPER_ADMIN';
     
-    if (!breadcrumbSetRef.current && parent) {
-      breadcrumbSetRef.current = true;
+    if (parent) {
       setItems([
         { label: "Dashboard", href: "/dashboard", isCurrent: false },
         { label: "List", isCurrent: false },
@@ -111,6 +109,7 @@ const SingleParentPage = ({ params }: PageProps) => {
     <>
       <UserDetailPage
         user={userDetail}
+        fullWidth
         backUrl="/list/parents"
         backLabel="Parents"
         onEdit={() => router.push(`/list/parents/${parentId}/edit`)}

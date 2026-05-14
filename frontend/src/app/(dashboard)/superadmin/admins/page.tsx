@@ -109,7 +109,7 @@ const SuperAdminAdminsPage = () => {
   if (loading || authLoading) {
     return (
       <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-6xl mx-auto">
+        <div>
           <div className="mb-6">
             <Skeleton className="h-8 w-48 mb-2 dark:bg-gray-700" />
             <Skeleton className="h-4 w-64 dark:bg-gray-700" />
@@ -138,7 +138,7 @@ const SuperAdminAdminsPage = () => {
 
   return (
     <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-6xl mx-auto">
+      <div>
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">

@@ -56,7 +56,7 @@ const SETTINGS_CATEGORIES = [
     title: 'User Management',
     description: 'Manage users and access permissions',
     icon: <Users className="w-8 h-8" />,
-    href: '/list/users',
+    href: '/list/roles',
     color: 'bg-indigo-100 text-indigo-600',
   },
   {

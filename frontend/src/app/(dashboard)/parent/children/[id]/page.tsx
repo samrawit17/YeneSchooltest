@@ -29,6 +29,7 @@ import { parentsAPI } from "@/lib/api/people";
 import { gradingAPI } from "@/lib/api/assessment";
 import { termsAPI } from "@/lib/api/academics";
 import { communicationsAPI } from "@/lib/api/communications";
+import { reportCardsAPI } from "@/lib/api/reporting";
 import NewMessageModal from "@/components/communications/NewMessageModal";
 
 import {
@@ -205,7 +206,45 @@ const ChildDetailPage = () => {
           totalSubjects: 0,
         };
 
-        if (academicYearId && (childData?.studentId || studentUserId)) {
+        if (childData?.studentId || studentUserId) {
+          try {
+            const publishedCardsResponse = await reportCardsAPI.getPublishedForParent(
+              childData?.studentId || studentUserId,
+              {
+              ...(activeAcademicYear?.name ? { academicYear: activeAcademicYear.name } : {}),
+              ...(currentTerm?.name ? { term: currentTerm.name } : {}),
+              },
+            );
+
+            const publishedCards = Array.isArray(publishedCardsResponse.data)
+              ? publishedCardsResponse.data
+              : [];
+            const latestPublishedCard = publishedCards.sort((a, b) =>
+              new Date(b.publishedAt || b.updatedAt).getTime() -
+              new Date(a.publishedAt || a.updatedAt).getTime(),
+            )[0];
+
+            if (latestPublishedCard) {
+              const details = Array.isArray(latestPublishedCard.gradeDetails)
+                ? latestPublishedCard.gradeDetails
+                : [];
+              academicSummary = {
+                average: Number(latestPublishedCard.percentage) || academicSummary.average,
+                grade: latestPublishedCard.overallGrade || academicSummary.grade,
+                ranking:
+                  typeof latestPublishedCard.rankInClass === "number"
+                    ? latestPublishedCard.rankInClass
+                    : academicSummary.ranking,
+                totalStudents: academicSummary.totalStudents,
+                totalSubjects: details.length || academicSummary.totalSubjects,
+              };
+            }
+          } catch (reportCardError) {
+            console.error("Failed to fetch published report cards:", reportCardError);
+          }
+        }
+
+        if (academicYearId && (childData?.studentId || studentUserId) && academicSummary.totalSubjects === 0) {
           try {
             const gradesResponse = await gradingAPI.getChildGrades(
               childData?.studentId || studentUserId,
@@ -227,11 +266,11 @@ const ChildDetailPage = () => {
               totalStudents:
                 typeof summary.totalStudents === "number"
                   ? summary.totalStudents
-                  : null,
+                  : academicSummary.totalStudents,
               totalSubjects:
                 typeof summary.totalSubjects === "number"
                   ? summary.totalSubjects
-                  : 0,
+                  : academicSummary.totalSubjects,
             };
           } catch (gradesError) {
             console.error("Failed to fetch academic summary:", gradesError);
@@ -262,7 +301,7 @@ const ChildDetailPage = () => {
           email: childData?.email || studentUser?.email || null,
           admissionDate: childData?.admissionDate || studentProfile?.createdAt || "",
           academicYear: childData?.academicYear || studentProfile?.academicYear || undefined,
-          parentName: childData?.parent?.user?.name || undefined,
+          parentName: childData?.parentName || childData?.parent?.user?.name || undefined,
           teachingTeachers: childData?.teachingTeachers || [],
           homeroomTeacher: childData?.homeroomTeacher || null,
         });
@@ -324,7 +363,10 @@ const ChildDetailPage = () => {
   }, [child, setItems]);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "N/A";
+    return date.toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
       year: "numeric"
@@ -332,7 +374,9 @@ const ChildDetailPage = () => {
   };
 
   const getAge = (dateOfBirth: string) => {
+    if (!dateOfBirth) return null;
     const dob = new Date(dateOfBirth);
+    if (Number.isNaN(dob.getTime())) return null;
     const today = new Date();
     let age = today.getFullYear() - dob.getFullYear();
     const monthDiff = today.getMonth() - dob.getMonth();
@@ -394,7 +438,7 @@ const ChildDetailPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
       <div className="p-4 md:p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="space-y-6">
 
 
           {/* Large Child Profile Card */}
@@ -409,7 +453,7 @@ const ChildDetailPage = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h1 className="text-2xl font-bold text-[#e35336]">
+                    <h1 className="text-2xl font-bold text-black dark:text-white">
                       {child.name}
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-1">
@@ -424,9 +468,6 @@ const ChildDetailPage = () => {
                       </Badge>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         Student Code: {child.studentCode}
-                      </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {academicYearLabel || "-"}
                       </span>
                     </div>
                     <div className="mt-4">
@@ -504,7 +545,8 @@ const ChildDetailPage = () => {
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Date of Birth</p>
                       <p className="font-medium text-gray-900 dark:text-white">
-                        {formatDate(child.dateOfBirth)} ({getAge(child.dateOfBirth)} years)
+                        {formatDate(child.dateOfBirth)}
+                        {getAge(child.dateOfBirth) !== null ? ` (${getAge(child.dateOfBirth)} years)` : ""}
                       </p>
                     </div>
                   </div>

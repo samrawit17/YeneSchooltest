@@ -29,9 +29,7 @@ export {
 export { assessmentsAPI, examsAPI, gradingAPI } from "./api/assessment";
 export {
   entryProgressAPI,
-  type AssessmentType as EntryProgressAssessmentType,
   type EntryProgressQuery,
-  type EntryProgressResponse,
   type EntryProgressRow,
 } from "./api/entry-progress";
 export { financeAPI } from "./api/finance";

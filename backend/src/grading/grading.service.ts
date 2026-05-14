@@ -22,6 +22,10 @@ import {
   GradeStatus,
 } from './dto/grading.dto';
 import { CacheService } from '../infrastructure/cache/cache.service';
+import {
+  NotificationService,
+  NotificationType,
+} from '../notification/notification.service';
 
 // Default grading scale (Ethiopian context)
 const DEFAULT_GRADE_SCALE = [
@@ -45,6 +49,7 @@ export class GradingService {
     private prisma: PrismaService,
     private academicYearService: AcademicYearService,
     private cacheService: CacheService,
+    private notificationService: NotificationService,
   ) {}
 
   private getStudentGradesNamespace(studentId: string) {
@@ -115,6 +120,23 @@ export class GradingService {
     return componentMap;
   }
 
+  private getEffectiveAssessmentMaxScore(
+    storedMaxScore: number,
+    componentPercentage?: number | null,
+  ) {
+    if (
+      storedMaxScore === 100 &&
+      componentPercentage !== undefined &&
+      componentPercentage !== null &&
+      componentPercentage > 0 &&
+      componentPercentage <= 100
+    ) {
+      return Number(componentPercentage);
+    }
+
+    return Number(storedMaxScore);
+  }
+
   private buildLegacyScoresFromComponents(
     componentScores: Array<{ code: string; score: number | null | undefined }>,
   ) {
@@ -143,7 +165,11 @@ export class GradingService {
 
   private async normalizeComponentPayload(
     schoolId: string,
-    componentScores?: Array<{ code: string; score?: number | null }>,
+    componentScores?: Array<{
+      code: string;
+      score?: number | null;
+      assessmentSubjectId?: string;
+    }>,
   ) {
     if (!componentScores || componentScores.length === 0) {
       return [];
@@ -151,13 +177,41 @@ export class GradingService {
 
     const componentMap = await this.getSchoolGradingComponentsMap(schoolId);
 
-    return componentScores
+    return Promise.all(componentScores
       .filter((item) => item && item.code)
-      .map((item) => {
+      .map(async (item) => {
         const code = String(item.code).toUpperCase();
         const component = componentMap.get(code);
-        const maxScore = Number(component?.percentage ?? 100);
+        if (!component) {
+          throw new BadRequestException(
+            `${code} is not configured for this school`,
+          );
+        }
+
+        let maxScore = Number(component.percentage);
         const score = item.score ?? null;
+
+        if (item.assessmentSubjectId) {
+          const assessmentSubject = await this.prisma.assessmentSubject.findFirst({
+            where: {
+              id: item.assessmentSubjectId,
+              assessment: {
+                schoolId,
+                type: code as any,
+              },
+            },
+            select: {
+              maxScore: true,
+            },
+          });
+
+          if (assessmentSubject) {
+            maxScore = this.getEffectiveAssessmentMaxScore(
+              assessmentSubject.maxScore,
+              component?.percentage,
+            );
+          }
+        }
 
         if (score !== null && (score < 0 || score > maxScore)) {
           throw new BadRequestException(`${code} max score is ${maxScore}`);
@@ -169,7 +223,7 @@ export class GradingService {
           maxScore,
           componentId: component?.id ?? null,
         };
-      });
+      }));
   }
 
   private calculateTotalFromComponentScores(
@@ -485,6 +539,7 @@ export class GradingService {
     const { isCleared } = await this.verifyFinancialClearance(
       studentId,
       academicYearId,
+      undefined,
       true,
     );
 
@@ -585,7 +640,7 @@ export class GradingService {
     subjectId: string,
   ) {
     await this.assertTermIsOpen(termId, true);
-    await this.resolveTeacherGradingAccess(
+    const access = await this.resolveTeacherGradingAccess(
       teacherId,
       academicYear,
       classId,
@@ -605,6 +660,9 @@ export class GradingService {
       }),
       120,
       async () => {
+        const gradingComponentMap = await this.getSchoolGradingComponentsMap(
+          access.schoolId,
+        );
         const assessmentSubjects = await this.prisma.assessmentSubject.findMany({
           where: {
             classId,
@@ -634,13 +692,17 @@ export class GradingService {
             const existing = map.get(code);
 
             if (!existing || (!existing.started && started)) {
+              const component = gradingComponentMap.get(code);
               map.set(code, {
                 code,
                 assessmentSubjectId: item.id,
                 startDate: item.assessment.startDate.toISOString(),
                 status: item.assessment.status,
                 started,
-                maxScore: item.maxScore,
+                maxScore: this.getEffectiveAssessmentMaxScore(
+                  item.maxScore,
+                  component?.percentage,
+                ),
               });
             }
 
@@ -816,10 +878,24 @@ export class GradingService {
   async verifyFinancialClearance(
     studentId: string,
     academicYearId: string,
+    termId?: string,
     checkOverdueOnly: boolean = true,
   ): Promise<{ isCleared: boolean; outstandingFees: any[] }> {
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: {
+        OR: [{ id: studentId }, { userId: studentId }],
+      },
+      select: { id: true, userId: true },
+    });
+
+    if (!studentProfile) {
+      throw new NotFoundException('Student not found');
+    }
+
     const whereClause: any = {
-      studentId,
+      studentId: {
+        in: [studentProfile.id, studentProfile.userId].filter(Boolean) as string[],
+      },
       academicYearId,
       status: { not: 'PAID' },
     };
@@ -831,7 +907,75 @@ export class GradingService {
 
     const outstandingFees = await this.prisma.studentFee.findMany({
       where: whereClause,
+      include: {
+        payments: true,
+      },
     });
+
+    if (termId) {
+      const academicYear = await this.prisma.academicYear.findUnique({
+        where: { id: academicYearId },
+        select: {
+          schoolId: true,
+        },
+      });
+
+      const terms = await this.prisma.term.findMany({
+        where: { academicYearId },
+        orderBy: { order: 'asc' },
+        select: { id: true },
+      });
+
+      const schoolSettings = academicYear?.schoolId
+        ? await this.prisma.schoolSetting.findFirst({
+            where: {
+              schoolId: academicYear.schoolId,
+              key: 'curriculum_type',
+            },
+            select: { value: true },
+          })
+        : null;
+
+      const curriculumTypeMap: Record<string, number> = {
+        QUARTER: 4,
+        QUARTERLY: 4,
+        SEMESTER: 2,
+        TERM: 3,
+        MONTH: 12,
+        MONTHLY: 12,
+        YEAR: 1,
+        YEARLY: 1,
+      };
+
+      const configuredPeriodCount =
+        curriculumTypeMap[String(schoolSettings?.value || '').toUpperCase()] || 0;
+      const periodCount = terms.length || configuredPeriodCount || 1;
+
+      const termBoundOutstanding = outstandingFees.filter(
+        (fee) => fee.termId && fee.termId === termId,
+      );
+      const annualOutstanding = outstandingFees.filter((fee) => !fee.termId);
+
+      const annualBlockingFees = annualOutstanding.filter((fee) => {
+        const paidAmount =
+          fee.payments
+            ?.filter((payment) => payment.termId === termId)
+            .reduce((sum, payment) => sum + payment.amountPaid, 0) || 0;
+        const requiredPerPeriod =
+          periodCount > 0 ? Number(fee.finalAmount || 0) / periodCount : Number(fee.finalAmount || 0);
+        return paidAmount + 0.0001 < requiredPerPeriod;
+      });
+
+      const filteredOutstandingFees = [
+        ...termBoundOutstanding,
+        ...annualBlockingFees,
+      ];
+
+      return {
+        isCleared: filteredOutstandingFees.length === 0,
+        outstandingFees: filteredOutstandingFees,
+      };
+    }
 
     return {
       isCleared: outstandingFees.length === 0,
@@ -850,6 +994,7 @@ export class GradingService {
     const { isCleared } = await this.verifyFinancialClearance(
       studentId,
       academicYearId,
+      undefined,
       false, // Check all unpaid, not just overdue
     );
 
@@ -1014,6 +1159,10 @@ export class GradingService {
             gradePoint,
             remark: dto.remark,
             teacherId,
+            status: GradeStatus.DRAFT,
+            submittedById: null,
+            approvedById: null,
+            registrarComment: null,
           },
           include: {
             student: true,
@@ -1200,6 +1349,10 @@ export class GradingService {
               gradePoint,
               remark: gradeDto.remark,
               teacherId,
+              status: GradeStatus.DRAFT,
+              submittedById: null,
+              approvedById: null,
+              registrarComment: null,
             },
           });
           if (normalizedComponentScores.length > 0) {
@@ -2484,6 +2637,16 @@ export class GradingService {
         class: true,
         section: true,
         term: true,
+        gradeScores: {
+          include: {
+            component: {
+              select: {
+                code: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: [{ term: { order: 'asc' } }, { subject: { name: 'asc' } }],
     });
@@ -2518,12 +2681,22 @@ export class GradingService {
         period: term.name,
         periodIndex: termIndex,
         termId: term.id,
+        startDate: term.startDate,
+        endDate: term.endDate,
         grades: termGrades,
         subjectCount: termGrades.length,
         average: termAverage,
         gpa: termGPA,
       };
     });
+
+    const now = new Date();
+    const currentPeriod =
+      periods.find((period) => {
+        const startDate = period.startDate ? new Date(period.startDate) : null;
+        const endDate = period.endDate ? new Date(period.endDate) : null;
+        return !!startDate && !!endDate && startDate <= now && endDate >= now;
+      }) || null;
 
     // Calculate ranking (compare with other students in same class)
     let rank: number | null = null;
@@ -2575,6 +2748,7 @@ export class GradingService {
       curriculumType,
       periodCount,
       academicYear: academicYearData,
+      currentPeriodTermId: currentPeriod?.termId || null,
     };
   }
 
@@ -2611,13 +2785,31 @@ export class GradingService {
     }
 
     const academicYearName = academicYear.name;
+    const termName = termId
+      ? (
+          await this.prisma.term.findFirst({
+            where: { id: termId, academicYearId },
+            select: { name: true },
+          })
+        )?.name
+      : null;
 
-    // Get all classes in the school
+    const normalizedSectionId =
+      sectionId && sectionId !== 'all' ? sectionId : undefined;
+    const selectedGrade = classId ? Number(classId) : Number.NaN;
+    const classSelector = classId
+      ? Number.isInteger(selectedGrade)
+        ? { grade: selectedGrade }
+        : { id: classId }
+      : {};
+
+    // Get all classes in the school. The rankings page uses the shared
+    // "Grade" filter, so classId may be either a real class id or a grade value.
     const classes = await this.prisma.class.findMany({
       where: {
         schoolId: academicYear.schoolId,
         academicYearId,
-        ...(classId ? { id: classId } : {}),
+        ...classSelector,
       },
       include: {
         sections: { select: { name: true } },
@@ -2638,8 +2830,8 @@ export class GradingService {
       if (termId) {
         gradeWhere.termId = termId;
       }
-      if (sectionId) {
-        gradeWhere.sectionId = sectionId;
+      if (normalizedSectionId) {
+        gradeWhere.sectionId = normalizedSectionId;
       }
 
       const studentGrades = await this.prisma.subjectGrade.findMany({
@@ -2658,7 +2850,7 @@ export class GradingService {
         where: {
           classId: classItem.id,
           academicYear: academicYearName,
-          ...(sectionId ? { sectionId } : {}),
+          ...(normalizedSectionId ? { sectionId: normalizedSectionId } : {}),
         },
         include: {
           student: {
@@ -2707,9 +2899,15 @@ export class GradingService {
       }
 
       // Calculate rankings
-      const rankings = Array.from(studentAverages.entries())
-        .map(([studentId, data]) => {
+      const rankings = await Promise.all(
+        Array.from(studentAverages.entries()).map(async ([studentId, data]) => {
           const studentInfo = studentMap.get(studentId);
+          const average = Math.round((data.total / data.count) * 100) / 100;
+          const { gradeLetter, gradePoint } = await this.getGradeFromScore(
+            academicYear.schoolId,
+            average,
+          );
+
           return {
             studentId,
             studentName: studentInfo?.name || 'Unknown',
@@ -2718,10 +2916,12 @@ export class GradingService {
             classId: classItem.id,
             sectionId: studentInfo?.sectionId || '',
             sectionName: studentInfo?.sectionName || '',
-            average: Math.round((data.total / data.count) * 100) / 100,
+            average,
+            gradeLetter,
+            gradePoint,
           };
-        })
-        .sort((a, b) => b.average - a.average);
+        }),
+      ).then((rows) => rows.sort((a, b) => b.average - a.average));
 
       // Add rank to results
       rankings.forEach((rank, index) => {
@@ -2738,12 +2938,14 @@ export class GradingService {
           rank: index + 1,
           totalStudents: rankings.length,
           average: rank.average,
+          gradeLetter: rank.gradeLetter,
+          gradePoint: rank.gradePoint,
         });
       });
     }
 
-    const filteredResults = sectionId
-      ? results.filter((result) => result.sectionId === sectionId)
+    const filteredResults = normalizedSectionId
+      ? results.filter((result) => result.sectionId === normalizedSectionId)
       : results;
 
     const allStudentAverages = filteredResults.map((r) => r.average);
@@ -2776,15 +2978,113 @@ export class GradingService {
         attendance: 0, // Would need to fetch from attendance
       }));
 
+    let updatedReportCards = 0;
+    let notifiedParents = 0;
+    if (termName) {
+      const academicYearKeys = Array.from(
+        new Set([academicYearId, academicYearName].filter(Boolean)),
+      );
+      const parentUserIds = new Set<string>();
+
+      for (const result of filteredResults) {
+        const updateResult = await this.prisma.reportCard.updateMany({
+          where: {
+            studentId: result.studentId,
+            classId: result.classId,
+            academicYear: { in: academicYearKeys },
+            term: termName,
+            ...(normalizedSectionId
+              ? { sectionId: normalizedSectionId }
+              : {}),
+          },
+          data: {
+            rank: result.rank,
+            rankInClass: result.rank,
+          },
+        });
+        updatedReportCards += updateResult.count;
+      }
+
+      if (updatedReportCards > 0) {
+        const updatedCards = await this.prisma.reportCard.findMany({
+          where: {
+            studentId: {
+              in: filteredResults.map((result) => result.studentId),
+            },
+            classId: {
+              in: Array.from(
+                new Set(filteredResults.map((result) => result.classId)),
+              ),
+            },
+            academicYear: { in: academicYearKeys },
+            term: termName,
+            ...(normalizedSectionId
+              ? { sectionId: normalizedSectionId }
+              : {}),
+          },
+          select: {
+            student: {
+              select: {
+                studentProfile: {
+                  select: {
+                    parents: {
+                      select: {
+                        parent: {
+                          select: {
+                            userId: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        for (const card of updatedCards) {
+          for (const relation of card.student.studentProfile?.parents ?? []) {
+            if (relation.parent.userId) {
+              parentUserIds.add(relation.parent.userId);
+            }
+          }
+        }
+
+        if (parentUserIds.size > 0) {
+          const notification = await this.notificationService.createBulkNotifications({
+            schoolId: academicYear.schoolId,
+            userIds: Array.from(parentUserIds),
+            title: 'Student Ranking Updated',
+            message: `${termName} rankings have been calculated and are available in your child results.`,
+            type: NotificationType.GRADE_UPDATED,
+            actionUrl: '/parent/children',
+            metadata: {
+              academicYearId,
+              academicYear: academicYearName,
+              termId,
+              term: termName,
+              classId: classId || null,
+              sectionId: normalizedSectionId || null,
+            },
+          });
+          notifiedParents = notification.count;
+        }
+      }
+    }
+
     return {
       calculated: new Date().toISOString(),
       academicYear: academicYear.name,
       termId: termId || 'All Terms',
+      termName: termName || 'All Terms',
       results: filteredResults,
       topStudents,
       totalStudents,
       classAverage,
       passRate,
+      updatedReportCards,
+      notifiedParents,
     };
   }
 
@@ -2914,8 +3214,22 @@ export class GradingService {
     academicYear: string,
     term: string,
   ) {
+    const academicYearRecord = await this.prisma.academicYear.findFirst({
+      where: {
+        schoolId,
+        OR: [{ id: academicYear }, { name: academicYear }],
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const academicYearId = academicYearRecord?.id ?? academicYear;
+    const academicYearName = academicYearRecord?.name ?? academicYear;
+
     const assignments = await this.prisma.teacherSubjectAssignment.findMany({
-      where: { schoolId, academicYear, isActive: true },
+      where: { schoolId, academicYear: academicYearId, isActive: true },
       include: {
         subject: true,
         class: true,
@@ -2927,9 +3241,10 @@ export class GradingService {
       assignments.map(async (assignment) => {
         const totalStudents = await this.prisma.studentClass.count({
           where: {
+            schoolId,
             classId: assignment.classId,
             sectionId: assignment.sectionId,
-            academicYear,
+            academicYear: academicYearName,
           },
         });
 
@@ -2938,10 +3253,15 @@ export class GradingService {
             subjectId: assignment.subjectId,
             classId: assignment.classId,
             sectionId: assignment.sectionId,
-            academicYear,
+            academicYear: academicYearId,
             termId: term,
           },
         });
+
+        const safeEnteredGrades =
+          totalStudents > 0 ? Math.min(enteredGrades, totalStudents) : enteredGrades;
+        const percentage =
+          totalStudents > 0 ? (safeEnteredGrades / totalStudents) * 100 : 100;
 
         return {
           subject: assignment.subject.name,
@@ -2949,9 +3269,8 @@ export class GradingService {
           section: assignment.section.name,
           teacherId: assignment.teacherId,
           totalStudents,
-          enteredGrades,
-          percentage:
-            totalStudents > 0 ? (enteredGrades / totalStudents) * 100 : 100,
+          enteredGrades: safeEnteredGrades,
+          percentage,
         };
       }),
     );

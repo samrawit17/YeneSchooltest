@@ -346,7 +346,10 @@ export class ParentService {
 
   async getParentById(parentId: string, schoolId: string) {
     const parent = await this.prismaService.parentProfile.findFirst({
-      where: { id: parentId, schoolId },
+      where: {
+        schoolId,
+        OR: [{ id: parentId }, { userId: parentId }],
+      },
       include: {
         user: {
           select: { id: true, name: true, email: true, phone: true, lastLoginAt: true, isActive: true },
@@ -431,6 +434,11 @@ export class ParentService {
     if (!parentProfile) {
       throw new NotFoundException('Parent profile not found');
     }
+
+    const parentUser = await this.prismaService.user.findUnique({
+      where: { id: parentProfile.userId },
+      select: { id: true, name: true, email: true, phone: true },
+    });
 
     const children = await this.prismaService.parentStudent.findMany({
       where: { parentId: parentProfile.id },
@@ -519,6 +527,13 @@ export class ParentService {
           student: {
             ...child.student,
             id: child.student.userId,
+          },
+          parentName: parentUser?.name || null,
+          parent: {
+            id: parentProfile.id,
+            userId: parentProfile.userId,
+            relation: child.relation,
+            user: parentUser,
           },
           curriculumType,
           periodCount,
@@ -960,6 +975,13 @@ export class ParentService {
         student: {
           ...child.student,
           id: child.student.userId,
+        },
+        parentName: parentUser?.name || null,
+        parent: {
+          id: parentProfile.id,
+          userId: parentProfile.userId,
+          relation: child.relation,
+          user: parentUser,
         },
         homeroomTeacher: teacherData.homeroomTeacher,
         teachingTeachers: teacherData.teachingTeachers,

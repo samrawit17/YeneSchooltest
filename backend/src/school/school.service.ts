@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { generateEnrollmentKey } from '../common/utils/enrollment.util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -22,9 +23,14 @@ export interface UpdateSchoolDto {
 
 @Injectable()
 export class SchoolService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private platformSettingsService: PlatformSettingsService,
+  ) {}
 
   async createSchool(createSchoolDto: CreateSchoolDto) {
+    await this.enforceMaxSchoolsAllowed();
+
     const { name, email, address, phone } = createSchoolDto;
     const enrollmentKey = generateEnrollmentKey(name);
 
@@ -37,6 +43,41 @@ export class SchoolService {
         ...(phone && { phone }),
       },
     });
+  }
+
+  private async enforceMaxSchoolsAllowed() {
+    const rawLimit = await this.platformSettingsService.getSetting(
+      'MAX_SCHOOLS_ALLOWED',
+    );
+    const maxSchoolsAllowed = this.parsePositiveInteger(rawLimit);
+
+    if (!maxSchoolsAllowed) {
+      return;
+    }
+
+    const currentSchoolCount = await this.prismaService.school.count();
+
+    if (currentSchoolCount >= maxSchoolsAllowed) {
+      throw new HttpException(
+        `Maximum schools limit reached. The platform allows ${maxSchoolsAllowed} school${maxSchoolsAllowed === 1 ? '' : 's'}.`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  private parsePositiveInteger(value: unknown): number | null {
+    if (typeof value === 'number') {
+      return Number.isInteger(value) && value > 0 ? value : null;
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      const parsed = Number(trimmed);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    return null;
   }
 
   async getSchools() {

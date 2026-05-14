@@ -12,28 +12,15 @@ export class SearchController {
     const schoolId = req.user.schoolId;
     const role = req.user.role;
 
-    // Return available categories even for empty queries
-    const categories = await this.searchService.getSearchCategories(
-      schoolId,
-      role,
-    );
+    const categories = this.searchService.getSearchCategories(schoolId, role);
 
     if (!query || query.trim().length === 0) {
       return {
         data: [],
-        permissions: categories.categories,
-        labels: categories.labels,
+        permissions: categories,
       };
     }
 
     return this.searchService.globalSearch(query.trim(), schoolId, role);
-  }
-
-  @Get('categories')
-  async getCategories(@Request() req) {
-    const schoolId = req.user.schoolId;
-    const role = req.user.role;
-
-    return this.searchService.getSearchCategories(schoolId, role);
   }
 }

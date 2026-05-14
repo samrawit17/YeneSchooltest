@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { academicYearsAPI, financeAPI, gradingAPI } from "@/lib/api";
+import { academicYearsAPI, financeAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
+import { reportCardsAPI } from "@/lib/api/reporting";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import {
   User,
@@ -20,6 +21,7 @@ import {
   ChevronDown,
   Loader2,
   Award,
+  Trophy,
 } from "lucide-react";
 
 // Shadcn/ui Components
@@ -35,6 +37,14 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Recharts for charts
 import {
@@ -66,6 +76,7 @@ interface Child {
   feeBalance: number;
   totalPaid: number;
   totalDue: number;
+  feePeriods?: FeePeriodSummary[];
   reportCard: {
     status: string;
     percentage: number | null;
@@ -83,6 +94,23 @@ interface Child {
   }[];
 }
 
+interface FeePeriodSummary {
+  id: string;
+  name: string;
+  totalDue: number;
+  totalPaid: number;
+  balance: number;
+}
+
+interface TopRankChild {
+  childName: string;
+  reportCardId: string;
+  rank: number;
+  term: string;
+  percentage: number | null;
+  grade: string | null;
+}
+
 interface SubjectGrade {
   id: string;
   subject: { id: string; name: string };
@@ -97,6 +125,45 @@ interface SubjectGrade {
   gradePoint: number | null;
   remark: string | null;
 }
+
+const formatBirr = (amount: number) => `Brr ${Math.round(amount).toLocaleString()}`;
+
+const buildFeePeriodSummary = (feeData: any): FeePeriodSummary[] => {
+  const terms = Array.isArray(feeData?.terms) ? feeData.terms : [];
+  const feeItems = Array.isArray(feeData?.feeItems) ? feeData.feeItems : [];
+  const payments = Array.isArray(feeData?.payments) ? feeData.payments : [];
+
+  if (terms.length === 0) {
+    return [];
+  }
+
+  return terms.map((term: any) => {
+    const termId = String(term.id || term.termId || term.name);
+    const termName = String(term.name || term.period || "Period");
+    let totalDue = 0;
+
+    for (const item of feeItems) {
+      const amount = Number(item.amount) || 0;
+      if (item.isYearWide) {
+        totalDue += amount / terms.length;
+      } else if (item.termId === termId || item.termName === termName) {
+        totalDue += amount;
+      }
+    }
+
+    const totalPaid = payments
+      .filter((payment: any) => payment.termId === termId || payment.termName === termName)
+      .reduce((sum: number, payment: any) => sum + (Number(payment.amount) || 0), 0);
+
+    return {
+      id: termId,
+      name: termName,
+      totalDue: Math.round(totalDue * 100) / 100,
+      totalPaid: Math.round(totalPaid * 100) / 100,
+      balance: Math.max(0, Math.round((totalDue - totalPaid) * 100) / 100),
+    };
+  });
+};
 
 interface AcademicYear {
   id: string;
@@ -223,6 +290,7 @@ const getGradeStatus = (avg: number): { text: string; color: string } => {
 
 const ParentDashboard = () => {
   const { displayTermName, periodLabel } = useAcademicYear();
+  const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -234,6 +302,8 @@ const ParentDashboard = () => {
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [childGrades, setChildGrades] = useState<Record<string, SubjectGrade[]>>({});
   const [gradesLoading, setGradesLoading] = useState(false);
+  const [topRankChild, setTopRankChild] = useState<TopRankChild | null>(null);
+  const [showRankCongrats, setShowRankCongrats] = useState(false);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -272,6 +342,8 @@ const ParentDashboard = () => {
           activeYearId = years[0].id;
         }
         setSelectedYear(activeYearId);
+        const activeYearName =
+          years.find((year: any) => year.id === activeYearId)?.name || "";
 
         const enhancedChildren = await Promise.all(
           (data.stats?.children || []).map(async (child: Child) => {
@@ -283,6 +355,7 @@ const ParentDashboard = () => {
             let feeBalance = 0;
             let totalPaid = 0;
             let totalDue = 0;
+            let feePeriods: FeePeriodSummary[] = [];
           
             if (schoolId && academicYearId) {
               try {
@@ -293,6 +366,7 @@ const ParentDashboard = () => {
                   totalPaid = feeData.summary.totalPaid || 0;
                   totalDue = feeData.summary.totalFees || 0;
                 }
+                feePeriods = buildFeePeriodSummary(feeData);
               } catch (feeError) {
                 console.error("Could not fetch fee data for child:", child.id, feeError);
               }
@@ -304,6 +378,7 @@ const ParentDashboard = () => {
               feeBalance,
               totalPaid,
               totalDue,
+              feePeriods,
               grades: Array.isArray(child.grades) ? child.grades : [],
               attendanceTrend: Array.isArray(child.attendanceTrend)
                 ? child.attendanceTrend
@@ -314,16 +389,42 @@ const ParentDashboard = () => {
 
         // Fetch grades for all children
         const gradesMap: Record<string, SubjectGrade[]> = {};
+        let topRankCandidate: TopRankChild | null = null;
         setGradesLoading(true);
         for (const child of enhancedChildren) {
           const childId = child.userId || child.id;
           if (activeYearId && childId) {
             try {
-              const gradesRes = await gradingAPI.getChildGrades(childId, {
-                academicYear: activeYearId,
+              const gradesRes = await reportCardsAPI.getPublishedForParent(childId, {
+                ...(activeYearName ? { academicYear: activeYearName } : {}),
               });
-              const gradesData = Array.isArray(gradesRes.data) ? gradesRes.data : (gradesRes.data?.data || []);
-              gradesMap[childId] = gradesData as SubjectGrade[];
+              const publishedCards = Array.isArray(gradesRes.data) ? gradesRes.data : [];
+              const latestPublishedCard = publishedCards.sort((a, b) =>
+                new Date(b.publishedAt || b.updatedAt).getTime() -
+                new Date(a.publishedAt || a.updatedAt).getTime(),
+              )[0];
+              if (
+                !topRankCandidate &&
+                typeof latestPublishedCard?.rankInClass === "number" &&
+                latestPublishedCard.rankInClass >= 1 &&
+                latestPublishedCard.rankInClass <= 3
+              ) {
+                const storageKey = `parent-rank-congrats:${latestPublishedCard.id}:${latestPublishedCard.rankInClass}`;
+                if (typeof window !== "undefined" && !window.localStorage.getItem(storageKey)) {
+                  topRankCandidate = {
+                    childName: child.name,
+                    reportCardId: latestPublishedCard.id,
+                    rank: latestPublishedCard.rankInClass,
+                    term: latestPublishedCard.term,
+                    percentage: latestPublishedCard.percentage,
+                    grade: latestPublishedCard.overallGrade,
+                  };
+                }
+              }
+              const gradesData = Array.isArray(latestPublishedCard?.gradeDetails)
+                ? latestPublishedCard.gradeDetails
+                : [];
+              gradesMap[childId] = gradesData as unknown as SubjectGrade[];
             } catch (gradeError) {
               console.error("Could not fetch grades for child:", childId, gradeError);
               gradesMap[childId] = [];
@@ -332,6 +433,10 @@ const ParentDashboard = () => {
         }
         setChildGrades(gradesMap);
         setGradesLoading(false);
+        if (topRankCandidate) {
+          setTopRankChild(topRankCandidate);
+          setShowRankCongrats(true);
+        }
 
         const normalizedData = {
           ...data,
@@ -358,6 +463,16 @@ const ParentDashboard = () => {
     fetchDashboard();
   }, []);
 
+  const closeRankCongrats = () => {
+    if (topRankChild && typeof window !== "undefined") {
+      window.localStorage.setItem(
+        `parent-rank-congrats:${topRankChild.reportCardId}:${topRankChild.rank}`,
+        "dismissed",
+      );
+    }
+    setShowRankCongrats(false);
+  };
+
   if (loading || initialLoad) {
     return <ParentDashboardSkeleton />;
   }
@@ -383,6 +498,41 @@ const ParentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+      <Dialog open={showRankCongrats} onOpenChange={(open) => {
+        if (!open) closeRankCongrats();
+        else setShowRankCongrats(true);
+      }}>
+        <DialogContent className="max-w-md border-[rgba(var(--brand-color-rgb),0.22)] bg-white text-center dark:border-[rgba(var(--brand-color-rgb),0.3)] dark:bg-slate-900" customCloseButton={false}>
+          <DialogHeader className="items-center text-center">
+            <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
+              <Trophy className="h-9 w-9" />
+            </div>
+            <DialogTitle className="text-2xl text-slate-900 dark:text-white">
+              Congratulations!
+            </DialogTitle>
+            <DialogDescription className="text-base text-slate-600 dark:text-slate-300">
+              {topRankChild?.childName || "Your child"} ranked #{topRankChild?.rank} in {topRankChild?.term || "the latest published result"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.06)] p-4 dark:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]">
+            <p className="text-sm text-slate-600 dark:text-slate-300">Overall result</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">
+              {topRankChild?.percentage ?? "-"}%
+            </p>
+            <p className="mt-1 text-sm font-medium text-[var(--brand-color,#e35336)]">
+              {topRankChild?.grade || "Published result"}
+            </p>
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <Button onClick={closeRankCongrats} className="bg-[var(--brand-color,#e35336)] text-white hover:opacity-90">
+              Continue
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/parent/grades")}>
+              View Results
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
@@ -729,32 +879,60 @@ const ParentDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Total Paid</span>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        Brr {selectedChild?.totalPaid || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Total Due</span>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        Brr {selectedChild?.totalDue || 0}
-                      </span>
-                    </div>
-                    <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">Balance</span>
-                        <span
-                          className={`text-lg font-bold ${
-                            (selectedChild?.feeBalance || 0) > 0
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-emerald-600 dark:text-emerald-400"
-                          }`}
-                        >
-                          Brr {selectedChild?.feeBalance || 0}
-                        </span>
+                    {selectedChild?.feePeriods?.length ? (
+                      <div className="space-y-3">
+                        {selectedChild.feePeriods.map((period) => (
+                          <div
+                            key={period.id}
+                            className="rounded-md border border-gray-100 p-3 dark:border-slate-700"
+                          >
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {period.name}
+                              </span>
+                              <span
+                                className={`text-sm font-bold ${
+                                  period.balance > 0
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "text-emerald-600 dark:text-emerald-400"
+                                }`}
+                              >
+                                {formatBirr(period.balance)}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                              <div>
+                                <span className="block">Paid</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {formatBirr(period.totalPaid)}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="block">Due</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {formatBirr(period.totalDue)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">Balance</span>
+                          <span
+                            className={`text-lg font-bold ${
+                              (selectedChild?.feeBalance || 0) > 0
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-emerald-600 dark:text-emerald-400"
+                            }`}
+                          >
+                            {formatBirr(selectedChild?.feeBalance || 0)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                     {(selectedChild?.totalDue || 0) > 0 && (
                       <Button
                         className="w-full mt-2"

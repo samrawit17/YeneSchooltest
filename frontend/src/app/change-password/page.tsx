@@ -208,8 +208,8 @@ const ChangePasswordPage = () => {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/50 mb-4">
-            <KeyRound className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ backgroundColor: 'rgba(var(--brand-color-rgb, 227, 83, 54), 0.1)' }}>
+            <KeyRound className="w-8 h-8" style={{ color: 'var(--brand-color, #e35336)' }} />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Change Your Password</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-2">
@@ -386,6 +386,7 @@ const ChangePasswordPage = () => {
                   type="submit"
                   disabled={isLoading}
                   className="w-full"
+                  style={{ backgroundColor: 'var(--brand-color, #e35336)' }}
                 >
                   {isLoading ? (
                     <div className="flex items-center gap-2">
