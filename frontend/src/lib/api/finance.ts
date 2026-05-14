@@ -50,12 +50,17 @@ export const financeAPI = {
     schoolId: string;
     studentFeeId: string;
     studentId: string;
+    termId?: string;
     amountPaid: number;
     paymentMethod: 'CASH' | 'BANK_TRANSFER' | 'CHEQUE';
     transactionReference?: string;
     paymentDate?: string;
     notes?: string;
   }) => api.post('/finance/payments/record', data),
+  reversePayment: (paymentId: string, data: { schoolId: string; reason?: string }) =>
+    api.post(`/finance/payments/${paymentId}/reverse`, data),
+  sendPeriodFeeReminders: (data: { schoolId: string; termId: string }) =>
+    api.post('/finance/reminders/period-fees', data),
   getAllPayments: (params: { schoolId: string }) => api.get('/finance/payments', { params }),
   getDailyReport: (params: {
     schoolId: string;
@@ -70,8 +75,8 @@ export const financeAPI = {
     api.get('/finance/reports/outstanding', { params: { schoolId, academicYearId, termId } }),
   getStudentPaymentHistory: (studentId: string, schoolId: string) =>
     api.get(`/finance/reports/student/${studentId}/history`, { params: { schoolId } }),
-  getStudentFees: (studentId: string, schoolId: string, academicYearId?: string) =>
-    api.get(`/finance/student-fees/${studentId}`, { params: { schoolId, academicYearId } }),
+  getStudentFees: (studentId: string, schoolId: string, academicYearId?: string, termId?: string) =>
+    api.get(`/finance/student-fees/${studentId}`, { params: { schoolId, academicYearId, termId } }),
   calculateInstallmentFees: (data: {
     schoolId: string;
     academicYearId: string;

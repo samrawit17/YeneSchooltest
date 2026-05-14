@@ -248,6 +248,7 @@ export const teachersAPI = {
     subject?: string;
   }) => api.get('/teachers', { params }),
   getById: (id: string) => api.get(`/teachers/${id}`),
+  getAssignments: (id: string) => api.get(`/teachers/${id}/assignments`),
   getMyAssignments: () => api.get('/teachers/me/assignments'),
   update: (id: string, data: { name?: string; phone?: string; address?: string }) =>
     api.put(`/users/${id}`, data),

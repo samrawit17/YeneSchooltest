@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { academicYearsAPI, gradingAPI } from "@/lib/api";
 import { toast } from "sonner";
 import {
@@ -65,6 +66,7 @@ interface Term {
 export default function StudentGradesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const { setItems } = useBreadcrumb();
 
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
@@ -114,6 +116,14 @@ export default function StudentGradesPage() {
     if (authLoading || initialLoad) return;
     fetchGrades();
   }, [selectedYear, selectedTerm, authLoading, initialLoad]);
+
+  useEffect(() => {
+    setItems([
+      { label: "Dashboard", href: "/student", isCurrent: false },
+      { label: "My Grades", isCurrent: true },
+    ]);
+    return () => setItems(null);
+  }, [setItems]);
 
   const fetchGrades = async () => {
     setLoading(true);
@@ -199,242 +209,134 @@ export default function StudentGradesPage() {
   const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
 
   return (
-    <div className="container mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BookOpen className="h-6 w-6" />
-            My Grades & Results
-          </h1>
-          <p className="text-muted-foreground">
-            View your academic performance, grades and results
-          </p>
-        </div>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Download Report Card
-        </Button>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+      <div className="p-4 md:p-6 lg:p-8 space-y-6">
 
-      {/* GPA Overview - Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Overall GPA
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-4xl font-bold ${getGPAColor(overallGPA)}`}>
-              {overallGPA.toFixed(1)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Out of 4.0
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <BookOpen className="h-6 w-6 text-primary" />
+              My Grades & Results
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              View your academic performance, grades and results
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Average Score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold">
-              {averageScore}%
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Percentage
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Highest Score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold text-green-600">
-              {highestScore}%
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Best subject
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Subjects Completed
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold">
-              {grades.length}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              This year
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Academic Year</label>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Years" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Years</SelectItem>
-                  {academicYears.map(year => (
-                    <SelectItem key={year.id} value={year.id}>
-                      {year.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Term</label>
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Terms" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Terms</SelectItem>
-                  {terms.map(term => (
-                    <SelectItem key={term.id} value={term.id}>
-                      {term.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Grades by Term */}
-      {loading ? (
-        <div className="flex items-center justify-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Download Report Card
+          </Button>
         </div>
-      ) : grades.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            No grades found for the selected criteria
-          </CardContent>
-        </Card>
-      ) : (
-        Object.entries(groupedByTerm).map(([termName, termGrades]) => (
-          <Card key={termName}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">{termName}</CardTitle>
-                <CardDescription>
-                  Term Average: {calculateTermAverage(termGrades)}%
-                </CardDescription>
-              </div>
-              <Badge variant="outline" className="text-lg">
-                {calculateTermAverage(termGrades)}%
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4">
-                {termGrades.map(grade => (
-                  <div
-                    key={grade.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold ${getGradeColor(grade.gradeLetter)}`}>
-                        {grade.gradeLetter || "-"}
-                      </div>
-                      <div>
-                        <h3 className="font-medium">{grade.subject.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {grade.class.name} - {grade.section.name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-8">
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">CA</p>
-                        <p className="font-medium">{grade.caScore ?? "-"}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Mid</p>
-                        <p className="font-medium">{grade.midScore ?? "-"}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Final</p>
-                        <p className="font-medium">{grade.finalScore ?? "-"}</p>
-                      </div>
-                      <div className="text-center min-w-[80px]">
-                        <p className="text-xs text-muted-foreground">Total</p>
-                        <p className="font-bold text-lg">{grade.totalScore ?? "-"}</p>
-                      </div>
-                      {grade.remark && (
-                        <div className="text-center min-w-[120px]">
-                          <p className="text-xs text-muted-foreground">Remark</p>
-                          <p className="font-medium text-sm italic">"{grade.remark}"</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+
+        {/* Stats Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-700 rounded-lg overflow-hidden">
+          {[
+            { label: "Overall GPA", value: overallGPA.toFixed(1), suffix: "/ 4.0", color: getGPAColor(overallGPA) },
+            { label: "Average Score", value: `${averageScore}%`, suffix: "Percentage", color: "text-slate-900 dark:text-white" },
+            { label: "Highest Score", value: `${highestScore}%`, suffix: "Best subject", color: "text-green-600" },
+            { label: "Subjects", value: grades.length, suffix: "This year", color: "text-slate-900 dark:text-white" },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white dark:bg-slate-800 p-4 md:p-5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">{stat.label}</p>
+              <p className={`text-3xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{stat.suffix}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="w-56">
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Years" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Years</SelectItem>
+                {academicYears.map(year => (
+                  <SelectItem key={year.id} value={year.id}>{year.name}</SelectItem>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))
-      )}
-
-      {/* Grade Scale Reference */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Grade Scale</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-5 gap-4">
-            <div className="text-center p-3 bg-green-100 rounded-lg">
-              <div className="text-2xl font-bold text-green-800">A</div>
-              <div className="text-sm text-green-700">90-100</div>
-              <div className="text-xs text-green-600">4.0 GPA</div>
-            </div>
-            <div className="text-center p-3 bg-blue-100 rounded-lg">
-              <div className="text-2xl font-bold text-blue-800">B</div>
-              <div className="text-sm text-blue-700">80-89</div>
-              <div className="text-xs text-blue-600">3.5 GPA</div>
-            </div>
-            <div className="text-center p-3 bg-yellow-100 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-800">C</div>
-              <div className="text-sm text-yellow-700">70-79</div>
-              <div className="text-xs text-yellow-600">3.0 GPA</div>
-            </div>
-            <div className="text-center p-3 bg-orange-100 rounded-lg">
-              <div className="text-2xl font-bold text-orange-800">D</div>
-              <div className="text-sm text-orange-700">60-69</div>
-              <div className="text-xs text-orange-600">2.5 GPA</div>
-            </div>
-            <div className="text-center p-3 bg-red-100 rounded-lg">
-              <div className="text-2xl font-bold text-red-800">F</div>
-              <div className="text-sm text-red-700">0-59</div>
-              <div className="text-xs text-red-600">0.0 GPA</div>
-            </div>
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+          <div className="w-56">
+            <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Terms" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Terms</SelectItem>
+                {terms.map(term => (
+                  <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Grades by Term */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : grades.length === 0 ? (
+          <div className="text-center py-20 text-sm text-slate-400 dark:text-slate-500">
+            No grades found for the selected criteria
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(groupedByTerm).map(([termName, termGrades]) => (
+              <div key={termName}>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{termName}</h2>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                    Term Average: <span className="font-semibold text-slate-900 dark:text-white">{calculateTermAverage(termGrades)}%</span>
+                  </span>
+                </div>
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-800">
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Subject</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CA</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mid</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Final</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Grade</th>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Remark</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {termGrades.map(grade => (
+                        <tr key={grade.id} className="bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800">
+                          <td className="py-3 px-4">
+                            <p className="font-medium text-slate-900 dark:text-white">{grade.subject.name}</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">{grade.class.name} - {grade.section.name}</p>
+                          </td>
+                          <td className="py-3 px-4 text-center text-slate-700 dark:text-slate-300">{grade.caScore ?? "-"}</td>
+                          <td className="py-3 px-4 text-center text-slate-700 dark:text-slate-300">{grade.midScore ?? "-"}</td>
+                          <td className="py-3 px-4 text-center text-slate-700 dark:text-slate-300">{grade.finalScore ?? "-"}</td>
+                          <td className="py-3 px-4 text-center font-bold text-slate-900 dark:text-white">{grade.totalScore ?? "-"}</td>
+                          <td className="py-3 px-4 text-center">
+                            {grade.gradeLetter ? (
+                              <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${getGradeColor(grade.gradeLetter)}`}>
+                                {grade.gradeLetter}
+                              </span>
+                            ) : "-"}
+                          </td>
+                          <td className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 italic">{grade.remark ? `"${grade.remark}"` : "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }

@@ -11,41 +11,66 @@ export function ToastProvider() {
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#1e293b',
-            color: '#fff',
+            background: 'hsl(var(--background))',
+            color: 'hsl(var(--foreground))',
+            width: 'auto',
+            minWidth: '360px',
+            maxWidth: 'min(92vw, 640px)',
             borderRadius: '12px',
             padding: '16px',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-            border: 'none',
+            boxShadow: '0 10px 40px rgba(15, 23, 42, 0.18)',
+            border: '1px solid hsl(var(--border))',
           },
           icons: {
-            success: <CheckCircle className="w-5 h-5 text-green-400" />,
-            error: <XCircle className="w-5 h-5 text-red-400" />,
-            info: <Info className="w-5 h-5 text-blue-400" />,
-            warning: <AlertCircle className="w-5 h-5 text-yellow-400" />,
+            success: <CheckCircle className="w-5 h-5 text-primary" />,
+            error: <XCircle className="w-5 h-5 text-primary" />,
+            info: <Info className="w-5 h-5 text-primary" />,
+            warning: <AlertCircle className="w-5 h-5 text-primary" />,
           },
         }}
         className="sonner-toaster"
       />
       <style jsx global>{`
         .sonner-toaster [data-type="success"] {
-          border-left: 4px solid #22c55e !important;
-          background: #14532d !important;
+          border-left: 4px solid hsl(var(--primary)) !important;
         }
         .sonner-toaster [data-type="error"] {
-          border-left: 4px solid #ef4444 !important;
-          background: #7f1d1d !important;
+          border-left: 4px solid hsl(var(--primary)) !important;
         }
         .sonner-toaster [data-type="info"] {
-          border-left: 4px solid #3b82f6 !important;
-          background: #1e3a5f !important;
+          border-left: 4px solid hsl(var(--primary)) !important;
         }
         .sonner-toaster [data-type="warning"] {
-          border-left: 4px solid #eab308 !important;
-          background: #713f12 !important;
+          border-left: 4px solid hsl(var(--primary)) !important;
+        }
+        .sonner-toaster [data-sonner-toast] {
+          width: auto !important;
+          min-width: 360px !important;
+          max-width: min(92vw, 640px) !important;
+        }
+        .sonner-toaster [data-content] {
+          width: max-content !important;
+          max-width: calc(min(92vw, 640px) - 96px) !important;
+        }
+        .sonner-toaster [data-description] {
+          white-space: normal !important;
+        }
+        .sonner-toaster [data-button],
+        .sonner-toaster [data-action] {
+          background: hsl(var(--primary)) !important;
+          color: hsl(var(--primary-foreground)) !important;
+          border-radius: 8px !important;
+          border: 1px solid hsl(var(--primary)) !important;
+        }
+        .sonner-toaster [data-cancel] {
+          background: hsl(var(--secondary)) !important;
+          color: hsl(var(--secondary-foreground)) !important;
+          border-radius: 8px !important;
+          border: 1px solid hsl(var(--border)) !important;
         }
         .sonner-toaster [data-close-button] {
-          background: rgba(255,255,255,0.1) !important;
+          background: hsl(var(--secondary)) !important;
+          color: hsl(var(--secondary-foreground)) !important;
           border-radius: 8px !important;
           width: 28px !important;
           height: 28px !important;
@@ -55,16 +80,16 @@ export function ToastProvider() {
           transition: all 0.2s ease !important;
         }
         .sonner-toaster [data-close-button]:hover {
-          background: rgba(255,255,255,0.2) !important;
+          background: hsl(var(--accent)) !important;
           transform: scale(1.05) !important;
         }
         .sonner-toaster [data-close-button] svg {
-          color: #94a3b8 !important;
+          color: hsl(var(--muted-foreground)) !important;
           width: 14px !important;
           height: 14px !important;
         }
         .sonner-toaster [data-close-button]:hover svg {
-          color: #fff !important;
+          color: hsl(var(--foreground)) !important;
         }
         @keyframes slideIn {
           from {

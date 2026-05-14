@@ -54,6 +54,35 @@ export class EnrollmentRequestService {
     private readonly credentialService: CredentialService,
   ) {}
 
+  async getPublicSchools() {
+    const schools = await this.prisma.school.findMany({
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        logoUrl: true,
+        schoolSettings: {
+          where: {
+            key: 'theme_color',
+          },
+          select: {
+            value: true,
+          },
+          take: 1,
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return schools.map((school) => ({
+      id: school.id,
+      name: school.name,
+      code: school.code,
+      logoUrl: school.logoUrl,
+      accentColor: school.schoolSettings[0]?.value || null,
+    }));
+  }
+
   /**
    * Calculate roll number based on alphabetical order
    * Gets the highest roll number in the section and adds 1

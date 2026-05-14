@@ -51,6 +51,36 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const isRegistrar = user?.role?.toUpperCase() === 'REGISTRAR';
   const isTeacher = user?.role?.toUpperCase() === 'TEACHER';
 
+  const { data: activeAcademicYear } = useQuery({
+    queryKey: queryKeys.academicYears.active(user?.schoolId),
+    queryFn: async () => {
+      const response = await academicYearsAPI.getActive({ schoolId: user?.schoolId });
+      return response.data;
+    },
+    enabled: !!user?.schoolId,
+  });
+
+  const { data: curriculumInfo } = useQuery({
+    queryKey: ["student-finance-curriculum", user?.schoolId, activeAcademicYear?.id],
+    queryFn: async () => {
+      const response = await financeAPI.getCurriculumInfo(user?.schoolId || "", activeAcademicYear?.id || "");
+      return response.data;
+    },
+    enabled: !!user?.schoolId && !!activeAcademicYear?.id && !isTeacher,
+  });
+
+  const currentTermId = (() => {
+    const terms = curriculumInfo?.terms || [];
+    const today = new Date();
+    const current = terms.find((term: any) => {
+      if (!term.startDate || !term.endDate) return false;
+      const start = new Date(term.startDate);
+      const end = new Date(term.endDate);
+      return today >= start && today <= end;
+    });
+    return current?.id;
+  })();
+
   // Fetch student data first
   const { data: student, isLoading, error } = useQuery({
     queryKey: queryKeys.students.detail(studentId),
@@ -120,7 +150,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
   // Fetch fee data
   const { data: feeData } = useQuery({
-    queryKey: queryKeys.students.fees(studentId, user?.schoolId),
+    queryKey: [...queryKeys.students.fees(studentId, user?.schoolId), activeAcademicYear?.id],
     queryFn: async () => {
       const schoolId = user?.schoolId || '';
       // First get the student to find the userId
@@ -128,15 +158,14 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
       const studentData = studentResponse.data;
       const userId = studentData?.user?.id || studentId;
       
-      // Get fees for ALL academic years (no academicYearId filter)
-      const response = await financeAPI.listStudentFees({ 
-        studentId: userId, 
+      const response = await financeAPI.getStudentFees(
+        userId,
         schoolId,
-        limit: 100,
-      });
+        activeAcademicYear?.id,
+      );
       return response.data;
     },
-    enabled: !!studentId && !!user?.schoolId && !isTeacher,
+    enabled: !!studentId && !!user?.schoolId && !!activeAcademicYear?.id && !isTeacher,
   });
 
   // Fetch academic years to map IDs to names
@@ -233,22 +262,56 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
     attendanceData?.summary?.attendancePercentage || 
     0;
 
-  // Calculate fee summary
-  // Backend returns: totalFee, paidAmount, remainingBalance (not amount, amountPaid)
-  const rawFees = feeData?.data || feeData || [];
-  
-  // Transform fees to include academic year name
-  const fees = rawFees.map((fee: any) => {
-    const yearName = academicYears?.find((y: any) => y.id === fee.academicYearId || y.id === fee.schoolAcademicYearId)?.name;
-    return {
-      ...fee,
-      academicYear: yearName || fee.academicYear || fee.schoolAcademicYear?.name || '-'
+  const feeItems = Array.isArray(feeData?.feeItems) ? feeData.feeItems : [];
+  const terms = Array.isArray(curriculumInfo?.terms) ? curriculumInfo.terms : [];
+  const installmentCount = terms.length > 0 ? terms.length : 1;
+  const fees = feeItems.flatMap((fee: any) => {
+    const baseFee = {
+      feeType: fee.name,
+      academicYear: activeAcademicYear?.name || '-',
     };
+
+    if (fee.termName || !fee.isYearWide || installmentCount <= 1) {
+      return [{
+        id: fee.id,
+        ...baseFee,
+        scopeLabel: fee.termName || 'Whole Academic Year',
+        amount: fee.amount || 0,
+        paidAmount: fee.paidAmount || 0,
+        remainingBalance: fee.balance || 0,
+        status: fee.status,
+      }];
+    }
+
+    const perPeriodAmount = Math.round(((fee.amount || 0) / installmentCount) * 100) / 100;
+    let remainingPaid = fee.paidAmount || 0;
+
+    return terms.map((term: any, index: number) => {
+      const paidForPeriod = Math.max(0, Math.min(perPeriodAmount, remainingPaid));
+      remainingPaid = Math.max(0, remainingPaid - perPeriodAmount);
+      const remainingBalance = Math.max(0, perPeriodAmount - paidForPeriod);
+      const status =
+        remainingBalance <= 0
+          ? 'PAID'
+          : paidForPeriod > 0
+            ? 'PARTIAL'
+            : 'PENDING';
+
+      return {
+        id: `${fee.id}-${term.id || index}`,
+        ...baseFee,
+        scopeLabel: term.name,
+        amount: perPeriodAmount,
+        paidAmount: paidForPeriod,
+        remainingBalance,
+        status,
+      };
+    });
   });
 
-  const totalFeeAmount = fees.reduce((sum: number, f: any) => sum + (f.totalFee || f.finalAmount || 0), 0);
-  const totalPaidAmount = fees.reduce((sum: number, f: any) => sum + (f.paidAmount || 0), 0);
-  const totalOutstanding = fees.reduce((sum: number, f: any) => sum + (f.remainingBalance || 0), 0);
+  const totalFeeAmount = feeData?.summary?.totalFees || 0;
+  const totalPaidAmount = feeData?.summary?.totalPaid || 0;
+  const totalOutstanding = feeData?.summary?.totalBalance || 0;
 
   const userDetail: UserDetailData = {
     id: student.id,
@@ -277,6 +340,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
       totalAmount: totalFeeAmount,
       paidAmount: totalPaidAmount,
       outstandingAmount: totalOutstanding,
+      periodLabel: activeAcademicYear?.name || null,
       fees: fees,
     },
     activityLog: student.activityLog,
@@ -308,6 +372,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
         backUrl="/list/students"
         backLabel="Students"
         viewerRole={user?.role}
+        fullWidth
         onEdit={isRegistrar ? handleEditClick : undefined}
         onResetPassword={isRegistrar ? () => {} : undefined}
         onDeactivate={isRegistrar ? () => {} : undefined}

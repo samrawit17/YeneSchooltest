@@ -409,6 +409,15 @@ export class GradingController {
   }
 
   /**
+   * Get grading components for parents viewing published report cards
+   */
+  @Get('parent/grading-components')
+  @Roles(Role.PARENT)
+  async getParentGradingComponents(@Request() req: AuthRequest) {
+    return this.gradingService.getGradingComponents(req.user.schoolId);
+  }
+
+  /**
    * Get assessment types config (admin only)
    */
   @Get('admin/assessment-types')
@@ -558,6 +567,7 @@ export class GradingController {
     @Request() req: AuthRequest,
     @Query('studentId') studentId: string,
     @Query('academicYear') academicYear: string,
+    @Query('termId') termId?: string,
     @Query('checkOverdueOnly') checkOverdueOnly: string = 'true',
   ) {
     // For students/parents, verify they can only check their own
@@ -579,6 +589,7 @@ export class GradingController {
     return this.gradingService.verifyFinancialClearance(
       studentId,
       academicYear,
+      termId,
       checkOverdueOnly === 'true',
     );
   }

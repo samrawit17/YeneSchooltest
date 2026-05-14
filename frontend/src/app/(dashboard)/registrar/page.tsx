@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { dashboardAPI } from "@/lib/api/admin";
 import { toast } from "sonner";
 import {
@@ -10,15 +11,13 @@ import {
   UserCheck,
   UserX,
   FileText,
-  Calendar,
   TrendingUp,
   AlertCircle,
   Bell,
   Clock,
   CheckCircle,
   XCircle,
-  Download,
-  RefreshCw,
+
   BarChart3,
   PieChart,
   LineChart,
@@ -100,15 +99,26 @@ interface DashboardResponse {
     academicYear?: string;
     term?: string;
     generatedAt: Date;
+    curriculum?: {
+      curriculumType: string;
+      academicYear: string;
+      periods: Array<{
+        id: string;
+        name: string;
+        order: number;
+        percentageWeight: number;
+        isLocked: boolean;
+      }>;
+    };
   };
 }
 
 export default function RegistrarDashboard() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { displayTermName } = useAcademicYear();
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<string>("month");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
 
   useEffect(() => {
@@ -209,32 +219,6 @@ export default function RegistrarDashboard() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleRefresh = () => {
-    fetchDashboardData();
-    toast.success("Dashboard refreshed");
-  };
-
-  const handleExportData = () => {
-    if (!dashboardData) return;
-    
-    const exportData = {
-      metadata: dashboardData.metadata,
-      stats: dashboardData.stats,
-      generatedAt: new Date().toISOString(),
-    };
-    
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = `registrar-dashboard-export-${new Date().toISOString().split('T')[0]}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-    
-    toast.success('Dashboard data exported');
   };
 
   const handleQuickAction = (action: QuickAction) => {
@@ -406,7 +390,7 @@ export default function RegistrarDashboard() {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-[var(--brand-color, #e35336)] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 dark:text-gray-400">Loading registrar dashboard...</p>
         </div>
       </div>
@@ -422,7 +406,7 @@ export default function RegistrarDashboard() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <h1 className="text-2xl font-bold text-[#e35336]">
+            <h1 className="text-2xl font-bold text-[var(--brand-color, #e35336)]">
               Welcome to the Registrar Dashboard, {user?.name || 'User'}!
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
@@ -437,43 +421,43 @@ export default function RegistrarDashboard() {
   // Registrar-specific quick actions
   const registrarQuickActions = [
     {
-      label: "New Enrollment",
-      url: "/registrar/enrollments/new",
+      label: "Enrollment",
+      url: "/admin/enrollment",
       icon: "UserCheck"
     },
     {
       label: "View Applications",
-      url: "/registrar/enrollments/pending",
+      url: "/admin/enrollment",
       icon: "FileText"
     },
     {
       label: "Manage Students",
-      url: "/registrar/students",
+      url: "/list/students",
       icon: "Users"
     },
     {
       label: "Fee Management",
-      url: "/registrar/fees",
+      url: "/list/finance",
       icon: "CreditCard"
     },
     {
       label: "Class Allocation",
-      url: "/registrar/classes",
+      url: "/admin/class-sections",
       icon: "GraduationCap"
     },
     {
       label: "Reports",
-      url: "/registrar/reports",
+      url: "/registrar/grading",
       icon: "BarChart3"
     },
     {
       label: "Settings",
-      url: "/registrar/settings",
+      url: "/settings",
       icon: "Settings"
     },
     {
       label: "School Calendar",
-      url: "/registrar/calendar",
+      url: "/list/calendar",
       icon: "Calendar"
     }
   ];
@@ -484,50 +468,19 @@ export default function RegistrarDashboard() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-[#e35336]">Registrar Dashboard</h1>
+            <h1 className="text-2xl font-bold text-[var(--brand-color, #e35336)]">Registrar Dashboard</h1>
             <div className="flex items-center gap-2 mt-2">
               <p className="text-gray-600 dark:text-gray-400">
                 Welcome back, <span className="font-semibold text-gray-900 dark:text-white">{user?.name || 'Registrar'}</span>
               </p>
-              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full">
-                Registrar
-              </span>
             </div>
-            {dashboardData.metadata.academicYear && (
-              <div className="flex items-center gap-2 mt-2">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  Academic Year: {dashboardData.metadata.academicYear}
-                  {dashboardData.metadata.term && ` • Term ${dashboardData.metadata.term}`}
-                </span>
-              </div>
-            )}
           </div>
           <div className="flex items-center gap-3">
-            <select 
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="week">Last Week</option>
-              <option value="month">Last Month</option>
-              <option value="quarter">Last Quarter</option>
-              <option value="year">Last Year</option>
-            </select>
-            <button
-              onClick={handleRefresh}
-              className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              title="Refresh"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleExportData}
-              className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-              title="Export Data"
-            >
-              <Download className="w-5 h-5" />
-            </button>
+            {displayTermName && (
+              <span className="text-base font-bold text-black dark:text-white sm:text-xl">
+                {displayTermName}
+              </span>
+            )}
           </div>
         </div>
 
@@ -638,109 +591,7 @@ export default function RegistrarDashboard() {
           </div>
         )}
 
-        {/* Quick Actions Grid */}
-        {/* (Quick actions can be added here) */}
 
-        {/* Additional Stats and Recent Activity */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 w-full max-w-7xl mx-auto">
-          {/* Recent Applications */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
-            <div className="flex items-center justify-between mb-4 md:mb-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Recent Applications</h3>
-              <span className="text-sm text-blue-600 hover:underline cursor-pointer">View All</span>
-            </div>
-            
-            <div className="space-y-4">
-              {[
-                { name: "John Smith", grade: "Grade 5", status: "pending", date: "2 hours ago" },
-                { name: "Emma Wilson", grade: "Grade 3", status: "approved", date: "4 hours ago" },
-                { name: "Michael Brown", grade: "Grade 7", status: "pending", date: "1 day ago" },
-                { name: "Sarah Johnson", grade: "Grade 2", status: "rejected", date: "2 days ago" },
-                { name: "David Lee", grade: "Grade 4", status: "approved", date: "3 days ago" },
-              ].map((app, index) => (
-                <div key={index} className="flex items-center justify-between p-2 md:p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors gap-2">
-                  <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      app.status === 'approved' ? 'bg-green-100 dark:bg-green-900/30' : 
-                      app.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-red-100 dark:bg-red-900/30'
-                    }`}>
-                      {app.status === 'approved' ? (
-                        <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                      ) : app.status === 'pending' ? (
-                        <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 dark:text-white truncate text-sm">{app.name}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{app.grade}</p>
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                      app.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' : 
-                      app.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200'
-                    }`}>
-                      {app.status}
-                    </span>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 hidden md:block">{app.date}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Upcoming Deadlines */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
-            <div className="flex items-center justify-between mb-4 md:mb-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Upcoming Deadlines</h3>
-              <span className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">View Calendar</span>
-            </div>
-            
-            <div className="space-y-4">
-              {[
-                { title: "Term 1 Fee Due", date: "Mar 15, 2024", type: "fee" },
-                { title: "New Enrollment Deadline", date: "Mar 20, 2024", type: "enrollment" },
-                { title: "Mid-term Reports", date: "Mar 25, 2024", type: "report" },
-                { title: "Parent-Teacher Meeting", date: "Mar 30, 2024", type: "meeting" },
-                { title: "Academic Year Planning", date: "Apr 5, 2024", type: "planning" },
-              ].map((deadline, index) => (
-                <div key={index} className="flex items-center justify-between p-2 md:p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors gap-2">
-                  <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      deadline.type === 'fee' ? 'bg-red-100 dark:bg-red-900/30' : 
-                      deadline.type === 'enrollment' ? 'bg-blue-100 dark:bg-blue-900/30' : 
-                      deadline.type === 'report' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-purple-100 dark:bg-purple-900/30'
-                    }`}>
-                      {deadline.type === 'fee' ? (
-                        <CreditCard className="w-5 h-5 text-red-600 dark:text-red-400" />
-                      ) : deadline.type === 'enrollment' ? (
-                        <UserCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                      ) : deadline.type === 'report' ? (
-                        <FileText className="w-5 h-5 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 dark:text-white text-sm truncate">{deadline.title}</p>
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-500 dark:text-gray-400">
-                        <Calendar className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
-                        <span className="truncate">{deadline.date}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                    {index === 0 ? "Today" : index === 1 ? "5 days" : `${index + 7} days`}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-
-        </div>
       </div>
     </div>
   );

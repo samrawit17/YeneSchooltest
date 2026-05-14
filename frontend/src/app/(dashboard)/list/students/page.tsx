@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { studentsAPI } from "@/lib/api";
 import { bulkUploadAPI } from "@/lib/api/bulk-upload";
 import { queryKeys } from "@/lib/query-keys";
@@ -13,9 +13,6 @@ import { useAuth } from "@/context/AuthContext";
 import { Filters, useFilters } from "@/components/filters/Filters";
 import {
   UserPlus,
-  Eye,
-  Trash2,
-  Edit2,
   Filter,
   Search,
   X,
@@ -64,6 +61,7 @@ interface Student {
   section?: string;
   rollNumber?: string;
   parentName?: string;
+  parentPhone?: string;
   user?: {
     id: string;
     email: string;
@@ -89,6 +87,7 @@ interface StudentsResponse {
 const StudentsListPage = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   // Check if user is registrar
   const isRegistrar = user?.role?.toUpperCase() === 'REGISTRAR';
@@ -414,13 +413,17 @@ const StudentsListPage = () => {
                     <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Grade</TableHead>
                     <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Section</TableHead>
                     <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent</TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent Phone</TableHead>
                     <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Status</TableHead>
-                    <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {students.map((student) => (
-                    <TableRow key={student.id} className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <TableRow
+                      key={student.id}
+                      className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
+                      onClick={() => router.push(`/list/students/${student.id}`)}
+                    >
                       <TableCell className="px-4 py-3">
                         <Avatar className="w-10 h-10">
                           <AvatarFallback className="text-sm">
@@ -446,38 +449,13 @@ const StudentsListPage = () => {
                       <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                         {student.parentName || "-"}
                       </TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                        {student.parentPhone || "-"}
+                      </TableCell>
                       <TableCell className="px-4 py-3 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(student.enrollmentStatus, student.user?.isActive || false)}`}>
                           {getStatusText(student.enrollmentStatus, student.user?.isActive || false)}
                         </span>
-                      </TableCell>
-                      <TableCell className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <Link
-                            href={`/list/students/${student.id}`}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                            title="View"
-                          >
-                            <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400 hover:text-[#e35336]" />
-                          </Link>
-                          {isRegistrar && (
-                            <>
-                              <Link
-                                href={`/list/students/${student.id}/edit`}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                                title="Edit"
-                              >
-                                <Edit2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                              </Link>
-                              <button
-                                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                              </button>
-                            </>
-                          )}
-                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

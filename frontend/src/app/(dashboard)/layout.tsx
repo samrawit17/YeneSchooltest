@@ -9,8 +9,8 @@ import Navbar from "@/components/Navbar";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import FloatingAiAssistant from "@/components/FloatingAiAssistant";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { schoolsAPI, schoolSettingsAPI } from "@/lib/api";
+import { Wrench } from "lucide-react";
+import { platformSettingsAPI, schoolsAPI, schoolSettingsAPI } from "@/lib/api";
 import { APP_VERSION } from "@/lib/version";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentEthiopianYear } from "@/lib/calendar-utils";
@@ -81,7 +81,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
@@ -143,23 +143,53 @@ export default function DashboardLayout({
   const { data: useBrandColorInNavigation } = useQuery({
     queryKey: queryKeys.school.setting('BRAND_COLOR_IN_NAVIGATION', user?.schoolId),
     queryFn: async () => {
-      if (!user?.schoolId) return true;
+      if (!user?.schoolId) return false;
       try {
         const response = await schoolSettingsAPI.get(user.schoolId, 'BRAND_COLOR_IN_NAVIGATION');
-        return response.data?.value ?? true;
+        return response.data?.value ?? false;
       } catch {
-        return true;
+        return false;
       }
     },
     enabled: !!user?.schoolId,
     staleTime: 60000,
-    initialData: cachedBrandSettings?.useBrandNavigation,
   });
 
   const brandNavigationEnabled = normalizeBrandNavigationSetting(
     useBrandColorInNavigation,
-    cachedBrandSettings?.useBrandNavigation ?? true
+    false
   );
+
+  const {
+    data: platformFlags,
+    isLoading: isPlatformFlagsLoading,
+    refetch: refetchPlatformFlags,
+  } = useQuery({
+    queryKey: queryKeys.menu.platformSettings,
+    queryFn: async () => {
+      const response = await platformSettingsAPI.getFlags();
+      return response.data || {};
+    },
+    enabled: isAuthenticated,
+    staleTime: 15000,
+    refetchInterval: 30000,
+    refetchOnMount: true,
+  });
+
+  const isMaintenanceMode =
+    platformFlags?.MAINTENANCE_MODE === true ||
+    String(platformFlags?.MAINTENANCE_MODE).toLowerCase() === "true";
+
+  useEffect(() => {
+    const handleMaintenanceMode = () => {
+      refetchPlatformFlags();
+    };
+
+    window.addEventListener("sms:maintenance-mode", handleMaintenanceMode);
+    return () => {
+      window.removeEventListener("sms:maintenance-mode", handleMaintenanceMode);
+    };
+  }, [refetchPlatformFlags]);
 
 
   useEffect(() => {
@@ -247,6 +277,46 @@ export default function DashboardLayout({
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 dark:text-gray-400">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPlatformFlagsLoading && user?.role !== "SUPER_ADMIN") {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 dark:text-gray-400">Checking platform status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isMaintenanceMode && user?.role !== "SUPER_ADMIN") {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] px-4 py-8 dark:bg-[#0F172A]">
+        <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-xl flex-col items-center justify-center text-center">
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
+            <Wrench className="h-10 w-10" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+            Platform Under Maintenance
+          </h1>
+          <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
+            The school portal is temporarily unavailable while maintenance is in progress.
+            Please check back later.
+          </p>
+          <button
+            type="button"
+            onClick={logout}
+            className="mt-8 inline-flex h-10 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] px-5 text-sm font-medium text-white transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:ring-offset-2 dark:focus:ring-offset-[#0F172A]"
+          >
+            Sign out
+          </button>
+          <div className="mt-8 rounded-lg border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+            Signed in as {user?.name || "User"}
+          </div>
         </div>
       </div>
     );

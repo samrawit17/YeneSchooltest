@@ -77,7 +77,34 @@ export interface EnrollmentStatus {
   message: string;
 }
 
+export interface PublicEnrollmentSchool {
+  id: string;
+  name: string;
+  code: string | null;
+  logoUrl?: string | null;
+  accentColor?: string | null;
+}
+
+export interface EnrollmentLandingResponse {
+  success: boolean;
+  school?: {
+    id: string;
+    name: string;
+  };
+  enrollmentToken?: string;
+  frontendUrl?: string;
+  message?: string;
+  error?: string;
+  statusCode?: number;
+}
+
 export const enrollmentAPI = {
+  resolveSchoolByKey: (key: string) =>
+    api.get<EnrollmentLandingResponse>("/enroll", {
+      params: { key },
+      skipAuthErrorRedirect: true,
+    }),
+  getSchools: () => api.get("/enrollment/schools", { skipAuthErrorRedirect: true }),
   getStatus: (schoolId: string) => api.get("/enrollment/status", { params: { schoolId } }),
   submitRequest: (data: {
     schoolId: string;

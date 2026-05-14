@@ -39,6 +39,14 @@ api.interceptors.response.use(
 
     const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
+    if (
+      error.response?.status === 503 &&
+      error.response?.data?.code === 'MAINTENANCE_MODE' &&
+      typeof window !== 'undefined'
+    ) {
+      window.dispatchEvent(new CustomEvent('sms:maintenance-mode'));
+    }
+
     if (error.response?.status === 403 && typeof window !== 'undefined') {
       const skipAuthRedirect = (error.config as any)?.skipAuthErrorRedirect === true;
       if (!currentPath.includes('/access-denied') && !currentPath.includes('/sign-in') && !skipAuthRedirect) {

@@ -144,6 +144,10 @@ export class RecordPaymentDto {
   @IsString()
   studentId!: string;
 
+  @IsOptional()
+  @IsString()
+  termId?: string;
+
   @IsNumber()
   @Min(1)
   amountPaid!: number;

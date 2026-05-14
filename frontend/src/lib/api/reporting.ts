@@ -37,6 +37,19 @@ export interface GradeDetail {
   subjectId: string;
   subjectName: string;
   subjectCode: string;
+  assessmentBreakdown?: Array<{
+    assessmentSubjectId: string;
+    assessmentId?: string;
+    title: string;
+    type: string;
+    maxScore: number;
+    score: number | null;
+    isAbsent?: boolean;
+    status: string;
+    remarks?: string | null;
+    startDate?: string;
+    endDate?: string;
+  }>;
   caScore: number | null;
   midScore: number | null;
   finalScore: number | null;
@@ -79,11 +92,23 @@ export const reportCardsAPI = {
   }) => api.get<ReportCard[]>("/report-cards", { params }),
   getById: (id: string) => api.get<ReportCard>(`/report-cards/${id}`),
   getByStudent: (studentId: string) => api.get<ReportCard[]>(`/report-cards/student/${studentId}`),
+  getMyPublished: (params?: { academicYear?: string; term?: string }) =>
+    api.get<ReportCard[]>("/report-cards/student/published", { params }),
+  getPublishedForParent: (
+    childId: string,
+    params?: { academicYear?: string; term?: string },
+  ) => api.get<ReportCard[]>(`/report-cards/parent/${childId}/published`, { params }),
   getByClass: (classId: string, params?: { academicYear?: string; term?: string }) =>
     api.get<ReportCard[]>(`/report-cards/class/${classId}`, { params }),
   generate: (data: { studentId: string; classId: string; sectionId: string; termId: string; termName: string }) =>
     api.post<ReportCard>("/report-cards/generate", data),
-  bulkGenerate: (data: { classId: string; sectionId: string; termId: string; termName: string }) =>
+  bulkGenerate: (data: {
+    classId: string;
+    sectionId: string;
+    academicYearId: string;
+    termId: string;
+    termName: string;
+  }) =>
     api.post<{ generated: number; failed: number; errors: string[] }>(
       "/report-cards/bulk-generate",
       data
@@ -99,7 +124,7 @@ export const reportCardsAPI = {
     classId: string;
     notifyStudents?: boolean;
     notifyParents?: boolean;
-  }) => api.post<{ published: number; notifiedStudents: number; notifiedParents: number }>(
+  }) => api.post<{ published: number; ranked?: number; notifiedStudents: number; notifiedParents: number }>(
     "/report-cards/publish/class",
     data
   ),

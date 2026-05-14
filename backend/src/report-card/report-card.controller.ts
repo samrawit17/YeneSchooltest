@@ -45,11 +45,14 @@ export class ReportCardController {
       studentId: string;
       classId: string;
       sectionId: string;
+      academicYearId?: string;
       termId: string;
       termName: string;
     },
   ) {
-    const academicYear = await this.getActiveAcademicYear(req.user.schoolId);
+    const academicYear = body.academicYearId
+      ? await this.getAcademicYearName(req.user.schoolId, body.academicYearId)
+      : await this.getActiveAcademicYear(req.user.schoolId);
     return this.reportCardService.generateReportCard({
       schoolId: req.user.schoolId,
       studentId: body.studentId,
@@ -71,11 +74,14 @@ export class ReportCardController {
     body: {
       classId: string;
       sectionId: string;
+      academicYearId?: string;
       termId: string;
       termName: string;
     },
   ) {
-    const academicYear = await this.getActiveAcademicYear(req.user.schoolId);
+    const academicYear = body.academicYearId
+      ? await this.getAcademicYearName(req.user.schoolId, body.academicYearId)
+      : await this.getActiveAcademicYear(req.user.schoolId);
     return this.reportCardService.bulkGenerate({
       schoolId: req.user.schoolId,
       classId: body.classId,
@@ -117,6 +123,22 @@ export class ReportCardController {
     );
   }
 
+  @Get('student/published')
+  @Roles(Role.STUDENT)
+  async getMyPublishedReportCards(
+    @Request() req,
+    @Query() query: { academicYear?: string; term?: string },
+  ) {
+    return this.reportCardService.getPublishedReportCardsForStudent(
+      req.user.schoolId,
+      req.user.id,
+      {
+        academicYear: query.academicYear,
+        term: query.term,
+      },
+    );
+  }
+
   @Get('student/:studentId')
   @Permissions('report_card:read')
   async getStudentReportCards(
@@ -126,6 +148,23 @@ export class ReportCardController {
     return this.reportCardService.getReportCards(req.user.schoolId, {
       studentId,
     });
+  }
+
+  @Get('parent/:childId/published')
+  @Roles(Role.PARENT)
+  async getPublishedReportCardsForParent(
+    @Request() req,
+    @Param('childId') childId: string,
+    @Query() query: { academicYear?: string; term?: string },
+  ) {
+    return this.reportCardService.getPublishedReportCardsForParent(
+      req.user.id,
+      childId,
+      {
+        academicYear: query.academicYear,
+        term: query.term,
+      },
+    );
   }
 
   @Get('class/:classId')
@@ -306,5 +345,21 @@ export class ReportCardController {
       select: { name: true },
     });
     return academicYear?.name || new Date().getFullYear().toString();
+  }
+
+  private async getAcademicYearName(
+    schoolId: string,
+    academicYearId: string,
+  ): Promise<string> {
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { schoolId, id: academicYearId },
+      select: { name: true },
+    });
+
+    if (!academicYear?.name) {
+      throw new HttpException('Academic year not found', HttpStatus.BAD_REQUEST);
+    }
+
+    return academicYear.name;
   }
 }

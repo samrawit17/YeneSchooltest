@@ -38,6 +38,8 @@ interface RankingsResult {
   classAverage: number;
   passRate: number;
   calculated: string;
+  updatedReportCards?: number;
+  notifiedParents?: number;
 }
 
 export default function StudentRankingsPage() {
@@ -117,7 +119,9 @@ export default function StudentRankingsPage() {
       }
 
       setRankingsResult(res.data);
-      toast.success(`Rankings calculated for ${results.length} student records`);
+      toast.success(
+        `Rankings calculated for ${results.length} student records. Updated ${res.data?.updatedReportCards || 0} parent report cards and notified ${res.data?.notifiedParents || 0} parents.`
+      );
     } catch (error: any) {
       console.error(error);
       toast.error(error?.response?.data?.message || 'Failed to calculate rankings');

@@ -210,8 +210,8 @@ const SubscriptionPlansPage = () => {
 
   if (loading || authLoading) {
     return (
-      <div className="flex-1 p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
+    <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+      <div>
           <div className="mb-6">
             <Skeleton className="h-10 w-64 mb-2" />
             <Skeleton className="h-5 w-96" />
@@ -234,19 +234,19 @@ const SubscriptionPlansPage = () => {
   }
 
   return (
-    <div className="flex-1 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+      <div>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Subscription Plans</h1>
-              <p className="text-gray-600">Manage subscription tiers and features</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Subscription Plans</h1>
+              <p className="text-gray-600 dark:text-gray-400">Manage subscription tiers and features</p>
             </div>
             <div className="flex items-center gap-2">
-              <TabsList>
-                <TabsTrigger value="plans">Plans</TabsTrigger>
-                <TabsTrigger value="schools">Schools</TabsTrigger>
-                <TabsTrigger value="features">Feature Matrix</TabsTrigger>
+              <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
+                <TabsTrigger value="plans" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm dark:text-gray-400 dark:data-[state=active]:text-[var(--brand-color,#e35336)]">Plans</TabsTrigger>
+                <TabsTrigger value="schools" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm dark:text-gray-400 dark:data-[state=active]:text-[var(--brand-color,#e35336)]">Schools</TabsTrigger>
+                <TabsTrigger value="features" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm dark:text-gray-400 dark:data-[state=active]:text-[var(--brand-color,#e35336)]">Feature Matrix</TabsTrigger>
               </TabsList>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -255,12 +255,12 @@ const SubscriptionPlansPage = () => {
                     Create Plan
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
                   <DialogHeader>
-                    <DialogTitle>
+                    <DialogTitle className="dark:text-white">
                       {editingPlan ? 'Edit Plan' : 'Create New Plan'}
                     </DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription className="dark:text-gray-400">
                       {editingPlan
                         ? 'Update the plan details and features'
                         : 'Create a new subscription plan for schools'}
@@ -269,7 +269,7 @@ const SubscriptionPlansPage = () => {
                   <div className="space-y-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Plan Name</Label>
+                        <Label htmlFor="name" className="dark:text-gray-300">Plan Name</Label>
                         <Input
                           id="name"
                           value={formData.name}
@@ -280,7 +280,7 @@ const SubscriptionPlansPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="tier">Tier</Label>
+                        <Label htmlFor="tier" className="dark:text-gray-300">Tier</Label>
                         <Select
                           value={formData.tier}
                           onValueChange={(value) =>
@@ -290,7 +290,7 @@ const SubscriptionPlansPage = () => {
                           <SelectTrigger>
                             <SelectValue placeholder="Select tier" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                             <SelectItem value="CORE">
                               <div className="flex items-center gap-2">
                                 <Shield className="w-4 h-4" />
@@ -314,7 +314,7 @@ const SubscriptionPlansPage = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
+                      <Label htmlFor="description" className="dark:text-gray-300">Description</Label>
                       <Textarea
                         id="description"
                         value={formData.description}
@@ -326,12 +326,12 @@ const SubscriptionPlansPage = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Features</Label>
-                      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto border rounded-lg p-3">
+                      <Label className="dark:text-gray-300">Features</Label>
+                      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto border rounded-lg p-3 dark:border-gray-700">
                         {FEATURE_LIST.map((feature) => (
                           <div
                             key={feature.key}
-                            className="flex items-center gap-2 p-2 rounded hover:bg-gray-50"
+                            className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50"
                           >
                             <Checkbox
                               id={feature.key}
@@ -340,7 +340,7 @@ const SubscriptionPlansPage = () => {
                             />
                             <Label
                               htmlFor={feature.key}
-                              className="text-sm cursor-pointer flex-1"
+                              className="text-sm cursor-pointer flex-1 dark:text-gray-300"
                             >
                               {feature.name}
                             </Label>
@@ -348,10 +348,10 @@ const SubscriptionPlansPage = () => {
                               variant="outline"
                               className={`text-xs ${
                                 feature.tier === 'CORE'
-                                  ? 'border-gray-400 text-gray-600'
+                                  ? 'border-gray-400 text-gray-600 dark:text-gray-400'
                                   : feature.tier === 'STANDARD'
-                                  ? 'border-blue-400 text-blue-600'
-                                  : 'border-purple-400 text-purple-600'
+                                  ? 'border-blue-400 text-blue-600 dark:text-blue-400'
+                                  : 'border-purple-400 text-purple-600 dark:text-purple-400'
                               }`}
                             >
                               {feature.tier}
@@ -378,13 +378,13 @@ const SubscriptionPlansPage = () => {
           <TabsContent value="plans" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {plans.length === 0 ? (
-                <Card className="col-span-full">
+                <Card className="col-span-full dark:bg-gray-800 dark:border-gray-700">
                   <CardContent className="py-12 text-center">
-                    <Shield className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <Shield className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                       No Plans Found
                     </h3>
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
                       Create your first subscription plan to get started
                     </p>
                     <Button onClick={() => handleOpenDialog()}>
@@ -397,12 +397,12 @@ const SubscriptionPlansPage = () => {
                 plans.map((plan) => (
                   <Card
                     key={plan.id}
-                    className={`relative overflow-hidden ${
+                    className={`relative overflow-hidden dark:bg-gray-800 ${
                       plan.tier === 'CORE'
-                        ? 'border-gray-200'
+                        ? 'border-gray-200 dark:border-gray-700'
                         : plan.tier === 'STANDARD'
-                        ? 'border-blue-200'
-                        : 'border-purple-200'
+                        ? 'border-blue-200 dark:border-blue-800'
+                        : 'border-purple-200 dark:border-purple-800'
                     }`}
                   >
                     <div
@@ -421,15 +421,15 @@ const SubscriptionPlansPage = () => {
                             {getTierIcon(plan.tier)}
                           </div>
                           <div>
-                            <CardTitle className="text-lg">{plan.name}</CardTitle>
+                            <CardTitle className="text-lg text-gray-900 dark:text-white">{plan.name}</CardTitle>
                             <Badge
                               variant="outline"
                               className={`mt-1 ${
                                 plan.tier === 'CORE'
-                                  ? 'border-gray-400 text-gray-600'
+                                  ? 'border-gray-400 text-gray-600 dark:text-gray-400'
                                   : plan.tier === 'STANDARD'
-                                  ? 'border-blue-400 text-blue-600'
-                                  : 'border-purple-400 text-purple-600'
+                                  ? 'border-blue-400 text-blue-600 dark:text-blue-400'
+                                  : 'border-purple-400 text-purple-600 dark:text-purple-400'
                               }`}
                             >
                               {plan.tier}
@@ -442,18 +442,18 @@ const SubscriptionPlansPage = () => {
                               <Settings className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
                             <DropdownMenuItem
                               onClick={() => handleOpenDialog(plan)}
-                              className="gap-2"
+                              className="gap-2 dark:focus:bg-gray-700"
                             >
                               <Edit className="w-4 h-4" />
                               Edit Plan
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
+                            <DropdownMenuSeparator className="dark:bg-gray-700" />
                             <DropdownMenuItem
                               onClick={() => handleDeletePlan(plan)}
-                              className="gap-2 text-red-600"
+                              className="gap-2 text-red-600 dark:text-red-400 dark:focus:bg-gray-700"
                             >
                               <Trash2 className="w-4 h-4" />
                               Delete Plan
@@ -461,21 +461,21 @@ const SubscriptionPlansPage = () => {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                      <CardDescription className="mt-2">
+                      <CardDescription className="mt-2 dark:text-gray-400">
                         {plan.description || TIER_CONFIG[plan.tier].description}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Schools</span>
-                          <span className="font-semibold">
+                          <span className="text-gray-600 dark:text-gray-400">Schools</span>
+                          <span className="font-semibold dark:text-white">
                             {getSchoolsCountForPlan(plan.id)}
                           </span>
                         </div>
-                        <Separator />
+                        <Separator className="dark:bg-gray-700" />
                         <div>
-                          <p className="text-sm text-gray-600 mb-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                             {plan.features?.length || 0} Features Included
                           </p>
                           <div className="flex flex-wrap gap-1">
@@ -497,8 +497,8 @@ const SubscriptionPlansPage = () => {
                         </div>
                       </div>
                     </CardContent>
-                    <CardFooter className="bg-gray-50 border-t">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <CardFooter className="bg-gray-50 dark:bg-gray-800/80 border-t dark:border-gray-700">
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <Building2 className="w-4 h-4" />
                         {getSchoolsCountForPlan(plan.id)} schools subscribed
                       </div>
@@ -510,22 +510,22 @@ const SubscriptionPlansPage = () => {
           </TabsContent>
 
           <TabsContent value="schools" className="mt-0">
-            <Card>
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
-                <CardTitle>Schools</CardTitle>
-                <CardDescription>
+                <CardTitle className="dark:text-white">Schools</CardTitle>
+                <CardDescription className="dark:text-gray-400">
                   Assign subscription plans to schools
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {loadingSchools ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-500 dark:text-gray-400" />
                   </div>
                 ) : schools.length === 0 ? (
                   <div className="text-center py-8">
-                    <Building2 className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600">No schools found</p>
+                    <Building2 className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+                    <p className="text-gray-600 dark:text-gray-400">No schools found</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -534,15 +534,15 @@ const SubscriptionPlansPage = () => {
                       return (
                         <div
                           key={school.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 dark:border-gray-700 dark:bg-gray-800/50"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                              <Building2 className="w-5 h-5 text-purple-600" />
+                            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                              <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                             </div>
                             <div>
-                              <p className="font-medium">{school.name}</p>
-                              <p className="text-sm text-gray-500">{school.email}</p>
+                              <p className="font-medium dark:text-white">{school.name}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{school.email}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -551,10 +551,10 @@ const SubscriptionPlansPage = () => {
                                 variant="outline"
                                 className={`gap-1 ${
                                   schoolPlan.tier === 'CORE'
-                                    ? 'border-gray-400 text-gray-600'
+                                    ? 'border-gray-400 text-gray-600 dark:text-gray-400'
                                     : schoolPlan.tier === 'STANDARD'
-                                    ? 'border-blue-400 text-blue-600'
-                                    : 'border-purple-400 text-purple-600'
+                                    ? 'border-blue-400 text-blue-600 dark:text-blue-400'
+                                    : 'border-purple-400 text-purple-600 dark:text-purple-400'
                                 }`}
                               >
                                 {schoolPlan.tier === 'CORE' ? (
@@ -567,7 +567,7 @@ const SubscriptionPlansPage = () => {
                                 {schoolPlan.name}
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-yellow-600 border-yellow-200">
+                              <Badge variant="outline" className="text-yellow-600 border-yellow-200 dark:text-yellow-400 dark:border-yellow-800">
                                 No Plan
                               </Badge>
                             )}
@@ -609,10 +609,10 @@ const SubscriptionPlansPage = () => {
           </TabsContent>
 
           <TabsContent value="features" className="mt-0">
-            <Card>
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
-                <CardTitle>Feature Matrix</CardTitle>
-                <CardDescription>
+                <CardTitle className="dark:text-white">Feature Matrix</CardTitle>
+                <CardDescription className="dark:text-gray-400">
                   Overview of all features by subscription tier
                 </CardDescription>
               </CardHeader>
@@ -620,38 +620,38 @@ const SubscriptionPlansPage = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium">Feature</th>
-                        <th className="text-center py-3 px-4 font-medium">
+                      <tr className="border-b dark:border-gray-700">
+                        <th className="text-left py-3 px-4 font-medium dark:text-white">Feature</th>
+                        <th className="text-center py-3 px-4 font-medium dark:text-white">
                           <div className="flex items-center justify-center gap-1">
                             <Shield className="w-4 h-4" />
                             Core
                           </div>
-                          <span className="text-xs font-normal text-gray-500">(Core features)</span>
+                          <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(Core features)</span>
                         </th>
-                        <th className="text-center py-3 px-4 font-medium">
+                        <th className="text-center py-3 px-4 font-medium dark:text-white">
                           <div className="flex items-center justify-center gap-1">
                             <Star className="w-4 h-4" />
                             Standard
                           </div>
-                          <span className="text-xs font-normal text-gray-500">(Core + Standard)</span>
+                          <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(Core + Standard)</span>
                         </th>
-                        <th className="text-center py-3 px-4 font-medium">
+                        <th className="text-center py-3 px-4 font-medium dark:text-white">
                           <div className="flex items-center justify-center gap-1">
                             <Crown className="w-4 h-4" />
                             Ultimate
                           </div>
-                          <span className="text-xs font-normal text-gray-500">(All features)</span>
+                          <span className="text-xs font-normal text-gray-500 dark:text-gray-400">(All features)</span>
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {FEATURE_LIST.map((feature) => (
-                        <tr key={feature.key} className="border-b hover:bg-gray-50">
+                        <tr key={feature.key} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           <td className="py-3 px-4">
                             <div>
-                              <p className="font-medium">{feature.name}</p>
-                              <p className="text-sm text-gray-500">
+                              <p className="font-medium dark:text-white">{feature.name}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
                                 {feature.description}
                               </p>
                             </div>
@@ -660,14 +660,14 @@ const SubscriptionPlansPage = () => {
                             {feature.tier === 'CORE' ? (
                               <Check className="w-5 h-5 mx-auto text-green-600" />
                             ) : (
-                              <X className="w-5 h-5 mx-auto text-gray-300" />
+                              <X className="w-5 h-5 mx-auto text-gray-300 dark:text-gray-600" />
                             )}
                           </td>
                           <td className="text-center py-3 px-4">
                             {feature.tier === 'CORE' || feature.tier === 'STANDARD' ? (
                               <Check className="w-5 h-5 mx-auto text-green-600" />
                             ) : (
-                              <X className="w-5 h-5 mx-auto text-gray-300" />
+                              <X className="w-5 h-5 mx-auto text-gray-300 dark:text-gray-600" />
                             )}
                           </td>
                           <td className="text-center py-3 px-4">

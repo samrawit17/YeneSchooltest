@@ -161,7 +161,7 @@ export default function PublishResultsPage() {
         notifyParents: true,
       });
       toast.success(
-        `Published ${res.data.published} report cards. Notifications sent to ${res.data.notifiedStudents} students and ${res.data.notifiedParents} parents.`,
+        `Ranked ${res.data.ranked || 0} students and published ${res.data.published} report cards. Notifications sent to ${res.data.notifiedStudents} students and ${res.data.notifiedParents} parents.`,
       );
       const summary = await reportCardsAPI.getPublishSummary({
         academicYearId: selectedYear,
@@ -181,6 +181,7 @@ export default function PublishResultsPage() {
     setPublishing(true);
     try {
       let published = 0;
+      let ranked = 0;
       let notifiedStudents = 0;
       let notifiedParents = 0;
       for (const classId of selectedClasses) {
@@ -192,11 +193,12 @@ export default function PublishResultsPage() {
           notifyParents: true,
         });
         published += res.data.published;
+        ranked += res.data.ranked || 0;
         notifiedStudents += res.data.notifiedStudents;
         notifiedParents += res.data.notifiedParents;
       }
       toast.success(
-        `Published ${published} report cards. Notifications sent to ${notifiedStudents} students and ${notifiedParents} parents.`,
+        `Ranked ${ranked} students and published ${published} report cards. Notifications sent to ${notifiedStudents} students and ${notifiedParents} parents.`,
       );
       const summary = await reportCardsAPI.getPublishSummary({
         academicYearId: selectedYear,

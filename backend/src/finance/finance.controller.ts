@@ -116,6 +116,49 @@ export class FinanceController {
     }
   }
 
+  @Post('payments/:paymentId/reverse')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.FINANCE)
+  @Permissions('finance:payments:reverse')
+  async reversePayment(
+    @Param('paymentId') paymentId: string,
+    @Body() body: { schoolId: string; reason?: string },
+    @Request() req: any,
+  ) {
+    try {
+      const result = await this.financeService.reversePayment(
+        req.user,
+        body.schoolId,
+        paymentId,
+        body.reason,
+      );
+      return { success: true, ...result };
+    } catch (error: any) {
+      throw new BadRequestException(
+        error.message || 'Failed to reverse payment',
+      );
+    }
+  }
+
+  @Post('reminders/period-fees')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
+  async sendPeriodFeeReminders(
+    @Body() body: { schoolId: string; termId: string },
+  ) {
+    try {
+      const result = await this.financeService.sendPeriodFeeReminders(
+        body.schoolId,
+        body.termId,
+      );
+      return { success: true, ...result };
+    } catch (error: any) {
+      throw new BadRequestException(
+        error.message || 'Failed to send fee reminders',
+      );
+    }
+  }
+
   @Get('reports/daily')
   @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
   @Permissions('finance:reports:read')
@@ -228,12 +271,27 @@ export class FinanceController {
   // Student fee summary endpoint for parent/student portal
   @Get('student-fees/:studentId')
   @UseGuards(JwtAuthGuard)
+  @Roles(
+    Role.PARENT,
+    Role.STUDENT,
+    Role.ADMIN,
+    Role.IT_MANAGER,
+    Role.FINANCE,
+    Role.REGISTRAR,
+    Role.SUPER_ADMIN,
+  )
   async getStudentFeeSummary(
     @Param('studentId') studentId: string,
     @Query('schoolId') schoolId: string,
     @Query('academicYearId') academicYearId: string,
     @Query('termId') termId?: string,
+    @Request() req?: any,
   ) {
+    await this.financeService.assertStudentFeeSummaryAccess(
+      req?.user,
+      schoolId,
+      studentId,
+    );
     const result = await this.financeService.getStudentFeeSummary(
       schoolId,
       studentId,

@@ -142,7 +142,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   "credentials": { label: "Credentials", href: "/list/credentials", parent: "dashboard" },
 
   // Users Module
-  "users": { label: "Users", href: "/list/users", parent: "dashboard" },
+  "users": { label: "Users", parent: "dashboard" },
 
   // Schools Module
   "schools": { label: "Schools", parent: "dashboard" },

@@ -33,6 +33,16 @@ export class EnrollmentRequestController {
    */
 
   /**
+   * List schools available for public enrollment
+   * GET /enrollment/schools
+   */
+  @Get('schools')
+  async getPublicSchools() {
+    const schools = await this.enrollmentService.getPublicSchools();
+    return { success: true, data: schools };
+  }
+
+  /**
    * Create a new enrollment request
    * POST /enrollment/request
    */

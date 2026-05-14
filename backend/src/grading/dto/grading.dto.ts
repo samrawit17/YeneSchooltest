@@ -104,6 +104,10 @@ export class GradeComponentScoreDto {
   code: string;
 
   @IsOptional()
+  @IsString()
+  assessmentSubjectId?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(100)

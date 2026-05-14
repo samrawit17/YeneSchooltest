@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileText,
@@ -28,6 +28,16 @@ import { classesAPI } from "@/lib/api";
 import { termsAPI } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+
+type ClassStatsResponse = {
+  totalStudents?: number;
+};
+
+const normalizeSectionLabel = (value: string | null | undefined) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^section\s+/, "");
 
 function GradeBadge({ grade }: { grade: string | null }) {
   const configs: Record<string, { bg: string; text: string }> = {
@@ -78,13 +88,35 @@ export default function ReportCardsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [bulkGenerateLoading, setBulkGenerateLoading] = useState(false);
+  const [selectedClassStudentCount, setSelectedClassStudentCount] = useState<number | null>(null);
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN";
 
+  const resolvedAcademicYearId = currentAcademicYear?.id || "";
+  const resolvedAcademicYearName = currentAcademicYear?.name || "";
+
+  const selectedTermRecord = useMemo(
+    () => terms.find((term) => term.id === selectedTerm) || null,
+    [terms, selectedTerm],
+  );
+
+  const resolveSectionRecord = (classRecord: any) => {
+    if (!classRecord?.sections?.length) return null;
+
+    const targetSection = normalizeSectionLabel(classRecord.section);
+    return (
+      classRecord.sections.find(
+        (section: { name: string; id: string }) =>
+          normalizeSectionLabel(section.name) === targetSection,
+      ) || classRecord.sections[0]
+    );
+  };
+
   useEffect(() => {
-    fetchClasses();
-    fetchTerms();
-  }, []);
+    if (!resolvedAcademicYearId) return;
+    fetchClasses(resolvedAcademicYearId);
+    fetchTerms(resolvedAcademicYearId);
+  }, [resolvedAcademicYearId]);
 
   useEffect(() => {
     if (currentAcademicYear) {
@@ -92,12 +124,42 @@ export default function ReportCardsPage() {
     }
   }, [selectedClass, selectedTerm, filterStatus, currentAcademicYear]);
 
-  const fetchClasses = async () => {
+  useEffect(() => {
+    const fetchSelectedClassStats = async () => {
+      if (!selectedClass) {
+        setSelectedClassStudentCount(null);
+        return;
+      }
+
+      const classRecord = classes.find((cls) => cls.id === selectedClass);
+      const sectionRecord = resolveSectionRecord(classRecord);
+
+      try {
+        const response = await classesAPI.getStats(selectedClass, sectionRecord?.id ? { sectionId: sectionRecord.id } : undefined);
+        const payload = response.data?.data || response.data || {};
+        const statsCount = Number((payload as ClassStatsResponse).totalStudents) || 0;
+        const fallbackCount = reportCards.length > 0 ? reportCards.length : 0;
+        setSelectedClassStudentCount(statsCount > 0 ? statsCount : fallbackCount);
+      } catch (err) {
+        setSelectedClassStudentCount(reportCards.length > 0 ? reportCards.length : null);
+      }
+    };
+
+    void fetchSelectedClassStats();
+  }, [classes, reportCards.length, selectedClass]);
+
+  const fetchClasses = async (academicYearId: string) => {
     try {
-      const response = await classesAPI.getAll({ academicYearId: currentAcademicYear?.id });
+      const response = await classesAPI.getAll({ academicYearId });
       const data = response.data?.data || response.data || [];
       setClasses(data);
-      if (data.length > 0 && !selectedClass) {
+      if (data.length === 0) {
+        setSelectedClass("");
+        return;
+      }
+
+      const hasSelectedClass = data.some((item: { id: string }) => item.id === selectedClass);
+      if (!hasSelectedClass) {
         setSelectedClass(data[0].id);
       }
     } catch (err) {
@@ -105,12 +167,34 @@ export default function ReportCardsPage() {
     }
   };
 
-  const fetchTerms = async () => {
+  const fetchTerms = async (academicYearId: string) => {
     try {
-      if (!currentAcademicYear?.id) return;
-      const response = await termsAPI.getByYear(currentAcademicYear.id);
+      const response = await termsAPI.getByYear(academicYearId);
       const data = response.data || [];
       setTerms(data);
+      if (data.length === 0) {
+        setSelectedTerm("");
+        return;
+      }
+
+      const now = new Date();
+      const currentYearTerm =
+        data.find((term: { startDate?: string; endDate?: string }) => {
+          if (!term.startDate || !term.endDate) return false;
+          return now >= new Date(term.startDate) && now <= new Date(term.endDate);
+        }) ||
+        data.find((term: { id: string }) => term.id === currentTerm?.id) ||
+        data[0];
+
+      setSelectedTerm((prev) => {
+        if (currentYearTerm?.id) {
+          return currentYearTerm.id;
+        }
+        if (prev && data.some((term: { id: string }) => term.id === prev)) {
+          return prev;
+        }
+        return currentYearTerm?.id || "";
+      });
     } catch (err) {
       console.error("Failed to fetch terms:", err);
     }
@@ -122,12 +206,9 @@ export default function ReportCardsPage() {
       setError(null);
       const params: any = {};
       if (selectedClass) params.classId = selectedClass;
-      if (selectedTerm) {
-        const term = terms.find((t) => t.id === selectedTerm);
-        params.term = term?.name || selectedTerm;
-      }
+      if (selectedTermRecord?.name) params.term = selectedTermRecord.name;
       if (filterStatus !== "all") params.status = filterStatus;
-      if (currentAcademicYear?.name) params.academicYear = currentAcademicYear.name;
+      if (resolvedAcademicYearName) params.academicYear = resolvedAcademicYearName;
 
       const response = await reportCardsAPI.getAll(params);
       setReportCards(response.data || []);
@@ -161,17 +242,43 @@ export default function ReportCardsPage() {
       toast.error("Please select a class and term");
       return;
     }
+    if (!resolvedAcademicYearId || !resolvedAcademicYearName) {
+      toast.error("No academic year selected");
+      return;
+    }
+    if (selectedClassStudentCount === 0) {
+      toast.error("This class has no students. Report cards cannot be generated.");
+      return;
+    }
+
     const term = terms.find((t) => t.id === selectedTerm);
     const classRecord = classes.find((cls) => cls.id === selectedClass);
-    const sectionRecord = classRecord?.sections?.find(
-      (section: { name: string; id: string }) => section.name === classRecord.section,
-    ) || classRecord?.sections?.[0];
+    const sectionRecord = resolveSectionRecord(classRecord);
     if (!sectionRecord?.id) {
       toast.error("The selected class does not have a valid section mapping");
       return;
     }
 
     toast("Generate report cards for all students in this class?", {
+      style: {
+        background: "var(--brand-color,#e35336)",
+        color: "#ffffff",
+        border: "1px solid rgba(var(--brand-color-rgb,227,83,54),0.35)",
+        boxShadow: "0 14px 40px rgba(var(--brand-color-rgb,227,83,54),0.28)",
+      },
+      actionButtonStyle: {
+        background: "#ffffff",
+        color: "var(--brand-color,#e35336)",
+        borderRadius: "10px",
+        fontWeight: "600",
+      },
+      cancelButtonStyle: {
+        background: "rgba(255,255,255,0.16)",
+        color: "#ffffff",
+        border: "1px solid rgba(255,255,255,0.18)",
+        borderRadius: "10px",
+        fontWeight: "600",
+      },
       action: {
         label: "Generate",
         onClick: async () => {
@@ -180,6 +287,7 @@ export default function ReportCardsPage() {
             const result = await reportCardsAPI.bulkGenerate({
               classId: selectedClass,
               sectionId: sectionRecord.id,
+              academicYearId: resolvedAcademicYearId,
               termId: selectedTerm,
               termName: term?.name || `Term ${selectedTerm}`,
             });

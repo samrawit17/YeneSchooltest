@@ -176,7 +176,7 @@ const SchoolsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 space-y-6 font-sans">
-      <div className="max-w-7xl mx-auto">
+      <div>
         {/* Header */}
         <div className="flex flex-row flex-wrap items-center justify-between gap-3 mb-6">
           <div>
@@ -276,11 +276,13 @@ const SchoolsPage = () => {
 
         {/* Pagination */}
         {schoolsData && schoolsData.length > 0 && (
-          <Pagination
-            page={page}
-            setPage={setPage}
-            totalPages={5}
-          />
+          <div className="mt-6">
+            <Pagination
+              page={page}
+              setPage={setPage}
+              totalPages={5}
+            />
+          </div>
         )}
 
         {/* Modal */}

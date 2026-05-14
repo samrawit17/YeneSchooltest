@@ -77,6 +77,16 @@ export const gradingAPI = {
     api.get('/grading/student/grades', { params }),
   getChildGrades: (studentId: string, params?: { academicYear?: string; termId?: string }) =>
     api.get(`/grading/parent/grades/${studentId}`, { params }),
+  verifyFinancialClearance: (params: {
+    studentId: string;
+    academicYear: string;
+    termId?: string;
+    checkOverdueOnly?: boolean;
+  }) =>
+    api.get('/grading/student/financial-clearance', {
+      params,
+      skipAuthErrorRedirect: true,
+    }),
   getTeacherStudents: (params: {
     academicYear: string;
     termId: string;
@@ -99,6 +109,8 @@ export const gradingAPI = {
     api.get('/grading/admin/assessment-types', { skipAuthErrorRedirect: true }),
   getTeacherAssessmentTypes: () =>
     api.get('/grading/teacher/assessment-types', { skipAuthErrorRedirect: true }),
+  getParentGradingComponents: () =>
+    api.get('/grading/parent/grading-components', { skipAuthErrorRedirect: true }),
   saveAssessmentTypes: (data: { code: string; name: string; percentage: number }[]) =>
     api.post('/grading/admin/assessment-types', data),
   getGradesForReview: (params: { academicYear: string; termId?: string; classId?: string }) =>

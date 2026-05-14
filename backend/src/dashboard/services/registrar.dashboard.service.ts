@@ -80,6 +80,7 @@ export class RegistrarDashboardService {
       // Get current academic year
       const academicYear = await this.prisma.academicYear.findFirst({
         where: { schoolId, isActive: true },
+        include: { terms: true },
       });
 
       // Get enrollment statistics
@@ -367,6 +368,18 @@ export class RegistrarDashboardService {
         academicYear: academicYear?.name,
       };
 
+      // Get current term/period
+      const currentTerm = academicYear
+        ? await this.prisma.term.findFirst({
+            where: {
+              academicYearId: academicYear.id,
+              startDate: { lte: today },
+              endDate: { gte: today },
+            },
+            orderBy: { order: 'asc' },
+          })
+        : null;
+
       return {
         stats,
         alerts,
@@ -375,7 +388,21 @@ export class RegistrarDashboardService {
         metadata: {
           schoolId,
           academicYear: academicYear?.name,
+          term: currentTerm?.name,
           generatedAt: new Date(),
+          curriculum: academicYear
+            ? {
+                curriculumType: academicYear.curriculumType,
+                academicYear: academicYear.name,
+                periods: academicYear.terms.map((t) => ({
+                  id: t.id,
+                  name: t.name,
+                  order: t.order,
+                  percentageWeight: t.percentageWeight,
+                  isLocked: t.isLocked,
+                })),
+              }
+            : undefined,
         },
       };
     } catch (error) {

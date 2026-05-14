@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import InputField from "../InputField";
-import { registrarAPI, schoolsAPI } from "@/lib/api";
+import { registrarAPI } from "@/lib/api";
+import { enrollmentAPI } from "@/lib/api/enrollment";
 import { toast } from "sonner";
 
 const schema = z.object({
@@ -43,8 +44,8 @@ const EnrollmentForm = ({
   useEffect(() => {
     const fetchSchools = async () => {
       try {
-        const response = await schoolsAPI.getAll();
-        setSchools(response.data);
+        const response = await enrollmentAPI.getSchools();
+        setSchools(response.data?.data || []);
       } catch (error) {
         console.error('Failed to fetch schools:', error);
         toast.error('Failed to load schools. Please try again later.');

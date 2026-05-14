@@ -290,15 +290,15 @@ const LoginPage = () => {
             </form>
           </Form>
 
-          {/* Sign up link */}
+          {/* Enrollment link */}
           <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-            Don't have an account?{" "}
+            Need admission?{" "}
             <Button
               variant="link"
               className="h-auto p-0 font-medium text-[var(--brand-color,#e35336)] hover:opacity-80"
               asChild
             >
-              <Link href="/enroll">Sign up</Link>
+              <Link href="/enroll">Enroll Now</Link>
             </Button>
           </p>
 

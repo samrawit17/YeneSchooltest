@@ -505,6 +505,7 @@ export class StudentService {
                       user: {
                         select: {
                           name: true,
+                          phone: true,
                         },
                       },
                     },
@@ -536,6 +537,7 @@ export class StudentService {
             ...profile,
             grade: gradeNum,
             parentName: profile.parents?.[0]?.parent?.user?.name || null,
+            parentPhone: profile.parents?.[0]?.parent?.user?.phone || null,
             enrollment: enrollments.find((e) => e.studentId === profile.userId),
           };
         });

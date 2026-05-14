@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { academicYearsAPI, gradingAPI } from "@/lib/api";
 import { dashboardAPI } from "@/lib/api/admin";
+import { reportCardsAPI, type ReportCard } from "@/lib/api/reporting";
 import { toast } from "sonner";
 import { 
   Calendar, 
@@ -64,6 +65,14 @@ import {
 } from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Chart components - you can use recharts or other chart libraries
 import { 
@@ -166,6 +175,8 @@ const StudentPage = () => {
   const [grades, setGrades] = useState<SubjectGrade[]>([]);
   const [gradesLoading, setGradesLoading] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string>("");
+  const [topRankCard, setTopRankCard] = useState<ReportCard | null>(null);
+  const [showRankCongrats, setShowRankCongrats] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -187,12 +198,50 @@ const StudentPage = () => {
       
       // Fetch grades
       await fetchGrades();
+      await fetchTopRank();
     } catch (error: any) {
       console.error('Failed to fetch dashboard data:', error);
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchTopRank = async () => {
+    try {
+      const response = await reportCardsAPI.getMyPublished();
+      const cards = Array.isArray(response.data) ? response.data : [];
+      const latestTopCard = cards.find(
+        (card) =>
+          typeof card.rankInClass === "number" &&
+          card.rankInClass >= 1 &&
+          card.rankInClass <= 3,
+      );
+
+      if (!latestTopCard || typeof window === "undefined") {
+        return;
+      }
+
+      const storageKey = `student-rank-congrats:${latestTopCard.id}:${latestTopCard.rankInClass}`;
+      if (window.localStorage.getItem(storageKey)) {
+        return;
+      }
+
+      setTopRankCard(latestTopCard);
+      setShowRankCongrats(true);
+    } catch (error) {
+      console.error("Error fetching student ranking:", error);
+    }
+  };
+
+  const closeRankCongrats = () => {
+    if (topRankCard && typeof window !== "undefined") {
+      window.localStorage.setItem(
+        `student-rank-congrats:${topRankCard.id}:${topRankCard.rankInClass}`,
+        "dismissed",
+      );
+    }
+    setShowRankCongrats(false);
   };
 
   const fetchGrades = async () => {
@@ -455,6 +504,41 @@ const StudentPage = () => {
 
   return (
     <div className="flex-1 p-4 md:p-6">
+      <Dialog open={showRankCongrats} onOpenChange={(open) => {
+        if (!open) closeRankCongrats();
+        else setShowRankCongrats(true);
+      }}>
+        <DialogContent className="max-w-md border-[rgba(var(--brand-color-rgb),0.22)] bg-white text-center dark:border-[rgba(var(--brand-color-rgb),0.3)] dark:bg-slate-900" customCloseButton={false}>
+          <DialogHeader className="items-center text-center">
+            <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
+              <Trophy className="h-9 w-9" />
+            </div>
+            <DialogTitle className="text-2xl text-slate-900 dark:text-white">
+              Congratulations, {user?.name || "Student"}!
+            </DialogTitle>
+            <DialogDescription className="text-base text-slate-600 dark:text-slate-300">
+              You ranked #{topRankCard?.rankInClass} in {topRankCard?.term || "the latest published result"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.06)] p-4 dark:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]">
+            <p className="text-sm text-slate-600 dark:text-slate-300">Overall result</p>
+            <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">
+              {topRankCard?.percentage ?? "-"}%
+            </p>
+            <p className="mt-1 text-sm font-medium text-[var(--brand-color,#e35336)]">
+              {topRankCard?.overallGrade || "Published result"}
+            </p>
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <Button onClick={closeRankCongrats} className="bg-[var(--brand-color,#e35336)] text-white hover:opacity-90">
+              Continue
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/student/grades")}>
+              View Results
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">

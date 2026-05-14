@@ -34,7 +34,7 @@ export class PlatformSettingsService {
         const setting = await this.prisma.platformSetting.findUnique({
           where: { key },
         });
-        return setting ? setting.value : null;
+        return setting ? this.parseStoredValue(setting.value) : null;
       },
     );
   }
@@ -48,7 +48,7 @@ export class PlatformSettingsService {
         const settings = await this.prisma.platformSetting.findMany();
         const result: Record<string, any> = {};
         for (const setting of settings) {
-          result[setting.key] = setting.value;
+          result[setting.key] = this.parseStoredValue(setting.value);
         }
         return result;
       },
@@ -57,13 +57,17 @@ export class PlatformSettingsService {
 
   // Upsert a platform setting
   async setSetting(key: string, value: any) {
+    const storedValue = this.serializeValue(value);
     const setting = await this.prisma.platformSetting.upsert({
       where: { key },
-      update: { value },
-      create: { key, value },
+      update: { value: storedValue },
+      create: { key, value: storedValue },
     });
     await this.invalidateCache(key);
-    return setting;
+    return {
+      ...setting,
+      value: this.parseStoredValue(setting.value),
+    };
   }
 
   // Delete a platform setting
@@ -81,19 +85,27 @@ export class PlatformSettingsService {
     return value ?? systemDefault;
   }
 
+  async isMaintenanceModeEnabled(): Promise<boolean> {
+    const value = await this.getSetting('MAINTENANCE_MODE');
+    return this.toBoolean(value);
+  }
+
   // Batch update multiple settings
   async batchUpdate(settings: Record<string, any>) {
     const results = await this.prisma.$transaction(
       Object.entries(settings).map(([key, value]) =>
         this.prisma.platformSetting.upsert({
           where: { key },
-          update: { value },
-          create: { key, value },
+          update: { value: this.serializeValue(value) },
+          create: { key, value: this.serializeValue(value) },
         }),
       ),
     );
     await this.invalidateCache(...Object.keys(settings));
-    return results;
+    return results.map((setting) => ({
+      ...setting,
+      value: this.parseStoredValue(setting.value),
+    }));
   }
 
   // ATTENDANCE SPECIFIC SETTINGS
@@ -126,5 +138,28 @@ export class PlatformSettingsService {
   ): Promise<void> {
     const key = `attendance_cutoff_${schoolId}`;
     await this.setSetting(key, { hour, minute });
+  }
+
+  private toBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === 'true' || normalized === '1' || normalized === 'yes';
+    }
+    return false;
+  }
+
+  private serializeValue(value: unknown): string {
+    if (typeof value === 'string') return value;
+    return JSON.stringify(value);
+  }
+
+  private parseStoredValue(value: string): unknown {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
   }
 }

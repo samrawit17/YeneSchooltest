@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { studentsAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import ClassProgramView from "@/components/timetable/ClassProgramView";
 
 interface EnrollmentInfo {
@@ -16,6 +17,7 @@ interface EnrollmentInfo {
 export default function StudentTimetablePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { setItems } = useBreadcrumb();
   const [enrollment, setEnrollment] = useState<EnrollmentInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,6 +69,14 @@ export default function StudentTimetablePage() {
       loadEnrollment();
     }
   }, [isAuthenticated, isLoading, loadEnrollment, router, user]);
+
+  useEffect(() => {
+    setItems([
+      { label: "Dashboard", href: "/student", isCurrent: false },
+      { label: "My Timetable", isCurrent: true },
+    ]);
+    return () => setItems(null);
+  }, [setItems]);
 
   if (isLoading || loading) {
     return <ClassProgramView title="My Timetable" subtitle="Loading class program..." ownerName="Student" emptyTitle="" emptyDescription="" />;
