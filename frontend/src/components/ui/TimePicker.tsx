@@ -13,6 +13,7 @@ import {
   normalizeTimeValue,
 } from "@/lib/calendar-utils";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "@/hooks/useTranslations";
 
 interface TimePickerProps {
   value?: string;
@@ -33,6 +34,7 @@ export function TimePicker({
   calendarType,
   showCalendarLabel = true,
 }: TimePickerProps) {
+  const { t } = useTranslations<any>("calendar");
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const activeCalendarType = calendarType || user?.calendarType || "ETHIOPIAN";
@@ -49,10 +51,10 @@ export function TimePicker({
     []
   );
   const ethiopianPeriods = [
-    { value: "morning", label: "Morning" },
-    { value: "afternoon", label: "Afternoon" },
-    { value: "evening", label: "Evening" },
-    { value: "night", label: "Night" },
+    { value: "morning", label: t.time.morning },
+    { value: "afternoon", label: t.time.afternoon },
+    { value: "evening", label: t.time.evening },
+    { value: "night", label: t.time.night },
   ] as const;
   const minutes = useMemo(
     () => Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0")),
@@ -99,21 +101,21 @@ export function TimePicker({
           )}
         >
           <Clock className="mr-2 h-4 w-4 shrink-0 text-slate-500" />
-          <span>{value ? formatTimeByCalendarType(value, activeCalendarType) : placeholder}</span>
+          <span>{value ? formatTimeByCalendarType(value, activeCalendarType) : placeholder === "Select time" ? t.time.selectTime : placeholder}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 bg-white p-4 dark:bg-slate-800" align="start">
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Select time</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.time.selectTime}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isEthiopian ? "Use Ethiopian clock time." : "Use Gregorian clock time."}
+              {isEthiopian ? t.time.ethiopianHint : t.time.gregorianHint}
             </p>
           </div>
 
           <div className={cn("grid gap-3", isEthiopian ? "grid-cols-3" : "grid-cols-2")}>
             <div className="space-y-1">
-              <label className="text-xs text-slate-500 dark:text-slate-400">Hour</label>
+              <label className="text-xs text-slate-500 dark:text-slate-400">{t.time.hour}</label>
               <Select
                 value={isEthiopian ? String(ethiopianTime.hour12) : normalized.hour}
                 onValueChange={(hour) => {
@@ -139,7 +141,7 @@ export function TimePicker({
 
             {isEthiopian ? (
               <div className="space-y-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400">Block</label>
+                <label className="text-xs text-slate-500 dark:text-slate-400">{t.time.block}</label>
                 <Select
                   value={ethiopianTime.period}
                   onValueChange={(period) =>
@@ -165,7 +167,7 @@ export function TimePicker({
             ) : null}
 
             <div className="space-y-1">
-              <label className="text-xs text-slate-500 dark:text-slate-400">Minute</label>
+              <label className="text-xs text-slate-500 dark:text-slate-400">{t.time.minute}</label>
               <Select
                 value={normalized.minute}
                 onValueChange={(minute) => {
@@ -197,7 +199,7 @@ export function TimePicker({
           </div>
 
           <Button type="button" className="h-9 w-full text-sm" onClick={() => setOpen(false)}>
-            Done
+            {t.time.done}
           </Button>
         </div>
       </PopoverContent>

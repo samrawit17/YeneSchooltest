@@ -51,7 +51,7 @@ type SyncEventListener = (event: SyncEvent) => void;
 
 class SyncService {
   private config: SyncConfig;
-  private isOnline: boolean = navigator.onLine;
+  private isOnline: boolean = typeof navigator === 'undefined' ? true : navigator.onLine;
   private isSyncing: boolean = false;
   private syncInterval: NodeJS.Timeout | null = null;
   private eventListeners: Map<SyncEventType, SyncEventListener[]> = new Map();
@@ -69,6 +69,10 @@ class SyncService {
   // ============================================
 
   private setupNetworkListeners(): void {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      return;
+    }
+
     window.addEventListener('online', () => {
       this.isOnline = true;
       console.log('[SyncService] Network online - starting sync');
@@ -93,6 +97,10 @@ class SyncService {
   }
 
   private generateDeviceId(): string {
+    if (typeof localStorage === 'undefined') {
+      return 'server';
+    }
+
     const stored = localStorage.getItem('sms_device_id');
     if (stored) return stored;
     

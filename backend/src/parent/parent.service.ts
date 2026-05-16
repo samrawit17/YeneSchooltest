@@ -472,7 +472,7 @@ export class ParentService {
       include: {
         student: {
           include: {
-            user: { select: { id: true, name: true, email: true } },
+            user: { select: { id: true, name: true, email: true, avatarUrl: true } },
           },
         },
       },
@@ -499,10 +499,21 @@ export class ParentService {
         orderBy: { createdAt: 'desc' },
       }));
 
-    const schoolSettings = await this.prismaService.schoolSetting.findFirst({
-      where: { schoolId: parentProfile.schoolId, key: 'curriculum_type' },
+    const schoolSettings = await this.prismaService.schoolSetting.findMany({
+      where: {
+        schoolId: parentProfile.schoolId,
+        key: { in: ['fee_structure_mode', 'curriculum_type'] },
+      },
+      select: { key: true, value: true },
     });
-    const rawType = schoolSettings?.value || 'TERM';
+    const feeStructureMode = schoolSettings.find(
+      (setting) => setting.key === 'fee_structure_mode',
+    );
+    const academicCurriculumType = schoolSettings.find(
+      (setting) => setting.key === 'curriculum_type',
+    );
+    const rawType =
+      feeStructureMode?.value || academicCurriculumType?.value || 'TERM';
     const curriculumTypeMap: Record<string, string> = {
       QUARTER: 'QUARTERLY',
       SEMESTER: 'SEMESTER',
@@ -549,6 +560,8 @@ export class ParentService {
         return {
           ...child,
           name: child.student.user?.name || 'Unknown',
+          photoUrl: child.student.user?.avatarUrl || null,
+          avatarUrl: child.student.user?.avatarUrl || null,
           className: sp?.className || 'N/A',
           section: sp?.section || 'A',
           student: {
@@ -1011,6 +1024,8 @@ export class ParentService {
       return {
         ...child,
         name: child.student.user?.name || 'Unknown',
+        photoUrl: child.student.user?.avatarUrl || null,
+        avatarUrl: child.student.user?.avatarUrl || null,
         classId,
         sectionId,
         className: gradeName || 'N/A',

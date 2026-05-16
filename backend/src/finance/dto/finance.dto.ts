@@ -246,6 +246,15 @@ export class GenerateInstallmentFeesDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
+  annualAmount?: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsNumber()
   @Min(1)
   @Max(12)
   grade?: number;

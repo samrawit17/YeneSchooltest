@@ -27,6 +27,8 @@ export const financeAPI = {
   ) => api.put(`/finance/fee-structures/${id}?schoolId=${schoolId}`, data),
   deleteFeeStructure: (id: string, schoolId: string) =>
     api.delete(`/finance/fee-structures/${id}?schoolId=${schoolId}`),
+  clearFeeStructures: (schoolId: string, academicYearId?: string) =>
+    api.delete(`/finance/fee-structures?schoolId=${schoolId}${academicYearId ? `&academicYearId=${academicYearId}` : ''}`),
   generateStudentFees: (data: {
     schoolId: string;
     academicYearId: string;
@@ -89,7 +91,9 @@ export const financeAPI = {
     schoolId: string;
     academicYearId: string;
     feeType?: string;
+    annualAmount?: number;
     grade?: number;
+    description?: string;
   }) => api.post('/finance/fee-structures/generate-installments', data),
   getFeeCollectionMode: (schoolId: string) =>
     api.get('/finance/fee-collection-mode', { params: { schoolId } }),

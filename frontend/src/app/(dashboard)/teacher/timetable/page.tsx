@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { schoolSettingsAPI, timetableSlotsAPI } from "@/lib/api";
 import { syncService } from "@/lib/db/sync-service";
 import { toast } from "sonner";
@@ -13,11 +14,11 @@ import {
   MapPin,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   Users,
   Sparkles,
   ArrowRight,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Shadcn/ui Components
 import {
@@ -35,6 +36,7 @@ import {
   SCHOOL_WEEK_DAYS,
   toMinutes,
 } from "@/lib/timetable";
+import { formatTimeByCalendarType } from "@/lib/calendar-utils";
 
 interface TimeSlot {
   id: string;
@@ -61,6 +63,7 @@ interface TimeSlot {
 
 const TeacherTimetablePage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { schoolCalendarType, formatDate } = useAcademicYear();
   const router = useRouter();
   const { setItems } = useBreadcrumb();
   const [timetable, setTimetable] = useState<TimeSlot[]>([]);
@@ -82,6 +85,10 @@ const TeacherTimetablePage = () => {
     label: `Period ${index + 1}`,
   }));
   const { startTime: schoolStartTime, endTime: schoolEndTime } = getSchoolTimeBounds(schoolSettings);
+  const formatSlotTime = (time?: string) =>
+    formatTimeByCalendarType(time, schoolCalendarType, { includePeriodName: true });
+  const formatTimeRange = (start?: string, end?: string) =>
+    `${formatSlotTime(start)} - ${formatSlotTime(end)}`;
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -181,10 +188,48 @@ const TeacherTimetablePage = () => {
 
   if (loading || isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 animate-spin text-[#e35336]" />
-          <p className="text-gray-500 dark:text-gray-400">Loading timetable...</p>
+      <div className="w-full max-w-full space-y-4 bg-[#F8FAFC] p-3 dark:bg-[#0F172A] sm:p-4 md:space-y-6 md:p-6 overflow-x-hidden">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[#334155] dark:bg-[#111827] sm:rounded-3xl">
+          <div className="p-4 sm:p-6 space-y-3">
+            <Skeleton className="h-7 w-40" />
+            <Skeleton className="h-4 w-72" />
+            <Skeleton className="h-5 w-36" />
+          </div>
+        </div>
+
+        <div className="lg:hidden space-y-4">
+          <Skeleton className="h-5 w-32" />
+          <div className="flex gap-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-[100px] shrink-0 rounded-2xl" />
+            ))}
+          </div>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+            ))}
+          </div>
+        </div>
+
+        <div className="hidden lg:block rounded-xl border border-slate-200 dark:border-[#334155] overflow-hidden">
+          <div className="border-b dark:border-[#334155] p-6 space-y-2">
+            <Skeleton className="h-6 w-44" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <div className="p-4 space-y-3">
+            <Skeleton className="h-8 w-full" />
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-white p-4 dark:bg-[#1E293B] sm:p-6 space-y-4">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-56" />
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+          ))}
         </div>
       </div>
     );
@@ -210,7 +255,7 @@ const TeacherTimetablePage = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="border-[rgba(var(--brand-color-rgb),0.14)] bg-[rgba(var(--brand-color-rgb),0.08)] text-[10px] text-[var(--brand-color,#e35336)] sm:text-xs">
-                School hours {schoolStartTime} - {schoolEndTime}
+                School hours {formatTimeRange(schoolStartTime, schoolEndTime)}
               </Badge>
 
             </div>
@@ -273,7 +318,7 @@ const TeacherTimetablePage = () => {
                     </p>
                   </div>
                   <Badge variant="outline" className="border-[#e35336]/20 bg-[#e35336]/5 text-[#e35336]">
-                    {slot.startTime}
+                    {formatSlotTime(slot.startTime)}
                   </Badge>
                 </div>
 
@@ -281,7 +326,7 @@ const TeacherTimetablePage = () => {
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-slate-400" />
                     <span className="text-xs font-medium text-slate-600 dark:text-gray-300">
-                      {slot.startTime} - {slot.endTime}
+                      {formatTimeRange(slot.startTime, slot.endTime)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -330,8 +375,7 @@ const TeacherTimetablePage = () => {
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <span className="text-xs font-medium dark:text-white sm:text-sm">
-                {currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - 
-                {new Date(currentWeekStart.getTime() + 4 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: !isToday(new Date(currentWeekStart.getTime() + 4 * 86400000)) ? 'numeric' : undefined })}
+                {formatDate(currentWeekStart)} - {formatDate(new Date(currentWeekStart.getTime() + 4 * 86400000))}
               </span>
               <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#e35336]/10 hover:text-[#e35336]" onClick={handleNextWeek}>
                 <ChevronRight className="w-4 h-4" />
@@ -367,7 +411,7 @@ const TeacherTimetablePage = () => {
                   <tr key={`${slot.start}-${slot.end}`} className="group hover:bg-slate-50/50 dark:hover:bg-[#0F172A]/50">
                     <td className="sticky left-0 z-10 bg-white p-4 dark:bg-[#1E293B]">
                       <div className="text-sm font-bold text-slate-900 dark:text-white">{slot.label}</div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400">{slot.start} - {slot.end}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">{formatTimeRange(slot.start, slot.end)}</div>
                     </td>
                     
                     {weekdays.map((day) => {
@@ -381,13 +425,13 @@ const TeacherTimetablePage = () => {
                         >
                           {classForSlot ? (
                             <div className="h-full rounded-xl border border-[#e35336]/10 bg-white p-3 shadow-sm transition-all hover:border-[#e35336]/30 hover:shadow-md dark:bg-[#0F172A]">
-                              <p className="line-clamp-1 text-xs font-bold text-[#e35336]">
+                              <p className="line-clamp-1 text-sm font-bold text-slate-900 dark:text-white">
                                 {classForSlot.class?.name}
                               </p>
-                              <p className="mt-1 line-clamp-1 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                              <p className="mt-1 line-clamp-1 text-xs font-medium text-slate-700 dark:text-slate-300">
                                 {classForSlot.subject?.name}
                               </p>
-                              <div className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-400">
+                              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                                 <MapPin className="h-3 w-3" />
                                 {classForSlot.room || 'TBD'}
                               </div>
@@ -415,7 +459,7 @@ const TeacherTimetablePage = () => {
               Today's Classes
             </h2>
             <p className="text-xs text-slate-500 dark:text-gray-400">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {formatDate(new Date())}
             </p>
           </div>
         </div>
@@ -429,9 +473,9 @@ const TeacherTimetablePage = () => {
               >
                 <div className="flex items-center gap-4 sm:w-24 sm:flex-col sm:gap-1">
                   <Badge variant="outline" className="border-[#e35336]/20 bg-[#e35336]/5 text-[#e35336] sm:w-full sm:justify-center">
-                    {slot.startTime}
+                    {formatSlotTime(slot.startTime)}
                   </Badge>
-                  <span className="text-[10px] font-medium text-slate-400 sm:text-center">to {slot.endTime}</span>
+                  <span className="text-[10px] font-medium text-slate-400 sm:text-center">to {formatSlotTime(slot.endTime)}</span>
                 </div>
 
                 <div className="flex-1 space-y-1">

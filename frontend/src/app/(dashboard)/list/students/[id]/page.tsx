@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "@/hooks/useTranslations";
 import { studentsAPI, attendanceAPI, financeAPI, academicYearsAPI } from "@/lib/api";
 import { communicationsAPI } from "@/lib/api/communications";
 import { queryKeys } from "@/lib/query-keys";
@@ -143,6 +144,16 @@ const SingleStudentPage = ({ params }: PageProps) => {
 function StudentDetailContent({ studentId }: { studentId: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t } = useTranslations<any>("students");
+  const translateFeeStatus = (status: string): string => {
+    switch (status) {
+      case "Not generated": return t.fee.notGenerated;
+      case "Paid": return t.fee.paid;
+      case "Partial": return t.fee.partial;
+      case "Unpaid": return t.fee.unpaid;
+      default: return status;
+    }
+  };
   const { user } = useAuth();
   const { setItems } = useBreadcrumb();
   const breadcrumbSetRef = useRef(false);
@@ -285,13 +296,13 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const updateMutation = useMutation({
     mutationFn: (data: any) => studentsAPI.update(studentId, data),
     onSuccess: () => {
-      toast.success("Student updated successfully");
+      toast.success(t.studentUpdated);
       queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId) });
       setEditDialogOpen(false);
       setIsEditing(false);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to update student");
+      toast.error(error.response?.data?.message || t.updateFailed);
       setIsEditing(false);
     },
   });
@@ -328,7 +339,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
       <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
-          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading student data...</p>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">{t.loading}</p>
         </div>
       </div>
     );
@@ -338,8 +349,8 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
     return (
       <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
-          <p className="text-red-600 dark:text-red-400 font-medium">Error loading student data</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{(error as any)?.message || "Student not found"}</p>
+          <p className="text-red-600 dark:text-red-400 font-medium">{t.loadError}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{(error as any)?.message || t.notFound}</p>
         </div>
       </div>
     );
@@ -371,8 +382,8 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const todayAttendance = attendanceByDate.get(toDateKey(today)) as any;
   const todayAttendanceRow = {
     date: today,
-    status: todayAttendance?.status || "No record",
-    remarks: todayAttendance?.remarks || "Attendance not submitted",
+    status: todayAttendance?.status || t.attendance.noRecord,
+    remarks: todayAttendance?.remarks || t.attendance.notSubmitted,
   };
   
   // Use pre-calculated attendance percentage from backend
@@ -456,17 +467,17 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const totalOutstanding = feeData?.summary?.totalBalance || 0;
   const hasGeneratedFees = feeItems.length > 0;
 
-  const studentName = userData.name || "Unknown Student";
+  const studentName = userData.name || t.unknownStudent;
   const avatarUrl = userData.img || userData.avatarUrl;
-  const username = userData.username || student.studentCode || "N/A";
-  const phone = student.phone || userData.phone || "N/A";
-  const address = student.address || userData.address || "N/A";
-  const gender = student.gender || "N/A";
+  const username = userData.username || student.studentCode || t.nA;
+  const phone = student.phone || userData.phone || t.nA;
+  const address = student.address || userData.address || t.nA;
+  const gender = student.gender || t.nA;
   const dateOfBirth = student.dateOfBirth || student.birthday;
-  const className = student.className || student.class?.name || "N/A";
-  const section = student.section || student.sectionName || "N/A";
-  const homeroomTeacher = student.classTeacher || student.class?.homeroomTeacher?.name || "N/A";
-  const enrollmentStatus = student.enrollmentStatus || "N/A";
+  const className = student.className || student.class?.name || t.nA;
+  const section = student.section || student.sectionName || t.nA;
+  const homeroomTeacher = student.classTeacher || student.class?.homeroomTeacher?.name || t.nA;
+  const enrollmentStatus = student.enrollmentStatus || t.nA;
   const lastLogin = student.lastLogin || userData.lastLoginAt || userData.lastLogin;
   const isActive = userData.isActive ?? true;
   const parents = student.parents || [];
@@ -483,10 +494,10 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
     setIsSendingMessage(true);
     try {
       await communicationsAPI.create({ studentId: recipientStudentId, subject, message });
-      toast.success("Message sent");
+      toast.success(t.messageSent);
       setShowNewMessageModal(false);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to send message");
+      toast.error(error.response?.data?.message || t.messageFailed);
     } finally {
       setIsSendingMessage(false);
     }
@@ -511,14 +522,14 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="truncate text-2xl font-bold text-slate-900 dark:text-white">{studentName}</h1>
                     <Badge className={isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}>
-                      {isActive ? "Active" : "Inactive"}
+                      {isActive ? t.active : t.inactive}
                     </Badge>
                     <Badge variant="outline">{enrollmentStatus}</Badge>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
                     <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{username}</span>
-                    <span>{className}{section !== "N/A" ? ` - ${section}` : ""}</span>
-                    <span>Roll {student.rollNumber || "N/A"}</span>
+                    <span>{className}{section !== t.nA ? ` - ${section}` : ""}</span>
+                    <span>{t.roll.replace("{number}", student.rollNumber || t.nA)}</span>
                   </div>
                 </div>
               </div>
@@ -536,22 +547,22 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                 {canEditStudent ? (
                   <Button variant="outline" size="sm" onClick={handleEditClick}>
                     <Edit2 className="mr-1.5 h-4 w-4" />
-                    Edit
+                    {t.edit}
                   </Button>
                 ) : null}
                 <Button size="sm" onClick={handleSendMessage} style={{ backgroundColor: "#e35336" }}>
                   <MessageSquare className="mr-1.5 h-4 w-4" />
-                  Message
+                  {t.message}
                 </Button>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-5">
-              <SummaryItem icon={GraduationCap} label="Class" value={`${className}${section !== "N/A" ? ` - ${section}` : ""}`} />
-              <SummaryItem icon={User} label="Homeroom" value={homeroomTeacher} />
-              <SummaryItem icon={Activity} label="Attendance" value={`${attendanceRate}%`} />
-              <SummaryItem icon={CreditCard} label="Fee Status" value={feeStatus} />
-              <SummaryItem icon={Clock} label="Last login" value={formatDate(lastLogin)} />
+              <SummaryItem icon={GraduationCap} label={t.summary.class} value={`${className}${section !== t.nA ? ` - ${section}` : ""}`} />
+              <SummaryItem icon={User} label={t.summary.homeroom} value={homeroomTeacher} />
+              <SummaryItem icon={Activity} label={t.summary.attendance} value={`${attendanceRate}%`} />
+               <SummaryItem icon={CreditCard} label={t.summary.feeStatus} value={translateFeeStatus(feeStatus)} />
+              <SummaryItem icon={Clock} label={t.summary.lastLogin} value={formatDate(lastLogin)} />
             </div>
           </CardContent>
         </Card>
@@ -560,37 +571,37 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
           <div className="space-y-6">
             <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <CardHeader>
-                <CardTitle className="text-base">Student Information</CardTitle>
+                <CardTitle className="text-base">{t.info.title}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <InfoRow icon={Shield} label="Username" value={username} />
-                <InfoRow icon={Phone} label="Phone" value={phone} />
-                <InfoRow icon={User} label="Gender" value={gender} />
-                <InfoRow icon={Calendar} label="Date of Birth" value={formatDate(dateOfBirth)} />
-                <InfoRow icon={MapPin} label="Address" value={address} />
-                <InfoRow icon={Calendar} label="Enrollment" value={student.enrollmentYear || student.admissionDate || "N/A"} />
+                <InfoRow icon={Shield} label={t.info.username} value={username} />
+                <InfoRow icon={Phone} label={t.info.phone} value={phone} />
+                <InfoRow icon={User} label={t.info.gender} value={gender} />
+                <InfoRow icon={Calendar} label={t.info.dateOfBirth} value={formatDate(dateOfBirth)} />
+                <InfoRow icon={MapPin} label={t.info.address} value={address} />
+                <InfoRow icon={Calendar} label={t.info.enrollment} value={student.enrollmentYear || student.admissionDate || t.nA} />
               </CardContent>
             </Card>
 
             <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <CardHeader>
-                <CardTitle className="text-base">Parent / Guardian</CardTitle>
+                <CardTitle className="text-base">{t.parent.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 {parents.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-slate-200 py-8 text-center dark:border-slate-700">
                     <Users className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                    <p className="text-sm text-slate-500">No parent linked</p>
+                    <p className="text-sm text-slate-500">{t.parent.noParent}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {parents.map((parent: any, index: number) => (
                       <div key={`${parent.id || index}`} className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-                        <p className="font-semibold text-slate-900 dark:text-white">{parent.name || "Unknown Parent"}</p>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{parent.phone || "No phone"}</p>
+                        <p className="font-semibold text-slate-900 dark:text-white">{parent.name || t.parent.unknown}</p>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{parent.phone || t.parent.noPhone}</p>
                         <div className="mt-2 flex flex-wrap gap-1">
                           {parent.relation ? <Badge variant="outline">{parent.relation}</Badge> : null}
-                          {parent.isPrimary ? <Badge variant="outline">Primary</Badge> : null}
+                          {parent.isPrimary ? <Badge variant="outline">{t.parent.primary}</Badge> : null}
                         </div>
                       </div>
                     ))}
@@ -603,15 +614,15 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
           <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
             <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <CardHeader>
-                <CardTitle className="text-base">Attendance Snapshot</CardTitle>
+                <CardTitle className="text-base">{t.attendance.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800">
                   <div className="grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr] bg-slate-50 px-3 py-2 text-xs font-semibold uppercase text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
-                    <span>Day</span>
-                    <span>Date</span>
-                    <span>Status</span>
-                    <span>Note</span>
+                    <span>{t.attendance.day}</span>
+                    <span>{t.attendance.date}</span>
+                    <span>{t.attendance.status}</span>
+                    <span>{t.attendance.note}</span>
                   </div>
                   {[todayAttendanceRow].map((record: any, index: number) => (
                     <div
@@ -633,13 +644,13 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
             {!isTeacher ? (
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <CardHeader>
-                  <CardTitle className="text-base">Fee Snapshot</CardTitle>
+                  <CardTitle className="text-base">{t.fee.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-3">
-                    <Metric label="Total" value={formatMoney(totalFeeAmount)} />
-                    <Metric label="Paid" value={formatMoney(totalPaidAmount)} />
-                    <Metric label="Balance" value={formatMoney(totalOutstanding)} />
+                    <Metric label={t.fee.total} value={formatMoney(totalFeeAmount)} />
+                    <Metric label={t.fee.paid} value={formatMoney(totalPaidAmount)} />
+                    <Metric label={t.fee.balance} value={formatMoney(totalOutstanding)} />
                   </div>
                   <div className="mt-4 space-y-2">
                     {feeRows.map((period: any) => (
@@ -647,7 +658,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                     ))}
                     {feeRows.length === 0 ? (
                       <p className="py-4 text-sm text-slate-500">
-                        No curriculum periods found for this academic year.
+                        {t.fee.noPeriods}
                       </p>
                     ) : null}
                   </div>
@@ -657,12 +668,12 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
             <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 2xl:col-span-2">
               <CardHeader>
-                <CardTitle className="text-base">Academic Snapshot</CardTitle>
+                <CardTitle className="text-base">{t.academic.title}</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <InfoRow icon={BookOpen} label="Academic Year" value={activeAcademicYear?.name || student.enrollmentYear || "N/A"} />
-                <InfoRow icon={Award} label="Class Teacher" value={homeroomTeacher} />
-                <InfoRow icon={CheckCircle} label="Status" value={enrollmentStatus} />
+                <InfoRow icon={BookOpen} label={t.academic.year} value={activeAcademicYear?.name || student.enrollmentYear || t.nA} />
+                <InfoRow icon={Award} label={t.academic.classTeacher} value={homeroomTeacher} />
+                <InfoRow icon={CheckCircle} label={t.academic.status} value={enrollmentStatus} />
               </CardContent>
             </Card>
           </div>
@@ -684,95 +695,95 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Edit Student</DialogTitle>
+            <DialogTitle>{t.editDialog.title}</DialogTitle>
             <DialogDescription>
-              Update student information below.
+              {t.editDialog.description}
             </DialogDescription>
           </DialogHeader>
           
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 py-4">
             <div className="grid gap-2">
-              <label htmlFor="full_name" className="text-sm font-medium">Full Name</label>
+              <label htmlFor="full_name" className="text-sm font-medium">{t.editDialog.fullName}</label>
               <Input
                 id="full_name"
                 value={editForm.full_name}
                 onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                placeholder="Enter full name"
+                placeholder={t.editDialog.fullNamePlaceholder}
                 className="text-sm dark:bg-slate-900 dark:border-slate-700"
               />
             </div>
             
             <div className="grid gap-2">
-              <label htmlFor="email" className="text-sm font-medium">Email</label>
+              <label htmlFor="email" className="text-sm font-medium">{t.editDialog.email}</label>
               <Input
                 id="email"
                 value={editForm.email}
                 disabled
                 className="bg-gray-50 dark:bg-slate-800 text-sm dark:border-slate-700"
-                placeholder="Email cannot be changed"
+                placeholder={t.editDialog.emailDisabled}
               />
             </div>
           </div>
           
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             <div className="grid gap-2">
-              <label htmlFor="phone" className="text-sm font-medium">Phone</label>
+              <label htmlFor="phone" className="text-sm font-medium">{t.editDialog.phone}</label>
               <Input
                 id="phone"
                 value={editForm.phone}
                 onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                placeholder="Enter phone number"
+                placeholder={t.editDialog.phonePlaceholder}
                 className="text-sm"
               />
             </div>
             
             <div className="grid gap-2">
-              <label htmlFor="gender" className="text-sm font-medium">Gender</label>
+              <label htmlFor="gender" className="text-sm font-medium">{t.editDialog.gender}</label>
               <Select
                 value={editForm.gender}
                 onValueChange={(value) => setEditForm({ ...editForm, gender: value })}
               >
                 <SelectTrigger className="text-sm">
-                  <SelectValue placeholder="Select gender" />
+                  <SelectValue placeholder={t.editDialog.genderPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MALE">Male</SelectItem>
-                  <SelectItem value="FEMALE">Female</SelectItem>
+                  <SelectItem value="MALE">{t.editDialog.male}</SelectItem>
+                  <SelectItem value="FEMALE">{t.editDialog.female}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           
           <div className="grid gap-2">
-            <label htmlFor="address" className="text-sm font-medium">Address</label>
+            <label htmlFor="address" className="text-sm font-medium">{t.editDialog.address}</label>
             <Input
               id="address"
               value={editForm.address}
               onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-              placeholder="Enter address"
+              placeholder={t.editDialog.addressPlaceholder}
               className="text-sm"
             />
           </div>
           
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             <div className="grid gap-2">
-              <label htmlFor="studentCode" className="text-sm font-medium">Student Code</label>
+              <label htmlFor="studentCode" className="text-sm font-medium">{t.editDialog.studentCode}</label>
               <Input
                 id="studentCode"
                 value={editForm.studentCode}
                 onChange={(e) => setEditForm({ ...editForm, studentCode: e.target.value })}
-                placeholder="Enter student code"
+                placeholder={t.editDialog.studentCodePlaceholder}
                 className="text-sm"
               />
             </div>
             
             <div className="grid gap-2">
-              <label htmlFor="rollNumber" className="text-sm font-medium">Roll Number</label>
+              <label htmlFor="rollNumber" className="text-sm font-medium">{t.editDialog.rollNumber}</label>
               <Input
                 id="rollNumber"
                 value={editForm.rollNumber}
                 onChange={(e) => setEditForm({ ...editForm, rollNumber: e.target.value })}
-                placeholder="Enter roll number"
+                placeholder={t.editDialog.rollNumberPlaceholder}
                 className="text-sm"
               />
             </div>
@@ -780,23 +791,23 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
           
           <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
             <div className="grid gap-2">
-              <label htmlFor="grade" className="text-sm font-medium">Grade</label>
+              <label htmlFor="grade" className="text-sm font-medium">{t.editDialog.grade}</label>
               <Input
                 id="grade"
                 value={editForm.grade}
                 onChange={(e) => setEditForm({ ...editForm, grade: e.target.value })}
-                placeholder="Enter grade"
+                placeholder={t.editDialog.gradePlaceholder}
                 className="text-sm"
               />
             </div>
             
             <div className="grid gap-2">
-              <label htmlFor="section" className="text-sm font-medium">Section</label>
+              <label htmlFor="section" className="text-sm font-medium">{t.editDialog.section}</label>
               <Input
                 id="section"
                 value={editForm.section}
                 onChange={(e) => setEditForm({ ...editForm, section: e.target.value })}
-                placeholder="Enter section"
+                placeholder={t.editDialog.sectionPlaceholder}
                 className="text-sm"
               />
             </div>
@@ -804,18 +815,18 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
           
           <div className="flex justify-end gap-3 mt-4">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
+              {t.editDialog.cancel}
             </Button>
             <Button onClick={handleUpdateStudent} disabled={isEditing}>
               {isEditing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
+                  {t.editDialog.saving}
                 </>
               ) : (
                 <>
                   <Edit2 className="w-4 h-4 mr-2" />
-                  Save Changes
+                  {t.editDialog.saveChanges}
                 </>
               )}
             </Button>
@@ -869,6 +880,16 @@ function MiniRow({ label, value }: { label: string; value: string }) {
 }
 
 function PeriodFeeRow({ period }: { period: { name: string; due: number; paid: number; balance: number; status: string; isCurrent?: boolean } }) {
+  const { t } = useTranslations<any>("students");
+  const translateFeeStatus = (status: string): string => {
+    switch (status) {
+      case "Not generated": return t.fee.notGenerated;
+      case "Paid": return t.fee.paid;
+      case "Partial": return t.fee.partial;
+      case "Unpaid": return t.fee.unpaid;
+      default: return status;
+    }
+  };
   return (
     <div className="rounded-lg border border-slate-100 px-3 py-2 text-sm dark:border-slate-800">
       <div className="flex items-center justify-between gap-3">
@@ -877,16 +898,16 @@ function PeriodFeeRow({ period }: { period: { name: string; due: number; paid: n
             <span className="truncate font-semibold text-slate-800 dark:text-slate-100">{period.name}</span>
             {period.isCurrent ? (
               <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-[10px]">
-                Current
+                {t.fee.current}
               </Badge>
             ) : null}
           </div>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Due {formatMoney(period.due)} • Paid {formatMoney(period.paid)} • Balance {formatMoney(period.balance)}
+            {t.fee.periodNote.replace("{due}", formatMoney(period.due)).replace("{paid}", formatMoney(period.paid)).replace("{balance}", formatMoney(period.balance))}
           </p>
         </div>
         <span className={`shrink-0 font-semibold ${getPeriodStatusClass(period.status)}`}>
-          {period.status}
+          {translateFeeStatus(period.status)}
         </span>
       </div>
     </div>

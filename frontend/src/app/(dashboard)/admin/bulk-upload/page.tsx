@@ -15,6 +15,7 @@ import {
   UserPlus,
 } from "lucide-react";
 
+import { useTranslations } from "@/hooks/useTranslations";
 import {
   academicYearsAPI,
   classesAPI,
@@ -171,6 +172,7 @@ function normalizeStudentAndParentNames(fullName?: string, explicitParentName?: 
 }
 
 export default function BulkUploadPage() {
+  const { t } = useTranslations<any>("bulkUpload");
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -250,7 +252,7 @@ export default function BulkUploadPage() {
       setStudents(normalizeStudentsResponse(studentsResponse.data));
     } catch (error) {
       console.error("Failed to initialize bulk user page", error);
-      toast.error("Failed to load setup data");
+      toast.error(t.errors.initFailed);
     } finally {
       setIsLoadingSetup(false);
     }
@@ -354,7 +356,7 @@ export default function BulkUploadPage() {
 
   async function handleUpload() {
     if (!importFile) {
-      toast.error("Select a CSV file first");
+      toast.error(t.errors.selectFile);
       return;
     }
 
@@ -365,10 +367,10 @@ export default function BulkUploadPage() {
       const hasStaffWarning = validationWarnings.includes('STAFF_DATA_DETECTED');
 
       if (isStaffUpload && hasStudentWarning) {
-        toast.error("Cannot upload student data as staff. Please select 'Students and Parent' import type or upload a staff file.");
+        toast.error(t.errors.uploadStaffAsStudent);
         return;
       } else if (!isStaffUpload && hasStaffWarning) {
-        toast.error("Cannot upload staff data as students. Please select 'Staff' import type or upload a student file.");
+        toast.error(t.errors.uploadStudentAsStaff);
         return;
       }
     }
@@ -384,14 +386,14 @@ export default function BulkUploadPage() {
       setCreatedCredentials([]);
       setCreatedMessage("");
       if (response.data.status === "success") {
-        toast.success("Import completed successfully");
+        toast.success(t.messages.importSuccess);
       } else if (response.data.status === "partial") {
-        toast.warning("Import completed with some failures");
+        toast.warning(t.messages.importPartial);
       } else {
-        toast.error(response.data.message || "Import failed");
+        toast.error(response.data.message || t.errors.importFailed);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to process import");
+      toast.error(error.response?.data?.message || t.errors.importProcessFailed);
     } finally {
       setIsUploading(false);
     }
@@ -404,12 +406,12 @@ export default function BulkUploadPage() {
 
       if (createType === "student") {
         if (!studentForm.name.trim()) {
-          toast.error("Student name is required");
+          toast.error(t.errors.studentNameRequired);
           return;
         }
 
         if (!studentForm.phone.trim()) {
-          toast.error("Student phone number is required");
+          toast.error(t.errors.studentPhoneRequired);
           return;
         }
 
@@ -425,7 +427,7 @@ export default function BulkUploadPage() {
         });
       } else if (createType === "staff") {
         if (!staffForm.name.trim() || !staffForm.email.trim()) {
-          toast.error("Staff name and email are required");
+          toast.error(t.errors.staffNameEmailRequired);
           return;
         }
 
@@ -443,7 +445,7 @@ export default function BulkUploadPage() {
 
       const normalized = normalizeCreatedCredentials(response.data, createType);
       setCreatedCredentials(normalized);
-      setCreatedMessage(response.data?.message || "User created successfully");
+      setCreatedMessage(response.data?.message || t.messages.userCreated);
       setUploadResult(null);
 
       if (createType === "student") {
@@ -454,9 +456,9 @@ export default function BulkUploadPage() {
         setStaffForm({ name: "", email: "", phone: "", role: "TEACHER" });
       }
 
-      toast.success("User created successfully");
+      toast.success(t.messages.userCreated);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to create user");
+      toast.error(error.response?.data?.message || t.errors.createFailed);
     } finally {
       setIsCreating(false);
     }
@@ -467,7 +469,7 @@ export default function BulkUploadPage() {
       const response = await bulkUploadAPI.getTemplate(uploadType);
       downloadBlob(response.data, `template_${uploadType}.csv`);
     } catch (error) {
-      toast.error("Failed to download template");
+      toast.error(t.errors.downloadTemplate);
     }
   }
 
@@ -480,7 +482,7 @@ export default function BulkUploadPage() {
       const response = await credentialsAPI.exportToCSV(createdCredentials);
       downloadBlob(response.data, `created_credentials_${Date.now()}.csv`);
     } catch (error) {
-      toast.error("Failed to export credentials");
+      toast.error(t.errors.exportFailed);
     }
   }
 
@@ -501,7 +503,7 @@ export default function BulkUploadPage() {
       );
       downloadBlob(response.data, `bulk_credentials_${Date.now()}.csv`);
     } catch (error) {
-      toast.error("Failed to export import credentials");
+      toast.error(t.errors.downloadReportFailed);
     }
   }
 
@@ -514,20 +516,20 @@ export default function BulkUploadPage() {
     <div className="w-full px-4 py-6 sm:px-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          User Provisioning
+          {t.title}
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Create one user or import many via CSV.
+          {t.description}
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
           <TabsTrigger value="import" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
-            Bulk Import
+            {t.tabs.import}
           </TabsTrigger>
           <TabsTrigger value="create" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
-            Create One
+            {t.tabs.create}
           </TabsTrigger>
         </TabsList>
 
@@ -535,10 +537,10 @@ export default function BulkUploadPage() {
           <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
               <div className="flex items-center gap-2 rounded-lg bg-slate-100 p-1 dark:bg-slate-700">
-                {[
-                  { id: "staff", label: "Staff" },
-                  { id: "students-auto", label: "Students + Parents" },
-                ].map((item) => (
+                  {[
+                    { id: "staff", label: t.uploadTypes.staff },
+                    { id: "students-auto", label: t.uploadTypes.studentsAuto },
+                  ].map((item) => (
                   <button
                     key={item.id}
                     type="button"
@@ -555,7 +557,7 @@ export default function BulkUploadPage() {
               </div>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger className="h-9 w-48">
-                  <SelectValue placeholder="Academic year" />
+                  <SelectValue placeholder={t.academicYear} />
                 </SelectTrigger>
                 <SelectContent>
                   {academicYears.map((year) => (
@@ -568,7 +570,7 @@ export default function BulkUploadPage() {
             </div>
             <Button variant="outline" size="sm" onClick={downloadTemplate}>
               <Download className="mr-2 h-4 w-4" />
-              Template
+              {t.template}
             </Button>
           </div>
 
@@ -594,7 +596,7 @@ export default function BulkUploadPage() {
                   if (file?.name.endsWith(".csv")) {
                     void processFile(file);
                   } else {
-                    toast.error("Drop a CSV file");
+                    toast.error(t.dropCsv);
                   }
                 }}
                 onClick={() => !importFile && fileInputRef.current?.click()}
@@ -617,17 +619,17 @@ export default function BulkUploadPage() {
                       <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <p className="text-lg font-semibold text-slate-900 dark:text-white">{importFile.name}</p>
-                    <p className="mt-1 text-sm text-slate-500">{(importFile.size / 1024).toFixed(1)} KB &middot; CSV ready</p>
+                    <p className="mt-1 text-sm text-slate-500">{(importFile.size / 1024).toFixed(1)} KB &middot; {t.csvReady}</p>
                     <div className="mt-4 flex gap-3">
                       <Button size="sm" onClick={(e) => { e.stopPropagation(); handleUpload(); }} disabled={isUploading}>
                         {isUploading ? (
-                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Importing</>
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t.importing}</>
                         ) : (
-                          <><Upload className="mr-2 h-4 w-4" /> Start Import</>
+                          <><Upload className="mr-2 h-4 w-4" /> {t.startImport}</>
                         )}
                       </Button>
                       <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setImportFile(null); setPreviewData([]); }}>
-                        Remove
+                        {t.remove}
                       </Button>
                     </div>
                   </>
@@ -636,8 +638,8 @@ export default function BulkUploadPage() {
                     <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700">
                       <FileSpreadsheet className="h-7 w-7 text-slate-500 dark:text-slate-400" />
                     </div>
-                    <p className="text-lg font-semibold text-slate-900 dark:text-white">Drop CSV here or click to browse</p>
-                    <p className="mt-1 text-sm text-slate-500">Only .csv files are supported</p>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-white">{t.dropHere}</p>
+                    <p className="mt-1 text-sm text-slate-500">{t.csvOnly}</p>
                   </>
                 )}
               </div>
@@ -646,8 +648,8 @@ export default function BulkUploadPage() {
                 <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
                   <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-700">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">Preview</p>
-                      <p className="text-xs text-slate-500">All {previewData.length} rows</p>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.preview}</p>
+                      <p className="text-xs text-slate-500">{t.allRows.replace("{count}", String(previewData.length))}</p>
                     </div>
                   </div>
                   {validationWarnings.length > 0 && (
@@ -655,8 +657,8 @@ export default function BulkUploadPage() {
                       <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
                       <p className="text-sm text-amber-800 dark:text-amber-200">
                         {validationWarnings.includes('STUDENT_DATA_DETECTED')
-                          ? "This file looks like student data but Staff import is selected."
-                          : "This file looks like staff data but Students import is selected."}
+                          ? t.warnings.studentDataAsStaff
+                          : t.warnings.staffDataAsStudent}
                       </p>
                     </div>
                   )}
@@ -689,29 +691,29 @@ export default function BulkUploadPage() {
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Import Result</h3>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{t.importResult}</h3>
                   <p className="text-sm text-slate-500">{uploadResult.message}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setUploadResult(null)}>
-                  New Import
+                  {t.newImport}
                 </Button>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-4">
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-medium text-slate-500">Total</p>
+                  <p className="text-xs font-medium text-slate-500">{t.stats.total}</p>
                   <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{uploadSummary.totalRecords}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-medium text-emerald-600">Created</p>
+                  <p className="text-xs font-medium text-emerald-600">{t.stats.created}</p>
                   <p className="mt-1 text-2xl font-bold text-emerald-600">{uploadSummary.successfulCount}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-medium text-red-500">Failed</p>
+                  <p className="text-xs font-medium text-red-500">{t.stats.failed}</p>
                   <p className="mt-1 text-2xl font-bold text-red-500">{uploadSummary.failedCount}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-medium text-slate-500">Success Rate</p>
+                  <p className="text-xs font-medium text-slate-500">{t.stats.successRate}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                       <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${successRate}%` }} />
@@ -728,13 +730,13 @@ export default function BulkUploadPage() {
                       <ShieldCheck className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900 dark:text-white">{uploadResult.credentials.length} credentials generated</p>
-                      <p className="text-sm text-slate-500">Export the report to hand credentials offline.</p>
+                      <p className="font-semibold text-slate-900 dark:text-white">{t.credentialsGenerated.replace("{count}", String(uploadResult.credentials.length))}</p>
+                      <p className="text-sm text-slate-500">{t.exportHint}</p>
                     </div>
                   </div>
                   <Button size="sm" onClick={downloadImportReport}>
                     <Download className="mr-2 h-4 w-4" />
-                    Export
+                    {t.export}
                   </Button>
                 </div>
               ) : null}
@@ -746,8 +748,8 @@ export default function BulkUploadPage() {
                       <CreditCard className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900 dark:text-white">Generate ID Cards</p>
-                      <p className="text-sm text-slate-500">For {uploadResult.credentials.length} newly imported students.</p>
+                      <p className="font-semibold text-slate-900 dark:text-white">{t.generateIdCards}</p>
+                      <p className="text-sm text-slate-500">{t.forNewStudents.replace("{count}", String(uploadResult.credentials.length))}</p>
                     </div>
                   </div>
                   <Button
@@ -760,14 +762,14 @@ export default function BulkUploadPage() {
                     }}
                   >
                     <CreditCard className="mr-2 h-4 w-4" />
-                    Generate
+                    {t.generate}
                   </Button>
                 </div>
               ) : null}
 
               {uploadResult.failedRecords?.length ? (
                 <div className="rounded-xl border border-red-200 bg-white p-5 dark:border-red-800 dark:bg-slate-800">
-                  <p className="mb-3 text-sm font-semibold text-red-600 dark:text-red-400">Failed Rows ({uploadResult.failedRecords.length})</p>
+                  <p className="mb-3 text-sm font-semibold text-red-600 dark:text-red-400">{t.failedRows.replace("{count}", String(uploadResult.failedRecords.length))}</p>
                   <div className="space-y-2">
                     {uploadResult.failedRecords.map((item: any, index: number) => (
                       <div key={index} className="rounded-lg border border-red-100 bg-red-50/50 px-4 py-3 dark:border-red-900 dark:bg-red-950/20">
@@ -788,10 +790,10 @@ export default function BulkUploadPage() {
           <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
               <div className="flex items-center gap-2 rounded-lg bg-slate-100 p-1 dark:bg-slate-700">
-                {[
-                  { id: "student", label: "Student" },
-                  { id: "staff", label: "Staff" },
-                ].map((item) => (
+                  {[
+                    { id: "student", label: t.createTypes.student },
+                    { id: "staff", label: t.createTypes.staff },
+                  ].map((item) => (
                   <button
                     key={item.id}
                     type="button"
@@ -808,7 +810,7 @@ export default function BulkUploadPage() {
               </div>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger className="h-9 w-48">
-                  <SelectValue placeholder="Academic year" />
+                  <SelectValue placeholder={t.academicYear} />
                 </SelectTrigger>
                 <SelectContent>
                   {academicYears.map((year) => (
@@ -819,28 +821,28 @@ export default function BulkUploadPage() {
                 </SelectContent>
               </Select>
             </div>
-            <p className="text-xs text-slate-500">Credentials auto-generated &amp; stored</p>
+            <p className="text-xs text-slate-500">{t.autoStore}</p>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
             <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-700">
               <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                {createType === "student" ? "Create Student" : "Create Staff"}
+                {createType === "student" ? t.createTitle.student : t.createTitle.staff}
               </h3>
             </div>
             <div className="p-5">
               {createType === "student" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Full Name *</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fullName}</Label>
                     <Input
                       value={studentForm.name}
                       onChange={(event) => setStudentForm((current) => ({ ...current, name: event.target.value }))}
-                      placeholder="Student full name"
+                      placeholder={t.studentNamePlaceholder}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Phone *</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.phone}</Label>
                     <Input
                       value={studentForm.phone}
                       onChange={(event) => setStudentForm((current) => ({ ...current, phone: event.target.value }))}
@@ -848,21 +850,21 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Email</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.email}</Label>
                     <Input
                       value={studentForm.email}
                       onChange={(event) => setStudentForm((current) => ({ ...current, email: event.target.value }))}
-                      placeholder="student@example.com"
+                      placeholder={t.emailPlaceholder}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Class</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.class}</Label>
                     <Select
                       value={studentForm.classId}
                       onValueChange={(value) => setStudentForm((current) => ({ ...current, classId: value }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={isLoadingSetup ? "Loading classes" : "Optional"} />
+                        <SelectValue placeholder={isLoadingSetup ? t.loadingClasses : t.optional} />
                       </SelectTrigger>
                       <SelectContent>
                         {classes.map((item: any) => (
@@ -877,23 +879,23 @@ export default function BulkUploadPage() {
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Full Name *</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fullName}</Label>
                     <Input
                       value={staffForm.name}
                       onChange={(event) => setStaffForm((current) => ({ ...current, name: event.target.value }))}
-                      placeholder="Staff full name"
+                      placeholder={t.staffNamePlaceholder}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Email *</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.emailRequired}</Label>
                     <Input
                       value={staffForm.email}
                       onChange={(event) => setStaffForm((current) => ({ ...current, email: event.target.value }))}
-                      placeholder="staff@example.com"
+                      placeholder={t.staffEmailPlaceholder}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Phone</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.phone}</Label>
                     <Input
                       value={staffForm.phone}
                       onChange={(event) => setStaffForm((current) => ({ ...current, phone: event.target.value }))}
@@ -901,7 +903,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Role</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.role}</Label>
                     <Select
                       value={staffForm.role}
                       onValueChange={(value: "TEACHER" | "ADMIN" | "IT_MANAGER" | "REGISTRAR" | "FINANCE") =>
@@ -912,11 +914,11 @@ export default function BulkUploadPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="TEACHER">Teacher</SelectItem>
-                        <SelectItem value="ADMIN">Admin</SelectItem>
-                        <SelectItem value="IT_MANAGER">IT Manager</SelectItem>
-                        <SelectItem value="REGISTRAR">Registrar</SelectItem>
-                        <SelectItem value="FINANCE">Finance</SelectItem>
+                        <SelectItem value="TEACHER">{t.roles.TEACHER}</SelectItem>
+                        <SelectItem value="ADMIN">{t.roles.ADMIN}</SelectItem>
+                        <SelectItem value="IT_MANAGER">{t.roles.IT_MANAGER}</SelectItem>
+                        <SelectItem value="REGISTRAR">{t.roles.REGISTRAR}</SelectItem>
+                        <SelectItem value="FINANCE">{t.roles.FINANCE}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -926,9 +928,9 @@ export default function BulkUploadPage() {
               <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
                 <Button onClick={handleCreateOne} disabled={isCreating || isLoadingSetup}>
                   {isCreating ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating</>
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t.creating}</>
                   ) : (
-                    <><UserPlus className="mr-2 h-4 w-4" /> Create User</>
+                    <><UserPlus className="mr-2 h-4 w-4" /> {t.createUser}</>
                   )}
                 </Button>
               </div>
@@ -939,11 +941,11 @@ export default function BulkUploadPage() {
             <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 dark:border-emerald-800 dark:bg-emerald-950/20">
               <div className="flex items-center justify-between border-b border-emerald-200 px-5 py-4 dark:border-emerald-800">
                 <div>
-                  <h3 className="text-base font-semibold text-emerald-700 dark:text-emerald-300">Credentials Ready</h3>
+                  <h3 className="text-base font-semibold text-emerald-700 dark:text-emerald-300">{t.credentialsReady}</h3>
                   <p className="text-sm text-slate-500">{createdMessage}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={exportCreatedCredentials}>
-                  <Download className="mr-2 h-4 w-4" /> Export CSV
+                  <Download className="mr-2 h-4 w-4" /> {t.exportCsv}
                 </Button>
               </div>
               <div className="divide-y divide-emerald-200 dark:divide-emerald-800">
@@ -952,7 +954,7 @@ export default function BulkUploadPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-semibold text-slate-900 dark:text-white">{credential.name}</p>
-                        <p className="text-sm text-slate-500">{credential.email || "No email"}</p>
+                        <p className="text-sm text-slate-500">{credential.email || t.noEmail}</p>
                       </div>
                       <Badge className={ROLE_COLORS[credential.role] || ROLE_COLORS.STUDENT}>
                         {credential.role}
@@ -960,11 +962,11 @@ export default function BulkUploadPage() {
                     </div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Username</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.username}</p>
                         <p className="font-mono text-sm text-slate-900 dark:text-white">{credential.username}</p>
                       </div>
                       <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Temp Password</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.tempPassword}</p>
                         <p className="font-mono text-sm text-slate-900 dark:text-white">{credential.temporaryPassword}</p>
                       </div>
                     </div>

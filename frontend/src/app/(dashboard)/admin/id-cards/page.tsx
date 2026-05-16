@@ -273,7 +273,7 @@ export default function IdCardGeneratorPage() {
     setTemplateSaving(true);
     try {
       if (!templateRecordId) {
-        toast.error("No ID card template found. Activate one from Template Manager.");
+        toast.error("No active ID card template found. Upload or activate an ID card template first.");
         return;
       }
       const requiredFields = ["student_name", "photo", "qr_code"];
@@ -480,9 +480,6 @@ export default function IdCardGeneratorPage() {
               <Label className="text-xs text-gray-500 mb-1 block">Template Background URL</Label>
               <div className="flex flex-col gap-2">
                 <Input value={template.templateBackgroundUrl} readOnly />
-                <Button type="button" variant="outline" className="w-fit" onClick={() => router.push("/admin/templates")}>
-                  Manage Templates
-                </Button>
               </div>
             </div>
             <div>

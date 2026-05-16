@@ -446,11 +446,6 @@ export default function RegistrarDashboard() {
       icon: "GraduationCap"
     },
     {
-      label: "Reports",
-      url: "/registrar/grading",
-      icon: "BarChart3"
-    },
-    {
       label: "Settings",
       url: "/settings",
       icon: "Settings"

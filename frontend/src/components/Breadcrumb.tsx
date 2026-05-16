@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { ChevronRight, Home, LayoutDashboard } from "lucide-react";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslations } from "@/hooks/useTranslations";
 
 export interface BreadcrumbItem {
   /** Display label for the breadcrumb item */
@@ -28,6 +29,24 @@ interface BreadcrumbProps {
   /** Separator character (default: "/") */
   separator?: React.ReactNode;
 }
+
+interface BreadcrumbMessages {
+  labels: Record<string, string>;
+  fallback: {
+    detail: string;
+  };
+}
+
+const formatMessage = (template: string, values: Record<string, string | number>) =>
+  Object.entries(values).reduce(
+    (message, [key, value]) => message.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+
+const DEFAULT_BREADCRUMB_MESSAGES: BreadcrumbMessages = {
+  labels: {},
+  fallback: { detail: "{label} Detail" },
+};
 
 // ============================================
 // Route Configuration
@@ -69,6 +88,10 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   // Parents Module
   "parents": { label: "Parents", href: "/list/parents", parent: "dashboard" },
   "parents-detail": { label: "Parent Profile", parent: "parents" },
+
+  // Staff Module
+  "staff": { label: "Staff", href: "/list/staff", parent: "dashboard" },
+  "staff-detail": { label: "Staff Profile", parent: "staff" },
 
   // Classes Module
   "classes": { label: "Classes", href: "/list/classes", parent: "dashboard" },
@@ -175,7 +198,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   "teacher": { label: "Teacher Portal", href: "/teacher", parent: "dashboard" },
   "teacher-my-class": { label: "My Class", href: "/teacher/my-class", parent: "teacher" },
   "teacher-my-class-detail": { label: "Class Details", parent: "teacher-my-class" },
-  "teacher-exams": { label: "Grade Entry", href: "/teacher/grading", parent: "teacher" },
+  "teacher-exams": { label: "Marks Entry", href: "/teacher/grading", parent: "teacher" },
   "teacher-attendance": { label: "My Attendance", href: "/teacher/attendance", parent: "teacher" },
   "teacher-timetable": { label: "My Timetable", href: "/teacher/timetable", parent: "teacher" },
 
@@ -240,18 +263,6 @@ function shouldHideBreadcrumb(pathname: string): boolean {
     "/enroll",
   ];
 
-  const hiddenPrefixRoutes = [
-    "/teacher",
-    "/student",
-    "/parent",
-    "/registrar",
-    "/superadmin",
-  ];
-
-  // Admin routes - show breadcrumbs for these sub-routes
-  const adminSubRoutes = ["/admin/timetable", "/admin/communications", "/admin/attendance", "/admin/id-cards", "/admin/assignments", "/admin/class-sections"];
-  const isAdminSubRoute = adminSubRoutes.some(route => pathname.startsWith(route)) || pathname === "/admin/timetable";
-
   // Routes that should show breadcrumbs even if they're single-segment
   const showBreadcrumbRoutes = ["/settings", "/profile", "/notifications", "/messages", "/platform-settings"];
   const shouldShowBreadcrumb = showBreadcrumbRoutes.some(route => pathname.startsWith(route));
@@ -266,18 +277,13 @@ function shouldHideBreadcrumb(pathname: string): boolean {
     return true;
   }
 
-  // If it's an admin sub-route, don't hide
-  if (isAdminSubRoute) {
-    return false;
-  }
-
   // If it's a route that should show breadcrumbs, don't hide
   if (shouldShowBreadcrumb) {
     return false;
   }
 
-  // Check prefix matches (for role-based dashboards), but exclude admin sub-routes
-  if (hiddenPrefixRoutes.some(route => pathname.startsWith(route))) {
+  // Hide role dashboard roots, but show their nested pages.
+  if (["/teacher", "/student", "/parent", "/registrar", "/superadmin", "/it-manager"].includes(pathname)) {
     return true;
   }
 
@@ -291,19 +297,10 @@ function shouldHideBreadcrumb(pathname: string): boolean {
 }
 
 /**
- * Gets the parent route key for a given route
- */
-function getParentRouteKey(routeKey: string): string | undefined {
-  const config = ROUTE_CONFIG[routeKey];
-  return config?.parent;
-}
-
-/**
  * Non-clickable path segments that don't have standalone pages
  */
 const NON_LINK_PATHS = [
   "/list",
-  "/settings",
   "/enrollments",
   "/list/schools",
   "/list/schools/:id",
@@ -311,8 +308,10 @@ const NON_LINK_PATHS = [
   "/teacher",
   "/student",
   "/parent",
-  "/list/parents",
 ];
+
+const TECHNICAL_SEGMENTS = new Set(["list"]);
+const TECHNICAL_LABELS = new Set(["List"]);
 
 /**
  * Gets the appropriate dashboard URL based on the current user role/path
@@ -364,24 +363,24 @@ function getDashboardHref(pathname: string): string {
 /**
  * Gets the dashboard label based on the href
  */
-function getDashboardLabel(href: string): string {
+function getDashboardLabel(href: string, labels: Record<string, string>): string {
   switch (href) {
     case '/teacher':
-      return 'Teacher Portal';
+      return labels["Teacher Portal"] ?? 'Teacher Portal';
     case '/student':
-      return 'Student Portal';
+      return labels["Student Portal"] ?? 'Student Portal';
     case '/parent':
-      return 'Parent Portal';
+      return labels["Parent Portal"] ?? 'Parent Portal';
     case '/registrar':
-      return 'Registrar';
+      return labels["Registrar"] ?? 'Registrar';
     case '/superadmin':
-      return 'Super Admin';
+      return labels["Super Admin"] ?? 'Super Admin';
     case '/it-manager':
-      return 'IT Manager';
+      return labels["IT Manager"] ?? 'IT Manager';
     case '/admin':
-      return 'Dashboard';
+      return labels["Dashboard"] ?? 'Dashboard';
     default:
-      return 'Dashboard';
+      return labels["Dashboard"] ?? 'Dashboard';
   }
 }
 
@@ -411,10 +410,51 @@ function getDashboardIcon(href: string): React.ReactNode {
   }
 }
 
+function isLikelyIdSegment(segment: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(segment) ||
+    /^[a-z0-9]{16,}$/i.test(segment) ||
+    /^\d+$/.test(segment);
+}
+
+function getRouteConfigForPath(segments: string[], index: number): RouteConfig | undefined {
+  const segment = segments[index];
+  const previous = segments[index - 1];
+  const next = segments[index + 1];
+
+  if (isLikelyIdSegment(segment) && previous) {
+    return ROUTE_CONFIG[`${previous}-detail`];
+  }
+
+  const pathKey = previous ? `${previous}-${segment}` : segment;
+  const reversePathKey = next && isLikelyIdSegment(next) ? `${segment}-detail` : undefined;
+
+  return ROUTE_CONFIG[pathKey] ?? (reversePathKey ? ROUTE_CONFIG[reversePathKey] : undefined) ?? ROUTE_CONFIG[segment];
+}
+
+function isNonLinkBreadcrumbPath(href: string): boolean {
+  if (NON_LINK_PATHS.includes(href)) return true;
+  if (/^\/list\/schools\/[^/]+$/.test(href)) return true;
+  return false;
+}
+
 /**
  * Generates breadcrumbs from the current pathname
  */
-function generateBreadcrumbsFromPath(pathname: string, userRole?: string): BreadcrumbItem[] {
+function translateLabel(label: string, messages: BreadcrumbMessages): string {
+  return messages.labels[label] ?? label;
+}
+
+function translateBreadcrumbItems(items: BreadcrumbItem[], messages: BreadcrumbMessages): BreadcrumbItem[] {
+  return items
+    .filter((item) => !TECHNICAL_LABELS.has(item.label))
+    .map((item, index, visibleItems) => ({
+      ...item,
+      label: translateLabel(item.label, messages),
+      isCurrent: item.isCurrent || index === visibleItems.length - 1,
+    }));
+}
+
+function generateBreadcrumbsFromPath(pathname: string, userRole: string | undefined, messages: BreadcrumbMessages): BreadcrumbItem[] {
   // Check if we should hide the breadcrumb
   if (shouldHideBreadcrumb(pathname)) {
     return [];
@@ -428,11 +468,13 @@ function generateBreadcrumbsFromPath(pathname: string, userRole?: string): Bread
 
   // Start with appropriate dashboard with icon
   breadcrumbs.push({
-    label: getDashboardLabel(dashboardHref),
+    label: getDashboardLabel(dashboardHref, messages.labels),
     href: dashboardHref,
     isCurrent: false,
     icon: getDashboardIcon(dashboardHref),
   });
+
+  const visibleItems: BreadcrumbItem[] = [];
 
   // Process each segment
   let currentPath = "";
@@ -441,60 +483,53 @@ function generateBreadcrumbsFromPath(pathname: string, userRole?: string): Bread
     const segment = segments[i];
     currentPath += `/${segment}`;
 
-    const isLast = i === segments.length - 1;
+    if (TECHNICAL_SEGMENTS.has(segment)) {
+      continue;
+    }
 
     // Try to find a matching route config
-    let routeKey = segment;
     let label = formatSegmentLabel(segment);
     let href = currentPath;
 
-    // Check for detail pages (segments that are IDs - typically UUIDs or numeric or base64 encoded)
-    const isIdSegment = /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(segment) || /^[0-9a-z]{20,}$/i.test(segment) || /^\d+$/.test(segment);
-
-    if (isIdSegment && i > 0) {
+    if (isLikelyIdSegment(segment) && i > 0) {
       // This is likely a detail page ID
       const prevSegment = segments[i - 1];
       const detailKey = `${prevSegment}-detail`;
 
       if (ROUTE_CONFIG[detailKey]) {
-        routeKey = detailKey;
         label = ROUTE_CONFIG[detailKey].label;
         href = ROUTE_CONFIG[detailKey].href || currentPath;
       } else {
         // Use the previous segment as label with "Detail" appended
-        label = formatSegmentLabel(prevSegment) + " Detail";
+        label = formatMessage(messages.fallback.detail, {
+          label: translateLabel(formatSegmentLabel(prevSegment), messages),
+        });
       }
-    } else if (ROUTE_CONFIG[routeKey]) {
-      // Use the route config if available
-      label = ROUTE_CONFIG[routeKey].label;
-      href = ROUTE_CONFIG[routeKey].href || currentPath;
     } else if (i > 0) {
-      // Check if this is a sub-route (e.g., admin/timetable -> timetable-admin)
-      const parentSegment = segments[i - 1];
-      const combinedKey = `${parentSegment}-${routeKey}`;
-      if (ROUTE_CONFIG[combinedKey]) {
-        routeKey = combinedKey;
-        label = ROUTE_CONFIG[combinedKey].label;
-        href = ROUTE_CONFIG[combinedKey].href || currentPath;
+      const config = getRouteConfigForPath(segments, i);
+      if (config) {
+        label = config.label;
+        href = config.href || currentPath;
       }
-    } else {
-      // Try to find parent-based configuration
-      const parentKey = getParentRouteKey(routeKey);
-      if (parentKey && ROUTE_CONFIG[parentKey]) {
-        label = ROUTE_CONFIG[parentKey].label;
-        href = ROUTE_CONFIG[parentKey].href || currentPath;
-      }
+    } else if (ROUTE_CONFIG[segment]) {
+      label = ROUTE_CONFIG[segment].label;
+      href = ROUTE_CONFIG[segment].href || currentPath;
     }
 
-    // Determine if this should be a clickable link
-    // Non-link paths like /list, /settings don't have standalone pages
-    const isNonLinkPath = NON_LINK_PATHS.includes(href) ||
-      href.startsWith('/list/schools/') || // School detail pages
-      NON_LINK_PATHS.some(path => href.startsWith(path));
-    
-    // Special handling for Teachers link - only clickable for admin users
+    visibleItems.push({
+      label: translateLabel(label, messages),
+      href,
+      isCurrent: false,
+    });
+  }
+
+  visibleItems.forEach((item, index) => {
+    const isLast = index === visibleItems.length - 1;
+    const href = item.href;
+    const label = item.label;
+    const isNonLinkPath = href ? isNonLinkBreadcrumbPath(href) : true;
     const isTeachersLink = href === '/list/teachers' || label === 'Teachers';
-    const isAdmin = (userRole === 'ADMIN' || userRole === 'IT_MANAGER') || userRole === 'IT_MANAGER' || userRole === 'SUPER_ADMIN';
+    const isAdmin = userRole === 'ADMIN' || userRole === 'IT_MANAGER' || userRole === 'SUPER_ADMIN';
     const shouldBeLink = !isLast && href && !isNonLinkPath && !(isTeachersLink && !isAdmin);
 
     breadcrumbs.push({
@@ -502,7 +537,7 @@ function generateBreadcrumbsFromPath(pathname: string, userRole?: string): Bread
       href: shouldBeLink ? href : undefined,
       isCurrent: isLast,
     });
-  }
+  });
 
   return breadcrumbs;
 }
@@ -533,6 +568,7 @@ export function Breadcrumb({
 }: BreadcrumbProps) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { t } = useTranslations<BreadcrumbMessages>("breadcrumb");
   // Get context items if available (may not exist if provider not mounted)
   let contextItems: BreadcrumbItem[] | null = null;
   try {
@@ -547,15 +583,15 @@ export function Breadcrumb({
   const breadcrumbItems = useMemo(() => {
     // Use context items if available (highest priority)
     if (contextItems && contextItems.length > 0) {
-      return contextItems;
+      return translateBreadcrumbItems(contextItems, t);
     }
     // Use props items if provided
     if (items && items.length > 0) {
-      return items;
+      return translateBreadcrumbItems(items, t);
     }
     // Auto-generate from path
-    return generateBreadcrumbsFromPath(pathname, user?.role);
-  }, [pathname, items, contextItems, user?.role]);
+    return generateBreadcrumbsFromPath(pathname, user?.role, t);
+  }, [pathname, items, contextItems, user?.role, t]);
 
   // Don't render if no items or hidden
   if (breadcrumbItems.length === 0) {
@@ -657,7 +693,7 @@ export function Breadcrumb({
  * @deprecated Use generateBreadcrumbsFromPath instead
  */
 export function generateBreadcrumbs(pathname: string, userRole?: string): BreadcrumbItem[] {
-  return generateBreadcrumbsFromPath(pathname);
+  return generateBreadcrumbsFromPath(pathname, userRole, DEFAULT_BREADCRUMB_MESSAGES);
 }
 
 // ============================================

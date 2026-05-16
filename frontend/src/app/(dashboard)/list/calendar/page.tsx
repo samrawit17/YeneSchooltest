@@ -6,15 +6,12 @@ import TableSearch from '@/components/TableSearch';
 import { eventsAPI, Event } from '@/lib/api/content';
 import { queryKeys } from '@/lib/query-keys';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from "@/hooks/useTranslations";
 import BigCalendar from '@/components/BigCalendar';
-import { Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 
-const getEventCategoryLabel = (event: Event) => event.category || "OTHER";
-
-const getEventCategoryBadge = (event: Event) => {
-  const category = getEventCategoryLabel(event);
+const getEventCategoryBadge = (category: string) => {
   switch (category) {
     case "ACADEMIC":
       return "bg-blue-100 text-blue-800";
@@ -54,6 +51,7 @@ const CalendarSkeleton = () => (
 );
 
 const EventListPage = () => {
+  const { t, locale } = useTranslations<any>("calendar");
   const [role, setRole] = useState<string>('admin');
   const [initialLoad, setInitialLoad] = useState(true);
   
@@ -105,15 +103,15 @@ const EventListPage = () => {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 md:gap-3 mb-4 sm:mb-6 md:mb-8">
         <div className="min-w-0">
-          <h1 className="text-base sm:text-lg md:text-xl font-semibold dark:text-white truncate">School Calendar</h1>
+          <h1 className="text-base sm:text-lg md:text-xl font-semibold dark:text-white truncate">{t.title}</h1>
           {role === 'admin' && (
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">View and manage school events, holidays, and important dates on the calendar.</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">{t.description}</p>
           )}
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto sm:min-w-0">
           <div className="w-full sm:flex-1 order-2 sm:order-1">
             <div className="w-full sm:max-w-md">
-              <TableSearch />
+              <TableSearch placeholder={t.searchPlaceholder || t.title} />
             </div>
           </div>
           <div className="flex items-center justify-end gap-2 order-1 sm:order-2 shrink-0">
@@ -133,13 +131,13 @@ const EventListPage = () => {
       {/* UPCOMING EVENTS SECTION */}
       <div className="mt-4 md:mt-6 border-t border-gray-200 dark:border-[#334155] pt-3 md:pt-4">
         <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
-          <h2 className="text-sm sm:text-base md:text-xl font-semibold dark:text-white">Upcoming Activities</h2>
-          <span className="text-[11px] sm:text-sm text-gray-500">{eventCount} activities</span>
+          <h2 className="text-sm sm:text-base md:text-xl font-semibold dark:text-white">{t.upcoming}</h2>
+          <span className="text-[11px] sm:text-sm text-gray-500">{t.activities.replace("{count}", String(eventCount))}</span>
         </div>
         
         {eventCount === 0 ? (
           <div className="text-center p-3 sm:p-4 md:p-6 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-            No activities in the next month
+            {t.noActivities}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4 max-h-[400px] md:max-h-[500px] overflow-y-auto pr-1">
@@ -150,15 +148,15 @@ const EventListPage = () => {
               >
                 <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
                   <h3 className="font-semibold text-xs sm:text-sm text-gray-800 dark:text-white line-clamp-1 flex-1">{event.title}</h3>
-                    <span className={`px-1 py-0.5 rounded-full text-[9px] sm:text-xs flex-shrink-0 leading-tight ${getEventCategoryBadge(event)}`}>
-                    {getEventCategoryLabel(event)}
+                    <span className={`px-1 py-0.5 rounded-full text-[9px] sm:text-xs flex-shrink-0 leading-tight ${getEventCategoryBadge(event.category || "OTHER")}`}>
+                    {t.categories[event.category || "OTHER"]}
                   </span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 mb-1 sm:mb-1.5">
                   <span className="text-[10px] sm:text-xs">📅</span>
                   <span className="truncate">
-                    {new Date(event.startDate).toLocaleDateString()}
-                    {event.endDate ? ` - ${new Date(event.endDate).toLocaleDateString()}` : ""}
+                    {new Date(event.startDate).toLocaleDateString(locale)}
+                    {event.endDate ? ` - ${new Date(event.endDate).toLocaleDateString(locale)}` : ""}
                   </span>
                 </div>
                 {event.location && (

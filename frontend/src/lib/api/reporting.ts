@@ -79,7 +79,60 @@ export interface ReportPublishSummaryRow {
   publishedEntries: number;
   draftEntries: number;
   missingEntries: number;
+  incompleteEntries: number;
+  assessmentSubjects: number;
+  assessmentExpectedScores: number;
+  assessmentEnteredScores: number;
+  assessmentMissingScores: number;
+  rankingEntries: number;
+  rankingMissingEntries: number;
+  rankingMode: "auto_on_publish";
+  certificateReady: boolean;
+  certificateIssue: string | null;
+  issueReasons: string[];
   status: "published" | "ready" | "has_issues" | "no_students";
+}
+
+export interface ParentPresentationReport {
+  generatedAt: string;
+  school: { id: string; name: string; address?: string | null; phone?: string | null } | null;
+  academicYear: { id: string; name: string };
+  fromTerm: { id: string; name: string };
+  toTerm: { id: string; name: string };
+  summary: {
+    from: { students: number; average: number | null; attendance: number | null; passRate: number | null };
+    to: { students: number; average: number | null; attendance: number | null; passRate: number | null };
+    averageChange: number | null;
+    attendanceChange: number | null;
+  };
+  classSummaries: Array<{
+    classId: string;
+    className: string;
+    grade: number | null;
+    sectionName: string | null;
+    fromAverage: number | null;
+    toAverage: number | null;
+    change: number | null;
+    fromAttendance: number | null;
+    toAttendance: number | null;
+    attendanceChange: number | null;
+    fromStudents: number;
+    toStudents: number;
+    passRate: number | null;
+  }>;
+  subjectSummaries: Array<{
+    subjectId: string;
+    subjectName: string;
+    fromAverage: number | null;
+    toAverage: number | null;
+    change: number | null;
+  }>;
+  insights: {
+    improvedClasses: ParentPresentationReport["classSummaries"];
+    decliningClasses: ParentPresentationReport["classSummaries"];
+    weakSubjects: ParentPresentationReport["subjectSummaries"];
+    improvedSubjects: ParentPresentationReport["subjectSummaries"];
+  };
 }
 
 export const reportCardsAPI = {
@@ -122,6 +175,24 @@ export const reportCardsAPI = {
     api.put<{ unpublished: number }>("/report-cards/unpublish", { ids }),
   getPublishSummary: (params: { academicYearId: string; termId: string }) =>
     api.get<ReportPublishSummaryRow[]>("/report-cards/publish-summary", { params }),
+  getParentPresentationReport: (params: {
+    academicYearId: string;
+    fromTermId: string;
+    toTermId: string;
+    classId?: string;
+  }) => api.get<ParentPresentationReport>("/report-cards/parent-presentation", { params }),
+  downloadParentPresentationPdf: (params: {
+    academicYearId: string;
+    fromTermId: string;
+    toTermId: string;
+    classId?: string;
+  }) => api.get("/report-cards/parent-presentation/pdf", { params, responseType: "blob" }),
+  downloadParentPresentationExcel: (params: {
+    academicYearId: string;
+    fromTermId: string;
+    toTermId: string;
+    classId?: string;
+  }) => api.get("/report-cards/parent-presentation/excel", { params, responseType: "blob" }),
   publishClassResults: (data: {
     academicYearId: string;
     termId: string;

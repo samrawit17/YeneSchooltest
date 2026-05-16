@@ -103,6 +103,21 @@ export class FinanceController {
     return { success: true, data: fs };
   }
 
+  @Delete('fee-structures')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
+  @Permissions('finance:fee_structure:delete')
+  async clearFeeStructures(
+    @Query('schoolId') schoolId: string,
+    @Query('academicYearId') academicYearId?: string,
+    @Request() req?: any,
+  ) {
+    const result = await this.financeService.deleteFeeStructuresBySchool(
+      this.resolveSchoolId(req?.user, schoolId),
+      academicYearId,
+    );
+    return { success: true, data: result };
+  }
+
   @Post('student-fees/generate')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.FINANCE)
   @Permissions('finance:student_fees:generate')

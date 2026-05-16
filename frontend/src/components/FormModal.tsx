@@ -22,6 +22,7 @@ import { communicationsAPI } from "@/lib/api/communications";
 import { announcementsAPI, eventsAPI } from "@/lib/api/content";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useTranslations } from "@/hooks/useTranslations";
 
 // Lazy load forms for better performance
 const EnrollmentForm = dynamic(() => import("./forms/EnrollmentForm"), {
@@ -332,6 +333,7 @@ const FormModal = ({
   setIsOpen: externalSetOpen,
   children,
 }: FormModalProps) => {
+  const { t: calendarText } = useTranslations<any>("calendar");
   const [internalOpen, setInternalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const queryClient = useQueryClient();
@@ -488,7 +490,7 @@ const FormModal = ({
   // Table label mapping
   const getTableLabel = (table: string) => {
     const labels: Record<string, string> = {
-      event: "Activity",
+      event: calendarText.form.activity,
     };
     return labels[table] || table;
   };
@@ -497,12 +499,18 @@ const FormModal = ({
   const getTableDescription = (table: string, type: string) => {
     const descriptions: Record<string, Record<string, string>> = {
       event: {
-        create: "Enter activity details below",
-        update: "Edit existing information",
+        create: calendarText.form.createDescription,
+        update: calendarText.form.updateDescription,
       },
     };
     return descriptions[table]?.[type] || 
-      (type === "create" ? "Fill in the details below" : "Edit existing information");
+      (type === "create" ? calendarText.form.detailsDescription : calendarText.form.updateDescription);
+  };
+
+  const getActionLabel = (type: string) => {
+    if (type === "create") return calendarText.form.createNew;
+    if (type === "update") return calendarText.form.update;
+    return calendarText.form.delete;
   };
 
   // If title is provided, render as modal directly
@@ -524,7 +532,7 @@ const FormModal = ({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {type === "create" ? "Create New" : type === "update" ? "Update" : "Delete"} {getTableLabel(table)}
+                {getActionLabel(type)} {getTableLabel(table)}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {getTableDescription(table, type)}
@@ -565,7 +573,7 @@ const FormModal = ({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {type === "create" ? "Create New" : type === "update" ? "Update" : "Delete"} {getTableLabel(table)}
+                {getActionLabel(type)} {getTableLabel(table)}
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {getTableDescription(table, type)}

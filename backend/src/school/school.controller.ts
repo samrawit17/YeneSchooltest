@@ -104,6 +104,7 @@ export class SchoolController {
       phone?: string;
       code?: string;
       logo?: string;
+      logoUrl?: string;
     },
     @Request() req: any,
   ) {
@@ -122,7 +123,7 @@ export class SchoolController {
         address: body.address,
         phone: body.phone,
         code: body.code,
-        logoUrl: body.logo,
+        logoUrl: body.logoUrl ?? body.logo,
       };
       const school = await this.schoolService.updateSchool(id, updateDto);
       return school;

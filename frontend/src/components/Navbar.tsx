@@ -7,9 +7,11 @@ import { useState, useEffect } from "react";
 import { schoolsAPI, platformSettingsAPI } from "@/lib/api";
 import { notificationsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
+import { resolveAssetUrl } from "@/lib/asset-url";
 import { eventsAPI } from "@/lib/api/content";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { formatTimeByCalendarType } from "@/lib/calendar-utils";
+import { useTranslations } from "@/hooks/useTranslations";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -89,6 +91,11 @@ interface NavbarProps {
   useBrandNavigation?: boolean;
 }
 
+interface NavigationMessages {
+  labels?: Record<string, string>;
+  descriptions?: Record<string, string>;
+}
+
 const COMMUNICATION_NOTIFICATION_TYPES = ["COMMUNICATION", "MESSAGE_RECEIVED"];
 const GLOBAL_NOTIFICATION_READS_KEY = "global_notification_reads";
 const BROWSER_NOTIFICATION_SHOWN_KEY = "browser_notification_shown";
@@ -115,7 +122,18 @@ const Navbar = ({
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { t: navigationText } = useTranslations<NavigationMessages>("navigation");
+  const { t: layoutText } = useTranslations<any>("layout");
   const { formattedYearLabel, displayTermName, formatDate: formatSchoolDate, schoolCalendarType } = useAcademicYear();
+  const navLabel = (label: string) => navigationText.labels?.[label] ?? label;
+  const navDescription = (key: string, fallback: string) => navigationText.descriptions?.[key] ?? fallback;
+  const roleLabel = (role?: string | null) => {
+    if (!role) return navLabel("User");
+    const normalizedRole = role.toUpperCase();
+    return navigationText.labels?.[normalizedRole] ?? role.toLowerCase().replace("_", " ");
+  };
+  const portalLabel = (schoolName?: string | null) =>
+    schoolName ? layoutText.portal.replace("{school}", schoolName) : layoutText.defaultPortal;
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -523,7 +541,7 @@ const Navbar = ({
                     {schoolLoading ? (
                       <Skeleton className="h-5 sm:h-6 w-24" />
                     ) : (
-                      <span className="truncate max-w-[120px] sm:max-w-[160px]">{school?.name || 'SMS Portal'}</span>
+                      <span className="truncate max-w-[120px] sm:max-w-[160px]">{portalLabel(school?.name)}</span>
                     )}
                   </SheetTitle>
                   <Button
@@ -583,7 +601,7 @@ const Navbar = ({
                       <Calendar className="sm:hidden h-5 w-5 text-slate-500 dark:text-gray-400" />
                       <Calendar className="hidden sm:block h-3 w-3 sm:h-4 sm:w-4 text-slate-500 dark:text-gray-400" />
                       <div className="flex flex-col text-left hidden lg:flex">
-                        <span className="text-slate-700 dark:text-gray-300 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">Today: {currentDate || '--'}</span>
+                        <span className="text-slate-700 dark:text-gray-300 text-xs font-semibold truncate max-w-[120px] sm:max-w-[150px]">{navLabel("Today")}: {currentDate || '--'}</span>
                         <span className="text-slate-500 dark:text-gray-400 text-[10px] truncate max-w-[160px] sm:max-w-[200px]">
                           {formattedYearLabel}{displayTermName ? ` | ${displayTermName}` : ""}
                         </span>
@@ -638,7 +656,7 @@ const Navbar = ({
                 onClick={() => router.push("/enroll")}
               >
                 <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Enroll Now</span>
+                <span className="hidden sm:inline">{navLabel("Enroll Now")}</span>
               </Button>
             )}
 
@@ -676,7 +694,7 @@ const Navbar = ({
                   <DropdownMenuContent align="end" className="w-80 sm:w-96 dark:bg-slate-900 max-w-[95vw]">
                     <DropdownMenuLabel className="flex items-center justify-between dark:text-white">
                       <a href="/notifications" className="flex items-center justify-between w-full hover:text-[var(--brand-color,#e35336)]">
-                        <span className="text-sm sm:text-base">Alerts & Notifications</span>
+                        <span className="text-sm sm:text-base">{navLabel("Alerts & Notifications")}</span>
                       </a>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -687,7 +705,7 @@ const Navbar = ({
                         </div>
                       ) : bellNotifications.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 dark:text-slate-400 text-sm">
-                          No notifications
+                          {navLabel("No notifications")}
                         </div>
                       ) : (
                         bellNotifications.map((notification: any) => (
@@ -736,7 +754,7 @@ const Navbar = ({
                           className="w-full border border-[var(--brand-color,#e35336)]/30 bg-[rgba(var(--brand-color-rgb),0.14)] text-sm font-semibold text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.22)] hover:text-[var(--brand-color,#e35336)] dark:border-[var(--brand-color,#e35336)]/35 dark:bg-[rgba(var(--brand-color-rgb),0.2)]"
                           onClick={() => router.push('/notifications')}
                         >
-                          View all notifications
+                          {navLabel("View all notifications")}
                         </Button>
                     </div>
                   </DropdownMenuContent>
@@ -768,13 +786,13 @@ const Navbar = ({
                     <DropdownMenuContent align="end" className="w-[340px] sm:w-[450px] md:w-[500px] max-h-[400px] sm:max-h-[500px] dark:bg-slate-900 max-w-[95vw]">
 
                       <DropdownMenuLabel className="flex items-center justify-between dark:text-white">
-                        <span className="text-sm sm:text-base">Communication Book</span>
+                        <span className="text-sm sm:text-base">{navLabel("Communication Book")}</span>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <ScrollArea className="h-[250px] sm:h-[300px]">
                         {communicationNotifications.length === 0 ? (
                           <div className="p-4 text-center text-gray-500 dark:text-slate-400 text-sm">
-                            No communication notifications
+                            {navLabel("No communication notifications")}
                           </div>
                         ) : (
                           communicationNotifications.map((notification: any) => (
@@ -820,7 +838,7 @@ const Navbar = ({
                           className="w-full border border-[var(--brand-color,#e35336)]/30 bg-[rgba(var(--brand-color-rgb),0.14)] text-sm font-semibold text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.22)] hover:text-[var(--brand-color,#e35336)] dark:border-[var(--brand-color,#e35336)]/35 dark:bg-[rgba(var(--brand-color-rgb),0.2)]"
                           onClick={() => router.push('/list/communications')}
                         >
-                          View all communications
+                          {navLabel("View all communications")}
                         </Button>
                       </div>
                     </DropdownMenuContent>
@@ -851,12 +869,12 @@ const Navbar = ({
                           {user.name}
                         </p>
                         <p className="text-[10px] sm:text-xs text-slate-500 dark:text-gray-400 capitalize truncate max-w-[60px] sm:max-w-[100px] lg:max-w-[120px]">
-                          {user.role?.toLowerCase().replace("_", " ") || "User"}
+                          {roleLabel(user.role)}
                         </p>
                       </div>
                       <Avatar className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 border-2 border-white shadow flex-shrink-0">
                         {user.avatarUrl ? (
-                          <AvatarImage src={user.avatarUrl} alt={user.name} />
+                          <AvatarImage src={resolveAssetUrl(user.avatarUrl) || user.avatarUrl} alt={user.name} />
                         ) : (
                           <AvatarFallback className="font-semibold text-xs sm:text-sm">
                             {user.name?.charAt(0).toUpperCase() || "U"}
@@ -876,7 +894,7 @@ const Navbar = ({
                     <div className="flex items-start gap-3">
                       <Avatar className="h-12 w-12 border border-white/70 shadow-md dark:border-slate-600">
                         {user.avatarUrl ? (
-                          <AvatarImage src={user.avatarUrl} alt={user.name} />
+                          <AvatarImage src={resolveAssetUrl(user.avatarUrl) || user.avatarUrl} alt={user.name} />
                         ) : (
                           <AvatarFallback className="text-base font-bold">
                             {user.name?.charAt(0).toUpperCase() || "U"}
@@ -893,7 +911,7 @@ const Navbar = ({
                         )}
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <span className="inline-flex items-center rounded-full bg-[rgba(var(--brand-color-rgb),0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
-                            {user.role?.toLowerCase().replace("_", " ")}
+                            {roleLabel(user.role)}
                           </span>
                         </div>
                       </div>
@@ -911,8 +929,8 @@ const Navbar = ({
                             <LayoutDashboard className="h-4 w-4" />
                           </span>
                           <span className="flex-1">
-                            <span className="block text-sm font-medium">Dashboard</span>
-                            <span className="block text-xs text-slate-500 dark:text-slate-400">Go to your main workspace</span>
+                            <span className="block text-sm font-medium">{navLabel("Dashboard")}</span>
+                            <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("dashboard", "Go to your main workspace")}</span>
                           </span>
                         </Link>
                       </DropdownMenuItem>
@@ -926,8 +944,8 @@ const Navbar = ({
                             <User className="h-4 w-4" />
                           </span>
                           <span className="flex-1">
-                            <span className="block text-sm font-medium">Profile</span>
-                            <span className="block text-xs text-slate-500 dark:text-slate-400">Manage your account details</span>
+                            <span className="block text-sm font-medium">{navLabel("Profile")}</span>
+                            <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("profile", "Manage your account details")}</span>
                           </span>
                         </Link>
                       </DropdownMenuItem>
@@ -943,8 +961,8 @@ const Navbar = ({
                                 <Users className="h-4 w-4" />
                               </span>
                               <span className="flex-1">
-                                <span className="block text-sm font-medium">My Children</span>
-                                <span className="block text-xs text-slate-500 dark:text-slate-400">View student profiles and activity</span>
+                                <span className="block text-sm font-medium">{navLabel("My Children")}</span>
+                                <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("children", "View student profiles and activity")}</span>
                               </span>
                             </Link>
                           </DropdownMenuItem>
@@ -957,8 +975,8 @@ const Navbar = ({
                                 <CreditCard className="h-4 w-4" />
                               </span>
                               <span className="flex-1">
-                                <span className="block text-sm font-medium">Fees</span>
-                                <span className="block text-xs text-slate-500 dark:text-slate-400">Review payments and balances</span>
+                                <span className="block text-sm font-medium">{navLabel("Fees")}</span>
+                                <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("fees", "Review payments and balances")}</span>
                               </span>
                             </Link>
                           </DropdownMenuItem>
@@ -975,8 +993,8 @@ const Navbar = ({
                               <Home className="h-4 w-4" />
                             </span>
                             <span className="flex-1">
-                              <span className="block text-sm font-medium">My Classes</span>
-                              <span className="block text-xs text-slate-500 dark:text-slate-400">Jump into your assigned classes</span>
+                              <span className="block text-sm font-medium">{navLabel("My Classes")}</span>
+                              <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("classes", "Jump into your assigned classes")}</span>
                             </span>
                           </Link>
                         </DropdownMenuItem>
@@ -994,8 +1012,8 @@ const Navbar = ({
                           <HelpCircle className="h-4 w-4" />
                         </span>
                         <span className="flex-1">
-                          <span className="block text-sm font-medium">Help</span>
-                          <span className="block text-xs text-slate-500 dark:text-slate-400">Get support and guidance</span>
+                          <span className="block text-sm font-medium">{navLabel("Help")}</span>
+                          <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("help", "Get support and guidance")}</span>
                         </span>
                       </Link>
                     </DropdownMenuItem>
@@ -1008,8 +1026,8 @@ const Navbar = ({
                         <LogOut className="h-4 w-4" />
                       </span>
                       <span className="flex-1">
-                        <span className="block text-sm font-medium">Logout</span>
-                        <span className="block text-xs text-red-500/80 dark:text-red-400/80">End your current session</span>
+                        <span className="block text-sm font-medium">{navLabel("Logout")}</span>
+                        <span className="block text-xs text-red-500/80 dark:text-red-400/80">{navDescription("logout", "End your current session")}</span>
                       </span>
                     </DropdownMenuItem>
                   </div>
@@ -1018,7 +1036,7 @@ const Navbar = ({
             ) : (
               <div className="flex items-center gap-1 sm:gap-2">
                 <Button variant="ghost" size="sm" className="text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3" asChild>
-                  <Link href="/sign-in">Sign In</Link>
+                  <Link href="/sign-in">{navLabel("Sign In")}</Link>
                 </Button>
                 <Button
                   variant="default"
@@ -1026,7 +1044,7 @@ const Navbar = ({
                   className="text-xs sm:text-sm h-7 sm:h-8 px-2 sm:px-3"
                   onClick={() => router.push("/enroll")}
                 >
-                  Enroll Now
+                  {navLabel("Enroll Now")}
                 </Button>
               </div>
             )}

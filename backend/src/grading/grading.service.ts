@@ -3389,52 +3389,91 @@ export class GradingService {
     const academicYearId = academicYearRecord?.id ?? academicYear;
     const academicYearName = academicYearRecord?.name ?? academicYear;
 
-    const assignments = await this.prisma.teacherSubjectAssignment.findMany({
-      where: { schoolId, academicYear: academicYearId, isActive: true },
+    const assessmentSubjects = await this.prisma.assessmentSubject.findMany({
+      where: {
+        assessment: {
+          schoolId,
+          academicYearId,
+          termId: term,
+          status: { in: ['ACTIVE', 'COMPLETED'] },
+        },
+      },
       include: {
         subject: true,
         class: true,
         section: true,
+        scores: true,
       },
     });
 
-    const progress = await Promise.all(
-      assignments.map(async (assignment) => {
-        const totalStudents = await this.prisma.studentClass.count({
+    const studentCountByClassSection = new Map<string, number>();
+    const getStudentCount = async (classId: string, sectionId: string | null) => {
+      const key = `${classId}:${sectionId ?? 'all'}`;
+      if (!studentCountByClassSection.has(key)) {
+        const count = await this.prisma.studentClass.count({
           where: {
             schoolId,
-            classId: assignment.classId,
-            sectionId: assignment.sectionId,
+            classId,
+            ...(sectionId ? { sectionId } : {}),
             academicYear: academicYearName,
           },
         });
+        studentCountByClassSection.set(key, count);
+      }
+      return studentCountByClassSection.get(key) ?? 0;
+    };
 
-        const enteredGrades = await this.prisma.subjectGrade.count({
-          where: {
-            subjectId: assignment.subjectId,
-            classId: assignment.classId,
-            sectionId: assignment.sectionId,
-            academicYear: academicYearId,
-            termId: term,
-          },
-        });
+    const progressByAssignment = new Map<
+      string,
+      {
+        teacherId: string;
+        subject: string;
+        class: string;
+        section: string | null;
+        totalStudents: number;
+        enteredGrades: number;
+      }
+    >();
 
-        const safeEnteredGrades =
-          totalStudents > 0 ? Math.min(enteredGrades, totalStudents) : enteredGrades;
-        const percentage =
-          totalStudents > 0 ? (safeEnteredGrades / totalStudents) * 100 : 100;
+    for (const assessmentSubject of assessmentSubjects) {
+      const teacherId = assessmentSubject.teacherId ?? 'unassigned';
+      const key = [
+        teacherId,
+        assessmentSubject.subjectId,
+        assessmentSubject.classId,
+        assessmentSubject.sectionId ?? 'all',
+      ].join(':');
+      const totalStudents = await getStudentCount(
+        assessmentSubject.classId,
+        assessmentSubject.sectionId,
+      );
+      const enteredGrades = assessmentSubject.scores.filter(
+        (score) => score.score !== null || score.isAbsent || score.status === 'SUBMITTED',
+      ).length;
+      const existing = progressByAssignment.get(key) ?? {
+        teacherId,
+        subject: assessmentSubject.subject.name,
+        class: assessmentSubject.class.name,
+        section: assessmentSubject.section?.name ?? null,
+        totalStudents: 0,
+        enteredGrades: 0,
+      };
 
-        return {
-          subject: assignment.subject.name,
-          class: assignment.class.name,
-          section: assignment.section.name,
-          teacherId: assignment.teacherId,
-          totalStudents,
-          enteredGrades: safeEnteredGrades,
-          percentage,
-        };
-      }),
-    );
+      existing.totalStudents += totalStudents;
+      existing.enteredGrades += Math.min(enteredGrades, totalStudents);
+      progressByAssignment.set(key, existing);
+    }
+
+    const progress = Array.from(progressByAssignment.values()).map((row) => {
+      const enteredGrades =
+        row.totalStudents > 0 ? Math.min(row.enteredGrades, row.totalStudents) : row.enteredGrades;
+      return {
+        ...row,
+        enteredGrades,
+        percentage:
+          row.totalStudents > 0 ? Math.round((enteredGrades / row.totalStudents) * 100) : 100,
+      };
+    });
 
     return progress;
   }

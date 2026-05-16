@@ -9,6 +9,7 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
+  Award,
   BookMarked,
   BookOpen,
   Calendar,
@@ -17,6 +18,7 @@ import {
   ClipboardList,
   CreditCard,
   DoorOpen,
+  DollarSign,
   FileSpreadsheet,
   FileText,
   GraduationCap,
@@ -127,7 +129,7 @@ const helpContentByRole: Record<string, HelpContent> = {
   ADMIN: {
     label: "Admin",
     roleSummary:
-      "Manage academics, students, staff, exams, attendance, announcements, and school setup.",
+      "Run the full school workflow: setup, enrollment, staff, assessments, marks, publishing, reports, finance, and communication.",
     icon: UserCog,
     quickLinks: [
       {
@@ -137,22 +139,58 @@ const helpContentByRole: Record<string, HelpContent> = {
         description: "View school-level metrics and activity.",
       },
       {
-        name: "Students",
-        href: "/list/students",
-        icon: GraduationCap,
-        description: "Open the main student records area.",
+        name: "School Settings",
+        href: "/settings",
+        icon: Settings,
+        description: "Set school profile, logo, curriculum, grading, attendance, finance, and feature settings.",
       },
       {
-        name: "Class & Sections",
+        name: "Academic Years",
+        href: "/admin/academic-years",
+        icon: Calendar,
+        description: "Create terms, quarters, or semesters and keep the active year correct.",
+      },
+      {
+        name: "Classes & Sections",
         href: "/admin/class-sections",
         icon: DoorOpen,
-        description: "Manage classes, sections, and subject structure.",
+        description: "Manage classes, sections, capacity, and grade structure.",
       },
       {
-        name: "Attendance",
-        href: "/admin/attendance",
-        icon: UserCheck,
-        description: "Review attendance coverage and missing sessions.",
+        name: "Students & Staff",
+        href: "/list/students",
+        icon: Users,
+        description: "Maintain students, parents, teachers, registrar, finance, and IT users.",
+      },
+      {
+        name: "Assessments",
+        href: "/admin/assessments",
+        icon: ClipboardList,
+        description: "Create quiz, attendance, mid, final, worksheet, and test assessment structures.",
+      },
+      {
+        name: "Entry Progress",
+        href: "/admin/exams/entry-progress",
+        icon: ClipboardCheck,
+        description: "Track whether teachers have entered all required assessment scores.",
+      },
+      {
+        name: "Publish Results",
+        href: "/admin/exams/publish",
+        icon: Trophy,
+        description: "Publish report cards, calculate ranking, and notify parents and students.",
+      },
+      {
+        name: "Performance Brief",
+        href: "/admin/reports/parent-presentation",
+        icon: FileSpreadsheet,
+        description: "Download the parent-facing term, quarter, or semester performance brief.",
+      },
+      {
+        name: "Report Cards",
+        href: "/admin/report-cards",
+        icon: FileText,
+        description: "Review generated report cards and certificate readiness.",
       },
       {
         name: "Communication Book",
@@ -169,12 +207,12 @@ const helpContentByRole: Record<string, HelpContent> = {
     ],
     tasks: [
       {
-        title: "Set up the academic structure",
-        summary: "Start with academic years, then classes, sections, and teacher assignments.",
+        title: "Start a new academic period",
+        summary: "Use this sequence before teachers enter any attendance or scores.",
         steps: [
-          "Create or activate the academic year.",
-          "Configure class and section structure.",
-          "Assign teachers and check timetable coverage.",
+          "Open School Settings and confirm the curriculum type: term, quarter, or semester.",
+          "Create or activate the academic year and its periods.",
+          "Configure classes, sections, subjects, timetable, and teacher assignments.",
         ],
         href: "/admin/academic-years",
         icon: Calendar,
@@ -185,26 +223,63 @@ const helpContentByRole: Record<string, HelpContent> = {
         steps: [
           "Process admissions through Enrollments for individual intake.",
           "Use Bulk Upload for large imports.",
-          "Generate credentials after records are confirmed.",
+          "Generate credentials only after student, parent, and class placement records are confirmed.",
         ],
         href: "/admin/enrollment",
         icon: UserPlus,
       },
       {
-        title: "Publish exam outcomes",
-        summary: "Review exam progress before results go live.",
+        title: "Run assessment to publish",
+        summary: "This is the main exam flow from setup to parent-visible results.",
         steps: [
-          "Open exam entry progress and confirm mark completion.",
-          "Review rankings or reports if needed.",
-          "Publish results and generate report cards.",
+          "Create assessments and include the needed types: quiz, attendance, mid, final, worksheet, and test.",
+          "Assign subjects, classes, sections, and teachers so each teacher sees the right mark-entry work.",
+          "Use Entry Progress to confirm every required score is entered before publishing.",
+          "Open Publish Results to publish report cards; ranking is calculated automatically during publish.",
         ],
         href: "/admin/exams/publish",
+        icon: Trophy,
+      },
+      {
+        title: "Prepare certificates and report cards",
+        summary: "Keep certificate readiness separate from the result publish decision.",
+        steps: [
+          "Configure the certificate template once the school logo and report card fields are ready.",
+          "Publish results from the publish page when marks and report cards are complete.",
+          "Use Report Cards to verify student-level outputs and certificate downloads.",
+        ],
+        href: "/admin/report-cards/certificate-template",
+        icon: Award,
+      },
+      {
+        title: "Present term performance to parents",
+        summary: "Use the performance brief for admin-led parent meetings, not student-only reports.",
+        steps: [
+          "Open Performance Brief and choose the academic year and comparison periods.",
+          "Review average result, attendance, pass rate, improving classes, weak subjects, and class comparison.",
+          "Download PDF for presentation or Excel for analysis.",
+        ],
+        href: "/admin/reports/parent-presentation",
         icon: FileSpreadsheet,
+      },
+      {
+        title: "Monitor attendance quality",
+        summary: "Teachers take today’s attendance, while admin monitors coverage and missing sessions.",
+        steps: [
+          "Use Admin Attendance to review class coverage and missing submissions.",
+          "Ask teachers to submit attendance only for the current day from their attendance page.",
+          "Use Communication Book or announcements for attendance follow-up when parents need to know.",
+        ],
+        href: "/admin/attendance",
+        icon: UserCheck,
       },
     ],
     supportTips: [
+      "Publish Results is the parent-visible source of truth for results and ranking.",
+      "Entry Progress should come before Publish Results; it prevents publishing incomplete assessment work.",
+      "Certificate readiness can be fixed from the certificate-template page without blocking normal report-card publish.",
+      "Use Performance Brief for parent meetings because it compares periods at class and subject level.",
       "If a page shows access-denied, check the first API request that page makes, not only the visible route.",
-      "Use Communication Book for follow-up cases that need a tracked parent or student history.",
     ],
   },
   IT_MANAGER: {
@@ -221,7 +296,7 @@ const helpContentByRole: Record<string, HelpContent> = {
       },
       {
         name: "School Settings",
-        href: "/settings/school",
+        href: "/settings",
         icon: Settings,
         description: "Configure school-level technical settings.",
       },
@@ -253,14 +328,26 @@ const helpContentByRole: Record<string, HelpContent> = {
     tasks: [
       {
         title: "Prepare the school for a new term",
-        summary: "Check academic-year status, structure, timetable, and assignments.",
+        summary: "Check settings, academic-year status, structure, timetable, and assignments.",
         steps: [
-          "Verify the active academic year.",
+          "Verify school settings, logo, curriculum type, and feature switches.",
+          "Verify the active academic year and periods.",
           "Review classes, sections, and subject allocations.",
           "Check timetable and teacher assignments for gaps.",
         ],
-        href: "/admin/academic-years",
-        icon: Calendar,
+        href: "/settings",
+        icon: Settings,
+      },
+      {
+        title: "Support exam operations",
+        summary: "IT Manager can help academic setup without owning people-management decisions.",
+        steps: [
+          "Confirm assessment setup, subject assignments, and teacher visibility.",
+          "Use Entry Progress to locate missing score-entry work.",
+          "Use Publish Results only after admin confirms the academic data is final.",
+        ],
+        href: "/admin/exams/entry-progress",
+        icon: ClipboardCheck,
       },
       {
         title: "Support login and access issues",
@@ -275,14 +362,15 @@ const helpContentByRole: Record<string, HelpContent> = {
       },
     ],
     supportTips: [
-      "IT Manager should keep academic configuration access, but avoid using people-management pages unless intended by policy.",
+      "IT Manager should keep academic configuration access, but avoid student, parent, and staff create/update/delete work unless policy explicitly allows it.",
+      "For uploaded logos or files, check whether the page resolves `/uploads` assets through the backend or frontend public path.",
       "When a route fails, verify whether the backend gate or the frontend helper request is the first blocker.",
     ],
   },
   REGISTRAR: {
     label: "Registrar",
     roleSummary:
-      "Manage student records, enrollment operations, promotions, and grade review workflows.",
+      "Manage student records, enrollment operations, promotions, and report-card workflows.",
     icon: ClipboardList,
     quickLinks: [
       {
@@ -310,16 +398,22 @@ const helpContentByRole: Record<string, HelpContent> = {
         description: "Promote students to the next level.",
       },
       {
-        name: "Grade Review",
-        href: "/registrar/grading",
-        icon: ClipboardCheck,
-        description: "Review grading submissions and approval flow.",
-      },
-      {
         name: "Credentials",
         href: "/admin/credentials",
         icon: Key,
         description: "Generate account credentials for users.",
+      },
+      {
+        name: "Report Cards",
+        href: "/admin/report-cards",
+        icon: FileText,
+        description: "Review published report-card records when registrar support is needed.",
+      },
+      {
+        name: "Performance Brief",
+        href: "/admin/reports/parent-presentation",
+        icon: FileSpreadsheet,
+        description: "Download term, quarter, or semester summaries for parent presentations.",
       },
     ],
     tasks: [
@@ -345,9 +439,21 @@ const helpContentByRole: Record<string, HelpContent> = {
         href: "/admin/promotion",
         icon: Trophy,
       },
+      {
+        title: "Support published reports",
+        summary: "Use report-card pages for verification, not the removed grading-entry page.",
+        steps: [
+          "Open Report Cards to confirm which students have published results.",
+          "Use Performance Brief when admin needs a parent-facing period comparison.",
+          "Send corrections back to admin or teachers before republishing if marks are wrong.",
+        ],
+        href: "/admin/report-cards",
+        icon: FileText,
+      },
     ],
     supportTips: [
       "Promotion and grading actions are sensitive; confirm academic year and class mapping before saving.",
+      "The publish page is enough for releasing results; registrar support should focus on student records and report-card verification.",
       "If student class labels look wrong, verify the underlying class and section data instead of editing display text first.",
     ],
   },
@@ -373,7 +479,7 @@ const helpContentByRole: Record<string, HelpContent> = {
         name: "Attendance",
         href: "/teacher/attendance",
         icon: UserCheck,
-        description: "Take and submit attendance for your sessions.",
+        description: "Take and submit attendance for today only.",
       },
       {
         name: "Lessons",
@@ -382,10 +488,16 @@ const helpContentByRole: Record<string, HelpContent> = {
         description: "Create and manage lesson content.",
       },
       {
-        name: "Grade Entry",
+        name: "Marks Entry",
         href: "/teacher/grading",
         icon: ClipboardCheck,
-        description: "Enter and manage student marks.",
+        description: "Enter assessment scores assigned to you.",
+      },
+      {
+        name: "Timetable",
+        href: "/teacher/timetable",
+        icon: Calendar,
+        description: "View assigned sessions using the school calendar and time format.",
       },
       {
         name: "Communication Book",
@@ -401,6 +513,7 @@ const helpContentByRole: Record<string, HelpContent> = {
         steps: [
           "Open Attendance from the teacher area.",
           "Select the correct session or class.",
+          "Only today is editable; past and future dates are read-only.",
           "Mark records and submit the session after verifying absences and lateness.",
         ],
         href: "/teacher/attendance",
@@ -418,11 +531,11 @@ const helpContentByRole: Record<string, HelpContent> = {
         icon: MessageSquare,
       },
       {
-        title: "Enter grades and exam results",
-        summary: "Use grading for marks and exam pages for exam-specific work.",
+        title: "Enter assessment scores",
+        summary: "Use Marks Entry for your assigned assessment subjects.",
         steps: [
-          "Open Grade Entry for continuous assessment or marks entry.",
-          "Use the Exams area for exam-specific workflows.",
+          "Open Marks Entry and choose the correct academic period and subject.",
+          "Enter scores for quiz, attendance, mid, final, worksheet, or test when assigned.",
           "Review values before submission to avoid correction cycles.",
         ],
         href: "/teacher/grading",
@@ -431,6 +544,7 @@ const helpContentByRole: Record<string, HelpContent> = {
     ],
     supportTips: [
       "If a student does not appear in your communication search, verify that the student is in your homeroom or teaching classes.",
+      "Attendance is intentionally locked to today, so future attendance cannot be submitted in advance.",
       "When attendance or grading looks incomplete, confirm the active academic year and class assignment first.",
     ],
   },
@@ -462,7 +576,7 @@ const helpContentByRole: Record<string, HelpContent> = {
         name: "Grades",
         href: "/student/grades",
         icon: ClipboardCheck,
-        description: "Check your academic results.",
+        description: "Check published academic results.",
       },
       {
         name: "Lessons",
@@ -493,8 +607,8 @@ const helpContentByRole: Record<string, HelpContent> = {
         title: "Check your academic progress",
         summary: "Use grades for marks and exams for formal exam records.",
         steps: [
-          "Open Grades for current academic performance.",
-          "Check Exams when you need exam-specific records.",
+          "Open Grades for published academic performance.",
+          "Check report-card style pages when your school publishes formal results.",
           "Contact your teacher if a result appears missing or incorrect.",
         ],
         href: "/student/grades",
@@ -502,7 +616,7 @@ const helpContentByRole: Record<string, HelpContent> = {
       },
     ],
     supportTips: [
-      "If a lesson or grade is missing, it may not be published yet.",
+      "If a lesson or grade is missing, it may not be published or assigned yet.",
       "Use announcements and calendar for school-wide updates outside your class pages.",
     ],
   },
@@ -528,7 +642,7 @@ const helpContentByRole: Record<string, HelpContent> = {
         name: "Grades",
         href: "/parent/grades",
         icon: ClipboardCheck,
-        description: "Check your children’s academic results.",
+        description: "Check published grades and rankings for your children.",
       },
       {
         name: "Attendance",
@@ -552,10 +666,11 @@ const helpContentByRole: Record<string, HelpContent> = {
     tasks: [
       {
         title: "Check your child’s academic status",
-        summary: "Use the parent academic pages for results, attendance, and timetable.",
+        summary: "Use published results, attendance, timetable, and finance pages together.",
         steps: [
-          "Open Grades or Attendance from the parent area.",
+          "Open Grades after the school publishes results.",
           "Switch or review the correct child if you have multiple children.",
+          "Check attendance and fees for the same child before raising a follow-up.",
           "Use Communication Book for follow-up questions to teachers.",
         ],
         href: "/parent/grades",
@@ -575,6 +690,7 @@ const helpContentByRole: Record<string, HelpContent> = {
     ],
     supportTips: [
       "If a child is missing from your account, the parent-student relationship may need to be linked in the system.",
+      "Grades and ranking appear after admin publishes results; draft teacher entries are not parent-visible.",
       "Use Communication Book for academic follow-up instead of relying only on announcements.",
     ],
   },
@@ -591,10 +707,16 @@ const helpContentByRole: Record<string, HelpContent> = {
         description: "Open the finance dashboard and reporting overview.",
       },
       {
-        name: "Calendar",
-        href: "/list/calendar",
-        icon: Calendar,
-        description: "Review school dates relevant to billing periods.",
+        name: "Fee Structures",
+        href: "/finance",
+        icon: CreditCard,
+        description: "Create or review fee structures from the finance dashboard.",
+      },
+      {
+        name: "Payments",
+        href: "/finance",
+        icon: DollarSign,
+        description: "Record payments, review balances, and reverse mistakes when needed.",
       },
       {
         name: "Announcements",
@@ -605,15 +727,26 @@ const helpContentByRole: Record<string, HelpContent> = {
     ],
     tasks: [
       {
-        title: "Review financial activity",
-        summary: "Use the finance dashboard first before tracing specific records.",
+        title: "Set up fees for a period",
+        summary: "Create the fee structure before generating student fees.",
         steps: [
-          "Open the finance dashboard.",
-          "Review summaries, reports, or due balances.",
-          "Coordinate with admin or registrar if the issue depends on student records.",
+          "Open Finance and select the active academic year and period.",
+          "Create the fee structure for the needed class, term, quarter, or semester.",
+          "Generate student fees after class and student records are confirmed.",
         ],
         href: "/finance",
         icon: CreditCard,
+      },
+      {
+        title: "Record and follow up payments",
+        summary: "Record payments only against the correct student fee record.",
+        steps: [
+          "Search the student and open their fee balance.",
+          "Record the payment with the correct method and amount.",
+          "Use reminders or reports for outstanding balances after payments are saved.",
+        ],
+        href: "/finance",
+        icon: DollarSign,
       },
     ],
     supportTips: [

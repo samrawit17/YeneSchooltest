@@ -11,6 +11,8 @@ import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service'
 import * as fs from 'fs';
 import * as path from 'path';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import PDFKitDocument from 'pdfkit';
+import ExcelJS from 'exceljs';
 import archiver from 'archiver';
 import { TemplatesService } from '../templates/templates.service';
 
@@ -254,6 +256,16 @@ export class ReportCardService {
     } catch {
       return [];
     }
+  }
+
+  private average(values: Array<number | null | undefined>): number | null {
+    const valid = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+    if (valid.length === 0) return null;
+    return Math.round((valid.reduce((sum, value) => sum + value, 0) / valid.length) * 10) / 10;
+  }
+
+  private formatNullablePercent(value: number | null): string {
+    return value === null ? '-' : `${value}%`;
   }
 
   private async verifyParentChild(parentId: string, childId: string) {
@@ -953,7 +965,7 @@ export class ReportCardService {
       new Set([academicYearId, academicYearName].filter(Boolean)),
     );
 
-    const [classes, enrollments, reportCards] = await Promise.all([
+    const [classes, enrollments, reportCards, assessmentSubjects, certificate] = await Promise.all([
       this.prisma.class.findMany({
         where: { schoolId, academicYearId },
         select: { id: true, name: true, grade: true, section: true },
@@ -964,7 +976,7 @@ export class ReportCardService {
           schoolId,
           academicYear: { in: academicYearKeys },
         },
-        select: { classId: true, studentId: true },
+        select: { classId: true, sectionId: true, studentId: true },
       }),
       this.prisma.reportCard.findMany({
         where: {
@@ -978,6 +990,30 @@ export class ReportCardService {
           },
         },
       }),
+      this.prisma.assessmentSubject.findMany({
+        where: {
+          assessment: {
+            schoolId,
+            academicYearId,
+            termId,
+            status: { in: ['ACTIVE', 'COMPLETED'] },
+          },
+        },
+        select: {
+          id: true,
+          classId: true,
+          sectionId: true,
+          scores: {
+            select: {
+              studentId: true,
+              score: true,
+              isAbsent: true,
+              status: true,
+            },
+          },
+        },
+      }),
+      this.getCertificateReadiness(schoolId),
     ]);
 
     const expectedByClass = new Map<string, number>();
@@ -990,6 +1026,57 @@ export class ReportCardService {
     }
     for (const [classId, studentIds] of studentIdsByClass.entries()) {
       expectedByClass.set(classId, studentIds.size);
+    }
+
+    const enrollmentStudentIdsByClassSection = new Map<string, Set<string>>();
+    for (const enrollment of enrollments) {
+      const key = `${enrollment.classId}:${enrollment.sectionId ?? 'all'}`;
+      const bucket =
+        enrollmentStudentIdsByClassSection.get(key) ?? new Set<string>();
+      bucket.add(enrollment.studentId);
+      enrollmentStudentIdsByClassSection.set(key, bucket);
+    }
+
+    const assessmentReadinessByClass = new Map<
+      string,
+      {
+        assessmentSubjects: number;
+        expectedScores: number;
+        enteredScores: number;
+        missingScores: number;
+      }
+    >();
+    for (const assessmentSubject of assessmentSubjects) {
+      const classStudentIds = studentIdsByClass.get(assessmentSubject.classId) ?? new Set<string>();
+      const sectionStudentIds = assessmentSubject.sectionId
+        ? enrollmentStudentIdsByClassSection.get(
+            `${assessmentSubject.classId}:${assessmentSubject.sectionId}`,
+          ) ?? new Set<string>()
+        : classStudentIds;
+      const expectedScoreStudentIds = sectionStudentIds.size > 0
+        ? sectionStudentIds
+        : classStudentIds;
+      const enteredScoreStudentIds = new Set(
+        assessmentSubject.scores
+          .filter((score) => score.score !== null || score.isAbsent || score.status === 'SUBMITTED')
+          .map((score) => score.studentId),
+      );
+      const classReadiness =
+        assessmentReadinessByClass.get(assessmentSubject.classId) ?? {
+          assessmentSubjects: 0,
+          expectedScores: 0,
+          enteredScores: 0,
+          missingScores: 0,
+        };
+      const expectedScores = expectedScoreStudentIds.size;
+      const enteredScores = Array.from(expectedScoreStudentIds).filter(
+        (studentId) => enteredScoreStudentIds.has(studentId),
+      ).length;
+      classReadiness.assessmentSubjects += 1;
+      classReadiness.expectedScores += expectedScores;
+      classReadiness.enteredScores += enteredScores;
+      classReadiness.missingScores += Math.max(expectedScores - enteredScores, 0);
+      assessmentReadinessByClass.set(assessmentSubject.classId, classReadiness);
     }
 
     const cardsByClass = new Map<string, typeof reportCards>();
@@ -1026,8 +1113,34 @@ export class ReportCardService {
           })
           .map((card) => card.studentId),
       );
-      const hasIncompleteCards = completeStudentIds.size < expectedEntries;
-
+      const incompleteEntries = Math.max(expectedEntries - completeStudentIds.size, 0);
+      const hasIncompleteCards = incompleteEntries > 0;
+      const rankingEntries = new Set(
+        classCards
+          .filter((card) => card.rankInClass !== null || card.rank !== null)
+          .map((card) => card.studentId),
+      ).size;
+      const rankingMissingEntries = Math.max(expectedEntries - rankingEntries, 0);
+      const assessmentReadiness =
+        assessmentReadinessByClass.get(cls.id) ?? {
+          assessmentSubjects: 0,
+          expectedScores: 0,
+          enteredScores: 0,
+          missingScores: 0,
+        };
+      const issueReasons: string[] = [];
+      if (expectedEntries === 0) {
+        issueReasons.push('No enrolled students');
+      }
+      if (missingEntries > 0) {
+        issueReasons.push(`${missingEntries} report cards not generated`);
+      }
+      if (incompleteEntries > 0) {
+        issueReasons.push(`${incompleteEntries} report cards incomplete`);
+      }
+      if (assessmentReadiness.missingScores > 0) {
+        issueReasons.push(`${assessmentReadiness.missingScores} assessment marks missing`);
+      }
       let status: 'published' | 'ready' | 'has_issues' | 'no_students' =
         'has_issues';
       const expectedStudentIds = studentIdsByClass.get(cls.id) ?? new Set<string>();
@@ -1044,7 +1157,8 @@ export class ReportCardService {
       } else if (
         allExpectedGenerated &&
         missingEntries === 0 &&
-        !hasIncompleteCards
+        !hasIncompleteCards &&
+        assessmentReadiness.missingScores === 0
       ) {
         status = 'ready';
       }
@@ -1059,8 +1173,328 @@ export class ReportCardService {
         publishedEntries,
         draftEntries: Math.max(generatedEntries - publishedEntries, 0),
         missingEntries,
+        incompleteEntries,
+        assessmentSubjects: assessmentReadiness.assessmentSubjects,
+        assessmentExpectedScores: assessmentReadiness.expectedScores,
+        assessmentEnteredScores: assessmentReadiness.enteredScores,
+        assessmentMissingScores: assessmentReadiness.missingScores,
+        rankingEntries,
+        rankingMissingEntries,
+        rankingMode: 'auto_on_publish' as const,
+        certificateReady: certificate.certificateReady,
+        certificateIssue: certificate.certificateIssue,
+        issueReasons,
         status,
       };
+    });
+  }
+
+  async getParentPresentationReport(
+    schoolId: string,
+    params: {
+      academicYearId: string;
+      fromTermId: string;
+      toTermId: string;
+      classId?: string;
+    },
+  ) {
+    const [school, academicYearName, fromTermName, toTermName] = await Promise.all([
+      this.prisma.school.findUnique({
+        where: { id: schoolId },
+        select: { id: true, name: true, address: true, phone: true },
+      }),
+      this.resolveAcademicYearName(schoolId, params.academicYearId),
+      this.resolveTermName(params.fromTermId),
+      this.resolveTermName(params.toTermId),
+    ]);
+    const academicYearKeys = Array.from(
+      new Set([params.academicYearId, academicYearName].filter(Boolean)),
+    );
+
+    const reportCards = await this.prisma.reportCard.findMany({
+      where: {
+        schoolId,
+        academicYear: { in: academicYearKeys },
+        term: { in: [fromTermName, toTermName] },
+        status: ReportCardStatus.PUBLISHED,
+        ...(params.classId ? { classId: params.classId } : {}),
+      },
+      include: {
+        class: { select: { id: true, name: true, grade: true, section: true } },
+        section: { select: { id: true, name: true } },
+      },
+    });
+
+    const termGroups = {
+      from: reportCards.filter((card) => card.term === fromTermName),
+      to: reportCards.filter((card) => card.term === toTermName),
+    };
+    const summarizeCards = (cards: typeof reportCards) => {
+      const average = this.average(cards.map((card) => card.percentage));
+      const attendance = this.average(cards.map((card) => card.attendancePercentage));
+      const passCount = cards.filter((card) => (card.percentage ?? 0) >= 50).length;
+      return {
+        students: new Set(cards.map((card) => card.studentId)).size,
+        average,
+        attendance,
+        passRate: cards.length > 0 ? Math.round((passCount / cards.length) * 1000) / 10 : null,
+      };
+    };
+    const fromSummary = summarizeCards(termGroups.from);
+    const toSummary = summarizeCards(termGroups.to);
+
+    const classIds = Array.from(new Set(reportCards.map((card) => card.classId)));
+    const classSummaries = classIds
+      .map((classId) => {
+        const classCards = reportCards.filter((card) => card.classId === classId);
+        const sample = classCards[0];
+        const from = summarizeCards(classCards.filter((card) => card.term === fromTermName));
+        const to = summarizeCards(classCards.filter((card) => card.term === toTermName));
+        return {
+          classId,
+          className: sample?.class?.name ?? 'Unknown class',
+          grade: sample?.class?.grade ?? null,
+          sectionName: sample?.section?.name ?? sample?.class?.section ?? null,
+          fromAverage: from.average,
+          toAverage: to.average,
+          change: from.average !== null && to.average !== null ? Math.round((to.average - from.average) * 10) / 10 : null,
+          fromAttendance: from.attendance,
+          toAttendance: to.attendance,
+          attendanceChange:
+            from.attendance !== null && to.attendance !== null
+              ? Math.round((to.attendance - from.attendance) * 10) / 10
+              : null,
+          fromStudents: from.students,
+          toStudents: to.students,
+          passRate: to.passRate,
+        };
+      })
+      .sort((a, b) => `${a.className} ${a.sectionName ?? ''}`.localeCompare(`${b.className} ${b.sectionName ?? ''}`));
+
+    const subjects = new Map<
+      string,
+      { subjectId: string; subjectName: string; fromScores: number[]; toScores: number[] }
+    >();
+    for (const card of reportCards) {
+      for (const detail of this.parseGradeDetails(card.gradeDetails)) {
+        const subjectId = String(detail.subjectId || detail.subjectName || 'unknown');
+        const item =
+          subjects.get(subjectId) ?? {
+            subjectId,
+            subjectName: String(detail.subjectName || 'Unknown subject'),
+            fromScores: [],
+            toScores: [],
+          };
+        const score = Number(detail.totalScore);
+        if (Number.isFinite(score)) {
+          if (card.term === fromTermName) item.fromScores.push(score);
+          if (card.term === toTermName) item.toScores.push(score);
+        }
+        subjects.set(subjectId, item);
+      }
+    }
+    const subjectSummaries = Array.from(subjects.values())
+      .map((subject) => {
+        const fromAverage = this.average(subject.fromScores);
+        const toAverage = this.average(subject.toScores);
+        return {
+          subjectId: subject.subjectId,
+          subjectName: subject.subjectName,
+          fromAverage,
+          toAverage,
+          change:
+            fromAverage !== null && toAverage !== null
+              ? Math.round((toAverage - fromAverage) * 10) / 10
+              : null,
+        };
+      })
+      .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
+
+    const improvedClasses = classSummaries
+      .filter((item) => item.change !== null && item.change > 0)
+      .sort((a, b) => (b.change ?? 0) - (a.change ?? 0))
+      .slice(0, 5);
+    const decliningClasses = classSummaries
+      .filter((item) => item.change !== null && item.change < 0)
+      .sort((a, b) => (a.change ?? 0) - (b.change ?? 0))
+      .slice(0, 5);
+    const weakSubjects = subjectSummaries
+      .filter((item) => item.toAverage !== null)
+      .sort((a, b) => (a.toAverage ?? 0) - (b.toAverage ?? 0))
+      .slice(0, 5);
+    const improvedSubjects = subjectSummaries
+      .filter((item) => item.change !== null && item.change > 0)
+      .sort((a, b) => (b.change ?? 0) - (a.change ?? 0))
+      .slice(0, 5);
+
+    return {
+      generatedAt: new Date().toISOString(),
+      school,
+      academicYear: { id: params.academicYearId, name: academicYearName },
+      fromTerm: { id: params.fromTermId, name: fromTermName },
+      toTerm: { id: params.toTermId, name: toTermName },
+      filters: { classId: params.classId ?? null },
+      summary: {
+        from: fromSummary,
+        to: toSummary,
+        averageChange:
+          fromSummary.average !== null && toSummary.average !== null
+            ? Math.round((toSummary.average - fromSummary.average) * 10) / 10
+            : null,
+        attendanceChange:
+          fromSummary.attendance !== null && toSummary.attendance !== null
+            ? Math.round((toSummary.attendance - fromSummary.attendance) * 10) / 10
+            : null,
+      },
+      classSummaries,
+      subjectSummaries,
+      insights: {
+        improvedClasses,
+        decliningClasses,
+        weakSubjects,
+        improvedSubjects,
+      },
+    };
+  }
+
+  async generateParentPresentationExcel(
+    schoolId: string,
+    params: { academicYearId: string; fromTermId: string; toTermId: string; classId?: string },
+  ): Promise<Buffer> {
+    const report = await this.getParentPresentationReport(schoolId, params);
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Lemari SMS';
+    workbook.created = new Date();
+
+    const overview = workbook.addWorksheet('Overview');
+    overview.columns = [
+      { header: 'Metric', key: 'metric', width: 32 },
+      { header: report.fromTerm.name, key: 'from', width: 18 },
+      { header: report.toTerm.name, key: 'to', width: 18 },
+      { header: 'Change', key: 'change', width: 18 },
+    ];
+    overview.addRows([
+      {
+        metric: 'Average result',
+        from: this.formatNullablePercent(report.summary.from.average),
+        to: this.formatNullablePercent(report.summary.to.average),
+        change: report.summary.averageChange === null ? '-' : `${report.summary.averageChange > 0 ? '+' : ''}${report.summary.averageChange}%`,
+      },
+      {
+        metric: 'Attendance',
+        from: this.formatNullablePercent(report.summary.from.attendance),
+        to: this.formatNullablePercent(report.summary.to.attendance),
+        change: report.summary.attendanceChange === null ? '-' : `${report.summary.attendanceChange > 0 ? '+' : ''}${report.summary.attendanceChange}%`,
+      },
+      {
+        metric: 'Pass rate',
+        from: this.formatNullablePercent(report.summary.from.passRate),
+        to: this.formatNullablePercent(report.summary.to.passRate),
+        change: '-',
+      },
+      {
+        metric: 'Students with published report cards',
+        from: report.summary.from.students,
+        to: report.summary.to.students,
+        change: report.summary.to.students - report.summary.from.students,
+      },
+    ]);
+
+    const classes = workbook.addWorksheet('Classes');
+    classes.columns = [
+      { header: 'Class', key: 'className', width: 22 },
+      { header: 'Section', key: 'sectionName', width: 14 },
+      { header: `${report.fromTerm.name} Avg`, key: 'fromAverage', width: 16 },
+      { header: `${report.toTerm.name} Avg`, key: 'toAverage', width: 16 },
+      { header: 'Change', key: 'change', width: 12 },
+      { header: `${report.toTerm.name} Attendance`, key: 'toAttendance', width: 20 },
+      { header: 'Pass Rate', key: 'passRate', width: 14 },
+    ];
+    classes.addRows(report.classSummaries);
+
+    const subjectsSheet = workbook.addWorksheet('Subjects');
+    subjectsSheet.columns = [
+      { header: 'Subject', key: 'subjectName', width: 28 },
+      { header: `${report.fromTerm.name} Avg`, key: 'fromAverage', width: 16 },
+      { header: `${report.toTerm.name} Avg`, key: 'toAverage', width: 16 },
+      { header: 'Change', key: 'change', width: 12 },
+    ];
+    subjectsSheet.addRows(report.subjectSummaries);
+
+    for (const sheet of workbook.worksheets) {
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECEFF3' } };
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
+  }
+
+  async generateParentPresentationPdf(
+    schoolId: string,
+    params: { academicYearId: string; fromTermId: string; toTermId: string; classId?: string },
+  ): Promise<Buffer> {
+    const report = await this.getParentPresentationReport(schoolId, params);
+    return new Promise((resolve, reject) => {
+      const doc = new PDFKitDocument({ margin: 48, size: 'A4' });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      doc.fontSize(20).text('Term Performance Brief', { align: 'center' });
+      doc.moveDown(0.4);
+      doc.fontSize(11).fillColor('#475569').text(report.school?.name || 'School', { align: 'center' });
+      doc.text(`${report.academicYear.name} • ${report.fromTerm.name} vs ${report.toTerm.name}`, { align: 'center' });
+      doc.moveDown(1.5);
+
+      doc.fillColor('#111827').fontSize(14).text('Executive Summary');
+      doc.moveDown(0.5);
+      const summaryRows = [
+        ['Average result', this.formatNullablePercent(report.summary.from.average), this.formatNullablePercent(report.summary.to.average), report.summary.averageChange],
+        ['Attendance', this.formatNullablePercent(report.summary.from.attendance), this.formatNullablePercent(report.summary.to.attendance), report.summary.attendanceChange],
+        ['Pass rate', this.formatNullablePercent(report.summary.from.passRate), this.formatNullablePercent(report.summary.to.passRate), null],
+      ];
+      for (const [metric, from, to, change] of summaryRows) {
+        const changeLabel = typeof change === 'number' ? `${change > 0 ? '+' : ''}${change}%` : '-';
+        doc.fontSize(10).text(`${metric}: ${from} -> ${to} (${changeLabel})`);
+      }
+      doc.moveDown(1);
+
+      const writeList = (title: string, rows: Array<Record<string, any>>, valueKey: string) => {
+        doc.fillColor('#111827').fontSize(13).text(title);
+        doc.moveDown(0.3);
+        if (rows.length === 0) {
+          doc.fillColor('#64748b').fontSize(10).text('No data available.');
+          doc.moveDown(0.6);
+          return;
+        }
+        rows.forEach((row, index) => {
+          const label = row.className
+            ? `${row.className}${row.sectionName ? ` ${row.sectionName}` : ''}`
+            : row.subjectName;
+          const value = row[valueKey];
+          doc.fillColor('#334155').fontSize(10).text(`${index + 1}. ${label}: ${value === null || value === undefined ? '-' : value}`);
+        });
+        doc.moveDown(0.8);
+      };
+
+      writeList('Top Improving Classes', report.insights.improvedClasses, 'change');
+      writeList('Classes Needing Attention', report.insights.decliningClasses, 'change');
+      writeList('Improving Subjects', report.insights.improvedSubjects, 'change');
+      writeList('Weak Subjects', report.insights.weakSubjects, 'toAverage');
+
+      doc.addPage();
+      doc.fillColor('#111827').fontSize(14).text('Class Comparison');
+      doc.moveDown(0.5);
+      doc.fontSize(9).fillColor('#475569');
+      report.classSummaries.slice(0, 28).forEach((row) => {
+        doc.text(
+          `${row.className}${row.sectionName ? ` ${row.sectionName}` : ''}: ${this.formatNullablePercent(row.fromAverage)} -> ${this.formatNullablePercent(row.toAverage)} | change ${row.change === null ? '-' : `${row.change > 0 ? '+' : ''}${row.change}%`} | attendance ${this.formatNullablePercent(row.toAttendance)}`,
+        );
+      });
+
+      doc.end();
     });
   }
 
@@ -1239,6 +1673,29 @@ export class ReportCardService {
   private resolvePublicAssetPath(urlPath: string): string {
     const clean = String(urlPath || '').trim().replace(/^\/+/, '');
     return path.join(process.cwd(), '..', 'frontend', 'public', clean);
+  }
+
+  private async getCertificateReadiness(schoolId: string) {
+    const activeTemplate = await this.templatesService.getActiveTemplate(schoolId, 'CERTIFICATE');
+    if (!activeTemplate?.backgroundUrl) {
+      return {
+        certificateReady: false,
+        certificateIssue: 'No active certificate template',
+      };
+    }
+
+    const templatePath = this.resolvePublicAssetPath(activeTemplate.backgroundUrl);
+    if (!fs.existsSync(templatePath)) {
+      return {
+        certificateReady: false,
+        certificateIssue: 'Certificate template file is missing',
+      };
+    }
+
+    return {
+      certificateReady: true,
+      certificateIssue: null,
+    };
   }
 
   async generateCertificatePdf(schoolId: string, reportCardId: string): Promise<Buffer> {

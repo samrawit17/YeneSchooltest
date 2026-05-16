@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Lexend_Deca } from "next/font/google";
+import { Lexend_Deca, Noto_Naskh_Arabic, Noto_Sans_Ethiopic } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ToastProvider } from "@/components/ToastProvider";
@@ -11,6 +11,20 @@ const lexendDeca = Lexend_Deca({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans",
+});
+
+const notoSansEthiopic = Noto_Sans_Ethiopic({
+  subsets: ["ethiopic"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-ethiopic",
+});
+
+const notoNaskhArabic = Noto_Naskh_Arabic({
+  subsets: ["arabic"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-arabic",
 });
 
 // Force dynamic rendering to avoid static generation issues with useSearchParams
@@ -32,7 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${lexendDeca.variable} ${lexendDeca.className}`}>
+      <body className={`${lexendDeca.variable} ${notoSansEthiopic.variable} ${notoNaskhArabic.variable} ${lexendDeca.className}`}>
         <script dangerouslySetInnerHTML={{
           __html: `
             (function() {

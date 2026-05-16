@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { CheckCircle, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { parentsAPI, studentsAPI } from "@/lib/api";
+import { useTranslations } from "@/hooks/useTranslations";
 
 interface RecipientOption {
   id: string;
@@ -39,6 +40,7 @@ export default function NewMessageModal({
   isParent,
   isTeacher,
 }: NewMessageModalProps) {
+  const { t } = useTranslations<any>("communications");
   const [studentId, setStudentId] = useState(preselectedStudentId || "");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -208,7 +210,7 @@ export default function NewMessageModal({
               <Send className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">New Message</h2>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t.actions.newMessage}</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {isParent
                   ? "Send a message to your child's teacher"
@@ -229,12 +231,12 @@ export default function NewMessageModal({
         <div className="max-h-[calc(90vh-180px)] overflow-y-auto p-6">
           <div ref={dropdownRef} className="mb-5">
             <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-              {isParent ? "Select Teacher" : "Select Student"} <span className="text-red-500">*</span>
+              {isParent ? t.fields.selectTeacher : t.fields.selectStudent} <span className="text-red-500">*</span>
             </label>
             {preselectedStudentId ? (
               <div className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm dark:bg-slate-700">
                 <span className="font-medium text-slate-900 dark:text-white">
-                  {preselectedStudentName || "Student selected"}
+                  {preselectedStudentName || t.states.studentSelected}
                 </span>
               </div>
             ) : (
@@ -251,12 +253,12 @@ export default function NewMessageModal({
                   type="text"
                   placeholder={
                     isParent
-                      ? "Search for your child's teacher..."
+                      ? t.placeholders.searchTeacher
                       : isTeacher
                         ? allStudents.length > 0
                           ? `Search in ${allStudents.length} assigned students...`
                           : "Click or hover to see students from your assigned classes..."
-                        : "Search for a student..."
+                        : t.placeholders.searchStudent
                   }
                   value={searchQuery}
                   onChange={(event) => {
@@ -291,7 +293,7 @@ export default function NewMessageModal({
                   <div className="absolute left-0 right-0 top-full z-10 mt-2 max-h-64 overflow-y-auto overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
                     <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50">
                       <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                        {isTeacher ? "Your Assigned Students" : "Search Results"}
+                        {isTeacher ? t.states.assignedStudents : t.states.searchResults}
                       </p>
                     </div>
                     {students.map((student) => (
@@ -335,7 +337,7 @@ export default function NewMessageModal({
                 )}
                 {!loadingStudents && students.length === 0 && allStudents.length > 0 && (
                   <div className="absolute left-0 right-0 top-full z-10 mt-2 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-800">
-                    <p className="text-center text-sm text-slate-500 dark:text-slate-400">No matches found</p>
+                    <p className="text-center text-sm text-slate-500 dark:text-slate-400">{t.states.noMatches}</p>
                   </div>
                 )}
                 {!loadingStudents && isTeacher && allStudents.length === 0 && (
@@ -350,18 +352,18 @@ export default function NewMessageModal({
             {selectedStudent && (
               <p className="mt-2 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
                 <CheckCircle className="h-3.5 w-3.5" />
-                Selected: {selectedStudent.name}
+                {t.states.selected}: {selectedStudent.name}
               </p>
             )}
           </div>
 
           <div className="mb-5">
             <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Subject <span className="text-red-500">*</span>
+              {t.fields.subject} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              placeholder="Enter message subject"
+              placeholder={t.placeholders.enterSubject}
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
               className="w-full rounded-xl border-0 bg-slate-100 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:bg-slate-700 dark:text-white"
@@ -370,10 +372,10 @@ export default function NewMessageModal({
 
           <div className="mb-5">
             <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Message <span className="text-red-500">*</span>
+              {t.fields.message} <span className="text-red-500">*</span>
             </label>
             <textarea
-              placeholder="Write your message..."
+              placeholder={t.placeholders.writeMessage}
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               rows={6}
@@ -387,7 +389,7 @@ export default function NewMessageModal({
             onClick={onClose}
             className="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
           >
-            Cancel
+            {t.actions.cancel}
           </button>
           <button
             onClick={handleSubmit}

@@ -6,7 +6,8 @@ import { useRouter, useParams } from "next/navigation";
 import { studentsAPI, classesAPI, sectionsAPI, registrarAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
 import { queryKeys } from "@/lib/query-keys";
-import { Loader2, ArrowLeft, Save, User, BookOpen, Users, FileText } from "lucide-react";
+import { Loader2, ArrowLeft, Save, User, BookOpen, Users, FileText, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
 // Shadcn/ui Components
@@ -85,6 +86,8 @@ export default function EditStudentPage() {
   const studentId = params.id as string;
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canEditPlacement = ["ADMIN", "REGISTRAR"].includes(user?.role?.toUpperCase() || "");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -151,16 +154,40 @@ export default function EditStudentPage() {
     enabled: !!formData.classId,
   });
 
+  const selectedClass = classesData?.find(c => c.id === formData.classId);
+  const selectedSection = sectionsData?.find(s => s.id === formData.sectionId);
+
+  const { data: selectedSectionStudents } = useQuery<any>({
+    queryKey: queryKeys.classSections.students(formData.classId, formData.sectionId, "", 1),
+    queryFn: async () => {
+      if (!formData.classId || !formData.sectionId) return null;
+      const response = await classesAPI.getStudents(formData.classId, {
+        sectionId: formData.sectionId,
+        page: "1",
+        limit: "1",
+      });
+      return response.data;
+    },
+    enabled: !!formData.classId && !!formData.sectionId,
+  });
+
+  const selectedSectionStudentCount = selectedSectionStudents?.pagination?.total ?? 0;
+  const isSamePlacement = formData.classId === (student?.classId || "") && formData.sectionId === (student?.sectionId || "");
+  const selectedSectionEffectiveCount = isSamePlacement
+    ? selectedSectionStudentCount
+    : selectedSectionStudentCount + (student ? 1 : 0);
+  const selectedSectionIsFull = !!selectedSection?.capacity && !isSamePlacement && selectedSectionStudentCount >= selectedSection.capacity;
+
   // When classId changes, try to find the matching section by name
   useEffect(() => {
-    if (formData.classId && sectionsData && formData.section) {
+    if (formData.classId && sectionsData && formData.section && !formData.sectionId) {
       // Find section by name (e.g., "A")
       const matchingSection = sectionsData.find(s => s.name === formData.section);
-      if (matchingSection && !formData.sectionId) {
+      if (matchingSection) {
         setFormData(prev => ({ ...prev, sectionId: matchingSection.id }));
       }
     }
-  }, [sectionsData, formData.classId]);
+  }, [sectionsData, formData.classId, formData.section, formData.sectionId]);
 
   // Populate form with student data
   useEffect(() => {
@@ -283,16 +310,26 @@ export default function EditStudentPage() {
 
   // Assign class mutation
   const assignClassMutation = useMutation({
-    mutationFn: (data: { className: string; section: string; rollNumber: string }) => {
+    mutationFn: (data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string }) => {
       const idToUse = userId || studentId;
       return registrarAPI.assignClass(idToUse, data);
     },
     onSuccess: () => {
       toast.success("Class assigned successfully");
       const idForQuery = userId || studentId;
+      if (selectedClass && selectedSection) {
+        setFormData(prev => ({
+          ...prev,
+          className: `Grade ${selectedClass.grade}`,
+          section: selectedSection.name,
+        }));
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(idForQuery) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.classSections.students(formData.classId, formData.sectionId, "", 1) });
       setTimeout(() => {
         queryClient.refetchQueries({ queryKey: queryKeys.students.detail(idForQuery) });
+        queryClient.refetchQueries({ queryKey: queryKeys.students.detail(studentId) });
       }, 500);
     },
     onError: (error: any) => {
@@ -325,12 +362,25 @@ export default function EditStudentPage() {
 
   // Handle saving class/section changes
   const handleSaveClassSection = () => {
+    if (!canEditPlacement) {
+      toast.error("You do not have permission to change academic placement");
+      return;
+    }
+
+    if (!formData.classId || !formData.sectionId) {
+      toast.error("Please select a class and section");
+      return;
+    }
+
+    if (selectedSectionIsFull) {
+      toast.error("Selected section is already at capacity");
+      return;
+    }
+
     // Get the selected class name from the class options
-    const selectedClass = classesData?.find(c => c.id === formData.classId);
     const className = selectedClass ? `Grade ${selectedClass.grade}` : formData.classId;
     
     // Get the selected section name
-    const selectedSection = sectionsData?.find(s => s.id === formData.sectionId);
     const section = selectedSection?.name || formData.sectionId;
 
     console.log("Assigning class:", { className, section, rollNumber: formData.rollNumber });
@@ -338,7 +388,9 @@ export default function EditStudentPage() {
     assignClassMutation.mutate({
       className,
       section,
-      rollNumber: formData.rollNumber
+      rollNumber: formData.rollNumber,
+      classId: formData.classId,
+      sectionId: formData.sectionId,
     });
   };
 
@@ -550,10 +602,34 @@ export default function EditStudentPage() {
         <TabsContent value="academic" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Academic Information</CardTitle>
-              <CardDescription>Class, section, and enrollment details</CardDescription>
+              <CardTitle>Academic Placement</CardTitle>
+              <CardDescription>Move the student to the correct class and section for the active academic year</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
+                <div className="grid gap-3 text-sm sm:grid-cols-3">
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400">Current class</p>
+                    <p className="font-semibold text-slate-900 dark:text-white">{formData.className || "Not assigned"}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400">Current section</p>
+                    <p className="font-semibold text-slate-900 dark:text-white">{formData.section || "Not assigned"}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 dark:text-slate-400">Roll number</p>
+                    <p className="font-semibold text-slate-900 dark:text-white">{formData.rollNumber || "Not set"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {!canEditPlacement && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>Only admins and registrars can change academic placement.</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="classId">Grade / Class</Label>
@@ -563,6 +639,7 @@ export default function EditStudentPage() {
                       handleInputChange("classId", value);
                       handleInputChange("sectionId", ""); // Reset section
                     }}
+                    disabled={!canEditPlacement}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select grade" />
@@ -582,7 +659,7 @@ export default function EditStudentPage() {
                   <Select
                     value={formData.sectionId}
                     onValueChange={(value) => handleInputChange("sectionId", value)}
-                    disabled={!formData.classId}
+                    disabled={!formData.classId || !canEditPlacement}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select section" />
@@ -604,6 +681,7 @@ export default function EditStudentPage() {
                     value={formData.rollNumber}
                     onChange={(e) => handleInputChange("rollNumber", e.target.value)}
                     placeholder="Enter roll number"
+                    disabled={!canEditPlacement}
                   />
                 </div>
                 
@@ -616,11 +694,22 @@ export default function EditStudentPage() {
                   />
                 </div>
               </div>
+
+              {selectedSection && (
+                <div className={`rounded-lg border p-3 text-sm ${
+                  selectedSectionIsFull
+                    ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200"
+                }`}>
+                  Section {selectedSection.name}: {selectedSectionEffectiveCount}/{selectedSection.capacity} students after save
+                  {selectedSectionIsFull && " - capacity is full"}
+                </div>
+              )}
               
               <div className="flex justify-end pt-4">
                 <Button 
                   onClick={handleSaveClassSection}
-                  disabled={assignClassMutation.isPending}
+                  disabled={assignClassMutation.isPending || !canEditPlacement || selectedSectionIsFull}
                   className="flex items-center gap-2"
                 >
                   {assignClassMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}

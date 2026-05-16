@@ -16,6 +16,9 @@ import {
   Users,
   XCircle,
   FileText,
+  Award,
+  BarChart3,
+  ClipboardCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -146,6 +149,14 @@ export default function PublishResultsPage() {
   const readyRows = useMemo(() => rows.filter((row) => row.status === "ready"), [rows]);
   const publishedRows = useMemo(() => rows.filter((row) => row.status === "published"), [rows]);
   const issueRows = useMemo(() => rows.filter((row) => row.status === "has_issues"), [rows]);
+  const totalMissingMarks = useMemo(
+    () => rows.reduce((sum, row) => sum + (row.assessmentMissingScores || 0), 0),
+    [rows],
+  );
+  const certificateIssue = useMemo(
+    () => rows.find((row) => !row.certificateReady)?.certificateIssue || null,
+    [rows],
+  );
 
   const toggleClass = (classId: string) => {
     setSelectedClasses((prev) =>
@@ -265,6 +276,15 @@ export default function PublishResultsPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => router.push("/admin/exams/entry-progress")}
+                className="dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              >
+                <ClipboardCheck className="mr-2 h-4 w-4" />
+                Entry Progress
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => router.push("/admin/report-cards")}
                 className="dark:border-slate-700 dark:bg-slate-800 dark:text-white"
               >
@@ -297,13 +317,76 @@ export default function PublishResultsPage() {
           </>
         ) : (
           <>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <Card className="dark:border-slate-800 dark:bg-slate-900">
+                <CardContent className="flex items-center gap-3 pt-6">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Ready Classes</p>
+                    <p className="text-2xl font-semibold text-slate-900 dark:text-white">{readyRows.length}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="dark:border-slate-800 dark:bg-slate-900">
+                <CardContent className="flex items-center gap-3 pt-6">
+                  <Lock className="h-8 w-8 text-blue-500" />
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Published Classes</p>
+                    <p className="text-2xl font-semibold text-slate-900 dark:text-white">{publishedRows.length}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="dark:border-slate-800 dark:bg-slate-900">
+                <CardContent className="flex items-center gap-3 pt-6">
+                  <AlertTriangle className="h-8 w-8 text-amber-500" />
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Classes With Issues</p>
+                    <p className="text-2xl font-semibold text-slate-900 dark:text-white">{issueRows.length}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="dark:border-slate-800 dark:bg-slate-900">
+                <CardContent className="flex items-center gap-3 pt-6">
+                  <ClipboardCheck className="h-8 w-8 text-violet-500" />
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Missing Marks</p>
+                    <p className="text-2xl font-semibold text-slate-900 dark:text-white">{totalMissingMarks}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {certificateIssue ? (
+              <Card className="border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30">
+                <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex gap-3">
+                    <Award className="mt-0.5 h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <p className="font-medium text-amber-900 dark:text-amber-100">Certificate template needs attention</p>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        {certificateIssue}. Results can still be published, but certificate downloads will fail until this is fixed.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push("/admin/report-cards/certificate-template")}
+                    className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+                  >
+                    Fix Template
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null}
+
             <Card className="dark:border-slate-800 dark:bg-slate-900">
               <CardHeader>
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <CardTitle className="dark:text-white">Class Release Status</CardTitle>
+                    <CardTitle className="dark:text-white">Assessment to Publish Status</CardTitle>
                     <CardDescription className="dark:text-slate-400">
-                      A class becomes publishable only when every enrolled student has a complete report card.
+                      Publish is available when assessment marks are complete and every enrolled student has a complete report card. Ranking is calculated automatically during publish.
                     </CardDescription>
                   </div>
                   <Button
@@ -339,10 +422,11 @@ export default function PublishResultsPage() {
                           />
                         </TableHead>
                         <TableHead>Class</TableHead>
-                        <TableHead>Expected</TableHead>
-                        <TableHead>Generated</TableHead>
-                        <TableHead>Published</TableHead>
-                        <TableHead>Missing</TableHead>
+                        <TableHead>Students</TableHead>
+                        <TableHead>Assessment Marks</TableHead>
+                        <TableHead>Report Cards</TableHead>
+                        <TableHead>Ranking</TableHead>
+                        <TableHead>Certificate</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Action</TableHead>
                       </TableRow>
@@ -368,14 +452,56 @@ export default function PublishResultsPage() {
                                 Grade {row.grade ?? "—"}
                               </div>
                             </TableCell>
-                            <TableCell>{row.expectedEntries}</TableCell>
-                            <TableCell>{row.generatedEntries}</TableCell>
-                            <TableCell>{row.publishedEntries}</TableCell>
-                            <TableCell>{row.missingEntries}</TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-2">
-                                {status.icon}
-                                {status.badge}
+                              <div className="font-medium text-slate-900 dark:text-white">{row.expectedEntries}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                enrolled
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium text-slate-900 dark:text-white">
+                                {row.assessmentEnteredScores}/{row.assessmentExpectedScores}
+                              </div>
+                              <div className={row.assessmentMissingScores > 0 ? "text-xs text-amber-600 dark:text-amber-400" : "text-xs text-slate-500 dark:text-slate-400"}>
+                                {row.assessmentSubjects} subjects, {row.assessmentMissingScores} missing
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium text-slate-900 dark:text-white">
+                                {row.generatedEntries}/{row.expectedEntries}
+                              </div>
+                              <div className={row.missingEntries + row.incompleteEntries > 0 ? "text-xs text-amber-600 dark:text-amber-400" : "text-xs text-slate-500 dark:text-slate-400"}>
+                                {row.publishedEntries} published, {row.incompleteEntries} incomplete
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-200">
+                                <BarChart3 className="h-3.5 w-3.5 text-slate-400" />
+                                Auto on publish
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {row.rankingEntries}/{row.expectedEntries} already ranked
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {row.certificateReady ? (
+                                <Badge className="bg-emerald-100 text-emerald-700">Ready</Badge>
+                              ) : (
+                                <Badge className="bg-amber-100 text-amber-700">Needs setup</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  {status.icon}
+                                  {status.badge}
+                                </div>
+                                {row.issueReasons.length > 0 ? (
+                                  <div className="max-w-[220px] text-xs text-amber-600 dark:text-amber-400">
+                                    {row.issueReasons.slice(0, 2).join(", ")}
+                                    {row.issueReasons.length > 2 ? ` +${row.issueReasons.length - 2} more` : ""}
+                                  </div>
+                                ) : null}
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
@@ -398,9 +524,14 @@ export default function PublishResultsPage() {
                               ) : row.status === "published" ? (
                                 <span className="text-sm text-slate-500 dark:text-slate-400">Released</span>
                               ) : (
-                                <span className="text-sm text-amber-600 dark:text-amber-400">
-                                  Complete all report cards first
-                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => router.push("/admin/exams/entry-progress")}
+                                  className="dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                                >
+                                  Fix Issues
+                                </Button>
                               )}
                             </TableCell>
                           </TableRow>

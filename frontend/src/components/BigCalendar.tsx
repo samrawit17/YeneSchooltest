@@ -5,7 +5,12 @@ import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useState, useEffect } from "react";
 import { useCalendar } from "@/context/CalendarContext";
-import { convertToEthiopian, ETHIOPIAN_MONTH_NAMES } from "@/lib/calendar-utils";
+import {
+  convertToEthiopian,
+  formatEthiopianMonthYear,
+  getLocalizedEthiopianMonthName,
+} from "@/lib/calendar-utils";
+import { useTranslations } from "@/hooks/useTranslations";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const localizer = momentLocalizer(moment);
@@ -39,6 +44,7 @@ const BigCalendar = ({
   const [view, setView] = useState<View>(initialView);
   const [screenSize, setScreenSize] = useState<'xs' | 'sm' | 'md' | 'lg' | 'xl'>('xl');
   const { calendarType } = useCalendar();
+  const { t, language } = useTranslations<any>("calendar");
 
   // Track screen size for responsive behavior
   useEffect(() => {
@@ -77,6 +83,12 @@ const BigCalendar = ({
 
   const getVisibleViews = (): View[] => {
     return views || [Views.MONTH];
+  };
+
+  const formatWeekday = (date: Date, narrow = false) => {
+    const day = date.getDay();
+    const labels = narrow ? t.weekdays.narrow : t.weekdays.short;
+    return labels?.[day] || moment(date).format(narrow ? "dd" : "ddd");
   };
 
   // Month navigation state
@@ -118,10 +130,11 @@ const BigCalendar = ({
   const formatDateHeader = (date: Date) => {
     if (calendarType === 'ETHIOPIAN') {
       const ethiopian = convertToEthiopian(date);
+      const monthName = getLocalizedEthiopianMonthName(ethiopian.month, language);
       if (screenSize === 'xs') {
-        return `${ETHIOPIAN_MONTH_NAMES[ethiopian.month - 1]?.slice(0, 2)} ${ethiopian.day}`;
+        return `${monthName.slice(0, 2)} ${ethiopian.day}`;
       }
-      return `${ETHIOPIAN_MONTH_NAMES[ethiopian.month - 1]?.slice(0, 3)} ${ethiopian.day}`;
+      return `${monthName.slice(0, 3)} ${ethiopian.day}`;
     }
     if (screenSize === 'xs') {
       return moment(date).format('D');
@@ -166,7 +179,7 @@ const BigCalendar = ({
           <button
             onClick={goToPrevious}
             className="p-1.5 sm:p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
-            title="Previous Month"
+            title={t.controls.previousMonth}
           >
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
@@ -175,13 +188,13 @@ const BigCalendar = ({
             onClick={goToToday}
             className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
           >
-            Today
+            {t.controls.today}
           </button>
           
           <button
             onClick={goToNext}
             className="p-1.5 sm:p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
-            title="Next Month"
+            title={t.controls.nextMonth}
           >
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
@@ -220,30 +233,29 @@ const BigCalendar = ({
             dayHeaderFormat: (date: Date) => {
               if (calendarType === 'ETHIOPIAN') {
                 const ethiopian = convertToEthiopian(date);
-                return `${ETHIOPIAN_MONTH_NAMES[ethiopian.month - 1]?.slice(0, 3)} ${ethiopian.day} (${moment(date).format('ddd')})`;
+                return `${getLocalizedEthiopianMonthName(ethiopian.month, language).slice(0, 3)} ${ethiopian.day} (${formatWeekday(date)})`;
               }
-              return moment(date).format('ddd, MMM D');
+              return `${formatWeekday(date)}, ${moment(date).format('MMM D')}`;
             },
             dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) => {
               if (calendarType === 'ETHIOPIAN') {
                 const startEth = convertToEthiopian(start);
                 const endEth = convertToEthiopian(end);
-                return `${ETHIOPIAN_MONTH_NAMES[startEth.month - 1]?.slice(0, 3)} ${startEth.day} - ${ETHIOPIAN_MONTH_NAMES[endEth.month - 1]?.slice(0, 3)} ${endEth.day}`;
+                return `${getLocalizedEthiopianMonthName(startEth.month, language).slice(0, 3)} ${startEth.day} - ${getLocalizedEthiopianMonthName(endEth.month, language).slice(0, 3)} ${endEth.day}`;
               }
               return moment(start).format('MMM D') + ' - ' + moment(end).format('MMM D');
             },
             monthHeaderFormat: (date: Date) => {
               if (calendarType === 'ETHIOPIAN') {
-                const ethiopian = convertToEthiopian(date);
-                return `${ETHIOPIAN_MONTH_NAMES[ethiopian.month - 1]} ${ethiopian.year} E.C.`;
+                return formatEthiopianMonthYear(date, language);
               }
               return moment(date).format('MMMM YYYY');
             },
             weekdayFormat: (date: Date) => {
               if (screenSize === 'xs') {
-                return moment(date).format('dd').charAt(0);
+                return formatWeekday(date, true);
               }
-              return moment(date).format('ddd');
+              return formatWeekday(date);
             },
           }}
         />

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { useTranslations } from "@/hooks/useTranslations";
 import { Filters, useFilters } from "@/components/filters/Filters";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -164,6 +165,7 @@ const SUBJECT_COLORS = [
 ];
 
 const AdminTimetablePage = () => {
+  const { t } = useTranslations<any>("timetable");
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const { currentAcademicYear } = useAcademicYear();
@@ -235,7 +237,7 @@ const AdminTimetablePage = () => {
       setSchoolSettings(schoolSettingsRes.data || {});
     } catch (error) {
       console.error('Failed to fetch initial data:', error);
-      toast.error('Failed to load data');
+      toast.error(t.toasts.loadFailed);
     } finally {
       setFetchingData(false);
     }
@@ -252,7 +254,7 @@ const AdminTimetablePage = () => {
       setClasses(classesRes.data || []);
     } catch (error) {
       console.error('Failed to fetch classes for year:', error);
-      toast.error('Failed to load classes');
+      toast.error(t.toasts.loadClassesFailed);
       setClasses([]);
     }
   }, [selectedYear]);
@@ -371,7 +373,7 @@ const AdminTimetablePage = () => {
 
     } catch (error) {
       console.error('Failed to fetch class data:', error);
-      toast.error('Failed to load class schedule');
+      toast.error(t.toasts.loadScheduleFailed);
     } finally {
       setLoading(false);
     }
@@ -448,12 +450,12 @@ const AdminTimetablePage = () => {
   const clearSchedule = () => {
     setSchedule({});
     setUnsavedChanges(true);
-    toast.info("Schedule cleared. Do not forget to save!");
+    toast.info(t.toasts.scheduleCleared);
   };
 
   const saveSchedule = async () => {
     if (!selectedClassId || !selectedSectionId || !selectedYear) {
-      toast.error('Please select class, section, and academic year');
+      toast.error(t.toasts.selectRequired);
       return;
     }
 
@@ -485,26 +487,26 @@ const AdminTimetablePage = () => {
       });
 
       if (slots.length === 0) {
-        toast.error('No slots to save. Please add some subjects to the schedule.');
+        toast.error(t.toasts.noSlots);
         return;
       }
 
       const response = await adminTimetableAPI.bulkCreateSlots(slots);
 
       if (response.data?.success) {
-        toast.success(`Saved ${response.data.created.length} slots`);
+        toast.success(t.toasts.saved.replace("{count}", String(response.data.created.length)));
         if (response.data.errors?.length > 0) {
-          toast.warning(`${response.data.errors.length} slots had conflicts`);
+          toast.warning(t.toasts.conflicts.replace("{count}", String(response.data.errors.length)));
         }
         setUnsavedChanges(false);
         fetchClassData();
       } else {
-        toast.error('Failed to save schedule');
+        toast.error(t.toasts.saveFailed);
       }
 
     } catch (error: any) {
       console.error('Failed to save schedule:', error);
-      toast.error(error.response?.data?.message || 'Failed to save schedule');
+      toast.error(error.response?.data?.message || t.toasts.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -523,7 +525,7 @@ const AdminTimetablePage = () => {
   const quickFillSubject = (subjectId: string) => {
     const teacherId = getTeacherForSubject(subjectId);
     if (!teacherId) {
-      toast.error('No teacher assigned to this subject');
+      toast.error(t.toasts.noTeacherAssigned);
       return;
     }
 
@@ -540,7 +542,7 @@ const AdminTimetablePage = () => {
       return updated;
     });
     setUnsavedChanges(true);
-    toast.success('Empty slots filled');
+    toast.success(t.toasts.emptySlotsFilled);
   };
 
   if (isLoading || fetchingData) {
@@ -551,7 +553,7 @@ const AdminTimetablePage = () => {
             <Loader2 className="w-12 h-12 animate-spin text-[#e35336]" />
             <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-[#e35336]/20 animate-ping" />
           </div>
-          <p className="text-gray-500 dark:text-gray-400 font-medium">Loading timetable data...</p>
+          <p className="text-gray-500 dark:text-gray-400 font-medium">{t.loading}</p>
         </div>
       </div>
     );
@@ -574,10 +576,10 @@ const AdminTimetablePage = () => {
 
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-                  Timetable Management
+                  {t.title}
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400 text-sm">
-                  Create and manage class schedules with ease
+                  {t.description}
                 </p>
               </div>
             </div>
@@ -589,7 +591,7 @@ const AdminTimetablePage = () => {
                 className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
               >
                 <AlertCircle className="w-4 h-4 text-amber-600" />
-                <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">Unsaved changes</span>
+                <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">{t.unsavedChanges}</span>
               </div>
             )}
 
@@ -597,18 +599,18 @@ const AdminTimetablePage = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
                   <Download className="w-4 h-4" />
-                  Export
+                  {t.export}
                   <ChevronDown className="w-3 h-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => window.print()}>
                   <Printer className="w-4 h-4 mr-2" />
-                  Print Schedule
+                  {t.printSchedule}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => window.print()}>
                   <Download className="w-4 h-4 mr-2" />
-                  Export as PDF
+                  {t.exportPDF}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -617,20 +619,20 @@ const AdminTimetablePage = () => {
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50">
                   <RefreshCw className="w-4 h-4" />
-                  Clear
+                  {t.clear}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Clear Schedule?</AlertDialogTitle>
+                  <AlertDialogTitle>{t.clearScheduleTitle}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove all subjects from the current timetable. This action cannot be undone.
+                    {t.clearScheduleDesc}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
                   <AlertDialogAction onClick={clearSchedule} className="bg-red-600 hover:bg-red-700">
-                    Clear Schedule
+                    {t.clearSchedule}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -640,14 +642,14 @@ const AdminTimetablePage = () => {
               onClick={saveSchedule} 
               disabled={saving || !selectedClassId || !selectedSectionId}
               size="sm"
-              className="gap-2 bg-[var(--brand-color,#e35336)] hover:opacity-90 shadow-lg shadow-[var(--brand-color,#e35336)]/25"
+              className="gap-2 bg-[var(--brand-color,#e35336)] hover:opacity-90"
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Save className="w-4 h-4" />
               )}
-              Save Schedule
+              {t.saveSchedule}
             </Button>
           </div>
         </div>
@@ -665,29 +667,17 @@ const AdminTimetablePage = () => {
           <div 
             className="xl:col-span-3"
           >
-            <Card className="border-0 shadow-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm overflow-hidden">
-              <CardHeader className="border-b bg-gray-50/50 dark:bg-slate-800/50">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <Card className="border bg-white dark:bg-slate-800 overflow-hidden">
+              <CardHeader className="border-b bg-gray-50/50 dark:bg-slate-800/50 px-3 sm:px-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2 dark:text-white">
                       <Clock className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
-                      Weekly Schedule
+                      {t.weeklySchedule}
                     </CardTitle>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4">
-                    {selectedClassId && selectedSectionId && (
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-32 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-[var(--brand-color,#e35336)] rounded-full"
-                            style={{ width: `${stats.percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500">{stats.percentage}%</span>
-                      </div>
-                    )}
-                    
+                  <div className="flex flex-wrap items-center gap-3">
                     <Filters
                       config={{ academicYear: true, grade: true, section: true }}
                       sectionMode="name"
@@ -708,7 +698,7 @@ const AdminTimetablePage = () => {
                     <div className="flex items-center justify-center py-20">
                       <div className="flex flex-col items-center gap-3">
                         <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
-                        <p className="text-sm text-gray-500">Loading schedule...</p>
+                        <p className="text-sm text-gray-500">{t.loadingSchedule}</p>
                       </div>
                     </div>
                   ) : (
@@ -719,7 +709,7 @@ const AdminTimetablePage = () => {
                             <TableHead className="w-28 bg-gray-50/80 dark:bg-slate-800/80 font-bold text-gray-700 dark:text-gray-300 sticky left-0 z-10">
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
-                                Time
+                                {t.time}
                               </div>
                             </TableHead>
                             {SCHOOL_WEEK_DAYS.map((day) => (
@@ -728,9 +718,9 @@ const AdminTimetablePage = () => {
                                 className="bg-gray-50/80 dark:bg-slate-800/80 text-center min-w-[200px] font-bold text-gray-700 dark:text-gray-300"
                               >
                                 <div className="flex flex-col items-center gap-1">
-                                  <span>{day.name}</span>
+                                  <span>{t.weekdays[day.shortName]}</span>
                                   <span className="text-[10px] font-normal text-gray-400">
-                                    {Object.entries(schedule).filter(([k]) => k.startsWith(`${day.value}-`) && schedule[k].subjectId).length} slots
+                                    {t.slots.replace("{count}", String(Object.entries(schedule).filter(([k]) => k.startsWith(`${day.value}-`) && schedule[k].subjectId).length))}
                                   </span>
                                 </div>
                               </TableHead>
@@ -773,7 +763,7 @@ const AdminTimetablePage = () => {
                                           className={cn(
                                             "relative rounded-xl border-2 p-2.5 transition-all",
                                             "bg-[var(--brand-color,#e35336)]/10 border-[var(--brand-color,#e35336)]/30",
-                                            isHovered && "shadow-lg scale-[1.02] z-20"
+                                            isHovered && "scale-[1.02] z-20"
                                           )}
                                         >
                                           {/* Remove button */}
@@ -808,7 +798,7 @@ const AdminTimetablePage = () => {
                                               <div className="flex items-center gap-1">
                                                 <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
                                                 <Input
-                                                  placeholder="Room"
+                                                  placeholder={t.room}
                                                   value={slot.room}
                                                   onChange={(e) => updateSlot(day.value, timeRange.start, 'room', e.target.value)}
                                                   className="h-6 text-xs bg-white/60 dark:bg-slate-700/60 border-0 focus:ring-1 focus:ring-[var(--brand-color,#e35336)] px-1.5"
@@ -829,10 +819,10 @@ const AdminTimetablePage = () => {
                                             onValueChange={(v) => handleSubjectChange(day.value, timeRange.start, v)}
                                           >
                                             <SelectTrigger className="h-full min-h-[60px] border-0 bg-transparent hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-xs text-gray-400">
-                                              <SelectValue placeholder="+ Add Subject" />
+                                              <SelectValue placeholder={t.addSubject} />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[300px]">
-                                              <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">Select Subject</div>
+                                              <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">{t.selectSubject}</div>
                                               {subjects.map((s) => {
                                                 const hasTeacher = !!getTeacherForSubject(s.id);
                                                 return (
@@ -846,7 +836,7 @@ const AdminTimetablePage = () => {
                                                       <span>{s.name}</span>
                                                       {!hasTeacher && (
                                                         <Badge variant="outline" className="text-[10px] text-gray-400">
-                                                          No teacher
+                                                          {t.noTeacher}
                                                         </Badge>
                                                       )}
                                                     </div>
@@ -870,16 +860,16 @@ const AdminTimetablePage = () => {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 px-4">
                     <div
-                      className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800 rounded-3xl flex items-center justify-center mb-6 shadow-inner"
+                      className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800 rounded-3xl flex items-center justify-center mb-6"
                     >
                       <Calendar className="w-10 h-10 text-gray-400" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                      No Class Selected
+                      {t.noClassSelected}
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-[var(--brand-color,#e35336)]">
                       <ArrowRight className="w-4 h-4 animate-bounce" />
-                      <span>Start by selecting a class</span>
+                      <span>{t.startBySelecting}</span>
                     </div>
                   </div>
                 )}
@@ -891,14 +881,14 @@ const AdminTimetablePage = () => {
                     <div className="flex items-center gap-4">
                       <span className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                        Filled
+                        {t.filled}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full bg-gray-300" />
-                        Empty
+                        {t.empty}
                       </span>
                     </div>
-                    <p>Click on empty slots to add subjects • Hover over filled slots to remove</p>
+                    <p>{t.hint}</p>
                   </div>
                 </CardFooter>
               )}

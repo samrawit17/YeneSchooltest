@@ -31,8 +31,7 @@
     },
     "avatar": {
       "title": "Change Profile Picture",
-      "description": "Upload a new profile picture or enter an image URL",
-      "placeholder": "Enter image URL"
+      "description": "Choose a profile picture from your device"
     },
     "roles": {
       "user": "User",

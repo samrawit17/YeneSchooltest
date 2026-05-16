@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Plus, Search, Send } from "lucide-react";
+import { useTranslations } from "@/hooks/useTranslations";
 
 const STAFF_ROLES = new Set(["ADMIN", "REGISTRAR", "TEACHER", "FINANCE", "IT_MANAGER"]);
 
@@ -29,6 +30,7 @@ export default function MessagesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { t } = useTranslations<any>("communications");
 
   const selectedConversationId = searchParams.get("conversationId");
   const recipientId = searchParams.get("recipientId");
@@ -153,7 +155,7 @@ export default function MessagesPage() {
           userId: user?.id,
         });
         setDraft("");
-        toast.success("Message saved offline. It will send when online.");
+        toast.success(t.states.savedOffline);
       }
     },
     onSettled: () => {
@@ -239,7 +241,7 @@ export default function MessagesPage() {
     const others = c.participants.filter((p) => p.id !== user?.id);
     if (others.length === 1) return others[0].name;
     if (others.length > 1) return `${others[0].name} +${others.length - 1}`;
-    return "Conversation";
+    return t.states.selectConversation;
   };
 
   const selectedConversation = useMemo(() => {
@@ -259,10 +261,10 @@ export default function MessagesPage() {
       <div className="p-6">
         <Card>
           <CardHeader>
-            <CardTitle>Messages</CardTitle>
+            <CardTitle>{t.title.messages}</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-gray-600">
-            Messaging is available to staff users only.
+            {t.states.staffOnly}
           </CardContent>
         </Card>
       </div>
@@ -273,37 +275,37 @@ export default function MessagesPage() {
     <div className="p-3 md:p-6 h-full overflow-hidden flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:gap-4 mb-3 md:mb-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">Messages</h1>
-          <p className="text-xs md:text-sm text-gray-500 hidden sm:block">Internal staff messaging</p>
+          <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">{t.title.messages}</h1>
+          <p className="text-xs md:text-sm text-gray-500 hidden sm:block">{t.subtitle.internal}</p>
         </div>
 
         <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
           <DialogTrigger asChild>
             <Button className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-sm text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]">
               <Plus className="w-4 h-4 mr-1 md:mr-2" />
-              <span className="hidden sm:inline">New conversation</span>
-              <span className="sm:hidden">New</span>
+              <span className="hidden sm:inline">{t.actions.newConversation}</span>
+              <span className="sm:hidden">{t.actions.new}</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>New conversation</DialogTitle>
+              <DialogTitle>{t.actions.newConversation}</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-700">Subject (optional)</label>
-                <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder="e.g. Grade 10 Meeting" />
+                <label className="text-sm font-medium text-gray-700">{t.fields.subjectOptional}</label>
+                <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder={t.placeholders.subjectExample} />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700">Add participants</label>
+                <label className="text-sm font-medium text-gray-700">{t.fields.addParticipants}</label>
                 <div className="flex items-center gap-2 mt-2">
                   <Search className="w-4 h-4 text-gray-400" />
                   <Input
                     value={staffSearch}
                     onChange={(e) => setStaffSearch(e.target.value)}
-                    placeholder="Search staff by name/email"
+                    placeholder={t.placeholders.searchStaff}
                   />
                 </div>
               </div>
@@ -313,10 +315,10 @@ export default function MessagesPage() {
                   {isLoadingStaff ? (
                     <div className="flex items-center gap-2 text-sm text-gray-500 p-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Loading staff…
+                      {t.states.loadingStaff}
                     </div>
                   ) : staff.length === 0 ? (
-                    <div className="text-sm text-gray-500 p-2">No staff found.</div>
+                    <div className="text-sm text-gray-500 p-2">{t.states.noStaff}</div>
                   ) : (
                     staff.map((s) => (
                       <button
@@ -342,7 +344,7 @@ export default function MessagesPage() {
               </ScrollArea>
 
               {selectedStaffIds.length > 0 && (
-                <div className="text-xs text-gray-600">Selected: {selectedStaffIds.length} staff</div>
+                <div className="text-xs text-gray-600">{t.states.selected}: {selectedStaffIds.length} staff</div>
               )}
             </div>
 
@@ -358,7 +360,7 @@ export default function MessagesPage() {
                 className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]"
               >
                 {createConversationMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                Create
+                {t.actions.create}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -369,13 +371,13 @@ export default function MessagesPage() {
         {/* Conversations */}
         <Card className="h-full flex flex-col order-2 md:order-1">
           <CardHeader className="pb-2 md:pb-3 shrink-0">
-            <CardTitle className="text-base">Inbox</CardTitle>
+            <CardTitle className="text-base">{t.states.inbox}</CardTitle>
             <div className="flex items-center gap-2 mt-2">
               <Search className="w-4 h-4 text-gray-400" />
               <Input
                 value={conversationSearch}
                 onChange={(e) => setConversationSearch(e.target.value)}
-                placeholder="Search"
+                placeholder={t.placeholders.search}
                 className="h-8 md:h-9 text-sm"
               />
             </div>
@@ -385,10 +387,10 @@ export default function MessagesPage() {
               {isLoadingConversations ? (
                 <div className="flex items-center gap-2 text-sm text-gray-500 p-4">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Loading conversations…
+                  {t.states.loadingConversations}
                 </div>
               ) : filteredConversations.length === 0 ? (
-                <div className="text-sm text-gray-500 p-4">No conversations yet.</div>
+                <div className="text-sm text-gray-500 p-4">{t.states.noConversations}</div>
               ) : (
                 filteredConversations.map((c) => {
                   const active = c.conversationId === selectedConversationId;
@@ -405,7 +407,7 @@ export default function MessagesPage() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-gray-900 truncate">{getConversationTitle(c)}</p>
                           <p className="text-xs text-gray-500 truncate mt-0.5 md:mt-1">
-                            {c.lastMessage ? c.lastMessage.content : "No messages"}
+                            {c.lastMessage ? c.lastMessage.content : t.states.noMessagesPreview}
                           </p>
                         </div>
                         {c.unreadCount > 0 && (
@@ -426,25 +428,25 @@ export default function MessagesPage() {
         <Card className="h-full flex flex-col order-1 md:order-2">
           <CardHeader className="pb-2 md:pb-3 flex-shrink-0">
             <CardTitle className="text-base truncate">
-              {selectedConversation ? getConversationTitle(selectedConversation) : "Select a conversation"}
+              {selectedConversation ? getConversationTitle(selectedConversation) : t.states.selectConversation}
             </CardTitle>
           </CardHeader>
 
           <CardContent className="flex-1 p-0 min-h-0">
             {!selectedConversationId ? (
               <div className="h-full flex items-center justify-center text-sm text-gray-500 p-4 text-center">
-                Choose a conversation to view messages.
+                {t.states.chooseConversation}
               </div>
             ) : isLoadingMessages ? (
               <div className="flex items-center gap-2 text-sm text-gray-500 p-4">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Loading messages…
+                {t.states.loadingMessages}
               </div>
             ) : (
               <ScrollArea className="h-full px-2 md:px-4">
                 <div className="py-2 space-y-3">
                   {messages.length === 0 ? (
-                    <div className="text-sm text-gray-500 py-6">No messages yet.</div>
+                    <div className="text-sm text-gray-500 py-6">{t.states.noMessages}</div>
                   ) : (
                     messages.map((m) => {
                       const mine = m.sender?.id === user?.id;
@@ -479,7 +481,7 @@ export default function MessagesPage() {
             <Input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Type a message…"
+              placeholder={t.placeholders.typeMessage}
               disabled={!selectedConversationId || sendMessageMutation.isPending}
               className="text-sm"
               onKeyDown={(e) => {

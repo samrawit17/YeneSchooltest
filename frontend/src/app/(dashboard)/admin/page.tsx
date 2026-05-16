@@ -47,6 +47,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { useTranslations } from "@/hooks/useTranslations";
 
 interface DashboardStats {
   students: number;
@@ -108,6 +109,44 @@ interface AdminPageProps {
   dashboardRole?: "ADMIN" | "IT_MANAGER";
 }
 
+interface AdminDashboardMessages {
+  title: {
+    admin: string;
+    itManager: string;
+  };
+  intro: {
+    welcomeBack: string;
+    admin: string;
+    itManager: string;
+    lastUpdated: string;
+  };
+  error: {
+    title: string;
+    loadFailed: string;
+    tryAgain: string;
+  };
+  kpis: {
+    totalStudents: string;
+    enrolledStudents: string;
+    totalTeachers: string;
+    activeTeachers: string;
+    classes: string;
+    sections: string;
+    attendanceToday: string;
+    pendingEnrollments: string;
+    needsAttention: string;
+    allClear: string;
+    upcomingExams: string;
+    withinNextSevenDays: string;
+  };
+  priority: {
+    high: string;
+    medium: string;
+    low: string;
+  };
+  charts: Record<string, string>;
+}
+
 // Map icon string names from backend to lucide icons
 const iconMap: Record<string, React.ElementType> = {
   student: UserPlus,
@@ -136,6 +175,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const { formattedYearLabel, displayTermName, currentTerm, formatDate: formatSchoolDate } = useAcademicYear();
+  const { t } = useTranslations<AdminDashboardMessages>("adminDashboard");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
@@ -155,14 +195,14 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
           : await dashboardAPI.getAdminDashboard();
       setDashboardData(response.data);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load dashboard data";
+      const message = err?.response?.data?.message || t.error.loadFailed;
       setError(message);
       toast.error(message);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [dashboardRole, t.error.loadFailed]);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -206,6 +246,28 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
   const formatCurrency = (amount: number) => {
     return `Brr ${amount.toLocaleString()}`;
   };
+
+  const translateChartText = useCallback(
+    (value: string) => t.charts[value] ?? t.charts[value?.toUpperCase?.()] ?? value,
+    [t.charts],
+  );
+
+  const translateChart = useCallback(
+    (chart?: ChartData): ChartData | undefined => {
+      if (!chart) return chart;
+
+      return {
+        ...chart,
+        title: translateChartText(chart.title),
+        labels: chart.labels.map((label) => translateChartText(label)),
+        datasets: chart.datasets.map((dataset) => ({
+          ...dataset,
+          label: translateChartText(dataset.label),
+        })),
+      };
+    },
+    [translateChartText],
+  );
 
   const getAlertStyles = (type: string) => {
     switch (type) {
@@ -287,11 +349,11 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center space-y-4">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Failed to Load Dashboard</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t.error.title}</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">{error}</p>
             <Button onClick={() => fetchDashboard()} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
-              Try Again
+              {t.error.tryAgain}
             </Button>
           </CardContent>
         </Card>
@@ -304,10 +366,10 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
   const metadata = dashboardData?.metadata;
   const isITManagerDashboard = dashboardRole === "IT_MANAGER";
   const visibleCharts = {
-    attendance: charts.attendance,
-    userDistribution: charts.userDistribution,
-    classDistribution: charts.classDistribution,
-    overview: charts.overview,
+    attendance: translateChart(charts.attendance),
+    userDistribution: translateChart(charts.userDistribution),
+    classDistribution: translateChart(charts.classDistribution),
+    overview: translateChart(charts.overview),
   };
 
   return (
@@ -318,17 +380,17 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <h1 className="text-xl font-bold text-black sm:text-2xl">
-                {isITManagerDashboard ? "IT Manager Dashboard" : "Admin Dashboard"}
+                {isITManagerDashboard ? t.title.itManager : t.title.admin}
               </h1>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 sm:text-base">
-                Welcome back{user?.name ? `, ${user.name}` : ""}!{" "}
+                {t.intro.welcomeBack}{user?.name ? `, ${user.name}` : ""}!{" "}
                 {isITManagerDashboard
-                  ? "Here's the current state of your school's systems and operations."
-                  : "Here's what's happening in your school today."}
+                  ? t.intro.itManager
+                  : t.intro.admin}
               </p>
               {metadata?.generatedAt && (
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                  Last updated: {formatSchoolDate(new Date(metadata.generatedAt))}
+                  {t.intro.lastUpdated}: {formatSchoolDate(new Date(metadata.generatedAt))}
                 </p>
               )}
             </div>
@@ -355,7 +417,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
                     <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                       <p className="text-sm text-gray-800 dark:text-gray-200">{alert.message}</p>
                       <Badge className={`text-xs ${getPriorityBadge(alert.priority)}`}>
-                        {alert.priority}
+                        {t.priority[alert.priority] ?? alert.priority}
                       </Badge>
                     </div>
                     {alert.actionUrl && alert.actionLabel && (
@@ -382,11 +444,11 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Total Students</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.kpis.totalStudents}</p>
                     <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {(stats?.students ?? 0).toLocaleString()}
                     </p>
-                    <p className="mt-1 hidden text-xs text-gray-400 sm:block lg:hidden xl:block">Enrolled students</p>
+                    <p className="mt-1 hidden text-xs text-gray-400 sm:block lg:hidden xl:block">{t.kpis.enrolledStudents}</p>
                   </div>
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg shrink-0">
                     <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -400,11 +462,11 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Total Teachers</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.kpis.totalTeachers}</p>
                     <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {(stats?.teachers ?? 0).toLocaleString()}
                     </p>
-                    <p className="mt-1 hidden text-xs text-gray-400 sm:block lg:hidden xl:block">Active teachers</p>
+                    <p className="mt-1 hidden text-xs text-gray-400 sm:block lg:hidden xl:block">{t.kpis.activeTeachers}</p>
                   </div>
                   <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg shrink-0">
                     <GraduationCap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -418,12 +480,12 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Classes</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.kpis.classes}</p>
                     <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {(stats?.classes ?? 0).toLocaleString()}
                     </p>
                     <p className="mt-1 text-xs text-gray-400">
-                      {(stats?.sections ?? 0)} sections
+                      {(stats?.sections ?? 0)} {t.kpis.sections}
                     </p>
                   </div>
                   <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-lg shrink-0">
@@ -438,7 +500,7 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Attendance Today</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.kpis.attendanceToday}</p>
                     <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats?.attendanceRate ?? 0}%
                     </p>
@@ -463,15 +525,15 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Pending Enrollments</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.kpis.pendingEnrollments}</p>
                     <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats?.pendingEnrollments ?? 0}
                     </p>
                     <p className="text-xs mt-1">
                       {(stats?.pendingEnrollments ?? 0) > 0 ? (
-                        <span className="text-amber-600 dark:text-amber-400">Needs attention</span>
+                        <span className="text-amber-600 dark:text-amber-400">{t.kpis.needsAttention}</span>
                       ) : (
-                        <span className="text-emerald-600 dark:text-emerald-400">All clear</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">{t.kpis.allClear}</span>
                       )}
                     </p>
                   </div>
@@ -487,11 +549,11 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Upcoming Exams</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.kpis.upcomingExams}</p>
                     <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats?.upcomingExams ?? 0}
                     </p>
-                    <p className="mt-1 hidden text-xs text-gray-400 sm:block lg:hidden xl:block">Within next 7 days</p>
+                    <p className="mt-1 hidden text-xs text-gray-400 sm:block lg:hidden xl:block">{t.kpis.withinNextSevenDays}</p>
                   </div>
                   <div className="p-2 bg-cyan-100 dark:bg-cyan-900/50 rounded-lg shrink-0">
                     <Calendar className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />

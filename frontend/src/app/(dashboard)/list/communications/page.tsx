@@ -47,6 +47,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTranslations } from "@/hooks/useTranslations";
 
 type FilterOption = "all" | "unread" | "open" | "closed" | "today" | "this_week";
 type ViewMode = "inbox" | "starred" | "archived" | "trash";
@@ -82,6 +83,7 @@ const STATUS_CONFIG: Record<CommunicationStatus, { label: string; bg: string; te
 };
 
 function StatusBadge({ status, compact = false }: { status: CommunicationStatus; compact?: boolean }) {
+  const { t } = useTranslations<any>("communications");
   const config = STATUS_CONFIG[status];
   if (compact) {
     return <span className={`w-2 h-2 rounded-full ${config.dot}`} />;
@@ -89,17 +91,18 @@ function StatusBadge({ status, compact = false }: { status: CommunicationStatus;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-      {config.label}
+      {t.status[config.label] ?? config.label}
     </span>
   );
 }
 
 function CategoryBadge({ category }: { category: CommunicationCategory }) {
+  const { t } = useTranslations<any>("communications");
   const config = CATEGORY_CONFIG[category];
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${config.bg} ${config.text} ${config.border}`}>
       {config.icon}
-      {config.label}
+      {t.categories[config.label] ?? config.label}
     </span>
   );
 }
@@ -206,6 +209,7 @@ function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelet
   onDelete?: () => void;
   canDelete?: boolean;
 }) {
+  const { t } = useTranslations<any>("communications");
   const [showMenu, setShowMenu] = useState(false);
   
   const formatTime = (dateString: string) => {
@@ -249,7 +253,7 @@ function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelet
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   <Trash className="w-4 h-4" />
-                  Delete
+                  {t.actions.delete}
                 </button>
               </div>
             )}
@@ -270,6 +274,7 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
   searchQuery: string;
   viewerRole?: string;
 }) {
+  const { t } = useTranslations<any>("communications");
   const filtered = conversations.filter(conv => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -291,15 +296,15 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
         {loading ? (
           <div className="flex items-center gap-2 p-4 text-sm text-gray-500">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading conversations...
+            {t.states.loadingConversations}
           </div>
         ) : error ? (
           <div className="p-4 text-sm text-red-500">
             <p>{error}</p>
-            <button onClick={onRefresh} className="mt-2 text-sm text-[var(--brand-color,#e35336)] hover:underline">Try again</button>
+            <button onClick={onRefresh} className="mt-2 text-sm text-[var(--brand-color,#e35336)] hover:underline">{t.actions.tryAgain}</button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="p-4 text-sm text-gray-500">No conversations yet.</div>
+          <div className="p-4 text-sm text-gray-500">{t.states.noConversations}</div>
         ) : (
           filtered.map((conv) => {
             const active = selectedId === conv.id;
@@ -354,6 +359,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
   onDelete: () => void;
   viewerRole?: string;
 }) {
+  const { t } = useTranslations<any>("communications");
   const [messageInput, setMessageInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
@@ -374,7 +380,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
   if (!conversation) {
     return (
       <div className="flex h-full items-center justify-center p-4 text-center text-sm text-gray-500">
-        Choose a conversation to view messages.
+        {t.states.chooseConversation}
       </div>
     );
   }
@@ -401,7 +407,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
                 {conversation.status === "CLOSED" && isAdmin && (
                   <Button onClick={onReopen} variant="outline" size="sm">
                     <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                    Reopen
+                    {t.actions.reopen}
                   </Button>
                 )}
                 {isAdmin && (
@@ -413,7 +419,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
             </div>
 
             {conversation.replies?.length === 0 ? (
-              <div className="py-6 text-sm text-gray-500">No messages yet.</div>
+              <div className="py-6 text-sm text-gray-500">{t.states.noMessages}</div>
             ) : (
               conversation.replies?.map((reply) => (
                 <MessageCard
@@ -440,14 +446,14 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
               <button
                 onClick={() => setShowQuickReplies(!showQuickReplies)}
                 className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-gray-100 hover:text-[var(--brand-color,#e35336)] dark:hover:bg-slate-700"
-                title="Quick replies"
+                title={t.quick.title}
               >
                 <Zap className="h-4.5 w-4.5" />
               </button>
               {showQuickReplies && (isAdmin || isTeacher) && (
                 <div className="absolute bottom-full left-0 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
                   <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quick Replies</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.quick.title}</p>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
                     {QUICK_REPLY_TEMPLATES.map((tpl) => (
@@ -470,7 +476,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
             <Input
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
-              placeholder="Type a message…"
+              placeholder={t.placeholders.typeMessage}
               className="text-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -494,7 +500,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
         <div className="border-t border-emerald-100 bg-emerald-50 px-4 py-2.5 dark:border-emerald-800/50 dark:bg-emerald-900/20">
           <div className="flex items-center justify-center gap-2 text-emerald-600 dark:text-emerald-400">
             <CheckCircle className="h-5 w-5" />
-            <span className="text-sm font-medium">This conversation has been resolved</span>
+            <span className="text-sm font-medium">{t.states.resolved}</span>
           </div>
         </div>
       )}
@@ -503,6 +509,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
 }
 
 function CommunicationsContent() {
+  const { t } = useTranslations<any>("communications");
   const searchParams = useSearchParams();
   const router = useRouter();
   const preselectedStudentId = searchParams ? searchParams.get("studentId") : null;
@@ -641,7 +648,7 @@ function CommunicationsContent() {
     setIsSending(true);
     try {
       await communicationsAPI.create({ studentId: targetUserId, subject, message });
-      toast.success("Message sent");
+      toast.success(t.states.messageSent);
       setShowNewMessageModal(false);
       router.replace('/list/communications');
       fetchCommunications(1);
@@ -656,26 +663,26 @@ function CommunicationsContent() {
     <div className="p-3 md:p-6">
       <div className="mb-3 flex flex-col gap-3 md:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">Communication Book</h1>
-          <p className="hidden text-xs text-gray-500 sm:block md:text-sm">Manage communications with parents and guardians</p>
+          <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">{t.title.communicationBook}</h1>
+          <p className="hidden text-xs text-gray-500 sm:block md:text-sm">{t.subtitle.book}</p>
         </div>
         <Button onClick={() => setShowNewMessageModal(true)} className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-sm text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]">
           <Plus className="mr-1 h-4 w-4 md:mr-2" />
-          <span className="hidden sm:inline">New Message</span>
-          <span className="sm:hidden">New</span>
+          <span className="hidden sm:inline">{t.actions.newMessage}</span>
+          <span className="sm:hidden">{t.actions.new}</span>
         </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-[280px_1fr] xl:grid-cols-[360px_1fr]">
         <Card className="order-1 h-[calc(100vh-180px)] flex flex-col md:order-1 md:h-[calc(100vh-220px)]">
           <CardHeader className="pb-2 md:pb-3 shrink-0">
-            <CardTitle className="text-base">Inbox</CardTitle>
+            <CardTitle className="text-base">{t.states.inbox}</CardTitle>
             <div className="mt-2 flex items-center gap-2">
               <Search className="h-4 w-4 text-gray-400" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search"
+                placeholder={t.placeholders.search}
                 className="h-8 text-sm md:h-9"
               />
             </div>
@@ -699,7 +706,7 @@ function CommunicationsContent() {
         <Card className="order-1 flex h-[calc(100vh-180px)] flex-col md:order-2 md:h-[calc(100vh-220px)]">
           <CardHeader className="shrink-0 pb-2 md:pb-3">
             <CardTitle className="truncate text-base">
-              {selectedConversation ? getConversationTitle(selectedConversation, viewerRole) : "Select a conversation"}
+              {selectedConversation ? getConversationTitle(selectedConversation, viewerRole) : t.states.selectConversation}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 min-h-0 p-0">

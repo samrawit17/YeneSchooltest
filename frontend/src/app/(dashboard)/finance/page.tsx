@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useAcademicYear } from '@/context/AcademicYearContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,8 @@ interface AcademicYear {
   id: string;
   name: string;
   isActive?: boolean;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface Term {
@@ -170,6 +173,7 @@ type ChartView = 'daily' | 'weekly' | 'monthly';
 export default function FinanceDashboardPage() {
   // State
   const { user } = useAuth();
+  const { formatDate: formatSchoolDate } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
@@ -238,6 +242,7 @@ export default function FinanceDashboardPage() {
   const [feeStructureForm, setFeeStructureForm] = useState({
     feeType: '',
     amount: 0,
+    billingMode: 'single',
     gradeMode: 'all',
     grade: '',
     gradeFrom: '',
@@ -246,10 +251,16 @@ export default function FinanceDashboardPage() {
     description: '',
   });
   const [isCreatingFeeStructure, setIsCreatingFeeStructure] = useState(false);
+  const [feeCollectionMode, setFeeCollectionMode] = useState<{
+    mode: string;
+    modeLabel: string;
+    installmentCount: number;
+  } | null>(null);
 
   const openFeeStructureDialog = () => {
     setFeeStructureForm((current) => ({
       ...current,
+      billingMode: 'single',
       gradeMode: 'all',
       grade: '',
       gradeFrom: '',
@@ -351,7 +362,7 @@ export default function FinanceDashboardPage() {
       </head>
       <body>
         <h1>Finance Summary Report</h1>
-        <p>Generated: ${new Date().toLocaleDateString()}</p>
+        <p>Generated: ${formatDate(new Date().toISOString())}</p>
         <p>Period: ${periodLabel}</p>
         
         <h2>Summary</h2>
@@ -484,7 +495,13 @@ export default function FinanceDashboardPage() {
     const loadCurriculumInfo = async () => {
       if (!selectedYear || !user?.schoolId) return;
       try {
-        const response = await financeAPI.getCurriculumInfo(user.schoolId, selectedYear);
+        const [response, collectionModeResponse] = await Promise.all([
+          financeAPI.getCurriculumInfo(user.schoolId, selectedYear),
+          financeAPI.getFeeCollectionMode(user.schoolId).catch(() => null),
+        ]);
+        if (collectionModeResponse?.data?.data) {
+          setFeeCollectionMode(collectionModeResponse.data.data);
+        }
         if (response.data?.success) {
           setCurriculumType(response.data.curriculumType || 'TERM');
           const loadedTerms: Term[] = response.data.terms || [];
@@ -648,22 +665,17 @@ export default function FinanceDashboardPage() {
 
   // Format date
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ET', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return formatSchoolDate(dateString);
   };
 
   // Format date time
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-ET', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    const parsed = new Date(dateString);
+    if (Number.isNaN(parsed.getTime())) return 'N/A';
+    return `${formatSchoolDate(parsed)} ${parsed.toLocaleTimeString('en-ET', {
       hour: '2-digit',
       minute: '2-digit',
-    });
+    })}`;
   };
 
   // Get status badge
@@ -766,6 +778,69 @@ export default function FinanceDashboardPage() {
         selectedFee?.termName ||
         null
       : selectedFee?.termName || null;
+  const formatFeeStructureName = (feeType?: string | null) => {
+    const raw = String(feeType || '').trim();
+    if (!raw) return 'Fee';
+
+    return raw
+      .replace(/_INSTALLMENT_\d+$/i, '')
+      .replace(/_ANNUAL$/i, '')
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  const getInstallmentMonthName = (installmentNumber: number) => {
+    const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
+    const startDate = selectedAcademicYear?.startDate ? new Date(selectedAcademicYear.startDate) : null;
+
+    if (!startDate || Number.isNaN(startDate.getTime())) {
+      return `Month ${installmentNumber}`;
+    }
+
+    const monthDate = new Date(startDate);
+    monthDate.setMonth(startDate.getMonth() + installmentNumber - 1);
+    return formatSchoolDate(monthDate).replace(/\s+\d{1,2},/, '');
+  };
+
+  const getInstallmentPeriodLabel = (installmentNumber: number) => {
+    const mode = feeCollectionMode?.mode;
+
+    if (mode === 'MONTHLY' || mode === 'MONTH') {
+      return getInstallmentMonthName(installmentNumber);
+    }
+
+    if (mode === 'QUARTERLY' || mode === 'QUARTER') {
+      return terms[installmentNumber - 1]?.name || `Quarter ${installmentNumber}`;
+    }
+
+    if (mode === 'SEMESTER' || mode === 'SEMESTERLY') {
+      return terms[installmentNumber - 1]?.name || `Semester ${installmentNumber}`;
+    }
+
+    if (mode === 'TERM' || mode === 'TERMLY') {
+      return terms[installmentNumber - 1]?.name || `Term ${installmentNumber}`;
+    }
+
+    if (mode === 'YEARLY' || mode === 'YEAR') {
+      return 'Full Year';
+    }
+
+    return terms[installmentNumber - 1]?.name || `Installment ${installmentNumber}`;
+  };
+
+  const formatInstallmentLabel = (fee: {
+    feeType?: string | null;
+    termName?: string | null;
+    description?: string | null;
+  }) => {
+    const match = String(fee.feeType || '').match(/_INSTALLMENT_(\d+)$/i);
+    if (match) return getInstallmentPeriodLabel(Number(match[1]));
+
+    if (fee.termName) return fee.termName;
+
+    return fee.description || null;
+  };
 
   const displayFeeStructures = (() => {
     const grouped = new Map<
@@ -1070,6 +1145,49 @@ setStudentResults(students);
 setIsCreatingFeeStructure(true);
     try {
       console.log('Creating fee structure - school:', schoolId, 'year:', yearId);
+      if (feeStructureForm.billingMode === 'installments') {
+        const basePayload = {
+          schoolId,
+          academicYearId: yearId,
+          feeType: feeStructureForm.feeType,
+          annualAmount: feeStructureForm.amount,
+          description: feeStructureForm.description,
+        };
+
+        if (targetGrades.length === 0) {
+          await financeAPI.generateInstallmentFees(basePayload);
+        } else {
+          await Promise.all(
+            targetGrades.map((grade) =>
+              financeAPI.generateInstallmentFees({
+                ...basePayload,
+                grade,
+              }),
+            ),
+          );
+        }
+
+        toast.success(
+          targetGrades.length > 1
+            ? `Installments created for Grades ${targetGrades[0]}-${targetGrades[targetGrades.length - 1]}`
+            : `Installments created across ${feeCollectionMode?.installmentCount || terms.length || 1} period(s)`,
+        );
+        setFeeStructureOpen(false);
+        setFeeStructureForm({
+          feeType: '',
+          amount: 0,
+          billingMode: 'single',
+          gradeMode: 'all',
+          grade: '',
+          gradeFrom: '',
+          gradeTo: '',
+          termId: '',
+          description: '',
+        });
+        loadDashboardData();
+        return;
+      }
+
       const basePayload = {
           schoolId: schoolId,
         academicYearId: yearId,
@@ -1101,6 +1219,7 @@ setIsCreatingFeeStructure(true);
       setFeeStructureForm({
         feeType: '',
         amount: 0,
+        billingMode: 'single',
         gradeMode: 'all',
         grade: '',
         gradeFrom: '',
@@ -1301,11 +1420,26 @@ setIsCreatingFeeStructure(true);
         </div>
 
         {/* Fee Structures Section */}
-        <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700 mb-6">
+        <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700 mb-6 max-h-96 overflow-y-auto">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold">Fee Structures</CardTitle>
               <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={async () => {
+                  if (!user?.schoolId) {
+                    toast.error('School ID not found');
+                    return;
+                  }
+                  try {
+                    await financeAPI.clearFeeStructures(user.schoolId, selectedYear);
+                    setFeeStructures([]);
+                    toast.success('Fee structures cleared');
+                  } catch (e: any) {
+                    toast.error(e.response?.data?.message || e.message || 'Failed to clear fee structures');
+                  }
+                }}>
+                  Clear
+                </Button>
                 <Button size="sm" variant="outline" onClick={async () => {
                   if (!selectedYear || !user?.schoolId) {
                     toast.error('Select academic year first');
@@ -1326,10 +1460,6 @@ setIsCreatingFeeStructure(true);
                   }
                 }}>
                   Generate Student Fees
-                </Button>
-                <Button size="sm" onClick={() => setFeeStructureOpen(true)}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Fee Structure
                 </Button>
               </div>
             </div>
@@ -1352,10 +1482,10 @@ setIsCreatingFeeStructure(true);
                   {displayFeeStructures.map((fee) => (
                     <TableRow key={fee.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <TableCell className="text-sm font-medium text-slate-900 dark:text-white py-3 px-4 w-[40%] text-left">
-                        <div>{fee.feeType}</div>
-                        {fee.termName && (
+                        <div>{formatFeeStructureName(fee.feeType)}</div>
+                        {formatInstallmentLabel(fee) && (
                           <div className="text-xs font-normal text-slate-500 dark:text-gray-400">
-                            {fee.termName}
+                            {formatInstallmentLabel(fee)}
                           </div>
                         )}
                       </TableCell>
@@ -1797,7 +1927,7 @@ setIsCreatingFeeStructure(true);
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              Create this fee for the whole academic year or only for one {curriculumType === 'SEMESTER' ? 'semester' : curriculumType === 'QUARTER' ? 'quarter' : 'term'}.
+              Create a single fee or split one annual amount into {feeCollectionMode?.modeLabel || 'school period'} installments.
             </div>
             <div className="space-y-2">
               <Label>Fee Type</Label>
@@ -1817,6 +1947,35 @@ setIsCreatingFeeStructure(true);
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Billing Mode</Label>
+              <Select
+                value={feeStructureForm.billingMode}
+                onValueChange={(value) =>
+                  setFeeStructureForm({
+                    ...feeStructureForm,
+                    billingMode: value,
+                    termId: value === 'installments' ? '' : feeStructureForm.termId,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select billing mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">Single fee</SelectItem>
+                  <SelectItem value="installments">
+                    Annual amount split into {feeCollectionMode?.installmentCount || terms.length || 1} installments
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {feeStructureForm.billingMode === 'installments' && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  The amount below is the annual amount. It will be split across {feeCollectionMode?.modeLabel || 'configured'} periods.
+                </p>
+              )}
+            </div>
+            {feeStructureForm.billingMode !== 'installments' && (
             <div className="space-y-2">
               <Label>{curriculumType === 'SEMESTER' ? 'Semester Scope' : curriculumType === 'QUARTER' ? 'Quarter Scope' : 'Term Scope'}</Label>
               <Select
@@ -1841,6 +2000,7 @@ setIsCreatingFeeStructure(true);
                 </SelectContent>
               </Select>
             </div>
+            )}
             <div className="space-y-2">
               <Label>Grade Scope</Label>
               <Select 
@@ -1920,7 +2080,7 @@ setIsCreatingFeeStructure(true);
               </div>
             )}
             <div className="space-y-2">
-              <Label>Amount (ETB)</Label>
+              <Label>{feeStructureForm.billingMode === 'installments' ? 'Annual Amount (ETB)' : 'Amount (ETB)'}</Label>
               <Input 
                 type="number" 
                 placeholder="0.00"

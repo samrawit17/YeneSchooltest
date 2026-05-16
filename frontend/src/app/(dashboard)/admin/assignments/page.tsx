@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslations } from "@/hooks/useTranslations";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -77,6 +78,7 @@ interface HomeroomTarget {
 }
 
 const TeacherAssignmentPage = () => {
+  const { t } = useTranslations<any>("assignments");
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -123,7 +125,7 @@ const TeacherAssignmentPage = () => {
       setMatrixData(res.data);
     } catch (error) {
       console.error("Failed to fetch assignment matrix", error);
-      toast.error("Failed to load assignment matrix");
+      toast.error(t.toasts.loadMatrixFailed);
     } finally {
       setLoading(false);
     }
@@ -149,7 +151,7 @@ const TeacherAssignmentPage = () => {
       }
     } catch (error) {
       console.error("Failed to fetch initial assignment data", error);
-      toast.error("Failed to load setup data");
+      toast.error(t.toasts.loadSetupFailed);
     } finally {
       setLoading(false);
     }
@@ -175,7 +177,7 @@ const TeacherAssignmentPage = () => {
       classId: row.class?.id || row.classId || sectionId.replace(/^virtual-/, ""),
       sectionId,
       subjectId,
-      label: row.class?.name || row.name || "Class",
+      label: row.class?.name || row.name || t.sectionClass,
       isVirtual: row.isVirtual === true,
       currentTeacherId: teacherId,
     });
@@ -191,7 +193,7 @@ const TeacherAssignmentPage = () => {
     setSelectedHomeroomTarget({
       classId,
       sectionId: isVirtual ? undefined : section.id,
-      label: section?.class?.name || section?.name || "Class",
+      label: section?.class?.name || section?.name || t.sectionClass,
       isVirtual,
     });
     setSelectedHomeroomTeacherId(
@@ -213,12 +215,12 @@ const TeacherAssignmentPage = () => {
         classId: selectedCell.classId
       });
 
-      toast.success("Assignment updated");
+      toast.success(t.toasts.assignmentUpdated);
       setShowAssignModal(false);
       setSelectedCell(null);
       fetchMatrix(selectedYear);
     } catch (error) {
-      toast.error("Failed to save assignment");
+      toast.error(t.toasts.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -226,7 +228,7 @@ const TeacherAssignmentPage = () => {
 
   const handleBulkAssign = async () => {
     if (selectedSections.length === 0 || selectedSubjects.length === 0 || !selectedBulkTeacherId || selectedBulkTeacherId === "none") {
-      toast.error("Please select sections, subjects and a teacher");
+      toast.error(t.toasts.selectRequired);
       return;
     }
 
@@ -239,14 +241,14 @@ const TeacherAssignmentPage = () => {
         academicYearId: selectedYear,
       });
 
-      toast.success(`Assigned to ${selectedSections.length} sections and ${selectedSubjects.length} subjects`);
+      toast.success(t.toasts.bulkAssigned.replace("{sections}", String(selectedSections.length)).replace("{subjects}", String(selectedSubjects.length)));
       setShowBulkModal(false);
       setSelectedSections([]);
       setSelectedSubjects([]);
       setSelectedBulkTeacherId("");
       fetchMatrix(selectedYear);
     } catch (error) {
-      toast.error("Bulk assignment failed");
+      toast.error(t.toasts.bulkFailed);
     } finally {
       setSaving(false);
     }
@@ -270,14 +272,14 @@ const TeacherAssignmentPage = () => {
         await sectionsAPI.setHomeroomTeacher(selectedHomeroomTarget.sectionId, teacherId);
       }
 
-      toast.success("Homeroom assignment updated");
+      toast.success(t.toasts.homeroomUpdated);
       setShowHomeroomModal(false);
       setSelectedHomeroomTarget(null);
       if (selectedYear) {
         fetchMatrix(selectedYear);
       }
     } catch (error) {
-      toast.error("Failed to update homeroom assignment");
+      toast.error(t.toasts.homeroomFailed);
     } finally {
       setSaving(false);
     }
@@ -294,7 +296,7 @@ const TeacherAssignmentPage = () => {
         <div className="flex h-[80vh] items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-[var(--brand-color,#e35336)]" />
-          <p className="text-gray-500 dark:text-slate-400 font-medium">Loading Professional Assignment Hub...</p>
+          <p className="text-gray-500 dark:text-slate-400 font-medium">{t.loading}</p>
         </div>
       </div>
     );
@@ -318,33 +320,33 @@ const TeacherAssignmentPage = () => {
         <div>
           <h1 className="flex items-center gap-3 text-2xl font-bold text-black">
             
-            Teacher Assignment Hub
+            {t.title}
           </h1>
-          <p className="text-slate-500 mt-1">Manage school-wide teaching and homeroom assignments in one unified matrix view.</p>
+          <p className="text-slate-500 mt-1">{t.description}</p>
         </div>
         
         <div className="flex items-center gap-3">
           <Button 
             variant="default" 
-            className="shadow-md"
+            className=""
             onClick={() => setShowBulkModal(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Bulk Assign
+            {t.bulkAssign}
           </Button>
         </div>
       </div>
 
       {/* MATRIX GRID VIEW */}
-      <Card className="border-none shadow-xl bg-white dark:bg-slate-800 overflow-hidden">
+      <Card className="border-none bg-white dark:bg-slate-800 overflow-hidden">
         <CardHeader className="border-b bg-slate-50/50 dark:bg-slate-700/50">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <CardTitle className="text-lg dark:text-white">Assignment Matrix</CardTitle>
+            <CardTitle className="text-lg dark:text-white">{t.matrixTitle}</CardTitle>
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="Search classes or sections..."
+                  placeholder={t.searchPlaceholder}
                   value={selectedSearch}
                   onChange={(e) => setSelectedSearch(e.target.value)}
                   className="pl-9 h-8 w-[500px] max-w-full dark:bg-slate-800 dark:border-slate-700"
@@ -352,7 +354,7 @@ const TeacherAssignmentPage = () => {
               </div>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger className="h-8 w-[160px] dark:bg-slate-800 dark:border-slate-700">
-                  <SelectValue placeholder="Academic Year" />
+                  <SelectValue placeholder={t.academicYear} />
                 </SelectTrigger>
                 <SelectContent>
                   {academicYears?.map((y: any) => (
@@ -371,10 +373,10 @@ const TeacherAssignmentPage = () => {
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-700 border-b">
                   <th className="sticky left-0 z-20 bg-slate-50 dark:bg-slate-700 p-4 text-left font-semibold text-slate-700 dark:text-slate-300 border-r dark:border-slate-600 min-w-[220px]">
-                    Section / Class
+                    {t.sectionClass}
                   </th>
                   <th className="p-4 text-center font-semibold text-slate-700 dark:text-slate-300 border-r min-w-[180px] bg-amber-50/30 dark:bg-amber-900/20">
-                    Homeroom Teacher
+                    {t.homeroomTeacher}
                   </th>
                   {matrixSubjects.map((sub: any) => (
                     <th key={sub.id} className="p-4 text-center font-semibold text-slate-700 dark:text-slate-300 border-r dark:border-slate-700 min-w-[160px]">
@@ -390,13 +392,13 @@ const TeacherAssignmentPage = () => {
                     <td className="sticky left-0 z-10 border-r bg-white p-4 dark:border-slate-700 dark:bg-slate-800 group-hover:bg-[rgba(var(--brand-color-rgb),0.06)] dark:group-hover:bg-[rgba(var(--brand-color-rgb),0.1)]">
                       <div className="flex flex-col">
                         <span className="font-bold text-slate-800 dark:text-white">
-                          {section.class?.name || section.name}
+                          {section.class?.grade != null ? `${t.grade} ${section.class.grade}` : section.class?.name || section.name}
                           {!section.isVirtual && section.name ? ` - ${section.name}` : ""}
                         </span>
                         <span className="text-xs text-slate-500 dark:text-slate-400">
                           {section.isVirtual
-                            ? "No section yet"
-                            : `Cap: ${section.capacity} | Room: ${section.roomNumber || 'N/A'}`}
+                            ? t.noSectionYet
+                            : `${t.cap}: ${section.capacity} | ${t.room}: ${section.roomNumber || t.nA}`}
                         </span>
                       </div>
                     </td>
@@ -413,10 +415,10 @@ const TeacherAssignmentPage = () => {
                             <span className="text-sm font-semibold text-amber-700">
                               {section.homeroomTeacher?.name || section.class?.homeroomTeacher?.name}
                             </span>
-                            <span className="text-[10px] text-amber-600/70">Homeroom</span>
+                            <span className="text-[10px] text-amber-600/70">{t.homeroom}</span>
                           </>
                         ) : (
-                          <span className="text-xs text-slate-400 italic">No Homeroom</span>
+                          <span className="text-xs text-slate-400 italic">{t.noHomeroom}</span>
                         )}
                       </button>
                     </td>
@@ -438,7 +440,7 @@ const TeacherAssignmentPage = () => {
                             {teacher ? (
                               <>
                                 <span className="text-sm font-medium text-[var(--brand-color,#e35336)]">{teacher.name}</span>
-                                <span className="text-[10px] text-[var(--brand-color,#e35336)]/80 truncate max-w-[120px]">Assigned</span>
+                                <span className="text-[10px] text-[var(--brand-color,#e35336)]/80 truncate max-w-[120px]">{t.assigned}</span>
                               </>
                             ) : (
                               <Plus className="h-4 w-4 text-slate-300 group-hover:text-[var(--brand-color,#e35336)]" />
@@ -459,19 +461,19 @@ const TeacherAssignmentPage = () => {
       <Dialog open={showAssignModal} onOpenChange={(open) => { setShowAssignModal(open); if (!open) setSelectedCell(null); }}>
         <DialogContent className="max-w-md bg-white dark:bg-slate-800 z-[100]">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Assign Subject Teacher</DialogTitle>
+            <DialogTitle className="dark:text-white">{t.assignSubject}</DialogTitle>
             <DialogDescription className="dark:text-slate-400">
-              Select a teacher for {selectedCell?.isVirtual ? "this class" : "this section"}.
+              {t.assignSubjectDesc.replace("{target}", selectedCell?.isVirtual ? t.thisClass : t.thisSection)}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 pt-4">
             <Select value={selectedSubjectTeacherId} onValueChange={setSelectedSubjectTeacherId}>
               <SelectTrigger className="w-full h-12 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                <SelectValue placeholder="Select Teacher" />
+                <SelectValue placeholder={t.selectTeacher} />
               </SelectTrigger>
               <SelectContent className="z-[200]">
-                <SelectItem value="none" className="text-red-600 font-medium">Remove Assignment</SelectItem>
+                <SelectItem value="none" className="text-red-600 font-medium">{t.removeAssignment}</SelectItem>
                 {teachers.map(t => (
                   <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                 ))}
@@ -480,9 +482,9 @@ const TeacherAssignmentPage = () => {
           </div>
 
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setShowAssignModal(false)} disabled={saving} className="dark:border-slate-600 dark:text-white">Cancel</Button>
+            <Button variant="outline" onClick={() => setShowAssignModal(false)} disabled={saving} className="dark:border-slate-600 dark:text-white">{t.cancel}</Button>
             <Button onClick={handleSaveAssignment} disabled={saving} className="min-w-[100px]">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t.save}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -492,20 +494,19 @@ const TeacherAssignmentPage = () => {
       <Dialog open={showHomeroomModal} onOpenChange={(open) => { setShowHomeroomModal(open); if (!open) setSelectedHomeroomTarget(null); }}>
         <DialogContent className="max-w-md bg-white dark:bg-slate-800">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Assign Homeroom Teacher</DialogTitle>
+            <DialogTitle className="dark:text-white">{t.assignHomeroom}</DialogTitle>
             <DialogDescription className="dark:text-slate-400">
-              Select a homeroom teacher for {selectedHomeroomTarget?.label}
-              {selectedHomeroomTarget?.isVirtual ? " (class-level)" : ""}.
+              {t.assignHomeroomDesc.replace("{label}", selectedHomeroomTarget?.label || "").replace("{suffix}", selectedHomeroomTarget?.isVirtual ? t.classLevel : "")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 pt-4">
             <Select value={selectedHomeroomTeacherId} onValueChange={setSelectedHomeroomTeacherId}>
               <SelectTrigger className="w-full h-12 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                <SelectValue placeholder="Select Teacher" />
+                <SelectValue placeholder={t.selectTeacher} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none" className="text-red-600 font-medium">Remove Homeroom</SelectItem>
+                <SelectItem value="none" className="text-red-600 font-medium">{t.removeHomeroom}</SelectItem>
                 {teachers.map((t) => (
                   <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                 ))}
@@ -514,9 +515,9 @@ const TeacherAssignmentPage = () => {
           </div>
 
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setShowHomeroomModal(false)} disabled={saving} className="dark:border-slate-600 dark:text-white">Cancel</Button>
+            <Button variant="outline" onClick={() => setShowHomeroomModal(false)} disabled={saving} className="dark:border-slate-600 dark:text-white">{t.cancel}</Button>
             <Button onClick={handleSaveHomeroomAssignment} disabled={saving} className="bg-amber-600 hover:bg-amber-700 min-w-[120px]">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Homeroom"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t.saveHomeroom}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -528,14 +529,14 @@ const TeacherAssignmentPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 dark:text-white">
               <Grid className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
-              Professional Bulk Assignment
+              {t.bulkTitle}
             </DialogTitle>
-            <DialogDescription className="dark:text-slate-400">Assign one teacher to many sections and subjects at once.</DialogDescription>
+            <DialogDescription className="dark:text-slate-400">{t.bulkDescription}</DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-6 py-4">
             <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-slate-900 dark:text-white border-b pb-2">Select Sections</h4>
+              <h4 className="font-semibold text-sm text-slate-900 dark:text-white border-b pb-2">{t.selectSections}</h4>
               <ScrollArea className="h-[300px] rounded-md border p-2 dark:border-slate-600">
                 {filteredSections.map((s: any) => (
                   <div 
@@ -555,13 +556,13 @@ const TeacherAssignmentPage = () => {
                 ))}
               </ScrollArea>
               <div className="flex gap-2">
-                <Button variant="link" size="sm" onClick={() => setSelectedSections(filteredSections.map((s: any) => s.id))}>Select All</Button>
-                <Button variant="link" size="sm" onClick={() => setSelectedSections([])}>Clear</Button>
+                <Button variant="link" size="sm" onClick={() => setSelectedSections(filteredSections.map((s: any) => s.id))}>{t.selectAll}</Button>
+                <Button variant="link" size="sm" onClick={() => setSelectedSections([])}>{t.clear}</Button>
               </div>
             </div>
 
             <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-slate-900 dark:text-white border-b pb-2">Select Subjects</h4>
+              <h4 className="font-semibold text-sm text-slate-900 dark:text-white border-b pb-2">{t.selectSubjects}</h4>
               <ScrollArea className="h-[300px] rounded-md border p-2 dark:border-slate-600">
                 {matrixSubjects.map((sub: any) => (
                   <div 
@@ -581,17 +582,17 @@ const TeacherAssignmentPage = () => {
                 ))}
               </ScrollArea>
               <div className="flex gap-2">
-                <Button variant="link" size="sm" onClick={() => setSelectedSubjects(matrixSubjects.map((s: any) => s.id))}>Select All</Button>
-                <Button variant="link" size="sm" onClick={() => setSelectedSubjects([])}>Clear</Button>
+                <Button variant="link" size="sm" onClick={() => setSelectedSubjects(matrixSubjects.map((s: any) => s.id))}>{t.selectAll}</Button>
+                <Button variant="link" size="sm" onClick={() => setSelectedSubjects([])}>{t.clear}</Button>
               </div>
             </div>
           </div>
 
           <div className="space-y-3 mt-2">
-            <h4 className="font-semibold text-sm text-slate-900 dark:text-white">Choose Teacher</h4>
+            <h4 className="font-semibold text-sm text-slate-900 dark:text-white">{t.chooseTeacher}</h4>
             <Select value={selectedBulkTeacherId} onValueChange={setSelectedBulkTeacherId}>
               <SelectTrigger className="w-full h-12 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
-                <SelectValue placeholder="Select Teacher" />
+                <SelectValue placeholder={t.selectTeacher} />
               </SelectTrigger>
               <SelectContent>
                 {teachers.map(t => (
@@ -602,14 +603,14 @@ const TeacherAssignmentPage = () => {
           </div>
 
           <DialogFooter className="mt-6 bg-slate-50 dark:bg-slate-700 -mx-6 -mb-6 p-6 rounded-b-lg border-t dark:border-slate-600">
-            <Button variant="ghost" onClick={() => setShowBulkModal(false)} disabled={saving}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setShowBulkModal(false)} disabled={saving}>{t.cancel}</Button>
             <Button 
               onClick={handleBulkAssign} 
               disabled={saving || selectedSections.length === 0 || selectedSubjects.length === 0 || !selectedBulkTeacherId} 
-              className="bg-blue-600 hover:bg-blue-700 min-w-[150px] shadow-lg"
+              className="bg-blue-600 hover:bg-blue-700 min-w-[150px]"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link className="h-4 w-4 mr-2" />}
-              Apply Bulk Assignment
+              {t.applyBulk}
             </Button>
           </DialogFooter>
         </DialogContent>

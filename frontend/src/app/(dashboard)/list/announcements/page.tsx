@@ -53,11 +53,13 @@ import {
 import { format, parseISO, isAfter, isBefore } from "date-fns";
 import { formatDateByCalendarType, formatDateTimeByCalendarType } from "@/lib/calendar-utils";
 import Link from "next/link";
+import { useTranslations } from "@/hooks/useTranslations";
 
 type AudienceFilter = "all" | "students" | "parents" | "staff";
 type StatusFilter = "all" | "active" | "scheduled" | "expired";
 
 const AnnouncementListPage = () => {
+  const { t } = useTranslations<any>("announcements");
   const { user } = useAuth();
   const isAdmin = (user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'IT_MANAGER') || user?.role?.toUpperCase() === 'REGISTRAR';
   
@@ -160,12 +162,12 @@ const AnnouncementListPage = () => {
     const endDate = announcement.endDate ? parseISO(announcement.endDate) : null;
 
     if (isAfter(startDate, now)) {
-      return { label: "Scheduled", className: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800" };
+      return { label: t.scheduled, className: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800" };
     }
     if (endDate && isBefore(endDate, now)) {
-      return { label: "Expired", className: "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700" };
+      return { label: t.expired, className: "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700" };
     }
-    return { label: "Active", className: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800" };
+    return { label: t.active, className: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800" };
   };
 
   const clearFilters = () => {
@@ -182,22 +184,22 @@ const AnnouncementListPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-black">Announcements</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Latest news and updates</p>
+          <h1 className="text-xl md:text-2xl font-semibold text-black">{t.title}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t.subtitle}</p>
         </div>
         {isAdmin && announcementsEnabled && (
           <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
                 <Plus className="h-4 w-4" />
-                Create
+                {t.create}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[82vh] w-[min(94vw,900px)] max-w-none overflow-hidden p-0">
               <DialogHeader className="border-b bg-[rgba(var(--brand-color-rgb),0.08)] px-5 py-4 dark:border-slate-700">
-                <DialogTitle className="text-gray-900 dark:text-white">Create Announcement</DialogTitle>
+                <DialogTitle className="text-gray-900 dark:text-white">{t.createTitle}</DialogTitle>
                 <DialogDescription className="text-gray-500 dark:text-gray-400">
-                  Create an announcement visible to selected users
+                  {t.createDescription}
                 </DialogDescription>
               </DialogHeader>
               <div className="max-h-[calc(82vh-88px)] overflow-y-auto px-5 py-4">
@@ -210,9 +212,9 @@ const AnnouncementListPage = () => {
           </Dialog>
         )}
         {isAdmin && !announcementsEnabled && (
-          <Button size="sm" className="gap-2" disabled title="Announcements are disabled in school settings">
+          <Button size="sm" className="gap-2" disabled title={t.disabledTitle}>
             <Plus className="h-4 w-4" />
-            Create
+            {t.create}
           </Button>
         )}
       </div>
@@ -222,7 +224,7 @@ const AnnouncementListPage = () => {
         <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search announcements..."
+            placeholder={t.search}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -240,13 +242,13 @@ const AnnouncementListPage = () => {
           }}
         >
           <SelectTrigger className="w-[120px] sm:w-32">
-            <SelectValue placeholder="Audience" />
+            <SelectValue placeholder={t.audience} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="students">Students</SelectItem>
-            <SelectItem value="parents">Parents</SelectItem>
-            <SelectItem value="staff">Staff</SelectItem>
+            <SelectItem value="all">{t.all}</SelectItem>
+            <SelectItem value="students">{t.students}</SelectItem>
+            <SelectItem value="parents">{t.parents}</SelectItem>
+            <SelectItem value="staff">{t.staff}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -258,20 +260,20 @@ const AnnouncementListPage = () => {
           }}
         >
           <SelectTrigger className="w-[120px] sm:w-32">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t.status} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="expired">Expired</SelectItem>
+            <SelectItem value="all">{t.all}</SelectItem>
+            <SelectItem value="active">{t.active}</SelectItem>
+            <SelectItem value="scheduled">{t.scheduled}</SelectItem>
+            <SelectItem value="expired">{t.expired}</SelectItem>
           </SelectContent>
         </Select>
 
         {hasActiveFilters && (
           <Button variant="ghost" onClick={clearFilters} size="sm" className="gap-1 shrink-0">
             <X className="h-4 w-4" />
-            Clear
+            {t.clear}
           </Button>
         )}
       </div>
@@ -286,10 +288,10 @@ const AnnouncementListPage = () => {
         ) : paginatedAnnouncements.length === 0 ? (
           <div className="text-center py-12 border rounded-lg bg-card">
             <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-            <p className="text-muted-foreground">No announcements found</p>
+            <p className="text-muted-foreground">{t.empty}</p>
             {hasActiveFilters && (
               <Button variant="link" onClick={clearFilters} className="mt-2">
-                Clear filters
+                {t.clearFilters}
               </Button>
             )}
           </div>
@@ -312,14 +314,14 @@ const AnnouncementListPage = () => {
                         ) : (
                           <Info className="h-3 w-3" />
                         )}
-                        {announcement.priority === "HIGH" ? "Urgent" : announcement.priority === "MEDIUM" ? "Important" : "Normal"}
+                        {announcement.priority === "HIGH" ? t.urgent : announcement.priority === "MEDIUM" ? t.important : t.normal}
                       </span>
                       
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-muted">
                         <Users className="h-3 w-3" />
                         {announcement.visibleTo?.length ? 
                           announcement.visibleTo.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join(", ") : 
-                          "All"
+                          t.all
                         }
                       </span>
                       
@@ -336,7 +338,7 @@ const AnnouncementListPage = () => {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        {announcement.createdBy?.name || "System"}
+                        {announcement.createdBy?.name || t.system}
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -356,18 +358,18 @@ const AnnouncementListPage = () => {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded transition-colors"
                     >
                       <Eye className="h-4 w-4" />
-                      <span>View</span>
+                      <span>{t.view}</span>
                     </Link>
                     
                     {isAdmin && (
                       <>
                         <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded transition-colors">
                           <Edit2 className="h-4 w-4" />
-                          <span>Edit</span>
+                          <span>{t.edit}</span>
                         </button>
                         <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded transition-colors">
                           <Trash2 className="h-4 w-4" />
-                          <span>Delete</span>
+                          <span>{t.delete}</span>
                         </button>
                       </>
                     )}
@@ -383,9 +385,10 @@ const AnnouncementListPage = () => {
       {!isLoading && filteredAnnouncements.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 pt-3 border-t">
           <p className="text-sm text-muted-foreground">
-            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-            {Math.min(currentPage * itemsPerPage, filteredAnnouncements.length)} of{" "}
-            {filteredAnnouncements.length}
+            {t.showing
+              .replace("{start}", String((currentPage - 1) * itemsPerPage + 1))
+              .replace("{end}", String(Math.min(currentPage * itemsPerPage, filteredAnnouncements.length)))
+              .replace("{total}", String(filteredAnnouncements.length))}
           </p>
           <Pagination
             page={currentPage}

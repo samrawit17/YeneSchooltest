@@ -11,6 +11,7 @@ import { announcementsAPI, eventsAPI } from "@/lib/api/content";
 import { subscriptionAPI } from "@/lib/api/subscription";
 import { useState, useMemo } from "react";
 import { queryKeys } from "@/lib/query-keys";
+import { useTranslations } from "@/hooks/useTranslations";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -91,6 +92,12 @@ interface MenuSection {
   items: MenuItem[];
 }
 
+interface NavigationMessages {
+  sections?: Record<string, string>;
+  labels?: Record<string, string>;
+  descriptions?: Record<string, string>;
+}
+
 const menuItems: MenuSection[] = [
   {
     title: "MENU",
@@ -131,7 +138,7 @@ const menuItems: MenuSection[] = [
       },
       {
         icon: <Trophy className="w-5 h-5" />,
-        label: "Grade Entry",
+        label: "Marks Entry",
         href: "/teacher/grading",
         visible: ["teacher"],
         subscriptionFeature: "GRADE_MANAGEMENT",
@@ -210,26 +217,19 @@ const menuItems: MenuSection[] = [
           },
           {
             icon: <FileText className="w-4 h-4" />,
+            label: "Performance Brief",
+            href: "/admin/reports/parent-presentation",
+            visible: ["admin", "registrar", "it_manager"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "REPORT_CARDS",
+          },
+          {
+            icon: <FileText className="w-4 h-4" />,
             label: "Certificate Template",
             href: "/admin/report-cards/certificate-template",
             visible: ["admin", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
             subscriptionFeature: "CERTIFICATE_TEMPLATES",
-          },
-          {
-            icon: <Settings className="w-4 h-4" />,
-            label: "Template Manager",
-            href: "/admin/templates",
-            visible: ["admin", "it_manager"],
-            featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "TEMPLATE_MANAGER",
-          },
-          {
-            icon: <Trophy className="w-4 h-4" />,
-            label: "Grade Review",
-            href: "/registrar/grading",
-            visible: ["registrar", "admin", "it_manager"],
-            subscriptionFeature: "GRADE_MANAGEMENT",
           },
         ],
       },
@@ -466,7 +466,7 @@ const menuItems: MenuSection[] = [
       },
       {
         icon: <ShieldCheck className="w-5 h-5" />,
-        label: "Bulk User Creation",
+        label: "Users Management",
         href: "/admin/bulk-upload",
         visible: ["admin", "it_manager"],
         subscriptionFeature: "BULK_OPERATIONS",
@@ -505,7 +505,10 @@ const Menu = ({
 }) => {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const { t: navigationText, language } = useTranslations<NavigationMessages>("navigation");
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
+  const getNavigationLabel = (label: string) => navigationText.labels?.[label] ?? label;
+  const textDirection = language === "ar" ? "rtl" : "ltr";
 
   // Toggle submenu
   const toggleSubmenu = (label: string) => {
@@ -816,7 +819,7 @@ const Menu = ({
   }
 
   return (
-    <div className="mt-6 overflow-x-hidden">
+    <div className="mt-6 overflow-x-hidden" dir="ltr">
       {menuItems.map((section) => (
         <div className="mb-6 flex flex-col gap-2" key={section.title}>
           {section.items.map((item) => {
@@ -871,7 +874,12 @@ const Menu = ({
 
             // Check if this is a terms/quarters menu item (dynamic label based on curriculum type)
             const isTermsItem = item.label === "Semester";
-            const displayLabel = isTermsItem ? periodLabel : item.label;
+            const isPerformanceBriefItem = item.label === "Performance Brief";
+            const displayLabel = isTermsItem
+              ? periodLabel
+              : isPerformanceBriefItem
+                ? `${periodLabel} ${getNavigationLabel("Performance Brief")}`
+                : getNavigationLabel(item.label);
 
             // Check if this is a communication menu item
             const isCommunicationItem = item.label === "Communication";
@@ -917,7 +925,7 @@ const Menu = ({
                 return (
                   <div key={`${item.label}-${item.href}`} className="flex justify-center">
                     {hasSameHrefChild ? (
-                      <div className={collapsedItemClasses} title={item.label}>
+                      <div className={collapsedItemClasses} title={displayLabel}>
                         <span className="flex h-5 w-5 items-center justify-center">
                           {item.icon}
                         </span>
@@ -928,7 +936,7 @@ const Menu = ({
                         prefetch
                         onClick={() => onItemClick?.()}
                         className={collapsedItemClasses}
-                        title={item.label}
+                        title={displayLabel}
                       >
                         <span className="flex h-5 w-5 items-center justify-center">
                           {item.icon}
@@ -958,7 +966,7 @@ const Menu = ({
                         <div className="relative text-slate-900 dark:text-white">
                           {item.icon}
                         </div>
-                        <span className={`text-sm ${isActive || submenuActive ? "font-medium" : ""}`}>
+                        <span className={`text-sm ${isActive || submenuActive ? "font-medium" : ""}`} dir={textDirection}>
                           {displayLabel}
                         </span>
                       </div>
@@ -972,7 +980,7 @@ const Menu = ({
                         <div className="relative text-slate-900 dark:text-white">
                           {item.icon}
                         </div>
-                        <span className={`text-sm ${isActive && !parentWithSameChild ? "font-medium" : ""}`}>
+                        <span className={`text-sm ${isActive && !parentWithSameChild ? "font-medium" : ""}`} dir={textDirection}>
                           {displayLabel}
                         </span>
                       </Link>
@@ -1029,7 +1037,7 @@ const Menu = ({
                             <div className="flex h-5 w-5 shrink-0 items-center justify-center text-slate-900 dark:text-white">
                               {child.icon}
                             </div>
-                            <span className="min-w-0 flex-1 truncate text-sm">{child.label}</span>
+                            <span className="flex-1 text-sm whitespace-normal" dir={textDirection}>{getNavigationLabel(child.label)}</span>
                             <div className="ml-auto flex h-5 w-4 shrink-0 items-center justify-center">
                               {isChildActive && (
                                 <div className={`h-1 w-1 rounded-full ${useBrandNavigation ? "bg-[var(--brand-color,#e35336)]" : "bg-slate-500 dark:bg-slate-300"}`} />
@@ -1056,11 +1064,11 @@ const Menu = ({
             logout();
           }}
           className={`flex min-h-12 w-full items-center justify-start gap-3 rounded-lg py-3 text-slate-700 transition-colors dark:text-white ${collapsed ? 'justify-center px-0' : 'px-4'} ${useBrandNavigation ? 'hover:bg-white/55 dark:hover:bg-[#1E293B]' : 'hover:bg-slate-100 dark:hover:bg-[#1E293B]'}`}
-          title={collapsed ? "Logout" : undefined}
+          title={collapsed ? getNavigationLabel("Logout") : undefined}
         >
           <LogOut className="w-5 h-5 text-slate-500 dark:text-gray-300" />
-          <span className={`text-sm font-medium ${textRevealClass(collapsed)}`}>
-            Logout
+          <span className={`text-sm font-medium ${textRevealClass(collapsed)}`} dir={textDirection}>
+            {getNavigationLabel("Logout")}
           </span>
         </button>
       </div>

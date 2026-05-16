@@ -798,17 +798,6 @@ export class NotificationService {
     metadata?: any;
     bypassPreferences?: boolean;
   }) {
-    if (data.userId && !data.bypassPreferences) {
-      const preferences = await this.getNotificationPreferences(
-        data.userId,
-        '',
-      );
-
-      if (!this.isNotificationTypeEnabled(data.type, preferences)) {
-        return null;
-      }
-    }
-
     const notification = await this.prisma.notification.create({
       data: {
         schoolId: data.schoolId,
@@ -827,6 +816,7 @@ export class NotificationService {
         message: data.message,
         type: data.type,
         actionUrl: data.actionUrl,
+        notificationId: notification.id,
         metadata: data.metadata,
       });
     }
@@ -843,10 +833,7 @@ export class NotificationService {
     actionUrl?: string;
     metadata?: any;
   }) {
-    const eligibleUserIds = await this.filterEligibleUserIdsForNotification(
-      data.userIds,
-      data.type,
-    );
+    const eligibleUserIds = Array.from(new Set(data.userIds)).filter(Boolean);
 
     if (eligibleUserIds.length === 0) {
       return { count: 0 };
@@ -891,10 +878,7 @@ export class NotificationService {
       select: { id: true },
     });
 
-    const eligibleUserIds = await this.filterEligibleUserIdsForNotification(
-      users.map((user) => user.id),
-      data.type,
-    );
+    const eligibleUserIds = Array.from(new Set(users.map((user) => user.id))).filter(Boolean);
 
     if (eligibleUserIds.length === 0) {
       return { count: 0 };
@@ -1104,6 +1088,7 @@ export class NotificationService {
       message: string;
       type: string;
       actionUrl?: string;
+      notificationId?: string;
       metadata?: any;
     },
   ) {
@@ -1149,6 +1134,7 @@ export class NotificationService {
       message: string;
       type: string;
       actionUrl?: string;
+      notificationId?: string;
       metadata?: any;
     },
   ) {
