@@ -137,9 +137,9 @@ export class TemplatesService {
     if (!tpl) throw new NotFoundException('Template not found');
     await this.prisma.$transaction([
       this.prisma.template.updateMany({ where: { schoolId, type: tpl.type }, data: { isActive: false } }),
-      this.prisma.template.update({ where: { id: templateId }, data: { isActive: true } }),
+      this.prisma.template.updateMany({ where: { id: templateId, schoolId }, data: { isActive: true } }),
     ]);
-    return this.prisma.template.findUnique({ where: { id: templateId } });
+    return this.prisma.template.findFirst({ where: { id: templateId, schoolId } });
   }
 
   async saveFieldMap(
@@ -151,10 +151,11 @@ export class TemplatesService {
     const tpl = await this.prisma.template.findFirst({ where: { id: templateId, schoolId } });
     if (!tpl) throw new NotFoundException('Template not found');
     if (!Array.isArray(fields)) throw new BadRequestException('fields must be an array');
-    return this.prisma.template.update({
-      where: { id: templateId },
+    await this.prisma.template.updateMany({
+      where: { id: templateId, schoolId },
       data: { fieldMapJson: JSON.stringify(fields) },
     });
+    return this.prisma.template.findFirst({ where: { id: templateId, schoolId } });
   }
 
   async getActiveTemplate(schoolId: string, type: 'CERTIFICATE' | 'ID_CARD') {

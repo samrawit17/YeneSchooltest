@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -95,6 +96,145 @@ export class ReportCardService {
     return year.name;
   }
 
+  private parseSettingValue(rawValue: string | null | undefined) {
+    if (rawValue === null || rawValue === undefined) return null;
+    try {
+      return JSON.parse(rawValue);
+    } catch {
+      return rawValue;
+    }
+  }
+
+  private async ensureParentGradeAccessEnabled(schoolId: string) {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: {
+        schoolId_key: {
+          schoolId,
+          key: SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES,
+        },
+      },
+      select: { value: true },
+    });
+    const value = this.parseSettingValue(setting?.value);
+
+    if (value === false || value === 'false') {
+      throw new BadRequestException(
+        'Parent grade viewing is disabled for this school.',
+      );
+    }
+  }
+
+  private async ensureCurrentPeriodFeesPaid(
+    studentId: string,
+    schoolId: string,
+    academicYearName?: string,
+    termName?: string,
+  ) {
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: academicYearName
+        ? { schoolId, name: academicYearName }
+        : { schoolId, isActive: true },
+      select: { id: true },
+    });
+
+    if (!academicYear?.id) return;
+
+    const term = termName
+      ? await this.prisma.term.findFirst({
+          where: { academicYearId: academicYear.id, name: termName },
+          select: { id: true },
+        })
+      : await this.resolveCurrentTerm(academicYear.id);
+
+    if (!term?.id) return;
+
+    const clearance = await this.verifyFinancialClearanceForPeriod(
+      studentId,
+      schoolId,
+      academicYear.id,
+      term.id,
+    );
+
+    if (!clearance) {
+      throw new ForbiddenException(
+        'Results are locked until the current term or semester fees are paid.',
+      );
+    }
+  }
+
+  private async resolveCurrentTerm(academicYearId: string) {
+    const now = new Date();
+    const currentTerm = await this.prisma.term.findFirst({
+      where: {
+        academicYearId,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      orderBy: { order: 'asc' },
+      select: { id: true },
+    });
+
+    if (currentTerm) return currentTerm;
+
+    return this.prisma.term.findFirst({
+      where: { academicYearId },
+      orderBy: { order: 'asc' },
+      select: { id: true },
+    });
+  }
+
+  private async verifyFinancialClearanceForPeriod(
+    studentId: string,
+    schoolId: string,
+    academicYearId: string,
+    termId: string,
+  ) {
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: {
+        schoolId,
+        OR: [{ id: studentId }, { userId: studentId }],
+      },
+      select: { id: true, userId: true },
+    });
+
+    if (!studentProfile) return false;
+
+    const outstandingFees = await this.prisma.studentFee.findMany({
+      where: {
+        studentId: {
+          in: [studentProfile.id, studentProfile.userId].filter(Boolean) as string[],
+        },
+        schoolId,
+        academicYearId,
+        status: { not: 'PAID' },
+      },
+      include: { payments: true },
+    });
+
+    const terms = await this.prisma.term.findMany({
+      where: { academicYearId },
+      orderBy: { order: 'asc' },
+      select: { id: true },
+    });
+    const periodCount = terms.length || 1;
+    const termBoundOutstanding = outstandingFees.filter(
+      (fee) => fee.termId && fee.termId === termId,
+    );
+    const annualBlockingFees = outstandingFees
+      .filter((fee) => !fee.termId)
+      .filter((fee) => {
+        const paidAmount =
+          fee.payments
+            ?.filter((payment) => payment.termId === termId)
+            .reduce((sum, payment) => sum + payment.amountPaid, 0) || 0;
+        const requiredPerPeriod =
+          Number(fee.finalAmount || 0) / Math.max(periodCount, 1);
+        return paidAmount + 0.0001 < requiredPerPeriod;
+      });
+
+    return termBoundOutstanding.length === 0 && annualBlockingFees.length === 0;
+  }
+
   private async resolveTermName(termId: string) {
     const term = await this.prisma.term.findUnique({
       where: { id: termId },
@@ -119,7 +259,7 @@ export class ReportCardService {
   private async verifyParentChild(parentId: string, childId: string) {
     const parentProfile = await this.prisma.parentProfile.findUnique({
       where: { userId: parentId },
-      select: { id: true },
+      select: { id: true, schoolId: true },
     });
     if (!parentProfile) {
       throw new NotFoundException('Parent profile not found');
@@ -143,6 +283,7 @@ export class ReportCardService {
 
     return {
       studentUserId: link.student.userId,
+      schoolId: parentProfile.schoolId,
     };
   }
 
@@ -711,9 +852,21 @@ export class ReportCardService {
       term?: string;
     },
   ) {
-    const { studentUserId } = await this.verifyParentChild(parentId, childId);
+    const { studentUserId, schoolId } = await this.verifyParentChild(
+      parentId,
+      childId,
+    );
+    await this.ensureParentGradeAccessEnabled(schoolId);
+    await this.ensureCurrentPeriodFeesPaid(
+      studentUserId,
+      schoolId,
+      filters?.academicYear,
+      filters?.term,
+    );
+
     const whereClause: any = {
       studentId: studentUserId,
+      schoolId,
       status: ReportCardStatus.PUBLISHED,
     };
 
@@ -849,32 +1002,47 @@ export class ReportCardService {
     return classes.map((cls) => {
       const classCards = cardsByClass.get(cls.id) ?? [];
       const expectedEntries = expectedByClass.get(cls.id) ?? 0;
-      const publishedEntries = classCards.filter(
-        (card) => card.status === ReportCardStatus.PUBLISHED,
-      ).length;
-      const generatedEntries = classCards.length;
+      const generatedStudentIds = new Set(
+        classCards.map((card) => card.studentId),
+      );
+      const publishedStudentIds = new Set(
+        classCards
+          .filter((card) => card.status === ReportCardStatus.PUBLISHED)
+          .map((card) => card.studentId),
+      );
+      const publishedEntries = publishedStudentIds.size;
+      const generatedEntries = generatedStudentIds.size;
       const missingEntries = Math.max(expectedEntries - generatedEntries, 0);
-      const hasIncompleteCards = classCards.some((card) => {
-        const details = this.parseGradeDetails(card.gradeDetails);
-        return (
-          details.length === 0 ||
-          card.percentage === null ||
-          card.totalMarks === null ||
-          card.attendancePercentage === null
-        );
-      });
+      const completeStudentIds = new Set(
+        classCards
+          .filter((card) => {
+            const details = this.parseGradeDetails(card.gradeDetails);
+            return (
+              details.length > 0 &&
+              card.percentage !== null &&
+              card.totalMarks !== null &&
+              card.attendancePercentage !== null
+            );
+          })
+          .map((card) => card.studentId),
+      );
+      const hasIncompleteCards = completeStudentIds.size < expectedEntries;
 
       let status: 'published' | 'ready' | 'has_issues' | 'no_students' =
         'has_issues';
+      const expectedStudentIds = studentIdsByClass.get(cls.id) ?? new Set<string>();
+      const allExpectedPublished = Array.from(expectedStudentIds).every(
+        (studentId) => publishedStudentIds.has(studentId),
+      );
+      const allExpectedGenerated = Array.from(expectedStudentIds).every(
+        (studentId) => generatedStudentIds.has(studentId),
+      );
       if (expectedEntries === 0) {
         status = 'no_students';
-      } else if (
-        publishedEntries === expectedEntries &&
-        generatedEntries === expectedEntries
-      ) {
+      } else if (allExpectedPublished) {
         status = 'published';
       } else if (
-        generatedEntries === expectedEntries &&
+        allExpectedGenerated &&
         missingEntries === 0 &&
         !hasIncompleteCards
       ) {
@@ -899,9 +1067,9 @@ export class ReportCardService {
   /**
    * Get single report card by ID
    */
-  async getReportCardById(id: string) {
-    const reportCard = await this.prisma.reportCard.findUnique({
-      where: { id },
+  async getReportCardById(id: string, schoolId: string) {
+    const reportCard = await this.prisma.reportCard.findFirst({
+      where: { id, schoolId },
       include: {
         student: {
           select: {
@@ -1104,6 +1272,8 @@ export class ReportCardService {
       const year = payload.reportCard.academicYear || '';
       const term = payload.reportCard.term || '';
       const totalMarks = payload.reportCard.totalMarks ?? '-';
+      const percentage = payload.reportCard.percentage ?? '-';
+      const grade = payload.reportCard.overallGrade ?? '-';
       const rank = payload.reportCard.rankInClass ?? '-';
       const schoolName = payload.template.schoolName || '';
       switch (key) {
@@ -1117,15 +1287,104 @@ export class ReportCardService {
         case 'school_name': return schoolName;
         case 'term': return term;
         case 'total_marks': return String(totalMarks);
+        case 'percentage': return String(percentage);
+        case 'grade': return String(grade);
         case 'ranking':
         case 'rank': return String(rank);
         case 'school_address': return payload.template.schoolAddress || '';
         case 'school_phone': return payload.template.schoolPhone || '';
         case 'school_email': return '';
         case 'title': return payload.template.title || 'Student Result Certificate';
+        case 'principal_name': return payload.template.principalName || '';
         default: return '';
       }
     };
+
+    const templateConfig = fieldMap.reduce<Record<string, string>>((acc, field) => {
+      if (field?.field_key && field.value !== undefined) {
+        acc[String(field.field_key)] = String(field.value);
+      }
+      return acc;
+    }, {});
+    const renderTemplateText = (input: string) =>
+      String(input || '').replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_match, key) => valueFor(key));
+    const drawWrappedText = (
+      text: string,
+      x: number,
+      y: number,
+      maxWidth: number,
+      size: number,
+      textFont = font,
+      lineHeight = size * 1.35,
+    ) => {
+      const words = renderTemplateText(text).split(/\s+/).filter(Boolean);
+      let line = '';
+      let cursorY = y;
+      for (const word of words) {
+        const next = line ? `${line} ${word}` : word;
+        if (textFont.widthOfTextAtSize(next, size) > maxWidth && line) {
+          page.drawText(line, { x, y: cursorY, size, font: textFont, color: rgb(0, 0, 0) });
+          cursorY -= lineHeight;
+          line = word;
+        } else {
+          line = next;
+        }
+      }
+      if (line) {
+        page.drawText(line, { x, y: cursorY, size, font: textFont, color: rgb(0, 0, 0) });
+      }
+    };
+
+    const drawAlignedText = (
+      text: string,
+      x: number,
+      y: number,
+      boxWidth: number,
+      size: number,
+      align: 'left' | 'center' | 'right',
+      textFont = font,
+    ) => {
+      const rendered = renderTemplateText(text);
+      if (!rendered) return;
+      const textWidth = textFont.widthOfTextAtSize(rendered, size);
+      const resolvedX =
+        align === 'center' ? x + (boxWidth - textWidth) / 2 : align === 'right' ? x + boxWidth - textWidth : x;
+      page.drawText(rendered, { x: resolvedX, y, size, font: textFont, color: rgb(0, 0, 0) });
+    };
+
+    const hasContentConfig = [
+      'headerLeftText',
+      'headerCenterText',
+      'headerRightText',
+      'bodyText',
+      'footerLeftText',
+      'footerCenterText',
+      'footerRightText',
+    ].some((key) => templateConfig[key]);
+
+    if (hasContentConfig) {
+      const marginX = width * 0.06;
+      const innerWidth = width - marginX * 2;
+      const headerTopY = height * 0.92;
+      const bodyTopY = height * (1 - (Number(templateConfig.headerHeight || 18) + 8) / 100);
+      const footerY = height * 0.08;
+      const colWidth = innerWidth / 3;
+      drawAlignedText(templateConfig.headerLeftText || '', marginX, headerTopY, colWidth, 9, 'left', font);
+      drawAlignedText(templateConfig.headerCenterText || '', marginX + colWidth, headerTopY, colWidth, 14, 'center', bold);
+      drawAlignedText(templateConfig.headerRightText || '', marginX + colWidth * 2, headerTopY, colWidth, 9, 'right', font);
+      drawWrappedText(
+        templateConfig.bodyText || '',
+        width * ((100 - Number(templateConfig.bodyWidth || 82)) / 200),
+        bodyTopY,
+        width * (Number(templateConfig.bodyWidth || 82) / 100),
+        12,
+        font,
+        17,
+      );
+      drawAlignedText(templateConfig.footerLeftText || '', marginX, footerY, colWidth, 9, 'left', font);
+      drawAlignedText(templateConfig.footerCenterText || '', marginX + colWidth, footerY, colWidth, 9, 'center', font);
+      drawAlignedText(templateConfig.footerRightText || '', marginX + colWidth * 2, footerY, colWidth, 9, 'right', font);
+    }
 
     const drawGradesTable = (x: number, yTop: number, w: number, h: number) => {
       const startY = yTop;
@@ -1229,9 +1488,9 @@ export class ReportCardService {
   /**
    * Publish report cards
    */
-  async publishReportCards(ids: string[]) {
+  async publishReportCards(ids: string[], schoolId: string) {
     const reportCards = await this.prisma.reportCard.findMany({
-      where: { id: { in: ids } },
+      where: { id: { in: ids }, schoolId },
     });
 
     if (reportCards.length === 0) {
@@ -1239,7 +1498,7 @@ export class ReportCardService {
     }
 
     const updated = await this.prisma.reportCard.updateMany({
-      where: { id: { in: ids } },
+      where: { id: { in: ids }, schoolId },
       data: {
         status: ReportCardStatus.PUBLISHED,
         publishedAt: new Date(),
@@ -1330,29 +1589,52 @@ export class ReportCardService {
       throw new BadRequestException('No enrolled students found for this class');
     }
 
-    if (reportCards.length !== enrollments.length) {
+    const reportCardStudentIds = new Set(
+      reportCards.map((card) => card.studentId),
+    );
+    const missingReportCardStudentIds = Array.from(
+      uniqueEnrollmentStudentIds,
+    ).filter((studentId) => !reportCardStudentIds.has(studentId));
+
+    if (missingReportCardStudentIds.length > 0) {
       throw new BadRequestException(
         'Results cannot be published yet because some students are still missing report cards',
       );
     }
 
-    const incomplete = reportCards.filter((card) => {
+    const isCompleteReportCard = (card: (typeof reportCards)[number]) => {
       const details = this.parseGradeDetails(card.gradeDetails);
       return (
-        details.length === 0 ||
-        card.percentage === null ||
-        card.totalMarks === null ||
-        card.attendancePercentage === null
+        details.length > 0 &&
+        card.percentage !== null &&
+        card.totalMarks !== null &&
+        card.attendancePercentage !== null
       );
-    });
+    };
 
-    if (incomplete.length > 0) {
+    const completeCardsByStudent = new Map<string, (typeof reportCards)[number]>();
+    for (const card of reportCards) {
+      if (!isCompleteReportCard(card)) continue;
+      const existing = completeCardsByStudent.get(card.studentId);
+      if (
+        !existing ||
+        new Date(card.updatedAt).getTime() > new Date(existing.updatedAt).getTime()
+      ) {
+        completeCardsByStudent.set(card.studentId, card);
+      }
+    }
+
+    const incompleteStudentIds = Array.from(uniqueEnrollmentStudentIds).filter(
+      (studentId) => !completeCardsByStudent.has(studentId),
+    );
+
+    if (incompleteStudentIds.length > 0) {
       throw new BadRequestException(
         'Results cannot be published yet because some report cards are incomplete',
       );
     }
 
-    const rankedReportCards = [...reportCards].sort((a, b) => {
+    const rankedReportCards = Array.from(completeCardsByStudent.values()).sort((a, b) => {
       const percentageDiff = (b.percentage ?? 0) - (a.percentage ?? 0);
       if (percentageDiff !== 0) return percentageDiff;
       return a.student.name.localeCompare(b.student.name);
@@ -1428,9 +1710,9 @@ export class ReportCardService {
   /**
    * Unpublish report cards (revert to draft)
    */
-  async unpublishReportCards(ids: string[]) {
+  async unpublishReportCards(ids: string[], schoolId: string) {
     const updated = await this.prisma.reportCard.updateMany({
-      where: { id: { in: ids } },
+      where: { id: { in: ids }, schoolId },
       data: {
         status: ReportCardStatus.DRAFT,
         publishedAt: null,
@@ -1443,9 +1725,14 @@ export class ReportCardService {
   /**
    * Calculate and update ranks for a class in a term
    */
-  async calculateRanks(classId: string, academicYear: string, term: string) {
+  async calculateRanks(
+    schoolId: string,
+    classId: string,
+    academicYear: string,
+    term: string,
+  ) {
     const reportCards = await this.prisma.reportCard.findMany({
-      where: { classId, academicYear, term },
+      where: { schoolId, classId, academicYear, term },
       orderBy: { percentage: 'desc' },
     });
 
@@ -1459,7 +1746,7 @@ export class ReportCardService {
     }
 
     const rankedReportCards = await this.prisma.reportCard.findMany({
-      where: { classId, academicYear, term },
+      where: { schoolId, classId, academicYear, term },
       include: {
         student: { select: { id: true, name: true } },
       },
@@ -1486,6 +1773,7 @@ export class ReportCardService {
    */
   async updateRemarks(
     id: string,
+    schoolId: string,
     data: {
       teacherRemarks?: string;
       principalRemarks?: string;
@@ -1493,8 +1781,8 @@ export class ReportCardService {
       behavior?: string;
     },
   ) {
-    const reportCard = await this.prisma.reportCard.findUnique({
-      where: { id },
+    const reportCard = await this.prisma.reportCard.findFirst({
+      where: { id, schoolId },
     });
     if (!reportCard) {
       throw new NotFoundException('Report card not found');
@@ -1514,9 +1802,9 @@ export class ReportCardService {
   /**
    * Delete report card
    */
-  async deleteReportCard(id: string) {
-    const reportCard = await this.prisma.reportCard.findUnique({
-      where: { id },
+  async deleteReportCard(id: string, schoolId: string) {
+    const reportCard = await this.prisma.reportCard.findFirst({
+      where: { id, schoolId },
     });
     if (!reportCard) {
       throw new NotFoundException('Report card not found');

@@ -6,10 +6,9 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { playSirenAudio, unlockSirenAudio } from "@/lib/siren-audio";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PeriodTimeManagement } from "./period-time";
 import { SirenScheduleManagement } from "./siren-schedule";
 import { SirenHardwareConfig } from "./hardware-config";
-import { Clock, Bell, Zap, Loader2, Volume2 } from "lucide-react";
+import { Bell, Zap, Loader2, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SirenManagementPage() {
@@ -69,8 +68,7 @@ export default function SirenManagementPage() {
         <div className="min-w-0">
           <h1 className="break-words text-2xl font-bold tracking-tight md:text-3xl">Siren Management</h1>
           <p className="mt-2 break-words text-muted-foreground">
-            Configure period times, static schedules, and hardware integration for
-            school sirens
+            Configure static schedules and hardware integration for school sirens.
           </p>
         </div>
 
@@ -88,16 +86,9 @@ export default function SirenManagementPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="periods" className="w-full min-w-0 max-w-full">
+      <Tabs defaultValue="schedules" className="w-full min-w-0 max-w-full">
         <div className="overflow-x-auto">
-          <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0 md:grid md:w-full md:grid-cols-3">
-          <TabsTrigger
-            value="periods"
-            className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
-          >
-            <Clock className="h-4 w-4 shrink-0" />
-            <span>Periods</span>
-          </TabsTrigger>
+          <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0 md:grid md:w-full md:grid-cols-2">
           <TabsTrigger
             value="schedules"
             className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
@@ -114,10 +105,6 @@ export default function SirenManagementPage() {
           </TabsTrigger>
         </TabsList>
         </div>
-
-        <TabsContent value="periods" className="mt-6 min-w-0 max-w-full">
-          <PeriodTimeManagement />
-        </TabsContent>
 
         <TabsContent value="schedules" className="mt-6 min-w-0 max-w-full">
           <SirenScheduleManagement />

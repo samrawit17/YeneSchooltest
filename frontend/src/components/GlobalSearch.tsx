@@ -31,6 +31,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
+import { useSchoolFeatureSetting } from "@/hooks/useSchoolFeatureSetting";
 
 type SearchableEntity = 
     | 'students' 
@@ -52,25 +53,32 @@ interface SearchResponse {
 }
 
 // Role-based quick links
-const ROLE_QUICK_LINKS: Record<string, { label: string; href: string; icon: React.ReactNode }[]> = {
+type QuickLink = {
+    label: string;
+    href: string;
+    icon: React.ReactNode;
+    schoolSettingFlag?: string;
+};
+
+const ROLE_QUICK_LINKS: Record<string, QuickLink[]> = {
     admin: [
         { label: "Dashboard", href: "/admin", icon: <School className="h-4 w-4" /> },
         { label: "Students", href: "/list/students", icon: <GraduationCap className="h-4 w-4" /> },
-        { label: "Teachers", href: "/list/teachers", icon: <Users className="h-4 w-4" /> },
+        { label: "Staff", href: "/list/staff", icon: <Users className="h-4 w-4" /> },
         { label: "Classes", href: "/admin/class-sections", icon: <School className="h-4 w-4" /> },
         { label: "Exams", href: "/admin/assessments", icon: <ClipboardList className="h-4 w-4" /> },
         { label: "Attendance", href: "/admin/attendance", icon: <Calendar className="h-4 w-4" /> },
         { label: "Finance", href: "/list/finance", icon: <DollarSign className="h-4 w-4" /> },
-        { label: "Announcements", href: "/list/announcements", icon: <Megaphone className="h-4 w-4" /> },
+        { label: "Announcements", href: "/list/announcements", icon: <Megaphone className="h-4 w-4" />, schoolSettingFlag: "ANNOUNCEMENTS_ENABLED" },
     ],
     it_manager: [
         { label: "Dashboard", href: "/it-manager", icon: <School className="h-4 w-4" /> },
-        { label: "Teachers", href: "/list/teachers", icon: <Users className="h-4 w-4" /> },
+        { label: "Staff", href: "/list/staff", icon: <Users className="h-4 w-4" /> },
         { label: "Classes", href: "/admin/class-sections", icon: <School className="h-4 w-4" /> },
         { label: "Timetable", href: "/admin/timetable", icon: <Calendar className="h-4 w-4" /> },
         { label: "Assignments", href: "/admin/assignments", icon: <Users className="h-4 w-4" /> },
         { label: "Siren", href: "/admin/siren-management", icon: <Settings className="h-4 w-4" /> },
-        { label: "Announcements", href: "/list/announcements", icon: <Megaphone className="h-4 w-4" /> },
+        { label: "Announcements", href: "/list/announcements", icon: <Megaphone className="h-4 w-4" />, schoolSettingFlag: "ANNOUNCEMENTS_ENABLED" },
     ],
     teacher: [
         { label: "Dashboard", href: "/teacher", icon: <School className="h-4 w-4" /> },
@@ -83,12 +91,12 @@ const ROLE_QUICK_LINKS: Record<string, { label: string; href: string; icon: Reac
         { label: "Dashboard", href: "/student", icon: <School className="h-4 w-4" /> },
         { label: "My Grades", href: "/student/grades", icon: <BookOpen className="h-4 w-4" /> },
         { label: "Schedule", href: "/student/schedule", icon: <Calendar className="h-4 w-4" /> },
-        { label: "Announcements", href: "/list/announcements", icon: <Megaphone className="h-4 w-4" /> },
+        { label: "Announcements", href: "/list/announcements", icon: <Megaphone className="h-4 w-4" />, schoolSettingFlag: "ANNOUNCEMENTS_ENABLED" },
     ],
     parent: [
         { label: "Dashboard", href: "/parent", icon: <School className="h-4 w-4" /> },
         { label: "Children", href: "/parent/children", icon: <Users className="h-4 w-4" /> },
-        { label: "Grades", href: "/parent/grades", icon: <BookOpen className="h-4 w-4" /> },
+        { label: "Grades", href: "/parent/grades", icon: <BookOpen className="h-4 w-4" />, schoolSettingFlag: "PARENT_VIEW_GRADES" },
         { label: "Attendance", href: "/parent/children", icon: <Calendar className="h-4 w-4" /> },
         { label: "Payments", href: "/list/finance", icon: <CreditCard className="h-4 w-4" /> },
     ],
@@ -153,6 +161,8 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     const wrapperRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
+    const { enabled: parentGradesEnabled } = useSchoolFeatureSetting("PARENT_VIEW_GRADES");
+    const { enabled: announcementsEnabled } = useSchoolFeatureSetting("ANNOUNCEMENTS_ENABLED");
 
     // Needed for portal to work
     useEffect(() => {
@@ -166,8 +176,19 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         return role;
     }, [user?.role]);
 
-    // Quick links based on role
-    const quickLinks = ROLE_QUICK_LINKS[roleKey] || ROLE_QUICK_LINKS.admin;
+    const isSchoolSettingVisible = (settingKey?: string) => {
+        if (!settingKey) return true;
+        if (settingKey === "PARENT_VIEW_GRADES") return parentGradesEnabled;
+        if (settingKey === "ANNOUNCEMENTS_ENABLED") return announcementsEnabled;
+        return true;
+    };
+
+    // Quick links based on role and school feature settings
+    const quickLinks = useMemo(
+        () => (ROLE_QUICK_LINKS[roleKey] || ROLE_QUICK_LINKS.admin)
+            .filter((link) => isSchoolSettingVisible(link.schoolSettingFlag)),
+        [roleKey, parentGradesEnabled, announcementsEnabled],
+    );
 
     // Fetch permissions on mount
     useEffect(() => {
@@ -265,7 +286,8 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     const navigationResults = useMemo(() => {
         if (!query.trim()) return [];
         const lowerQuery = query.toLowerCase();
-        const links = ROLE_QUICK_LINKS[user?.role?.toLowerCase() || ""] || [];
+        const links = (ROLE_QUICK_LINKS[user?.role?.toLowerCase() || ""] || [])
+            .filter((link) => isSchoolSettingVisible(link.schoolSettingFlag));
         
         return links
             .filter(link => 
@@ -280,7 +302,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                 href: link.href,
                 icon: link.icon
             }));
-    }, [query, user?.role]);
+    }, [query, user?.role, parentGradesEnabled, announcementsEnabled]);
 
     // Group results by type
     const groupedResults = useMemo(() => {
@@ -292,7 +314,13 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         }
 
         if (Array.isArray(results)) {
-            results.forEach((result) => {
+            results.filter((result) => {
+                if (result.href === "/parent/grades" && !parentGradesEnabled) return false;
+                if (result.href === "/list/announcements" && !announcementsEnabled) return false;
+                if (result.type === "announcement" && !announcementsEnabled) return false;
+                if (result.type === "grade" && user?.role?.toLowerCase() === "parent" && !parentGradesEnabled) return false;
+                return true;
+            }).forEach((result) => {
                 if (!acc[result.type]) {
                     acc[result.type] = [];
                 }
@@ -300,7 +328,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
             });
         }
         return acc;
-    }, [results, navigationResults]);
+    }, [results, navigationResults, parentGradesEnabled, announcementsEnabled, user?.role]);
 
     const hasDisplayResults = navigationResults.length > 0 || results.length > 0;
 
@@ -315,10 +343,10 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         { key: 'classes', icon: <School className="h-3 w-3" />, label: 'Classes' },
         { key: 'sections', icon: <Users className="h-3 w-3" />, label: 'Sections' },
         { key: 'subjects', icon: <BookOpen className="h-3 w-3" />, label: 'Subjects' },
-        { key: 'grades', icon: <BarChart3 className="h-3 w-3" />, label: 'Grades' },
-        { key: 'announcements', icon: <Megaphone className="h-3 w-3" />, label: 'Announcements' },
+        { key: 'grades', icon: <BarChart3 className="h-3 w-3" />, label: 'Grades', visible: user?.role?.toLowerCase() !== "parent" || parentGradesEnabled },
+        { key: 'announcements', icon: <Megaphone className="h-3 w-3" />, label: 'Announcements', visible: announcementsEnabled },
         { key: 'events', icon: <Calendar className="h-3 w-3" />, label: 'Calendar' },
-    ].filter(entity => permissions.includes(entity.key));
+    ].filter(entity => entity.visible !== false && permissions.includes(entity.key));
 
     return (
         <div ref={wrapperRef} className="relative z-[9998] w-full mx-auto flex items-center md:h-10 lg:h-10 font-sans">

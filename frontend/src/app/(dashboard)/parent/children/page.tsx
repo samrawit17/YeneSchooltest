@@ -2,18 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, Eye, Star, GraduationCap, User } from "lucide-react";
+import { Users, Eye, Star, GraduationCap, User, CalendarCheck, Award, Phone } from "lucide-react";
 import { parentDashboardAPI } from "@/lib/api/parent";
 import { academicYearsAPI, reportCardsAPI, termsAPI } from "@/lib/api";
 
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { resolveAssetUrl } from "@/lib/asset-url";
 
 interface Child {
   id: string;
@@ -26,6 +23,8 @@ interface Child {
   relation: string;
   isPrimary: boolean;
   userId: string;
+  username?: string;
+  parentPhone?: string;
   homeroomTeacher?: {
     id: string;
     name: string;
@@ -82,7 +81,7 @@ const ParentChildrenPage = () => {
               const childUserId =
                 child.student?.userId || child.student?.id || child.userId;
               const dashboardChild = childUserId
-                ? dashboardMap.get(childUserId)
+                ? (dashboardMap.get(childUserId) as any)
                 : null;
               const fallbackAttendance = dashboardChild ? {
                 presentDays: dashboardChild.presentDays || 0,
@@ -136,7 +135,10 @@ const ParentChildrenPage = () => {
                     name: child.name || child.student?.user?.name || "Unknown",
                     className: child.className || child.student?.className || "N/A",
                     section: child.section || child.student?.section || "N/A",
-                    photoUrl: child.photoUrl || child.student?.user?.photoUrl || null,
+                    studentCode: child.studentCode || child.student?.studentCode || child.student?.studentId || "N/A",
+                    username: child.username || child.student?.user?.username || child.student?.username,
+                    parentPhone: child.parentPhone || child.phone || child.parent?.user?.phone,
+                    photoUrl: child.photoUrl || child.student?.user?.avatarUrl || child.student?.user?.photoUrl || null,
                     attendance: fallbackAttendance,
                     academics: publishedAcademics,
                   };
@@ -150,7 +152,10 @@ const ParentChildrenPage = () => {
                 name: child.name || child.student?.user?.name || "Unknown",
                 className: child.className || child.student?.className || "N/A",
                 section: child.section || child.student?.section || "N/A",
-                photoUrl: child.photoUrl || child.student?.user?.photoUrl || null,
+                studentCode: child.studentCode || child.student?.studentCode || child.student?.studentId || "N/A",
+                username: child.username || child.student?.user?.username || child.student?.username,
+                parentPhone: child.parentPhone || child.phone || child.parent?.user?.phone,
+                photoUrl: child.photoUrl || child.student?.user?.avatarUrl || child.student?.user?.photoUrl || null,
                 attendance: fallbackAttendance,
                 academics: publishedAcademics,
               };
@@ -171,25 +176,23 @@ const ParentChildrenPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+        <div className="w-full px-4 sm:px-6 py-6 space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-64" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="w-full" style={{ aspectRatio: '4 / 5' }}>
-                <Card className="dark:bg-slate-900 dark:border-slate-800 h-full">
-                  <CardContent className="p-6 space-y-4">
-                    <Skeleton className="w-24 h-24 rounded-full mx-auto" />
-                    <Skeleton className="h-5 w-32 mx-auto" />
-                    <Skeleton className="h-4 w-24 mx-auto" />
-                    <div className="space-y-2 pt-2">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-full" />
-                    </div>
-                  </CardContent>
-                </Card>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-full">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
+                  <Skeleton className="w-20 h-20 rounded-full mx-auto" />
+                  <Skeleton className="h-5 w-32 mx-auto" />
+                  <Skeleton className="h-4 w-24 mx-auto" />
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                  <Skeleton className="h-10 w-full" />
+                </div>
               </div>
             ))}
           </div>
@@ -199,108 +202,90 @@ const ParentChildrenPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="mx-auto max-w-7xl px-6 pt-6 pb-2">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Children</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Monitor your children&apos;s academic progress and attendance
-        </p>
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="w-full px-4 sm:px-6 pt-6 pb-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Children</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Monitor your children&apos;s academic progress and attendance
+          </p>
+        </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-6">
         {children.length === 0 ? (
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
-            <CardContent className="py-16 text-center">
-              <div
-                className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4"
-                style={{ backgroundColor: 'rgba(var(--brand-color-rgb, 227, 83, 54), 0.1)' }}
-              >
-                <Users className="w-8 h-8" style={{ color: 'var(--brand-color, #e35336)' }} />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                No Children Linked
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                Contact the school administration to link your children to your parent account.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-16 text-center">
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 bg-[rgba(var(--brand-color-rgb),0.1)]">
+              <Users className="w-8 h-8 text-[var(--brand-color,#e35336)]" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+              No Children Linked
+            </h3>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              Contact the school administration to link your children to your parent account.
+            </p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
             {children.map((child) => {
               const attendance = child.attendance || { presentDays: 0, totalDays: 0, rate: 0 };
+              const academics = child.academics || { average: 0, grade: "N/A" };
+              const photoSrc = resolveAssetUrl(child.photoUrl);
 
               return (
-                <div key={child.id} className="w-full">
-                  <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col rounded-2xl">
-
-                    {/* Photo */}
-                    <div className="flex justify-center pt-6 pb-3 px-6">
-                      <div className="relative">
-                        <Avatar className="w-28 h-28 ring-[3px] ring-slate-100 dark:ring-slate-700">
-                          {child.photoUrl ? (
-                            <img src={child.photoUrl} alt={child.name} className="w-full h-full object-cover rounded-full" />
-                          ) : (
-                            <AvatarFallback
-                              className="text-3xl font-bold text-white"
-                              style={{ backgroundColor: 'var(--brand-color, #e35336)' }}
-                            >
-                              {child.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        {child.isPrimary && (
-                          <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-amber-400 flex items-center justify-center shadow-md ring-2 ring-white dark:ring-slate-900">
-                            <Star className="w-3.5 h-3.5 text-white fill-white" />
-                          </div>
+                <div key={child.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col">
+                  <div className="flex items-start gap-4 border-b border-slate-100 dark:border-slate-700 p-5">
+                    <div className="relative shrink-0">
+                      <Avatar className="h-20 w-20 ring-[3px] ring-slate-100 dark:ring-slate-700">
+                        {photoSrc ? (
+                          <img src={photoSrc} alt={child.name} className="h-full w-full rounded-full object-cover" />
+                        ) : (
+                          <AvatarFallback className="text-2xl font-bold text-white bg-[var(--brand-color,#e35336)]">
+                            {child.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
                         )}
+                      </Avatar>
+                      {child.isPrimary && (
+                        <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 shadow-md ring-2 ring-white dark:ring-slate-900">
+                          <Star className="h-3.5 w-3.5 fill-white text-white" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-lg font-bold text-slate-900 dark:text-white">{child.name}</h3>
+                          <p className="mt-0.5 text-sm text-slate-500">{child.studentCode}</p>
+                        </div>
+                        <Badge variant="outline" className="shrink-0 text-xs">
+                          {child.relation || "Child"}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <Metric icon={GraduationCap} label="Class" value={`${child.className}${child.section && child.section !== "N/A" ? ` - ${child.section}` : ""}`} />
+                        <Metric icon={Award} label="Average" value={`${academics.average || 0}%`} />
                       </div>
                     </div>
+                  </div>
 
-                    {/* Name */}
-                    <div className="text-center px-6">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                        {child.name}
-                      </h3>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                        {child.relation || "Child"}
-                      </p>
-                    </div>
+                  <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
+                    <DetailRow icon={User} label="Username" value={child.username || child.studentCode || "N/A"} />
+                    <DetailRow icon={CalendarCheck} label="Attendance" value={`${attendance.rate}%${attendance.totalDays > 0 ? ` (${attendance.presentDays}/${attendance.totalDays})` : ''}`} />
+                    <DetailRow icon={Award} label="Latest Grade" value={academics.grade || "N/A"} />
+                    <DetailRow icon={Phone} label="Parent Phone" value={child.parentPhone || "N/A"} />
+                    {child.homeroomTeacher && (
+                      <DetailRow icon={User} label="Homeroom Teacher" value={child.homeroomTeacher.name} />
+                    )}
+                  </div>
 
-                    {/* Divider */}
-                    <div className="mx-6 my-4 border-t border-slate-100 dark:border-slate-800" />
-
-                    {/* Details */}
-                    <div className="px-6 space-y-3 pb-4">
-                      <DetailRow label="Student ID" value={child.studentId || child.id} />
-                      <DetailRow label="Roll Number" value={child.studentCode} />
-                      <DetailRow label="Class" value={`${child.className} - Section ${child.section}`} />
-                      {child.homeroomTeacher && (
-                        <DetailRow label="Homeroom Teacher" value={child.homeroomTeacher.name} />
-                      )}
-                      <DetailRow
-                        label="Attendance"
-                        value={`${attendance.rate}%${attendance.totalDays > 0 ? ` (${attendance.presentDays}/${attendance.totalDays})` : ''}`}
-                        indicator={
-                          <div className={`w-2 h-2 rounded-full shrink-0 ${
-                            attendance.rate >= 75 ? 'bg-green-500' : attendance.rate >= 50 ? 'bg-amber-500' : 'bg-red-500'
-                          }`} />
-                        }
-                      />
-                    </div>
-
-                    {/* Action */}
-                    <div className="px-6 pb-5 pt-1 mt-auto">
-                      <Button
-                        onClick={() => router.push(`/parent/children/${child.studentId || child.id}`)}
-                        className="w-full h-9 text-xs font-semibold gap-1.5 rounded-xl"
-                        style={{ backgroundColor: 'var(--brand-color, #e35336)' }}
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View Full Profile
-                      </Button>
-                    </div>
-                  </Card>
+                  <div className="mt-auto px-5 pb-5">
+                    <Button
+                      onClick={() => router.push(`/parent/children/${child.studentId || child.id}`)}
+                      className="h-10 w-full gap-2 rounded-lg text-sm font-semibold bg-[var(--brand-color,#e35336)] hover:opacity-90"
+                    >
+                      <Eye className="h-4 w-4" />
+                      View Full Profile
+                    </Button>
+                  </div>
                 </div>
               );
             })}
@@ -311,13 +296,25 @@ const ParentChildrenPage = () => {
   );
 };
 
-function DetailRow({ label, value, indicator }: { label: string; value: string; indicator?: React.ReactNode }) {
+function Metric({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="flex items-start gap-2.5">
-      {indicator || <div className="w-4 h-4 shrink-0" />}
+    <div className="rounded-lg bg-slate-50 p-2.5 dark:bg-slate-800/70">
+      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </div>
+      <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{value || "N/A"}</p>
+    </div>
+  );
+}
+
+function DetailRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-start gap-2.5 rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{label}</p>
-        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{value}</p>
+        <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{label}</p>
+        <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{value || "N/A"}</p>
       </div>
     </div>
   );

@@ -196,12 +196,12 @@ export default function ClassDetailPage() {
                   </p>
                 </div>
                 <div className="flex flex-col items-start gap-1 text-sm lg:items-end">
-                  <div className="inline-flex items-center gap-2 rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.08)] px-3 py-2">
-                    <School className="h-4 w-4 text-[var(--brand-color,#e35336)]" />
+                  <div className="inline-flex items-center gap-2">
+                    <School className="h-4 w-4 text-slate-400" />
                     <span className="font-medium text-slate-700 dark:text-slate-200">
                       Homeroom Teacher:
                     </span>
-                    <span className="font-semibold text-[var(--brand-color,#e35336)]">
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
                       {displayedHomeroomTeacher?.name || "Not assigned"}
                     </span>
                   </div>

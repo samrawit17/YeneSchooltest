@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { lessonsAPI, Lesson } from "@/lib/api/content";
+import { periodTimeAPI, type PeriodTime } from "@/lib/api/siren-period-time";
+import { formatTimeByCalendarType } from "@/lib/calendar-utils";
 import TableSearch from "@/components/TableSearch";
+import BigCalendar, { type CalendarDisplayEvent } from "@/components/BigCalendar";
+import { Views } from "react-big-calendar";
 import {
   BookText,
   Calendar,
@@ -18,7 +23,7 @@ import {
 } from "lucide-react";
 
 // Shadcn/ui Components
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,8 +53,10 @@ const getStudentName = (lesson: Lesson) => {
 
 const ParentLessonsPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { schoolCalendarType } = useAcademicYear();
   const router = useRouter();
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [periodTimes, setPeriodTimes] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSubject, setFilterSubject] = useState<string>("all");
@@ -67,8 +74,23 @@ const ParentLessonsPage = () => {
   useEffect(() => {
     if (isAuthenticated && !isLoading && user?.role === "PARENT") {
       fetchLessons();
+      fetchPeriodTimes();
     }
-  }, [isAuthenticated, isLoading, user, page, filterSubject, filterChild]);
+  }, [isAuthenticated, isLoading, user, page, filterSubject, filterChild, schoolCalendarType]);
+
+  const fetchPeriodTimes = async () => {
+    if (!user?.schoolId) return;
+    try {
+      const response = await periodTimeAPI.list(user.schoolId);
+      const mapped = (response.data || []).reduce((acc: Record<number, string>, period: PeriodTime) => {
+        acc[period.periodNumber] = formatTimeByCalendarType(period.startTime, schoolCalendarType);
+        return acc;
+      }, {});
+      setPeriodTimes(mapped);
+    } catch {
+      setPeriodTimes({});
+    }
+  };
 
   const fetchLessons = async () => {
     try {
@@ -118,6 +140,14 @@ const ParentLessonsPage = () => {
     .map((l) => l.subject?.name)
     .filter((name): name is string => Boolean(name));
   const subjects = Array.from(new Set(subjectList));
+  const lessonCalendarEvents: CalendarDisplayEvent[] = filteredLessons.map((lesson) => ({
+    id: lesson.id,
+    title: `${getSubjectName(lesson.subject)}: ${lesson.title}${lesson.periodNumber ? ` ${periodTimes[lesson.periodNumber] || `P${lesson.periodNumber}`}` : ""}`,
+    startDate: lesson.lessonDate,
+    endDate: lesson.lessonDate,
+    eventType: "ACADEMIC",
+    resource: lesson,
+  }));
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -145,10 +175,10 @@ const ParentLessonsPage = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             Children's Lessons
           </h1>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-slate-500 dark:text-slate-400">
             View lesson plans and materials for your children
           </p>
         </div>
@@ -257,67 +287,25 @@ const ParentLessonsPage = () => {
         </Select>
       </div>
 
-      {/* Lessons List */}
-      <div className="grid gap-4">
-        {filteredLessons.map((lesson) => (
-          <Card
-            key={lesson.id}
-            className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => router.push(`/parent/lessons/${lesson.id}`)}
-          >
-            <CardContent className="py-4">
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-xl flex items-center justify-center">
-                    <BookText className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
-                        {lesson.title}
-                      </h3>
-                      {(lesson as any).studentName && (
-                        <Badge variant="secondary" className="text-xs">
-                          {(lesson as any).studentName}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="w-4 h-4" />
-                        {getSubjectName(lesson.subject)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        Grade {lesson.childGrade || lesson.grade} - Section {lesson.childSection || lesson.section}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(lesson.lessonDate)}
-                      </span>
-                    </div>
-                    {lesson.objective && (
-                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                        {lesson.objective}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {lesson.homework && (
-                    <Badge variant="outline" className="text-orange-600 border-orange-300">
-                      Homework
-                    </Badge>
-                  )}
-                  <Button variant="ghost" size="icon">
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Lesson Calendar */}
+      <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800">
+          <CardTitle className="text-lg">Lesson Calendar</CardTitle>
+          <CardDescription>Weekly calendar view for your children's lessons</CardDescription>
+        </CardHeader>
+        <CardContent className="p-4">
+          <BigCalendar
+            events={lessonCalendarEvents}
+            initialView={Views.MONTH}
+            views={[Views.MONTH]}
+            height={640}
+            onEventClick={(event) => {
+              const lesson = event.resource as Lesson | undefined;
+              if (lesson?.id) router.push(`/parent/lessons/${lesson.id}`);
+            }}
+          />
+        </CardContent>
+      </Card>
 
       {filteredLessons.length === 0 && (
         <div className="text-center py-12">

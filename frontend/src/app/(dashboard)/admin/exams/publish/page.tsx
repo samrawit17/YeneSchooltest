@@ -55,7 +55,7 @@ function getStatusMeta(status: ReportPublishSummaryRow["status"]) {
 
 export default function PublishResultsPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { currentAcademicYear } = useAcademicYear();
+  const { currentAcademicYear, currentTerm } = useAcademicYear();
   const router = useRouter();
 
   const [selectedYear, setSelectedYear] = useState("");
@@ -91,6 +91,12 @@ export default function PublishResultsPage() {
   }, [currentAcademicYear?.id, selectedYear]);
 
   useEffect(() => {
+    if (currentTerm?.id && !selectedTerm) {
+      setSelectedTerm(currentTerm.id);
+    }
+  }, [currentTerm?.id, selectedTerm]);
+
+  useEffect(() => {
     if (!selectedYear) return;
     setSelectedTerm("");
     setTerms([]);
@@ -100,17 +106,22 @@ export default function PublishResultsPage() {
         const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
         setTerms(data);
         const now = new Date();
-        const currentTerm =
+        const matchingCurrentTerm =
+          currentTerm?.id
+            ? data.find((term: { id: string }) => term.id === currentTerm.id)
+            : null;
+        const currentTermByDate =
           data.find((term: { startDate?: string; endDate?: string }) => {
             if (!term.startDate || !term.endDate) return false;
             return now >= new Date(term.startDate) && now <= new Date(term.endDate);
           }) || data[0];
-        if (currentTerm) setSelectedTerm(currentTerm.id);
+        const nextTerm = matchingCurrentTerm || currentTermByDate;
+        if (nextTerm) setSelectedTerm(nextTerm.id);
       })
       .catch(() => {
         setTerms([]);
       });
-  }, [selectedYear]);
+  }, [selectedYear, currentTerm?.id]);
 
   useEffect(() => {
     if (!selectedYear || !selectedTerm) {

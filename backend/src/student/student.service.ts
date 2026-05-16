@@ -565,7 +565,9 @@ export class StudentService {
           select: {
             id: true,
             email: true,
+            username: true,
             name: true,
+            avatarUrl: true,
             isActive: true,
             lastLoginAt: true,
           },
@@ -1442,7 +1444,11 @@ export class StudentService {
     pagination?: { page: number; limit: number },
     schoolId?: string, // Made optional
   ) {
+    if (!schoolId) {
+      throw new Error('schoolId is required');
+    }
     return this.classService.getStudentsByClass(
+      schoolId,
       classId,
       sectionId,
       search,

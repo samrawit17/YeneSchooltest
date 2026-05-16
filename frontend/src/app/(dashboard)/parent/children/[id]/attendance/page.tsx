@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Views } from "react-big-calendar";
 import Image from "next/image";
 import { attendanceAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
+import BigCalendar, { type CalendarDisplayEvent } from "@/components/BigCalendar";
 
 interface AttendanceRecord {
   id: string;
@@ -126,6 +128,14 @@ const ChildAttendancePage = () => {
         return "?";
     }
   };
+  const attendanceCalendarEvents: CalendarDisplayEvent[] = attendance.map((record) => ({
+    id: record.id,
+    title: record.status.replace("_", " "),
+    startDate: record.date,
+    endDate: record.date,
+    eventType: record.status === "ABSENT" ? "ADMINISTRATIVE" : "ACADEMIC",
+    resource: record,
+  }));
 
   if (loading) {
     return (
@@ -256,6 +266,18 @@ const ChildAttendancePage = () => {
       </div>
 
       {/* Attendance Records */}
+      {attendance.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-4">Attendance Calendar</h3>
+          <BigCalendar
+            events={attendanceCalendarEvents}
+            initialView={Views.MONTH}
+            views={[Views.MONTH, Views.WEEK]}
+            height={620}
+          />
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
           <h3 className="text-sm font-medium text-gray-700">Daily Records</h3>

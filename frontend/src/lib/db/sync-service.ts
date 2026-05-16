@@ -8,7 +8,8 @@
  * - Priority-based sync queue
  */
 
-import { db, type OfflineAttendance, type SyncQueueItem, type ConflictRecord } from './index';
+import { db, type CachedStudent, type OfflineAttendance, type SyncQueueItem, type ConflictRecord } from './index';
+import api from '@/lib/api/core';
 
 // ============================================
 // CONFIGURATION
@@ -55,12 +56,10 @@ class SyncService {
   private syncInterval: NodeJS.Timeout | null = null;
   private eventListeners: Map<SyncEventType, SyncEventListener[]> = new Map();
   private deviceId: string;
-  private apiBaseUrl: string;
 
   constructor(config: Partial<SyncConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.deviceId = this.generateDeviceId();
-    this.apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
     
     this.setupNetworkListeners();
   }
@@ -134,7 +133,7 @@ class SyncService {
    */
   async addToQueue(
     operation: 'create' | 'update' | 'delete',
-    entity: 'attendance' | 'student' | 'grade' | 'enrollment',
+    entity: SyncQueueItem['entity'],
     entityId: string,
     payload: Record<string, unknown>,
     priority: number = 5
@@ -226,6 +225,88 @@ class SyncService {
     );
 
     return localId;
+  }
+
+  async cacheStudents(students: Array<Partial<CachedStudent> & { id: string }>): Promise<void> {
+    const now = Date.now();
+    await db.students.bulkPut(
+      students.map((student) => ({
+        firstName: '',
+        lastName: '',
+        studentId: student.id,
+        classId: '',
+        enrollmentStatus: 'active',
+        updatedAt: now,
+        ...student,
+        cachedAt: now,
+      } as CachedStudent))
+    );
+  }
+
+  async getCachedStudents(classId: string, sectionId?: string): Promise<CachedStudent[]> {
+    const students = await db.students.where('classId').equals(classId).toArray();
+    return sectionId ? students.filter((student) => student.sectionId === sectionId) : students;
+  }
+
+  async cacheTeacherTimetable(
+    teacherId: string,
+    slots: Record<string, unknown>[],
+    schoolSettings?: Record<string, unknown>,
+  ): Promise<void> {
+    await db.timetables.put({
+      id: `teacher:${teacherId}`,
+      ownerType: 'teacher',
+      ownerId: teacherId,
+      slots,
+      schoolSettings,
+      cachedAt: Date.now(),
+    });
+  }
+
+  async getCachedTeacherTimetable(teacherId: string) {
+    return db.timetables.get(`teacher:${teacherId}`);
+  }
+
+  async saveGradeDraftOffline(payload: Record<string, unknown>): Promise<number> {
+    await db.formDrafts.put({
+      formType: 'grading',
+      formId: String(payload.contextKey || payload.localId || Date.now()),
+      formData: payload,
+      userId: String(payload.userId || ''),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isAutoSaved: false,
+    });
+
+    return this.addToQueue('create', 'grade', String(payload.contextKey || Date.now()), payload, 7);
+  }
+
+  async saveMessageDraftOffline(payload: Record<string, unknown>): Promise<number> {
+    await db.formDrafts.add({
+      formType: 'communication',
+      formId: String(payload.conversationId || payload.localId || Date.now()),
+      formData: payload,
+      userId: String(payload.userId || ''),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isAutoSaved: false,
+    });
+
+    return this.addToQueue('create', 'message', String(payload.localId || Date.now()), payload, 6);
+  }
+
+  async saveAnnouncementDraftOffline(payload: Record<string, unknown>): Promise<number> {
+    await db.formDrafts.add({
+      formType: 'communication',
+      formId: String(payload.localId || Date.now()),
+      formData: payload,
+      userId: String(payload.userId || ''),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isAutoSaved: false,
+    });
+
+    return this.addToQueue('create', 'announcement', String(payload.localId || Date.now()), payload, 5);
   }
 
   /**
@@ -396,6 +477,7 @@ class SyncService {
    * Trigger immediate sync
    */
   async syncNow(): Promise<{ success: boolean; synced: number; failed: number }> {
+    this.isOnline = navigator.onLine;
     if (!this.isOnline || this.isSyncing) {
       return { success: false, synced: 0, failed: 0 };
     }
@@ -468,38 +550,57 @@ class SyncService {
    * Sync individual item
    */
   private async syncItem(item: SyncQueueItem): Promise<void> {
-    const endpoint = `${this.apiBaseUrl}/sync/${item.entity}`;
-    
-    const response = await fetch(endpoint, {
-      method: item.operation === 'delete' ? 'DELETE' : 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Device-ID': this.deviceId
-      },
-      body: JSON.stringify({
+    if (item.entity === 'grade') {
+      await api.post('/grading/teacher/grades/bulk', item.payload, {
+        skipAuthErrorRedirect: true,
+      } as any);
+      return;
+    }
+
+    if (item.entity === 'message') {
+      const conversationId = item.payload.conversationId;
+      const content = item.payload.content;
+      if (!conversationId || !content) {
+        throw new Error('conversationId and content are required to sync message drafts');
+      }
+      await api.post(`/messages/${conversationId}`, { content }, {
+        skipAuthErrorRedirect: true,
+      } as any);
+      return;
+    }
+
+    if (item.entity === 'announcement') {
+      const { localId, userId, ...data } = item.payload;
+      await api.post('/announcements', data, {
+        skipAuthErrorRedirect: true,
+      } as any);
+      return;
+    }
+
+    const response = await api.post(
+      `/api/sync/${item.entity}`,
+      {
         operation: item.operation,
         entityId: item.entityId,
         payload: item.payload,
         localModified: item.createdAt
-      })
-    });
+      },
+      {
+        headers: { 'X-Device-ID': this.deviceId },
+        skipAuthErrorRedirect: true,
+      } as any
+    );
 
-    if (!response.ok) {
-      if (response.status === 409) {
-        // Conflict detected
-        const serverData = await response.json();
-        await this.handleConflict(
-          item.entity,
-          item.entityId,
-          item.payload,
-          serverData.serverVersion
-        );
-        return;
-      }
-      throw new Error(`Sync failed: ${response.statusText}`);
+    const result = response.data;
+    if (result?.success === false && result.serverVersion) {
+      await this.handleConflict(
+        item.entity,
+        item.entityId,
+        item.payload,
+        result.serverVersion
+      );
+      return;
     }
-
-    const result = await response.json();
     
     // Update local record with server ID if needed
     if (item.entity === 'attendance' && item.operation === 'create') {

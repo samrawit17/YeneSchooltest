@@ -7,10 +7,12 @@ import {
   MessagingMessage,
   MessagingParticipant,
 } from "@/lib/api/communications";
+import { syncService } from "@/lib/db/sync-service";
 import { queryKeys } from "@/lib/query-keys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +45,11 @@ export default function MessagesPage() {
   const autoCreateHandledRef = useRef<string | null>(null);
 
   const isStaffUser = !!user?.role && STAFF_ROLES.has(user.role.toUpperCase());
+
+  useEffect(() => {
+    syncService.startAutoSync();
+    return () => syncService.stopAutoSync();
+  }, []);
 
   const conversationsQueryKey = useMemo(
     () => queryKeys.messages.conversations(user?.id, user?.schoolId),
@@ -129,13 +136,24 @@ export default function MessagesPage() {
 
       return { previousMessages, newContent };
     },
-    onError: (err, newContent, context) => {
+    onError: async (err: any, newContent, context) => {
       if (context?.newContent) setDraft(context.newContent);
       if (context?.previousMessages) {
         queryClient.setQueryData(
           queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
           context.previousMessages
         );
+      }
+      const isNetworkError = !navigator.onLine || !err?.response;
+      if (isNetworkError && selectedConversationId && context?.newContent) {
+        await syncService.saveMessageDraftOffline({
+          localId: `message:${selectedConversationId}:${Date.now()}`,
+          conversationId: selectedConversationId,
+          content: context.newContent,
+          userId: user?.id,
+        });
+        setDraft("");
+        toast.success("Message saved offline. It will send when online.");
       }
     },
     onSettled: () => {

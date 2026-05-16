@@ -37,22 +37,34 @@ import {
 export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 
+  private resolveSchoolId(user: any, requestedSchoolId?: string) {
+    return user?.role === Role.SUPER_ADMIN
+      ? requestedSchoolId || user?.schoolId
+      : user?.schoolId;
+  }
+
   @Post('fee-structures')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
-  async createFeeStructure(@Body() dto: CreateFeeStructureDto) {
-    const fs = await this.financeService.createFeeStructure(dto);
+  @Permissions('finance:fee_structure:create')
+  async createFeeStructure(@Body() dto: CreateFeeStructureDto, @Request() req: any) {
+    const fs = await this.financeService.createFeeStructure({
+      ...dto,
+      schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+    });
     return { success: true, data: fs };
   }
 
   @Get('fee-structures')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
+  @Permissions('finance:fee_structure:read')
   async listFeeStructures(
     @Query('schoolId') schoolId: string,
     @Query('academicYearId') academicYearId?: string,
     @Query('termId') termId?: string,
+    @Request() req?: any,
   ) {
     const data = await this.financeService.listFeeStructures(
-      schoolId,
+      this.resolveSchoolId(req?.user, schoolId),
       academicYearId,
       termId,
     );
@@ -66,8 +78,13 @@ export class FinanceController {
     @Param('id') id: string,
     @Body('schoolId') schoolId: string,
     @Body() dto: UpdateFeeStructureDto,
+    @Request() req: any,
   ) {
-    const fs = await this.financeService.updateFeeStructure(id, schoolId, dto);
+    const fs = await this.financeService.updateFeeStructure(
+      id,
+      this.resolveSchoolId(req.user, schoolId),
+      dto,
+    );
     return { success: true, data: fs };
   }
 
@@ -77,23 +94,33 @@ export class FinanceController {
   async deleteFeeStructure(
     @Param('id') id: string,
     @Query('schoolId') schoolId: string,
+    @Request() req: any,
   ) {
-    const fs = await this.financeService.deleteFeeStructure(id, schoolId);
+    const fs = await this.financeService.deleteFeeStructure(
+      id,
+      this.resolveSchoolId(req.user, schoolId),
+    );
     return { success: true, data: fs };
   }
 
   @Post('student-fees/generate')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.FINANCE)
-  async generateStudentFees(@Body() dto: GenerateStudentFeesDto) {
-    const result = await this.financeService.generateStudentFees(dto);
+  @Permissions('finance:student_fees:generate')
+  async generateStudentFees(@Body() dto: GenerateStudentFeesDto, @Request() req: any) {
+    const result = await this.financeService.generateStudentFees({
+      ...dto,
+      schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+    });
     return { success: true, ...result };
   }
 
   @Get('student-fees')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE, Role.REGISTRAR)
-  async listStudentFees(@Query() query: StudentFeesQueryDto) {
+  @Permissions('finance:student_fees:read')
+  async listStudentFees(@Query() query: StudentFeesQueryDto, @Request() req: any) {
     const result = await this.financeService.getStudentFees({
       ...query,
+      schoolId: this.resolveSchoolId(req.user, query.schoolId),
       page: query.page ?? 1,
       limit: query.limit ?? 20,
     });
@@ -128,7 +155,7 @@ export class FinanceController {
     try {
       const result = await this.financeService.reversePayment(
         req.user,
-        body.schoolId,
+        this.resolveSchoolId(req.user, body.schoolId),
         paymentId,
         body.reason,
       );
@@ -143,12 +170,14 @@ export class FinanceController {
   @Post('reminders/period-fees')
   @HttpCode(HttpStatus.OK)
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
+  @Permissions('finance:student_fees:read')
   async sendPeriodFeeReminders(
     @Body() body: { schoolId: string; termId: string },
+    @Request() req: any,
   ) {
     try {
       const result = await this.financeService.sendPeriodFeeReminders(
-        body.schoolId,
+        this.resolveSchoolId(req.user, body.schoolId),
         body.termId,
       );
       return { success: true, ...result };
@@ -162,15 +191,21 @@ export class FinanceController {
   @Get('reports/daily')
   @Roles(Role.FINANCE, Role.ADMIN, Role.IT_MANAGER)
   @Permissions('finance:reports:read')
-  async dailyReport(@Query() query: ReportQueryDto) {
-    const result = await this.financeService.dailyCollectionReport(query);
+  async dailyReport(@Query() query: ReportQueryDto, @Request() req: any) {
+    const result = await this.financeService.dailyCollectionReport({
+      ...query,
+      schoolId: this.resolveSchoolId(req.user, query.schoolId),
+    });
     return { success: true, ...result };
   }
 
   @Get('payments')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE, Role.REGISTRAR)
-  async getAllPayments(@Query('schoolId') schoolId: string) {
-    const result = await this.financeService.getAllPayments(schoolId);
+  @Permissions('finance:reports:read')
+  async getAllPayments(@Query('schoolId') schoolId: string, @Request() req: any) {
+    const result = await this.financeService.getAllPayments(
+      this.resolveSchoolId(req.user, schoolId),
+    );
     return { success: true, ...result };
   }
 
@@ -181,9 +216,10 @@ export class FinanceController {
     @Query('schoolId') schoolId: string,
     @Query('month') month: string,
     @Query('year') year: string,
+    @Request() req: any,
   ) {
     const result = await this.financeService.monthlyRevenueReport(
-      schoolId,
+      this.resolveSchoolId(req.user, schoolId),
       Number(month),
       Number(year),
     );
@@ -197,9 +233,10 @@ export class FinanceController {
     @Query('schoolId') schoolId: string,
     @Query('academicYearId') academicYearId: string,
     @Query('termId') termId?: string,
+    @Request() req?: any,
   ) {
     const result = await this.financeService.outstandingBalancesReport(
-      schoolId,
+      this.resolveSchoolId(req?.user, schoolId),
       academicYearId,
       termId,
     );
@@ -208,12 +245,13 @@ export class FinanceController {
 
   @Post('fees/mark-overdue')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
-  @Permissions('finance:fees:update')
+  @Permissions('finance:student_fees:generate')
   async markOverdue(
     @Body() body: { schoolId: string; academicYearId: string; termId?: string },
+    @Request() req: any,
   ) {
     const result = await this.financeService.markOverdueFees(
-      body.schoolId,
+      this.resolveSchoolId(req.user, body.schoolId),
       body.academicYearId,
       body.termId,
     );
@@ -227,9 +265,10 @@ export class FinanceController {
     @Query('schoolId') schoolId: string,
     @Query('academicYearId') academicYearId: string,
     @Query('termId') termId?: string,
+    @Request() req?: any,
   ) {
     const result = await this.financeService.getOverdueFeesReport(
-      schoolId,
+      this.resolveSchoolId(req?.user, schoolId),
       academicYearId,
       termId,
     );
@@ -244,9 +283,10 @@ export class FinanceController {
     @Query('entityType') entityType?: string,
     @Query('entityId') entityId?: string,
     @Query('limit') limit?: number,
+    @Request() req?: any,
   ) {
     const result = await this.financeService.getAuditLogs(
-      schoolId,
+      this.resolveSchoolId(req?.user, schoolId),
       entityType,
       entityId,
       limit ? Number(limit) : undefined,
@@ -260,9 +300,10 @@ export class FinanceController {
   async studentHistory(
     @Param('studentId') studentId: string,
     @Query('schoolId') schoolId: string,
+    @Request() req?: any,
   ) {
     const result = await this.financeService.paymentHistoryForStudent(
-      schoolId,
+      this.resolveSchoolId(req?.user, schoolId),
       studentId,
     );
     return { success: true, ...result };
@@ -287,13 +328,14 @@ export class FinanceController {
     @Query('termId') termId?: string,
     @Request() req?: any,
   ) {
+    const effectiveSchoolId = this.resolveSchoolId(req?.user, schoolId);
     await this.financeService.assertStudentFeeSummaryAccess(
       req?.user,
-      schoolId,
+      effectiveSchoolId,
       studentId,
     );
     const result = await this.financeService.getStudentFeeSummary(
-      schoolId,
+      effectiveSchoolId,
       studentId,
       academicYearId,
       termId,
@@ -308,9 +350,10 @@ export class FinanceController {
   async getCurriculumInfo(
     @Query('schoolId') schoolId: string,
     @Query('academicYearId') academicYearId: string,
+    @Request() req?: any,
   ) {
     const result = await this.financeService.getCurriculumInfo(
-      schoolId,
+      this.resolveSchoolId(req?.user, schoolId),
       academicYearId,
     );
     return { success: true, ...result };
@@ -327,8 +370,14 @@ export class FinanceController {
   @Post('fee-calculation/installments')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:create')
-  async calculateInstallmentFees(@Body() dto: CalculateInstallmentFeesDto) {
-    const result = await this.financeService.calculateInstallmentFees(dto);
+  async calculateInstallmentFees(
+    @Body() dto: CalculateInstallmentFeesDto,
+    @Request() req: any,
+  ) {
+    const result = await this.financeService.calculateInstallmentFees({
+      ...dto,
+      schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+    });
     return { success: true, ...result };
   }
 
@@ -339,8 +388,14 @@ export class FinanceController {
   @Post('fee-structures/generate-installments')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:create')
-  async generateInstallmentFees(@Body() dto: GenerateInstallmentFeesDto) {
-    const result = await this.financeService.generateInstallmentFees(dto);
+  async generateInstallmentFees(
+    @Body() dto: GenerateInstallmentFeesDto,
+    @Request() req: any,
+  ) {
+    const result = await this.financeService.generateInstallmentFees({
+      ...dto,
+      schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+    });
     return { success: true, ...result };
   }
 
@@ -350,9 +405,14 @@ export class FinanceController {
   @Get('fee-collection-mode')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:read')
-  async getFeeCollectionMode(@Query('schoolId') schoolId: string) {
+  async getFeeCollectionMode(
+    @Query('schoolId') schoolId: string,
+    @Request() req: any,
+  ) {
     const feeCollectionMode =
-      await this.financeService.getFeeCollectionMode(schoolId);
+      await this.financeService.getFeeCollectionMode(
+        this.resolveSchoolId(req.user, schoolId),
+      );
     const modeLabels: Record<string, string> = {
       MONTHLY: 'Monthly',
       QUARTERLY: 'Quarterly',

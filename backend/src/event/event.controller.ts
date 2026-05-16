@@ -90,8 +90,12 @@ export class EventController {
 
   @Get(':id')
   @Permissions('event:read')
-  async findOne(@Param('id') id: string) {
-    return this.eventService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) {
+      return { success: false, message: 'School ID is required' };
+    }
+    return this.eventService.findOne(id, schoolId);
   }
 
   @Put(':id')

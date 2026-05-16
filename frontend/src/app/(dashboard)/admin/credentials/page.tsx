@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { credentialsAPI, PendingCredential, CredentialStats } from '@/lib/api/admin';
+import { authAPI, userAPI } from '@/lib/api/auth';
+import type { User } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +28,11 @@ import {
   GraduationCap,
   BookOpen,
   UserCheck,
-  Loader2
+  Loader2,
+  Search,
+  ShieldAlert,
+  EyeOff,
+  Pencil
 } from 'lucide-react';
 
 const roleIcons: Record<string, React.ReactNode> = {
@@ -61,6 +67,22 @@ export default function CredentialsPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedCredential, setSelectedCredential] = useState<PendingCredential | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Reset password dialog
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [resettingUserId, setResettingUserId] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<{ user: User; tempPassword: string } | null>(null);
+  const [temporaryPassword, setTemporaryPassword] = useState('');
+  const [selectedResetUser, setSelectedResetUser] = useState<User | null>(null);
+
+  const selectResetUser = (user: User) => {
+    setSelectedResetUser(user);
+    setSearchResults([user]);
+    setUserSearch(user.name || user.username || user.email || '');
+  };
 
   useEffect(() => {
     loadData(false);
@@ -151,6 +173,108 @@ export default function CredentialsPage() {
     setViewDialogOpen(true);
   };
 
+  const handleSearchUsers = async () => {
+    const search = userSearch.trim();
+    if (!search) {
+      setSearchResults([]);
+      setSelectedResetUser(null);
+      return;
+    }
+    if (selectedResetUser && search === (selectedResetUser.name || selectedResetUser.username || selectedResetUser.email || '')) {
+      return;
+    }
+    setSearchingUsers(true);
+    try {
+      const res = await authAPI.getUsers({ search, limit: 20 });
+      setSearchResults(Array.isArray(res.data) ? res.data : res.data?.data || []);
+    } catch {
+      toast.error('Failed to search users');
+    } finally {
+      setSearchingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!resetDialogOpen || resetResult) return;
+
+    const search = userSearch.trim();
+    if (!search) {
+      setSearchResults([]);
+      setSelectedResetUser(null);
+      setSearchingUsers(false);
+      return;
+    }
+    if (selectedResetUser && search !== (selectedResetUser.name || selectedResetUser.username || selectedResetUser.email || '')) {
+      setSelectedResetUser(null);
+    }
+
+    const timer = setTimeout(() => {
+      handleSearchUsers();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [userSearch, resetDialogOpen, resetResult]);
+
+  const handleResetUserPassword = async (user: User) => {
+    const nextPassword = temporaryPassword.trim();
+    if (!nextPassword) {
+      toast.error('Enter a temporary password first');
+      return;
+    }
+
+    setResettingUserId(user.id);
+    try {
+      const res = await userAPI.adminResetUserPassword(user.id, nextPassword);
+      setResetResult({ user, tempPassword: res.data.temporaryPassword });
+      toast.success('Password reset successfully');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setResettingUserId(null);
+    }
+  };
+
+  const openResetDialog = () => {
+    setResetDialogOpen(true);
+    setUserSearch('');
+    setSearchResults([]);
+    setSelectedResetUser(null);
+    setResetResult(null);
+    setTemporaryPassword('');
+  };
+
+  const openResetDialogForCredential = (credential: PendingCredential) => {
+    if (!credential.userId) {
+      toast.error('This credential is not linked to an active user account');
+      return;
+    }
+
+    setResetDialogOpen(true);
+    setUserSearch(credential.username);
+    setSearchResults([
+      {
+        id: credential.userId,
+        email: credential.email || '',
+        username: credential.username,
+        name: credential.name,
+        role: credential.role as User['role'],
+        schoolId: credential.schoolId,
+      },
+    ]);
+    const resetUser = {
+      id: credential.userId,
+      email: credential.email || '',
+      username: credential.username,
+      name: credential.name,
+      role: credential.role as User['role'],
+      schoolId: credential.schoolId,
+    };
+    setSelectedResetUser(resetUser);
+    setSearchResults([resetUser]);
+    setResetResult(null);
+    setTemporaryPassword('');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
       <div className="w-full space-y-6">
@@ -160,10 +284,16 @@ export default function CredentialsPage() {
             <h1 className="text-2xl font-bold text-black dark:text-white">Credentials Management</h1>
             <p className="text-gray-500">View and manage generated user credentials</p>
           </div>
-          <Button onClick={() => loadData(false)} variant="outline">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={openResetDialog} variant="outline">
+              <ShieldAlert className="w-4 h-4 mr-2" />
+              Reset Password
+            </Button>
+            <Button onClick={() => loadData(false)} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
 
@@ -273,6 +403,15 @@ export default function CredentialsPage() {
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="sm" onClick={() => viewCredential(cred)}>
                               <Key className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openResetDialogForCredential(cred)}
+                              disabled={actionLoading}
+                              title="Edit password"
+                            >
+                              <Pencil className="w-4 h-4 text-blue-500" />
                             </Button>
                             {!cred.isSent && (
                               <Button 
@@ -416,6 +555,155 @@ export default function CredentialsPage() {
               Close
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent className="max-w-lg dark:bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="dark:text-white">Reset User Password</DialogTitle>
+          </DialogHeader>
+
+          {resetResult ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-green-800 dark:text-green-300">Password Reset Successfully</p>
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    User: {resetResult.user.name} ({resetResult.user.email || resetResult.user.username})
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4 space-y-3">
+                <div>
+                  <Label className="text-gray-500 dark:text-gray-400">Username</Label>
+                  <code className="block mt-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white">
+                    {resetResult.user.username || resetResult.user.email}
+                  </code>
+                </div>
+                <div>
+                  <Label className="text-gray-500 dark:text-gray-400">Temporary Password</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white font-mono text-lg">
+                      {resetResult.tempPassword}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(resetResult.tempPassword, 'Password')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                    <EyeOff className="w-3 h-3" />
+                    This password will only be shown once. Copy it now.
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button onClick={() => { setResetDialogOpen(false); setResetResult(null); }}>
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="user-search" className="dark:text-gray-300">Search User</Label>
+                <div className="relative">
+                  {searchingUsers ? (
+                    <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
+                  ) : (
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  )}
+                  <Input
+                    id="user-search"
+                    placeholder="Search by name, email, or username..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="temporary-password" className="dark:text-gray-300">New Temporary Password</Label>
+                <Input
+                  id="temporary-password"
+                  type="text"
+                  placeholder="Enter the password to assign"
+                  value={temporaryPassword}
+                  onChange={(e) => setTemporaryPassword(e.target.value)}
+                  className="font-mono dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  This overwrites the user's current password and forces a password change on next login.
+                </p>
+              </div>
+
+              {searchResults.length > 0 && (
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {searchResults.map((user) => (
+                    <button
+                      type="button"
+                      key={user.id}
+                      onClick={() => selectResetUser(user)}
+                      className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors dark:border-slate-700 ${
+                        selectedResetUser?.id === user.id
+                          ? 'border-[var(--brand-color,#e35336)] bg-[rgba(var(--brand-color-rgb),0.10)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]'
+                          : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm dark:text-white truncate">{user.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {user.username || user.email} &middot; {user.role}
+                        </p>
+                      </div>
+                      <span className="ml-3 text-xs font-semibold text-[var(--brand-color,#e35336)]">
+                        {selectedResetUser?.id === user.id ? 'Selected' : 'Select'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {selectedResetUser && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800/60">
+                  <p className="font-medium text-slate-900 dark:text-white">{selectedResetUser.name}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {selectedResetUser.username || selectedResetUser.email} &middot; {selectedResetUser.role}
+                  </p>
+                </div>
+              )}
+
+              {searchResults.length === 0 && userSearch.trim() && !searchingUsers && (
+                <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                  No users found. Try a different search term.
+                </p>
+              )}
+
+              <DialogFooter>
+                <Button variant="secondary" onClick={() => setResetDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => selectedResetUser && handleResetUserPassword(selectedResetUser)}
+                  disabled={!selectedResetUser || !temporaryPassword.trim() || resettingUserId === selectedResetUser?.id}
+                >
+                  {resettingUserId === selectedResetUser?.id ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : null}
+                  Reset Password
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

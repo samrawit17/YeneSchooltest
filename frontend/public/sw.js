@@ -22,12 +22,13 @@ self.addEventListener('push', function (event) {
         }
       });
 
+      const isImportantAlert = data.type === 'SIREN_ALERT' || data.type === 'ATTENDANCE_ABSENT';
       const options = {
         body: data.body,
         icon: data.icon || '/avatar.svg',
         badge: data.badge || '/avatar.svg',
         vibrate: data.type === 'SIREN_ALERT' ? [300, 150, 300, 150, 300] : [100, 50, 100],
-        requireInteraction: data.type === 'SIREN_ALERT',
+        requireInteraction: isImportantAlert,
         data: {
           dateOfArrival: Date.now(),
           url: data.url || '/',

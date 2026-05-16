@@ -24,6 +24,8 @@ export interface BulkUploadDto {
   academicYear?: string;
 }
 
+const MAX_STUDENT_BULK_UPLOAD_ROWS = 50;
+
 @Controller('bulk-upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class BulkUploadController {
@@ -43,7 +45,11 @@ export class BulkUploadController {
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
     const content = file.buffer.toString('utf-8');
-    const records = this.bulkUploadService.parseCSV(content);
+    const records = this.bulkUploadService.parseCSV(content).map((record) => ({
+      ...record,
+      email: undefined,
+      student_email: undefined,
+    }));
 
     const result = await this.bulkUploadService.processBulkStaff(
       req.user.schoolId,
@@ -70,6 +76,11 @@ export class BulkUploadController {
     if (!file) throw new BadRequestException('No file uploaded');
     const content = file.buffer.toString('utf-8');
     const records = this.bulkUploadService.parseCSV(content);
+    if (records.length > MAX_STUDENT_BULK_UPLOAD_ROWS) {
+      throw new BadRequestException(
+        `Bulk student upload is limited to ${MAX_STUDENT_BULK_UPLOAD_ROWS} students per upload. Your file has ${records.length} students.`,
+      );
+    }
 
     const result =
       await this.bulkUploadService.processBulkStudentsWithAssignment(
@@ -119,7 +130,7 @@ export class BulkUploadController {
     if (type === 'staff') {
       template = `full_name,email,phone,role\nAli Ahmed,ali@example.com,0911111111,teacher\nAbebe Tesfaye,abebe@example.com,0922222222,finance\nRegistrar User,reg@example.com,0944444444,registrar`;
     } else if (type === 'students-auto') {
-      template = `first_name,middle_name,last_name,student_code,roll_number,email,phone,gender,current_class,section,parent_name,parent_phone,parent_email,relation\nStudentFirstName,MiddleName,LastName,STU-001,1,student@example.com,0911111111,MALE,9,A,ParentFullName,0922222222,parent@example.com,Father`;
+      template = `first_name,middle_name,last_name,student_code,roll_number,phone,gender,current_class,section,parent_name,parent_phone,relation\nStudentFirstName,MiddleName,LastName,STU-001,1,0911111111,MALE,9,A,ParentFullName,0922222222,Father`;
     } else {
       template = `first_name,middle_name,last_name,email,phone,gender,current_class,gender,next_class\nAli,Ahmed,Tesfaye,,0911111111,MALE,9,10`;
     }
@@ -158,10 +169,12 @@ export class BulkUploadController {
   @Post('credentials/:id/mark-sent')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.REGISTRAR)
   async markCredentialSent(
+    @Request() req: any,
     @Param('id') id: string,
     @Body() body: { sentVia?: string },
   ) {
     const credential = await this.bulkUploadService.markCredentialSent(
+      req.user.schoolId,
       id,
       body.sentVia || 'EMAIL',
     );
@@ -177,8 +190,8 @@ export class BulkUploadController {
    */
   @Post('credentials/:id/delete')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.REGISTRAR)
-  async deleteCredential(@Param('id') id: string) {
-    await this.bulkUploadService.deletePendingCredential(id);
+  async deleteCredential(@Request() req: any, @Param('id') id: string) {
+    await this.bulkUploadService.deletePendingCredential(id, req.user.schoolId);
     return { status: 'success', message: 'Credential deleted successfully' };
   }
 

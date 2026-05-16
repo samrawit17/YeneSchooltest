@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Save, Eye, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Eye, Loader2, Save, Settings2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { templatesAPI } from "@/lib/api/templates";
@@ -17,6 +17,18 @@ type CertificateTemplateForm = {
   schoolPhone: string;
   schoolAddress: string;
   schoolLogoUrl: string;
+  headerLeftText: string;
+  headerCenterText: string;
+  headerRightText: string;
+  bodyText: string;
+  footerLeftText: string;
+  footerCenterText: string;
+  footerRightText: string;
+  headerHeight: number;
+  bodyHeight: number;
+  footerHeight: number;
+  bodyWidth: number;
+  showStudentPhoto: boolean;
 };
 type FieldMapRow = {
   field_key: string;
@@ -35,6 +47,70 @@ const defaultForm: CertificateTemplateForm = {
   schoolPhone: "",
   schoolAddress: "",
   schoolLogoUrl: "",
+  headerLeftText: "{{school_name}}",
+  headerCenterText: "{{title}}",
+  headerRightText: "Date: {{issue_date}}",
+  bodyText:
+    "This is to certify that {{student_name}} of {{class}} has successfully completed {{term}} in {{academic_year}} with total marks {{total_marks}} and rank {{rank}}.",
+  footerLeftText: "{{school_address}}",
+  footerCenterText: "",
+  footerRightText: "Principal: {{principal_name}}",
+  headerHeight: 18,
+  bodyHeight: 58,
+  footerHeight: 16,
+  bodyWidth: 82,
+  showStudentPhoto: false,
+};
+
+const placeholderGroups = [
+  {
+    label: "Student",
+    tokens: ["{{student_name}}", "{{class}}", "{{section}}"],
+  },
+  {
+    label: "Result",
+    tokens: ["{{academic_year}}", "{{term}}", "{{total_marks}}", "{{percentage}}", "{{grade}}", "{{rank}}"],
+  },
+  {
+    label: "School",
+    tokens: ["{{school_name}}", "{{school_address}}", "{{school_phone}}", "{{principal_name}}"],
+  },
+  {
+    label: "Document",
+    tokens: ["{{issue_date}}", "{{cert_id}}"],
+  },
+];
+
+const resultCertificatePreset: Pick<
+  CertificateTemplateForm,
+  | "title"
+  | "headerLeftText"
+  | "headerCenterText"
+  | "headerRightText"
+  | "bodyText"
+  | "footerLeftText"
+  | "footerCenterText"
+  | "footerRightText"
+  | "headerHeight"
+  | "bodyHeight"
+  | "footerHeight"
+  | "bodyWidth"
+  | "showStudentPhoto"
+> = {
+  title: "Certificate of Academic Achievement",
+  headerLeftText: "{{school_name}}",
+  headerCenterText: "Certificate of Academic Achievement",
+  headerRightText: "Issued: {{issue_date}}",
+  bodyText:
+    "This certificate is proudly presented to {{student_name}}, a student of {{class}} Section {{section}}, for successful completion of {{term}} in the {{academic_year}} academic year.\n\nThe student achieved {{total_marks}} total marks, {{percentage}} overall percentage, grade {{grade}}, and class rank {{rank}}.\n\nThis certificate is issued as an official academic record of achievement.",
+  footerLeftText: "{{school_address}}",
+  footerCenterText: "Certificate ID: {{cert_id}}",
+  footerRightText: "Principal: {{principal_name}}",
+  headerHeight: 18,
+  bodyHeight: 58,
+  footerHeight: 14,
+  bodyWidth: 76,
+  showStudentPhoto: true,
 };
 
 export default function CertificateTemplatePage() {
@@ -46,6 +122,8 @@ export default function CertificateTemplatePage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [templateRecordId, setTemplateRecordId] = useState<string>("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [placeholdersOpen, setPlaceholdersOpen] = useState(false);
   const [fieldMap, setFieldMap] = useState<FieldMapRow[]>([
     { field_key: "school_logo", x_percent: 12, y_percent: 14, font_size: 10, width_percent: 10, height_percent: 14 },
     { field_key: "student_name", x_percent: 12, y_percent: 34, font_size: 14 },
@@ -61,6 +139,8 @@ export default function CertificateTemplatePage() {
     setMounted(true);
   }, []);
 
+  const isPdfTemplate = form.templateBackgroundUrl.toLowerCase().endsWith(".pdf");
+
   const sampleFieldValue = (fieldKey: string) => {
     switch (fieldKey) {
       case "student_name":
@@ -74,6 +154,10 @@ export default function CertificateTemplatePage() {
         return "Term 2";
       case "total_marks":
         return "487";
+      case "percentage":
+        return "91.5%";
+      case "grade":
+        return "A";
       case "ranking":
       case "rank":
         return "3";
@@ -85,9 +169,38 @@ export default function CertificateTemplatePage() {
         return form.schoolPhone || "School Phone";
       case "title":
         return form.title || "Student Result Certificate";
+      case "principal_name":
+        return form.principalName || "Principal Name";
+      case "issue_date":
+        return new Date().toISOString().slice(0, 10);
+      case "section":
+        return "A";
+      case "cert_id":
+        return "CERT-0001";
       default:
         return "";
     }
+  };
+
+  const renderSampleText = (value: string) =>
+    value.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_, key) => sampleFieldValue(key) || `{{${key}}}`);
+
+  const applyResultCertificatePreset = () => {
+    setForm((prev) => ({
+      ...prev,
+      ...resultCertificatePreset,
+    }));
+    setFieldMap([
+      { field_key: "school_logo", x_percent: 8, y_percent: 8, font_size: 10, width_percent: 9, height_percent: 12 },
+      { field_key: "student_name", x_percent: 42, y_percent: 38, font_size: 16 },
+      { field_key: "class", x_percent: 42, y_percent: 44, font_size: 11 },
+      { field_key: "academic_year", x_percent: 42, y_percent: 49, font_size: 11 },
+      { field_key: "term", x_percent: 42, y_percent: 54, font_size: 11 },
+      { field_key: "total_marks", x_percent: 42, y_percent: 59, font_size: 11 },
+      { field_key: "ranking", x_percent: 58, y_percent: 59, font_size: 11 },
+      { field_key: "marks_table", x_percent: 16, y_percent: 66, font_size: 10, width_percent: 68, height_percent: 20 },
+    ]);
+    toast.success("Result certificate design applied");
   };
 
   useEffect(() => {
@@ -130,6 +243,18 @@ export default function CertificateTemplatePage() {
             schoolPhone: kv.schoolPhone || school?.phone || "",
             schoolAddress: kv.schoolAddress || school?.address || "",
             schoolLogoUrl: kv.schoolLogoUrl || school?.logoUrl || "",
+            headerLeftText: kv.headerLeftText || defaultForm.headerLeftText,
+            headerCenterText: kv.headerCenterText || defaultForm.headerCenterText,
+            headerRightText: kv.headerRightText || defaultForm.headerRightText,
+            bodyText: kv.bodyText || defaultForm.bodyText,
+            footerLeftText: kv.footerLeftText || defaultForm.footerLeftText,
+            footerCenterText: kv.footerCenterText || defaultForm.footerCenterText,
+            footerRightText: kv.footerRightText || defaultForm.footerRightText,
+            headerHeight: Number(kv.headerHeight || defaultForm.headerHeight),
+            bodyHeight: Number(kv.bodyHeight || defaultForm.bodyHeight),
+            footerHeight: Number(kv.footerHeight || defaultForm.footerHeight),
+            bodyWidth: Number(kv.bodyWidth || defaultForm.bodyWidth),
+            showStudentPhoto: kv.showStudentPhoto === "true",
           });
         } else {
           setForm({
@@ -170,6 +295,18 @@ export default function CertificateTemplatePage() {
         { field_key: "schoolPhone", value: form.schoolPhone },
         { field_key: "schoolAddress", value: form.schoolAddress },
         { field_key: "schoolLogoUrl", value: form.schoolLogoUrl },
+        { field_key: "headerLeftText", value: form.headerLeftText },
+        { field_key: "headerCenterText", value: form.headerCenterText },
+        { field_key: "headerRightText", value: form.headerRightText },
+        { field_key: "bodyText", value: form.bodyText },
+        { field_key: "footerLeftText", value: form.footerLeftText },
+        { field_key: "footerCenterText", value: form.footerCenterText },
+        { field_key: "footerRightText", value: form.footerRightText },
+        { field_key: "headerHeight", value: String(form.headerHeight) },
+        { field_key: "bodyHeight", value: String(form.bodyHeight) },
+        { field_key: "footerHeight", value: String(form.footerHeight) },
+        { field_key: "bodyWidth", value: String(form.bodyWidth) },
+        { field_key: "showStudentPhoto", value: String(form.showStudentPhoto) },
         ...fieldMap.map((f) => ({
           field_key: f.field_key,
           x_percent: f.x_percent,
@@ -215,7 +352,7 @@ export default function CertificateTemplatePage() {
               Certificate Template
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Set school branding fields for printed certificates.
+              Configure the reusable certificate text, placeholders, and print template.
             </p>
           </div>
           <button
@@ -230,114 +367,238 @@ export default function CertificateTemplatePage() {
 
       <div className="p-4 sm:p-6">
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Certificate Title</span>
-              <input
-                value={form.title}
-                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
-              />
-            </label>
-
-            <label className="space-y-1 md:col-span-2">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Template Background URL</span>
-              <div className="flex flex-col gap-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Certificate Title</span>
                 <input
-                  value={form.templateBackgroundUrl}
-                  readOnly
-                  className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
-                  placeholder="Select an active certificate template in Template Manager"
+                  value={form.title}
+                  onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
                 />
-                <button
-                  type="button"
-                  onClick={() => router.push("/admin/templates")}
-                  className="inline-flex items-center justify-center gap-2 self-start rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-700 dark:text-slate-200"
-                >
-                  Manage Templates
-                </button>
+              </label>
+
+              <div className="space-y-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Active Template</span>
+                <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-800">
+                  <p className="truncate text-slate-700 dark:text-slate-200">
+                    {form.templateBackgroundUrl || "No active template selected"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/admin/templates")}
+                    className="mt-2 text-xs font-medium text-[var(--brand-color,#e35336)]"
+                  >
+                    Manage uploaded templates
+                  </button>
+                </div>
               </div>
-              {form.templateBackgroundUrl && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Current template: {form.templateBackgroundUrl}
-                </p>
-              )}
-            </label>
 
-            <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">School Name</span>
-              <input
-                value={form.schoolName}
-                onChange={(e) => setForm((prev) => ({ ...prev, schoolName: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
-              />
-            </label>
-
-            <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">School Phone</span>
-              <input
-                value={form.schoolPhone}
-                onChange={(e) => setForm((prev) => ({ ...prev, schoolPhone: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
-              />
-            </label>
-
-            <label className="space-y-1 md:col-span-2">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">School Address</span>
-              <input
-                value={form.schoolAddress}
-                onChange={(e) => setForm((prev) => ({ ...prev, schoolAddress: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
-              />
-            </label>
-
-            <label className="space-y-1 md:col-span-2">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">School Logo</span>
-              <div className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-sm text-slate-600 dark:text-slate-300">
-                {form.schoolLogoUrl ? (
-                  <div className="flex items-center gap-3">
-                    <img src={form.schoolLogoUrl} alt="School logo" className="h-10 w-10 rounded object-contain bg-white" />
-                    <span>Using logo from School Settings</span>
-                  </div>
-                ) : (
-                  <span>No school logo uploaded yet. Upload it from School Settings.</span>
-                )}
+              <div className="lg:col-span-2 grid grid-cols-1 gap-3 md:grid-cols-4">
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-xs text-slate-500">School</p>
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{form.schoolName || "Not set"}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-xs text-slate-500">Phone</p>
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{form.schoolPhone || "Not set"}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-xs text-slate-500">Principal</p>
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{form.principalName || "Optional"}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-xs text-slate-500">Logo</p>
+                  <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{form.schoolLogoUrl ? "From school settings" : "Not uploaded"}</p>
+                </div>
               </div>
-            </label>
-
-            <label className="space-y-1 md:col-span-2">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Principal Name (optional)</span>
-              <input
-                value={form.principalName}
-                onChange={(e) => setForm((prev) => ({ ...prev, principalName: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
-              />
-            </label>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Field Placement</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Use percentage of template size: `Left` = horizontal position, `Top` = vertical position, `Font` = text size.
-            </p>
-            <div className="hidden md:grid grid-cols-6 gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400 px-1">
-              <span>Field Name</span>
-              <span>Left (%)</span>
-              <span>Top (%)</span>
-              <span>Font Size (px)</span>
-              <span>Width (%)</span>
-              <span>Height (%)</span>
-            </div>
-            {fieldMap.map((row, idx) => (
-              <div key={row.field_key} className="grid grid-cols-1 md:grid-cols-6 gap-2">
-                <input value={row.field_key} readOnly className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-sm" />
-                <input type="number" min={0} max={100} value={row.x_percent} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, x_percent: Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Left (%)" />
-                <input type="number" min={0} max={100} value={row.y_percent} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, y_percent: Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Top (%)" />
-                <input type="number" min={8} max={36} value={row.font_size} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, font_size: Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Font Size (px)" />
-                <input type="number" min={0} max={100} value={row.width_percent ?? ""} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, width_percent: e.target.value === "" ? undefined : Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Width (%)" />
-                <input type="number" min={0} max={100} value={row.height_percent ?? ""} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, height_percent: e.target.value === "" ? undefined : Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Height (%)" />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Certificate Content</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Configure the readable certificate text. Use placeholders only when you need dynamic student or school data.
+                </p>
               </div>
-            ))}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPlaceholdersOpen((value) => !value)}
+                  className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  Placeholders
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${placeholdersOpen ? "rotate-180" : ""}`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={applyResultCertificatePreset}
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  Use Result Design
+                </button>
+              </div>
+            </div>
+
+            {placeholdersOpen && (
+              <div className="mb-4 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {placeholderGroups.map((group) => (
+                    <div key={group.label}>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{group.label}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {group.tokens.map((placeholder) => (
+                          <code
+                            key={placeholder}
+                            className="rounded border border-slate-200 bg-slate-50 px-1.5 py-1 text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                          >
+                            {placeholder}
+                          </code>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Header Left</span>
+                <input
+                  value={form.headerLeftText}
+                  onChange={(e) => setForm((prev) => ({ ...prev, headerLeftText: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Header Center</span>
+                <input
+                  value={form.headerCenterText}
+                  onChange={(e) => setForm((prev) => ({ ...prev, headerCenterText: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Header Right</span>
+                <input
+                  value={form.headerRightText}
+                  onChange={(e) => setForm((prev) => ({ ...prev, headerRightText: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
+                />
+              </label>
+
+              <label className="space-y-1 md:col-span-3">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Body Text</span>
+                <textarea
+                  value={form.bodyText}
+                  onChange={(e) => setForm((prev) => ({ ...prev, bodyText: e.target.value }))}
+                  rows={5}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Footer Left</span>
+                <input
+                  value={form.footerLeftText}
+                  onChange={(e) => setForm((prev) => ({ ...prev, footerLeftText: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Footer Center</span>
+                <input
+                  value={form.footerCenterText}
+                  onChange={(e) => setForm((prev) => ({ ...prev, footerCenterText: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Footer Right</span>
+                <input
+                  value={form.footerRightText}
+                  onChange={(e) => setForm((prev) => ({ ...prev, footerRightText: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
+                />
+              </label>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+              {[
+                ["Header Height", "headerHeight"],
+                ["Body Height", "bodyHeight"],
+                ["Footer Height", "footerHeight"],
+                ["Body Width", "bodyWidth"],
+              ].map(([label, key]) => (
+                <label key={key} className="space-y-1">
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{label} (%)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={form[key as "headerHeight" | "bodyHeight" | "footerHeight" | "bodyWidth"]}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        [key]: Number(e.target.value),
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm"
+                  />
+                </label>
+              ))}
+              <label className="flex items-end gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+                <input
+                  type="checkbox"
+                  checked={form.showStudentPhoto}
+                  onChange={(e) => setForm((prev) => ({ ...prev, showStudentPhoto: e.target.checked }))}
+                  className="mb-1"
+                />
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-200">Show Student Photo</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen((value) => !value)}
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <Settings2 className="h-4 w-4" />
+                Advanced Field Placement
+              </span>
+              <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+            </button>
+            {advancedOpen && (
+              <div className="space-y-2 border-t border-slate-200 p-4 dark:border-slate-700">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Use this only when an uploaded PDF/image template needs exact x/y field positions.
+                </p>
+                <div className="hidden md:grid grid-cols-6 gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400 px-1">
+                  <span>Field Name</span>
+                  <span>Left (%)</span>
+                  <span>Top (%)</span>
+                  <span>Font Size (px)</span>
+                  <span>Width (%)</span>
+                  <span>Height (%)</span>
+                </div>
+                {fieldMap.map((row, idx) => (
+                  <div key={row.field_key} className="grid grid-cols-1 md:grid-cols-6 gap-2">
+                    <input value={row.field_key} readOnly className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-sm" />
+                    <input type="number" min={0} max={100} value={row.x_percent} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, x_percent: Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Left (%)" />
+                    <input type="number" min={0} max={100} value={row.y_percent} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, y_percent: Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Top (%)" />
+                    <input type="number" min={8} max={36} value={row.font_size} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, font_size: Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Font Size (px)" />
+                    <input type="number" min={0} max={100} value={row.width_percent ?? ""} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, width_percent: e.target.value === "" ? undefined : Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Width (%)" />
+                    <input type="number" min={0} max={100} value={row.height_percent ?? ""} onChange={(e) => setFieldMap((p) => p.map((r, i) => i === idx ? { ...r, height_percent: e.target.value === "" ? undefined : Number(e.target.value) } : r))} className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm" placeholder="Height (%)" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end">
@@ -371,17 +632,61 @@ export default function CertificateTemplatePage() {
 
             <div className="relative w-full overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600 bg-white">
               {form.templateBackgroundUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={form.templateBackgroundUrl}
-                  alt="Certificate template preview"
-                  className="w-full h-auto object-contain"
-                />
+                isPdfTemplate ? (
+                  <object
+                    data={form.templateBackgroundUrl}
+                    type="application/pdf"
+                    className="aspect-[1.414/1] w-full bg-white"
+                    aria-label="Certificate template preview"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={form.templateBackgroundUrl}
+                    alt="Certificate template preview"
+                    className="w-full h-auto object-contain"
+                  />
+                )
               ) : (
                 <div className="aspect-[1.414/1] w-full bg-[rgba(31,41,55,0.06)]" />
               )}
 
               <div className="absolute inset-0 p-4 sm:p-8 pointer-events-none">
+                <div
+                  className="absolute left-[6%] right-[6%] top-[5%] grid grid-cols-3 gap-3 text-xs text-slate-900"
+                  style={{ minHeight: `${form.headerHeight}%` }}
+                >
+                  <div>{renderSampleText(form.headerLeftText)}</div>
+                  <div className="text-center font-semibold">{renderSampleText(form.headerCenterText)}</div>
+                  <div className="text-right">{renderSampleText(form.headerRightText)}</div>
+                </div>
+
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 whitespace-pre-line text-center text-sm leading-6 text-slate-900"
+                  style={{
+                    top: `${Math.max(12, form.headerHeight + 8)}%`,
+                    width: `${form.bodyWidth}%`,
+                    minHeight: `${form.bodyHeight}%`,
+                  }}
+                >
+                  {renderSampleText(form.bodyText)}
+                </div>
+
+                <div
+                  className="absolute left-[6%] right-[6%] bottom-[5%] grid grid-cols-3 gap-3 text-xs text-slate-900"
+                  style={{ minHeight: `${form.footerHeight}%` }}
+                >
+                  <div>{renderSampleText(form.footerLeftText)}</div>
+                  <div className="text-center">{renderSampleText(form.footerCenterText)}</div>
+                  <div className="text-right">{renderSampleText(form.footerRightText)}</div>
+                </div>
+
+                {form.showStudentPhoto && (
+                  <div className="absolute right-[8%] top-[28%] flex h-24 w-20 items-center justify-center rounded border border-slate-300 bg-white/85 text-[10px] text-slate-500">
+                    Student Photo
+                  </div>
+                )}
+
                 {fieldMap.map((row) => {
                   if (row.field_key === "marks_table") {
                     return (

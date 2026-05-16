@@ -471,14 +471,14 @@ export default function AcademicStructurePage() {
               </div>
               <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[720px] xl:items-end">
                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center xl:w-auto xl:justify-end">
-                  <TabsList className="h-auto w-full justify-start rounded-xl border bg-white p-1 shadow-sm dark:bg-slate-900 sm:w-auto">
-                    <TabsTrigger value="classes" className="rounded-lg gap-1.5 text-slate-600 dark:text-slate-300 data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.1)] data-[state=active]:text-[var(--brand-color)] data-[state=active]:shadow-sm dark:data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                  <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
+                    <TabsTrigger value="classes" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm dark:text-gray-400 dark:data-[state=active]:text-[var(--brand-color,#e35336)]">
                       <School className="w-4 h-4" /> Classes ({gradeFilteredClasses.length})
                     </TabsTrigger>
-                    <TabsTrigger value="sections" className="rounded-lg gap-1.5 text-slate-600 dark:text-slate-300 data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.1)] data-[state=active]:text-[var(--brand-color)] data-[state=active]:shadow-sm dark:data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                    <TabsTrigger value="sections" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm dark:text-gray-400 dark:data-[state=active]:text-[var(--brand-color,#e35336)]">
                       <Layers className="w-4 h-4" /> Sections ({totalSections})
                     </TabsTrigger>
-                    <TabsTrigger value="subjects" className="rounded-lg gap-1.5 text-slate-600 dark:text-slate-300 data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.1)] data-[state=active]:text-[var(--brand-color)] data-[state=active]:shadow-sm dark:data-[state=active]:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                    <TabsTrigger value="subjects" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm dark:text-gray-400 dark:data-[state=active]:text-[var(--brand-color,#e35336)]">
                       <BookOpen className="w-4 h-4" /> Subjects ({subjects.length})
                     </TabsTrigger>
                   </TabsList>

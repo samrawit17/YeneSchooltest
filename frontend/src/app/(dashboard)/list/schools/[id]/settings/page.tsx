@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { schoolSettingsAPI, schoolsAPI, academicYearsAPI } from '@/lib/api';
-import { subscriptionAPI } from '@/lib/api/admin';
-import { getCurrentEthiopianYear } from '@/lib/calendar-utils';
+import { subscriptionAPI } from '@/lib/api/subscription';
+import { getCurrentEthiopianYear, normalizeCalendarType } from '@/lib/calendar-utils';
 import { useAuth } from '@/context/AuthContext';
 import { useBreadcrumb } from '@/context/BreadcrumbContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -42,6 +42,12 @@ import {
 } from '@/components/ui/select';
 
 type PlanTier = 'CORE' | 'STANDARD' | 'ULTIMATE';
+
+const ONE_TIME_LOCKED_SETTING_KEYS = new Set([
+  'calendar_type',
+  'curriculum_type',
+  'grade_system',
+]);
 
 interface SettingItem {
   key: string;
@@ -112,6 +118,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'attendance',
     systemDefault: true,
+    requiredFeature: 'ATTENDANCE_TRACKING',
   },
   {
     key: 'ATTENDANCE_CUTOFF_TIME',
@@ -120,16 +127,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'time',
     category: 'attendance',
     systemDefault: '03:00',
-  },
-
-  // Exam Settings
-  {
-    key: 'EXAM_ENABLED',
-    label: 'Exams Enabled',
-    description: 'Enable exam management and scheduling for this school',
-    type: 'boolean',
-    category: 'exams',
-    systemDefault: true,
+    requiredFeature: 'ATTENDANCE_TRACKING',
   },
 
   // Finance Settings
@@ -140,6 +138,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'access',
     systemDefault: true,
+    requiredFeature: 'REPORT_CARDS',
   },
 
   // Communication Settings
@@ -150,6 +149,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'communication',
     systemDefault: true,
+    requiredFeature: 'ANNOUNCEMENTS',
   },
   {
     key: 'SELF_ENROLLMENT_ACTIVE',
@@ -158,6 +158,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'enrollment',
     systemDefault: false,
+    requiredFeature: 'ENROLLMENT_MANAGEMENT',
   },
 
   // Access Settings
@@ -168,6 +169,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'access',
     systemDefault: true,
+    requiredFeature: 'USER_MANAGEMENT',
   },
   {
     key: 'STUDENT_PORTAL_ACCESS',
@@ -176,6 +178,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'access',
     systemDefault: true,
+    requiredFeature: 'USER_MANAGEMENT',
   },
   {
     key: 'PARENT_PORTAL_ACCESS',
@@ -184,6 +187,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'access',
     systemDefault: true,
+    requiredFeature: 'PARENT_PORTAL',
   },
   {
     key: 'FINANCE_PORTAL_ACCESS',
@@ -192,6 +196,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'access',
     systemDefault: true,
+    requiredFeature: 'FINANCE_MANAGEMENT',
   },
   {
     key: 'REGISTRAR_PORTAL_ACCESS',
@@ -200,6 +205,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'access',
     systemDefault: true,
+    requiredFeature: 'ENROLLMENT_MANAGEMENT',
   },
 
   // Class Settings
@@ -210,6 +216,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'number',
     category: 'classes',
     systemDefault: 20,
+    requiredFeature: 'ACADEMIC_STRUCTURE',
     validation: {
       min: 1,
       max: 200,
@@ -224,6 +231,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'time',
     category: 'schedule',
     systemDefault: '08:00',
+    requiredFeature: 'TIMETABLE_MANAGEMENT',
   },
   {
     key: 'SCHOOL_END_TIME',
@@ -232,6 +240,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'time',
     category: 'schedule',
     systemDefault: '15:00',
+    requiredFeature: 'TIMETABLE_MANAGEMENT',
   },
 
   // Advanced Settings (Ultimate only)
@@ -253,6 +262,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'color',
     category: 'branding',
     systemDefault: '#e35336',
+    requiredFeature: 'CUSTOM_BRANDING',
   },
   {
     key: 'BRAND_COLOR_IN_NAVIGATION',
@@ -261,6 +271,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'branding',
     systemDefault: false,
+    requiredFeature: 'CUSTOM_BRANDING',
   },
 ];
 
@@ -390,8 +401,9 @@ export default function SchoolSettingsPage() {
 
   // Check if setting should be visible
   const isSettingVisible = useCallback((setting: SettingItem): boolean => {
-    // Super admin sees everything
-    if (user?.role?.toLowerCase() === 'super_admin') return true;
+    const isSubscriptionGated = Boolean(setting.requiredFeature || setting.requiredTier);
+    if (isSubscriptionGated && loadingPlan) return false;
+    if (isSubscriptionGated && !schoolPlan) return false;
 
     // Check subscription features
     if (setting.requiredFeature && schoolPlan) {
@@ -407,7 +419,7 @@ export default function SchoolSettingsPage() {
     }
 
     return true;
-  }, [user?.role, schoolPlan]);
+  }, [loadingPlan, schoolPlan]);
 
   // Get current calendar type from settings
   const calendarType = draftSettings['calendar_type'] || 'ETHIOPIAN';
@@ -581,6 +593,11 @@ export default function SchoolSettingsPage() {
   };
 
   const handleSettingChange = async (key: string, value: any, setting: SettingItem) => {
+    if (isSettingLocked(key)) {
+      toast.error(`${setting.label} is locked after it is set once`);
+      return;
+    }
+
     // Validate number inputs
     if (setting.type === 'number') {
       if (setting.validation) {
@@ -670,6 +687,11 @@ export default function SchoolSettingsPage() {
   };
 
   const handleResetSetting = async (key: string, setting: SettingItem) => {
+    if (isSettingLocked(key)) {
+      toast.error(`${setting.label} is locked after it is set once`);
+      return;
+    }
+
     try {
       setSaving(key);
       setError(null);
@@ -713,6 +735,15 @@ export default function SchoolSettingsPage() {
 
   const getSettingValue = (key: string, setting: SettingItem) => {
     return getEffectiveSettingValue(draftSettings, key, setting);
+  };
+
+  const isSettingLocked = (key: string) => {
+    return (
+      ONE_TIME_LOCKED_SETTING_KEYS.has(key) &&
+      settings[key] !== undefined &&
+      settings[key] !== null &&
+      settings[key] !== ''
+    );
   };
 
   const commitNumberSetting = async (setting: SettingItem) => {
@@ -764,10 +795,14 @@ export default function SchoolSettingsPage() {
     return !areValuesEqual(currentValue, draftValue, setting);
   };
 
-  const hasUnsavedChanges = SETTINGS_CONFIG.some((setting) => hasSettingChanged(setting));
+  const hasUnsavedChanges = SETTINGS_CONFIG.some(
+    (setting) => hasSettingChanged(setting) && !isSettingLocked(setting.key),
+  );
 
   const handleSaveAllChanges = async () => {
-    const changedSettings = SETTINGS_CONFIG.filter((setting) => hasSettingChanged(setting));
+    const changedSettings = SETTINGS_CONFIG.filter(
+      (setting) => hasSettingChanged(setting) && !isSettingLocked(setting.key),
+    );
     if (changedSettings.length === 0) return;
 
     try {
@@ -821,6 +856,7 @@ export default function SchoolSettingsPage() {
       settings[setting.key] !== undefined &&
       settings[setting.key] !== null &&
       settings[setting.key] !== '';
+    const isLocked = isSettingLocked(setting.key);
 
     // Render upgrade badge for hidden features
     if (!isSettingVisible(setting)) {
@@ -839,8 +875,9 @@ export default function SchoolSettingsPage() {
           <Switch
             checked={value === true || value === 'true'}
             onCheckedChange={(checked) => updateDraftSetting(setting.key, checked)}
-            disabled={isSaving}
+            disabled={isSaving || isLocked}
           />
+          {isLocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
           {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
@@ -856,7 +893,7 @@ export default function SchoolSettingsPage() {
           <Select
             value={String(value || '')}
             onValueChange={(val) => updateDraftSetting(setting.key, val === '__select__' ? '' : val)}
-            disabled={isSaving}
+            disabled={isSaving || isLocked}
           >
             <SelectTrigger className="w-full bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white sm:w-48">
               <SelectValue placeholder="Select an option..." />
@@ -870,6 +907,7 @@ export default function SchoolSettingsPage() {
               ))}
             </SelectContent>
           </Select>
+          {isLocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
           {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
@@ -896,9 +934,10 @@ export default function SchoolSettingsPage() {
                 void commitNumberSetting(setting);
               }
             }}
-            disabled={isSaving}
+            disabled={isSaving || isLocked}
             className="w-full sm:w-24"
           />
+          {isLocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
           {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
@@ -913,7 +952,8 @@ export default function SchoolSettingsPage() {
             <TimePicker
               value={value || setting.systemDefault || '08:00'}
               onChange={(time) => updateDraftSetting(setting.key, time)}
-              disabled={isSaving}
+              disabled={isSaving || isLocked}
+              calendarType={normalizeCalendarType(calendarType)}
               className="sm:w-40"
             />
           ) : (
@@ -921,10 +961,11 @@ export default function SchoolSettingsPage() {
               type="time"
               value={value || setting.systemDefault || '08:00'}
               onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
-              disabled={isSaving}
+              disabled={isSaving || isLocked}
               className="w-full sm:w-32"
             />
           )}
+          {isLocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
           {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
         </div>
       );
@@ -938,7 +979,7 @@ export default function SchoolSettingsPage() {
               type="color"
               value={value || setting.systemDefault || '#e35336'}
               onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
-              disabled={isSaving}
+              disabled={isSaving || isLocked}
               className="w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer disabled:opacity-50"
             />
           </div>
@@ -949,10 +990,10 @@ export default function SchoolSettingsPage() {
               const val = e.target.value;
               updateDraftSetting(setting.key, val);
             }}
-            disabled={isSaving}
+            disabled={isSaving || isLocked}
             className="w-24 font-mono text-sm sm:w-28"
           />
-          {setting.key === 'theme_color' && hasCustomValue && (
+          {setting.key === 'theme_color' && hasCustomValue && !isLocked && (
             <Button
               type="button"
               variant="outline"
@@ -965,6 +1006,7 @@ export default function SchoolSettingsPage() {
               Use Default
             </Button>
           )}
+          {isLocked && <Badge variant="outline" className="shrink-0 text-xs">Locked</Badge>}
           {hasSettingChanged(setting) && <Badge variant="outline" className="shrink-0 text-xs">Unsaved</Badge>}
         </div>
       );
@@ -1179,7 +1221,7 @@ export default function SchoolSettingsPage() {
         {visibleCategories.map((category) => {
           const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
           const Icon = config?.icon || SettingsIcon;
-          const settings = groupedSettings[category] || [];
+          const settings = (groupedSettings[category] || []).filter(isSettingVisible);
 
           return (
             <TabsContent key={category} value={category} className="mt-4 min-w-0 max-w-full">
@@ -1219,6 +1261,11 @@ export default function SchoolSettingsPage() {
                           )}
                         </div>
                         <p className="mt-0.5 break-words text-sm text-slate-500 dark:text-slate-400">{setting.description}</p>
+                        {isSettingLocked(setting.key) && (
+                          <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                            Locked after first setup to protect existing academic records.
+                          </p>
+                        )}
                         {!isSettingVisible(setting) && (
                           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                             Requires {setting.requiredFeature ? `${setting.requiredFeature} feature` : `${setting.requiredTier} plan`}

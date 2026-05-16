@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanTier } from '@prisma/client';
 
@@ -11,6 +11,54 @@ export class SubscriptionService {
     STANDARD: 2,
     ULTIMATE: 3,
   };
+
+  private readonly featureTiers: Record<string, PlanTier> = {
+    SCHOOL_PROFILE: 'CORE',
+    USER_MANAGEMENT: 'CORE',
+    ACADEMIC_STRUCTURE: 'CORE',
+    ATTENDANCE_TRACKING: 'CORE',
+    ANNOUNCEMENTS: 'CORE',
+    SCHOOL_CALENDAR: 'CORE',
+    BASIC_REPORTS: 'CORE',
+    NOTIFICATIONS: 'CORE',
+    GRADE_MANAGEMENT: 'STANDARD',
+    TIMETABLE_MANAGEMENT: 'STANDARD',
+    LESSON_MANAGEMENT: 'STANDARD',
+    EXAM_MANAGEMENT: 'STANDARD',
+    FINANCE_MANAGEMENT: 'STANDARD',
+    PARENT_PORTAL: 'STANDARD',
+    MESSAGING: 'STANDARD',
+    COMMUNICATION_BOOK: 'STANDARD',
+    DOCUMENT_MANAGEMENT: 'STANDARD',
+    ENROLLMENT_MANAGEMENT: 'STANDARD',
+    CREDENTIAL_MANAGEMENT: 'STANDARD',
+    DISCIPLINE_MANAGEMENT: 'STANDARD',
+    REPORT_CARDS: 'STANDARD',
+    EXAM_SEATING: 'ULTIMATE',
+    STUDENT_PROMOTION: 'ULTIMATE',
+    STUDENT_RANKINGS: 'ULTIMATE',
+    STUDENT_ID_CARDS: 'ULTIMATE',
+    CERTIFICATE_TEMPLATES: 'ULTIMATE',
+    TEMPLATE_MANAGER: 'ULTIMATE',
+    ADVANCED_ANALYTICS: 'ULTIMATE',
+    CUSTOM_BRANDING: 'ULTIMATE',
+    BULK_OPERATIONS: 'ULTIMATE',
+    PRIORITY_SUPPORT: 'ULTIMATE',
+    ADVANCED_REPORTING: 'ULTIMATE',
+    DATA_EXPORT: 'ULTIMATE',
+    SIREN_ALERT: 'ULTIMATE',
+  };
+
+  private normalizeFeatures(features: string[] = []) {
+    const normalized = features.map((feature) => feature.trim().toUpperCase());
+    const invalid = normalized.filter((feature) => !this.featureTiers[feature]);
+    if (invalid.length > 0) {
+      throw new BadRequestException(
+        `Invalid subscription feature(s): ${invalid.join(', ')}`,
+      );
+    }
+    return Array.from(new Set(normalized));
+  }
 
   async getAllPlans() {
     return this.prisma.plan.findMany({
@@ -38,12 +86,13 @@ export class SubscriptionService {
     description?: string;
     features: string[];
   }) {
+    const features = this.normalizeFeatures(data.features);
     return this.prisma.plan.create({
       data: {
-        name: data.name,
+        name: data.name.trim(),
         tier: data.tier,
         description: data.description,
-        features: data.features,
+        features,
       },
     });
   }
@@ -57,6 +106,13 @@ export class SubscriptionService {
       isActive?: boolean;
     },
   ) {
+    if (data.features) {
+      data.features = this.normalizeFeatures(data.features);
+    }
+    if (data.name) {
+      data.name = data.name.trim();
+    }
+
     return this.prisma.plan.update({
       where: { id },
       data,
@@ -67,10 +123,13 @@ export class SubscriptionService {
     const schoolsWithPlan = await this.prisma.school.count({
       where: { planId: id },
     });
+    const subscriptionsWithPlan = await this.prisma.subscription.count({
+      where: { planId: id },
+    });
 
-    if (schoolsWithPlan > 0) {
+    if (schoolsWithPlan > 0 || subscriptionsWithPlan > 0) {
       throw new Error(
-        `Cannot delete plan: ${schoolsWithPlan} schools are using this plan`,
+        `Cannot delete plan: ${schoolsWithPlan + subscriptionsWithPlan} school subscription references are using this plan`,
       );
     }
 
@@ -79,31 +138,81 @@ export class SubscriptionService {
     });
   }
 
-  async assignPlanToSchool(schoolId: string, planId: string) {
-    return this.prisma.school.update({
+  async assignPlanToSchool(schoolId: string, planId: string | null) {
+    const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
-      data: {
-        planId,
-        planAssignedAt: new Date(),
-      },
-      include: { plan: true },
+      select: { id: true },
+    });
+    if (!school) throw new NotFoundException('School not found');
+
+    if (planId) {
+      const plan = await this.prisma.plan.findFirst({
+        where: { id: planId, isActive: true },
+        select: { id: true },
+      });
+      if (!plan) throw new NotFoundException('Active plan not found');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      if (!planId) {
+        await tx.subscription.deleteMany({ where: { schoolId } });
+        return tx.school.update({
+          where: { id: schoolId },
+          data: { planId: null, planAssignedAt: null },
+          include: { plan: true },
+        });
+      }
+
+      const now = new Date();
+      await tx.subscription.upsert({
+        where: { schoolId },
+        create: {
+          schoolId,
+          planId,
+          status: 'ACTIVE',
+          startDate: now,
+        },
+        update: {
+          planId,
+          status: 'ACTIVE',
+          startDate: now,
+          endDate: null,
+        },
+      });
+
+      return tx.school.update({
+        where: { id: schoolId },
+        data: {
+          planId,
+          planAssignedAt: now,
+        },
+        include: { plan: true },
+      });
     });
   }
 
   async getSchoolPlan(schoolId: string) {
-    const school = await this.prisma.school.findUnique({
-      where: { id: schoolId },
+    const subscription = await this.prisma.subscription.findFirst({
+      where: {
+        schoolId,
+        status: 'ACTIVE',
+        OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+      },
       include: { plan: true },
     });
 
-    if (!school?.plan) {
+    if (!subscription?.plan || !subscription.plan.isActive) {
       return null;
     }
 
-    const allFeatures = this.getTierFeatures(school.plan.tier);
+    const allFeatures = this.getTierFeatures(subscription.plan.tier);
     return {
-      ...school.plan,
-      features: [...new Set([...(school.plan.features || []), ...allFeatures])],
+      ...subscription.plan,
+      subscriptionId: subscription.id,
+      subscriptionStatus: subscription.status,
+      subscriptionStartDate: subscription.startDate,
+      subscriptionEndDate: subscription.endDate,
+      features: [...new Set([...(subscription.plan.features || []), ...allFeatures])],
     };
   }
 
@@ -111,41 +220,18 @@ export class SubscriptionService {
     const tierOrder: PlanTier[] = ['CORE', 'STANDARD', 'ULTIMATE'];
     const tierIndex = tierOrder.indexOf(tier);
 
-    const featureTiers: Record<string, PlanTier> = {
-      USER_MANAGEMENT: 'CORE',
-      BASIC_REPORTS: 'CORE',
-      NOTIFICATIONS: 'CORE',
-      SCHOOL_PROFILE: 'CORE',
-      ATTENDANCE_TRACKING: 'STANDARD',
-      GRADE_MANAGEMENT: 'STANDARD',
-      TIMETABLE_MANAGEMENT: 'STANDARD',
-      EXAM_MANAGEMENT: 'STANDARD',
-      EXAM_SEATING: 'ULTIMATE',
-      FINANCE_MANAGEMENT: 'STANDARD',
-      PARENT_PORTAL: 'STANDARD',
-      MESSAGING: 'STANDARD',
-      ANNOUNCEMENTS: 'STANDARD',
-      DOCUMENT_MANAGEMENT: 'STANDARD',
-      TRANSPORT_MANAGEMENT: 'STANDARD',
-      ADVANCED_ANALYTICS: 'ULTIMATE',
-      CUSTOM_BRANDING: 'ULTIMATE',
-      API_ACCESS: 'ULTIMATE',
-      BULK_OPERATIONS: 'ULTIMATE',
-      PRIORITY_SUPPORT: 'ULTIMATE',
-      CUSTOM_INTEGRATIONS: 'ULTIMATE',
-      ADVANCED_REPORTING: 'ULTIMATE',
-      DATA_EXPORT: 'ULTIMATE',
-      SIREN_ALERT: 'ULTIMATE',
-    };
-
-    return Object.entries(featureTiers)
+    return Object.entries(this.featureTiers)
       .filter(([_, featureTier]) => tierOrder.indexOf(featureTier) <= tierIndex)
       .map(([key]) => key);
   }
 
   async getSchoolSubscription(schoolId: string) {
-    return this.prisma.subscription.findUnique({
-      where: { schoolId },
+    return this.prisma.subscription.findFirst({
+      where: {
+        schoolId,
+        status: 'ACTIVE',
+        OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+      },
       include: { plan: true },
     });
   }
@@ -155,13 +241,27 @@ export class SubscriptionService {
     planId: string;
     endDate?: Date;
   }) {
-    return this.prisma.subscription.create({
-      data: {
-        schoolId: data.schoolId,
-        planId: data.planId,
-        endDate: data.endDate,
-      },
-      include: { plan: true },
+    return this.prisma.$transaction(async (tx) => {
+      const subscription = await tx.subscription.upsert({
+        where: { schoolId: data.schoolId },
+        create: {
+          schoolId: data.schoolId,
+          planId: data.planId,
+          endDate: data.endDate,
+          status: 'ACTIVE',
+        },
+        update: {
+          planId: data.planId,
+          endDate: data.endDate,
+          status: 'ACTIVE',
+        },
+        include: { plan: true },
+      });
+      await tx.school.update({
+        where: { id: data.schoolId },
+        data: { planId: data.planId, planAssignedAt: subscription.startDate },
+      });
+      return subscription;
     });
   }
 
@@ -169,29 +269,75 @@ export class SubscriptionService {
     id: string,
     data: { status?: string; endDate?: Date },
   ) {
-    return this.prisma.subscription.update({
-      where: { id },
-      data,
+    return this.prisma.$transaction(async (tx) => {
+      const subscription = await tx.subscription.update({
+        where: { id },
+        data,
+        include: { plan: true },
+      });
+
+      const isActive =
+        subscription.status === 'ACTIVE' &&
+        (!subscription.endDate || subscription.endDate > new Date());
+      await tx.school.update({
+        where: { id: subscription.schoolId },
+        data: {
+          planId: isActive ? subscription.planId : null,
+          planAssignedAt: isActive ? subscription.startDate : null,
+        },
+      });
+
+      return subscription;
     });
   }
 
   async getSchoolsByPlan(planId: string) {
-    return this.prisma.school.findMany({
-      where: { planId },
+    const schools = await this.prisma.school.findMany({
+      where: { subscriptions: { some: { planId, status: 'ACTIVE' } } },
       select: {
         id: true,
         name: true,
         email: true,
         isActive: true,
         planAssignedAt: true,
+        subscriptions: {
+          where: { planId, status: 'ACTIVE' },
+          include: { plan: true },
+          take: 1,
+        },
       },
     });
+
+    return schools.map((school) => ({
+      ...school,
+      plan: school.subscriptions[0]?.plan || null,
+      subscription: school.subscriptions[0] || null,
+    }));
   }
 
   async getSchoolsWithPlans() {
-    return this.prisma.school.findMany({
-      include: { plan: true },
+    const schools = await this.prisma.school.findMany({
+      include: {
+        plan: true,
+        subscriptions: {
+          where: {
+            status: 'ACTIVE',
+            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+          },
+          include: { plan: true },
+          take: 1,
+        },
+      },
       orderBy: { createdAt: 'desc' },
+    });
+
+    return schools.map((school) => {
+      const activeSubscription = school.subscriptions[0] || null;
+      return {
+        ...school,
+        plan: activeSubscription?.plan || null,
+        subscription: activeSubscription,
+      };
     });
   }
 
@@ -202,7 +348,7 @@ export class SubscriptionService {
 
     const requiredTier = this.getFeatureTier(feature);
     if (!requiredTier) {
-      return true;
+      return false;
     }
 
     return (
@@ -211,40 +357,7 @@ export class SubscriptionService {
   }
 
   getFeatureTier(feature: string): PlanTier | null {
-    const ultimateFeatures = [
-      'EXAM_SEATING',
-      'ADVANCED_ANALYTICS',
-      'CUSTOM_BRANDING',
-      'API_ACCESS',
-      'BULK_OPERATIONS',
-      'PRIORITY_SUPPORT',
-      'CUSTOM_INTEGRATIONS',
-      'ADVANCED_REPORTING',
-      'DATA_EXPORT',
-    ];
-
-    const standardFeatures = [
-      'ATTENDANCE_TRACKING',
-      'GRADE_MANAGEMENT',
-      'TIMETABLE_MANAGEMENT',
-      'EXAM_MANAGEMENT',
-      'FINANCE_MANAGEMENT',
-      'PARENT_PORTAL',
-      'MESSAGING',
-      'ANNOUNCEMENTS',
-      'DOCUMENT_MANAGEMENT',
-      'TRANSPORT_MANAGEMENT',
-    ];
-
-    if (ultimateFeatures.includes(feature)) {
-      return 'ULTIMATE';
-    }
-
-    if (standardFeatures.includes(feature)) {
-      return 'STANDARD';
-    }
-
-    return 'CORE';
+    return this.featureTiers[feature] || null;
   }
 
   isFeatureAccessible(

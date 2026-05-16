@@ -80,6 +80,7 @@ interface MenuItem {
   href: string;
   visible: string[];
   featureFlag?: string;
+  schoolSettingFlag?: string;
   subscriptionFeature?: string;
   subscriptionTier?: 'CORE' | 'STANDARD' | 'ULTIMATE';
   children?: MenuItem[];
@@ -97,62 +98,66 @@ const menuItems: MenuSection[] = [
       {
         icon: <LayoutDashboard className="w-5 h-5" />,
         label: "Dashboard",
-        href: "dashboard", // Special marker for role-based dashboard
+        href: "dashboard",
         visible: ["admin", "it_manager", "teacher", "student", "parent", "registrar", "finance", "super_admin"],
-        children: [
-          {
-            icon: <BookOpen className="w-4 h-4" />,
-            label: "My Classes",
-            href: "/teacher/my-class",
-            visible: ["teacher"],
-          },
-          {
-            icon: <CalendarCheck className="w-4 h-4" />,
-            label: "Attendance",
-            href: "/teacher/attendance",
-            visible: ["teacher"],
-          },
-          {
-            icon: <BookText className="w-4 h-4" />,
-            label: "Lessons",
-            href: "/teacher/lessons",
-            visible: ["teacher"],
-            featureFlag: "FEATURE_FLAG_LESSONS",
-            subscriptionFeature: "TIMETABLE_MANAGEMENT",
-          },
-          {
-            icon: <Calendar className="w-4 h-4" />,
-            label: "Timetable",
-            href: "/teacher/timetable",
-            visible: ["teacher"],
-          },
-          {
-            icon: <Trophy className="w-4 h-4" />,
-            label: "Grade Entry",
-            href: "/teacher/grading",
-            visible: ["teacher"],
-          },
-        ],
+      },
+      {
+        icon: <BookOpen className="w-5 h-5" />,
+        label: "My Classes",
+        href: "/teacher/my-class",
+        visible: ["teacher"],
+        subscriptionFeature: "ATTENDANCE_TRACKING",
+      },
+      {
+        icon: <CalendarCheck className="w-5 h-5" />,
+        label: "Attendance",
+        href: "/teacher/attendance",
+        visible: ["teacher"],
+      },
+      {
+        icon: <BookText className="w-5 h-5" />,
+        label: "Lesson Plan",
+        href: "/teacher/lessons",
+        visible: ["teacher"],
+        featureFlag: "FEATURE_FLAG_LESSONS",
+        subscriptionFeature: "LESSON_MANAGEMENT",
+      },
+      {
+        icon: <Calendar className="w-5 h-5" />,
+        label: "Timetable",
+        href: "/teacher/timetable",
+        visible: ["teacher"],
+        subscriptionFeature: "TIMETABLE_MANAGEMENT",
+      },
+      {
+        icon: <Trophy className="w-5 h-5" />,
+        label: "Grade Entry",
+        href: "/teacher/grading",
+        visible: ["teacher"],
+        subscriptionFeature: "GRADE_MANAGEMENT",
       },
 
       {
         icon: <BookText className="w-5 h-5" />,
-        label: "Lessons",
+        label: "Lesson Plan",
         href: "/student/lessons",
         visible: ["student"],
         featureFlag: "FEATURE_FLAG_LESSONS",
+        subscriptionFeature: "LESSON_MANAGEMENT",
       },
       {
         icon: <Calendar className="w-5 h-5" />,
         label: "My Timetable",
         href: "/student/timetable",
         visible: ["student"],
+        subscriptionFeature: "TIMETABLE_MANAGEMENT",
       },
       {
         icon: <Trophy className="w-5 h-5" />,
         label: "My Grades",
         href: "/student/grades",
         visible: ["student"],
+        subscriptionFeature: "GRADE_MANAGEMENT",
       },
 
       {
@@ -201,7 +206,7 @@ const menuItems: MenuSection[] = [
             href: "/admin/report-cards",
             visible: ["admin", "registrar", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "EXAM_MANAGEMENT",
+            subscriptionFeature: "REPORT_CARDS",
           },
           {
             icon: <FileText className="w-4 h-4" />,
@@ -209,7 +214,7 @@ const menuItems: MenuSection[] = [
             href: "/admin/report-cards/certificate-template",
             visible: ["admin", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "EXAM_MANAGEMENT",
+            subscriptionFeature: "CERTIFICATE_TEMPLATES",
           },
           {
             icon: <Settings className="w-4 h-4" />,
@@ -217,13 +222,14 @@ const menuItems: MenuSection[] = [
             href: "/admin/templates",
             visible: ["admin", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "EXAM_MANAGEMENT",
+            subscriptionFeature: "TEMPLATE_MANAGER",
           },
           {
             icon: <Trophy className="w-4 h-4" />,
             label: "Grade Review",
             href: "/registrar/grading",
             visible: ["registrar", "admin", "it_manager"],
+            subscriptionFeature: "GRADE_MANAGEMENT",
           },
         ],
       },
@@ -232,25 +238,42 @@ const menuItems: MenuSection[] = [
         label: "School Siren",
         href: "/admin/siren-management",
         visible: ["admin", "it_manager"],
-        subscriptionTier: "ULTIMATE",
+        subscriptionFeature: "SIREN_ALERT",
+      },
+      {
+        icon: <Clock className="w-5 h-5" />,
+        label: "Period Times",
+        href: "/admin/period-times",
+        visible: ["admin", "it_manager"],
+        subscriptionFeature: "ACADEMIC_STRUCTURE",
       },
       {
         icon: <Users className="w-5 h-5" />,
         label: "Students",
         href: "/list/students",
         visible: ["admin", "it_manager", "registrar"],
+        subscriptionFeature: "USER_MANAGEMENT",
         children: [
           {
             icon: <Users className="w-4 h-4" />,
             label: "All Students",
             href: "/list/students",
             visible: ["admin", "it_manager", "registrar"],
+            subscriptionFeature: "USER_MANAGEMENT",
+          },
+          {
+            icon: <UserPlus className="w-4 h-4" />,
+            label: "Student Admission",
+            href: "/admin/enrollment",
+            visible: ["admin", "registrar", "it_manager"],
+            subscriptionFeature: "ENROLLMENT_MANAGEMENT",
           },
           {
             icon: <GraduationCap className="w-4 h-4" />,
             label: "Student Promotion",
             href: "/admin/promotion",
             visible: ["admin", "registrar", "it_manager"],
+            subscriptionFeature: "STUDENT_PROMOTION",
           },
           {
             icon: <TrendingUp className="w-4 h-4" />,
@@ -258,13 +281,14 @@ const menuItems: MenuSection[] = [
             href: "/admin/exams/rankings",
             visible: ["admin", "registrar", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "EXAM_MANAGEMENT",
+            subscriptionFeature: "STUDENT_RANKINGS",
           },
           {
             icon: <CreditCard className="w-4 h-4" />,
             label: "ID Cards",
             href: "/admin/id-cards",
             visible: ["admin", "registrar", "it_manager"],
+            subscriptionFeature: "STUDENT_ID_CARDS",
           },
         ],
       },
@@ -274,36 +298,35 @@ const menuItems: MenuSection[] = [
         href: "/list/communications",
         visible: ["teacher", "admin", "it_manager", "parent"],
         featureFlag: "FEATURE_FLAG_COMMUNICATION_BOOK",
+        subscriptionFeature: "COMMUNICATION_BOOK",
       },
       {
         icon: <MessageSquare className="w-5 h-5" />,
         label: "Messages",
         href: "/messages",
         visible: ["teacher", "admin", "it_manager"],
+        subscriptionFeature: "MESSAGING",
       },
       {
         icon: <UserCircle className="w-5 h-5" />,
         label: "People",
         href: "/list/staff",
         visible: ["admin", "it_manager"],
+        subscriptionFeature: "USER_MANAGEMENT",
         children: [
           {
             icon: <Users className="w-4 h-4" />,
             label: "Staff",
             href: "/list/staff",
             visible: ["admin", "it_manager"],
-          },
-          {
-            icon: <Users className="w-4 h-4" />,
-            label: "Teachers",
-            href: "/list/teachers",
-            visible: ["admin", "it_manager"],
+            subscriptionFeature: "USER_MANAGEMENT",
           },
           {
             icon: <Users className="w-4 h-4" />,
             label: "Parents",
             href: "/list/parents",
             visible: ["admin", "it_manager"],
+            subscriptionFeature: "USER_MANAGEMENT",
           },
         ],
       },
@@ -319,12 +342,14 @@ const menuItems: MenuSection[] = [
         label: "Academics",
         href: "/admin/academics",
         visible: ["admin", "it_manager", "registrar"],
+        subscriptionFeature: "ACADEMIC_STRUCTURE",
         children: [
           {
             icon: <Users className="w-4 h-4" />,
             label: "Class & Sections",
             href: "/admin/class-sections",
             visible: ["admin", "it_manager", "registrar"],
+            subscriptionFeature: "ACADEMIC_STRUCTURE",
           },
           {
             icon: <Calendar className="w-4 h-4" />,
@@ -338,12 +363,14 @@ const menuItems: MenuSection[] = [
             label: "Assign Teachers",
             href: "/admin/assignments",
             visible: ["admin", "it_manager"],
+            subscriptionFeature: "ACADEMIC_STRUCTURE",
           },
           {
             icon: <Calendar className="w-4 h-4" />,
             label: "Academic Years",
             href: "/admin/academic-years",
             visible: ["admin", "it_manager", "registrar"],
+            subscriptionFeature: "ACADEMIC_STRUCTURE",
           },
         ],
       },
@@ -352,61 +379,66 @@ const menuItems: MenuSection[] = [
         label: "My Children",
         href: "/parent/children",
         visible: ["parent"],
+        subscriptionFeature: "PARENT_PORTAL",
       },
       {
         icon: <CalendarCheck className="w-5 h-5" />,
         label: "Child Attendance",
         href: "/parent/attendance",
         visible: ["parent"],
+        subscriptionFeature: "PARENT_PORTAL",
       },
       {
         icon: <Trophy className="w-5 h-5" />,
         label: "Children Grades",
         href: "/parent/grades",
         visible: ["parent"],
+        schoolSettingFlag: "PARENT_VIEW_GRADES",
+        subscriptionFeature: "REPORT_CARDS",
       },
       {
         icon: <DollarSign className="w-5 h-5" />,
         label: "Children Fees",
         href: "/parent/fees",
         visible: ["parent"],
+        subscriptionFeature: "PARENT_PORTAL",
       },
       {
         icon: <BookText className="w-5 h-5" />,
-        label: "Lessons",
+        label: "Lesson Plan",
         href: "/parent/lessons",
         visible: ["parent"],
         featureFlag: "FEATURE_FLAG_LESSONS",
+        subscriptionFeature: "LESSON_MANAGEMENT",
       },
       {
         icon: <Calendar className="w-5 h-5" />,
         label: "Timetable",
         href: "/parent/timetable",
         visible: ["parent"],
+        subscriptionFeature: "PARENT_PORTAL",
       },
       {
         icon: <CalendarDays className="w-5 h-5" />,
         label: "Calendar",
         href: "/list/calendar",
         visible: ["admin", "it_manager", "teacher", "student", "parent", "registrar", "finance"],
+        subscriptionFeature: "SCHOOL_CALENDAR",
       },
       {
         icon: <Megaphone className="w-5 h-5" />,
         label: "Announcements",
         href: "/list/announcements",
         visible: ["admin", "it_manager", "teacher", "student", "parent", "registrar", "finance"],
-      },
-      {
-        icon: <UserPlus className="w-5 h-5" />,
-        label: "Enrollments",
-        href: "/admin/enrollment",
-        visible: ["admin", "registrar", "it_manager"],
+        schoolSettingFlag: "ANNOUNCEMENTS_ENABLED",
+        subscriptionFeature: "ANNOUNCEMENTS",
       },
       {
         icon: <Key className="w-5 h-5" />,
         label: "Credentials",
         href: "/admin/credentials",
         visible: ["admin", "registrar", "it_manager"],
+        subscriptionFeature: "CREDENTIAL_MANAGEMENT",
       },
       {
         icon: <Building2 className="w-5 h-5" />,
@@ -437,12 +469,14 @@ const menuItems: MenuSection[] = [
         label: "Bulk User Creation",
         href: "/admin/bulk-upload",
         visible: ["admin", "it_manager"],
+        subscriptionFeature: "BULK_OPERATIONS",
       },
       {
         icon: <Settings className="w-5 h-5" />,
         label: "School Settings",
         href: "/settings/school",
         visible: ["admin", "it_manager"],
+        subscriptionFeature: "SCHOOL_PROFILE",
       },
       {
         icon: <HelpCircle className="w-5 h-5" />,
@@ -648,28 +682,40 @@ const Menu = ({
     const tierOrder = ['CORE', 'STANDARD', 'ULTIMATE'];
     const tierIndex = tierOrder.indexOf(tier);
     const FEATURE_TIER_MAP: Record<string, string> = {
+      SCHOOL_PROFILE: 'CORE',
       USER_MANAGEMENT: 'CORE',
+      ACADEMIC_STRUCTURE: 'CORE',
+      ATTENDANCE_TRACKING: 'CORE',
+      ANNOUNCEMENTS: 'CORE',
+      SCHOOL_CALENDAR: 'CORE',
       BASIC_REPORTS: 'CORE',
       NOTIFICATIONS: 'CORE',
-      SCHOOL_PROFILE: 'CORE',
-      ATTENDANCE_TRACKING: 'STANDARD',
       GRADE_MANAGEMENT: 'STANDARD',
       TIMETABLE_MANAGEMENT: 'STANDARD',
+      LESSON_MANAGEMENT: 'STANDARD',
       EXAM_MANAGEMENT: 'STANDARD',
       FINANCE_MANAGEMENT: 'STANDARD',
       PARENT_PORTAL: 'STANDARD',
       MESSAGING: 'STANDARD',
-      ANNOUNCEMENTS: 'STANDARD',
+      COMMUNICATION_BOOK: 'STANDARD',
       DOCUMENT_MANAGEMENT: 'STANDARD',
-      TRANSPORT_MANAGEMENT: 'STANDARD',
+      ENROLLMENT_MANAGEMENT: 'STANDARD',
+      CREDENTIAL_MANAGEMENT: 'STANDARD',
+      DISCIPLINE_MANAGEMENT: 'STANDARD',
+      REPORT_CARDS: 'STANDARD',
+      EXAM_SEATING: 'ULTIMATE',
+      STUDENT_PROMOTION: 'ULTIMATE',
+      STUDENT_RANKINGS: 'ULTIMATE',
+      STUDENT_ID_CARDS: 'ULTIMATE',
+      CERTIFICATE_TEMPLATES: 'ULTIMATE',
+      TEMPLATE_MANAGER: 'ULTIMATE',
       ADVANCED_ANALYTICS: 'ULTIMATE',
       CUSTOM_BRANDING: 'ULTIMATE',
-      API_ACCESS: 'ULTIMATE',
       BULK_OPERATIONS: 'ULTIMATE',
       PRIORITY_SUPPORT: 'ULTIMATE',
-      CUSTOM_INTEGRATIONS: 'ULTIMATE',
       ADVANCED_REPORTING: 'ULTIMATE',
       DATA_EXPORT: 'ULTIMATE',
+      SIREN_ALERT: 'ULTIMATE',
     };
     return Object.entries(FEATURE_TIER_MAP)
       .filter(([_, featureTier]) => tierOrder.indexOf(featureTier) <= tierIndex)
@@ -692,6 +738,18 @@ const Menu = ({
     }
     // For boolean values, return true unless explicitly false
     return flagValue !== false;
+  };
+
+  const isSchoolSettingEnabled = (settingKey: string | undefined): boolean => {
+    if (!settingKey) return true;
+
+    const settingValue = settingsData?.data?.[settingKey];
+    if (settingValue === undefined || settingValue === null) return true;
+    if (typeof settingValue === 'string') {
+      return settingValue.toLowerCase() !== 'false';
+    }
+
+    return settingValue !== false;
   };
 
   const TIER_LEVELS: Record<string, number> = {
@@ -776,8 +834,11 @@ const Menu = ({
               item.subscriptionTier
             );
 
-            // Item is visible if role, feature flag, and subscription checks pass
-            const isVisible = isRoleVisible && isFeatureVisible && hasSubscription;
+            // Check school setting access
+            const isSchoolSettingVisible = isSchoolSettingEnabled(item.schoolSettingFlag);
+
+            // Item is visible if role, feature flag, school setting, and subscription checks pass
+            const isVisible = isRoleVisible && isFeatureVisible && isSchoolSettingVisible && hasSubscription;
 
             // Get the actual href - use role-based dashboard path if this is the dashboard item
             const actualHref = item.href === "dashboard"
@@ -830,11 +891,12 @@ const Menu = ({
                   const childRoleVisible = child.visible.includes(userRoleKey) ||
                     child.visible.includes(userRoleKeyHyphenated);
                   const childFeatureVisible = isFeatureEnabled(child.featureFlag);
+                  const childSchoolSettingVisible = isSchoolSettingEnabled(child.schoolSettingFlag);
                   const childSubscription = hasSubscriptionAccess(
                     child.subscriptionFeature,
                     child.subscriptionTier
                   );
-                  return childRoleVisible && childFeatureVisible && childSubscription;
+                  return childRoleVisible && childFeatureVisible && childSchoolSettingVisible && childSubscription;
                 }) || []
               : [];
 

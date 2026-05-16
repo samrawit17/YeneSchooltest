@@ -48,6 +48,7 @@ describe('GradingService financial clearance', () => {
 
     const result = await service.verifyFinancialClearance(
       'student-user-1',
+      'school-1',
       'year-1',
       'term-3',
       false,
@@ -93,6 +94,7 @@ describe('GradingService financial clearance', () => {
 
     const result = await service.verifyFinancialClearance(
       'student-user-1',
+      'school-1',
       'year-1',
       'term-3',
       false,
@@ -110,7 +112,37 @@ describe('GradingService financial clearance', () => {
     });
 
     await expect(
-      service.verifyFinancialClearance('missing-student', 'year-1', 'term-1'),
+      service.verifyFinancialClearance(
+        'missing-student',
+        'school-1',
+        'year-1',
+        'term-1',
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('scopes student profile lookup to the requested school', async () => {
+    const prisma = {
+      studentProfile: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const service = createService(prisma);
+
+    await expect(
+      service.verifyFinancialClearance(
+        'student-user-1',
+        'school-1',
+        'year-1',
+        'term-1',
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.studentProfile.findFirst).toHaveBeenCalledWith({
+      where: {
+        schoolId: 'school-1',
+        OR: [{ id: 'student-user-1' }, { userId: 'student-user-1' }],
+      },
+      select: { id: true, userId: true },
+    });
   });
 });

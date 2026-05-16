@@ -78,6 +78,13 @@ const ParentLessonDetailPage = () => {
     });
   };
 
+  const homework =
+    typeof lesson?.homework === "string"
+      ? { title: "Homework", description: lesson.homework }
+      : lesson?.homework && typeof lesson.homework === "object"
+        ? (lesson.homework as { title?: string; description?: string })
+        : null;
+
   if (loading || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -100,7 +107,7 @@ const ParentLessonDetailPage = () => {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-[#e35336]">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                 {lesson.title}
               </h1>
               <Badge
@@ -120,22 +127,7 @@ const ParentLessonDetailPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Objective */}
-          {lesson.objective && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  Learning Objective
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 dark:text-gray-300">{lesson.objective}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Lesson Content */}
+          {/* Lesson Content & Objective */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -143,7 +135,16 @@ const ParentLessonDetailPage = () => {
                 Lesson Content
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {lesson.objective && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
+                    <BookOpen className="w-4 h-4" />
+                    Learning Objective
+                  </h3>
+                  <p className="text-gray-700 dark:text-gray-300">{lesson.objective}</p>
+                </div>
+              )}
               <div 
                 className="prose dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: lesson.lessonContent || "<p>No content added yet.</p>" }}
@@ -152,16 +153,18 @@ const ParentLessonDetailPage = () => {
           </Card>
 
           {/* Homework */}
-          {lesson.homework && (
+          {homework && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Homework
+                  {homework.title || "Homework"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 dark:text-gray-300">{lesson.homework}</p>
+                <p className="text-gray-700 dark:text-gray-300">
+                  {homework.description || "No homework details added."}
+                </p>
               </CardContent>
             </Card>
           )}

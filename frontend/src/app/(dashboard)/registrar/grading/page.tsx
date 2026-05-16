@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { gradingAPI, termsAPI } from "@/lib/api";
 import { Filters, useFilters } from "@/components/filters/Filters";
 import { toast } from "sonner";
@@ -53,6 +54,7 @@ interface GradeSubmission {
 
 export default function RegistrarGradingPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { currentTerm, periodLabel } = useAcademicYear();
   const router = useRouter();
 
   const [terms, setTerms] = useState<any[]>([]);
@@ -76,6 +78,7 @@ export default function RegistrarGradingPage() {
   const [processing, setProcessing] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [filterLoading, setFilterLoading] = useState(false);
+  const hasAutoSelectedCurrentPeriod = useRef(false);
 
   // Set default status to show all (empty = all statuses)
   useEffect(() => {
@@ -99,6 +102,7 @@ export default function RegistrarGradingPage() {
 
   // Fetch terms when year changes
   useEffect(() => {
+    hasAutoSelectedCurrentPeriod.current = false;
     if (selectedYear) {
       fetchTerms();
     } else {
@@ -107,13 +111,35 @@ export default function RegistrarGradingPage() {
     }
   }, [selectedYear]);
 
+  useEffect(() => {
+    if (hasAutoSelectedCurrentPeriod.current || !currentTerm?.id || terms.length === 0) {
+      return;
+    }
+
+    const currentTermForYear = terms.find((term: any) => term.id === currentTerm.id);
+    if (currentTermForYear) {
+      setSelectedTerm(currentTermForYear.id);
+      hasAutoSelectedCurrentPeriod.current = true;
+    }
+  }, [currentTerm?.id, terms, setSelectedTerm]);
+
   const fetchTerms = async () => {
     try {
       const termRes = await termsAPI.getAll({ academicYearId: selectedYear });
       const termData = Array.isArray(termRes.data) ? termRes.data : (termRes.data.data || []);
       setTerms(termData);
       if (termData.length > 0 && !selectedTerm) {
-        setSelectedTerm(termData[0].id);
+        const now = new Date();
+        const currentTermForYear = currentTerm?.id
+          ? termData.find((term: any) => term.id === currentTerm.id)
+          : null;
+        const activeTermByDate = termData.find((term: any) => {
+          if (!term.startDate || !term.endDate) return false;
+          const start = new Date(term.startDate);
+          const end = new Date(term.endDate);
+          return now >= start && now <= end;
+        });
+        setSelectedTerm((currentTermForYear || activeTermByDate || termData[0]).id);
       }
     } catch (error) {
       console.error("Error fetching terms:", error);
@@ -275,7 +301,7 @@ export default function RegistrarGradingPage() {
   if (authLoading || initialLoad) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4">
-        <div className="max-w-7xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           {/* Header Skeleton */}
           <div className="space-y-2">
             <Skeleton className="h-8 w-48" />
@@ -293,7 +319,7 @@ export default function RegistrarGradingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4">
-      <div className="max-w-7xl mx-auto space-y-4">
+      <div className="w-full space-y-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -323,6 +349,9 @@ export default function RegistrarGradingPage() {
               <Filter className="h-3.5 w-3.5" />
               Filters
             </CardTitle>
+            <CardDescription>
+              Select the academic year and current {periodLabel.toLowerCase()} for grade review.
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-4 pt-0 w-full">
             <Filters
@@ -344,7 +373,7 @@ export default function RegistrarGradingPage() {
               onSectionChange={setSelectedSection}
               selectedStatus={selectedStatus}
               onStatusChange={setSelectedStatus}
-              className="w-full"
+              className="w-full md:grid-cols-5 lg:grid-cols-5"
             />
           </CardContent>
         </Card>

@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
 import {
@@ -194,14 +195,21 @@ export class CommunicationService {
 
     // Parents can only message their own children or teachers linked to them.
     if (creatorRole === 'PARENT') {
+      const parentProfile = await this.prisma.parentProfile.findFirst({
+        where: {
+          userId: createdById,
+          schoolId: resolvedSchoolId,
+        },
+      });
+
+      if (!parentProfile) {
+        throw new ForbiddenException('Parent profile not found');
+      }
+
       if (isTargetStudent) {
         const parentRelation = await this.prisma.parentStudent.findFirst({
           where: {
-            parentId: (
-              await this.prisma.parentProfile.findUnique({
-                where: { userId: createdById },
-              })
-            )?.id,
+            parentId: parentProfile.id,
             studentId: targetUser.studentProfile?.id,
           },
         });
@@ -553,8 +561,8 @@ export class CommunicationService {
 
     let isParent = false;
     if (userRole === 'PARENT') {
-      const parentProfile = await this.prisma.parentProfile.findUnique({
-        where: { userId },
+      const parentProfile = await this.prisma.parentProfile.findFirst({
+        where: { userId, schoolId },
       });
       if (parentProfile && communication.student.studentProfile) {
         isParent = communication.student.studentProfile.parents.some(
@@ -870,10 +878,13 @@ export class CommunicationService {
     const baseWhere: any = { schoolId };
 
     if (userRole === 'PARENT') {
-      const parentProfile = await this.prisma.parentProfile.findUnique({
-        where: { userId },
+      const parentProfile = await this.prisma.parentProfile.findFirst({
+        where: { userId, schoolId },
         include: {
           children: {
+            where: {
+              student: { schoolId },
+            },
             select: { studentId: true },
           },
         },
@@ -887,7 +898,7 @@ export class CommunicationService {
       const studentProfileIds = parentProfile.children.map((c) => c.studentId);
 
       const studentProfiles = await this.prisma.studentProfile.findMany({
-        where: { id: { in: studentProfileIds } },
+        where: { id: { in: studentProfileIds }, schoolId },
         select: { userId: true },
       });
 
@@ -995,8 +1006,8 @@ export class CommunicationService {
       // Use pre-fetched profile if available, otherwise fetch
       const parentProfile =
         preFetched?.parentProfile ||
-        (await this.prisma.parentProfile.findUnique({
-          where: { userId },
+        (await this.prisma.parentProfile.findFirst({
+          where: { userId, schoolId: communication.schoolId },
         }));
 
       if (!parentProfile) {
@@ -1006,8 +1017,11 @@ export class CommunicationService {
       // Use pre-fetched student profile if available
       let studentProfile = preFetched?.studentProfile;
       if (!studentProfile) {
-        studentProfile = await this.prisma.studentProfile.findUnique({
-          where: { userId: communication.studentId },
+        studentProfile = await this.prisma.studentProfile.findFirst({
+          where: {
+            userId: communication.studentId,
+            schoolId: communication.schoolId,
+          },
         });
       }
 
@@ -1064,10 +1078,13 @@ export class CommunicationService {
     teacherUserId: string,
     schoolId: string,
   ): Promise<boolean> {
-    const parentProfile = await this.prisma.parentProfile.findUnique({
-      where: { userId: parentUserId },
+    const parentProfile = await this.prisma.parentProfile.findFirst({
+      where: { userId: parentUserId, schoolId },
       include: {
         children: {
+          where: {
+            student: { schoolId },
+          },
           select: {
             student: {
               select: {
@@ -1088,40 +1105,59 @@ export class CommunicationService {
       return false;
     }
 
+    const [classSubjectAssignments, timetableAssignments] = await Promise.all([
+      this.prisma.classSubject.findMany({
+        where: {
+          teacherId: teacherUserId,
+          class: {
+            schoolId,
+          },
+        },
+        select: {
+          classId: true,
+          sectionId: true,
+        },
+      }),
+      this.prisma.timetableSlot.findMany({
+        where: {
+          teacherId: teacherUserId,
+          class: {
+            schoolId,
+          },
+        },
+        select: {
+          classId: true,
+          sectionId: true,
+        },
+      }),
+    ]);
+    const assignedPairs = [
+      ...classSubjectAssignments,
+      ...timetableAssignments,
+    ].map((item) => ({
+      classId: item.classId,
+      sectionId: item.sectionId,
+    }));
+
+    const relationChecks: Prisma.StudentClassWhereInput[] = [
+      {
+        class: {
+          homeroomTeacherId: teacherUserId,
+        },
+      },
+      {
+        section: {
+          homeroomTeacherId: teacherUserId,
+        },
+      },
+      ...assignedPairs,
+    ];
+
     const linkedStudentClass = await this.prisma.studentClass.findFirst({
       where: {
         schoolId,
         studentId: { in: childUserIds },
-        OR: [
-          {
-            class: {
-              homeroomTeacherId: teacherUserId,
-            },
-          },
-          {
-            section: {
-              homeroomTeacherId: teacherUserId,
-            },
-          },
-          {
-            class: {
-              ClassSubject: {
-                some: {
-                  teacherId: teacherUserId,
-                },
-              },
-            },
-          },
-          {
-            section: {
-              classSubjects: {
-                some: {
-                  teacherId: teacherUserId,
-                },
-              },
-            },
-          },
-        ],
+        OR: relationChecks,
       },
       select: { id: true },
     });

@@ -15,11 +15,12 @@ import {
   Search,
 } from "lucide-react";
 
-type StaffRole = "TEACHER" | "IT_MANAGER" | "REGISTRAR" | "FINANCE";
+type StaffRole = "ADMIN" | "TEACHER" | "IT_MANAGER" | "REGISTRAR" | "FINANCE";
 
 interface StaffUser {
   id: string;
   email: string;
+  username?: string;
   name: string;
   role: StaffRole;
   schoolId: string;
@@ -28,6 +29,11 @@ interface StaffUser {
   avatarUrl?: string;
   createdAt: string;
   updatedAt: string;
+  teacherProfile?: {
+    employeeId?: string | null;
+    designation?: string | null;
+    specialization?: string | null;
+  } | null;
 }
 
 interface UsersResponse {
@@ -38,7 +44,7 @@ interface UsersResponse {
   totalPages: number;
 }
 
-const STAFF_ROLES: StaffRole[] = ["TEACHER", "IT_MANAGER", "REGISTRAR", "FINANCE"];
+const STAFF_ROLES: StaffRole[] = ["ADMIN", "TEACHER", "IT_MANAGER", "REGISTRAR", "FINANCE"];
 
 const getStatusBadge = (isActive: boolean) => {
   if (isActive) {
@@ -102,24 +108,6 @@ export default function StaffPage() {
     );
   }
 
-  if (!isLoading && staffList.length === 0 && !searchInput) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
-        <div className="p-4 md:p-6">
-          <div className="w-full">
-            <Card className="dark:border-slate-700 dark:bg-slate-800">
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <p className="text-gray-500 dark:text-gray-400">No staff found.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
@@ -148,7 +136,12 @@ export default function StaffPage() {
         <div className="w-full space-y-6">
           {/* Top Section - Title and Buttons */}
           <div className="flex flex-row flex-wrap items-center justify-between gap-3">
-            <h1 className="text-xl md:text-2xl font-bold text-black">Staff Management</h1>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-black dark:text-white">Staff Management</h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                View and manage all staff members across the school. Use the search bar to find specific staff or filter by role.
+              </p>
+            </div>
             <div className="flex items-center gap-3">
             </div>
           </div>
@@ -175,6 +168,7 @@ export default function StaffPage() {
                     className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
                   >
                     <option value="">All Roles</option>
+                    <option value="ADMIN">Admin</option>
                     <option value="TEACHER">Teacher</option>
                     <option value="IT_MANAGER">IT Manager</option>
                     <option value="REGISTRAR">Registrar</option>
@@ -193,6 +187,7 @@ export default function StaffPage() {
                   <tr className="border-b border-gray-100 dark:border-slate-700">
                     <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Staff</th>
                     <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Role</th>
+                    <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Username / Staff ID</th>
                     <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Phone</th>
                     <th className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Status</th>
                     <th className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Actions</th>
@@ -216,7 +211,10 @@ export default function StaffPage() {
                           </Avatar>
                           <div>
                             <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{item.email}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{item.email || "No email"}</p>
+                            {item.role === "TEACHER" && item.teacherProfile?.specialization ? (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{item.teacherProfile.specialization}</p>
+                            ) : null}
                           </div>
                         </div>
                       </td>
@@ -224,6 +222,11 @@ export default function StaffPage() {
                         <Badge variant="outline">
                           {item.role.replace("_", " ")}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
+                          {item.username || item.teacherProfile?.employeeId || "-"}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-gray-700 dark:text-gray-300">{item.phone || "-"}</span>
@@ -236,7 +239,7 @@ export default function StaffPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
                           <Link
-                            href={`/list/users/${item.id}`}
+                            href={`/list/staff/${item.id}`}
                             className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                             title="View"
                           >
@@ -248,14 +251,18 @@ export default function StaffPage() {
                   ))}
                 </tbody>
               </table>
-              {staffList.length === 0 && searchInput && (
+              {staffList.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
                   <p className="text-lg font-medium text-gray-900 dark:text-white">
                     No staff found
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    No staff match "{searchInput}". Try different keywords.
+                    {searchInput
+                      ? `No staff match "${searchInput}". Try different keywords.`
+                      : selectedRole
+                      ? `No staff with the selected role.`
+                      : "No staff records available."}
                   </p>
                 </div>
               )}

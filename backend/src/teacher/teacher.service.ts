@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -168,6 +168,7 @@ export class TeacherService {
       id: teacher.id,
       userId: teacher.id,
       email: teacher.email,
+      username: teacher.username,
       name: teacher.name,
       staffId: teacher.teacherProfile?.employeeId || '',
       phone: teacher.phone || '',
@@ -178,6 +179,7 @@ export class TeacherService {
       hireDate: teacher.teacherProfile?.hireDate,
       department: teacher.teacherProfile?.department?.name || '',
       createdAt: teacher.createdAt,
+      lastLoginAt: teacher.lastLoginAt,
       avatarUrl: teacher.avatarUrl || '',
     };
   }
@@ -186,6 +188,19 @@ export class TeacherService {
    * Get assigned classes and sections for a teacher (homeroom assignments)
    */
   async getMyAssignments(teacherId: string, schoolId: string) {
+    const teacher = await this.prisma.user.findFirst({
+      where: {
+        id: teacherId,
+        schoolId,
+        role: 'TEACHER',
+      },
+      select: { id: true },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+
     // Homeroom classes are no longer directly linked, we get them via sections
     const homeroomSections = await this.prisma.section.findMany({
       where: {

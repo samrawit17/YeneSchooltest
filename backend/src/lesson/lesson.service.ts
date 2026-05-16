@@ -14,7 +14,10 @@ import {
   LessonCoverageQueryDto,
 } from './dto/create-lesson-bundle.dto';
 import { LessonStatus, ContentType } from '@prisma/client';
-import { NotificationService } from '../notification/notification.service';
+import {
+  NotificationService,
+  NotificationType,
+} from '../notification/notification.service';
 
 @Injectable()
 export class LessonService {
@@ -141,6 +144,15 @@ export class LessonService {
     return date.getDay();
   }
 
+  private getLearnerVisibleLessonStatuses() {
+    return [
+      LessonStatus.DRAFT,
+      'PENDING_REVIEW' as LessonStatus,
+      LessonStatus.PUBLISHED,
+      LessonStatus.COVERED,
+    ];
+  }
+
   private buildHomeworkFromLesson(lesson: {
     id: string;
     title?: string | null;
@@ -263,6 +275,8 @@ export class LessonService {
       return { lesson, resources };
     });
 
+    await this.notifyLessonCreated(result.lesson);
+
     return result;
   }
 
@@ -272,13 +286,15 @@ export class LessonService {
     teacherId: string,
     schoolId: string,
   ) {
-    const lesson = await this.prisma.content.findUnique({
-      where: { id: lessonId },
+    const lesson = await this.prisma.content.findFirst({
+      where: {
+        id: lessonId,
+        schoolId,
+        type: ContentType.LESSON,
+      },
     });
-    if (!lesson || lesson.type !== ContentType.LESSON)
+    if (!lesson)
       throw new NotFoundException('Lesson not found');
-    if (lesson.schoolId !== schoolId)
-      throw new ForbiddenException('Access denied');
     if (lesson.teacherId !== teacherId)
       throw new ForbiddenException('Only creator can update');
     if (lesson.status === LessonStatus.PUBLISHED)
@@ -402,6 +418,87 @@ export class LessonService {
       }
     } catch (e) {
       console.error('Lesson notification error:', e);
+    }
+  }
+
+  private async notifyLessonCreated(lesson: any) {
+    try {
+      const classRecord = await this.prisma.class.findFirst({
+        where: { grade: lesson.grade, schoolId: lesson.schoolId },
+      });
+      if (!classRecord) return;
+
+      const studentClasses = await this.prisma.studentClass.findMany({
+        where: {
+          schoolId: lesson.schoolId,
+          classId: classRecord.id,
+          section: { name: lesson.sectionName },
+        },
+        select: { studentId: true },
+      });
+
+      const studentUserIds = studentClasses.map((sc) => sc.studentId);
+      if (studentUserIds.length === 0) return;
+
+      const studentProfiles = await this.prisma.studentProfile.findMany({
+        where: {
+          schoolId: lesson.schoolId,
+          userId: { in: studentUserIds },
+        },
+        select: { id: true },
+      });
+      const studentProfileIds = studentProfiles.map((profile) => profile.id);
+
+      const parentLinks =
+        studentProfileIds.length > 0
+          ? await this.prisma.parentStudent.findMany({
+              where: {
+                schoolId: lesson.schoolId,
+                studentId: { in: studentProfileIds },
+              },
+              select: { parent: { select: { userId: true } } },
+            })
+          : [];
+
+      const subjectName = lesson.subject?.name || 'lesson';
+      const metadata = {
+        lessonId: lesson.id,
+        grade: lesson.grade,
+        section: lesson.sectionName,
+        subjectId: lesson.subjectId,
+        subjectName,
+      };
+      const message = `${lesson.teacher?.name || 'Teacher'} created "${lesson.title}" for ${subjectName}.`;
+
+      const uniqueStudentUserIds = Array.from(new Set(studentUserIds));
+      if (uniqueStudentUserIds.length > 0) {
+        await this.notificationService.createBulkNotifications({
+          schoolId: lesson.schoolId,
+          userIds: uniqueStudentUserIds,
+          title: 'New Lesson Created',
+          message,
+          type: NotificationType.LESSON,
+          actionUrl: '/student/lessons',
+          metadata,
+        });
+      }
+
+      const uniqueParentUserIds = Array.from(
+        new Set(parentLinks.map((link) => link.parent.userId)),
+      );
+      if (uniqueParentUserIds.length > 0) {
+        await this.notificationService.createBulkNotifications({
+          schoolId: lesson.schoolId,
+          userIds: uniqueParentUserIds,
+          title: 'New Lesson Created',
+          message,
+          type: NotificationType.LESSON,
+          actionUrl: '/parent/lessons',
+          metadata,
+        });
+      }
+    } catch (error) {
+      console.error('Lesson creation notification error:', error);
     }
   }
 
@@ -735,32 +832,98 @@ export class LessonService {
     const where: any = { schoolId };
     // Only return rows that are lessons
     where.type = ContentType.LESSON;
-    let isStudentRole = false;
+    let parentChildMap: Map<string, { id: string; name: string }> | null = null;
+    let parentClassScopes = new Map<
+      string,
+      Array<{ grade: number | null; sectionName: string }>
+    >();
     if (role === 'TEACHER') where.teacherId = userId;
-    else if (role === 'STUDENT' || role === 'PARENT') {
-      isStudentRole = true;
-      // Students/Parents can only see published lessons and must be locked to their own class/section.
-      where.status = LessonStatus.PUBLISHED;
-      
-      // For PARENT, use query.studentId to find student's class
-      let targetUserId = userId;
-      if (role === 'PARENT' && query.studentId) {
-        targetUserId = query.studentId;
-      }
-      
+    else if (role === 'STUDENT') {
+      // Students can only see lessons for their own class/section.
+      where.status = { in: this.getLearnerVisibleLessonStatuses() };
       const sc = await this.prisma.studentClass.findFirst({
-        where: { studentId: targetUserId },
+        where: { studentId: userId, schoolId },
         include: { section: { include: { class: true } } },
       });
-      if (sc) {
-        where.grade = sc.section.class.grade;
-        where.sectionName = sc.section.name;
+      if (!sc) {
+        return {
+          data: [],
+          meta: { total: 0, page: query.page || 1, limit: query.limit || 20, totalPages: 0 },
+        };
       }
+      where.grade = sc.section.class.grade;
+      where.sectionName = sc.section.name;
+    } else if (role === 'PARENT') {
+      // Parents can only see lessons for their linked children.
+      where.status = { in: this.getLearnerVisibleLessonStatuses() };
+      const parentProfile = await this.prisma.parentProfile.findFirst({
+        where: { userId, schoolId },
+      });
+
+      if (!parentProfile) {
+        return {
+          data: [],
+          meta: { total: 0, page: query.page || 1, limit: query.limit || 20, totalPages: 0 },
+        };
+      }
+
+      const childLinks = await this.prisma.parentStudent.findMany({
+        where: {
+          parentId: parentProfile.id,
+          schoolId,
+          ...(query.studentId ? { studentId: query.studentId } : {}),
+        },
+        include: {
+          student: {
+            include: {
+              user: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
+
+      const childUserIds = childLinks.map((link) => link.student.userId);
+      parentChildMap = new Map(
+        childLinks.map((link) => [
+          link.student.userId,
+          { id: link.student.id, name: link.student.user?.name || 'Unknown' },
+        ]),
+      );
+
+      const studentClasses = await this.prisma.studentClass.findMany({
+        where: { studentId: { in: childUserIds }, schoolId },
+        include: { section: { include: { class: true } } },
+      });
+      parentClassScopes = new Map();
+      studentClasses.forEach((sc) => {
+        const existing = parentClassScopes.get(sc.studentId) || [];
+        existing.push({
+          grade: sc.section.class.grade,
+          sectionName: sc.section.name,
+        });
+        parentClassScopes.set(sc.studentId, existing);
+      });
+
+      const scopes = studentClasses
+        .map((sc) => ({
+          grade: sc.section.class.grade,
+          sectionName: sc.section.name,
+        }))
+        .filter((scope) => scope.grade !== null);
+
+      if (scopes.length === 0) {
+        return {
+          data: [],
+          meta: { total: 0, page: query.page || 1, limit: query.limit || 20, totalPages: 0 },
+        };
+      }
+
+      where.OR = scopes;
     }
     // For students/parents, do not allow overriding their own grade/section via query params.
-    if (!isStudentRole) {
+    if (role !== 'STUDENT' && role !== 'PARENT') {
       if (query.grade) where.grade = query.grade;
-      if (query.section) where.section = query.section;
+      if (query.section) where.sectionName = query.section;
     }
     if (query.semesterId) where.semesterId = query.semesterId;
     if (query.subjectId) where.subjectId = query.subjectId;
@@ -790,8 +953,36 @@ export class LessonService {
       }),
       this.prisma.content.count({ where }),
     ]);
+    const resolvedData =
+      role === 'PARENT' && parentChildMap
+        ? data.flatMap((lesson) => {
+            const matchingChildren = Array.from(parentChildMap.entries()).filter(
+              ([childUserId]) =>
+                parentClassScopes.get(childUserId)?.some(
+                  (scope) =>
+                    scope.grade === lesson.grade &&
+                    scope.sectionName === lesson.sectionName,
+                ),
+            );
+
+            return matchingChildren.map(([_, child]) => ({
+              ...lesson,
+              section: lesson.sectionName,
+              homework: this.buildHomeworkFromLesson(lesson),
+              studentId: child.id,
+              studentName: child.name,
+              childGrade: lesson.grade,
+              childSection: lesson.sectionName,
+            }));
+          })
+        : data.map((lesson) => ({
+            ...lesson,
+            section: lesson.sectionName,
+            homework: this.buildHomeworkFromLesson(lesson),
+          }));
+
     return {
-      data,
+      data: resolvedData,
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
@@ -817,9 +1008,49 @@ export class LessonService {
       lesson.status !== LessonStatus.PUBLISHED
     )
       throw new ForbiddenException('Access denied');
-    if (role === 'STUDENT' && lesson.status !== LessonStatus.PUBLISHED)
-      throw new ForbiddenException('Not published');
-    return lesson;
+    if (role === 'STUDENT') {
+      if (!this.getLearnerVisibleLessonStatuses().includes(lesson.status as LessonStatus))
+        throw new ForbiddenException('Not visible');
+      const studentClass = await this.prisma.studentClass.findFirst({
+        where: { studentId: userId, schoolId },
+        include: { section: { include: { class: true } } },
+      });
+      if (
+        !studentClass ||
+        studentClass.section.class.grade !== lesson.grade ||
+        studentClass.section.name !== lesson.sectionName
+      ) {
+        throw new ForbiddenException('Access denied');
+      }
+    }
+    if (role === 'PARENT') {
+      if (!this.getLearnerVisibleLessonStatuses().includes(lesson.status as LessonStatus))
+        throw new ForbiddenException('Not visible');
+      const parentProfile = await this.prisma.parentProfile.findFirst({
+        where: { userId, schoolId },
+      });
+      if (!parentProfile) throw new ForbiddenException('Access denied');
+
+      const childLinks = await this.prisma.parentStudent.findMany({
+        where: { parentId: parentProfile.id, schoolId },
+        include: { student: { include: { user: { select: { id: true, name: true } } } } },
+      });
+      const childUserIds = childLinks.map((link) => link.student.userId);
+      const matchingClass = await this.prisma.studentClass.findFirst({
+        where: {
+          studentId: { in: childUserIds },
+          schoolId,
+          section: { name: lesson.sectionName || undefined },
+          class: { grade: lesson.grade || undefined },
+        },
+      });
+      if (!matchingClass) throw new ForbiddenException('Access denied');
+    }
+    return {
+      ...lesson,
+      section: lesson.sectionName,
+      homework: this.buildHomeworkFromLesson(lesson),
+    };
   }
 
   async update(
@@ -828,11 +1059,11 @@ export class LessonService {
     teacherId: string,
     schoolId: string,
   ) {
-    const lesson = await this.prisma.content.findUnique({ where: { id } });
-    if (!lesson || lesson.type !== ContentType.LESSON)
+    const lesson = await this.prisma.content.findFirst({
+      where: { id, schoolId, type: ContentType.LESSON },
+    });
+    if (!lesson)
       throw new NotFoundException('Not found');
-    if (lesson.schoolId !== schoolId)
-      throw new ForbiddenException('Access denied');
     if (lesson.teacherId !== teacherId)
       throw new ForbiddenException('Only creator');
     return this.prisma.content.update({
@@ -855,11 +1086,11 @@ export class LessonService {
   }
 
   async remove(id: string, teacherId: string, schoolId: string) {
-    const lesson = await this.prisma.content.findUnique({ where: { id } });
-    if (!lesson || lesson.type !== ContentType.LESSON)
+    const lesson = await this.prisma.content.findFirst({
+      where: { id, schoolId, type: ContentType.LESSON },
+    });
+    if (!lesson)
       throw new NotFoundException('Not found');
-    if (lesson.schoolId !== schoolId)
-      throw new ForbiddenException('Access denied');
     if (lesson.teacherId !== teacherId)
       throw new ForbiddenException('Only creator');
     if (lesson.status === LessonStatus.PUBLISHED)

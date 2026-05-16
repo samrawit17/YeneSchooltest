@@ -3,6 +3,8 @@
 import { useCallback, useState, useEffect } from "react";
 import { periodTimeAPI } from "@/lib/api/siren-period-time";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { formatTimeByCalendarType } from "@/lib/calendar-utils";
 import { toast } from "sonner";
 import {
   Clock,
@@ -23,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/TimePicker";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -60,6 +63,7 @@ interface PeriodTime {
 
 export function PeriodTimeManagement() {
   const { user } = useAuth();
+  const { schoolCalendarType } = useAcademicYear();
   const [periods, setPeriods] = useState<PeriodTime[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -210,25 +214,21 @@ export function PeriodTimeManagement() {
 
                 <div>
                   <Label htmlFor="startTime">Start Time</Label>
-                  <Input
-                    id="startTime"
-                    type="time"
+                  <TimePicker
                     value={form.startTime}
-                    onChange={(e) =>
-                      setForm({ ...form, startTime: e.target.value })
-                    }
+                    onChange={(time) => setForm({ ...form, startTime: time })}
+                    placeholder="Select start time"
+                    calendarType={schoolCalendarType}
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="endTime">End Time</Label>
-                  <Input
-                    id="endTime"
-                    type="time"
+                  <TimePicker
                     value={form.endTime}
-                    onChange={(e) =>
-                      setForm({ ...form, endTime: e.target.value })
-                    }
+                    onChange={(time) => setForm({ ...form, endTime: time })}
+                    placeholder="Select end time"
+                    calendarType={schoolCalendarType}
                   />
                 </div>
               </div>
@@ -306,11 +306,17 @@ export function PeriodTimeManagement() {
                           Period {period.periodNumber}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-mono">
-                        {period.startTime}
+                      <TableCell>
+                        <div className="font-medium">
+                          {formatTimeByCalendarType(period.startTime, schoolCalendarType)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{period.startTime}</div>
                       </TableCell>
-                      <TableCell className="font-mono">
-                        {period.endTime}
+                      <TableCell>
+                        <div className="font-medium">
+                          {formatTimeByCalendarType(period.endTime, schoolCalendarType)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{period.endTime}</div>
                       </TableCell>
                       <TableCell>{duration}</TableCell>
                       <TableCell className="text-right">

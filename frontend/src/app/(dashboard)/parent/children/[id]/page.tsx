@@ -31,6 +31,7 @@ import { termsAPI } from "@/lib/api/academics";
 import { communicationsAPI } from "@/lib/api/communications";
 import { reportCardsAPI } from "@/lib/api/reporting";
 import NewMessageModal from "@/components/communications/NewMessageModal";
+import { useSchoolFeatureSetting } from "@/hooks/useSchoolFeatureSetting";
 
 import {
   Card,
@@ -123,6 +124,14 @@ const ChildDetailPage = () => {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [paymentGate, setPaymentGate] = useState<{ blocked: boolean; message: string }>({
+    blocked: false,
+    message: "",
+  });
+  const {
+    enabled: parentGradesEnabled,
+    isLoading: parentGradesSettingLoading,
+  } = useSchoolFeatureSetting("PARENT_VIEW_GRADES");
 
   useEffect(() => {
     const fetchChildDetail = async () => {
@@ -174,6 +183,7 @@ const ChildDetailPage = () => {
             : currentTerm?.name || activeAcademicYear?.name || null,
         );
         setAcademicYearLabel(activeAcademicYear?.name || null);
+        let gradesBlockedByFees = false;
 
         if (schoolId && academicYearId && (childData?.studentId || studentUserId)) {
           try {
@@ -192,6 +202,35 @@ const ChildDetailPage = () => {
           }
         }
 
+        if (
+          parentGradesEnabled &&
+          academicYearId &&
+          currentTerm?.id &&
+          (childData?.studentId || studentUserId)
+        ) {
+          try {
+            const clearanceResponse = await gradingAPI.verifyFinancialClearance({
+              studentId: childData?.studentId || studentUserId,
+              academicYear: academicYearId,
+              termId: currentTerm.id,
+              checkOverdueOnly: false,
+            });
+            if (!clearanceResponse.data?.isCleared) {
+              gradesBlockedByFees = true;
+              setPaymentGate({
+                blocked: true,
+                message: `Results are locked until the ${currentTerm.name || "current period"} fees are paid.`,
+              });
+            } else {
+              setPaymentGate({ blocked: false, message: "" });
+            }
+          } catch (clearanceError) {
+            console.error("Failed to verify fee clearance:", clearanceError);
+          }
+        } else {
+          setPaymentGate({ blocked: false, message: "" });
+        }
+
         let academicSummary: {
           average: number;
           grade: string;
@@ -206,7 +245,7 @@ const ChildDetailPage = () => {
           totalSubjects: 0,
         };
 
-        if (childData?.studentId || studentUserId) {
+        if (parentGradesEnabled && !gradesBlockedByFees && (childData?.studentId || studentUserId)) {
           try {
             const publishedCardsResponse = await reportCardsAPI.getPublishedForParent(
               childData?.studentId || studentUserId,
@@ -244,7 +283,7 @@ const ChildDetailPage = () => {
           }
         }
 
-        if (academicYearId && (childData?.studentId || studentUserId) && academicSummary.totalSubjects === 0) {
+        if (parentGradesEnabled && !gradesBlockedByFees && academicYearId && (childData?.studentId || studentUserId) && academicSummary.totalSubjects === 0) {
           try {
             const gradesResponse = await gradingAPI.getChildGrades(
               childData?.studentId || studentUserId,
@@ -277,7 +316,7 @@ const ChildDetailPage = () => {
           }
         }
 
-        if (!academicSummary.totalSubjects) {
+        if (parentGradesEnabled && !gradesBlockedByFees && !academicSummary.totalSubjects) {
           const uniqueSubjects = new Set(
             (childData?.teachingTeachers || [])
               .flatMap((teacher: any) => teacher.subjects || [])
@@ -345,8 +384,9 @@ const ChildDetailPage = () => {
       }
     };
 
+    if (parentGradesSettingLoading) return;
     fetchChildDetail();
-  }, [childId]);
+  }, [childId, parentGradesEnabled, parentGradesSettingLoading]);
 
   // Set breadcrumbs when child data is loaded
   useEffect(() => {
@@ -401,7 +441,7 @@ const ChildDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
+      <div className="p-6 min-h-screen bg-gray-50 dark:bg-slate-900">
         <Skeleton className="h-8 w-48 mb-6" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
@@ -418,7 +458,7 @@ const ChildDetailPage = () => {
 
   if (!child) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
+      <div className="p-6 flex items-center justify-center min-h-screen bg-gray-50 dark:bg-slate-900">
         <Card className="max-w-md mx-auto">
           <CardContent className="py-12 text-center">
             <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -493,15 +533,17 @@ const ChildDetailPage = () => {
                       {stats?.attendance.rate || 0}%
                     </p>
                   </div>
-                  <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Current GPA</span>
+                  {parentGradesEnabled && !paymentGate.blocked && (
+                    <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Current GPA</span>
+                      </div>
+                      <p className="text-xl font-bold text-gray-900 dark:text-white">
+                        {stats?.academics.grade || "N/A"}
+                      </p>
                     </div>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white">
-                      {stats?.academics.grade || "N/A"}
-                    </p>
-                  </div>
+                  )}
                   <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <DollarSign className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -629,39 +671,49 @@ const ChildDetailPage = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <BookOpen className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Subjects</p>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {typeof stats?.academics.totalSubjects === "number"
-                          ? `${stats.academics.totalSubjects} subjects`
-                          : "-"}
-                      </p>
+                  {parentGradesEnabled && !paymentGate.blocked ? (
+                    <>
+                      <div className="flex items-start gap-3">
+                        <BookOpen className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Total Subjects</p>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {typeof stats?.academics.totalSubjects === "number"
+                              ? `${stats.academics.totalSubjects} subjects`
+                              : "-"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Award className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Ranking</p>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {typeof stats?.academics.ranking === "number"
+                              ? `#${stats.academics.ranking}${typeof stats.academics.totalStudents === "number" ? ` out of ${stats.academics.totalStudents} students` : ""}`
+                              : "-"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <TrendingUp className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Overall Average</p>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {typeof stats?.academics.average === "number"
+                              ? `${stats.academics.average}%`
+                              : "-"}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-slate-700 dark:bg-slate-700/40 dark:text-gray-300">
+                      {paymentGate.blocked
+                        ? paymentGate.message
+                        : "Grade viewing is disabled for parents by the school."}
                     </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Award className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Ranking</p>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {typeof stats?.academics.ranking === "number"
-                          ? `#${stats.academics.ranking}${typeof stats.academics.totalStudents === "number" ? ` out of ${stats.academics.totalStudents} students` : ""}`
-                          : "-"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <TrendingUp className="w-5 h-5 text-gray-400 dark:text-gray-500 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Overall Average</p>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {typeof stats?.academics.average === "number"
-                          ? `${stats.academics.average}%`
-                          : "-"}
-                      </p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

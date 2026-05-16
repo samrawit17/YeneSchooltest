@@ -54,20 +54,28 @@ export class SectionController {
     }
 
     const ids = classIds ? classIds.split(',') : undefined;
-    return this.sectionService.findAll(classId, ids);
+    return this.sectionService.findAll(schoolId, classId, ids);
   }
 
   @Get(':id')
   @Permissions('section:read')
-  async findOne(@Param('id') id: string) {
-    return this.sectionService.findOne(id);
+  async findOne(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.sectionService.findOne(id, schoolId);
   }
 
   @Put(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('section:update')
-  async update(@Param('id') id: string, @Body() body: any) {
-    return this.sectionService.update(id, {
+  async update(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.sectionService.update(id, schoolId, {
       name: body.name,
       capacity: body.capacity,
       roomNumber: body.roomNumber,
@@ -87,7 +95,9 @@ export class SectionController {
     @Body() body: any,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.sectionService.update(id, {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.sectionService.update(id, schoolId, {
       homeroomTeacherId: body.homeroomTeacherId,
     });
   }
@@ -95,8 +105,10 @@ export class SectionController {
   @Delete(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER)
   @Permissions('section:delete')
-  async delete(@Param('id') id: string) {
-    return this.sectionService.delete(id);
+  async delete(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.sectionService.delete(id, schoolId);
   }
 
   /**

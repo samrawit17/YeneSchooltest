@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,11 +16,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { schoolSettingsAPI, timetableSlotsAPI } from "@/lib/api";
 import {
   getSchoolTimeBounds,
-  getSlotRanges,
-  getUniqueSlotRanges,
   SCHOOL_WEEK_DAYS,
   toMinutes,
 } from "@/lib/timetable";
+import { formatTimeByCalendarType } from "@/lib/calendar-utils";
 import { BookOpen, Calendar, Clock, MapPin, RefreshCw, UserRound } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,6 +56,50 @@ interface ClassProgramViewProps {
   emptyDescription: string;
 }
 
+function ClassSlotCard({
+  slot,
+  timeLabel,
+  periodLabel,
+}: {
+  slot: TimetableSlot;
+  timeLabel: string;
+  periodLabel: string;
+}) {
+  const subjectCode = slot.subject?.code ? ` (${slot.subject.code})` : "";
+
+  return (
+    <article className="rounded-md border border-slate-200 bg-slate-50 p-3 shadow-sm transition hover:border-[rgba(var(--brand-color-rgb),0.28)] hover:bg-white dark:border-[#334155] dark:bg-[#0F172A] dark:hover:bg-[#111827]">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <Badge variant="outline" className="mb-2 h-5 px-1.5 text-[10px] font-semibold">
+            {periodLabel}
+          </Badge>
+          <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+            {slot.subject?.name || "Subject"}
+            {subjectCode}
+          </p>
+          <p className="mt-1 flex items-center gap-1 text-xs font-medium text-[var(--brand-color,#e35336)]">
+            <Clock className="h-3 w-3" />
+            {timeLabel}
+          </p>
+        </div>
+        <BookOpen className="h-4 w-4 shrink-0 text-slate-400" />
+      </div>
+
+      <div className="mt-3 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+        <p className="flex min-w-0 items-center gap-1.5">
+          <UserRound className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+          <span className="truncate">{slot.teacher?.name || "Teacher pending"}</span>
+        </p>
+        <p className="flex min-w-0 items-center gap-1.5">
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+          <span className="truncate">{slot.room || "Room not set"}</span>
+        </p>
+      </div>
+    </article>
+  );
+}
+
 export default function ClassProgramView({
   schoolId,
   classId,
@@ -67,6 +111,7 @@ export default function ClassProgramView({
   emptyDescription,
 }: ClassProgramViewProps) {
   const router = useRouter();
+  const { schoolCalendarType } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [schoolSettings, setSchoolSettings] = useState<Record<string, any>>({});
@@ -85,17 +130,14 @@ export default function ClassProgramView({
     [slots],
   );
 
-  const slotRanges = useMemo(() => {
-    const uniqueRanges = getUniqueSlotRanges(weekdaySlots);
-    if (uniqueRanges.length > 0) {
-      return uniqueRanges.map((range, index) => ({
-        ...range,
-        label: `Period ${index + 1}`,
-      }));
-    }
-
-    return getSlotRanges(schoolStartTime, schoolEndTime);
-  }, [schoolEndTime, schoolStartTime, weekdaySlots]);
+  const displayDays = useMemo(
+    () => [
+      ...SCHOOL_WEEK_DAYS,
+      { value: 6, name: "Saturday", shortName: "Sat" },
+      { value: 7, name: "Sunday", shortName: "Sun" },
+    ],
+    [],
+  );
 
   const loadProgram = useCallback(async (isRefresh = false) => {
     if (!schoolId || !classId) {
@@ -143,13 +185,36 @@ export default function ClassProgramView({
     ? weekdaySlots.filter((slot) => slot.dayOfWeek === todayDayOfWeek)
     : [];
 
-  const getSlotForRange = (dayOfWeek: number, startTime: string, endTime: string) =>
-    weekdaySlots.find(
-      (slot) =>
-        slot.dayOfWeek === dayOfWeek &&
-        slot.startTime === startTime &&
-        slot.endTime === endTime,
-    );
+  const periodLabelByTime = useMemo(() => {
+    const uniqueRanges = Array.from(
+      new Set(
+        weekdaySlots
+          .map((slot) => `${slot.startTime}-${slot.endTime}`)
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => {
+      const [aStart] = a.split("-");
+      const [bStart] = b.split("-");
+      return aStart.localeCompare(bStart);
+    });
+
+    return uniqueRanges.reduce<Record<string, string>>((acc, range, index) => {
+      acc[range] = `Period ${index + 1}`;
+      return acc;
+    }, {});
+  }, [weekdaySlots]);
+
+  const getPeriodLabel = (slot: TimetableSlot, fallbackIndex?: number) =>
+    periodLabelByTime[`${slot.startTime}-${slot.endTime}`] ||
+    `Period ${(fallbackIndex ?? 0) + 1}`;
+
+  const getSlotsForDay = (dayOfWeek: number) =>
+    slots
+      .filter((slot) => slot.dayOfWeek === dayOfWeek)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+  const formatSlotTime = (startTime: string, endTime: string) =>
+    `${formatTimeByCalendarType(startTime, schoolCalendarType)} - ${formatTimeByCalendarType(endTime, schoolCalendarType)}`;
 
   if (loading) {
     return (
@@ -191,7 +256,7 @@ export default function ClassProgramView({
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge variant="secondary">{ownerName}</Badge>
               <Badge variant="outline">
-                School hours {schoolStartTime} - {schoolEndTime}
+                School hours {formatSlotTime(schoolStartTime, schoolEndTime)}
               </Badge>
               <Badge variant="outline">Monday to Friday</Badge>
             </div>
@@ -222,69 +287,68 @@ export default function ClassProgramView({
               <p>No timetable has been published for this class yet.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px]">
-                <thead>
-                  <tr className="bg-gray-50 dark:bg-[#1E293B]">
-                    <th className="w-24 border-b border-r px-2 py-4 text-center text-sm font-semibold text-gray-500 dark:border-[#334155] dark:text-gray-400">
-                      Time
-                    </th>
-                    {SCHOOL_WEEK_DAYS.map((day) => (
-                      <th
-                        key={day.value}
-                        className={`border-b border-r py-4 text-center text-sm font-semibold last:border-r-0 dark:border-[#334155] ${
-                          todayIsWeekday && day.value === todayDayOfWeek
-                            ? "bg-blue-50 text-blue-700"
-                            : "text-gray-500 dark:text-gray-400"
-                        }`}
-                      >
-                        <div>{day.name}</div>
-                        {todayIsWeekday && day.value === todayDayOfWeek && (
-                          <Badge className="mt-1 bg-blue-600 text-white">Today</Badge>
-                        )}
-                      </th>
+            <div className="space-y-4 p-4">
+              {todayClasses.length > 0 && (
+                <div className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.06)] p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-[var(--brand-color,#e35336)]" />
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Today&apos;s Classes</h3>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {todayClasses.map((slot, index) => (
+                      <ClassSlotCard
+                        key={slot.id}
+                        slot={slot}
+                        periodLabel={getPeriodLabel(slot, index)}
+                        timeLabel={formatSlotTime(slot.startTime, slot.endTime)}
+                      />
                     ))}
-                  </tr>
-                </thead>
-                <tbody className="dark:bg-[#0F172A]">
-                  {slotRanges.map((range) => (
-                    <tr key={`${range.start}-${range.end}`}>
-                      <td className="border-b border-r bg-gray-50 px-2 py-2 text-center text-xs text-gray-500 dark:border-[#334155] dark:bg-[#1E293B] dark:text-gray-400">
-                        <div className="font-medium">{range.label}</div>
-                        <div>{range.start} - {range.end}</div>
-                      </td>
-                      {SCHOOL_WEEK_DAYS.map((day) => {
-                        const slot = getSlotForRange(day.value, range.start, range.end);
-                        const isToday = todayIsWeekday && day.value === todayDayOfWeek;
+                  </div>
+                </div>
+              )}
 
-                        return (
-                          <td
-                            key={`${day.value}-${range.start}`}
-                            className={`min-h-[88px] border-b border-r px-1 py-2 align-top last:border-r-0 dark:border-[#334155] ${
-                              isToday ? "bg-blue-50/60 dark:bg-blue-900/20" : ""
-                            }`}
-                          >
-                            {slot ? (
-                              <div className="rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-100 dark:bg-[#111827] dark:ring-[#334155]">
-                                <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                  {slot.subject?.name || "Subject"}
-                                </p>
-                                <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-                                  {slot.teacher?.name || "Teacher pending"}
-                                </p>
-                                <p className="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                                  <MapPin className="h-3 w-3" />
-                                  {slot.room || "Room not set"}
-                                </p>
-                              </div>
-                            ) : null}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="grid gap-4 lg:grid-cols-7">
+                {displayDays.map((day) => {
+                  const daySlots = getSlotsForDay(day.value);
+                  const isToday = todayIsWeekday && day.value === todayDayOfWeek;
+
+                  return (
+                    <section
+                      key={day.value}
+                      className={`min-h-[220px] rounded-lg border bg-white p-3 shadow-sm dark:bg-[#111827] ${
+                        isToday
+                          ? "border-[var(--brand-color,#e35336)] ring-1 ring-[rgba(var(--brand-color-rgb),0.22)]"
+                          : "border-slate-200 dark:border-[#334155]"
+                      }`}
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-[#334155]">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white">{day.name}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{daySlots.length} class{daySlots.length === 1 ? "" : "es"}</p>
+                        </div>
+                        {isToday && <Badge className="bg-[var(--brand-color,#e35336)] text-white">Today</Badge>}
+                      </div>
+
+                      {daySlots.length > 0 ? (
+                        <div className="space-y-3">
+                          {daySlots.map((slot, index) => (
+                            <ClassSlotCard
+                              key={slot.id}
+                              slot={slot}
+                              periodLabel={getPeriodLabel(slot, index)}
+                              timeLabel={formatSlotTime(slot.startTime, slot.endTime)}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex min-h-[150px] items-center justify-center rounded-md border border-dashed border-slate-200 text-center text-xs font-medium text-slate-400 dark:border-[#334155]">
+                          Not Scheduled
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>

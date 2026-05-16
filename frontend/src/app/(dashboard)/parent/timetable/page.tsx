@@ -6,9 +6,22 @@ import { studentsAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
 import { useAuth } from "@/context/AuthContext";
 import ClassProgramView from "@/components/timetable/ClassProgramView";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, School, Users, ChevronDown, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Calendar,
+  School,
+  Users,
+  BookText,
+  GraduationCap,
+} from "lucide-react";
 
 interface Child {
   id: string;
@@ -22,6 +35,9 @@ interface ChildEnrollment extends Child {
   classId?: string;
   sectionId?: string;
 }
+
+const formatShortWeekday = (date: Date) =>
+  date.toLocaleDateString("en-US", { weekday: "short" });
 
 export default function ParentTimetablePage() {
   const router = useRouter();
@@ -43,17 +59,24 @@ export default function ParentTimetablePage() {
             userId:
               rawChild.student?.userId || rawChild.student?.id || rawChild.userId,
             name: rawChild.name || rawChild.student?.user?.name || "Unknown",
+            classId: rawChild.classId || rawChild.student?.classId,
+            sectionId: rawChild.sectionId || rawChild.student?.sectionId,
             className: rawChild.className || rawChild.student?.className,
             section: rawChild.section || rawChild.student?.section,
           };
           try {
             const enrollmentResponse = await parentDashboardAPI.getStudentEnrollment(child.userId);
+            const enrollmentData = enrollmentResponse.data?.data || enrollmentResponse.data || {};
             return {
               ...child,
-              classId: enrollmentResponse.data?.classId,
-              sectionId: enrollmentResponse.data?.sectionId,
-              className: child.className || enrollmentResponse.data?.className,
-              section: child.section || enrollmentResponse.data?.section,
+              classId: enrollmentData.classId || enrollmentData.class?.id || child.classId,
+              sectionId: enrollmentData.sectionId || enrollmentData.section?.id || child.sectionId,
+              className: child.className || enrollmentData.className || enrollmentData.class?.name,
+              section:
+                child.section ||
+                enrollmentData.sectionName ||
+                enrollmentData.section?.name ||
+                enrollmentData.section,
             };
           } catch {
             return child;
@@ -97,116 +120,96 @@ export default function ParentTimetablePage() {
     [children, selectedChildId],
   );
 
-  // Loading state
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white to-gray-50 dark:from-slate-950 dark:to-slate-900">
-        <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
-          {/* Header Skeleton */}
-          <div className="mb-8">
-            <Skeleton className="h-9 w-64 mb-3" />
-            <Skeleton className="h-5 w-96" />
-          </div>
-
-          {/* Child Selector Card Skeleton */}
-          <Card className="mb-6 border-t-4 border-t-[#e35336]">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-5 w-5" />
-                <Skeleton className="h-6 w-32" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-10 w-full rounded-lg" />
-            </CardContent>
-          </Card>
-
-          {/* Timetable Skeleton */}
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-7 w-48 mb-2" />
-              <Skeleton className="h-4 w-64" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-7 gap-2">
-                  {[...Array(7)].map((_, i) => (
-                    <Skeleton key={i} className="h-10 w-full rounded-lg" />
-                  ))}
-                </div>
-                {[...Array(5)].map((_, row) => (
-                  <div key={row} className="grid grid-cols-7 gap-2">
-                    {[...Array(7)].map((_, col) => (
-                      <Skeleton key={col} className="h-24 w-full rounded-lg" />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+        <div className="px-4 py-6 md:px-6 space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-5 w-72" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-[500px] w-full rounded-xl" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-gray-50 dark:from-slate-950 dark:to-slate-900">
-      <div className="container mx-auto px-4 py-6 md:py-8 max-w-7xl">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-[#e35336]/10 rounded-lg">
-              <Calendar className="w-6 h-6 text-[#e35336]" />
-            </div>
-            <h1 className="text-2xl font-bold text-[#e35336]">
-              Class Timetable
-            </h1>
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="px-4 py-6 md:px-6 space-y-6">
+
+        {/* Header */}
+        <div>
+          <div className="mb-1">
+            <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">Class Timetable</h1>
           </div>
-          <p className="text-gray-500 dark:text-gray-400 ml-11">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             View your child's weekly class schedule and academic program
           </p>
         </div>
 
-        {/* Child Selector Card */}
-        <Card className="mb-6 border-t-4 border-t-[#e35336] shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#e35336]" />
-              Select Child
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="relative">
-              <select
-                value={selectedChildId}
-                onChange={(e) => setSelectedChildId(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all"
-                disabled={children.length === 0}
-              >
-                {children.length === 0 ? (
-                  <option value="">No children linked to your account</option>
-                ) : (
-                  children.map((child) => (
-                    <option key={child.id} value={child.id}>
+        {/* Child Selector + Quick Info */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="md:col-span-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[rgba(var(--brand-color-rgb),0.1)] flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Select Child</p>
+              <Select value={selectedChildId} onValueChange={setSelectedChildId}>
+                <SelectTrigger className="w-full h-9 border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="Choose a child" />
+                </SelectTrigger>
+                <SelectContent>
+                  {children.map((child) => (
+                    <SelectItem key={child.id} value={child.id}>
                       {child.name}
                       {child.className ? ` • ${child.className}` : ""}
                       {child.section ? ` (Section ${child.section})` : ""}
-                    </option>
-                  ))
-                )}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
-            {/* Help Text */}
-            {children.length === 0 && (
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
-                <School className="w-3 h-3" />
-                Contact the school to link children to your account
+          </div>
+
+          <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[rgba(var(--brand-color-rgb),0.1)] flex items-center justify-center shrink-0">
+              <GraduationCap className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Child</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[120px]">
+                {selectedChild?.name || "N/A"}
               </p>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-[rgba(var(--brand-color-rgb),0.1)] flex items-center justify-center shrink-0">
+              <BookText className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Class</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[120px]">
+                {selectedChild?.className || selectedChild?.section
+                  ? `${selectedChild.className || "N/A"}${selectedChild.section ? ` - ${selectedChild.section}` : ""}`
+                  : "N/A"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {children.length === 0 && (
+          <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl py-12 text-center">
+            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-4">
+              <School className="w-7 h-7 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">No Children Found</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              No children are linked to your account. Contact the school to link your children.
+            </p>
+          </div>
+        )}
 
         {/* Timetable View */}
         <ClassProgramView

@@ -19,14 +19,21 @@ import type {
 } from './academic-year.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Role } from '../auth/types/role.enum';
 
 @Controller('academic-years')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class AcademicYearController {
   constructor(private readonly academicYearService: AcademicYearService) {}
+
+  private resolveSchoolId(user: any, requestedSchoolId?: string) {
+    return user?.role === Role.SUPER_ADMIN
+      ? requestedSchoolId || user?.schoolId
+      : user?.schoolId;
+  }
 
   @Post()
   @Roles(Role.ADMIN, Role.IT_MANAGER)
@@ -35,11 +42,10 @@ export class AcademicYearController {
     @Body() createDto: CreateAcademicYearDto,
     @Request() req: any,
   ) {
-    // Use schoolId from request if not provided (for security)
-    if (!createDto.schoolId && req.user.schoolId) {
-      createDto.schoolId = req.user.schoolId;
-    }
-    return this.academicYearService.createAcademicYear(createDto);
+    return this.academicYearService.createAcademicYear({
+      ...createDto,
+      schoolId: this.resolveSchoolId(req.user, createDto.schoolId),
+    });
   }
 
   @Get()
@@ -56,8 +62,7 @@ export class AcademicYearController {
     @Query('schoolId') schoolId: string,
     @Request() req: any,
   ) {
-    // Use schoolId from request if not provided
-    const effectiveSchoolId = schoolId || req.user.schoolId;
+    const effectiveSchoolId = this.resolveSchoolId(req.user, schoolId);
     return this.academicYearService.getAcademicYears(effectiveSchoolId);
   }
 
@@ -76,7 +81,7 @@ export class AcademicYearController {
     @Query('schoolId') schoolId: string,
     @Request() req: any,
   ) {
-    const effectiveSchoolId = schoolId || req.user.schoolId;
+    const effectiveSchoolId = this.resolveSchoolId(req.user, schoolId);
     return this.academicYearService.getActiveAcademicYear(effectiveSchoolId);
   }
 
@@ -141,7 +146,7 @@ export class AcademicYearController {
     @Query('schoolId') schoolId: string,
     @Request() req: any,
   ) {
-    const effectiveSchoolId = schoolId || req.user.schoolId;
+    const effectiveSchoolId = this.resolveSchoolId(req.user, schoolId);
     return this.academicYearService.getCurrentTerm(effectiveSchoolId);
   }
 

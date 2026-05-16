@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { schoolSettingsAPI, timetableSlotsAPI } from "@/lib/api";
+import { syncService } from "@/lib/db/sync-service";
 import { toast } from "sonner";
 import {
   Calendar,
@@ -106,10 +107,22 @@ const TeacherTimetablePage = () => {
       ]);
       setTimetable(timetableResponse.data || []);
       setSchoolSettings(schoolSettingsResponse.data || {});
+      await syncService.cacheTeacherTimetable(
+        user?.id || '',
+        timetableResponse.data || [],
+        schoolSettingsResponse.data || {},
+      );
     } catch (error: any) {
       console.error('Failed to fetch timetable:', error);
-      toast.error('Failed to load timetable');
-      setTimetable([]);
+      const cached = user?.id ? await syncService.getCachedTeacherTimetable(user.id) : null;
+      if (cached) {
+        setTimetable((cached.slots || []) as unknown as TimeSlot[]);
+        setSchoolSettings(cached.schoolSettings || {});
+        toast.info('Loaded cached timetable from this device');
+      } else {
+        toast.error('Failed to load timetable');
+        setTimetable([]);
+      }
     } finally {
       setLoading(false);
     }

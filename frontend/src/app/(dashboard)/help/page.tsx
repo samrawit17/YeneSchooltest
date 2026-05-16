@@ -670,42 +670,40 @@ export default function HelpPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-6 py-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(var(--brand-color-rgb),0.14)]">
-                <HelpCircle className="h-6 w-6 text-[var(--brand-color,#e35336)]" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">
-                  Help Center
-                </h1>
-                <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-                  Role-specific guidance for common tasks, quick access pages,
-                  and the best place to start when something is blocked.
-                </p>
-              </div>
+      <div className="px-6 py-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(var(--brand-color-rgb),0.14)]">
+              <HelpCircle className="h-6 w-6 text-[var(--brand-color,#e35336)]" />
             </div>
+            <div>
+              <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">
+                Help Center
+              </h1>
+              <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+                Role-specific guidance for common tasks, quick access pages,
+                and the best place to start when something is blocked.
+              </p>
+            </div>
+          </div>
 
-            <div className="flex items-start gap-3 rounded-2xl border border-[rgba(var(--brand-color-rgb),0.18)] bg-white px-4 py-3 shadow-sm dark:bg-slate-900">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.14)]">
-                <RoleIcon className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                  {content.label}
-                </p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {content.roleSummary}
-                </p>
-              </div>
+          <div className="flex items-start gap-3 rounded-2xl border border-[rgba(var(--brand-color-rgb),0.18)] bg-white px-4 py-3 shadow-sm dark:bg-slate-900">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.14)]">
+              <RoleIcon className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                {content.label}
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {content.roleSummary}
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl space-y-6 px-6 py-6">
+      <div className="space-y-6 px-6 pb-6">
         <Card className="border-[rgba(var(--brand-color-rgb),0.16)] bg-white dark:border-slate-800 dark:bg-slate-900">
           <CardContent className="grid gap-4 p-5 lg:grid-cols-3">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">

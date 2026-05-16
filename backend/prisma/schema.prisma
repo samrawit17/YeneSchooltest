@@ -1208,6 +1208,8 @@ model StudentFee {
 
   @@unique([studentId, feeStructureId, academicYearId])
   @@index([schoolId, academicYearId])
+  @@index([schoolId, academicYearId, status, updatedAt])
+  @@index([schoolId, academicYearId, termId, status])
   @@index([studentId])
   @@index([status])
   @@index([academicYearId], map: "StudentFee_academicYearId_fkey")
@@ -1238,6 +1240,8 @@ model Payment {
   receipt              Receipt?
 
   @@index([schoolId])
+  @@index([schoolId, paymentDate])
+  @@index([schoolId, studentId, paymentDate])
   @@index([studentId])
   @@index([studentFeeId])
   @@index([termId])
@@ -1382,6 +1386,8 @@ model Notification {
   user      User?    @relation(map: "userId_fk_121", fields: [userId], references: [id])
 
   @@index([userId, isRead])
+  @@index([schoolId, userId, isRead, createdAt])
+  @@index([schoolId, isRead, createdAt])
   @@index([createdAt])
   @@index([schoolId], map: "Notification_schoolId_fkey")
 }

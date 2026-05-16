@@ -3,12 +3,13 @@
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { schoolsAPI, platformSettingsAPI } from "@/lib/api";
 import { notificationsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
-import { announcementsAPI, eventsAPI } from "@/lib/api/content";
+import { eventsAPI } from "@/lib/api/content";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { formatTimeByCalendarType } from "@/lib/calendar-utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -19,12 +20,10 @@ import {
   LogOut,
   UserPlus,
   User,
-  Settings,
   HelpCircle,
   LayoutDashboard,
   ChevronDown,
   Home,
-  Shield,
   FileText,
   Mail,
   School,
@@ -32,12 +31,8 @@ import {
   CreditCard,
   Clock,
   Users,
-  BookOpen,
   X,
   Menu as HamburgerMenuIcon,
-  BellRing,
-  Check,
-  XCircle,
   Info,
   AlertTriangle,
   Megaphone,
@@ -54,7 +49,6 @@ import {
   FileX,
   ClipboardList,
   BookMarked,
-  Presentation,
 } from "lucide-react";
 
 // Shadcn/ui Components
@@ -69,33 +63,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-interface SchoolInfo {
-  id: string;
-  name: string;
-  email: string;
-  address?: string;
-  phone?: string;
-  logoUrl?: string;
-}
 
 interface Notification {
   id: string;
@@ -115,6 +91,22 @@ interface NavbarProps {
 
 const COMMUNICATION_NOTIFICATION_TYPES = ["COMMUNICATION", "MESSAGE_RECEIVED"];
 const GLOBAL_NOTIFICATION_READS_KEY = "global_notification_reads";
+const BROWSER_NOTIFICATION_SHOWN_KEY = "browser_notification_shown";
+
+const getDashboardPath = (role: string | undefined): string => {
+  const roleMap: Record<string, string> = {
+    SUPER_ADMIN: "/superadmin",
+    ADMIN: "/admin",
+    IT_MANAGER: "/it-manager",
+    TEACHER: "/teacher",
+    STUDENT: "/student",
+    PARENT: "/parent",
+    REGISTRAR: "/registrar",
+    FINANCE: "/finance",
+  };
+
+  return role ? roleMap[role.toUpperCase()] || "/dashboard" : "/dashboard";
+};
 
 const Navbar = ({
   sidebarCollapsed = false,
@@ -123,15 +115,8 @@ const Navbar = ({
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { formattedYearLabel, currentTerm, periodLabel, displayTermName, formatDate: formatSchoolDate } = useAcademicYear();
+  const { formattedYearLabel, displayTermName, formatDate: formatSchoolDate, schoolCalendarType } = useAcademicYear();
   
-  // Format period dates for display
-  const periodDateRange = useMemo(() => {
-    if (!currentTerm?.startDate || !currentTerm?.endDate) return null;
-    const start = formatSchoolDate(new Date(currentTerm.startDate));
-    const end = formatSchoolDate(new Date(currentTerm.endDate));
-    return { start, end };
-  }, [currentTerm, formatSchoolDate]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
@@ -155,14 +140,14 @@ const Navbar = ({
       const now = new Date();
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      setCurrentTime(`${hours}:${minutes}`);
+      setCurrentTime(formatTimeByCalendarType(`${hours}:${minutes}`, schoolCalendarType));
       setCurrentDate(formatSchoolDate(now));
     };
 
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, [formatSchoolDate]);
+  }, [formatSchoolDate, schoolCalendarType]);
 
   // Use React Query for school data - cached across navigations
   const { data: school, isLoading: schoolLoading } = useQuery({
@@ -191,7 +176,7 @@ const Navbar = ({
         communicationNotifications: communicationNotificationsRes.data || [],
       };
     },
-    enabled: !!user?.id && !!user?.schoolId,
+    enabled: !!user?.id,
     staleTime: 30 * 1000, // 30 seconds
     gcTime: 60 * 1000, // 1 minute
     refetchInterval: 60 * 1000, // Refetch every minute
@@ -213,6 +198,66 @@ const Navbar = ({
       return createdAt > oneWeekAgo;
     }
   );
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !user?.id ||
+      !("Notification" in window) ||
+      Notification.permission !== "granted"
+    ) {
+      return;
+    }
+
+    const storageKey = `${BROWSER_NOTIFICATION_SHOWN_KEY}:${user.id}`;
+    let shownIds: string[] = [];
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      shownIds = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      shownIds = [];
+    }
+
+    const shown = new Set(shownIds);
+    let changed = false;
+
+    for (const notification of bellNotifications) {
+      if (
+        notification.type !== "ATTENDANCE_ABSENT" ||
+        notification.isRead ||
+        shown.has(notification.id)
+      ) {
+        continue;
+      }
+
+      const browserNotification = new Notification(
+        notification.title || "Attendance Alert",
+        {
+          body: notification.message,
+          icon: "/avatar.svg",
+          badge: "/avatar.svg",
+          tag: notification.id,
+          requireInteraction: true,
+          data: {
+            url: notification.actionUrl || "/parent/attendance",
+          },
+        }
+      );
+      browserNotification.onclick = () => {
+        window.focus();
+        router.push(notification.actionUrl || "/parent/attendance");
+        browserNotification.close();
+      };
+
+      shown.add(notification.id);
+      changed = true;
+    }
+
+    if (changed) {
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(shown).slice(-100)));
+    }
+  }, [bellNotifications, router, user?.id]);
 
   const getSeenGlobalNotificationIds = (): string[] => {
     if (typeof window === "undefined" || !user?.id) return [];
@@ -248,22 +293,8 @@ const Navbar = ({
   const unreadCount = bellNotifications.filter((notification: Notification) => !isNotificationRead(notification)).length;
   const unreadCommunicationsCount = communicationNotifications.filter((notification: Notification) => !isNotificationRead(notification)).length;
 
-  // Fetch active announcements count (user-specific)
-  const { data: announcementCount } = useQuery({
-    queryKey: queryKeys.announcements.activeCount(user?.id, user?.role),
-    queryFn: async () => {
-      const response = await announcementsAPI.getActiveCount({ role: user?.role });
-      return response.data?.count || 0;
-    },
-    enabled: !!user?.id,
-    staleTime: 60000,
-    refetchInterval: 120000,
-  });
-
-  const activeAnnouncements = announcementCount || 0;
-
   // Fetch platform settings for feature flags - MUST BE FIRST to ensure it's available for other queries
-  const { data: platformSettings, isLoading: platformSettingsLoading } = useQuery({
+  const { data: platformSettings } = useQuery({
     queryKey: queryKeys.menu.platformSettings,
     queryFn: async () => {
       try {
@@ -347,62 +378,6 @@ const Navbar = ({
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("event") });
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("finance") });
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.category("system") });
-  };
-
-  const markAllAsRead = async (types?: string[]) => {
-    try {
-      const collections = [
-        ...(notificationsData?.bellNotifications || []),
-        ...(notificationsData?.communicationNotifications || []),
-      ] as Notification[];
-      const matchingNotifications = collections.filter((notification) =>
-        !types?.length || types.includes(notification.type)
-      );
-      const globalIds = matchingNotifications
-        .filter((notification) => notification.userId === null)
-        .map((notification) => notification.id);
-      const userScopedTypes = matchingNotifications.some(
-        (notification) => notification.userId !== null
-      );
-
-      if (globalIds.length) {
-        rememberSeenGlobalNotifications(globalIds);
-      }
-
-      if (userScopedTypes) {
-        await notificationsAPI.markAllRead(types?.length ? { types } : undefined);
-      }
-
-      // Update cache optimistically - include user ID in query key
-      queryClient.setQueryData(queryKeys.notifications.list(user?.id, user?.schoolId), (old: any) => {
-        if (!old) return old;
-        const shouldMark = (notification: Notification) =>
-          !types?.length || types.includes(notification.type);
-
-        return {
-          ...old,
-          bellNotifications: (old.bellNotifications || []).map((n: Notification) =>
-            shouldMark(n) ? { ...n, isRead: true } : n
-          ),
-          communicationNotifications: (old.communicationNotifications || []).map((n: Notification) =>
-            shouldMark(n) ? { ...n, isRead: true } : n
-          ),
-          bellUnreadCount: types?.length
-            ? (types.some((type) => COMMUNICATION_NOTIFICATION_TYPES.includes(type))
-                ? old.bellUnreadCount
-                : 0)
-            : 0,
-          communicationUnreadCount: types?.length
-            ? (types.some((type) => COMMUNICATION_NOTIFICATION_TYPES.includes(type))
-                ? 0
-                : old.communicationUnreadCount)
-            : 0,
-        };
-      });
-      invalidateNotificationQueries();
-    } catch (error) {
-      console.error('Failed to mark all notifications as read:', error);
-    }
   };
 
   const getNotificationIcon = (type: string | undefined) => {
@@ -503,70 +478,10 @@ const Navbar = ({
     router.push("/sign-in");
   };
 
-  // Navigation items for mobile menu
-  const getNavigationItems = () => {
-    const baseItems = [
-
-      {
-        label: "Profile",
-        icon: <User className="w-4 h-4" />,
-        href: "/profile",
-        roles: ["all"],
-      },
-      {
-        label: "My Children",
-        icon: <Users className="w-4 h-4" />,
-        href: "/parent/children",
-        roles: ["parent"],
-      },
-      {
-        label: "Results",
-        icon: <BookOpen className="w-4 h-4" />,
-        href: "/parent/results",
-        roles: ["parent"],
-      },
-      {
-        label: "Fees",
-        icon: <CreditCard className="w-4 h-4" />,
-        href: "/parent/fees",
-        roles: ["parent"],
-      },
-      {
-        label: "Calendar",
-        icon: <Calendar className="w-4 h-4" />,
-        href: "/calendar",
-        roles: ["all"],
-      },
-      {
-        label: "Help & Support",
-        icon: <HelpCircle className="w-4 h-4" />,
-        href: "/help",
-        roles: ["all"],
-      },
-
-    ];
-
-    // Add role-specific items
-    const roleSpecificItems = [];
-    const userRole = user?.role?.toLowerCase() || "";
-
-
-
-    if (userRole.includes("teacher")) {
-      roleSpecificItems.push({
-        label: "My Classes",
-        icon: <Home className="w-4 h-4" />,
-        href: "/classes",
-        roles: ["teacher"],
-      });
-    }
-
-    return [...baseItems.filter(item =>
-      item.roles.includes("all") || item.roles.some(role => userRole.includes(role))
-    ), ...roleSpecificItems];
-  };
-
-  const navigationItems = getNavigationItems();
+  const normalizedRole = user?.role?.toUpperCase() || "";
+  const isParent = normalizedRole === "PARENT";
+  const isTeacher = normalizedRole === "TEACHER";
+  const dashboardPath = getDashboardPath(user?.role);
 
   return (
     <header className={`sticky top-0 z-50 w-full border-b dark:border-[#334155] dark:bg-[#111827] dark:supports-[backdrop-filter]:bg-[#111827]/60 transition-all duration-300 ${
@@ -741,9 +656,6 @@ const Navbar = ({
                   open={notificationsOpen}
                   onOpenChange={(open) => {
                     setNotificationsOpen(open);
-                    if (open) {
-                      void markAllAsRead();
-                    }
                   }}
                 >
                   <DropdownMenuTrigger asChild>
@@ -836,9 +748,6 @@ const Navbar = ({
                     open={communicationsOpen}
                     onOpenChange={(open) => {
                       setCommunicationsOpen(open);
-                      if (open) {
-                        void markAllAsRead(COMMUNICATION_NOTIFICATION_TYPES);
-                      }
                     }}
                   >
                     <DropdownMenuTrigger asChild>
@@ -976,10 +885,12 @@ const Navbar = ({
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
-                        <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                          <Mail className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">{user.email}</span>
-                        </div>
+                        {!["PARENT", "STUDENT"].includes(user.role?.toUpperCase() || "") && (
+                          <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <Mail className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{user.email}</span>
+                          </div>
+                        )}
                         <div className="mt-3 flex items-center justify-between gap-2">
                           <span className="inline-flex items-center rounded-full bg-[rgba(var(--brand-color-rgb),0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
                             {user.role?.toLowerCase().replace("_", " ")}
@@ -992,72 +903,82 @@ const Navbar = ({
                   <div className="p-2">
                     <DropdownMenuGroup>
                       <DropdownMenuItem
-                        onClick={() => router.push("/dashboard")}
+                        asChild
                         className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                       >
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]">
-                          <LayoutDashboard className="h-4 w-4" />
-                        </span>
-                        <span className="flex-1">
-                          <span className="block text-sm font-medium">Dashboard</span>
-                          <span className="block text-xs text-slate-500 dark:text-slate-400">Go to your main workspace</span>
-                        </span>
+                        <Link href={dashboardPath}>
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                            <LayoutDashboard className="h-4 w-4" />
+                          </span>
+                          <span className="flex-1">
+                            <span className="block text-sm font-medium">Dashboard</span>
+                            <span className="block text-xs text-slate-500 dark:text-slate-400">Go to your main workspace</span>
+                          </span>
+                        </Link>
                       </DropdownMenuItem>
 
                       <DropdownMenuItem
-                        onClick={() => router.push("/profile")}
+                        asChild
                         className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                       >
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]">
-                          <User className="h-4 w-4" />
-                        </span>
-                        <span className="flex-1">
-                          <span className="block text-sm font-medium">Profile</span>
-                          <span className="block text-xs text-slate-500 dark:text-slate-400">Manage your account details</span>
-                        </span>
+                        <Link href="/profile">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]">
+                            <User className="h-4 w-4" />
+                          </span>
+                          <span className="flex-1">
+                            <span className="block text-sm font-medium">Profile</span>
+                            <span className="block text-xs text-slate-500 dark:text-slate-400">Manage your account details</span>
+                          </span>
+                        </Link>
                       </DropdownMenuItem>
 
-                      {user.role?.toLowerCase().includes("parent") && (
+                      {isParent && (
                         <>
                           <DropdownMenuItem
-                            onClick={() => router.push("/parent/children")}
+                            asChild
                             className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                           >
-                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300">
-                              <Users className="h-4 w-4" />
-                            </span>
-                            <span className="flex-1">
-                              <span className="block text-sm font-medium">My Children</span>
-                              <span className="block text-xs text-slate-500 dark:text-slate-400">View student profiles and activity</span>
-                            </span>
+                            <Link href="/parent/children">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300">
+                                <Users className="h-4 w-4" />
+                              </span>
+                              <span className="flex-1">
+                                <span className="block text-sm font-medium">My Children</span>
+                                <span className="block text-xs text-slate-500 dark:text-slate-400">View student profiles and activity</span>
+                              </span>
+                            </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => router.push("/parent/fees")}
+                            asChild
                             className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                           >
-                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
-                              <CreditCard className="h-4 w-4" />
-                            </span>
-                            <span className="flex-1">
-                              <span className="block text-sm font-medium">Fees</span>
-                              <span className="block text-xs text-slate-500 dark:text-slate-400">Review payments and balances</span>
-                            </span>
+                            <Link href="/parent/fees">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
+                                <CreditCard className="h-4 w-4" />
+                              </span>
+                              <span className="flex-1">
+                                <span className="block text-sm font-medium">Fees</span>
+                                <span className="block text-xs text-slate-500 dark:text-slate-400">Review payments and balances</span>
+                              </span>
+                            </Link>
                           </DropdownMenuItem>
                         </>
                       )}
 
-                      {user.role?.toLowerCase().includes("teacher") && (
+                      {isTeacher && (
                         <DropdownMenuItem
-                          onClick={() => router.push("/classes")}
+                          asChild
                           className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                         >
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
-                            <Home className="h-4 w-4" />
-                          </span>
-                          <span className="flex-1">
-                            <span className="block text-sm font-medium">My Classes</span>
-                            <span className="block text-xs text-slate-500 dark:text-slate-400">Jump into your assigned classes</span>
-                          </span>
+                          <Link href="/classes">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
+                              <Home className="h-4 w-4" />
+                            </span>
+                            <span className="flex-1">
+                              <span className="block text-sm font-medium">My Classes</span>
+                              <span className="block text-xs text-slate-500 dark:text-slate-400">Jump into your assigned classes</span>
+                            </span>
+                          </Link>
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuGroup>
@@ -1065,16 +986,18 @@ const Navbar = ({
                     <DropdownMenuSeparator className="my-2 bg-slate-200 dark:bg-slate-700" />
 
                     <DropdownMenuItem
-                      onClick={() => router.push("/help")}
+                      asChild
                       className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                     >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        <HelpCircle className="h-4 w-4" />
-                      </span>
-                      <span className="flex-1">
-                        <span className="block text-sm font-medium">Help</span>
-                        <span className="block text-xs text-slate-500 dark:text-slate-400">Get support and guidance</span>
-                      </span>
+                      <Link href="/help">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          <HelpCircle className="h-4 w-4" />
+                        </span>
+                        <span className="flex-1">
+                          <span className="block text-sm font-medium">Help</span>
+                          <span className="block text-xs text-slate-500 dark:text-slate-400">Get support and guidance</span>
+                        </span>
+                      </Link>
                     </DropdownMenuItem>
 
                     <DropdownMenuItem

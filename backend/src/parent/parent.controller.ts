@@ -11,6 +11,7 @@ import {
   Request,
   UsePipes,
   ValidationPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { ParentService } from './parent.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -41,7 +42,7 @@ export class ParentController {
   @Get('me/profile')
   @Roles(Role.PARENT)
   async getMyProfile(@Request() req) {
-    return this.parentService.getParentByUserId(req.user.id);
+    return this.parentService.getParentByUserId(req.user.id, req.user.schoolId);
   }
 
   /**
@@ -53,6 +54,7 @@ export class ParentController {
   async getMyChildren(@Request() req) {
     const children = await this.parentService.getChildrenByParentUserId(
       req.user.id,
+      req.user.schoolId,
     );
     return { children };
   }
@@ -62,6 +64,7 @@ export class ParentController {
   async getMyRelatedTeachers(@Request() req) {
     const teachers = await this.parentService.getRelatedTeachersByParentUserId(
       req.user.id,
+      req.user.schoolId,
     );
     return { teachers };
   }
@@ -73,7 +76,11 @@ export class ParentController {
   @Get('me/children/:childId')
   @Roles(Role.PARENT)
   async getMyChildById(@Param('childId') childId: string, @Request() req) {
-    return this.parentService.getChildByIdForParent(req.user.id, childId);
+    return this.parentService.getChildByIdForParent(
+      req.user.id,
+      childId,
+      req.user.schoolId,
+    );
   }
 
   // ==================== ADMIN ONLY ENDPOINTS ====================
@@ -138,7 +145,15 @@ export class ParentController {
   @Roles(Role.ADMIN)
   @Permissions('parent:create')
   async createParent(@Body() createParentDto: CreateParentDto, @Request() req) {
-    return this.parentService.createParent(createParentDto, req.user.id);
+    const schoolId = req.user.schoolId;
+    if (!schoolId) {
+      throw new BadRequestException('School context is required');
+    }
+
+    return this.parentService.createParent(
+      { ...createParentDto, schoolId },
+      req.user.id,
+    );
   }
 
   /**

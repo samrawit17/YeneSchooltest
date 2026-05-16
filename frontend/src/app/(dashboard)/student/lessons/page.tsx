@@ -2,45 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Views } from "react-big-calendar";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { lessonsAPI, Lesson } from "@/lib/api/content";
-import { toast } from "sonner";
+import { periodTimeAPI, type PeriodTime } from "@/lib/api/siren-period-time";
+import { formatTimeByCalendarType } from "@/lib/calendar-utils";
+import BigCalendar, { type CalendarDisplayEvent } from "@/components/BigCalendar";
 import TableSearch from "@/components/TableSearch";
-import {
-  BookText,
-  Search,
-  Calendar,
-  BookOpen,
-  Users,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-} from "lucide-react";
-
-// Shadcn/ui Components
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { BookOpen, BookText, Calendar, Clock } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const StudentLessonsPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { schoolCalendarType } = useAcademicYear();
   const router = useRouter();
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [periodTimes, setPeriodTimes] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterSubject, setFilterSubject] = useState<string>("all");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [meta, setMeta] = useState<any>(null);
+  const [filterSubject, setFilterSubject] = useState("all");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -50,19 +32,31 @@ const StudentLessonsPage = () => {
 
   useEffect(() => {
     if (isAuthenticated && !isLoading && user?.role === "STUDENT") {
-      fetchLessons();
+      void fetchLessons();
+      void fetchPeriodTimes();
     }
-  }, [isAuthenticated, isLoading, user, page, filterSubject]);
+  }, [isAuthenticated, isLoading, user, schoolCalendarType]);
+
+  const fetchPeriodTimes = async () => {
+    if (!user?.schoolId) return;
+    try {
+      const response = await periodTimeAPI.list(user.schoolId);
+      const mapped = (response.data || []).reduce((acc: Record<number, string>, period: PeriodTime) => {
+        acc[period.periodNumber] = formatTimeByCalendarType(period.startTime, schoolCalendarType);
+        return acc;
+      }, {});
+      setPeriodTimes(mapped);
+    } catch {
+      setPeriodTimes({});
+    }
+  };
 
   const fetchLessons = async () => {
     try {
       setLoading(true);
       const response = await lessonsAPI.getForStudent();
-      const { data, meta: metaData } = response.data;
-      setLessons(data);
-      setMeta(metaData);
-      setTotalPages(metaData?.totalPages || 1);
-    } catch (error: any) {
+      setLessons(response.data?.data || []);
+    } catch (error) {
       console.error("Failed to fetch lessons:", error);
       setLessons([]);
     } finally {
@@ -71,114 +65,50 @@ const StudentLessonsPage = () => {
   };
 
   const filteredLessons = lessons.filter((lesson) => {
+    const subjectName = lesson.subject?.name || "";
     const matchesSearch =
       lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lesson.subject?.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSubject =
-      filterSubject === "all" || lesson.subject?.name === filterSubject;
+      subjectName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSubject = filterSubject === "all" || subjectName === filterSubject;
     return matchesSearch && matchesSubject;
   });
 
-  const subjects = [...new Set(lessons.map((l) => l.subject?.name).filter(Boolean))];
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const subjects = Array.from(new Set(lessons.map((lesson) => lesson.subject?.name).filter(Boolean)));
+  const lessonCalendarEvents: CalendarDisplayEvent[] = filteredLessons.map((lesson) => ({
+    id: lesson.id,
+    title: `${lesson.subject?.name || "Lesson"}: ${lesson.title}${lesson.periodNumber ? ` ${periodTimes[lesson.periodNumber] || `P${lesson.periodNumber}`}` : ""}`,
+    startDate: lesson.lessonDate,
+    endDate: lesson.lessonDate,
+    eventType: "ACADEMIC",
+    resource: lesson,
+  }));
 
   if (loading || isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-12 h-12 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#e35336] border-t-transparent" />
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">
-            My Lessons
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            View your published lesson plans and materials
-          </p>
-        </div>
+    <div className="space-y-6 bg-[#F8FAFC] p-6 dark:bg-[#0F172A]">
+      <div>
+        <h1 className="text-2xl font-bold text-[#e35336]">My Lessons</h1>
+        <p className="text-gray-500 dark:text-gray-400">View your published lesson plans and materials</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <BookText className="w-5 h-5 text-gray-500" />
-              <div>
-                <p className="text-sm text-gray-500">Total Lessons</p>
-                <p className="text-xl font-bold">{lessons.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <BookOpen className="w-5 h-5 text-blue-500" />
-              <div>
-                <p className="text-sm text-gray-500">This Week</p>
-                <p className="text-xl font-bold">
-                  {lessons.filter(
-                    (l) =>
-                      new Date(l.lessonDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-                  ).length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-green-500" />
-              <div>
-                <p className="text-sm text-gray-500">Subjects</p>
-                <p className="text-xl font-bold">{subjects.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-orange-500" />
-              <div>
-                <p className="text-sm text-gray-500">With Homework</p>
-                <p className="text-xl font-bold">
-                  {lessons.filter((l) => l.homework).length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card><CardContent className="flex items-center gap-3 pt-6"><BookText className="h-5 w-5 text-gray-500" /><div><p className="text-sm text-gray-500">Total Lessons</p><p className="text-xl font-bold">{lessons.length}</p></div></CardContent></Card>
+        <Card><CardContent className="flex items-center gap-3 pt-6"><BookOpen className="h-5 w-5 text-blue-500" /><div><p className="text-sm text-gray-500">Visible</p><p className="text-xl font-bold">{filteredLessons.length}</p></div></CardContent></Card>
+        <Card><CardContent className="flex items-center gap-3 pt-6"><Calendar className="h-5 w-5 text-green-500" /><div><p className="text-sm text-gray-500">Subjects</p><p className="text-xl font-bold">{subjects.length}</p></div></CardContent></Card>
+        <Card><CardContent className="flex items-center gap-3 pt-6"><Clock className="h-5 w-5 text-orange-500" /><div><p className="text-sm text-gray-500">Homework</p><p className="text-xl font-bold">{lessons.filter((lesson) => lesson.homework).length}</p></div></CardContent></Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <TableSearch
-          search={searchTerm}
-          setSearch={setSearchTerm}
-          placeholder="Search lessons..."
-          className="flex-1"
-        />
+      <div className="flex flex-col gap-4 md:flex-row">
+        <TableSearch search={searchTerm} setSearch={setSearchTerm} placeholder="Search lessons..." className="flex-1" />
         <Select value={filterSubject} onValueChange={setFilterSubject}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by subject" />
@@ -186,103 +116,30 @@ const StudentLessonsPage = () => {
           <SelectContent>
             <SelectItem value="all">All Subjects</SelectItem>
             {subjects.map((subject) => (
-              <SelectItem key={subject} value={subject!}>
-                {subject}
-              </SelectItem>
+              <SelectItem key={subject} value={subject || ""}>{subject}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Lessons List */}
-      <div className="grid gap-4">
-        {filteredLessons.map((lesson) => (
-          <Card
-            key={lesson.id}
-            className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => router.push(`/student/lessons/${lesson.id}`)}
-          >
-            <CardContent className="py-4">
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-xl flex items-center justify-center">
-                    <BookText className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
-                      {lesson.title}
-                    </h3>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="w-4 h-4" />
-                        {lesson.subject?.name}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(lesson.lessonDate)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        Period {lesson.periodNumber}
-                      </span>
-                    </div>
-                    {lesson.objective && (
-                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                        {lesson.objective}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {lesson.homework && (
-                    <Badge variant="outline" className="text-orange-600 border-orange-300">
-                      Homework
-                    </Badge>
-                  )}
-                  <Button variant="ghost" size="icon">
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredLessons.length === 0 && (
-        <div className="text-center py-12">
-          <BookText className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            No lessons found
-          </h3>
-          <p className="text-gray-500">Check back later for new lessons</p>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-sm text-gray-600">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
+      <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800">
+          <CardTitle className="text-lg">Lesson Calendar</CardTitle>
+          <CardDescription>Weekly calendar view for your lessons</CardDescription>
+        </CardHeader>
+        <CardContent className="p-4">
+          <BigCalendar
+            events={lessonCalendarEvents}
+            initialView={Views.MONTH}
+            views={[Views.MONTH]}
+            height={640}
+            onEventClick={(event) => {
+              const lesson = event.resource as Lesson | undefined;
+              if (lesson?.id) router.push(`/student/lessons/${lesson.id}`);
+            }}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -26,6 +26,7 @@ import {
   NotificationService,
   NotificationType,
 } from '../notification/notification.service';
+import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
 
 // Default grading scale (Ethiopian context)
 const DEFAULT_GRADE_SCALE = [
@@ -62,6 +63,34 @@ export class GradingService {
 
   private getSchoolGradesNamespace(schoolId: string) {
     return `grades:school:${schoolId}`;
+  }
+
+  private parseSettingValue(rawValue: string | null | undefined) {
+    if (rawValue === null || rawValue === undefined) return null;
+    try {
+      return JSON.parse(rawValue);
+    } catch {
+      return rawValue;
+    }
+  }
+
+  private async ensureParentGradeAccessEnabled(schoolId: string) {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: {
+        schoolId_key: {
+          schoolId,
+          key: SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES,
+        },
+      },
+      select: { value: true },
+    });
+    const value = this.parseSettingValue(setting?.value);
+
+    if (value === false || value === 'false') {
+      throw new ForbiddenException(
+        'Parent grade viewing is disabled for this school.',
+      );
+    }
   }
 
   private async getSchoolGradingComponentsMap(schoolId: string) {
@@ -394,12 +423,14 @@ export class GradingService {
 
   private async assertStudentInClassSection(
     studentId: string,
+    schoolId: string,
     classId: string,
     sectionId: string,
     academicYear: string,
   ) {
     const enrollment = await this.prisma.studentClass.findFirst({
       where: {
+        schoolId,
         studentId,
         classId,
         sectionId,
@@ -425,6 +456,7 @@ export class GradingService {
 
   private async resolveTeacherGradingAccess(
     teacherId: string,
+    schoolId: string,
     academicYear: string,
     classId: string,
     sectionId: string,
@@ -434,6 +466,7 @@ export class GradingService {
       await this.prisma.teacherSubjectAssignment.findFirst({
         where: {
           teacherId,
+          schoolId,
           academicYear,
           classId,
           sectionId,
@@ -446,7 +479,7 @@ export class GradingService {
       });
 
     if (explicitAssignment) {
-      return { schoolId: explicitAssignment.schoolId };
+      return { schoolId };
     }
 
     const classSubjectAssignment = await this.prisma.classSubject.findFirst({
@@ -456,6 +489,7 @@ export class GradingService {
         classId,
         sectionId,
         subjectId,
+        class: { schoolId },
       },
       select: {
         class: {
@@ -467,12 +501,13 @@ export class GradingService {
     });
 
     if (classSubjectAssignment?.class?.schoolId) {
-      return { schoolId: classSubjectAssignment.class.schoolId };
+      return { schoolId };
     }
 
     const homeroomClass = await this.prisma.class.findFirst({
       where: {
         id: classId,
+        schoolId,
         homeroomTeacherId: teacherId,
         academicYearId: academicYear,
       },
@@ -482,7 +517,7 @@ export class GradingService {
     });
 
     if (homeroomClass?.schoolId) {
-      return { schoolId: homeroomClass.schoolId };
+      return { schoolId };
     }
 
     const homeroomSection = await this.prisma.section.findFirst({
@@ -491,6 +526,7 @@ export class GradingService {
         classId,
         homeroomTeacherId: teacherId,
         class: {
+          schoolId,
           academicYearId: academicYear,
         },
       },
@@ -504,7 +540,7 @@ export class GradingService {
     });
 
     if (homeroomSection?.class?.schoolId) {
-      return { schoolId: homeroomSection.class.schoolId };
+      return { schoolId };
     }
 
     throw new ForbiddenException(
@@ -534,10 +570,12 @@ export class GradingService {
 
   private async syncGradeLockStatus(
     studentId: string,
+    schoolId: string,
     academicYearId: string,
   ): Promise<boolean> {
     const { isCleared } = await this.verifyFinancialClearance(
       studentId,
+      schoolId,
       academicYearId,
       undefined,
       true,
@@ -588,10 +626,11 @@ export class GradingService {
 
   private async resolveChildStudentForParent(
     parentUserId: string,
+    schoolId: string,
     childIdOrUserId: string,
   ): Promise<{ studentUserId: string; studentProfileId: string }> {
-    const parentProfile = await this.prisma.parentProfile.findUnique({
-      where: { userId: parentUserId },
+    const parentProfile = await this.prisma.parentProfile.findFirst({
+      where: { userId: parentUserId, schoolId },
       select: { id: true },
     });
 
@@ -601,6 +640,7 @@ export class GradingService {
 
     const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
+        schoolId,
         OR: [{ id: childIdOrUserId }, { userId: childIdOrUserId }],
       },
       select: { id: true, userId: true },
@@ -633,6 +673,7 @@ export class GradingService {
    */
   async getStudentsForGradeEntry(
     teacherId: string,
+    schoolId: string,
     academicYear: string,
     termId: string,
     classId: string,
@@ -642,6 +683,7 @@ export class GradingService {
     await this.assertTermIsOpen(termId, true);
     const access = await this.resolveTeacherGradingAccess(
       teacherId,
+      schoolId,
       academicYear,
       classId,
       sectionId,
@@ -877,12 +919,14 @@ export class GradingService {
    */
   async verifyFinancialClearance(
     studentId: string,
+    schoolId: string,
     academicYearId: string,
     termId?: string,
     checkOverdueOnly: boolean = true,
   ): Promise<{ isCleared: boolean; outstandingFees: any[] }> {
     const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
+        schoolId,
         OR: [{ id: studentId }, { userId: studentId }],
       },
       select: { id: true, userId: true },
@@ -896,6 +940,7 @@ export class GradingService {
       studentId: {
         in: [studentProfile.id, studentProfile.userId].filter(Boolean) as string[],
       },
+      schoolId,
       academicYearId,
       status: { not: 'PAID' },
     };
@@ -914,7 +959,7 @@ export class GradingService {
 
     if (termId) {
       const academicYear = await this.prisma.academicYear.findUnique({
-        where: { id: academicYearId },
+        where: { id: academicYearId, schoolId },
         select: {
           schoolId: true,
         },
@@ -989,10 +1034,12 @@ export class GradingService {
    */
   async updateGradeLockStatus(
     studentId: string,
+    schoolId: string,
     academicYearId: string,
   ): Promise<void> {
     const { isCleared } = await this.verifyFinancialClearance(
       studentId,
+      schoolId,
       academicYearId,
       undefined,
       false, // Check all unpaid, not just overdue
@@ -1001,6 +1048,7 @@ export class GradingService {
     await this.prisma.subjectGrade.updateMany({
       where: {
         studentId,
+        schoolId,
         academicYear: academicYearId,
       },
       data: {
@@ -1012,10 +1060,11 @@ export class GradingService {
   /**
    * Teacher: Enter or update grades for a student
    */
-  async enterGrade(teacherId: string, dto: CreateGradeDto) {
+  async enterGrade(teacherId: string, schoolId: string, dto: CreateGradeDto) {
     await this.assertTermIsOpen(dto.termId, true);
     const access = await this.resolveTeacherGradingAccess(
       teacherId,
+      schoolId,
       dto.academicYear,
       dto.classId,
       dto.sectionId,
@@ -1024,6 +1073,7 @@ export class GradingService {
 
     await this.assertStudentInClassSection(
       dto.studentId,
+      access.schoolId,
       dto.classId,
       dto.sectionId,
       dto.academicYear,
@@ -1246,7 +1296,11 @@ export class GradingService {
    * Teacher: Bulk entry for multiple students with atomic transaction
    * Uses $transaction to ensure all-or-nothing semantics
    */
-  async bulkEnterGrades(teacherId: string, dto: BulkGradeEntryDto) {
+  async bulkEnterGrades(
+    teacherId: string,
+    schoolId: string,
+    dto: BulkGradeEntryDto,
+  ) {
     // First, verify teacher is assigned (outside transaction)
     const firstGrade = dto.grades[0];
     if (!firstGrade) {
@@ -1258,6 +1312,7 @@ export class GradingService {
 
     const access = await this.resolveTeacherGradingAccess(
       teacherId,
+      schoolId,
       firstGrade.academicYear,
       firstGrade.classId,
       firstGrade.sectionId,
@@ -1277,6 +1332,7 @@ export class GradingService {
         // Check enrollment with fallback to allow grade entry for students fetched via profile fallback
         const enrollment = await tx.studentClass.findFirst({
           where: {
+            schoolId: access.schoolId,
             studentId: gradeDto.studentId,
             classId: gradeDto.classId,
             sectionId: gradeDto.sectionId,
@@ -1443,13 +1499,17 @@ export class GradingService {
   /**
    * Teacher: Save as draft
    */
-  async saveDraft(teacherId: string, gradeId: string) {
+  async saveDraft(teacherId: string, schoolId: string, gradeId: string) {
     const grade = await this.prisma.subjectGrade.findUnique({
       where: { id: gradeId },
     });
 
     if (!grade) {
       throw new NotFoundException('Grade not found');
+    }
+
+    if (grade.schoolId !== schoolId) {
+      throw new ForbiddenException('You can only edit grades in your school');
     }
 
     if (grade.teacherId !== teacherId) {
@@ -1486,13 +1546,21 @@ export class GradingService {
   /**
    * Teacher: Submit grades to registrar
    */
-  async submitToRegistrar(teacherId: string, gradeId: string) {
+  async submitToRegistrar(
+    teacherId: string,
+    schoolId: string,
+    gradeId: string,
+  ) {
     const grade = await this.prisma.subjectGrade.findUnique({
       where: { id: gradeId },
     });
 
     if (!grade) {
       throw new NotFoundException('Grade not found');
+    }
+
+    if (grade.schoolId !== schoolId) {
+      throw new ForbiddenException('You can only submit grades in your school');
     }
 
     if (grade.teacherId !== teacherId) {
@@ -1531,6 +1599,7 @@ export class GradingService {
    */
   async submitAllToRegistrar(
     teacherId: string,
+    schoolId: string,
     academicYear: string,
     termId: string,
     classId: string,
@@ -1540,6 +1609,7 @@ export class GradingService {
     await this.assertTermIsOpen(termId, true);
     await this.resolveTeacherGradingAccess(
       teacherId,
+      schoolId,
       academicYear,
       classId,
       sectionId,
@@ -1550,6 +1620,7 @@ export class GradingService {
     const grades = await this.prisma.subjectGrade.findMany({
       where: {
         academicYear,
+        schoolId,
         termId,
         classId,
         sectionId,
@@ -1758,6 +1829,7 @@ export class GradingService {
    */
   async getStudentGrades(
     studentId: string,
+    schoolId: string,
     academicYear?: string,
     termId?: string,
   ) {
@@ -1769,11 +1841,12 @@ export class GradingService {
     ];
 
     if (academicYear) {
-      await this.syncGradeLockStatus(studentId, academicYear);
+      await this.syncGradeLockStatus(studentId, schoolId, academicYear);
     } else {
       const academicYears = await this.prisma.subjectGrade.findMany({
         where: {
           studentId,
+          schoolId,
           status: { in: visiblePortalStatuses },
         },
         select: { academicYear: true },
@@ -1781,7 +1854,7 @@ export class GradingService {
       });
       await Promise.all(
         academicYears.map((row) =>
-          this.syncGradeLockStatus(studentId, row.academicYear),
+          this.syncGradeLockStatus(studentId, schoolId, row.academicYear),
         ),
       );
     }
@@ -1794,6 +1867,7 @@ export class GradingService {
         const grades = await this.prisma.subjectGrade.findMany({
           where: {
             studentId,
+            schoolId,
             status: { in: visiblePortalStatuses },
             ...(academicYear ? { academicYear } : {}),
             ...(termId ? { termId } : {}),
@@ -1818,14 +1892,16 @@ export class GradingService {
   async getChildGrades(
     parentId: string,
     childId: string,
+    schoolId: string,
     academicYear?: string,
     termId?: string,
   ) {
     const { studentUserId } = await this.resolveChildStudentForParent(
       parentId,
+      schoolId,
       childId,
     );
-    return this.getStudentGrades(studentUserId, academicYear, termId);
+    return this.getStudentGrades(studentUserId, schoolId, academicYear, termId);
   }
 
   /**
@@ -1834,15 +1910,22 @@ export class GradingService {
   async getChildFinalGradesWithClass(
     parentId: string,
     childId: string,
+    schoolId: string,
     academicYear: string,
     classId?: string,
   ) {
+    await this.ensureParentGradeAccessEnabled(schoolId);
+
     const { studentUserId } = await this.resolveChildStudentForParent(
       parentId,
+      schoolId,
       childId,
     );
+    await this.ensureCurrentPeriodFeesPaid(studentUserId, schoolId, academicYear);
+
     return this.getStudentFinalGrades(
       studentUserId,
+      schoolId,
       academicYear,
       classId,
       true,
@@ -1852,7 +1935,11 @@ export class GradingService {
   /**
    * Get teacher's assigned subjects and homeroom classes
    */
-  async getTeacherAssignments(teacherId: string, academicYear: string) {
+  async getTeacherAssignments(
+    teacherId: string,
+    schoolId: string,
+    academicYear: string,
+  ) {
     return this.cacheService.getOrSetVersioned(
       this.getTeacherGradesNamespace(teacherId),
       JSON.stringify({ mode: 'assignments', academicYear }),
@@ -1862,6 +1949,7 @@ export class GradingService {
           await this.prisma.teacherSubjectAssignment.findMany({
             where: {
               teacherId,
+              schoolId,
               academicYear,
               isActive: true,
             },
@@ -1877,6 +1965,7 @@ export class GradingService {
             where: {
               teacherId,
               academicYear,
+              class: { schoolId },
             },
             include: {
               subject: true,
@@ -1912,6 +2001,7 @@ export class GradingService {
           where: {
             homeroomTeacherId: teacherId,
             class: {
+              schoolId,
               academicYearId: academicYear,
             },
           },
@@ -2147,10 +2237,10 @@ export class GradingService {
   /**
    * Assign teacher to subject/class/section
    */
-  async assignTeacher(dto: TeacherAssignmentDto) {
+  async assignTeacher(schoolId: string, dto: TeacherAssignmentDto) {
     // Get school ID from class
-    const classData = await this.prisma.class.findUnique({
-      where: { id: dto.classId },
+    const classData = await this.prisma.class.findFirst({
+      where: { id: dto.classId, schoolId },
     });
 
     if (!classData) {
@@ -2169,7 +2259,7 @@ export class GradingService {
       },
       update: { isActive: true },
       create: {
-        schoolId: classData.schoolId,
+        schoolId,
         teacherId: dto.teacherId,
         subjectId: dto.subjectId,
         classId: dto.classId,
@@ -2182,9 +2272,9 @@ export class GradingService {
   /**
    * Remove teacher assignment
    */
-  async removeTeacherAssignment(assignmentId: string) {
+  async removeTeacherAssignment(schoolId: string, assignmentId: string) {
     return this.prisma.teacherSubjectAssignment.update({
-      where: { id: assignmentId },
+      where: { id: assignmentId, schoolId },
       data: { isActive: false },
     });
   }
@@ -2309,6 +2399,7 @@ export class GradingService {
    */
   async calculateFinalGrade(
     studentId: string,
+    schoolId: string,
     subjectId: string,
     academicYear: string,
   ): Promise<{
@@ -2327,7 +2418,8 @@ export class GradingService {
     // Get the academic year to find curriculum type and period weights
     const academicYearRecord = await this.prisma.academicYear.findFirst({
       where: {
-        name: academicYear,
+        schoolId,
+        OR: [{ id: academicYear }, { name: academicYear }],
       },
       include: {
         terms: {
@@ -2344,6 +2436,7 @@ export class GradingService {
     const periodGrades = await this.prisma.subjectGrade.findMany({
       where: {
         studentId,
+        schoolId,
         subjectId,
         academicYear,
         status: GradeStatus.APPROVED,
@@ -2401,13 +2494,8 @@ export class GradingService {
         : totalWeightedScore;
 
     // Get schoolId from student to fetch grade scale
-    const student = await this.prisma.user.findUnique({
-      where: { id: studentId },
-      select: { schoolId: true },
-    });
-
     const { gradeLetter, gradePoint } = await this.getGradeFromScore(
-      student?.schoolId || '',
+      schoolId,
       finalScore,
     );
 
@@ -2426,6 +2514,7 @@ export class GradingService {
    */
   async getStudentFinalGrades(
     studentId: string,
+    schoolId: string,
     academicYear: string,
     classId?: string,
     hideLockedScores: boolean = false,
@@ -2452,7 +2541,7 @@ export class GradingService {
       }>;
     }>
   > {
-    await this.syncGradeLockStatus(studentId, academicYear);
+    await this.syncGradeLockStatus(studentId, schoolId, academicYear);
 
     const finalGrades = await this.cacheService.getOrSetVersioned(
       this.getStudentGradesNamespace(studentId),
@@ -2467,6 +2556,7 @@ export class GradingService {
         const grades = await this.prisma.subjectGrade.findMany({
           where: {
             studentId,
+            schoolId,
             academicYear,
             status: GradeStatus.APPROVED,
             ...(classId && { classId }),
@@ -2490,6 +2580,7 @@ export class GradingService {
 
             const result = await this.calculateFinalGrade(
               studentId,
+              schoolId,
               subjectId,
               academicYear,
             );
@@ -2540,15 +2631,16 @@ export class GradingService {
   async verifyParentChild(
     parentId: string,
     studentId: string,
+    schoolId: string,
   ): Promise<boolean> {
-    const parentProfile = await this.prisma.parentProfile.findUnique({
-      where: { userId: parentId },
+    const parentProfile = await this.prisma.parentProfile.findFirst({
+      where: { userId: parentId, schoolId },
       select: { id: true },
     });
     if (!parentProfile) return false;
 
     const studentProfile = await this.prisma.studentProfile.findFirst({
-      where: { OR: [{ id: studentId }, { userId: studentId }] },
+      where: { schoolId, OR: [{ id: studentId }, { userId: studentId }] },
       select: { id: true },
     });
     if (!studentProfile) return false;
@@ -2566,17 +2658,14 @@ export class GradingService {
   async getChildGradesWithAnalysis(
     parentId: string,
     childId: string,
+    schoolId: string,
     academicYear?: string,
     termId?: string,
   ) {
+    await this.ensureParentGradeAccessEnabled(schoolId);
+
     const { studentUserId, studentProfileId } =
-      await this.resolveChildStudentForParent(parentId, childId);
-    const schoolId = (
-      await this.prisma.studentProfile.findUnique({
-        where: { userId: studentUserId },
-        select: { schoolId: true },
-      })
-    )?.schoolId;
+      await this.resolveChildStudentForParent(parentId, schoolId, childId);
 
     // Get curriculum type from school settings
     const curriculumSetting = await this.prisma.schoolSetting.findUnique({
@@ -2601,7 +2690,9 @@ export class GradingService {
 
     // Get terms for the academic year
     const academicYearData = await this.prisma.academicYear.findFirst({
-      where: academicYear ? { id: academicYear } : { isActive: true },
+      where: academicYear
+        ? { id: academicYear, schoolId }
+        : { isActive: true, schoolId },
     });
 
     if (!academicYearData) {
@@ -2613,6 +2704,13 @@ export class GradingService {
         periodCount,
       };
     }
+
+    await this.ensureCurrentPeriodFeesPaid(
+      studentUserId,
+      schoolId,
+      academicYearData.id,
+      termId,
+    );
 
     const terms = await this.prisma.term.findMany({
       where: { academicYearId: academicYearData.id },
@@ -2628,6 +2726,7 @@ export class GradingService {
     const grades = await this.prisma.subjectGrade.findMany({
       where: {
         studentId: studentUserId,
+        schoolId,
         academicYear: academicYearData.id,
         status: { in: visibleStatuses },
         ...(termId ? { termId } : {}),
@@ -2706,6 +2805,7 @@ export class GradingService {
       const classGrades = await this.prisma.subjectGrade.findMany({
         where: {
           classId: grades[0].classId,
+          schoolId,
           academicYear: academicYearData.id,
           termId: termId,
           status: { in: visibleStatuses },
@@ -2759,6 +2859,55 @@ export class GradingService {
     if (average >= 60) return '2.5';
     if (average >= 50) return '2.0';
     return '0.0';
+  }
+
+  private async ensureCurrentPeriodFeesPaid(
+    studentId: string,
+    schoolId: string,
+    academicYearId: string,
+    termId?: string,
+  ) {
+    const effectiveTermId =
+      termId || (await this.resolveCurrentTermId(academicYearId));
+
+    if (!effectiveTermId) return;
+
+    const clearance = await this.verifyFinancialClearance(
+      studentId,
+      schoolId,
+      academicYearId,
+      effectiveTermId,
+      false,
+    );
+
+    if (!clearance.isCleared) {
+      throw new ForbiddenException(
+        'Results are locked until the current term or semester fees are paid.',
+      );
+    }
+  }
+
+  private async resolveCurrentTermId(academicYearId: string) {
+    const now = new Date();
+    const currentTerm = await this.prisma.term.findFirst({
+      where: {
+        academicYearId,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      orderBy: { order: 'asc' },
+      select: { id: true },
+    });
+
+    if (currentTerm?.id) return currentTerm.id;
+
+    const firstTerm = await this.prisma.term.findFirst({
+      where: { academicYearId },
+      orderBy: { order: 'asc' },
+      select: { id: true },
+    });
+
+    return firstTerm?.id || null;
   }
 
   /**
@@ -3093,6 +3242,7 @@ export class GradingService {
    */
   async bulkUploadFromCsv(
     teacherId: string,
+    schoolId: string,
     data: {
       csvData: string;
       academicYear: string;
@@ -3144,20 +3294,31 @@ export class GradingService {
       });
     }
 
-    return this.bulkEnterGrades(teacherId, { grades });
+    return this.bulkEnterGrades(teacherId, schoolId, { grades });
   }
 
   /**
    * Generate CSV template for grade entry
    */
   async generateGradeTemplate(
+    teacherId: string,
+    schoolId: string,
     classId: string,
     sectionId: string,
     subjectId: string,
     academicYear: string,
   ) {
+    await this.resolveTeacherGradingAccess(
+      teacherId,
+      schoolId,
+      academicYear,
+      classId,
+      sectionId,
+      subjectId,
+    );
+
     const students = await this.prisma.studentClass.findMany({
-      where: { classId, sectionId, academicYear },
+      where: { schoolId, classId, sectionId, academicYear },
       include: { student: true },
     });
 
@@ -3367,6 +3528,7 @@ export class GradingService {
       students.map(async (sc) => {
         const finalGrades = await this.getStudentFinalGrades(
           sc.studentId,
+          schoolId,
           academicYear,
         );
         const avgGPA =

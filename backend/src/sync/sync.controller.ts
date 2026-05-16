@@ -15,12 +15,14 @@ import {
   Body,
   Param,
   Headers,
+  Request,
   HttpCode,
   HttpStatus,
   UseGuards,
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { IsArray, IsIn, IsObject, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -31,8 +33,13 @@ import { SyncService } from './sync.service';
 // ============================================
 
 class SyncAttendanceDto {
+  @IsIn(['create', 'update', 'delete'])
   operation: 'create' | 'update' | 'delete';
+
+  @IsString()
   entityId: string;
+
+  @IsObject()
   payload: {
     studentId: string;
     classId: string;
@@ -41,10 +48,13 @@ class SyncAttendanceDto {
     status: string;
     remarks?: string;
     recordedById?: string;
+    recordedBy?: string;
     localId?: string;
     deviceId?: string;
     lastModified: string;
   };
+
+  @IsString()
   localModified: string;
 }
 
@@ -62,6 +72,7 @@ class SyncResponseDto {
 }
 
 class BatchSyncDto {
+  @IsArray()
   items: Array<{
     operation: 'create' | 'update' | 'delete';
     entity: string;
@@ -72,8 +83,13 @@ class BatchSyncDto {
 }
 
 class SyncStatusDto {
+  @IsOptional()
   pendingCount: number;
+
+  @IsOptional()
   lastSyncAt: string;
+
+  @IsOptional()
   conflicts: number;
 }
 
@@ -92,13 +108,14 @@ export class SyncController {
 
   @Post('attendance')
   @HttpCode(HttpStatus.OK)
-  @Permissions('attendance:create', 'attendance:update')
+  @Permissions('attendance:take')
   async syncAttendance(
     @Body() dto: SyncAttendanceDto,
+    @Request() req: any,
     @Headers('x-device-id') deviceId?: string,
   ): Promise<SyncResponseDto> {
     try {
-      return await this.syncService.syncAttendance(dto, deviceId);
+      return await this.syncService.syncAttendance(dto, req.user, deviceId);
     } catch (error) {
       if (error instanceof ConflictException) {
         throw error;
@@ -111,9 +128,10 @@ export class SyncController {
 
   @Post('attendance/batch')
   @HttpCode(HttpStatus.OK)
-  @Permissions('attendance:create', 'attendance:update')
+  @Permissions('attendance:take')
   async batchSyncAttendance(
     @Body() dto: BatchSyncDto,
+    @Request() req: any,
     @Headers('x-device-id') deviceId?: string,
   ): Promise<{
     results: SyncResponseDto[];
@@ -130,6 +148,7 @@ export class SyncController {
       try {
         const result = await this.syncService.syncAttendance(
           item as unknown as SyncAttendanceDto,
+          req.user,
           deviceId,
         );
         results.push(result);
@@ -155,6 +174,7 @@ export class SyncController {
   @Permissions('student:read')
   async getStudentsForOffline(
     @Body() body: { classIds?: string[]; sectionIds?: string[] },
+    @Request() req: any,
   ): Promise<{
     students: Array<{
       id: string;
@@ -174,6 +194,7 @@ export class SyncController {
     cachedAt: string;
   }> {
     return this.syncService.getStudentsForOffline(
+      req.user,
       body.classIds,
       body.sectionIds,
     );

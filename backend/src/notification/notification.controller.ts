@@ -138,7 +138,12 @@ export class NotificationController {
 
   @Post(':id/read')
   async markAsRead(@Param('id') id: string, @Request() req: any) {
-    return this.notificationService.markAsRead(id, req.user.id);
+    return this.notificationService.markAsRead(
+      id,
+      req.user.id,
+      req.user.schoolId,
+      req.user.role,
+    );
   }
 
   @Post('mark-all-read')
@@ -146,6 +151,10 @@ export class NotificationController {
     @Request() req: any,
     @Body() body?: { types?: string[] },
   ) {
-    return this.notificationService.markAllAsRead(req.user.id, body?.types);
+    return this.notificationService.markAllAsRead(
+      req.user.id,
+      req.user.schoolId,
+      body?.types,
+    );
   }
 }

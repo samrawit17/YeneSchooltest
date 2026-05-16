@@ -189,7 +189,6 @@ const TeacherDashboard = () => {
   };
 
   const quickActions = [
-    { label: 'Create Lesson', icon: Plus, url: '/teacher/lessons/create', color: 'bg-blue-600 hover:bg-blue-700' },
     { label: 'Take Attendance', icon: ClipboardList, url: '/teacher/attendance', color: 'bg-emerald-600 hover:bg-emerald-700' },
     { label: 'Enter Grades', icon: PenTool, url: '/teacher/grading', color: 'bg-amber-600 hover:bg-amber-700' },
     { label: 'Messages', icon: MessageSquare, url: '/list/communications', color: 'bg-cyan-600 hover:bg-cyan-700' },
@@ -214,7 +213,7 @@ const TeacherDashboard = () => {
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
       {/* Header Section */}
       <header className="bg-white dark:bg-[#1E293B] border-b border-gray-200 dark:border-[#334155] px-6 py-4 mb-6">
-        <div className="max-w-7xl mx-auto">
+        <div>
           <div>
             <h1 className="text-2xl font-bold text-[#e35336]">
               {getGreeting()}, {user?.name ? user.name.split(' ')[0] : 'Teacher'}
@@ -227,7 +226,7 @@ const TeacherDashboard = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-4 sm:px-6 sm:py-6">
+      <main className="px-4 py-4 sm:px-6 sm:py-6">
         {/* Quick Actions - Always Visible */}
         <div className="mb-6">
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
@@ -351,7 +350,7 @@ const TeacherDashboard = () => {
                     variant="outline"
                     size="sm"
                     className="mt-4"
-                    onClick={() => router.push('/teacher/lessons/create')}
+                    onClick={() => router.push('/teacher/lessons')}
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create Lesson

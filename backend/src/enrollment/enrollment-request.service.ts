@@ -644,7 +644,7 @@ export class EnrollmentRequestService {
       isNewParentUser = true;
       parentCredentials = await this.credentialService.generateStaffCredentials(
         schoolId,
-        Role.TEACHER,
+        Role.PARENT,
         academicYearName,
       );
 

@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
 import { queryKeys } from "@/lib/query-keys";
-import { Loader2, Save, User, Users, Phone, Mail, MapPin, Briefcase } from "lucide-react";
+import { ArrowLeft, Loader2, Save, User, Users, Phone, Mail, MapPin, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 
 // Shadcn/ui Components
@@ -186,24 +186,38 @@ export default function EditParentPage() {
 
   return (
     <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: "#F8FAFC", fontFamily: "var(--font-sans), sans-serif" }}>
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#e35336]">Edit Parent</h1>
-          <p className="text-gray-500">Update parent information and manage children</p>
+        <div className="mb-6 flex items-start gap-3">
+          <Button variant="outline" size="icon" onClick={() => router.push(`/list/parents/${parentId}`)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-[#e35336]">Edit {userData?.name || parentProfile?.user?.name || parentProfile?.name || "Parent"}</h1>
+            <p className="text-gray-500">Update parent information and manage children</p>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="personal" className="flex items-center gap-2">
+          <TabsList className="mb-6 flex h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b bg-transparent p-0 dark:border-slate-700">
+            <TabsTrigger
+              value="personal"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+            >
               <User className="w-4 h-4" />
               Personal
             </TabsTrigger>
-            <TabsTrigger value="children" className="flex items-center gap-2">
+            <TabsTrigger
+              value="children"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+            >
               <Users className="w-4 h-4" />
               Children
             </TabsTrigger>
-            <TabsTrigger value="contact" className="flex items-center gap-2">
+            <TabsTrigger
+              value="contact"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+            >
               <Phone className="w-4 h-4" />
               Contact
             </TabsTrigger>

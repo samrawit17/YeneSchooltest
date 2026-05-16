@@ -57,11 +57,101 @@ export class AttendanceService {
     );
   }
 
+  private async resolveParentChildStudentId(
+    user: RequestUser,
+    studentId: string,
+  ): Promise<string> {
+    const parentProfile = await this.prisma.parentProfile.findFirst({
+      where: { userId: user.id, schoolId: user.schoolId },
+      select: { id: true },
+    });
+
+    if (!parentProfile) {
+      throw new NotFoundException('Parent profile not found');
+    }
+
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: {
+        schoolId: user.schoolId,
+        OR: [{ id: studentId }, { userId: studentId }],
+      },
+      select: { id: true, userId: true },
+    });
+
+    if (!studentProfile) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const relation = await this.prisma.parentStudent.findFirst({
+      where: {
+        parentId: parentProfile.id,
+        studentId: studentProfile.id,
+      },
+      select: { id: true },
+    });
+
+    if (!relation) {
+      throw new ForbiddenException(
+        "You can only view your linked children's attendance",
+      );
+    }
+
+    return studentProfile.userId;
+  }
+
+  private async resolveReadableStudentId(
+    user: RequestUser,
+    studentId: string,
+  ): Promise<string> {
+    if (user.role === Role.STUDENT) {
+      if (user.id !== studentId) {
+        throw new ForbiddenException('You can only view your own attendance');
+      }
+      return user.id;
+    }
+
+    if (user.role === Role.PARENT) {
+      return this.resolveParentChildStudentId(user, studentId);
+    }
+
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: {
+        schoolId: user.schoolId,
+        OR: [{ id: studentId }, { userId: studentId }],
+      },
+      select: { userId: true },
+    });
+
+    if (!studentProfile) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return studentProfile.userId;
+  }
+
   private getDateString(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private parseDateOnlyAsLocalDay(date: string): Date {
+    const [year, month, day] = date.split('-').map(Number);
+    if (!year || !month || !day) {
+      const fallback = new Date(date);
+      fallback.setHours(0, 0, 0, 0);
+      return fallback;
+    }
+
+    return new Date(year, month - 1, day);
+  }
+
+  private getLocalDayRange(date: string) {
+    const start = this.parseDateOnlyAsLocalDay(date);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
   }
 
   /**
@@ -1793,10 +1883,14 @@ export class AttendanceService {
 
     const whereClause: any = {
       studentId: user.id,
+      session: {
+        schoolId: user.schoolId,
+      },
     };
 
     if (startDate || endDate) {
       whereClause.session = {
+        ...whereClause.session,
         date: {
           ...(startDate && { gte: new Date(startDate) }),
           ...(endDate && { lte: new Date(endDate) }),
@@ -1836,57 +1930,15 @@ export class AttendanceService {
     startDate?: string,
     endDate?: string,
   ) {
-    let resolvedStudentId = studentId;
-
-    // Verify access: student viewing themselves, parent viewing their child, or admin
-    if (user.role === Role.STUDENT) {
-      if (user.id !== studentId) {
-        throw new ForbiddenException('You can only view your own attendance');
-      }
-      resolvedStudentId = user.id;
-    }
-
-    if (user.role === Role.PARENT) {
-      const parentProfile = await this.prisma.parentProfile.findUnique({
-        where: { userId: user.id },
-        select: { id: true },
-      });
-
-      if (!parentProfile) {
-        throw new NotFoundException('Parent profile not found');
-      }
-
-      const studentProfile = await this.prisma.studentProfile.findFirst({
-        where: {
-          OR: [{ id: studentId }, { userId: studentId }],
-        },
-        select: { id: true, userId: true },
-      });
-
-      if (!studentProfile) {
-        throw new NotFoundException('Student not found');
-      }
-
-      const relation = await this.prisma.parentStudent.findFirst({
-        where: {
-          parentId: parentProfile.id,
-          studentId: studentProfile.id,
-        },
-        select: { id: true },
-      });
-
-      if (!relation) {
-        throw new ForbiddenException(
-          "You can only view your linked children's attendance",
-        );
-      }
-
-      resolvedStudentId = studentProfile.userId;
-    }
+    const resolvedStudentId = await this.resolveReadableStudentId(
+      user,
+      studentId,
+    );
 
     const whereClause: any = {
       studentId: resolvedStudentId,
       session: {
+        schoolId: user.schoolId,
         status: 'SUBMITTED',
       },
     };
@@ -1931,52 +1983,10 @@ export class AttendanceService {
     studentId: string,
     query: AttendanceQueryDto,
   ) {
-    let resolvedStudentId = studentId;
-
-    if (user.role === Role.STUDENT) {
-      if (user.id !== studentId) {
-        throw new ForbiddenException('You can only view your own attendance');
-      }
-      resolvedStudentId = user.id;
-    }
-
-    if (user.role === Role.PARENT) {
-      const parentProfile = await this.prisma.parentProfile.findUnique({
-        where: { userId: user.id },
-        select: { id: true },
-      });
-
-      if (!parentProfile) {
-        throw new NotFoundException('Parent profile not found');
-      }
-
-      const studentProfile = await this.prisma.studentProfile.findFirst({
-        where: {
-          OR: [{ id: studentId }, { userId: studentId }],
-        },
-        select: { id: true, userId: true },
-      });
-
-      if (!studentProfile) {
-        throw new NotFoundException('Student not found');
-      }
-
-      const relation = await this.prisma.parentStudent.findFirst({
-        where: {
-          parentId: parentProfile.id,
-          studentId: studentProfile.id,
-        },
-        select: { id: true },
-      });
-
-      if (!relation) {
-        throw new ForbiddenException(
-          "You can only view your linked children's attendance",
-        );
-      }
-
-      resolvedStudentId = studentProfile.userId;
-    }
+    const resolvedStudentId = await this.resolveReadableStudentId(
+      user,
+      studentId,
+    );
 
     const { startDate, endDate, month } = query;
 
@@ -2011,6 +2021,7 @@ export class AttendanceService {
     const whereClause: any = {
       studentId: resolvedStudentId,
       session: {
+        schoolId: user.schoolId,
         status: 'SUBMITTED',
       },
     };
@@ -2056,8 +2067,8 @@ export class AttendanceService {
     const excusedDays = records.filter((r) => r.status === 'EXCUSED').length;
 
     // Get student info - studentId here should be the userId
-    const student = await this.prisma.user.findUnique({
-      where: { id: resolvedStudentId },
+    const student = await this.prisma.user.findFirst({
+      where: { id: resolvedStudentId, schoolId: user.schoolId },
       select: {
         id: true,
         name: true,
@@ -2074,8 +2085,8 @@ export class AttendanceService {
 
     // If student not found by userId, try finding by studentProfile id
     if (!student) {
-      const studentProfile = await this.prisma.studentProfile.findUnique({
-        where: { id: resolvedStudentId },
+      const studentProfile = await this.prisma.studentProfile.findFirst({
+        where: { id: resolvedStudentId, schoolId: user.schoolId },
         include: {
           user: {
             select: {
@@ -2482,6 +2493,7 @@ export class AttendanceService {
     const todaySlots = await this.prisma.timetableSlot.findMany({
       where: {
         teacherId: user.id,
+        schoolId: user.schoolId,
         dayOfWeek,
         academicYear: {
           isActive: true,
@@ -2497,6 +2509,7 @@ export class AttendanceService {
     // Get sessions for today
     const todaySessions = await this.prisma.attendanceSession.findMany({
       where: {
+        schoolId: user.schoolId,
         takenById: user.id,
         date: today,
       },
@@ -2533,6 +2546,7 @@ export class AttendanceService {
     const weeklyRecords = await this.prisma.attendanceRecord.findMany({
       where: {
         session: {
+          schoolId: user.schoolId,
           takenById: user.id,
           date: {
             gte: weekStart,
@@ -2626,6 +2640,7 @@ export class AttendanceService {
       where: {
         studentId,
         session: {
+          schoolId: user.schoolId,
           date: {
             gte: thirtyDaysAgo,
             lte: today,
@@ -2680,11 +2695,19 @@ export class AttendanceService {
    * Get parent dashboard attendance data for a child
    */
   async getParentDashboard(user: any, studentId: string) {
+    const resolvedStudentId = await this.resolveParentChildStudentId(
+      user,
+      studentId,
+    );
+
     // Verify parent is linked to this student
-    const parentProfile = await this.prisma.parentProfile.findUnique({
-      where: { userId: user.id },
+    const parentProfile = await this.prisma.parentProfile.findFirst({
+      where: { userId: user.id, schoolId: user.schoolId },
       include: {
         children: {
+          where: {
+            student: { schoolId: user.schoolId },
+          },
           include: {
             student: {
               include: { user: true },
@@ -2694,24 +2717,15 @@ export class AttendanceService {
       },
     });
 
-    const isLinkedChild = parentProfile?.children.some(
-      (c) => c.student.user.id === studentId,
-    );
-
-    if (!isLinkedChild) {
-      throw new ForbiddenException(
-        "You can only view your linked children's attendance",
-      );
-    }
-
     const today = new Date();
     const thirtyDaysAgo = new Date(today);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const records = await this.prisma.attendanceRecord.findMany({
       where: {
-        studentId,
+        studentId: resolvedStudentId,
         session: {
+          schoolId: user.schoolId,
           date: {
             gte: thirtyDaysAgo,
             lte: today,
@@ -2738,7 +2752,7 @@ export class AttendanceService {
     const needsAlert = attendancePercentage < 75 && absentDays > 3;
 
     const childData = parentProfile?.children.find(
-      (c) => c.student.user.id === studentId,
+      (c) => c.student.user.id === resolvedStudentId,
     );
 
     return {
@@ -2952,15 +2966,16 @@ export class AttendanceService {
     section?: string,
     range?: string,
   ) {
-    const targetDateStr = date || new Date().toISOString().split('T')[0];
-    const targetDate = new Date(targetDateStr);
-    targetDate.setHours(0, 0, 0, 0);
+    const targetDateStr = date || this.getDateString(new Date());
+    const targetDate = this.parseDateOnlyAsLocalDay(targetDateStr);
+    const { start: targetDateStart, end: targetDateEnd } =
+      this.getLocalDayRange(targetDateStr);
 
     // Determine the range (weekly or monthly)
     const dateRange = range === 'monthly' ? 30 : 7;
 
     // Check if the target date is today (to apply time-based filtering)
-    const isToday = targetDateStr === new Date().toISOString().split('T')[0];
+    const isToday = targetDateStr === this.getDateString(new Date());
 
     // Build filter for grade and section (only apply when explicitly provided)
     const hasGradeFilter = grade && grade !== 'all';
@@ -2976,11 +2991,6 @@ export class AttendanceService {
 
     // Get attendance sessions for the target date
     // Only filter by class when grade/section is explicitly provided
-    const targetDateStart = new Date(targetDateStr);
-    targetDateStart.setHours(0, 0, 0, 0);
-    const targetDateEnd = new Date(targetDateStr);
-    targetDateEnd.setHours(23, 59, 59, 999);
-
     const targetSessions = await this.prisma.attendanceSession.findMany({
       where: {
         schoolId: user.schoolId,
@@ -3109,7 +3119,10 @@ export class AttendanceService {
         schoolId: user.schoolId,
         status: 'ABSENT',
         session: {
-          date: targetDate,
+          date: {
+            gte: targetDateStart,
+            lte: targetDateEnd,
+          },
           ...(hasGradeFilter || hasSectionFilter
             ? {
                 OR: [
@@ -3174,7 +3187,7 @@ export class AttendanceService {
         schoolId: user.schoolId,
         date: {
           gte: statsStart,
-          lte: targetDate,
+          lte: targetDateEnd,
         },
         ...(hasGradeFilter || hasSectionFilter
           ? {
@@ -3221,7 +3234,7 @@ export class AttendanceService {
       });
 
       weeklyStats.push({
-        date: day.toISOString().split('T')[0],
+        date: this.getDateString(day),
         attendanceRate:
           dayTotal > 0 ? Math.round((dayPresent / dayTotal) * 100) : 0,
         presentCount: dayPresent,

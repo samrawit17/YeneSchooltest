@@ -87,7 +87,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
 
   return (
     <>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="font-sans" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
       <div className="space-y-5">
         {/* Subject Name */}
           <div>
@@ -115,7 +115,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                 placeholder="e.g., MATH, SCI"
-                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all font-mono"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all"
               />
             </div>
             <div>

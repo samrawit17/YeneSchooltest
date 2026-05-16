@@ -149,7 +149,7 @@ export class ClassSubjectService {
     });
   }
 
-  async create(data: CreateClassSubjectDto) {
+  async create(data: CreateClassSubjectDto, schoolId: string) {
     const normalizedTeacherId = this.normalizeTeacherId(data.teacherId);
 
     // Check if assignment already exists
@@ -169,8 +169,8 @@ export class ClassSubjectService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const classData = await tx.class.findUnique({
-        where: { id: data.classId },
+      const classData = await tx.class.findFirst({
+        where: { id: data.classId, schoolId },
         select: { schoolId: true },
       });
 
@@ -239,10 +239,11 @@ export class ClassSubjectService {
     });
   }
 
-  async findByClass(classId: string, sectionId?: string) {
+  async findByClass(classId: string, schoolId: string, sectionId?: string) {
     return this.prisma.classSubject.findMany({
       where: {
         classId,
+        class: { schoolId },
         ...(sectionId && { sectionId }),
       },
       include: {
@@ -260,10 +261,15 @@ export class ClassSubjectService {
     });
   }
 
-  async findByTeacher(teacherId: string, academicYearId?: string) {
+  async findByTeacher(
+    teacherId: string,
+    schoolId: string,
+    academicYearId?: string,
+  ) {
     const classSubjects = await this.prisma.classSubject.findMany({
       where: {
         teacherId,
+        class: { schoolId },
         ...(academicYearId && { academicYear: academicYearId }),
       },
       include: {
@@ -305,6 +311,7 @@ export class ClassSubjectService {
 
         const studentCount = await this.prisma.studentProfile.count({
           where: {
+            schoolId,
             OR: orConditions,
           },
         });
@@ -321,9 +328,9 @@ export class ClassSubjectService {
     return classSubjectsWithCounts;
   }
 
-  async findOne(id: string) {
-    const classSubject = await this.prisma.classSubject.findUnique({
-      where: { id },
+  async findOne(id: string, schoolId: string) {
+    const classSubject = await this.prisma.classSubject.findFirst({
+      where: { id, class: { schoolId } },
       include: {
         class: true,
         section: true,
@@ -345,8 +352,8 @@ export class ClassSubjectService {
     return classSubject;
   }
 
-  async update(id: string, data: UpdateClassSubjectDto) {
-    const assignment = await this.findOne(id); // Validate exists
+  async update(id: string, data: UpdateClassSubjectDto, schoolId: string) {
+    const assignment = await this.findOne(id, schoolId); // Validate exists
     const normalizedTeacherId = this.normalizeTeacherId(data.teacherId);
 
     return this.prisma.$transaction(async (tx) => {
@@ -387,15 +394,15 @@ export class ClassSubjectService {
     });
   }
 
-  async delete(id: string) {
-    await this.findOne(id); // Validate exists
+  async delete(id: string, schoolId: string) {
+    await this.findOne(id, schoolId); // Validate exists
 
     return this.prisma.classSubject.delete({
       where: { id },
     });
   }
 
-  async bulkAssign(data: BulkAssignDto) {
+  async bulkAssign(data: BulkAssignDto, schoolId: string) {
     const { sectionIds, subjectIds, teacherId, academicYearId, classId } = data;
     const normalizedTeacherId = this.normalizeTeacherId(teacherId);
 
@@ -424,6 +431,7 @@ export class ClassSubjectService {
           ? await tx.section.findMany({
               where: {
                 id: { in: realSectionIds },
+                class: { schoolId },
               },
               include: {
                 class: {
@@ -453,6 +461,7 @@ export class ClassSubjectService {
                 await tx.class.findMany({
                   where: {
                     id: { in: virtualClassIds },
+                    schoolId,
                     academicYearId,
                   },
                   select: {
@@ -586,12 +595,29 @@ export class ClassSubjectService {
   }
 
   async getMatrixData(schoolId: string, academicYearId: string) {
+    const gradeLevels = await this.prisma.gradeLevel.findMany({
+      where: { schoolId },
+      select: { id: true, level: true },
+    });
+    const allowedGradeIds = gradeLevels.map((grade) => grade.id);
+    const allowedGradeNumbers = gradeLevels.map((grade) => grade.level);
+    const gradeFilter =
+      gradeLevels.length > 0
+        ? {
+            OR: [
+              { gradeId: { in: allowedGradeIds } },
+              { grade: { in: allowedGradeNumbers } },
+            ],
+          }
+        : {};
+
     // Get all sections for the school/year
     const sections = await this.prisma.section.findMany({
       where: {
         class: {
           schoolId,
           academicYearId,
+          ...gradeFilter,
         },
       },
       include: {
@@ -608,6 +634,7 @@ export class ClassSubjectService {
       where: {
         schoolId,
         academicYearId,
+        ...gradeFilter,
       },
       include: {
         homeroomTeacher: {
@@ -647,6 +674,7 @@ export class ClassSubjectService {
         class: {
           schoolId,
           academicYearId,
+          ...gradeFilter,
         },
       },
       include: {

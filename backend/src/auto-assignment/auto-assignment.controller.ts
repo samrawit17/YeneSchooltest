@@ -16,6 +16,7 @@ import {
 } from './auto-assignment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Role } from '../auth/types/role.enum';
@@ -27,7 +28,7 @@ import { Role } from '../auth/types/role.enum';
  * All endpoints require authentication and appropriate permissions.
  */
 @Controller('auto-assignment')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class AutoAssignmentController {
   constructor(private readonly autoAssignmentService: AutoAssignmentService) {}
 
@@ -39,7 +40,7 @@ export class AutoAssignmentController {
    */
   @Post('enrollments/:enrollmentId/auto-assign')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('student:approve')
+  @Permissions('student:approve_enrollment')
   async autoAssignEnrollment(
     @Param('enrollmentId') enrollmentId: string,
     @Request() req,
@@ -57,7 +58,7 @@ export class AutoAssignmentController {
    */
   @Post('bulk')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('student:approve')
+  @Permissions('student:approve_enrollment')
   async bulkAutoAssign(
     @Body() body: { enrollmentIds: string[] },
     @Request() req,
@@ -77,7 +78,7 @@ export class AutoAssignmentController {
    */
   @Post('enrollments/:enrollmentId/reassign')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('student:approve')
+  @Permissions('student:approve_enrollment')
   async reassignEnrollment(
     @Param('enrollmentId') enrollmentId: string,
     @Request() req,
@@ -152,7 +153,7 @@ export class AutoAssignmentController {
    */
   @Post('approve-and-assign')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('student:approve')
+  @Permissions('student:approve_enrollment')
   @HttpCode(HttpStatus.OK)
   async approveAndAssign(
     @Body() body: { enrollmentId: string },

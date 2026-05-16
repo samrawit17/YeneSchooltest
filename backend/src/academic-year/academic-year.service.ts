@@ -228,7 +228,7 @@ export class AcademicYearService {
     if (!curriculumType) {
       const schoolSetting = await this.schoolSettingsService.getSetting(
         schoolId,
-        'CURRICULUM_TYPE',
+        'curriculum_type',
       );
       if (schoolSetting) {
         finalCurriculumType = schoolSetting;

@@ -23,6 +23,7 @@ interface SyncAttendanceDto {
     status: string;
     remarks?: string;
     recordedById?: string;
+    recordedBy?: string;
     localId?: string;
     deviceId?: string;
     lastModified: string;
@@ -58,6 +59,7 @@ export class SyncService {
    */
   async syncAttendance(
     dto: SyncAttendanceDto,
+    user: { id?: string; schoolId?: string },
     deviceId?: string,
   ): Promise<SyncResponseDto> {
     const { operation, entityId, payload, localModified } = dto;
@@ -69,8 +71,15 @@ export class SyncService {
       status,
       remarks,
       recordedById,
+      recordedBy,
       localId,
     } = payload;
+    const schoolId = user?.schoolId;
+    const actorId = user?.id;
+
+    if (!schoolId || !actorId) {
+      throw new BadRequestException('Authenticated school and user are required for sync');
+    }
 
     try {
       switch (operation) {
@@ -82,9 +91,10 @@ export class SyncService {
             classId,
             sectionId,
             date,
-            status,
+            status: this.normalizeAttendanceStatus(status),
             remarks,
-            recordedById,
+            recordedById: recordedById || recordedBy || actorId,
+            schoolId,
             localModified,
           });
 
@@ -97,9 +107,10 @@ export class SyncService {
             classId,
             sectionId,
             date,
-            status,
+            status: this.normalizeAttendanceStatus(status),
             remarks,
-            recordedById,
+            recordedById: recordedById || recordedBy || actorId,
+            schoolId,
             localModified,
           });
 
@@ -128,8 +139,11 @@ export class SyncService {
     status: string;
     remarks?: string;
     recordedById?: string;
+    schoolId: string;
     localModified: string;
   }): Promise<SyncResponseDto> {
+    await this.validateAttendanceScope(data.schoolId, data.studentId, data.classId, data.sectionId);
+
     // Check for existing record with same student and date (unique constraint)
     const existing = await this.prisma.attendance.findUnique({
       where: {
@@ -162,6 +176,7 @@ export class SyncService {
         data: {
           status: data.status as AttendanceStatus,
           remarks: data.remarks,
+          recordedById: data.recordedById,
           updatedAt: new Date(),
         },
       });
@@ -177,13 +192,13 @@ export class SyncService {
     const created = await this.prisma.attendance.create({
       data: {
         studentId: data.studentId,
-        classId: data.classId || '',
-        sectionId: data.sectionId || '',
+        classId: data.classId,
+        sectionId: data.sectionId,
         date: new Date(data.date),
         status: data.status as AttendanceStatus,
         remarks: data.remarks,
         recordedById: data.recordedById,
-        schoolId: '', // Will be set based on the user's school
+        schoolId: data.schoolId,
         updatedAt: new Date(),
       },
     });
@@ -209,8 +224,11 @@ export class SyncService {
     status: string;
     remarks?: string;
     recordedById?: string;
+    schoolId: string;
     localModified: string;
   }): Promise<SyncResponseDto> {
+    await this.validateAttendanceScope(data.schoolId, data.studentId, data.classId, data.sectionId);
+
     const existing = await this.prisma.attendance.findUnique({
       where: { id: data.entityId },
     });
@@ -280,6 +298,7 @@ export class SyncService {
    * Get students for offline caching
    */
   async getStudentsForOffline(
+    user: { schoolId?: string },
     classIds?: string[],
     sectionIds?: string[],
   ): Promise<{
@@ -300,11 +319,77 @@ export class SyncService {
     }>;
     cachedAt: string;
   }> {
-    // For now, return empty array - this would need proper enrollment queries
+    if (!user?.schoolId) {
+      throw new BadRequestException('Authenticated school is required');
+    }
+
+    const studentClasses = await this.prisma.studentClass.findMany({
+      where: {
+        schoolId: user.schoolId,
+        ...(classIds?.length ? { classId: { in: classIds } } : {}),
+        ...(sectionIds?.length ? { sectionId: { in: sectionIds } } : {}),
+      },
+      include: {
+        student: {
+          include: { studentProfile: true },
+        },
+        class: true,
+        section: true,
+      },
+      orderBy: [{ class: { name: 'asc' } }, { section: { name: 'asc' } }],
+    });
+
     return {
-      students: [],
+      students: studentClasses.map((enrollment) => ({
+        id: enrollment.student.id,
+        firstName: enrollment.student.name?.split(' ')[0] || enrollment.student.name || '',
+        lastName: enrollment.student.name?.split(' ').slice(1).join(' ') || '',
+        studentId: enrollment.student.username || enrollment.student.studentProfile?.studentId || enrollment.student.id,
+        classId: enrollment.classId,
+        className: enrollment.class?.name,
+        sectionId: enrollment.sectionId,
+        sectionName: enrollment.section?.name,
+        photo: enrollment.student.avatarUrl || undefined,
+        email: enrollment.student.email || undefined,
+        phone: enrollment.student.phone || undefined,
+        enrollmentStatus: 'active',
+        updatedAt: enrollment.updatedAt.toISOString(),
+      })),
       cachedAt: new Date().toISOString(),
     };
+  }
+
+  private async validateAttendanceScope(
+    schoolId: string,
+    studentId: string,
+    classId: string,
+    sectionId: string,
+  ) {
+    if (!studentId || !classId || !sectionId) {
+      throw new BadRequestException('studentId, classId, and sectionId are required');
+    }
+
+    const enrollment = await this.prisma.studentClass.findFirst({
+      where: {
+        schoolId,
+        studentId,
+        classId,
+        sectionId,
+      },
+      select: { id: true },
+    });
+
+    if (!enrollment) {
+      throw new BadRequestException('Student is not enrolled in this class/section for your school');
+    }
+  }
+
+  private normalizeAttendanceStatus(status: string): AttendanceStatus {
+    const normalized = String(status || '').trim().toUpperCase();
+    if (!['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'].includes(normalized)) {
+      throw new BadRequestException('Invalid attendance status');
+    }
+    return normalized as AttendanceStatus;
   }
 
   // ============================================

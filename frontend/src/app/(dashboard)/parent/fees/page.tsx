@@ -5,18 +5,11 @@ import { CreditCard, AlertCircle, CheckCircle, Receipt, Calendar, Clock, Wallet,
 import { parentsAPI } from "@/lib/api/people";
 import { financeAPI } from "@/lib/api/finance";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAcademicYear } from "@/context/AcademicYearContext";
+import { AcademicYear, useAcademicYear } from "@/context/AcademicYearContext";
 
 interface PeriodItem {
   feeId: string;
@@ -89,11 +82,6 @@ const PARENT_LABELS: Record<string, string> = {
   SEMESTER: "Semester",
   TERM: "Term",
   YEARLY: "Full Year",
-  QUARTER: "Quarter",
-  SEMESTER: "Semester",
-  TERM: "Term",
-  MONTH: "Month",
-  YEAR: "Full Year",
 };
 
 const normalizeCurriculumType = (type: string): string => {
@@ -127,11 +115,6 @@ const getPeriodCount = (curriculumType: string): number => {
     SEMESTER: 2,
     TERM: 3,
     YEARLY: 1,
-    QUARTER: 4,
-    SEMESTER: 2,
-    TERM: 3,
-    MONTH: 12,
-    YEAR: 1,
   };
   return counts[curriculumType] || 3;
 };
@@ -220,7 +203,7 @@ const ParentFeesPage = () => {
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-  const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
   const [periodTouched, setPeriodTouched] = useState(false);
@@ -236,8 +219,7 @@ const ParentFeesPage = () => {
     <div className="p-4 md:p-6 space-y-6">
       <Skeleton className="h-8 w-48" />
       <div className="grid grid-cols-1 gap-6">
-        <Card>
-          <CardContent className="pt-6 space-y-4">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
             <Skeleton className="h-6 w-32" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[1, 2, 3, 4].map((i) => (
@@ -245,10 +227,9 @@ const ParentFeesPage = () => {
               ))}
             </div>
             <Skeleton className="h-48 w-full" />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
-    </div>
   );
 
   useEffect(() => {
@@ -470,38 +451,26 @@ const ParentFeesPage = () => {
       : selectedPeriod || currentTerm?.name || `Current ${systemPeriodLabel}`;
 
   return (
-    <div className="p-4 md:p-6">
-      <div>
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="px-4 py-6 md:px-6 space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-color, #e35336)' }}>Fee Information</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">View annual tuition fees split by curriculum periods</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Fee Information</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">View tuition fees split by curriculum periods</p>
           </div>
-          <div className="sm:text-right">
-            <div
-              className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold"
-              style={{
-                backgroundColor: 'rgba(var(--brand-color-rgb, 227, 83, 54), 0.1)',
-                color: 'var(--brand-color, #e35336)',
-              }}
-            >
-              {activePeriodText}
-            </div>
+          <div className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)]">
+            {activePeriodText}
           </div>
         </div>
 
         {children.length === 0 ? (
-          <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-            <CardContent className="py-16 text-center">
-              <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-4">
-                <CreditCard className="w-7 h-7 text-slate-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">No Children Found</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                No children are linked to your account.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-16 text-center">
+            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="w-7 h-7 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">No Children Found</h3>
+            <p className="text-sm text-slate-500 mt-1">No children are linked to your account.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-6">
             {children.map((child) => {
@@ -572,18 +541,15 @@ const ParentFeesPage = () => {
                 : periodPaymentHistory.filter((payment) => payment.displayPeriod === selectedPeriod);
 
               return (
-                <Card key={child.id} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm">
-                  <CardHeader className="pb-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-lg text-slate-900 dark:text-white">{child.name}</CardTitle>
-                        <CardDescription className="text-slate-500 dark:text-slate-400">
-                          Grade {child.className} &middot; Section {child.section}
-                        </CardDescription>
-                      </div>
-                      <div className="flex items-center gap-3">
+                <div key={child.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+                    <div>
+                      <h3 className="font-semibold text-slate-900 dark:text-white">{child.name}</h3>
+                      <p className="text-sm text-slate-500">Grade {child.className} &middot; Section {child.section}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
                         <Select value={selectedYear} onValueChange={setSelectedYear}>
-                          <SelectTrigger className="h-8 text-xs w-36">
+                          <SelectTrigger className="h-8 text-xs w-32">
                             <SelectValue placeholder="Year" />
                           </SelectTrigger>
                           <SelectContent>
@@ -609,36 +575,32 @@ const ParentFeesPage = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Badge
-                          className="text-sm px-3 py-1 border-0"
-                          style={{
-                            backgroundColor: visibleTotals.balance > 0 ? 'rgba(var(--brand-color-rgb, 227, 83, 54), 0.12)' : undefined,
-                            color: visibleTotals.balance > 0 ? 'var(--brand-color, #e35336)' : undefined,
-                          }}
-                          variant={visibleTotals.balance > 0 ? "default" : "default"}
-                        >
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          visibleTotals.balance > 0
+                            ? "bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)]"
+                            : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                        }`}>
                           {visibleTotals.balance > 0 ? "Outstanding" : "Fully Paid"}
-                        </Badge>
+                        </span>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-5 pt-5">
+                  <div className="p-5 space-y-5">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-center">
+                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
                         <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total</p>
                         <p className="font-bold text-lg text-slate-900 dark:text-white mt-1">{formatCurrency(visibleTotals.total)}</p>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-center">
+                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
                         <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Paid</p>
                         <p className="font-bold text-lg text-green-600 dark:text-green-400 mt-1">{formatCurrency(visibleTotals.paid)}</p>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-center">
+                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
                         <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Balance</p>
                         <p className="font-bold text-lg mt-1" style={{ color: visibleTotals.balance > 0 ? 'var(--brand-color, #e35336)' : 'var(--brand-color, #e35336)' }}>
                           {formatCurrency(visibleTotals.balance)}
                         </p>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 text-center">
+                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
                         <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Paid %</p>
                         <p className="font-bold text-lg text-slate-900 dark:text-white mt-1">{visiblePaidPercentage}%</p>
                       </div>
@@ -694,7 +656,7 @@ const ParentFeesPage = () => {
 
                               {isExpanded && (
                                 <>
-                                  <div className="p-4 bg-white dark:bg-slate-800">
+                                  <div className="p-4 bg-white dark:bg-slate-900">
                                     <div className={`grid gap-3 ${
                                       periodTitles.length === 4 ? "grid-cols-2 md:grid-cols-4" :
                                       periodTitles.length === 3 ? "grid-cols-1 sm:grid-cols-3" :
@@ -715,7 +677,7 @@ const ParentFeesPage = () => {
                                             className={`relative p-3.5 rounded-xl border transition-colors ${
                                               isFullPaid
                                                 ? 'border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-950/20'
-                                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+                                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'
                                             }`}
                                           >
                                             <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
@@ -801,7 +763,7 @@ const ParentFeesPage = () => {
                       {visiblePaymentHistory.length > 0 ? (
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
-                            <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                            <thead className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                               <tr className="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                 <th className="px-4 py-3 font-semibold">Receipt</th>
                                 <th className="px-4 py-3 font-semibold">{periodLabel}</th>
@@ -811,7 +773,7 @@ const ParentFeesPage = () => {
                                 <th className="px-4 py-3 font-semibold">Date</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-900">
                               {visiblePaymentHistory.map((payment) => (
                                 <tr key={payment.id} className="text-slate-700 dark:text-slate-200">
                                   <td className="px-4 py-3 font-mono text-xs">
@@ -838,7 +800,7 @@ const ParentFeesPage = () => {
                           </table>
                         </div>
                       ) : (
-                        <div className="px-4 py-8 text-center bg-white dark:bg-slate-800">
+                        <div className="px-4 py-8 text-center bg-white dark:bg-slate-900">
                           <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                             No payments found for this {selectedPeriod === "all" ? "academic year" : periodLabel.toLowerCase()}.
                           </p>
@@ -848,8 +810,8 @@ const ParentFeesPage = () => {
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                    </div>
+                  </div>
               );
             })}
           </div>

@@ -95,6 +95,59 @@ export type CalendarType = 'GREGORIAN' | 'ETHIOPIAN';
 
 const DEFAULT_GREGORIAN_LOCALE = 'en-US';
 
+export function normalizeTimeValue(value?: string): { hour: string; minute: string } {
+    const match = value?.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return { hour: '08', minute: '00' };
+
+    const hour = Math.min(23, Math.max(0, Number(match[1])));
+    const minute = Math.min(59, Math.max(0, Number(match[2])));
+
+    return {
+        hour: String(hour).padStart(2, '0'),
+        minute: String(minute).padStart(2, '0'),
+    };
+}
+
+export function getEthiopianClockParts(value?: string): {
+    hour12: number;
+    minute: string;
+    period: 'morning' | 'afternoon' | 'evening' | 'night';
+} {
+    const { hour, minute } = normalizeTimeValue(value);
+    const ethHour24 = (Number(hour) - 6 + 24) % 24;
+    const hour12 = ethHour24 % 12 || 12;
+
+    let period: 'morning' | 'afternoon' | 'evening' | 'night';
+    if (ethHour24 < 6) period = 'morning';
+    else if (ethHour24 < 12) period = 'afternoon';
+    else if (ethHour24 < 18) period = 'evening';
+    else period = 'night';
+
+    return {
+        hour12,
+        minute,
+        period,
+    };
+}
+
+export function formatTimeByCalendarType(
+    value?: string,
+    calendarType: CalendarType = 'ETHIOPIAN',
+    options: { includePeriodName?: boolean } = {},
+): string {
+    const { hour, minute } = normalizeTimeValue(value);
+
+    if (calendarType === 'ETHIOPIAN') {
+        const eth = getEthiopianClockParts(`${hour}:${minute}`);
+        return `${eth.hour12}:${eth.minute}${options.includePeriodName ? ` (${eth.period})` : ''}`;
+    }
+
+    const hourNumber = Number(hour);
+    const period = hourNumber >= 12 ? 'PM' : 'AM';
+    const hour12 = hourNumber % 12 || 12;
+    return `${hour12}:${minute} ${period}`;
+}
+
 /**
  * Get calendar type display name
  */

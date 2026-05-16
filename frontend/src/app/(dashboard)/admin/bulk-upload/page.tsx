@@ -6,20 +6,13 @@ import { toast } from "sonner";
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronRight,
-  Clock,
   CreditCard,
   Download,
   FileSpreadsheet,
-  FileUp,
   Loader2,
-  RefreshCw,
-  Search,
-  Send,
   ShieldCheck,
   Upload,
   UserPlus,
-  Users,
 } from "lucide-react";
 
 import {
@@ -32,14 +25,10 @@ import { credentialsAPI, CredentialResult } from "@/lib/api/admin";
 import { bulkUploadAPI, BulkUploadResult } from "@/lib/api/bulk-upload";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type UploadType = "staff" | "students-auto";
 type CreateType = "student" | "staff";
@@ -292,7 +281,7 @@ export default function BulkUploadPage() {
     setUploadResult(null);
     setValidationWarnings([]);
     const text = await file.text();
-    const rows = text.split("\n").filter((row) => row.trim()).slice(0, 6);
+    const rows = text.split("\n").filter((row) => row.trim());
     if (rows.length === 0) {
       setPreviewData([]);
       return;
@@ -522,595 +511,470 @@ export default function BulkUploadPage() {
     : 0;
 
   return (
-    <div className="w-full space-y-6 px-4 py-6 sm:px-6">
-      <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
-            User Provisioning
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Create one user or import many. Generated credentials remain available in the credentials page.
-          </p>
-        </div>
+    <div className="w-full px-4 py-6 sm:px-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          User Provisioning
+        </h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Create one user or import many via CSV.
+        </p>
       </div>
 
-      <div>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid h-auto w-full max-w-md grid-cols-2 rounded-lg border border-slate-200 bg-transparent p-1 dark:border-slate-800">
-            <TabsTrigger value="import" className="rounded-md py-2.5 data-[state=active]:bg-[color:rgba(var(--brand-color-rgb),0.12)] data-[state=active]:text-[var(--brand-color)] dark:data-[state=active]:bg-[color:rgba(var(--brand-color-rgb),0.18)]">Bulk Import</TabsTrigger>
-            <TabsTrigger value="create" className="rounded-md py-2.5 data-[state=active]:bg-[color:rgba(var(--brand-color-rgb),0.12)] data-[state=active]:text-[var(--brand-color)] dark:data-[state=active]:bg-[color:rgba(var(--brand-color-rgb),0.18)]">Create One</TabsTrigger>
-          </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
+          <TabsTrigger value="import" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
+            Bulk Import
+          </TabsTrigger>
+          <TabsTrigger value="create" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
+            Create One
+          </TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="import" className="mt-6 space-y-6">
-            <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">Bulk Import</h2>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Select the import target, choose the school year, then upload the CSV.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
-                  <div className="space-y-2">
-                    <Label>Import Type</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { id: "staff", label: "Staff" },
-                        { id: "students-auto", label: "Students and Parent" },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setUploadType(item.id as UploadType)}
-                          className={`h-10 rounded-lg border px-4 text-sm font-medium transition ${
-                            uploadType === item.id
-                              ? "border-[color:rgba(var(--brand-color-rgb),0.35)] bg-[color:rgba(var(--brand-color-rgb),0.08)] text-[var(--brand-color)]"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-600"
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2 lg:min-w-[220px]">
-                    <Label>Academic Year</Label>
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select academic year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {academicYears.map((year) => (
-                          <SelectItem key={year.id} value={year.id}>
-                            {year.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button variant="outline" className="h-10" onClick={downloadTemplate}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Download Template
-                  </Button>
-                </div>
+        <TabsContent value="import" className="space-y-6">
+          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <div className="flex items-center gap-2 rounded-lg bg-slate-100 p-1 dark:bg-slate-700">
+                {[
+                  { id: "staff", label: "Staff" },
+                  { id: "students-auto", label: "Students + Parents" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setUploadType(item.id as UploadType)}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      uploadType === item.id
+                        ? "bg-white text-slate-900 shadow-sm dark:bg-slate-600 dark:text-white"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
-                  <p className="text-xs font-medium text-slate-500">Mode</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
-                    {uploadType === "staff" ? "Staff accounts" : "Students and parents"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
-                  <p className="text-xs font-medium text-slate-500">Academic Year</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
-                    {academicYears.find((year) => year.id === selectedYear)?.name || "Not selected"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
-                  <p className="text-xs font-medium text-slate-500">Template</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">CSV import file</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950">
-                  <p className="text-xs font-medium text-slate-500">Status</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
-                    {importFile ? "File ready" : "Waiting for file"}
-                  </p>
-                </div>
-              </div>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="h-9 w-48">
+                  <SelectValue placeholder="Academic year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicYears.map((year) => (
+                    <SelectItem key={year.id} value={year.id}>
+                      {year.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+            <Button variant="outline" size="sm" onClick={downloadTemplate}>
+              <Download className="mr-2 h-4 w-4" />
+              Template
+            </Button>
+          </div>
 
-            <div className="min-w-0 space-y-6">
-                {/* Upload Area */}
-                {!uploadResult ? (
+          {!uploadResult ? (
+            <>
+              <div
+                className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 transition ${
+                  isDragging
+                    ? "border-[var(--brand-color)] bg-[color:rgba(var(--brand-color-rgb),0.06)]"
+                    : importFile
+                    ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-900/10"
+                    : "border-slate-300 bg-white hover:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-slate-500"
+                }`}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                  const file = event.dataTransfer.files?.[0];
+                  if (file?.name.endsWith(".csv")) {
+                    void processFile(file);
+                  } else {
+                    toast.error("Drop a CSV file");
+                  }
+                }}
+                onClick={() => !importFile && fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void processFile(file);
+                    }
+                  }}
+                />
+                {importFile ? (
                   <>
-                    <Card
-                      className={`overflow-hidden border shadow-none transition ${
-                        isDragging
-                          ? "border-[color:rgba(var(--brand-color-rgb),0.45)] bg-[color:rgba(var(--brand-color-rgb),0.06)]"
-                          : "border-slate-200 dark:border-slate-800 dark:bg-slate-900"
-                      }`}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        setIsDragging(true);
-                      }}
-                      onDragLeave={() => setIsDragging(false)}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        setIsDragging(false);
-                        const file = event.dataTransfer.files?.[0];
-                        if (file?.name.endsWith(".csv")) {
-                          void processFile(file);
-                        } else {
-                          toast.error("Drop a CSV file");
-                        }
-                      }}
-                    >
-                      <CardContent className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center">
-                        <div className="flex items-start gap-4">
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[color:rgba(var(--brand-color-rgb),0.1)]">
-                            {importFile ? (
-                              <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-                            ) : (
-                              <Upload className="h-6 w-6 text-[var(--brand-color)]" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <h2 className="truncate text-base font-semibold text-slate-900 dark:text-white sm:text-lg">
-                              {importFile ? importFile.name : "Upload CSV file"}
-                            </h2>
-                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                              {importFile
-                                ? "Preview the parsed rows, then confirm the import."
-                                : "Use the template above, then drop the CSV here or pick it manually."}
-                            </p>
-                            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                              Supported format: `.csv`
-                            </p>
-                          </div>
-                        </div>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept=".csv"
-                          className="hidden"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            if (file) {
-                              void processFile(file);
-                            }
-                          }}
-                        />
-                        <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-                          <Button onClick={() => fileInputRef.current?.click()}>
-                            <FileSpreadsheet className="mr-2 h-4 w-4" />
-                            Choose File
-                          </Button>
-                          {importFile ? (
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setImportFile(null);
-                                setPreviewData([]);
-                              }}
-                            >
-                              Clear
-                            </Button>
-                          ) : null}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {previewData.length > 0 ? (
-                      <Card className="overflow-hidden border-slate-200 shadow-none dark:border-slate-800 dark:bg-slate-900">
-                        <CardHeader className="flex flex-col gap-3 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
-                          <div className="min-w-0">
-                            <CardTitle className="text-base">Preview</CardTitle>
-                            <CardDescription>First {previewData.length} rows from the selected file.</CardDescription>
-                          </div>
-                          <Button onClick={handleUpload} disabled={isUploading || validationWarnings.length > 0}>
-                            {isUploading ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Importing
-                              </>
-                            ) : (
-                              <>
-                                <ChevronRight className="mr-2 h-4 w-4" />
-                                Confirm Import
-                              </>
-                            )}
-                          </Button>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {validationWarnings.length > 0 && (
-                            <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 dark:bg-amber-950/30 dark:border-amber-900">
-                              <div className="flex items-start gap-3">
-                                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Data Type Mismatch Detected</p>
-                                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                                    {validationWarnings.includes('STUDENT_DATA_DETECTED') 
-                                      ? "This file contains student data but you're uploading as Staff. Please select the correct import type."
-                                      : "This file contains staff data but you're uploading as Students. Please select the correct import type."}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                            <Table className="min-w-[600px]">
-                            <TableHeader>
-                              <TableRow className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-800 dark:bg-slate-900/80 whitespace-nowrap">
-                                {Object.keys(previewData[0]).map((header) => (
-                                  <TableHead key={header} className="px-3 py-2 font-semibold text-slate-500">
-                                    {header}
-                                  </TableHead>
-                                ))}
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {previewData.map((row, index) => (
-                                <TableRow key={index} className="border-b border-slate-100 hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/70 whitespace-nowrap">
-                                  {Object.entries(row).map(([key, value]) => (
-                                    <TableCell key={`${index}-${key}`} className="px-3 py-2 text-slate-700 dark:text-slate-300">
-                                      {String(value || "—")}
-                                    </TableCell>
-                                  ))}
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                            </Table>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ) : null}
-                  </>
-                ) : (
-                  <Card className="overflow-hidden border-slate-200 shadow-none dark:border-slate-800 dark:bg-slate-900">
-                    <CardHeader className="border-b border-slate-100 dark:border-slate-800">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <CardTitle className="text-base">Import Result</CardTitle>
-                          <CardDescription>{uploadResult.message}</CardDescription>
-                        </div>
-                        <Button variant="outline" onClick={() => setUploadResult(null)}>
-                          New Import
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="grid gap-4 sm:grid-cols-3">
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"><p className="text-xs text-slate-500">Total</p><p className="text-3xl font-semibold text-slate-900 dark:text-white">{uploadSummary.totalRecords}</p></div>
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"><p className="text-xs text-slate-500">Created</p><p className="text-3xl font-semibold text-emerald-600">{uploadSummary.successfulCount}</p></div>
-                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"><p className="text-xs text-slate-500">Failed</p><p className="text-3xl font-semibold text-red-600">{uploadSummary.failedCount}</p></div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-slate-500">Success rate</span>
-                          <span className="font-semibold text-slate-900 dark:text-white">{successRate}%</span>
-                        </div>
-                        <Progress value={successRate} className="h-2" />
-                      </div>
-
-                      {uploadResult.credentials?.length ? (
-                        <Card className="border-primary/20 bg-primary/5 dark:bg-primary/10">
-                          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-start gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white">
-                                <ShieldCheck className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <p className="font-semibold text-slate-900 dark:text-white">
-                                  {uploadResult.credentials.length} credentials generated
-                                </p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">
-                                  Export the report now if you want to hand over credentials offline.
-                                </p>
-                              </div>
-                            </div>
-                            <Button onClick={downloadImportReport}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Export Report
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ) : null}
-
-                      {/* Generate ID Cards button for student imports */}
-                      {uploadType === "students-auto" && uploadResult.credentials?.length ? (
-                        <Card className="border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20">
-                          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-start gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white">
-                                <CreditCard className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <p className="font-semibold text-slate-900 dark:text-white">
-                                  Generate ID Cards
-                                </p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">
-                                  Create professional ID cards for the {uploadResult.credentials.length} newly imported students.
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              variant="outline"
-                              className="border-emerald-300 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-400"
-                              onClick={() => {
-                                const ids = uploadResult.credentials?.map((c: any) => c.username).join(",");
-                                router.push(`/admin/id-cards?studentIds=${ids || ""}`);
-                              }}
-                            >
-                              <CreditCard className="mr-2 h-4 w-4" />
-                              Generate ID Cards
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ) : null}
-
-                      {uploadResult.failedRecords?.length ? (
-                        <Card className="border-red-200 bg-red-50/70 dark:border-red-900 dark:bg-red-950/20">
-                          <CardHeader>
-                            <CardTitle className="text-base text-red-700 dark:text-red-300">
-                              Failed Rows
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                            {uploadResult.failedRecords.map((item, index) => (
-                              <div key={index} className="rounded-lg border border-red-200 bg-white p-3 dark:border-red-900 dark:bg-slate-950">
-                                <p className="text-sm font-medium text-slate-900 dark:text-white">
-                                  {item.record?.full_name || item.record?.email || `Row ${index + 1}`}
-                                </p>
-                                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{item.error}</p>
-                              </div>
-                            ))}
-                          </CardContent>
-                        </Card>
-                      ) : null}
-                    </CardContent>
-                  </Card>
-                )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="create" className="mt-6 space-y-6">
-            <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">Single User Creation</h2>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Create one account and surface the generated credential immediately.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
-                  <div className="space-y-2">
-                    <Label>User Type</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { id: "student", label: "Student" },
-                        { id: "staff", label: "Staff" },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setCreateType(item.id as CreateType)}
-                          className={`h-10 rounded-lg border px-4 text-sm font-medium transition ${
-                            createType === item.id
-                              ? "border-[color:rgba(var(--brand-color-rgb),0.35)] bg-[color:rgba(var(--brand-color-rgb),0.08)] text-[var(--brand-color)]"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-600"
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
+                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                      <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                  </div>
-                  <div className="space-y-2 lg:min-w-[220px]">
-                    <Label>Academic Year</Label>
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select academic year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {academicYears.map((year) => (
-                          <SelectItem key={year.id} value={year.id}>
-                            {year.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                Credentials are auto-generated, stored in the pending credentials list, and shown once after creation.
-              </div>
-            </div>
-
-            <div className="space-y-6">
-                <Card className="border-slate-200 shadow-none dark:border-slate-800 dark:bg-slate-900">
-                  <CardHeader className="border-b border-slate-100 dark:border-slate-800">
-                    <CardTitle className="text-base">
-                      {createType === "student" ? "Create Student" : "Create Staff"}
-                    </CardTitle>
-                    <CardDescription>
-                      {createType === "student"
-                        ? "Assign class now if the student should enter the roster. Section is auto-assigned."
-                        : "Provision a staff account with school-managed credentials."}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-5">
-                    {createType === "student" ? (
-                      <>
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Full Name *</Label>
-                            <Input
-                              value={studentForm.name}
-                              onChange={(event) => setStudentForm((current) => ({ ...current, name: event.target.value }))}
-                              placeholder="Student full name"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Phone *</Label>
-                            <Input
-                              value={studentForm.phone}
-                              onChange={(event) => setStudentForm((current) => ({ ...current, phone: event.target.value }))}
-                              placeholder="0911000000"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Email (Optional)</Label>
-                            <Input
-                              value={studentForm.email}
-                              onChange={(event) => setStudentForm((current) => ({ ...current, email: event.target.value }))}
-                              placeholder="student@example.com"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Class (Optional)</Label>
-                            <Select
-                              value={studentForm.classId}
-                              onValueChange={(value) => setStudentForm((current) => ({ ...current, classId: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={isLoadingSetup ? "Loading classes" : "Select class"} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {classes.map((item: any) => (
-                                  <SelectItem key={item.id} value={item.id}>
-                                    {item.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          Section is automatically assigned by the system. When class is selected, the student is approved immediately.
-                        </p>
-                      </>
-                    ) : null}
-
-                    {createType === "staff" ? (
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Full Name</Label>
-                          <Input
-                            value={staffForm.name}
-                            onChange={(event) => setStaffForm((current) => ({ ...current, name: event.target.value }))}
-                            placeholder="Staff full name"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Email</Label>
-                          <Input
-                            value={staffForm.email}
-                            onChange={(event) => setStaffForm((current) => ({ ...current, email: event.target.value }))}
-                            placeholder="staff@example.com"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Phone</Label>
-                          <Input
-                            value={staffForm.phone}
-                            onChange={(event) => setStaffForm((current) => ({ ...current, phone: event.target.value }))}
-                            placeholder="0911000000"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Role</Label>
-                          <Select
-                            value={staffForm.role}
-                            onValueChange={(value: "TEACHER" | "ADMIN" | "IT_MANAGER" | "REGISTRAR" | "FINANCE") =>
-                              setStaffForm((current) => ({ ...current, role: value }))
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="TEACHER">Teacher</SelectItem>
-                              <SelectItem value="ADMIN">Admin</SelectItem>
-                              <SelectItem value="IT_MANAGER">IT Manager</SelectItem>
-                              <SelectItem value="REGISTRAR">Registrar</SelectItem>
-                              <SelectItem value="FINANCE">Finance</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <Separator />
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="text-sm text-slate-500 dark:text-slate-400">
-                        Stored credentials will appear in the credentials tab after creation.
-                      </div>
-                      <Button onClick={handleCreateOne} disabled={isCreating || isLoadingSetup}>
-                        {isCreating ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating
-                          </>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-white">{importFile.name}</p>
+                    <p className="mt-1 text-sm text-slate-500">{(importFile.size / 1024).toFixed(1)} KB &middot; CSV ready</p>
+                    <div className="mt-4 flex gap-3">
+                      <Button size="sm" onClick={(e) => { e.stopPropagation(); handleUpload(); }} disabled={isUploading}>
+                        {isUploading ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Importing</>
                         ) : (
-                          <>
-                            <UserPlus className="mr-2 h-4 w-4" />
-                            Create User
-                          </>
+                          <><Upload className="mr-2 h-4 w-4" /> Start Import</>
                         )}
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {createdCredentials.length ? (
-                  <Card className="border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20">
-                    <CardHeader className="flex flex-row items-start justify-between gap-4">
-                      <div>
-                        <CardTitle className="text-base text-emerald-700 dark:text-emerald-300">
-                          Credentials Ready
-                        </CardTitle>
-                        <CardDescription>{createdMessage}</CardDescription>
-                      </div>
-                      <Button variant="outline" onClick={exportCreatedCredentials}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Export CSV
+                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setImportFile(null); setPreviewData([]); }}>
+                        Remove
                       </Button>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {createdCredentials.map((credential, index) => (
-                        <div key={`${credential.username}-${index}`} className="rounded-xl border border-emerald-200 bg-white p-4 dark:border-emerald-900 dark:bg-slate-950">
-                          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <p className="font-semibold text-slate-900 dark:text-white">{credential.name}</p>
-                              <p className="text-sm text-slate-500 dark:text-slate-400">{credential.email || "No email provided"}</p>
-                            </div>
-                            <Badge className={ROLE_COLORS[credential.role] || ROLE_COLORS.STUDENT}>
-                              {credential.role}
-                            </Badge>
-                          </div>
-                          <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Username</p>
-                              <p className="mt-1 font-mono text-sm text-slate-900 dark:text-white">{credential.username}</p>
-                            </div>
-                            <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Temporary Password</p>
-                              <p className="mt-1 font-mono text-sm text-slate-900 dark:text-white">{credential.temporaryPassword}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                ) : null}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700">
+                      <FileSpreadsheet className="h-7 w-7 text-slate-500 dark:text-slate-400" />
+                    </div>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-white">Drop CSV here or click to browse</p>
+                    <p className="mt-1 text-sm text-slate-500">Only .csv files are supported</p>
+                  </>
+                )}
+              </div>
+
+              {previewData.length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-700">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">Preview</p>
+                      <p className="text-xs text-slate-500">All {previewData.length} rows</p>
+                    </div>
+                  </div>
+                  {validationWarnings.length > 0 && (
+                    <div className="mx-5 mt-3 flex items-start gap-3 rounded-lg bg-amber-50 px-4 py-3 dark:bg-amber-950/30">
+                      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        {validationWarnings.includes('STUDENT_DATA_DETECTED')
+                          ? "This file looks like student data but Staff import is selected."
+                          : "This file looks like staff data but Students import is selected."}
+                      </p>
+                    </div>
+                  )}
+                  <div className="overflow-x-auto p-5">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                          {Object.keys(previewData[0]).map((header) => (
+                            <th key={header} className="whitespace-nowrap px-3 py-2 font-semibold text-slate-500">{header}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewData.map((row, index) => (
+                          <tr key={index} className="border-b border-slate-100 last:border-0 dark:border-slate-700">
+                            {Object.entries(row).map(([key, value]) => (
+                              <td key={`${index}-${key}`} className="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300">
+                                {String(value || "—")}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Import Result</h3>
+                  <p className="text-sm text-slate-500">{uploadResult.message}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setUploadResult(null)}>
+                  New Import
+                </Button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-4">
+                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-xs font-medium text-slate-500">Total</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{uploadSummary.totalRecords}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-xs font-medium text-emerald-600">Created</p>
+                  <p className="mt-1 text-2xl font-bold text-emerald-600">{uploadSummary.successfulCount}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-xs font-medium text-red-500">Failed</p>
+                  <p className="mt-1 text-2xl font-bold text-red-500">{uploadSummary.failedCount}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-xs font-medium text-slate-500">Success Rate</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                      <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${successRate}%` }} />
+                    </div>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{successRate}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {uploadResult.credentials?.length ? (
+                <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 dark:border-blue-800 dark:bg-blue-950/20">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
+                      <ShieldCheck className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-white">{uploadResult.credentials.length} credentials generated</p>
+                      <p className="text-sm text-slate-500">Export the report to hand credentials offline.</p>
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={downloadImportReport}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                  </Button>
+                </div>
+              ) : null}
+
+              {uploadType === "students-auto" && uploadResult.credentials?.length ? (
+                <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                      <CreditCard className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-white">Generate ID Cards</p>
+                      <p className="text-sm text-slate-500">For {uploadResult.credentials.length} newly imported students.</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-400"
+                    onClick={() => {
+                      const ids = uploadResult.credentials?.map((c: any) => c.username).join(",");
+                      router.push(`/admin/id-cards?studentIds=${ids || ""}`);
+                    }}
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Generate
+                  </Button>
+                </div>
+              ) : null}
+
+              {uploadResult.failedRecords?.length ? (
+                <div className="rounded-xl border border-red-200 bg-white p-5 dark:border-red-800 dark:bg-slate-800">
+                  <p className="mb-3 text-sm font-semibold text-red-600 dark:text-red-400">Failed Rows ({uploadResult.failedRecords.length})</p>
+                  <div className="space-y-2">
+                    {uploadResult.failedRecords.map((item: any, index: number) => (
+                      <div key={index} className="rounded-lg border border-red-100 bg-red-50/50 px-4 py-3 dark:border-red-900 dark:bg-red-950/20">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          {item.record?.full_name || item.record?.email || `Row ${index + 1}`}
+                        </p>
+                        <p className="text-sm text-red-600 dark:text-red-400">{item.error}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="create" className="space-y-5">
+          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <div className="flex items-center gap-2 rounded-lg bg-slate-100 p-1 dark:bg-slate-700">
+                {[
+                  { id: "student", label: "Student" },
+                  { id: "staff", label: "Staff" },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setCreateType(item.id as CreateType)}
+                    className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                      createType === item.id
+                        ? "bg-white text-slate-900 shadow-sm dark:bg-slate-600 dark:text-white"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="h-9 w-48">
+                  <SelectValue placeholder="Academic year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicYears.map((year) => (
+                    <SelectItem key={year.id} value={year.id}>
+                      {year.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-slate-500">Credentials auto-generated &amp; stored</p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+            <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-700">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                {createType === "student" ? "Create Student" : "Create Staff"}
+              </h3>
+            </div>
+            <div className="p-5">
+              {createType === "student" ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Full Name *</Label>
+                    <Input
+                      value={studentForm.name}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="Student full name"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Phone *</Label>
+                    <Input
+                      value={studentForm.phone}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, phone: event.target.value }))}
+                      placeholder="0911000000"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Email</Label>
+                    <Input
+                      value={studentForm.email}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, email: event.target.value }))}
+                      placeholder="student@example.com"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Class</Label>
+                    <Select
+                      value={studentForm.classId}
+                      onValueChange={(value) => setStudentForm((current) => ({ ...current, classId: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={isLoadingSetup ? "Loading classes" : "Optional"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map((item: any) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Full Name *</Label>
+                    <Input
+                      value={staffForm.name}
+                      onChange={(event) => setStaffForm((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="Staff full name"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Email *</Label>
+                    <Input
+                      value={staffForm.email}
+                      onChange={(event) => setStaffForm((current) => ({ ...current, email: event.target.value }))}
+                      placeholder="staff@example.com"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Phone</Label>
+                    <Input
+                      value={staffForm.phone}
+                      onChange={(event) => setStaffForm((current) => ({ ...current, phone: event.target.value }))}
+                      placeholder="0911000000"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Role</Label>
+                    <Select
+                      value={staffForm.role}
+                      onValueChange={(value: "TEACHER" | "ADMIN" | "IT_MANAGER" | "REGISTRAR" | "FINANCE") =>
+                        setStaffForm((current) => ({ ...current, role: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="TEACHER">Teacher</SelectItem>
+                        <SelectItem value="ADMIN">Admin</SelectItem>
+                        <SelectItem value="IT_MANAGER">IT Manager</SelectItem>
+                        <SelectItem value="REGISTRAR">Registrar</SelectItem>
+                        <SelectItem value="FINANCE">Finance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
+                <Button onClick={handleCreateOne} disabled={isCreating || isLoadingSetup}>
+                  {isCreating ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating</>
+                  ) : (
+                    <><UserPlus className="mr-2 h-4 w-4" /> Create User</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {createdCredentials.length ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 dark:border-emerald-800 dark:bg-emerald-950/20">
+              <div className="flex items-center justify-between border-b border-emerald-200 px-5 py-4 dark:border-emerald-800">
+                <div>
+                  <h3 className="text-base font-semibold text-emerald-700 dark:text-emerald-300">Credentials Ready</h3>
+                  <p className="text-sm text-slate-500">{createdMessage}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={exportCreatedCredentials}>
+                  <Download className="mr-2 h-4 w-4" /> Export CSV
+                </Button>
+              </div>
+              <div className="divide-y divide-emerald-200 dark:divide-emerald-800">
+                {createdCredentials.map((credential, index) => (
+                  <div key={`${credential.username}-${index}`} className="px-5 py-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-white">{credential.name}</p>
+                        <p className="text-sm text-slate-500">{credential.email || "No email"}</p>
+                      </div>
+                      <Badge className={ROLE_COLORS[credential.role] || ROLE_COLORS.STUDENT}>
+                        {credential.role}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Username</p>
+                        <p className="font-mono text-sm text-slate-900 dark:text-white">{credential.username}</p>
+                      </div>
+                      <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Temp Password</p>
+                        <p className="font-mono text-sm text-slate-900 dark:text-white">{credential.temporaryPassword}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

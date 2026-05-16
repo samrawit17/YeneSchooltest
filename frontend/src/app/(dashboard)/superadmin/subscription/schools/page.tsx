@@ -159,7 +159,7 @@ const SchoolSubscriptionPage = () => {
     try {
       const success = await assignPlan({
         schoolId: selectedSchool.id,
-        planId: selectedPlanId,
+        planId: selectedPlanId === '__none__' ? null : selectedPlanId,
       });
       if (success) {
         setIsAssignDialogOpen(false);
@@ -173,7 +173,7 @@ const SchoolSubscriptionPage = () => {
 
   const openAssignDialog = (school: SchoolWithPlan) => {
     setSelectedSchool(school);
-    setSelectedPlanId(school.plan?.id || '');
+    setSelectedPlanId(school.plan?.id || '__none__');
     setIsAssignDialogOpen(true);
   };
 
@@ -472,6 +472,12 @@ const SchoolSubscriptionPage = () => {
                     <SelectValue placeholder="Select a plan" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__none__">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>No plan</span>
+                      </div>
+                    </SelectItem>
                     {plans.map((plan) => (
                       <SelectItem key={plan.id} value={plan.id}>
                         <div className="flex items-center gap-2">
@@ -486,7 +492,7 @@ const SchoolSubscriptionPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              {selectedPlanId && (
+              {selectedPlanId && selectedPlanId !== '__none__' && (
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-sm font-medium mb-2">Plan Features:</p>
                   <div className="flex flex-wrap gap-1">
@@ -514,7 +520,7 @@ const SchoolSubscriptionPage = () => {
                 disabled={isSubmitting || !selectedPlanId}
               >
                 {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Assign Plan
+                {selectedPlanId === '__none__' ? 'Remove Plan' : 'Assign Plan'}
               </Button>
             </DialogFooter>
           </DialogContent>

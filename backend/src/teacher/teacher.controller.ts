@@ -96,33 +96,12 @@ export class TeacherController {
     }
   }
 
-  @Get(':id/assignments')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
-  @Permissions('teacher:read')
-  async getTeacherAssignments(@Param('id') teacherId: string, @Request() req) {
-    try {
-      if (!req.user.schoolId) {
-        throw new HttpException(
-          'User is not associated with any school',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      return this.teacherService.getMyAssignments(teacherId, req.user.schoolId);
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        'Failed to get assignments: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
   /**
    * GET /teachers/me/assignments
    * Get the authenticated teacher's assigned classes and sections
+   *
+   * Keep this static route before :id/assignments so "me" is not treated as
+   * a teacher id and routed through the admin-only endpoint.
    */
   @Get('me/assignments')
   @Permissions('teacher:read')
@@ -139,6 +118,30 @@ export class TeacherController {
         req.user.id,
         req.user.schoolId,
       );
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to get assignments: ' + error.message,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get(':id/assignments')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('teacher:read')
+  async getTeacherAssignments(@Param('id') teacherId: string, @Request() req) {
+    try {
+      if (!req.user.schoolId) {
+        throw new HttpException(
+          'User is not associated with any school',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      return this.teacherService.getMyAssignments(teacherId, req.user.schoolId);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

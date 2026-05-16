@@ -168,51 +168,48 @@ const LessonDetailPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Objective */}
-          {lesson.objective && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  Learning Objective
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 dark:text-gray-300">{lesson.objective}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Lesson Content */}
+          {/* Lesson Content, Objective & Homework combined */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Lesson Content
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div 
-                className="prose dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: lesson.lessonContent || "<p>No content added yet.</p>" }}
-              />
+            <CardContent className="p-0 divide-y divide-slate-100 dark:divide-slate-800">
+              {lesson.objective && (
+                <div className="p-6">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white mb-3">
+                    <BookOpen className="w-4 h-4 text-[#e35336]" />
+                    Learning Objective
+                  </h3>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">{lesson.objective}</p>
+                </div>
+              )}
+
+              <div className="p-6">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white mb-3">
+                    <FileText className="w-4 h-4 text-[#e35336]" />
+                    Lesson Content
+                </h3>
+                <div
+                  className="prose dark:prose-invert max-w-none text-sm"
+                  dangerouslySetInnerHTML={{ __html: lesson.lessonContent || "<p>No content added yet.</p>" }}
+                />
+              </div>
+
+              {(lesson.homework || lesson.instructions) && (
+                <div className="p-6">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white mb-3">
+                    <FileText className="w-4 h-4 text-[#e35336]" />
+                    Homework
+                  </h3>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">
+                    {typeof lesson.homework === "string"
+                      ? lesson.homework
+                      : (lesson.homework as any)?.description ||
+                        (lesson.homework as any)?.title ||
+                        lesson.instructions ||
+                        "No homework assigned."}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
-
-          {/* Homework */}
-          {(lesson.homework || lesson.instructions) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Homework
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700 dark:text-gray-300">{lesson.homework || lesson.instructions}</p>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Attachments */}
           {((lesson as any).attachmentsNew || lesson.attachments) && (((lesson as any).attachmentsNew || lesson.attachments).length > 0) && (

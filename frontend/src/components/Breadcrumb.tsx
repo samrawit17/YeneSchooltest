@@ -92,7 +92,6 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   "lessons": { label: "Lessons", href: "/list/lessons", parent: "dashboard" },
   "lessons-teacher": { label: "My Lessons", href: "/teacher/lessons", parent: "teacher" },
   "lessons-detail": { label: "Lesson Detail", parent: "lessons" },
-  "lessons-create": { label: "Create Lesson", parent: "lessons-teacher" },
 
   // Finance Module
   "finance": { label: "Finance", href: "/list/finance", parent: "dashboard" },

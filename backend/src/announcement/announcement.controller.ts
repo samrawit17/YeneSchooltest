@@ -82,8 +82,12 @@ export class AnnouncementController {
 
   @Get(':id')
   @Permissions('announcement:read')
-  async findOne(@Param('id') id: string) {
-    return this.announcementService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) {
+      return { success: false, message: 'School ID is required' };
+    }
+    return this.announcementService.findOne(id, schoolId);
   }
 
   @Put(':id')

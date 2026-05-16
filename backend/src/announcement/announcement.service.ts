@@ -1,7 +1,7 @@
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -20,6 +20,34 @@ export class AnnouncementService {
     private prisma: PrismaService,
     private notificationService: NotificationService,
   ) {}
+
+  private parseSettingValue(rawValue: string | null | undefined) {
+    if (rawValue === null || rawValue === undefined) return null;
+    try {
+      return JSON.parse(rawValue);
+    } catch {
+      return rawValue;
+    }
+  }
+
+  private async ensureAnnouncementsEnabled(schoolId: string) {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: {
+        schoolId_key: {
+          schoolId,
+          key: 'ANNOUNCEMENTS_ENABLED',
+        },
+      },
+      select: { value: true },
+    });
+    const value = this.parseSettingValue(setting?.value);
+
+    if (value === false || value === 'false') {
+      throw new BadRequestException(
+        'Announcements are disabled for this school. Enable Announcements in school settings before creating or updating announcements.',
+      );
+    }
+  }
 
   private async createNotificationForAnnouncement(
     schoolId: string,
@@ -79,6 +107,8 @@ export class AnnouncementService {
   }
 
   async create(data: CreateAnnouncementDto, userId: string, schoolId: string) {
+    await this.ensureAnnouncementsEnabled(schoolId);
+
     // Handle empty visibleTo array - store as comma-separated string or null
     const visibleTo =
       data.visibleTo && data.visibleTo.length > 0 ? data.visibleTo.join(',') : null;
@@ -196,9 +226,9 @@ export class AnnouncementService {
     return transformed;
   }
 
-  async findOne(id: string) {
-    const announcement = await this.prisma.announcement.findUnique({
-      where: { id },
+  async findOne(id: string, schoolId: string) {
+    const announcement = await this.prisma.announcement.findFirst({
+      where: { id, schoolId },
       include: {
         createdBy: {
           select: {
@@ -234,6 +264,8 @@ export class AnnouncementService {
     userId: string,
     schoolId: string,
   ) {
+    await this.ensureAnnouncementsEnabled(schoolId);
+
     // Check if announcement exists and belongs to the school
     const existing = await this.prisma.announcement.findFirst({
       where: { id, schoolId },

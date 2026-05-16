@@ -98,11 +98,19 @@ This provides:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DB_USER` | PostgreSQL username | `usman` |
+| `DB_USER` | PostgreSQL username | `lemari` |
 | `DB_PASSWORD` | PostgreSQL password | (required) |
-| `DB_NAME` | PostgreSQL database name | `sms_db` |
+| `DB_NAME` | PostgreSQL database name | `lemarisms` |
+| `POSTGRES_PORT` | Host port mapped to PostgreSQL | `5433` |
+| `DATABASE_POOL_MAX` | Max PostgreSQL connections used by one backend container | `25` |
+| `DATABASE_POOL_CONNECTION_TIMEOUT_MS` | Time to wait for a PostgreSQL connection before failing | `5000` |
+| `DATABASE_POOL_IDLE_TIMEOUT_MS` | Time before idle PostgreSQL connections are closed | `30000` |
+| `DATABASE_SEED_POOL_MAX` | Max PostgreSQL connections used by seed scripts | `2` |
 | `REDIS_PASSWORD` | Redis password | (required) |
+| `REDIS_PORT` | Host port mapped to Redis | `6380` |
 | `JWT_SECRET` | JWT signing secret | (required) |
+| `PRISMA_SCHEMA_SYNC` | Docker schema sync mode: `push` or `migrate` | `push` |
+| `RUN_MIGRATIONS` | Run Prisma migrations on container start | `1` |
 | `WEB_PUSH_PUBLIC_KEY` | VAPID public key | (provided) |
 | `WEB_PUSH_PRIVATE_KEY` | VAPID private key | (provided) |
 | `WEB_PUSH_CONTACT_EMAIL` | VAPID contact email | (provided) |
@@ -217,12 +225,12 @@ docker stats
 
 ### Backup Database
 ```bash
-docker-compose exec postgres pg_dump -U usman sms_db > backup.sql
+docker-compose exec postgres pg_dump -U lemari lemarisms > backup.sql
 ```
 
 ### Restore Database
 ```bash
-docker-compose exec -T postgres psql -U usman sms_db < backup.sql
+docker-compose exec -T postgres psql -U lemari lemarisms < backup.sql
 ```
 
 ### Backup Redis

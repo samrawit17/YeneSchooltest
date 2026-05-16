@@ -12,13 +12,9 @@ COPY package*.json ./
 RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts
 
 # Development stage
-FROM node:20-alpine AS development
+FROM node:20-slim AS development
 
 WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-
-COPY . .
 
 EXPOSE 3000
 

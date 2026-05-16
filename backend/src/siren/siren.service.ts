@@ -111,18 +111,32 @@ export class SirenService {
     });
   }
 
-  async createSchedule(data: any) {
-    return this.prisma.sirenSchedule.create({ data });
-  }
-
-  async updateSchedule(id: string, data: any) {
-    return this.prisma.sirenSchedule.update({
-      where: { id },
-      data,
+  async createSchedule(schoolId: string, data: any) {
+    return this.prisma.sirenSchedule.create({
+      data: { ...data, schoolId },
     });
   }
 
-  async deleteSchedule(id: string) {
+  async updateSchedule(schoolId: string, id: string, data: any) {
+    const existing = await this.prisma.sirenSchedule.findFirst({
+      where: { id, schoolId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Siren schedule not found');
+
+    return this.prisma.sirenSchedule.update({
+      where: { id },
+      data: { ...data, schoolId },
+    });
+  }
+
+  async deleteSchedule(schoolId: string, id: string) {
+    const existing = await this.prisma.sirenSchedule.findFirst({
+      where: { id, schoolId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Siren schedule not found');
+
     return this.prisma.sirenSchedule.delete({ where: { id } });
   }
 
@@ -140,18 +154,24 @@ export class SirenService {
     });
   }
 
-  async saveHardwareConfig(data: any) {
+  async saveHardwareConfig(schoolId: string, data: any) {
     return this.prisma.sirenHardwareConfig.upsert({
-      where: { schoolId: data.schoolId },
-      update: data,
-      create: data,
+      where: { schoolId },
+      update: { ...data, schoolId },
+      create: { ...data, schoolId },
     });
   }
 
-  async updateHardwareConfig(id: string, data: any) {
+  async updateHardwareConfig(schoolId: string, id: string, data: any) {
+    const existing = await this.prisma.sirenHardwareConfig.findFirst({
+      where: { id, schoolId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Siren hardware config not found');
+
     return this.prisma.sirenHardwareConfig.update({
       where: { id },
-      data,
+      data: { ...data, schoolId },
     });
   }
 

@@ -5,15 +5,15 @@ services:
     container_name: sms_postgres_dev
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-usman}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-834927615}
-      POSTGRES_DB: ${DB_NAME:-sms_db}
+      POSTGRES_USER: ${DB_USER:-lemari}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-lemari_password}
+      POSTGRES_DB: ${DB_NAME:-lemarisms}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-usman}"]
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,13 +25,15 @@ services:
     image: redis:7-alpine
     container_name: sms_redis_dev
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-834927615}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-lemari_redis_password}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-lemari_redis_password}
     volumes:
       - redis_data:/data
     ports:
       - "6380:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD:-lemari_redis_password}\" ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,11 +51,17 @@ services:
     environment:
       NODE_ENV: development
       PORT: 5000
-      PRISMA_SKIP_SEED: ${PRISMA_SKIP_SEED:-0}
-      DATABASE_URL: postgresql://${DB_USER:-usman}:${DB_PASSWORD:-834927615}@postgres:5432/${DB_NAME:-sms_db}
-      DIRECT_DATABASE_URL: postgresql://${DB_USER:-usman}:${DB_PASSWORD:-834927615}@postgres:5432/${DB_NAME:-sms_db}
-      DATABASE_POOL_URL: postgresql://${DB_USER:-usman}:${DB_PASSWORD:-834927615}@postgres:5432/${DB_NAME:-sms_db}
-      REDIS_URL: redis://:${REDIS_PASSWORD:-834927615}@redis:6379/0
+      PRISMA_SCHEMA_SYNC: ${PRISMA_SCHEMA_SYNC:-push}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
+      PRISMA_SKIP_SEED: ${PRISMA_SKIP_SEED:-1}
+      DATABASE_URL: postgresql://${DB_USER:-lemari}:${DB_PASSWORD:-lemari_password}@postgres:5432/${DB_NAME:-lemarisms}
+      DIRECT_DATABASE_URL: postgresql://${DB_USER:-lemari}:${DB_PASSWORD:-lemari_password}@postgres:5432/${DB_NAME:-lemarisms}
+      DATABASE_POOL_URL: postgresql://${DB_USER:-lemari}:${DB_PASSWORD:-lemari_password}@postgres:5432/${DB_NAME:-lemarisms}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-25}
+      DATABASE_POOL_CONNECTION_TIMEOUT_MS: ${DATABASE_POOL_CONNECTION_TIMEOUT_MS:-5000}
+      DATABASE_POOL_IDLE_TIMEOUT_MS: ${DATABASE_POOL_IDLE_TIMEOUT_MS:-30000}
+      DATABASE_SEED_POOL_MAX: ${DATABASE_SEED_POOL_MAX:-2}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-lemari_redis_password}@redis:6379/0
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
       WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
       WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-akmPXo7n_zVhuXGjPB_GsS_G_mkzqc-WC9OF2d8mzLg}
@@ -63,7 +71,6 @@ services:
       TRUST_PROXY: 1
     volumes:
       - ./backend:/app
-      - /app/node_modules
     ports:
       - "5000:5000"
       - "9229:9229"
@@ -81,7 +88,7 @@ services:
       # First boot can exceed a minute on a fresh database, so give it more time.
       start_period: 180s
     entrypoint: /app/docker-entrypoint.sh
-    command: npm run start:debug
+    command: npm run start:dev
     networks:
       - sms_network
 
@@ -99,7 +106,6 @@ services:
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
       - ./frontend:/app
-      - /app/node_modules
       - /app/.next
     ports:
       - "3000:3000"
