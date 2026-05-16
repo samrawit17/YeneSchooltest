@@ -67,7 +67,10 @@ export const gradingAPI = {
       skipAuthErrorRedirect: true,
     }),
   getChildFinalGrades: (studentId: string, params: { academicYear: string; classId?: string }) =>
-    api.get(`/grading/parent/final-grades/${studentId}`, { params }),
+    api.get(`/grading/parent/final-grades/${studentId}`, {
+      params,
+      skipAuthErrorRedirect: true,
+    }),
   calculateSubjectFinalGrade: (params: {
     studentId: string;
     subjectId: string;
@@ -76,7 +79,10 @@ export const gradingAPI = {
   getStudentGrades: (params?: { academicYear?: string; termId?: string }) =>
     api.get('/grading/student/grades', { params }),
   getChildGrades: (studentId: string, params?: { academicYear?: string; termId?: string }) =>
-    api.get(`/grading/parent/grades/${studentId}`, { params }),
+    api.get(`/grading/parent/grades/${studentId}`, {
+      params,
+      skipAuthErrorRedirect: true,
+    }),
   verifyFinancialClearance: (params: {
     studentId: string;
     academicYear: string;

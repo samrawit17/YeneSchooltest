@@ -107,7 +107,7 @@ export class RegistrarController {
   // Get pending enrollments
   @Get('enrollments/pending')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('student:approve')
+  @Permissions('student:approve_enrollment')
   async getPendingEnrollments(@Request() req) {
     const schoolId = req.user.schoolId;
     return this.registrarService.getPendingEnrollments(schoolId);
@@ -130,7 +130,7 @@ export class RegistrarController {
   // Approve enrollment with class assignment (manual)
   @Post('enrollments/:id/approve')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('student:approve')
+  @Permissions('student:approve_enrollment')
   async approveEnrollment(
     @Param('id') enrollmentId: string,
     @Body()
@@ -152,7 +152,7 @@ export class RegistrarController {
   // Approve enrollment with automatic class/section assignment
   @Post('enrollments/:id/auto-approve')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('student:approve')
+  @Permissions('student:approve_enrollment')
   async approveEnrollmentAuto(
     @Param('id') enrollmentId: string,
     @Request() req,
@@ -164,7 +164,7 @@ export class RegistrarController {
   // Reject enrollment
   @Post('enrollments/:id/reject')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('student:approve')
+  @Permissions('student:approve_enrollment')
   async rejectEnrollment(
     @Param('id') enrollmentId: string,
     @Body('rejectionReason') rejectionReason: string,
@@ -184,7 +184,7 @@ export class RegistrarController {
   // Assign/Update class for student
   @Post('students/:id/assign-class')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('class:assign')
+  @Permissions('class:update')
   async assignClass(
     @Param('id') studentId: string,
     @Body()

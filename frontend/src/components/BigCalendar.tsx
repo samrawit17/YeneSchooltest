@@ -4,19 +4,39 @@ import { Calendar, momentLocalizer, View, Views } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useState, useEffect } from "react";
-import { Event } from "@/lib/api/content";
 import { useCalendar } from "@/context/CalendarContext";
 import { convertToEthiopian, ETHIOPIAN_MONTH_NAMES } from "@/lib/calendar-utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const localizer = momentLocalizer(moment);
 
-interface BigCalendarProps {
-  events: Event[];
+export interface CalendarDisplayEvent {
+  id?: string;
+  title: string;
+  startDate?: string | Date;
+  endDate?: string | Date;
+  start?: string | Date;
+  end?: string | Date;
+  eventType?: string;
+  resource?: unknown;
 }
 
-const BigCalendar = ({ events }: BigCalendarProps) => {
-  const [view, setView] = useState<View>(Views.MONTH);
+interface BigCalendarProps {
+  events: CalendarDisplayEvent[];
+  initialView?: View;
+  views?: View[];
+  height?: number;
+  onEventClick?: (event: CalendarDisplayEvent) => void;
+}
+
+const BigCalendar = ({
+  events,
+  initialView = Views.MONTH,
+  views,
+  height,
+  onEventClick,
+}: BigCalendarProps) => {
+  const [view, setView] = useState<View>(initialView);
   const [screenSize, setScreenSize] = useState<'xs' | 'sm' | 'md' | 'lg' | 'xl'>('xl');
   const { calendarType } = useCalendar();
 
@@ -44,6 +64,7 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
 
   // Get height based on screen size
   const getHeight = () => {
+    if (height) return height;
     switch (screenSize) {
       case 'xs': return 300;
       case 'sm': return 350;
@@ -54,9 +75,8 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
     }
   };
 
-  // Get visible views - show only Month
   const getVisibleViews = (): View[] => {
-    return [Views.MONTH];
+    return views || [Views.MONTH];
   };
 
   // Month navigation state
@@ -65,9 +85,10 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
   // Transform API events to calendar format
   const calendarEvents = events?.map((event) => ({
     title: event.title,
-    allDay: false,
-    start: new Date(event.startDate),
-    end: event.endDate ? new Date(event.endDate) : new Date(event.startDate),
+    allDay: true,
+    start: new Date(event.start || event.startDate || new Date()),
+    end: new Date(event.end || event.endDate || event.start || event.startDate || new Date()),
+    resource: event,
   })) || [];
 
   const handleOnChangeView = (selectedView: View) => {
@@ -189,6 +210,7 @@ const BigCalendar = ({ events }: BigCalendarProps) => {
           style={{ height: getHeight() }}
           eventPropGetter={getEventStyle}
           dayPropGetter={getDayStyle}
+          onSelectEvent={(event) => onEventClick?.(event.resource as CalendarDisplayEvent)}
           popup={screenSize !== 'xs'}
           selectable
           longPressThreshold={10}

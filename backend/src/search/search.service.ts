@@ -243,7 +243,7 @@ export class SearchService {
           break;
         case 'teacher':
           type = 'teacher';
-          href = `/list/teachers/${user.id}`;
+          href = `/list/staff/${user.id}`;
           showInSearch = permissions.includes('teachers');
           break;
         case 'parent':
@@ -253,7 +253,7 @@ export class SearchService {
           break;
         default:
           type = 'staff';
-          href = `/list/users/${user.id}`;
+          href = `/list/staff/${user.id}`;
           showInSearch = permissions.includes('staff');
       }
 

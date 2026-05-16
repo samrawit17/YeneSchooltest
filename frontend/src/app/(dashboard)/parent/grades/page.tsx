@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { academicYearsAPI, gradingAPI, reportCardsAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
-import { BookOpen, Download, Loader2 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Download, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,14 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 interface AcademicYear {
   id: string;
@@ -334,8 +320,16 @@ export default function ParentGradesPage() {
         }),
       ));
       setGradeRows(rows);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching grades:", error);
+      if (error?.response?.status === 403) {
+        setPaymentGate({
+          blocked: true,
+          message:
+            error.response?.data?.message ||
+            "Results are locked until the current term or semester fees are paid.",
+        });
+      }
       setGradeRows([]);
       setRankSummary({ rank: null, termName: null });
     } finally {
@@ -399,37 +393,34 @@ export default function ParentGradesPage() {
 
   if (authLoading || initialLoad) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-6 md:px-6 lg:px-8">
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="px-4 py-6 md:px-6 space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-white">
-              <BookOpen className="h-6 w-6 text-[var(--brand-color,#e35336)]" />
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Published Results
             </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              View published subject results in a simple table layout.
+              View published subject results for your children.
             </p>
           </div>
-          <Button variant="outline" disabled>
+          <Button variant="outline" disabled size="sm">
             <Download className="mr-2 h-4 w-4" />
             Download Report Card
           </Button>
         </div>
 
-        <Card className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-          <CardContent className="grid gap-4 pt-6 md:grid-cols-3">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Child
-              </label>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-500">Child</label>
               <Select value={selectedChildId} onValueChange={setSelectedChildId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select child" />
@@ -446,11 +437,8 @@ export default function ParentGradesPage() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Academic Year
-              </label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-500">Academic Year</label>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select academic year" />
@@ -464,11 +452,8 @@ export default function ParentGradesPage() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                {periodLabel}
-              </label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-500">{periodLabel}</label>
               <Select value={selectedTerm} onValueChange={setSelectedTerm}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select period" />
@@ -483,161 +468,137 @@ export default function ParentGradesPage() {
                 </SelectContent>
               </Select>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {paymentGate.blocked && (
-          <Card className="border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20">
-            <CardContent className="py-6 text-center text-amber-800 dark:text-amber-300">
-              {paymentGate.message}
-            </CardContent>
-          </Card>
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl py-6 text-center text-amber-800 dark:text-amber-300 text-sm">
+            {paymentGate.message}
+          </div>
         )}
 
-        {selectedChild && (
-          <Card className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-            <CardContent className="grid gap-4 pt-6 md:grid-cols-5">
+        {selectedChild && !paymentGate.blocked && (
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+            <div className="grid gap-4 md:grid-cols-5">
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Student</p>
-                <p className="mt-1 font-semibold text-slate-900 dark:text-white">{selectedChild.name}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{selectedChild.studentCode}</p>
+                <p className="text-xs uppercase tracking-wide text-slate-400">Student</p>
+                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">{selectedChild.name}</p>
+                <p className="text-sm text-slate-500">{selectedChild.studentCode}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Class</p>
-                <p className="mt-1 font-semibold text-slate-900 dark:text-white">
-                  {selectedChild.className} - Section {selectedChild.section}
+                <p className="text-xs uppercase tracking-wide text-slate-400">Class</p>
+                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">
+                  {selectedChild.className} &middot; Section {selectedChild.section}
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Average / GPA</p>
-                <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Average / GPA</p>
+                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">
                   {overallAverage}% / {overallGradePoint}
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Ranking</p>
-                <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Ranking</p>
+                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">
                   {typeof rankSummary.rank === "number" ? `#${rankSummary.rank}` : "-"}
                 </p>
                 {rankSummary.termName && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{rankSummary.termName}</p>
+                  <p className="text-sm text-slate-500">{rankSummary.termName}</p>
                 )}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Subjects / Highest</p>
-                <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Subjects / Highest</p>
+                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">
                   {gradeRows.length} / {highestScore}
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {loading ? (
           <div className="flex items-center justify-center py-14">
-            <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
           </div>
         ) : paymentGate.blocked ? null : gradeRows.length === 0 ? (
-          <Card className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-            <CardContent className="py-14 text-center text-slate-500 dark:text-slate-400">
-              No published results found for the selected child and academic year.
-            </CardContent>
-          </Card>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-14 text-center text-slate-500">
+            No published results found for the selected child and academic year.
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {groupedByTerm.map((group) => (
-              <Card
-                key={group.termName}
-                className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <CardTitle className="text-lg text-slate-900 dark:text-white">
-                      {group.termName}
-                    </CardTitle>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">Average {group.average}%</Badge>
-                      <Badge className="bg-[var(--brand-color,#e35336)] text-white hover:bg-[var(--brand-color,#e35336)]">
-                        GPA {group.gradePoint}
-                      </Badge>
-                    </div>
+              <div key={group.termName} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                <div className="flex flex-col gap-2 px-5 py-4 md:flex-row md:items-center md:justify-between border-b border-slate-100 dark:border-slate-700">
+                  <h3 className="font-semibold text-slate-900 dark:text-white">{group.termName}</h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="text-xs">Avg {group.average}%</Badge>
+                    <Badge className="bg-[var(--brand-color,#e35336)] text-white text-xs">GPA {group.gradePoint}</Badge>
                   </div>
-                </CardHeader>
-                <CardContent className="pt-0">
+                </div>
+                <div className="p-5">
                   {assessmentColumns.length === 0 ? (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
+                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
                       Assessment types are not available for this school yet.
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Subject</TableHead>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100 dark:border-slate-700">
+                            <th className="text-left text-xs font-medium text-slate-500 pb-3 pr-4">Subject</th>
                             {assessmentColumns.map((column) => (
-                              <TableHead key={column.code} className="text-center">
-                                <div className="inline-flex min-w-[88px] flex-col items-center gap-1 rounded-md bg-slate-50 px-2 py-2 dark:bg-slate-800/80">
-                                  <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                              <th key={column.code} className="text-center pb-3 px-2">
+                                <div className="inline-flex flex-col items-center gap-0.5">
+                                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                                     {column.label}
                                   </span>
                                   {column.maxScore > 0 && (
-                                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-500 shadow-sm dark:bg-slate-700 dark:text-slate-300">
-                                      Max {column.maxScore}
-                                    </span>
+                                    <span className="text-[10px] text-slate-400">/{column.maxScore}</span>
                                   )}
                                 </div>
-                              </TableHead>
+                              </th>
                             ))}
-                            <TableHead className="text-center">Total</TableHead>
-                            <TableHead className="text-center">Grade</TableHead>
-                            <TableHead>Remark</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                            <th className="text-center text-xs font-medium text-slate-500 pb-3 px-2">Total</th>
+                            <th className="text-center text-xs font-medium text-slate-500 pb-3 px-2">Grade</th>
+                            <th className="text-left text-xs font-medium text-slate-500 pb-3 pl-2">Remark</th>
+                          </tr>
+                        </thead>
+                        <tbody>
                           {group.rows.map((row) => (
-                            <TableRow key={`${group.termName}-${row.subjectId}`}>
-                              <TableCell className="font-medium text-slate-900 dark:text-white">
+                            <tr key={`${group.termName}-${row.subjectId}`} className="border-b border-slate-50 dark:border-slate-700/50 last:border-0">
+                              <td className="py-3 pr-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">
                                 {row.subjectName}
-                              </TableCell>
+                              </td>
                               {assessmentColumns.map((column) => {
                                 const scores = row.assessments
-                                  .filter(
-                                    (assessment) =>
-                                      String(assessment.type).toUpperCase() === column.code &&
-                                      typeof assessment.score === "number",
-                                  )
-                                  .map((assessment) => assessment.score as number);
-                                const value =
-                                  scores.length > 0
-                                    ? Math.round(scores.reduce((sum, score) => sum + score, 0) * 100) / 100
-                                    : null;
+                                  .filter((a) => String(a.type).toUpperCase() === column.code && typeof a.score === "number")
+                                  .map((a) => a.score as number);
+                                const value = scores.length > 0
+                                  ? Math.round(scores.reduce((sum, s) => sum + s, 0) * 100) / 100
+                                  : null;
                                 return (
-                                  <TableCell key={column.code} className="text-center">
+                                  <td key={column.code} className="text-center py-3 px-2 text-slate-700 dark:text-slate-300">
                                     {value ?? "-"}
-                                  </TableCell>
+                                  </td>
                                 );
                               })}
-                              <TableCell className="text-center font-medium">
+                              <td className="text-center py-3 px-2 font-medium text-slate-900 dark:text-white">
                                 {row.totalScore ?? "-"}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <span
-                                  className={`inline-flex min-w-10 items-center justify-center rounded-full px-2 py-1 text-xs font-semibold ${gradeBadgeClass(row.gradeLetter)}`}
-                                >
+                              </td>
+                              <td className="text-center py-3 px-2">
+                                <span className={`inline-flex min-w-[28px] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${gradeBadgeClass(row.gradeLetter)}`}>
                                   {row.gradeLetter || "-"}
                                 </span>
-                              </TableCell>
-                              <TableCell className="text-slate-500 dark:text-slate-400">
-                                {row.remark || "-"}
-                              </TableCell>
-                            </TableRow>
+                              </td>
+                              <td className="py-3 pl-2 text-slate-500">{row.remark || "-"}</td>
+                            </tr>
                           ))}
-                        </TableBody>
-                      </Table>
+                        </tbody>
+                      </table>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         )}

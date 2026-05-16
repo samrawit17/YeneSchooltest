@@ -12,6 +12,9 @@ describe('FinanceService critical payment flows', () => {
       payment: {
         count: jest.fn().mockResolvedValue(0),
       },
+      studentProfile: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
       ...prismaOverrides,
     };
     return {
@@ -73,7 +76,11 @@ describe('FinanceService critical payment flows', () => {
     );
 
     expect(tx.term.findFirst).toHaveBeenCalledWith({
-      where: { id: 'term-3', academicYearId: 'year-1' },
+      where: {
+        id: 'term-3',
+        academicYearId: 'year-1',
+        academicYear: { schoolId: 'school-1' },
+      },
       select: { id: true },
     });
     expect(tx.payment.create).toHaveBeenCalledWith({
@@ -125,6 +132,37 @@ describe('FinanceService critical payment flows', () => {
         },
       ),
     ).rejects.toThrow('Selected payment period does not match this fee academic year');
+  });
+
+  it('rejects payment when the selected fee belongs to a different student', async () => {
+    const tx: any = {
+      studentFee: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'fee-1',
+          schoolId: 'school-1',
+          studentId: 'student-user-2',
+          academicYearId: 'year-1',
+          termId: null,
+          finalAmount: 9000,
+          payments: [],
+        }),
+      },
+    };
+    const { service } = createService(tx);
+
+    await expect(
+      service.recordPayment(
+        { id: 'finance-user-1' },
+        {
+          schoolId: 'school-1',
+          studentFeeId: 'fee-1',
+          studentId: 'student-user-1',
+          termId: 'term-3',
+          amountPaid: 3000,
+          paymentMethod: 'BANK_TRANSFER',
+        },
+      ),
+    ).rejects.toThrow('Fee does not match this student');
   });
 
   it('reverses payment, deletes receipt, recalculates fee status, and audits it', async () => {
@@ -227,5 +265,62 @@ describe('FinanceService critical payment flows', () => {
         },
       ),
     ).rejects.toThrow('This term or semester is already fully paid');
+  });
+
+  it('school-scopes student fee summary lookup, academic year, and term', async () => {
+    const prisma: any = {
+      studentProfile: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'student-profile-1',
+          userId: 'student-user-1',
+          studentCode: 'S-001',
+          academicYear: '2026',
+          section: 'A',
+          user: { name: 'Student One' },
+        }),
+      },
+      academicYear: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'year-1' }),
+      },
+      term: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'term-1',
+          name: 'Term 1',
+          order: 1,
+          academicYearId: 'year-1',
+        }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      schoolSetting: {
+        findUnique: jest.fn().mockResolvedValue({ value: 'TERM' }),
+      },
+      studentFee: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const { service } = createService({} as any, prisma);
+
+    await service.getStudentFeeSummary(
+      'school-1',
+      'student-user-1',
+      'year-1',
+      'term-1',
+    );
+
+    expect(prisma.studentProfile.findFirst).toHaveBeenCalledWith({
+      where: {
+        schoolId: 'school-1',
+        OR: [{ id: 'student-user-1' }, { userId: 'student-user-1' }],
+      },
+      include: { user: { select: { name: true } } },
+    });
+    expect(prisma.academicYear.findFirst).toHaveBeenCalledWith({
+      where: { id: 'year-1', schoolId: 'school-1' },
+      select: { id: true },
+    });
+    expect(prisma.term.findFirst).toHaveBeenCalledWith({
+      where: { id: 'term-1', academicYear: { schoolId: 'school-1' } },
+      select: { id: true, name: true, order: true, academicYearId: true },
+    });
   });
 });

@@ -13,9 +13,10 @@ export class SectionService {
   // Manual section creation is disabled. Sections are now auto-created during bulk student upload.
   // This ensures randomized and balanced distribution across sections (A, B, C...)
 
-  async findAll(classId?: string, classIds?: string[]) {
+  async findAll(schoolId?: string, classId?: string, classIds?: string[]) {
     return this.prisma.section.findMany({
       where: {
+        ...(schoolId ? { class: { schoolId } } : {}),
         ...(classIds && classIds.length > 0 ? { classId: { in: classIds } } : (classId && { classId })),
       },
       include: {
@@ -75,9 +76,9 @@ export class SectionService {
     });
   }
 
-  async findOne(id: string) {
-    const section = await this.prisma.section.findUnique({
-      where: { id },
+  async findOne(id: string, schoolId: string) {
+    const section = await this.prisma.section.findFirst({
+      where: { id, class: { schoolId } },
       include: {
         class: {
           include: {
@@ -96,6 +97,7 @@ export class SectionService {
 
   async update(
     id: string,
+    schoolId: string,
     data: {
       name?: string;
       capacity?: number;
@@ -105,7 +107,7 @@ export class SectionService {
   ) {
     // Check if updating would create a duplicate
     if (data.name) {
-      const section = await this.findOne(id);
+      const section = await this.findOne(id, schoolId);
       const existingSection = await this.prisma.section.findFirst({
         where: {
           id: { not: id },
@@ -123,7 +125,7 @@ export class SectionService {
 
     if (data.capacity !== undefined) {
       const currentEnrollment = await this.prisma.studentClass.count({
-        where: { sectionId: id },
+        where: { sectionId: id, schoolId },
       });
 
       if (data.capacity < currentEnrollment) {
@@ -146,8 +148,8 @@ export class SectionService {
     });
   }
 
-  async delete(id: string) {
-    await this.findOne(id); // Validate exists
+  async delete(id: string, schoolId: string) {
+    await this.findOne(id, schoolId); // Validate exists
 
     return this.prisma.section.delete({
       where: { id },

@@ -13,11 +13,12 @@ import {
   Param,
   Query,
   UseInterceptors,
+  UploadedFile,
   UploadedFiles,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { Role } from './types/role.enum';
 import { LocalAuthGuard } from './guards/local-auth.guard';
@@ -564,6 +565,39 @@ export class AuthController {
     }
   }
 
+  @Post('users/:id/avatar')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 2 * 1024 * 1024 },
+    }),
+  )
+  async uploadUserAvatar(
+    @Request() req,
+    @Param('id') id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    try {
+      return await this.authService.uploadUserAvatar(id, req.user, file);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      if (error?.code === 'LIMIT_FILE_SIZE') {
+        throw new HttpException(
+          'Avatar image must be 2MB or smaller',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      throw new HttpException(
+        'Failed to upload user photo: ' + error.message,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
   @Patch('users/me/theme')
   @UseGuards(JwtAuthGuard)
   async updateTheme(@Request() req, @Body() body: { theme: string }) {
@@ -680,28 +714,27 @@ export class AuthController {
    * POST /auth/request-password-reset
    */
   @Post('request-password-reset')
-  async requestPasswordReset(@Body() body: { email: string }) {
+  async requestPasswordReset(@Body() body: { username: string }) {
     try {
-      const { email } = body;
+      const { username } = body;
 
-      if (!email) {
-        throw new HttpException('Email is required', HttpStatus.BAD_REQUEST);
+      if (!username) {
+        throw new HttpException('Username is required', HttpStatus.BAD_REQUEST);
       }
 
-      const result = await this.authService.requestPasswordReset(email);
+      const result = await this.authService.requestPasswordReset(username);
 
       return {
         success: true,
         message:
-          'If the email exists in our system, a password reset link has been sent',
+          'If the username exists in our system, an admin will be notified',
         ...result,
       };
     } catch (error) {
-      // Don't reveal if email exists or not for security
       return {
         success: true,
         message:
-          'If the email exists in our system, a password reset link has been sent',
+          'If the username exists in our system, an admin will be notified',
       };
     }
   }
@@ -759,17 +792,20 @@ export class AuthController {
    * POST /auth/admin/reset-user-password/:userId
    */
   @Post('admin/reset-user-password/:userId')
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-  @Permissions('user:update')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
   async adminResetUserPassword(
     @Request() req,
     @Param('userId') userId: string,
+    @Body() body?: { temporaryPassword?: string },
   ) {
     try {
       const result = await this.authService.adminResetUserPassword(
         userId,
         req.user.id,
+        req.user.schoolId,
+        req.user.role,
+        body?.temporaryPassword,
       );
 
       return {

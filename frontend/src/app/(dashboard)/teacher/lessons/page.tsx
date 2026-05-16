@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Views } from "react-big-calendar";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { lessonsAPI, CreateLessonDto } from "@/lib/api/content";
+import { periodTimeAPI, type PeriodTime } from "@/lib/api/siren-period-time";
+import BigCalendar, { type CalendarDisplayEvent } from "@/components/BigCalendar";
+import { CalendarType, formatTimeByCalendarType } from "@/lib/calendar-utils";
 import { toast } from "sonner";
 import TableSearch from "@/components/TableSearch";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
@@ -66,7 +71,12 @@ interface Lesson {
   title: string;
   subject: string | { id: string; schoolId: string; name: string; code: string; isActive: boolean; description: string; grade: string; credits: number; colorCode: string; createdAt: string; updatedAt: string };
   className: string | { id: string; name: string; section: string };
-  date: string;
+  date?: string;
+  lessonDate?: string;
+  periodNumber?: number;
+  grade?: number;
+  section?: string;
+  sectionName?: string;
   duration: number;
   status: 'DRAFT' | 'PUBLISHED' | 'PENDING_REVIEW' | 'COVERED' | 'MISSED' | 'RESCHEDULED';
   objective: string;
@@ -87,15 +97,71 @@ const getClassName = (className: Lesson['className']) => {
   return className?.name || 'N/A';
 };
 
+const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
+  1: { start: "8:00 AM", end: "8:45 AM" },
+  2: { start: "8:45 AM", end: "9:30 AM" },
+  3: { start: "9:40 AM", end: "10:25 AM" },
+  4: { start: "10:25 AM", end: "11:10 AM" },
+  5: { start: "11:20 AM", end: "12:05 PM" },
+  6: { start: "12:05 PM", end: "12:50 PM" },
+  7: { start: "1:30 PM", end: "2:15 PM" },
+  8: { start: "2:15 PM", end: "3:00 PM" },
+};
+
+const getLessonDateValue = (lesson: Lesson) => lesson.lessonDate || lesson.date || "";
+
+const getDateKey = (date: Date | string) => {
+  const parsed = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+};
+
+const startOfWeek = (date: Date) => {
+  const copy = new Date(date);
+  const day = copy.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  copy.setDate(copy.getDate() + diff);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+};
+
+const addDays = (date: Date, days: number) => {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+};
+
+const formatShortDate = (date: Date) =>
+  date.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+
+const formatWeekday = (date: Date) =>
+  date.toLocaleDateString("en-US", { weekday: "long" });
+
+const getLessonClassLabel = (lesson: Lesson) => {
+  const className = getClassName(lesson.className);
+  const section = lesson.sectionName || lesson.section;
+  if (className !== "N/A") return section ? `${className} - ${section}` : className;
+  if (lesson.grade) return section ? `Grade ${lesson.grade} - ${section}` : `Grade ${lesson.grade}`;
+  return "Class N/A";
+};
+
+const formatConfiguredTime = (value: string | undefined, calendarType: CalendarType) => {
+  if (!value) return "";
+  return formatTimeByCalendarType(value, calendarType);
+};
+
 const TeacherLessonsPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const { setItems } = useBreadcrumb();
+  const { schoolCalendarType } = useAcademicYear();
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [periodTimes, setPeriodTimes] = useState<Record<number, { start: string; end: string }>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterClass, setFilterClass] = useState<string>("all");
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [formTitle, setFormTitle] = useState("");
   const [formObjective, setFormObjective] = useState("");
@@ -130,6 +196,7 @@ const TeacherLessonsPage = () => {
     if (isAuthenticated && !isLoading) {
       fetchLessons();
       fetchFormData();
+      fetchPeriodTimes();
     }
   }, [isAuthenticated, isLoading]);
 
@@ -151,7 +218,7 @@ const TeacherLessonsPage = () => {
     try {
       setFormDataLoading(true);
       const response = await lessonsAPI.getFormData();
-      const data = response.data;
+      const data: any = response.data;
       setFormDataResponse(data);
       if (data.activeAcademicYearId) setFormAcademicYearId(data.activeAcademicYearId);
       else if (data.academicYears?.length) setFormAcademicYearId(data.academicYears[0].id);
@@ -175,12 +242,32 @@ const TeacherLessonsPage = () => {
       setLoading(true);
       // Use /lessons endpoint - backend automatically filters by teacherId for TEACHER role
       const response = await lessonsAPI.listForTeacher();
-      setLessons(response.data.data || response.data);
+      setLessons((response.data.data || response.data) as unknown as Lesson[]);
     } catch (error: any) {
       console.error('Failed to fetch lessons:', error);
       setLessons([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPeriodTimes = async () => {
+    if (!user?.schoolId) return;
+    try {
+      const response = await periodTimeAPI.list(user.schoolId);
+      const mapped = (response.data || []).reduce(
+        (acc: Record<number, { start: string; end: string }>, period: PeriodTime) => {
+          acc[period.periodNumber] = {
+            start: formatConfiguredTime(period.startTime, schoolCalendarType),
+            end: formatConfiguredTime(period.endTime, schoolCalendarType),
+          };
+          return acc;
+        },
+        {},
+      );
+      setPeriodTimes(mapped);
+    } catch (error) {
+      setPeriodTimes({});
     }
   };
 
@@ -238,11 +325,32 @@ const TeacherLessonsPage = () => {
     const matchesSearch = lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          getSubjectName(lesson.subject).toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "all" || lesson.status === filterStatus;
-    const matchesClass = filterClass === "all" || getClassName(lesson.className) === filterClass;
+    const matchesClass = filterClass === "all" || getLessonClassLabel(lesson) === filterClass || getClassName(lesson.className) === filterClass;
     return matchesSearch && matchesStatus && matchesClass;
   });
 
-  const classOptions = [...new Set(lessons.map((l) => getClassName(l.className)))].filter(Boolean);
+  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+  const weekEnd = addDays(weekStart, 6);
+  const lessonsByDay = weekDays.map((day) => {
+    const key = getDateKey(day);
+    return filteredLessons
+      .filter((lesson) => getDateKey(getLessonDateValue(lesson)) === key)
+      .sort((left, right) => (left.periodNumber || 99) - (right.periodNumber || 99));
+  });
+  const lessonCalendarEvents: CalendarDisplayEvent[] = filteredLessons.map((lesson) => {
+    const period = lesson.periodNumber || 1;
+    const time = periodTimes[period] || PERIOD_TIMES[period];
+    return {
+      id: lesson.id,
+      title: `${getSubjectName(lesson.subject)}: ${lesson.title}${time ? ` ${time.start}` : ""}`,
+      startDate: getLessonDateValue(lesson),
+      endDate: getLessonDateValue(lesson),
+      eventType: "ACADEMIC",
+      resource: lesson,
+    };
+  });
+
+  const classOptions = Array.from(new Set(lessons.map((l) => getLessonClassLabel(l)))).filter(Boolean);
 
   const stats = {
     total: lessons.length,
@@ -391,80 +499,25 @@ const TeacherLessonsPage = () => {
         </Select>
       </div>
 
-      {/* Lessons List */}
-      <div className="grid gap-4">
-        {filteredLessons.map((lesson) => (
-          <Card key={lesson.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="py-4">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
-                    <BookText className="w-6 h-6 text-indigo-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">{lesson.title}</h3>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <BookOpen className="w-4 h-4" />
-                        {getSubjectName(lesson.subject)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {getClassName(lesson.className)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {lesson.date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {lesson.duration} min
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      {lesson.objective && (
-                        <Badge variant="outline" className="text-xs">
-                          {lesson.objective}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  {getStatusBadge(lesson.status)}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Filter className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => router.push(`/teacher/lessons/${lesson.id}`)}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => router.push(`/teacher/lessons/${lesson.id}/edit`)}>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => handleDelete(lesson.id)}
-                        className="text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Lesson Calendar */}
+      <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800">
+          <CardTitle className="text-lg">Lesson Calendar</CardTitle>
+          <CardDescription>Weekly calendar view for lesson plans</CardDescription>
+        </CardHeader>
+        <CardContent className="p-4">
+          <BigCalendar
+            events={lessonCalendarEvents}
+            initialView={Views.MONTH}
+            views={[Views.MONTH]}
+            height={640}
+            onEventClick={(event) => {
+              const lesson = event.resource as Lesson | undefined;
+              if (lesson?.id) router.push(`/teacher/lessons/${lesson.id}`);
+            }}
+          />
+        </CardContent>
+      </Card>
 
       {filteredLessons.length === 0 && (
         <div className="text-center py-12">

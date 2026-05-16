@@ -100,8 +100,16 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6">
-        <Loader2 className="w-5 h-5 animate-spin text-[#e35336]" />
+      <div className="space-y-3 py-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-700">
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -274,17 +282,25 @@ export default function AttendanceManagementPage() {
           const terms = await getTermsForYear(activeYear?.id);
           setPeriods(terms);
           
-          // Use current term from context as default, fallback to first term
-          if (currentTerm?.id) {
-            const termExists = terms.some((t: any) => t.id === currentTerm.id);
-            if (termExists) {
+          // Select current term: match by id, then by date range, fallback to first
+          const selectCurrentTerm = (termList: any[]) => {
+            if (currentTerm?.id && termList.some((t: any) => t.id === currentTerm.id)) {
               setSelectedPeriod(currentTerm.id);
-            } else if (terms.length > 0 && terms[0]?.id) {
-              setSelectedPeriod(terms[0].id);
+              return;
             }
-          } else if (terms.length > 0 && terms[0]?.id) {
-            setSelectedPeriod(terms[0].id);
-          }
+            const today = new Date();
+            const dateMatch = termList.find((t: any) => {
+              const start = t.startDate ? new Date(t.startDate) : null;
+              const end = t.endDate ? new Date(t.endDate) : null;
+              return start && end && today >= start && today <= end;
+            });
+            if (dateMatch?.id) {
+              setSelectedPeriod(dateMatch.id);
+            } else if (termList.length > 0 && termList[0]?.id) {
+              setSelectedPeriod(termList[0].id);
+            }
+          };
+          selectCurrentTerm(terms);
         }
       } catch (error) {
         console.error('Failed to fetch academic years:', error);
@@ -350,8 +366,13 @@ export default function AttendanceManagementPage() {
       try {
         setLoading(true);
         const gradeParam = selectedGrade !== "all" ? selectedGrade.replace("Grade ", "") : undefined;
+        let dateParam = selectedDate;
+        if (viewMode === 'period' && selectedPeriod && selectedPeriod !== 'all') {
+          const period = periods.find(p => p.id === selectedPeriod);
+          if (period?.startDate) dateParam = period.startDate;
+        }
         const response = await attendanceAPI.getAdminDashboard({ 
-          date: selectedDate,
+          date: dateParam,
           grade: gradeParam,
           section: selectedSection !== "all" ? selectedSection : undefined,
           range: timeRange,
@@ -359,7 +380,6 @@ export default function AttendanceManagementPage() {
         setDashboardData(response.data);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
-        // Set empty data when API fails
         setDashboardData({
           todayStats: {
             totalSessions: 0,
@@ -381,7 +401,7 @@ export default function AttendanceManagementPage() {
       }
     };
     fetchDashboardData();
-  }, [isAuthenticated, isAdmin, selectedDate, selectedGrade, selectedSection, timeRange]);
+  }, [isAuthenticated, isAdmin, selectedDate, selectedGrade, selectedSection, timeRange, selectedPeriod, periods, viewMode]);
 
   // Fetch sessions for selected date and period
   useEffect(() => {
@@ -847,9 +867,16 @@ export default function AttendanceManagementPage() {
                 if (!value || value === '_none_') return;
                 setSelectedAcademicYear(value);
                 const year = academicYears.find(y => y.id === value);
-                setPeriods(year?.terms || []);
-                if (year?.terms?.length > 0 && year.terms[0]?.id) {
-                  setSelectedPeriod(year.terms[0].id);
+                const termList = year?.terms || [];
+                setPeriods(termList);
+                if (termList.length > 0) {
+                  const today = new Date();
+                  const dateMatch = termList.find((t: any) => {
+                    const start = t.startDate ? new Date(t.startDate) : null;
+                    const end = t.endDate ? new Date(t.endDate) : null;
+                    return start && end && today >= start && today <= end;
+                  });
+                  setSelectedPeriod(dateMatch?.id || termList[0].id);
                 }
               }}>
                 <SelectTrigger className="w-[160px] border-[#E2E8F0] dark:border-gray-600">
@@ -917,78 +944,6 @@ export default function AttendanceManagementPage() {
               </Select>
             </div>
           </div>
-        </div>
-
-        {/* Today's Overview Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardContent className="px-3 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Students</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{dashboardData?.todayStats.totalStudentsMarked || 0}</p>
-                </div>
-                <div className="w-9 h-9 bg-[#e35336]/10 rounded-full flex items-center justify-center">
-                  <Users className="w-4.5 h-4.5 text-[#e35336]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardContent className="px-3 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Present</p>
-                  <p className="text-2xl font-bold text-[var(--brand-color,#e35336)] mt-1">{dashboardData?.todayStats.presentCount || 0}</p>
-                  <p className="text-xs text-[var(--brand-color,#e35336)] mt-1">{dashboardData?.todayStats.attendanceRate || 0}%</p>
-                </div>
-                <div className="w-9 h-9 bg-[rgba(var(--brand-color-rgb),0.12)] rounded-full flex items-center justify-center">
-                  <UserCheck className="w-4.5 h-4.5 text-[var(--brand-color,#e35336)]" />
-                </div>
-              </div>
-              <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-[var(--brand-color,#e35336)] rounded-full transition-all duration-500" 
-                  style={{ width: `${dashboardData?.todayStats.attendanceRate || 0}%` }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardContent className="px-3 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Sessions Taken</p>
-                  <p className="text-2xl font-bold text-[var(--brand-color,#e35336)] mt-1">{dashboardData?.todayStats.submittedSessions || 0}/{dashboardData?.todayStats.totalSessions || 0}</p>
-                </div>
-                <div className="w-9 h-9 bg-[rgba(var(--brand-color-rgb),0.12)] rounded-full flex items-center justify-center">
-                  <BarChart3 className="w-4.5 h-4.5 text-[var(--brand-color,#e35336)]" />
-                </div>
-              </div>
-              <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-[rgba(var(--brand-color-rgb),0.72)] rounded-full transition-all duration-500" 
-                  style={{ width: `${dashboardData?.todayStats.totalSessions ? (dashboardData.todayStats.submittedSessions / dashboardData.todayStats.totalSessions) * 100 : 0}%` }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardContent className="px-3 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Pending</p>
-                  <p className="text-2xl font-bold text-[rgba(var(--brand-color-rgb),0.85)] mt-1">{dashboardData?.todayStats.notSubmittedSessions || 0}</p>
-                </div>
-                <div className="w-9 h-9 bg-[rgba(var(--brand-color-rgb),0.12)] rounded-full flex items-center justify-center">
-                  <Clock className="w-4.5 h-4.5 text-[rgba(var(--brand-color-rgb),0.85)]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Charts Section */}

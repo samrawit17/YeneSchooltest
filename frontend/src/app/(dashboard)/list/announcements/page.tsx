@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { announcementsAPI, Announcement } from "@/lib/api/content";
+import { syncService } from "@/lib/db/sync-service";
+import { schoolSettingsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/context/AuthContext";
 import Pagination from "@/components/Pagination";
@@ -66,6 +68,11 @@ const AnnouncementListPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  useEffect(() => {
+    syncService.startAutoSync();
+    return () => syncService.stopAutoSync();
+  }, []);
+
   const { data: announcements, isLoading } = useQuery({
     queryKey: queryKeys.announcements.list(user?.role),
     queryFn: async () => {
@@ -74,6 +81,18 @@ const AnnouncementListPage = () => {
     },
     enabled: !!user,
   });
+  const { data: announcementsSetting } = useQuery({
+    queryKey: ["school-setting", user?.schoolId, "ANNOUNCEMENTS_ENABLED"],
+    queryFn: async () => {
+      const response = await schoolSettingsAPI.get(
+        user!.schoolId!,
+        "ANNOUNCEMENTS_ENABLED",
+      );
+      return response.data?.value;
+    },
+    enabled: !!user?.schoolId,
+  });
+  const announcementsEnabled = announcementsSetting !== false;
 
   const filteredAnnouncements = useMemo(() => {
     if (!announcements) return [];
@@ -166,7 +185,7 @@ const AnnouncementListPage = () => {
           <h1 className="text-xl md:text-2xl font-semibold text-black">Announcements</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Latest news and updates</p>
         </div>
-        {isAdmin && (
+        {isAdmin && announcementsEnabled && (
           <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
@@ -189,6 +208,12 @@ const AnnouncementListPage = () => {
               </div>
             </DialogContent>
           </Dialog>
+        )}
+        {isAdmin && !announcementsEnabled && (
+          <Button size="sm" className="gap-2" disabled title="Announcements are disabled in school settings">
+            <Plus className="h-4 w-4" />
+            Create
+          </Button>
         )}
       </div>
 

@@ -7,7 +7,6 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import Menu from "@/components/Menu";
 import Navbar from "@/components/Navbar";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import FloatingAiAssistant from "@/components/FloatingAiAssistant";
 import Image from "next/image";
 import { Wrench } from "lucide-react";
 import { platformSettingsAPI, schoolsAPI, schoolSettingsAPI } from "@/lib/api";
@@ -442,11 +441,6 @@ export default function DashboardLayout({
           </div>
         </footer>
 
-        <div className="pointer-events-none fixed bottom-20 right-0 z-40 hidden overflow-visible md:block">
-          <div className="pointer-events-auto">
-            <FloatingAiAssistant role={user?.role} />
-          </div>
-        </div>
       </main>
     </div>
   );

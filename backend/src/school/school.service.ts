@@ -1,6 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { generateEnrollmentKey } from '../common/utils/enrollment.util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -26,6 +27,7 @@ export class SchoolService {
   constructor(
     private prismaService: PrismaService,
     private platformSettingsService: PlatformSettingsService,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   async createSchool(createSchoolDto: CreateSchoolDto) {
@@ -34,7 +36,7 @@ export class SchoolService {
     const { name, email, address, phone } = createSchoolDto;
     const enrollmentKey = generateEnrollmentKey(name);
 
-    return this.prismaService.school.create({
+    const school = await this.prismaService.school.create({
       data: {
         name,
         email,
@@ -42,6 +44,16 @@ export class SchoolService {
         ...(address && { address }),
         ...(phone && { phone }),
       },
+    });
+
+    const corePlan = await this.subscriptionService.getPlanByTier('CORE');
+    if (corePlan?.id) {
+      await this.subscriptionService.assignPlanToSchool(school.id, corePlan.id);
+    }
+
+    return this.prismaService.school.findUnique({
+      where: { id: school.id },
+      include: { plan: true },
     });
   }
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { syncService } from "@/lib/db/sync-service";
 import { toast } from "sonner";
 import { attendanceAPI, timetableSlotsAPI, teachersAPI } from "@/lib/api";
 import { toEthiopian } from "ethiopian-calendar-new";
@@ -336,11 +337,44 @@ export default function TeacherAttendancePage() {
               lastUpdated: new Date().toISOString()
             }));
             setStudents(attendanceStudents);
+            await syncService.cacheStudents(rawStudents.map((student: any) => {
+              const id = student.userId || student.id;
+              const name = student.user?.name || student.name || '';
+              const [firstName, ...lastNameParts] = name.split(' ');
+              return {
+                id,
+                firstName: firstName || name,
+                lastName: lastNameParts.join(' '),
+                studentId: student.studentId || student.username || id,
+                classId: clsId,
+                className,
+                sectionId: sectId,
+                sectionName: sectName,
+                photo: student.avatarUrl,
+                enrollmentStatus: 'active' as const,
+                updatedAt: Date.now(),
+              };
+            }));
           } else {
             setStudents([]);
           }
         } catch (err) {
-          setStudents([]);
+          const cachedStudents = await syncService.getCachedStudents(clsId, sectId);
+          if (cachedStudents.length > 0) {
+            setStudents(cachedStudents.map((student) => ({
+              id: student.id,
+              rollNumber: student.studentId || 'N/A',
+              name: `${student.firstName} ${student.lastName || ''}`.trim() || 'Unknown',
+              gender: 'MALE',
+              avatarUrl: student.photo,
+              status: 'UNMARKED' as AttendanceStatus,
+              remark: '',
+              lastUpdated: new Date(student.updatedAt || student.cachedAt).toISOString()
+            })));
+            toast.info('Loaded cached student roster from this device', { dismissible: true });
+          } else {
+            setStudents([]);
+          }
         }
       };
 
@@ -482,11 +516,27 @@ export default function TeacherAttendancePage() {
   // Handle network status changes
   useEffect(() => {
     if (wasOffline && isOnline) {
-      toast.success('Back online! Attendance will sync automatically.', { dismissible: true });
-      // Trigger sync when back online
-      fetchStudents();
+      toast.success('Back online! Syncing saved attendance.', { dismissible: true });
+      syncService.syncNow().finally(() => {
+        syncService.getSyncStatus().then((status) => setPendingOfflineCount(status.pendingCount + status.failedCount));
+        fetchStudents();
+      });
     }
   }, [wasOffline, isOnline, fetchStudents]);
+
+  useEffect(() => {
+    syncService.startAutoSync();
+    const refreshSyncStatus = async () => {
+      const status = await syncService.getSyncStatus();
+      setPendingOfflineCount(status.pendingCount + status.failedCount);
+    };
+    refreshSyncStatus();
+    const interval = setInterval(refreshSyncStatus, 5000);
+    return () => {
+      clearInterval(interval);
+      syncService.stopAutoSync();
+    };
+  }, []);
 
   // Show warning when going offline with pending changes
   useEffect(() => {
@@ -603,45 +653,21 @@ export default function TeacherAttendancePage() {
 
     setIsSyncing(true);
     try {
-      // Try to sync any pending offline attendance
-      const localAttendance = JSON.parse(localStorage.getItem('offline_attendance') || '{}');
-      const pendingKeys = Object.keys(localAttendance).filter(
-        key => localAttendance[key] && !localAttendance[key].isSynced
-      );
-
-      if (pendingKeys.length === 0) {
+      const status = await syncService.getSyncStatus();
+      if (status.pendingCount === 0 && status.failedCount === 0) {
         toast.info('No pending records to sync', { dismissible: true });
         return;
       }
 
-      let syncedCount = 0;
-      for (const key of pendingKeys) {
-        const record = localAttendance[key];
-        try {
-          const slotId = `homeroom-${record.classId}`;
-          const sessionResponse = await attendanceAPI.openSession(slotId, record.date);
-          const session = sessionResponse.data;
-          const sessionId = session.id;
+      const result = await syncService.syncNow();
+      const nextStatus = await syncService.getSyncStatus();
+      setPendingOfflineCount(nextStatus.pendingCount + nextStatus.failedCount);
 
-          await attendanceAPI.markAttendance(sessionId, { records: record.records });
-          await attendanceAPI.submitSession(sessionId);
-
-          localAttendance[key].isSynced = true;
-          localAttendance[key].syncedAt = new Date().toISOString();
-          syncedCount++;
-        } catch (err) {
-          console.error(`Failed to sync ${key}:`, err);
-        }
-      }
-
-      localStorage.setItem('offline_attendance', JSON.stringify(localAttendance));
-      setPendingOfflineCount(prev => Math.max(0, prev - syncedCount));
-
-      if (syncedCount > 0) {
-        toast.success(`Successfully synced ${syncedCount} records`, { dismissible: true });
+      if (result.synced > 0) {
+        toast.success(`Successfully synced ${result.synced} records`, { dismissible: true });
         fetchStudents();
       } else {
-        toast.error('Failed to sync records', { dismissible: true });
+        toast.error(result.failed > 0 ? 'Some records failed to sync' : 'No records were synced', { dismissible: true });
       }
     } catch (error) {
       console.error('Sync error:', error);
@@ -708,40 +734,41 @@ export default function TeacherAttendancePage() {
       // If offline or API error, save locally
       if (!isOnline) {
         console.log('Offline - saving locally');
-        // Store attendance locally for later sync
         const selectedClassData = classOptions.find(c => c.key === selectedClass);
         const classId = selectedClassData?.id;
-        const className = selectedClassData?.name || '';
         const sectionId = selectedClassData?.sectionId;
-        
-        // Get existing local attendance or create new
-        const localAttendance = JSON.parse(localStorage.getItem('offline_attendance') || '{}');
-        const key = `${classId}-${selectedDate}`;
+        if (!classId || !sectionId) {
+          throw new Error('Class and section are required for offline attendance');
+        }
         
         const records = students
           .filter(student => student.status !== 'UNMARKED')
           .map(student => ({
             studentId: student.id,
-            status: student.status,
-            remark: student.remark
+            status: student.status as 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED',
+            remarks: student.remark || ''
           }));
-        
-        localAttendance[key] = {
-          classId,
-          className,
-          sectionId,
-          date: selectedDate,
-          records,
-          savedAt: new Date().toISOString(),
-          isSynced: false
-        };
-        
-        localStorage.setItem('offline_attendance', JSON.stringify(localAttendance));
+
+        await Promise.all(records.map((record) =>
+          syncService.saveAttendanceOffline({
+            studentId: record.studentId,
+            classId,
+            sectionId,
+            sessionId: `${classId}:${sectionId}:${selectedDate}:homeroom`,
+            date: selectedDate,
+            status: record.status.toLowerCase() as 'present' | 'absent' | 'late' | 'excused',
+            remarks: record.remarks,
+            recordedBy: user?.id || '',
+            recordedAt: new Date().toISOString(),
+            lastModified: new Date().toISOString(),
+          })
+        ));
         
         setIsSubmitted(true);
         setHasChanges(false);
-        setPendingOfflineCount(prev => prev + 1);
-        toast.success('Attendance saved offline. Will sync when online.', { dismissible: true });
+        const status = await syncService.getSyncStatus();
+        setPendingOfflineCount(status.pendingCount + status.failedCount);
+        toast.success('Attendance saved offline in IndexedDB. It will sync when online.', { dismissible: true });
       } else {
         console.error('Error saving attendance:', error);
         toast.error(getErrorMessage(error, 'Failed to save attendance'), { dismissible: true });
@@ -833,17 +860,9 @@ export default function TeacherAttendancePage() {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#0F172A] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#0F172A]">
-      <div className="mx-auto w-full max-w-7xl min-w-0 px-3 sm:px-6 lg:p-6">
+      <div className="mx-auto w-full min-w-0 px-3 sm:px-6 lg:p-6">
         {/* Top Header */}
         <div className="mb-4 min-w-0 rounded-lg border border-[rgba(var(--brand-color-rgb),0.16)] bg-white p-3 shadow-sm dark:border-[#334155] dark:bg-[#1E293B] sm:mb-6 sm:p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">

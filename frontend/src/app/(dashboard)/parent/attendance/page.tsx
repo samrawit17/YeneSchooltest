@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { Views } from "react-big-calendar";
 import { useAuth } from "@/context/AuthContext";
 import { attendanceAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
-import { Calendar, User, AlertCircle } from "lucide-react";
+import BigCalendar, { type CalendarDisplayEvent } from "@/components/BigCalendar";
+import { AlertCircle } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,12 +56,12 @@ const buildMonthOptions = (
 };
 
 const AttendanceSkeleton = () => (
-  <div className="p-6 space-y-6">
+  <div className="p-6 space-y-6 dark:bg-[#0F172A] min-h-screen">
     <Skeleton className="h-8 w-48" />
     <Skeleton className="h-12 w-full max-w-md" />
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map((i) => (
-        <Card key={i}>
+        <Card key={i} className="dark:bg-slate-800 dark:border-slate-700">
           <CardContent className="p-6">
             <Skeleton className="h-4 w-24 mb-2" />
             <Skeleton className="h-8 w-16" />
@@ -67,7 +69,7 @@ const AttendanceSkeleton = () => (
         </Card>
       ))}
     </div>
-    <Card>
+    <Card className="dark:bg-slate-800 dark:border-slate-700">
       <CardContent className="p-6">
         <Skeleton className="h-6 w-32 mb-4" />
         <Skeleton className="h-64 w-full" />
@@ -241,7 +243,7 @@ export default function ParentAttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedChild, selectedYear, academicYears]);
+  }, [selectedChild, selectedYear, selectedMonth, academicYears]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -265,12 +267,20 @@ export default function ParentAttendancePage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "PRESENT": return "bg-green-100 text-green-700";
-      case "ABSENT": return "bg-red-100 text-red-700";
-      case "LATE": return "bg-yellow-100 text-yellow-700";
-      default: return "bg-gray-100 text-gray-700";
+      case "PRESENT": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+      case "ABSENT": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+      case "LATE": return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
+      default: return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
     }
   };
+  const attendanceCalendarEvents: CalendarDisplayEvent[] = attendance.map((record) => ({
+    id: record.id,
+    title: `${record.status.charAt(0) + record.status.slice(1).toLowerCase()}${record.session.subjectName ? ` - ${record.session.subjectName}` : ""}`,
+    startDate: record.session.date,
+    endDate: record.session.date,
+    eventType: record.status === "ABSENT" ? "ADMINISTRATIVE" : "ACADEMIC",
+    resource: record,
+  }));
 
   if (authLoading || !isAuthenticated || user?.role !== "PARENT") {
     return <AttendanceSkeleton />;
@@ -281,12 +291,12 @@ export default function ParentAttendancePage() {
   }
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-6 dark:bg-[#0F172A] min-h-screen">
       <div>
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-color, #e35336)' }}>Child Attendance</h1>
-          <p className="text-gray-500 mt-1">View your children's attendance records</p>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">View your children's attendance records</p>
         </div>
 
         {/* Child, Year and Month Selector */}
@@ -300,10 +310,10 @@ export default function ParentAttendancePage() {
                 setSelectedChild(child || null);
               }}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full dark:bg-slate-800 dark:border-slate-700 dark:text-white">
                 <SelectValue placeholder="Select a child" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
                 {children.map((child) => (
                   <SelectItem key={child.id} value={child.id}>
                     {child.name} - {child.className} ({child.section})
@@ -328,10 +338,10 @@ export default function ParentAttendancePage() {
                 }
               }}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full dark:bg-slate-800 dark:border-slate-700 dark:text-white">
                 <SelectValue placeholder="Select year" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
                 {academicYears.map((year) => (
                   <SelectItem key={year.id} value={year.id}>
                     {year.name}
@@ -346,10 +356,10 @@ export default function ParentAttendancePage() {
               value={selectedMonth}
               onValueChange={setSelectedMonth}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full dark:bg-slate-800 dark:border-slate-700 dark:text-white">
                 <SelectValue placeholder="Select month" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
                 {monthOptions.map((month) => (
                   <SelectItem key={month.value} value={month.value}>
                     {month.label}
@@ -400,10 +410,10 @@ export default function ParentAttendancePage() {
 
             {/* Absence Alert */}
             {summary && summary.absent > 3 && (
-              <Card className="mb-6 border-red-200 bg-red-50">
+              <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                 <CardContent className="pt-4 flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                  <p className="text-red-700">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <p className="text-red-700 dark:text-red-300">
                     Your child has been absent {summary.absent} times this month. 
                     Please contact the school if you have concerns.
                   </p>
@@ -411,39 +421,62 @@ export default function ParentAttendancePage() {
               </Card>
             )}
 
+            <Card className="mb-6 dark:bg-slate-800 dark:border-slate-700">
+              <CardHeader>
+                <CardTitle>Attendance Calendar</CardTitle>
+                <CardDescription>
+                  {selectedChild.name} attendance for the selected period.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BigCalendar
+                  events={attendanceCalendarEvents}
+                  initialView={Views.MONTH}
+                  views={[Views.MONTH]}
+                  height={620}
+                />
+                {attendance.length === 0 && !loading && (
+                  <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                    No attendance records found for this period.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Attendance Records */}
             {loading ? (
-              <Card>
+              <Card className="dark:bg-slate-800 dark:border-slate-700">
                 <CardContent className="py-8 text-center">
                   <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin mx-auto" style={{ borderColor: 'var(--brand-color, #e35336)', borderTopColor: 'transparent' }}></div>
                 </CardContent>
               </Card>
             ) : attendance.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-gray-500">
-                  No attendance records found for this period.
-                </CardContent>
-              </Card>
+              null
             ) : (
-              <Card>
+              <>
+              <Card className="dark:bg-slate-800 dark:border-slate-700">
+                <CardHeader>
+                  <CardTitle>Attendance Details</CardTitle>
+                  <CardDescription>Daily records for the selected period.</CardDescription>
+                </CardHeader>
                 <CardContent className="p-0">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 dark:bg-slate-700">
                       <tr>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Class</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Subject</th>
-                        <th className="px-4 py-3 text-center text-sm font-medium">Status</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium">Remark</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium dark:text-gray-200">Date</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium dark:text-gray-200">Class</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium dark:text-gray-200">Subject</th>
+                        <th className="px-4 py-3 text-center text-sm font-medium dark:text-gray-200">Status</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium dark:text-gray-200">Remark</th>
                       </tr>
                     </thead>
                     <tbody>
                       {attendance.map((record) => (
-                        <tr key={record.id} className="border-t">
-                          <td className="px-4 py-3 text-sm">
+                        <tr key={record.id} className="border-t dark:border-slate-700">
+                          <td className="px-4 py-3 text-sm dark:text-gray-300">
                             {new Date(record.session.date).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-3 text-sm">
+                          <td className="px-4 py-3 text-sm dark:text-gray-300">
                             {record.session.className 
                               ? `${record.session.className}${record.session.sectionName ? ` - ${record.session.sectionName}` : ''}`
                               : record.session.timetableSlot 
@@ -451,7 +484,7 @@ export default function ParentAttendancePage() {
                                 : '-'
                             }
                           </td>
-                          <td className="px-4 py-3 text-sm">
+                          <td className="px-4 py-3 text-sm dark:text-gray-300">
                             {record.session.subjectName || record.session.timetableSlot?.subjectName || '-'}
                           </td>
                           <td className="px-4 py-3 text-center">
@@ -459,13 +492,14 @@ export default function ParentAttendancePage() {
                               {record.status.charAt(0) + record.status.slice(1).toLowerCase()}
                             </Badge>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">{record.remark || "-"}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{record.remark || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </CardContent>
               </Card>
+              </>
             )}
           </>
         )}

@@ -102,13 +102,19 @@ export class ParentService {
       throw new BadRequestException('User with this email already exists');
     }
 
+    const credentials = await this.credentialService.generateStaffCredentials(
+      schoolId,
+      Role.PARENT,
+    );
+
     const result = await this.prismaService.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           email,
+          username: credentials.username,
           name,
           phone,
-          password: 'parent',
+          password: credentials.hashedPassword,
           role: Role.PARENT,
           schoolId,
           mustChangePassword: true,
@@ -127,7 +133,13 @@ export class ParentService {
       return parent;
     });
 
-    return result;
+    return {
+      ...result,
+      credentials: {
+        username: credentials.username,
+        temporaryPassword: credentials.temporaryPassword,
+      },
+    };
   }
 
   async createParentAndLink(
@@ -175,13 +187,19 @@ export class ParentService {
       throw new BadRequestException('User with this email already exists');
     }
 
+    const credentials = await this.credentialService.generateStaffCredentials(
+      schoolId,
+      Role.PARENT,
+    );
+
     const result = await this.prismaService.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           email,
+          username: credentials.username,
           name,
           phone,
-          password: 'parent',
+          password: credentials.hashedPassword,
           role: Role.PARENT,
           schoolId,
           mustChangePassword: true,
@@ -211,7 +229,13 @@ export class ParentService {
       return parent;
     });
 
-    return result;
+    return {
+      ...result,
+      credentials: {
+        username: credentials.username,
+        temporaryPassword: credentials.temporaryPassword,
+      },
+    };
   }
 
   async linkParentToStudent(dto: LinkParentToStudentDto, schoolId: string) {
@@ -320,7 +344,7 @@ export class ParentService {
       where,
       include: {
         user: {
-          select: { id: true, name: true, email: true, phone: true, isActive: true },
+          select: { id: true, name: true, email: true, username: true, phone: true, avatarUrl: true, isActive: true },
         },
         children: {
           include: {
@@ -352,7 +376,7 @@ export class ParentService {
       },
       include: {
         user: {
-          select: { id: true, name: true, email: true, phone: true, lastLoginAt: true, isActive: true },
+          select: { id: true, name: true, email: true, username: true, phone: true, avatarUrl: true, lastLoginAt: true, isActive: true },
           // Note: the trailing `true` is a typo bug, but we keep it to maintain backward compatibility
         },
         children: {
@@ -376,9 +400,9 @@ export class ParentService {
     return parent;
   }
 
-  async getParentByUserId(userId: string) {
-    const parent = await this.prismaService.parentProfile.findUnique({
-      where: { userId },
+  async getParentByUserId(userId: string, schoolId: string) {
+    const parent = await this.prismaService.parentProfile.findFirst({
+      where: { userId, schoolId },
     });
 
     if (!parent) {
@@ -414,9 +438,9 @@ export class ParentService {
     });
   }
 
-  async getChildrenByParentUserId(parentUserId: string) {
-    let parentProfile = await this.prismaService.parentProfile.findUnique({
-      where: { userId: parentUserId },
+  async getChildrenByParentUserId(parentUserId: string, schoolId: string) {
+    let parentProfile = await this.prismaService.parentProfile.findFirst({
+      where: { userId: parentUserId, schoolId },
     });
 
     if (!parentProfile) {
@@ -426,7 +450,7 @@ export class ParentService {
 
       if (user) {
         parentProfile = await this.prismaService.parentProfile.findFirst({
-          where: { user: { email: user.email } },
+          where: { schoolId, user: { email: user.email } },
         });
       }
     }
@@ -441,7 +465,10 @@ export class ParentService {
     });
 
     const children = await this.prismaService.parentStudent.findMany({
-      where: { parentId: parentProfile.id },
+      where: {
+        parentId: parentProfile.id,
+        student: { schoolId },
+      },
       include: {
         student: {
           include: {
@@ -454,7 +481,7 @@ export class ParentService {
     const studentUserIds = children.map((c) => c.student.userId);
 
     const studentProfiles = await this.prismaService.studentProfile.findMany({
-      where: { userId: { in: studentUserIds } },
+      where: { schoolId, userId: { in: studentUserIds } },
     });
     const profileMap = new Map(studentProfiles.map((sp) => [sp.userId, sp]));
     const academicYear =
@@ -554,6 +581,7 @@ export class ParentService {
       ? await this.prismaService.studentFee.findMany({
           where: {
             studentId: { in: studentUserIds },
+            schoolId,
             academicYearId: academicYear.id,
           },
           include: {
@@ -567,7 +595,10 @@ export class ParentService {
     const studentClasses = await this.prismaService.studentClass.findMany({
       where: {
         studentId: { in: studentUserIds },
-        ...(academicYear?.id ? { academicYear: academicYear.id } : {}),
+        schoolId,
+        ...(academicYear
+          ? { academicYear: { in: [academicYear.id, academicYear.name] } }
+          : {}),
       },
       include: {
         class: {
@@ -686,6 +717,8 @@ export class ParentService {
         return [
           studentClass.studentId,
           {
+            classId: studentClass.classId,
+            sectionId: studentClass.sectionId,
             homeroomTeacher: homeroomTeacher
               ? {
                   id: homeroomTeacher.id,
@@ -705,7 +738,19 @@ export class ParentService {
       const studentFeeItems = studentFees.filter(
         (sf: any) => sf.studentId === studentId,
       );
-      let teacherData = studentTeacherMap.get(studentId) || {
+      let teacherData: {
+        classId?: string | null;
+        sectionId?: string | null;
+        homeroomTeacher: {
+          id: string;
+          name: string;
+          email: string | null;
+          phone: string | null;
+        } | null;
+        teachingTeachers: any[];
+      } = studentTeacherMap.get(studentId) || {
+        classId: null,
+        sectionId: null,
         homeroomTeacher: null,
         teachingTeachers: [],
       };
@@ -802,6 +847,8 @@ export class ParentService {
       const studentProfile = profileMap.get(child.student.userId);
       const gradeName = studentProfile?.className || null;
       const section = studentProfile?.section || 'A';
+      let classId = teacherData.classId || null;
+      let sectionId = teacherData.sectionId || null;
 
       if (!teacherData.homeroomTeacher && gradeName) {
         const possibleClassNames = [
@@ -859,6 +906,7 @@ export class ParentService {
                   name: section,
                 },
                 select: {
+                  id: true,
                   homeroomTeacher: {
                     select: {
                       id: true,
@@ -896,6 +944,9 @@ export class ParentService {
           fallbackSection?.homeroomTeacher ||
           fallbackClass?.homeroomTeacher ||
           null;
+
+        classId = classId || fallbackClass?.id || null;
+        sectionId = sectionId || fallbackSection?.id || null;
 
         if (fallbackTeacher) {
           teacherData = {
@@ -960,6 +1011,8 @@ export class ParentService {
       return {
         ...child,
         name: child.student.user?.name || 'Unknown',
+        classId,
+        sectionId,
         className: gradeName || 'N/A',
         section: section,
         studentCode: studentProfile?.studentCode || undefined,
@@ -1004,9 +1057,10 @@ export class ParentService {
 
   async getRelatedTeachersByParentUserId(
     parentUserId: string,
+    schoolId: string,
   ): Promise<RelatedTeacherOption[]> {
-    let parentProfile = await this.prismaService.parentProfile.findUnique({
-      where: { userId: parentUserId },
+    let parentProfile = await this.prismaService.parentProfile.findFirst({
+      where: { userId: parentUserId, schoolId },
     });
 
     if (!parentProfile) {
@@ -1016,7 +1070,7 @@ export class ParentService {
 
       if (user) {
         parentProfile = await this.prismaService.parentProfile.findFirst({
-          where: { user: { email: user.email } },
+          where: { schoolId, user: { email: user.email } },
         });
       }
     }
@@ -1026,7 +1080,10 @@ export class ParentService {
     }
 
     const children = await this.prismaService.parentStudent.findMany({
-      where: { parentId: parentProfile.id },
+      where: {
+        parentId: parentProfile.id,
+        student: { schoolId },
+      },
       include: {
         student: {
           include: {
@@ -1038,7 +1095,7 @@ export class ParentService {
 
     const studentUserIds = children.map((child) => child.student.userId);
     const studentProfiles = await this.prismaService.studentProfile.findMany({
-      where: { userId: { in: studentUserIds } },
+      where: { schoolId, userId: { in: studentUserIds } },
       select: {
         userId: true,
         className: true,
@@ -1080,8 +1137,12 @@ export class ParentService {
       where: {
         studentId: { in: studentUserIds },
         schoolId: parentProfile.schoolId,
-        ...(activeAcademicYear?.id
-          ? { academicYear: activeAcademicYear.id }
+        ...(activeAcademicYear
+          ? {
+              academicYear: {
+                in: [activeAcademicYear.id, activeAcademicYear.name],
+              },
+            }
           : {}),
       },
       include: {
@@ -1152,6 +1213,51 @@ export class ParentService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const timetableSlots =
+      studentClasses.length > 0
+        ? await this.prismaService.timetableSlot.findMany({
+            where: {
+              schoolId: parentProfile.schoolId,
+              teacherId: { not: null },
+              OR: studentClasses.map((studentClass) => ({
+                classId: studentClass.classId,
+                sectionId: studentClass.sectionId,
+              })),
+              ...(activeAcademicYear?.id
+                ? { academicYearId: activeAcademicYear.id }
+                : {}),
+            },
+            select: {
+              classId: true,
+              sectionId: true,
+              teacher: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+              subject: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          })
+        : [];
+    const timetableSlotsByClassSection = new Map<
+      string,
+      typeof timetableSlots
+    >();
+
+    for (const slot of timetableSlots) {
+      const key = `${slot.classId}:${slot.sectionId}`;
+      const existing = timetableSlotsByClassSection.get(key) || [];
+      existing.push(slot);
+      timetableSlotsByClassSection.set(key, existing);
+    }
+
     const options: RelatedTeacherOption[] = [];
     const studentClassMap = new Map<string, typeof studentClasses>();
     for (const studentClass of studentClasses) {
@@ -1200,6 +1306,15 @@ export class ParentService {
             subject?: { name: string } | null;
           }>;
         } | null;
+        timetableSlots?: Array<{
+          teacher?: {
+            id: string;
+            name: string;
+            email: string | null;
+            phone: string | null;
+          } | null;
+          subject?: { name: string } | null;
+        }>;
       },
     ) => {
       const homeroomTeacher =
@@ -1226,6 +1341,7 @@ export class ParentService {
       const teachingAssignments = [
         ...(source.sectionData?.classSubjects || []),
         ...(source.classData?.ClassSubject || []),
+        ...(source.timetableSlots || []),
       ];
 
       for (const assignment of teachingAssignments) {
@@ -1277,6 +1393,10 @@ export class ParentService {
             sectionName: sectionName || studentClass.section?.name || null,
             classData: studentClass.class,
             sectionData: studentClass.section,
+            timetableSlots:
+              timetableSlotsByClassSection.get(
+                `${studentClass.classId}:${studentClass.sectionId}`,
+              ) || [],
           });
         }
         continue;
@@ -1340,6 +1460,7 @@ export class ParentService {
                 name: sectionName,
               },
               select: {
+                id: true,
                 name: true,
                 homeroomTeacher: {
                   select: {
@@ -1370,6 +1491,34 @@ export class ParentService {
               },
             })
           : null;
+      const fallbackTimetableSlots = fallbackClass
+        ? await this.prismaService.timetableSlot.findMany({
+            where: {
+              schoolId: parentProfile.schoolId,
+              classId: fallbackClass.id,
+              teacherId: { not: null },
+              ...(fallbackSection?.id ? { sectionId: fallbackSection.id } : {}),
+              ...(activeAcademicYear?.id
+                ? { academicYearId: activeAcademicYear.id }
+                : {}),
+            },
+            select: {
+              teacher: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+              subject: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          })
+        : [];
 
       pushTeacherOptions({
         studentId,
@@ -1378,13 +1527,21 @@ export class ParentService {
         sectionName,
         classData: fallbackClass,
         sectionData: fallbackSection,
+        timetableSlots: fallbackTimetableSlots,
       });
     }
     return options;
   }
 
-  async getChildByIdForParent(parentUserId: string, childId: string) {
-    const children = await this.getChildrenByParentUserId(parentUserId);
+  async getChildByIdForParent(
+    parentUserId: string,
+    childId: string,
+    schoolId: string,
+  ) {
+    const children = await this.getChildrenByParentUserId(
+      parentUserId,
+      schoolId,
+    );
 
     const child = children.find(
       (item: any) =>

@@ -731,19 +731,34 @@ export class NotificationService {
     ).length;
   }
 
-  async markAsRead(notificationId: string, userId: string) {
+  async markAsRead(
+    notificationId: string,
+    userId: string,
+    schoolId?: string,
+    userRole?: string,
+  ) {
     const notification = await this.prisma.notification.findUnique({
       where: { id: notificationId },
     });
 
+    if (!notification) {
+      return null;
+    }
+
+    const canReadSchoolGlobal =
+      notification.userId === null &&
+      schoolId &&
+      notification.schoolId === schoolId &&
+      this.canViewSchoolGlobalNotifications(userRole || '');
+
     // Only allow marking as read if notification belongs to user or is global
-    if (
-      notification &&
-      (notification.userId === userId || notification.userId === null)
-    ) {
+    if (notification.userId === userId || canReadSchoolGlobal) {
       // For global notifications, we need to track read status differently
       // For now, we'll just update the notification if it belongs to the user
       if (notification.userId === userId) {
+        if (schoolId && notification.schoolId !== schoolId) {
+          return null;
+        }
         return this.prisma.notification.update({
           where: { id: notificationId },
           data: { isRead: true },
@@ -756,12 +771,13 @@ export class NotificationService {
     return null;
   }
 
-  async markAllAsRead(userId: string, types?: string[]) {
+  async markAllAsRead(userId: string, schoolId?: string, types?: string[]) {
     // Mark all user-specific notifications as read
     await this.prisma.notification.updateMany({
       where: {
         userId,
         isRead: false,
+        ...(schoolId ? { schoolId } : {}),
         ...(types?.length ? { type: { in: types } } : {}),
       },
       data: {

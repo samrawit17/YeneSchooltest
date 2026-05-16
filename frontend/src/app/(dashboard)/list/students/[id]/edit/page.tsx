@@ -399,29 +399,46 @@ export default function EditStudentPage() {
   }
 
   return (
-    <div className="flex-1 p-6" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
+    <div className="min-h-screen bg-[#F8FAFC] p-4 dark:bg-slate-950 md:p-6" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#e35336]">Edit Student</h1>
-        <p className="text-sm text-gray-500">Update student information</p>
+      <div className="mb-6 flex items-start gap-3">
+        <Button variant="outline" size="icon" onClick={() => router.push(`/list/students/${studentId}`)}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-[#e35336]">Edit {student?.user?.name || "Student"}</h1>
+          <p className="text-sm text-gray-500">Update student information</p>
+        </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-md grid-cols-2 sm:grid-cols-4">
-          <TabsTrigger value="personal" className="flex items-center gap-2">
+        <TabsList className="mb-6 flex h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b bg-transparent p-0 dark:border-slate-700">
+          <TabsTrigger
+            value="personal"
+            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+          >
             <User className="h-4 w-4" />
             Personal
           </TabsTrigger>
-          <TabsTrigger value="academic" className="flex items-center gap-2">
+          <TabsTrigger
+            value="academic"
+            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+          >
             <BookOpen className="h-4 w-4" />
             Academic
           </TabsTrigger>
-          <TabsTrigger value="parent" className="flex items-center gap-2">
+          <TabsTrigger
+            value="parent"
+            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+          >
             <Users className="h-4 w-4" />
             Parent
           </TabsTrigger>
-          <TabsTrigger value="documents" className="flex items-center gap-2">
+          <TabsTrigger
+            value="documents"
+            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+          >
             <FileText className="h-4 w-4" />
             Documents
           </TabsTrigger>

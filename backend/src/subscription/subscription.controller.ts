@@ -10,6 +10,8 @@ import {
   HttpException,
   HttpStatus,
   UseGuards,
+  Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -119,7 +121,7 @@ export class SubscriptionController {
   @Post('assign')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
-  async assignPlanToSchool(@Body() body: { schoolId: string; planId: string }) {
+  async assignPlanToSchool(@Body() body: { schoolId: string; planId: string | null }) {
     try {
       return await this.subscriptionService.assignPlanToSchool(
         body.schoolId,
@@ -135,8 +137,9 @@ export class SubscriptionController {
 
   @Get('school/:schoolId')
   @UseGuards(JwtAuthGuard)
-  async getSchoolPlan(@Param('schoolId') schoolId: string) {
+  async getSchoolPlan(@Request() req: any, @Param('schoolId') schoolId: string) {
     try {
+      this.assertSameSchoolOrSuperAdmin(req.user, schoolId);
       const plan = await this.subscriptionService.getSchoolPlan(schoolId);
       return plan || { tier: 'CORE', features: [] };
     } catch (error) {
@@ -149,8 +152,9 @@ export class SubscriptionController {
 
   @Get('school/:schoolId/subscription')
   @UseGuards(JwtAuthGuard)
-  async getSchoolSubscription(@Param('schoolId') schoolId: string) {
+  async getSchoolSubscription(@Request() req: any, @Param('schoolId') schoolId: string) {
     try {
+      this.assertSameSchoolOrSuperAdmin(req.user, schoolId);
       return await this.subscriptionService.getSchoolSubscription(schoolId);
     } catch (error) {
       throw new HttpException(
@@ -238,10 +242,12 @@ export class SubscriptionController {
   @Get('check-feature')
   @UseGuards(JwtAuthGuard)
   async checkFeature(
+    @Request() req: any,
     @Query('schoolId') schoolId: string,
     @Query('feature') feature: string,
   ) {
     try {
+      this.assertSameSchoolOrSuperAdmin(req.user, schoolId);
       const plan = await this.subscriptionService.getSchoolPlan(schoolId);
       const hasAccess = plan
         ? this.subscriptionService.isFeatureAccessible(plan, feature)
@@ -253,5 +259,11 @@ export class SubscriptionController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  private assertSameSchoolOrSuperAdmin(user: any, schoolId: string) {
+    if (user?.role === Role.SUPER_ADMIN) return;
+    if (user?.schoolId && user.schoolId === schoolId) return;
+    throw new ForbiddenException('You can only access your own school subscription');
   }
 }

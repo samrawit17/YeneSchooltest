@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
-import { academicYearsAPI } from '@/lib/api';
+import { academicYearsAPI, schoolSettingsAPI } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -18,6 +18,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface Term {
   id: string;
@@ -73,16 +79,15 @@ export default function AcademicYearsPage() {
   const [editingTerm, setEditingTerm] = useState<Term | null>(null);
   const [schoolCurriculumType, setSchoolCurriculumType] = useState<string>('QUARTER');
 
-  // Fetch school settings to get curriculum type
+  // Fetch school settings to get the curriculum type that controls period creation.
   useEffect(() => {
     const fetchSchoolSettings = async () => {
       if (!user?.schoolId) return;
       try {
-        const response = await academicYearsAPI.getAll({ schoolId: user.schoolId });
-        // Get curriculum type from first academic year or default to QUARTER
-        const years = response.data || [];
-        if (years.length > 0 && years[0].curriculumType) {
-          setSchoolCurriculumType(years[0].curriculumType);
+        const response = await schoolSettingsAPI.getAll(user.schoolId);
+        const curriculumType = response.data?.curriculum_type;
+        if (curriculumType) {
+          setSchoolCurriculumType(String(curriculumType).toUpperCase());
         }
       } catch (error) {
         console.error('Error fetching school settings:', error);
@@ -96,7 +101,7 @@ export default function AcademicYearsPage() {
     name: '',
     startDate: '',
     endDate: '',
-    curriculumType: 'SEMESTER',
+    curriculumType: '',
   });
 
   const [newTerm, setNewTerm] = useState({
@@ -169,14 +174,17 @@ export default function AcademicYearsPage() {
     try {
       setSaving(true);
       await academicYearsAPI.create({
-        ...newYear,
+        name: newYear.name,
+        startDate: newYear.startDate,
+        endDate: newYear.endDate,
         schoolId,
+        curriculumType: schoolCurriculumType || undefined,
         calendarType: user?.calendarType || 'ETHIOPIAN',
       });
       await fetchAcademicYears(schoolId);
       await refreshAcademicContext();
       setShowCreateModal(false);
-      setNewYear({ name: '', startDate: '', endDate: '', curriculumType: 'SEMESTER' } as any);
+      setNewYear({ name: '', startDate: '', endDate: '', curriculumType: '' } as any);
       toast.success('Academic year created successfully');
     } catch (error) {
       console.error('Error creating academic year:', error);
@@ -366,14 +374,27 @@ export default function AcademicYearsPage() {
         </button>
       </div>
 
+      {!selectedYear && academicYears.length === 0 && (
+        <div className="flex min-h-[55vh] items-center justify-center">
+          <p className="text-center text-lg font-medium text-gray-500 dark:text-gray-400">
+            No Academic year start by creating new one
+          </p>
+        </div>
+      )}
+
       {selectedYear && (
         <>
           {/* Periods/Terms */}
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6 border dark:border-slate-800">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-              <h2 className="text-lg font-semibold dark:text-white">
-                Periods ({schoolCurriculumType})
-              </h2>
+              <div>
+                <h2 className="text-lg font-semibold dark:text-white">
+                  Periods ({schoolCurriculumType})
+                </h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  You can edit each period's name and dates based on your school's needs.
+                </p>
+              </div>
               <div className="w-full md:w-auto md:min-w-[340px]">
                 <select
                   value={selectedYear?.id || ''}
@@ -497,12 +518,16 @@ export default function AcademicYearsPage() {
         </>
       )}
 
-      {/* Create Academic Year Modal */}
-      {showCreateModal && mounted && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-lg p-6 w-full max-w-md border dark:border-slate-800">
-            <h3 className="text-lg font-semibold mb-4 dark:text-white">Create Academic Year</h3>
+      {/* Create Academic Year Dialog */}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="max-w-md border dark:border-slate-800 dark:bg-slate-900">
+          <DialogHeader>
+            <DialogTitle>Create Academic Year</DialogTitle>
+          </DialogHeader>
             <form onSubmit={handleCreateAcademicYear} className="space-y-4">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                Periods will be created from the school curriculum system: <strong>{schoolCurriculumType}</strong>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
                 <input
@@ -547,10 +572,8 @@ export default function AcademicYearsPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>,
-        document.body
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Create/Edit Term Modal */}
       {showTermModal && mounted && createPortal(

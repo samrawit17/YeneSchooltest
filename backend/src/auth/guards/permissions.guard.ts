@@ -20,16 +20,12 @@ export class PermissionsGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredPermissions) {
-      return true;
-    }
-
     const request = context.switchToHttp().getRequest();
     const user = request.user;
     const path = request.url || request.path;
 
     if (!user) {
-      return false; // Authentication is completely required for permissions
+      return !requiredPermissions; // Permission-protected routes require authentication.
     }
 
     // Allow users to access their own profile strictly without further permission checks
@@ -72,6 +68,10 @@ export class PermissionsGuard implements CanActivate {
           this.logger.error(`SUPER_ADMIN ${user.id} has a schoolId assigned, which is invalid for platform-level role.`);
           return false;
       }
+    }
+
+    if (!requiredPermissions) {
+      return true;
     }
 
     // ==========================================

@@ -1,748 +1,131 @@
+import 'dotenv/config';
 import { PrismaClient, Role } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
+import { DEFAULT_ROLE_PERMISSIONS } from '../src/auth/constants/default-permissions.constant';
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL is not set');
+}
+
+const pool = new Pool({
+  connectionString,
+  max: Number.parseInt(process.env.DATABASE_SEED_POOL_MAX || '2', 10),
+  connectionTimeoutMillis: Number.parseInt(
+    process.env.DATABASE_POOL_CONNECTION_TIMEOUT_MS || '5000',
+    10,
+  ),
+  idleTimeoutMillis: Number.parseInt(
+    process.env.DATABASE_POOL_IDLE_TIMEOUT_MS || '30000',
+    10,
+  ),
+  allowExitOnIdle: true,
+});
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) } as any);
+
+const SUPERADMIN_EMAIL = 'lemari1121@gmail.com';
+const SUPERADMIN_PASSWORD = process.env.SEED_SUPERADMIN_PASSWORD || '12345678';
+
+function permissionMeta(name: string) {
+  const [module, ...actionParts] = name.split(':');
+  const action = actionParts.join(':') || name;
+  return {
+    name,
+    module,
+    action,
+    description: `${action.replace(/_/g, ' ')} ${module.replace(/_/g, ' ')}`,
+  };
+}
 
 async function main() {
-  console.log('Seeding schools...');
+  const permissionNames = Array.from(
+    new Set(Object.values(DEFAULT_ROLE_PERMISSIONS).flat()),
+  ).sort();
 
-  // Create schools for student enrollment
-  const schools = [
-    {
-      id: 'school-001',
-      name: 'Springfield High School',
-      email: 'admin@springfieldhigh.edu',
-      phone: '+1-555-0101',
-      address: '123 Main Street, Springfield, IL 62701',
-      timezone: 'America/Chicago',
-      isActive: true,
-    },
-   
-  ];
-
-  for (const school of schools) {
-    await prisma.school.upsert({
-      where: { id: school.id },
-      update: {},
-      create: school,
-    });
-    console.log(`Created school: ${school.name}`);
-  }
-
-  console.log('Seeding permissions and role assignments...');
-
-  // Define permissions based on FIXED PERMISSION PHILOSOPHY
-  // Format: <resource>:<action>
-  const permissions = [
-    // School permissions (SuperAdmin only)
-    { name: 'school:create', module: 'school', action: 'create', description: 'Create schools' },
-    { name: 'school:read', module: 'school', action: 'read', description: 'View schools' },
-    { name: 'school:update', module: 'school', action: 'update', description: 'Update schools' },
-    { name: 'school:deactivate', module: 'school', action: 'deactivate', description: 'Deactivate schools' },
-
-    // User permissions (Admin only, scoped)
-    { name: 'user:create', module: 'user', action: 'create', description: 'Create users' },
-    { name: 'user:read', module: 'user', action: 'read', description: 'View users' },
-    { name: 'user:update', module: 'user', action: 'update', description: 'Update users' },
-    { name: 'user:deactivate', module: 'user', action: 'deactivate', description: 'Deactivate users' },
-
-    // Student & Enrollment permissions
-    { name: 'student:create', module: 'student', action: 'create', description: 'Create students' },
-    { name: 'student:read', module: 'student', action: 'read', description: 'View students' },
-    { name: 'student:update', module: 'student', action: 'update', description: 'Update students' },
-    { name: 'student:approve_enrollment', module: 'student', action: 'approve_enrollment', description: 'Approve student enrollment' },
-
-    // Parent permissions
-    { name: 'parent:create', module: 'parent', action: 'create', description: 'Create parent accounts' },
-    { name: 'parent:read', module: 'parent', action: 'read', description: 'View parent profiles' },
-    { name: 'parent:update', module: 'parent', action: 'update', description: 'Update parent profiles' },
-    { name: 'parent:link_student', module: 'parent', action: 'link_student', description: 'Link parents to students' },
-    { name: 'parent:unlink_student', module: 'parent', action: 'unlink_student', description: 'Unlink parents from students' },
-
-    // Teacher permissions
-    { name: 'teacher:create', module: 'teacher', action: 'create', description: 'Create teachers' },
-    { name: 'teacher:read', module: 'teacher', action: 'read', description: 'View teachers' },
-    { name: 'teacher:update', module: 'teacher', action: 'update', description: 'Update teachers' },
-
-    // Class & Section permissions
-    { name: 'class:create', module: 'class', action: 'create', description: 'Create classes' },
-    { name: 'class:read', module: 'class', action: 'read', description: 'View classes' },
-    { name: 'class:update', module: 'class', action: 'update', description: 'Update classes' },
-    { name: 'section:create', module: 'section', action: 'create', description: 'Create sections' },
-    { name: 'section:read', module: 'section', action: 'read', description: 'View sections' },
-    { name: 'section:update', module: 'section', action: 'update', description: 'Update sections' },
-    { name: 'section:delete', module: 'section', action: 'delete', description: 'Delete sections' },
-
-    // Timetable permissions
-    { name: 'timetable:create', module: 'timetable', action: 'create', description: 'Create timetables' },
-    { name: 'timetable:read', module: 'timetable', action: 'read', description: 'View timetables' },
-    { name: 'timetable:update', module: 'timetable', action: 'update', description: 'Update timetables' },
-
-    // Attendance permissions
-    { name: 'attendance:take', module: 'attendance', action: 'take', description: 'Take attendance' },
-    { name: 'attendance:read', module: 'attendance', action: 'read', description: 'View attendance records' },
-    { name: 'attendance:update', module: 'attendance', action: 'update', description: 'Update attendance records' },
-
-    // Exams & Results permissions
-    { name: 'exam:create', module: 'exam', action: 'create', description: 'Create exams' },
-    { name: 'exam:read', module: 'exam', action: 'read', description: 'View exams' },
-    { name: 'result:publish', module: 'result', action: 'publish', description: 'Publish results' },
-    { name: 'result:read', module: 'result', action: 'read', description: 'View results' },
-
-    // Fees permissions (legacy/basic)
-    { name: 'fee:create', module: 'fee', action: 'create', description: 'Create fees' },
-    { name: 'fee:read', module: 'fee', action: 'read', description: 'View fees' },
-    { name: 'fee:collect', module: 'fee', action: 'collect', description: 'Collect fees' },
-
-    // Finance module permissions (new)
-    { name: 'finance:fee_structure:create', module: 'finance', action: 'fee_structure:create', description: 'Create fee structures' },
-    { name: 'finance:fee_structure:read', module: 'finance', action: 'fee_structure:read', description: 'Read fee structures' },
-    { name: 'finance:fee_structure:update', module: 'finance', action: 'fee_structure:update', description: 'Update fee structures' },
-    { name: 'finance:fee_structure:delete', module: 'finance', action: 'fee_structure:delete', description: 'Delete fee structures' },
-    { name: 'finance:student_fees:generate', module: 'finance', action: 'student_fees:generate', description: 'Generate student fees' },
-    { name: 'finance:student_fees:read', module: 'finance', action: 'student_fees:read', description: 'Read student fees' },
-    { name: 'finance:payments:record', module: 'finance', action: 'payments:record', description: 'Record payments' },
-    { name: 'finance:payments:reverse', module: 'finance', action: 'payments:reverse', description: 'Reverse recorded payments' },
-    { name: 'finance:reports:read', module: 'finance', action: 'reports:read', description: 'View finance reports' },
-
-    // Announcements permissions
-    { name: 'announcement:create', module: 'announcement', action: 'create', description: 'Create announcements' },
-    { name: 'announcement:read', module: 'announcement', action: 'read', description: 'View announcements' },
-    // Events permissions
-    { name: 'event:create', module: 'event', action: 'create', description: 'Create events' },
-    { name: 'event:read', module: 'event', action: 'read', description: 'View events' },
-
-    // Dashboard permissions (view only - content is role-filtered)
-    { name: 'dashboard:view', module: 'dashboard', action: 'view', description: 'View dashboard' },
-
-    // Staff management permissions
-    { name: 'employee:create', module: 'employee', action: 'create', description: 'Create employees' },
-    { name: 'employee:read', module: 'employee', action: 'read', description: 'View employees' },
-    { name: 'employee:update', module: 'employee', action: 'update', description: 'Update employees' },
-    { name: 'employee:delete', module: 'employee', action: 'delete', description: 'Delete employees' },
-    { name: 'attendance:create', module: 'attendance', action: 'create', description: 'Record attendance' },
-    { name: 'attendance:read', module: 'attendance', action: 'read', description: 'View attendance' },
-    // Academic Year permissions
-    { name: 'academic_year:create', module: 'academic_year', action: 'create', description: 'Create academic years' },
-    { name: 'academic_year:read', module: 'academic_year', action: 'read', description: 'View academic years' },
-    { name: 'academic_year:update', module: 'academic_year', action: 'update', description: 'Update academic years' },
-    { name: 'academic_year:delete', module: 'academic_year', action: 'delete', description: 'Delete academic years' },
-  ];
-
-  // Create permissions
-  for (const permission of permissions) {
+  console.log(`Seeding ${permissionNames.length} permissions...`);
+  for (const permissionName of permissionNames) {
     await prisma.permission.upsert({
-      where: { name: permission.name },
-      update: {},
-      create: permission,
+      where: { name: permissionName },
+      update: permissionMeta(permissionName),
+      create: permissionMeta(permissionName),
     });
   }
 
-  // Define role permissions based on FIXED PERMISSION PHILOSOPHY
-  const adminPermissionsList = [
-    // User management
-    'user:create', 'user:read', 'user:update', 'user:deactivate',
-    // Student management
-    'student:create', 'student:read', 'student:update', 'student:approve_enrollment',
-    // Parent management
-    'parent:create', 'parent:read', 'parent:update', 'parent:link_student', 'parent:unlink_student',
-    // Teacher management
-    'teacher:create', 'teacher:read', 'teacher:update',
-    // Class & Section
-    'class:create', 'class:read', 'class:update',
-    'section:create', 'section:read', 'section:update', 'section:delete',
-    // Timetable
-    'timetable:create', 'timetable:read', 'timetable:update',
-    // Announcements
-    'announcement:create', 'announcement:read',
-    // Events
-    'event:create', 'event:read',
-    // Attendance
-    'attendance:read', 'attendance:update',
-    // Staff management
-    'employee:create', 'employee:read', 'employee:update', 'employee:delete',
-    // Academic Year
-    'academic_year:create', 'academic_year:read', 'academic_year:update', 'academic_year:delete',
-    // Finance module
-    'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete',
-    'finance:student_fees:generate', 'finance:student_fees:read',
-    'finance:payments:record', 'finance:payments:reverse', 'finance:reports:read',
-    // Dashboard
-    'dashboard:view',
-  ];
-
-  const itManagerPermissionsList = [
-    'user:read',
-    'view_users',
-    'student:read',
-    'parent:read',
-    'teacher:read',
-    'employee:read',
-    'class:create', 'class:read', 'class:update',
-    'section:create', 'section:read', 'section:update', 'section:delete',
-    'timetable:create', 'timetable:read', 'timetable:update',
-    'announcement:create', 'announcement:read',
-    'event:create', 'event:read',
-    'attendance:read', 'attendance:update',
-    'academic_year:create', 'academic_year:read', 'academic_year:update', 'academic_year:delete',
-    'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete',
-    'finance:student_fees:generate', 'finance:student_fees:read',
-    'finance:payments:record', 'finance:payments:reverse', 'finance:reports:read',
-    'dashboard:view',
-  ];
-
-  const rolePermissions = [
-    // SUPER_ADMIN (VERY LIMITED) - Only school and user management
-    { role: Role.SUPER_ADMIN, permissionName: 'school:create' },
-    { role: Role.SUPER_ADMIN, permissionName: 'school:read' },
-    { role: Role.SUPER_ADMIN, permissionName: 'school:update' },
-    { role: Role.SUPER_ADMIN, permissionName: 'school:deactivate' },
-    { role: Role.SUPER_ADMIN, permissionName: 'user:read' },
-    { role: Role.SUPER_ADMIN, permissionName: 'dashboard:view' },
-
-    // ADMIN (FULL SCHOOL CONTROL)
-    ...adminPermissionsList.map((p) => ({ role: Role.ADMIN, permissionName: p })),
-
-    // IT_MANAGER (academic operations without people-management writes)
-    ...itManagerPermissionsList.map((p) => ({ role: Role.IT_MANAGER, permissionName: p })),
-
-    // REGISTRAR
-    { role: Role.REGISTRAR, permissionName: 'student:create' },
-    { role: Role.REGISTRAR, permissionName: 'student:read' },
-    { role: Role.REGISTRAR, permissionName: 'student:update' },
-    { role: Role.REGISTRAR, permissionName: 'student:approve_enrollment' },
-    { role: Role.REGISTRAR, permissionName: 'class:read' },
-    { role: Role.REGISTRAR, permissionName: 'section:read' },
-    { role: Role.REGISTRAR, permissionName: 'timetable:read' },
-    { role: Role.REGISTRAR, permissionName: 'dashboard:view' },
-    { role: Role.REGISTRAR, permissionName: 'announcement:read' },
-    { role: Role.REGISTRAR, permissionName: 'announcement:create' },
-    // Events
-    { role: Role.REGISTRAR, permissionName: 'event:read' },
-
-    // TEACHER
-    { role: Role.TEACHER, permissionName: 'attendance:take' },
-    { role: Role.TEACHER, permissionName: 'attendance:read' },
-    { role: Role.TEACHER, permissionName: 'teacher:read' },
-    { role: Role.TEACHER, permissionName: 'exam:read' },
-    { role: Role.TEACHER, permissionName: 'result:publish' },
-    { role: Role.TEACHER, permissionName: 'timetable:read' },
-    { role: Role.TEACHER, permissionName: 'announcement:read' },
-    { role: Role.TEACHER, permissionName: 'dashboard:view' },
-    // Events
-    { role: Role.TEACHER, permissionName: 'event:read' },
-
-    // STUDENT
-    { role: Role.STUDENT, permissionName: 'attendance:read' },
-    { role: Role.STUDENT, permissionName: 'result:read' },
-    { role: Role.STUDENT, permissionName: 'fee:read' },
-    { role: Role.STUDENT, permissionName: 'timetable:read' },
-    { role: Role.STUDENT, permissionName: 'announcement:read' },
-    { role: Role.STUDENT, permissionName: 'dashboard:view' },
-    // Events
-    { role: Role.STUDENT, permissionName: 'event:read' },
-
-    // PARENT
-    { role: Role.PARENT, permissionName: 'attendance:read' },
-    { role: Role.PARENT, permissionName: 'result:read' },
-    { role: Role.PARENT, permissionName: 'fee:read' },
-    { role: Role.PARENT, permissionName: 'announcement:read' },
-    { role: Role.PARENT, permissionName: 'dashboard:view' },
-    // Events
-    { role: Role.PARENT, permissionName: 'event:read' },
-
-    // FINANCE (legacy)
-    { role: Role.FINANCE, permissionName: 'fee:create' },
-    { role: Role.FINANCE, permissionName: 'fee:read' },
-    { role: Role.FINANCE, permissionName: 'fee:collect' },
-    { role: Role.FINANCE, permissionName: 'dashboard:view' },
-
-    // FINANCE (finance module)
-    { role: Role.FINANCE, permissionName: 'finance:fee_structure:create' },
-    { role: Role.FINANCE, permissionName: 'finance:fee_structure:read' },
-    { role: Role.FINANCE, permissionName: 'finance:fee_structure:update' },
-    { role: Role.FINANCE, permissionName: 'finance:fee_structure:delete' },
-    { role: Role.FINANCE, permissionName: 'finance:student_fees:generate' },
-    { role: Role.FINANCE, permissionName: 'finance:student_fees:read' },
-    { role: Role.FINANCE, permissionName: 'finance:payments:record' },
-    { role: Role.FINANCE, permissionName: 'finance:payments:reverse' },
-    { role: Role.FINANCE, permissionName: 'finance:reports:read' },
-  ];
-
-  // Create role permissions
-  for (const rp of rolePermissions) {
-    const permission = await prisma.permission.findUnique({
-      where: { name: rp.permissionName },
-    });
-    if (permission) {
-      // First try to delete any existing record, then create new
-      await prisma.rolePermission.deleteMany({
-        where: { role: rp.role, permissionId: permission.id },
+  console.log('Seeding role permissions...');
+  for (const [role, permissions] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
+    for (const permissionName of permissions) {
+      const permission = await prisma.permission.findUnique({
+        where: { name: permissionName },
+        select: { id: true },
       });
-      await prisma.rolePermission.create({
-        data: { role: rp.role, permissionId: permission.id },
+
+      if (!permission) {
+        throw new Error(`Permission ${permissionName} was not seeded`);
+      }
+
+      await prisma.rolePermission.upsert({
+        where: {
+          role_permissionId: {
+            role: role as Role,
+            permissionId: permission.id,
+          },
+        },
+        update: {},
+        create: {
+          role: role as Role,
+          permissionId: permission.id,
+        },
       });
     }
   }
 
-  // Create a default SUPER_ADMIN user for testing
-  const hashedPassword = await bcrypt.hash('admin123', 10);
-  await prisma.user.upsert({
-    where: { email: 'superadmin@example.com' },
+  const password = await bcrypt.hash(SUPERADMIN_PASSWORD, 12);
+
+  const user = await prisma.user.upsert({
+    where: { email: SUPERADMIN_EMAIL },
     update: {
-      username: 'superadmin',
-    },
-    create: {
-      email: 'superadmin@example.com',
-      username: 'superadmin',
-      password: hashedPassword,
-      name: 'Super Admin',
+      name: 'Lemari Superadmin',
       role: Role.SUPER_ADMIN,
+      isActive: true,
+      schoolId: null,
+      password,
+      mustChangePassword: false,
+      username: SUPERADMIN_EMAIL,
     },
-  });
-
-  // Create test users linked to school-001
-  
-  // 1. Admin user
-  await prisma.user.upsert({
-    where: { email: 'admin@springfieldhigh.edu' },
-    update: {},
     create: {
-      email: 'admin@springfieldhigh.edu',
-      username: 'admin001',
-      password: hashedPassword,
-      name: 'School Admin',
-      role: Role.ADMIN,
-      schoolId: 'school-001',
+      email: SUPERADMIN_EMAIL,
+      username: SUPERADMIN_EMAIL,
+      name: 'Lemari Superadmin',
+      role: Role.SUPER_ADMIN,
+      isActive: true,
+      schoolId: null,
+      password,
+      mustChangePassword: false,
+    },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      role: true,
+      isActive: true,
+      schoolId: true,
     },
   });
 
-  // 2. Teacher user
-  await prisma.user.upsert({
-    where: { email: 'teacher@springfieldhigh.edu' },
-    update: {},
-    create: {
-      email: 'teacher@springfieldhigh.edu',
-      username: 'teacher001',
-      password: hashedPassword,
-      name: 'John Teacher',
-      role: Role.TEACHER,
-      schoolId: 'school-001',
-    },
-  });
-
-  // 3. Student user
-  const studentUser = await prisma.user.upsert({
-    where: { email: 'student@springfieldhigh.edu' },
-    update: {},
-    create: {
-      email: 'student@springfieldhigh.edu',
-      username: 'student001',
-      password: hashedPassword,
-      name: 'Jane Student',
-      role: Role.STUDENT,
-      schoolId: 'school-001',
-    },
-  });
-
-  // Create student profile
-  const studentProfile = await prisma.studentProfile.upsert({
-    where: { id: 'student-profile-001' },
-    update: {},
-    create: {
-      id: 'student-profile-001',
-      userId: studentUser.id,
-      schoolId: 'school-001',
-      studentCode: 'STU-2024-001',
-      studentId: 'STU-2024-001',
-      enrollmentStatus: 'APPROVED',
-      academicYear: '2024-2025',
-      className: 'Grade 10',
-      section: 'A',
-      rollNumber: '01',
-      gender: 'Female',
-    },
-  });
-
-  // 4. Parent user
-  const parentUser = await prisma.user.upsert({
-    where: { email: 'parent@springfieldhigh.edu' },
-    update: {},
-    create: {
-      email: 'parent@springfieldhigh.edu',
-      username: 'parent001',
-      password: hashedPassword,
-      name: 'John Parent',
-      role: Role.PARENT,
-      schoolId: 'school-001',
-    },
-  });
-
-  // Create parent profile
-  const parentProfile = await prisma.parentProfile.upsert({
-    where: { userId: parentUser.id },
-    update: {},
-    create: {
-      userId: parentUser.id,
-      schoolId: 'school-001',
-      phone: '+1-555-0199',
-      address: '123 Parent Street, Springfield, IL',
-    },
-  });
-
-  // Link parent to student
-  await prisma.parentStudent.upsert({
-    where: {
-      parentId_studentId: {
-        parentId: parentProfile.id,
-        studentId: studentProfile.id,
-      },
-    },
-    update: {},
-    create: {
-      parentId: parentProfile.id,
-      studentId: studentProfile.id,
-      schoolId: 'school-001',
-      relation: 'FATHER',
-      isVerified: true,
-      isPrimary: true,
-      emergencyContact: true,
-    },
-  });
-
-  // 5. Registrar user
-  await prisma.user.upsert({
-    where: { email: 'registrar@springfieldhigh.edu' },
-    update: {},
-    create: {
-      email: 'registrar@springfieldhigh.edu',
-      username: 'registrar001',
-      password: hashedPassword,
-      name: 'Sarah Registrar',
-      role: Role.REGISTRAR,
-      schoolId: 'school-001',
-      phone: '+1-555-0198',
-    },
-  });
-
-  console.log('Created test users:');
-  console.log('  - superadmin@example.com / admin123 (Super Admin)');
-  console.log('  - admin@springfieldhigh.edu / admin123 (School Admin)');
-  console.log('  - registrar@springfieldhigh.edu / admin123 (Registrar)');
-  console.log('  - teacher@springfieldhigh.edu / admin123 (Teacher)');
-  console.log('  - student@springfieldhigh.edu / admin123 (Student)');
-  console.log('  - parent@springfieldhigh.edu / admin123 (Parent - linked to Jane Student)');
-  console.log('  - finance@springfieldhigh.edu / admin123 (Finance Manager)');
-
-  // ==================== ADDITIONAL SEED DATA ====================
-  console.log('Seeding additional data...');
-
-  // Query for existing academic year (admin creates these)
-  const academicYear = await prisma.academicYear.findFirst({
-    where: { schoolId: 'school-001', isActive: true },
-  });
-
-  if (!academicYear) {
-    console.log('No active academic year found for school-001. Skipping class, timetable, and finance seeding.');
-  } else {
-    console.log(`Using existing academic year: ${academicYear.name}`);
-  }
-
-  const classIds: Record<string, string> = {};
-  const sectionIds: Record<string, string> = {};
-
-  if (academicYear) {
-    // Only create classes if academic year exists
-    const classes = [
-      { id: 'class-9-a', name: 'Grade 9', grade: 9, section: 'A' },
-      { id: 'class-9-b', name: 'Grade 9', grade: 9, section: 'B' },
-      { id: 'class-10-a', name: 'Grade 10', grade: 10, section: 'A' },
-      { id: 'class-10-b', name: 'Grade 10', grade: 10, section: 'B' },
-      { id: 'class-11-a', name: 'Grade 11', grade: 11, section: 'A' },
-    ];
-    for (const cls of classes) {
-      const seededClass = await prisma.class.upsert({
-        where: {
-          schoolId_academicYearId_name_section: {
-            schoolId: 'school-001',
-            academicYearId: academicYear.id,
-            name: cls.name,
-            section: cls.section,
-          },
-        },
-        update: {
-          grade: cls.grade,
-        },
-        create: {
-          id: cls.id,
-          name: cls.name,
-          grade: cls.grade,
-          section: cls.section,
-          academicYearId: academicYear.id,
-          schoolId: 'school-001',
-        },
-      });
-      classIds[cls.id] = seededClass.id;
-    }
-    console.log('Created classes: Grade 9 (A,B), Grade 10 (A,B), Grade 11 (A)');
-
-    // 3. Create Sections (linked to classes)
-    const sections = [
-      { id: 'section-a', name: 'A', classId: 'class-9-a' },
-      { id: 'section-b', name: 'B', classId: 'class-9-b' },
-      { id: 'section-a-10', name: 'A', classId: 'class-10-a' },
-      { id: 'section-b-10', name: 'B', classId: 'class-10-b' },
-      { id: 'section-a-11', name: 'A', classId: 'class-11-a' },
-    ];
-    for (const section of sections) {
-      const resolvedClassId = classIds[section.classId] ?? section.classId;
-      const seededSection = await prisma.section.upsert({
-        where: {
-          classId_name: {
-            classId: resolvedClassId,
-            name: section.name,
-          },
-        },
-        update: {
-          capacity: 30,
-        },
-        create: {
-          id: section.id,
-          name: section.name,
-          classId: resolvedClassId,
-          capacity: 30,
-        },
-      });
-      sectionIds[section.id] = seededSection.id;
-    }
-    console.log('Created sections: A, B for each class');
-  }
-
-  // 4. Create 5 Subjects - use unique IDs to avoid conflicts
-  const subjects = [
-    { id: 'subj-math-new', name: 'Mathematics', code: 'MATH' },
-    { id: 'subj-english-new', name: 'English', code: 'ENG' },
-    { id: 'subj-physics-new', name: 'Physics', code: 'PHY' },
-    { id: 'subj-chemistry-new', name: 'Chemistry', code: 'CHEM' },
-    { id: 'subj-biology-new', name: 'Biology', code: 'BIO' },
-  ];
-
-  for (const subject of subjects) {
-    try {
-      await prisma.subject.create({
-        data: {
-          id: subject.id,
-          name: subject.name,
-          code: subject.code,
-          schoolId: 'school-001',
-          isActive: true,
-        },
-      });
-    } catch (e) {
-      // Subject may already exist, skip
-    }
-  }
-  console.log('Created subjects: Mathematics, English, Physics, Chemistry, Biology');
-
-  // 5. Create teacher profile for existing teacher (only 1 teacher)
-  const existingTeacher = await prisma.user.findUnique({ where: { email: 'teacher@springfieldhigh.edu' } });
-  if (existingTeacher) {
-    await prisma.teacherProfile.upsert({
-      where: { userId: existingTeacher.id },
-      update: {},
-      create: {
-        userId: existingTeacher.id,
-        schoolId: 'school-001',
-        employeeId: 'TEA-001',
-        designation: 'Teacher',
-        hireDate: new Date(),
-      },
-    });
-  }
-  console.log('Created teacher profile for existing teacher');
-
-  // 6. Create Finance role user
-  const financeUser = await prisma.user.upsert({
-    where: { email: 'finance@springfieldhigh.edu' },
-    update: {},
-    create: {
-      email: 'finance@springfieldhigh.edu',
-      username: 'finance001',
-      password: hashedPassword,
-      name: 'Finance Manager',
-      role: Role.FINANCE,
-      schoolId: 'school-001',
-      phone: '+1-555-0197',
-    },
-  });
-  console.log('Created finance user');
-
-  // 7. Update existing student profile (only 1 student kept)
-  const existingStudent = await prisma.user.findUnique({ where: { email: 'student@springfieldhigh.edu' } });
-
-  if (existingStudent) {
-    await prisma.studentProfile.upsert({
-      where: { id: 'student-profile-001' },
-      update: {},
-      create: {
-        id: 'student-profile-001',
-        userId: existingStudent.id,
-        schoolId: 'school-001',
-        studentId: 'STU-001',
-        studentCode: 'STU-001',
-        gender: 'FEMALE',
-        enrollmentStatus: 'APPROVED',
-        academicYear: '2025-2026',
-        className: 'Grade 10',
-        section: 'A',
-        rollNumber: '1',
-      },
-    });
-  }
-  console.log('Updated existing student profile');
-
-  // Only create timetable and finance data if academic year exists
-  if (academicYear) {
-    // 8. Create Timetable Slots for the single Teacher
-    const timetableSlots = [
-      // Teacher (Biology - Grade 11)
-      { teacherEmail: 'teacher@springfieldhigh.edu', classId: 'class-11-a', sectionId: 'section-a-11', subjectId: 'subj-biology-new', dayOfWeek: 1, startTime: '13:00', endTime: '14:00' },
-      { teacherEmail: 'teacher@springfieldhigh.edu', classId: 'class-11-a', sectionId: 'section-a-11', subjectId: 'subj-biology-new', dayOfWeek: 2, startTime: '13:00', endTime: '14:00' },
-    ];
-
-    for (const slot of timetableSlots) {
-      try {
-        const teacher = await prisma.user.findUnique({ where: { email: slot.teacherEmail } });
-        if (teacher) {
-          await prisma.timetableSlot.upsert({
-            where: { id: `slot-${slot.teacherEmail}-${slot.dayOfWeek}-${slot.startTime}` },
-            update: {},
-            create: {
-              id: `slot-${slot.teacherEmail}-${slot.dayOfWeek}-${slot.startTime}`,
-              classId: classIds[slot.classId] ?? slot.classId,
-              sectionId: sectionIds[slot.sectionId] ?? slot.sectionId,
-              subjectId: slot.subjectId,
-              teacherId: teacher.id,
-              dayOfWeek: slot.dayOfWeek,
-              startTime: slot.startTime,
-              endTime: slot.endTime,
-              academicYearId: academicYear.id,
-              schoolId: 'school-001',
-            },
-          });
-        }
-      } catch (e) {
-        // Skip if there's an error
-      }
-    }
-    console.log('Created timetable slots for teachers');
-
-    // 9. Seed minimal finance data: active fee structures and student fees
-    console.log('Seeding finance data...');
-    // Create fee structures for Grade 10, AY 2025-2026
-    const tuition = await prisma.feeStructure.upsert({
-      where: { id: 'fs-2025-g10-tuition' },
-      update: {},
-      create: {
-        id: 'fs-2025-g10-tuition',
-        schoolId: 'school-001',
-        academicYearId: academicYear.id,
-        grade: 10,
-        feeType: 'TUITION',
-        amount: 6000,
-        semester: 1,
-        description: 'Semester 1 Tuition - Grade 10',
-        isActive: true,
-      },
-    });
-    const library = await prisma.feeStructure.upsert({
-      where: { id: 'fs-2025-g10-library' },
-      update: {},
-      create: {
-        id: 'fs-2025-g10-library',
-        schoolId: 'school-001',
-        academicYearId: academicYear.id,
-        grade: 10,
-        feeType: 'LIBRARY',
-        amount: 500,
-        semester: 1,
-        description: 'Library Fee - Semester 1',
-        isActive: true,
-      },
-    });
-    const exam = await prisma.feeStructure.upsert({
-      where: { id: 'fs-2025-g10-exam' },
-      update: {},
-      create: {
-        id: 'fs-2025-g10-exam',
-        schoolId: 'school-001',
-        academicYearId: academicYear.id,
-        grade: 10,
-        feeType: 'EXAM',
-        amount: 300,
-        semester: 1,
-        description: 'Exam Fee - Semester 1',
-        isActive: true,
-      },
-    });
-
-    // Generate StudentFee records for the single student
-    // Enroll the single student in a class
-    const studentForFees = await prisma.user.findUnique({ where: { email: 'student@springfieldhigh.edu' } });
-    
-    if (studentForFees) {
-      // Check if already enrolled
-      const existingEnrollment = await prisma.studentClass.findFirst({
-        where: { studentId: studentForFees.id, academicYear: academicYear.name },
-      });
-      
-      if (!existingEnrollment) {
-        await prisma.studentClass.create({
-          data: {
-            studentId: studentForFees.id,
-            classId: classIds['class-10-a'] ?? 'class-10-a',
-            sectionId: sectionIds['section-a-10'] ?? 'section-a-10',
-            academicYear: academicYear.name,
-            schoolId: 'school-001',
-          },
-        });
-      }
-      console.log('Enrolled student in class');
-      
-      // Create student fees for the single student
-      for (const fs of [tuition, library, exam]) {
-        const exists = await prisma.studentFee.findFirst({
-          where: { studentId: studentForFees.id, feeStructureId: fs.id, academicYearId: academicYear.id },
-        });
-        if (!exists) {
-          await prisma.studentFee.create({
-            data: {
-              schoolId: 'school-001',
-              studentId: studentForFees.id,
-              feeStructureId: fs.id,
-              academicYearId: academicYear.id,
-              totalAmount: fs.amount,
-              discount: 0,
-              finalAmount: fs.amount,
-              status: 'PENDING',
-            },
-          });
-        }
-      }
-      console.log('Seeded finance: fee structures and student fees for single student');
-    }
-  }
-
-  console.log('Additional seeding completed!');
-
-  console.log('Seeding completed.');
+  console.log('Seeded superadmin:', user);
+  console.log(`Seeded permissions: ${permissionNames.length}`);
+  console.log(`Temporary password: ${SUPERADMIN_PASSWORD}`);
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
+  .catch((error) => {
+    console.error('Seed failed:', error);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

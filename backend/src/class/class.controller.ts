@@ -39,7 +39,7 @@ export class ClassController {
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('class:create')
   async create(@Request() req: AuthenticatedRequest, @Body() body: any) {
-    const schoolId = req.user.schoolId || body.schoolId;
+    const schoolId = req.user.schoolId;
 
     if (!schoolId) {
       return { success: false, message: 'School ID is required' };
@@ -71,8 +71,10 @@ export class ClassController {
 
   @Get(':id')
   @Permissions('class:read')
-  async findOne(@Param('id') id: string) {
-    return this.classService.findOne(id);
+  async findOne(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.classService.findOne(id, schoolId);
   }
 
   @Get('grades/list')
@@ -112,8 +114,14 @@ export class ClassController {
   @Put(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('class:update')
-  async update(@Param('id') id: string, @Body() body: any) {
-    return this.classService.update(id, {
+  async update(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.classService.update(id, schoolId, {
       academicYearId: body.academicYearId,
       grade: body.grade,
       name: body.name,
@@ -124,8 +132,14 @@ export class ClassController {
   @Put(':id/homeroom-teacher')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('class:update')
-  async setHomeroomTeacher(@Param('id') id: string, @Body() body: any) {
-    return this.classService.update(id, {
+  async setHomeroomTeacher(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: any,
+  ) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.classService.update(id, schoolId, {
       homeroomTeacherId: body.homeroomTeacherId,
     });
   }
@@ -134,18 +148,22 @@ export class ClassController {
   @Permissions('class:read')
   async getStudentsByClass(
     @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
     @Query('sectionId') sectionId?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('orderBy') orderBy?: string,
   ) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
     const pagination = {
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 50,
       orderBy: orderBy || 'name',
     };
     return this.classService.getStudentsByClass(
+      schoolId,
       id,
       sectionId,
       search,
@@ -158,9 +176,12 @@ export class ClassController {
   @Get(':id/stats')
   @Permissions('class:read')
   async getClassStats(
+    @Request() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Query('sectionId') sectionId?: string,
   ) {
-    return this.classService.getClassStats(id, sectionId);
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.classService.getClassStats(schoolId, id, sectionId);
   }
 }

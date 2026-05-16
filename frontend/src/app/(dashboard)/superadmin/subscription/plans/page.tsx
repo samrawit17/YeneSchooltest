@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { usePlans } from '@/hooks/useSubscription';
 import { subscriptionAPI } from '@/lib/api/subscription';
-import { superadminAPI } from '@/lib/api/superadmin';
 import { toast } from 'sonner';
 import {
   Crown,
@@ -65,6 +64,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Plan, PlanTier, FEATURE_LIST, TIER_CONFIG } from '@/types/subscription';
 
+const getFeaturesByTier = (tier: PlanTier): typeof FEATURE_LIST => {
+  const tierOrder: PlanTier[] = ['CORE', 'STANDARD', 'ULTIMATE'];
+  const tierIndex = tierOrder.indexOf(tier);
+  return FEATURE_LIST.filter((f) => tierOrder.indexOf(f.tier as PlanTier) <= tierIndex);
+};
+
+const getFeatureKeysByTier = (tier: PlanTier) =>
+  getFeaturesByTier(tier).map((feature) => feature.key);
+
 const SubscriptionPlansPage = () => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -80,7 +88,7 @@ const SubscriptionPlansPage = () => {
     name: '',
     tier: 'CORE' as PlanTier,
     description: '',
-    features: [] as string[],
+    features: getFeatureKeysByTier('CORE'),
   });
 
   useEffect(() => {
@@ -103,7 +111,7 @@ const SubscriptionPlansPage = () => {
   const fetchSchools = async () => {
     try {
       setLoadingSchools(true);
-      const response = await superadminAPI.getSchools();
+      const response = await subscriptionAPI.getSchools();
       setSchools(response.data);
     } catch (error) {
       console.error('Failed to fetch schools:', error);
@@ -153,10 +161,18 @@ const SubscriptionPlansPage = () => {
         name: '',
         tier: 'CORE',
         description: '',
-        features: [],
+        features: getFeatureKeysByTier('CORE'),
       });
     }
     setIsDialogOpen(true);
+  };
+
+  const handleTierChange = (tier: PlanTier) => {
+    setFormData((prev) => ({
+      ...prev,
+      tier,
+      features: getFeatureKeysByTier(tier),
+    }));
   };
 
   const handleSubmit = async () => {
@@ -200,12 +216,6 @@ const SubscriptionPlansPage = () => {
         ? prev.features.filter((f) => f !== featureKey)
         : [...prev.features, featureKey],
     }));
-  };
-
-  const getFeaturesByTier = (tier: PlanTier): typeof FEATURE_LIST => {
-    const tierOrder: PlanTier[] = ['CORE', 'STANDARD', 'ULTIMATE'];
-    const tierIndex = tierOrder.indexOf(tier);
-    return FEATURE_LIST.filter((f) => tierOrder.indexOf(f.tier as PlanTier) <= tierIndex);
   };
 
   if (loading || authLoading) {
@@ -283,9 +293,7 @@ const SubscriptionPlansPage = () => {
                         <Label htmlFor="tier" className="dark:text-gray-300">Tier</Label>
                         <Select
                           value={formData.tier}
-                          onValueChange={(value) =>
-                            setFormData({ ...formData, tier: value as PlanTier })
-                          }
+                          onValueChange={(value) => handleTierChange(value as PlanTier)}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select tier" />

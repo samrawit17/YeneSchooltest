@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import { notificationsAPI, userAPI, timetableSlotsAPI } from "@/lib/api";
+import type { NotificationPreferences } from "@/lib/api/notifications";
 import { queryKeys } from "@/lib/query-keys";
 import { useProfileData } from "@/hooks/useProfileData";
 import { useAuth } from "@/context/AuthContext";
@@ -103,11 +104,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { AppLanguage, useLanguageStore } from "@/lib/languageStore";
-import enMessages from "../../../../../messages/en.json";
-import amMessages from "../../../../../messages/am.json";
-import arMessages from "../../../../../messages/ar.json";
-import omMessages from "../../../../../messages/om.json";
-import soMessages from "../../../../../messages/so.json";
+import enMessages from "@/messages/en.json";
+import amMessages from "@/messages/am.json";
+import arMessages from "@/messages/ar.json";
+import omMessages from "@/messages/om.json";
+import soMessages from "@/messages/so.json";
 
 // Form validation schema
 const profileSchema = z.object({
@@ -220,7 +221,8 @@ const ProfilePage = () => {
   const queryClient = useQueryClient();
   const { profileData, isLoadingProfile, assignedSubjects, t, formatDate, formatDateTime } = useProfileData();
   const isLoading = isLoadingProfile;
-  const { data: notificationPreferences } = useQuery({
+  const lastUpdatedAt = user?.updatedAt || user?.createdAt;
+  const { data: notificationPreferences, isLoading: isLoadingNotificationPreferences } = useQuery({
     queryKey: ["notification-preferences", user?.id],
     queryFn: async () => {
       const response = await notificationsAPI.getPreferences();
@@ -303,24 +305,15 @@ const ProfilePage = () => {
   useEffect(() => {
     if (notificationPreferences) {
       setNotificationSettings({
-        emailEnabled: notificationPreferences.emailEnabled,
-        smsEnabled: notificationPreferences.smsEnabled,
-        pushEnabled: notificationPreferences.pushEnabled,
-        commBookEnabled: notificationPreferences.commBookEnabled,
-        timetableEnabled: notificationPreferences.timetableEnabled,
-        attendanceEnabled: notificationPreferences.attendanceEnabled,
-        announcementsEnabled: notificationPreferences.announcementsEnabled,
-        assignmentsEnabled: notificationPreferences.assignmentsEnabled,
-        examsEnabled: notificationPreferences.examsEnabled,
-        feesEnabled: notificationPreferences.feesEnabled,
-        eventsEnabled: notificationPreferences.eventsEnabled,
+        ...DEFAULT_NOTIFICATION_SETTINGS,
+        ...notificationPreferences,
       });
     }
   }, [notificationPreferences]);
 
   const updateNotificationPreferencesMutation = useMutation({
-    mutationFn: async () => {
-      await notificationsAPI.updatePreferences(notificationSettings);
+    mutationFn: async (settings: NotificationPreferences) => {
+      await notificationsAPI.updatePreferences(settings);
     },
     onSuccess: () => {
       toast.success(t.notifications.save);
@@ -332,6 +325,31 @@ const ProfilePage = () => {
       );
     },
   });
+
+  const setNotificationSetting = async (
+    key: NotificationSettingsKey,
+    checked: boolean,
+  ) => {
+    if (key === "pushEnabled" && checked && typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "denied") {
+        toast.error("Browser notifications are blocked. Enable them in your browser settings first.");
+        return;
+      }
+
+      if (Notification.permission === "default") {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          toast.error("Browser notification permission was not granted.");
+          return;
+        }
+      }
+    }
+
+    setNotificationSettings((prev) => ({
+      ...prev,
+      [key]: checked,
+    }));
+  };
 
   // Initialize form with react-hook-form
   const form = useForm<ProfileFormValues>({
@@ -945,7 +963,7 @@ const ProfilePage = () => {
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{t.activity.lastUpdated}</p>
                       <p className="text-xs text-gray-600 dark:text-slate-400">
-                        {(user?.updatedAt || user?.createdAt) ? formatDateTime(user.updatedAt || user.createdAt) : '-'}
+                        {lastUpdatedAt ? formatDateTime(lastUpdatedAt) : '-'}
                       </p>
                     </div>
                   </div>
@@ -1148,12 +1166,8 @@ const ProfilePage = () => {
                   <Switch
                     id="email-notifications"
                     checked={notificationSettings.emailEnabled}
-                    onCheckedChange={(checked) =>
-                      setNotificationSettings({
-                        ...notificationSettings,
-                        emailEnabled: checked,
-                      })
-                    }
+                    onCheckedChange={(checked) => setNotificationSetting("emailEnabled", checked)}
+                    disabled={isLoadingNotificationPreferences || updateNotificationPreferencesMutation.isPending}
                     className="mt-2 sm:mt-0"
                   />
                 </div>
@@ -1168,12 +1182,8 @@ const ProfilePage = () => {
                   <Switch
                     id="sms-notifications"
                     checked={notificationSettings.smsEnabled}
-                    onCheckedChange={(checked) =>
-                      setNotificationSettings({
-                        ...notificationSettings,
-                        smsEnabled: checked,
-                      })
-                    }
+                    onCheckedChange={(checked) => setNotificationSetting("smsEnabled", checked)}
+                    disabled={isLoadingNotificationPreferences || updateNotificationPreferencesMutation.isPending}
                     className="mt-2 sm:mt-0"
                   />
                 </div>
@@ -1188,12 +1198,8 @@ const ProfilePage = () => {
                   <Switch
                     id="push-notifications"
                     checked={notificationSettings.pushEnabled}
-                    onCheckedChange={(checked) =>
-                      setNotificationSettings({
-                        ...notificationSettings,
-                        pushEnabled: checked,
-                      })
-                    }
+                    onCheckedChange={(checked) => setNotificationSetting("pushEnabled", checked)}
+                    disabled={isLoadingNotificationPreferences || updateNotificationPreferencesMutation.isPending}
                     className="mt-2 sm:mt-0"
                   />
                 </div>
@@ -1216,12 +1222,8 @@ const ProfilePage = () => {
                           <Switch
                             id={item.id}
                             checked={notificationSettings[item.settingsKey]}
-                            onCheckedChange={(checked) =>
-                              setNotificationSettings({
-                                ...notificationSettings,
-                                [item.settingsKey]: checked,
-                              })
-                            }
+                            onCheckedChange={(checked) => setNotificationSetting(item.settingsKey, checked)}
+                            disabled={isLoadingNotificationPreferences || updateNotificationPreferencesMutation.isPending}
                             className="mt-2 sm:mt-0"
                           />
                         </div>
@@ -1235,8 +1237,8 @@ const ProfilePage = () => {
             <CardFooter className="flex flex-col sm:flex-row">
               <Button
                 className="gap-2 w-full sm:w-auto"
-                onClick={() => updateNotificationPreferencesMutation.mutate()}
-                disabled={updateNotificationPreferencesMutation.isPending}
+                onClick={() => updateNotificationPreferencesMutation.mutate(notificationSettings)}
+                disabled={isLoadingNotificationPreferences || updateNotificationPreferencesMutation.isPending}
               >
                 <Bell className="w-4 h-4" />
                 {t.notifications.save}

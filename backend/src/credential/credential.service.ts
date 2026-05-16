@@ -462,14 +462,14 @@ export class CredentialService {
       case Role.ADMIN:
       case Role.IT_MANAGER:
         return 'AD';
-      case Role.REGISTRAR:
+      case Role.PARENT:
         return 'PR';
       case Role.FINANCE:
         return 'FI';
       case Role.REGISTRAR:
         return 'RE';
       default:
-        return 'ST'; // Unknown
+        throw new BadRequestException(`Unsupported role for credential generation: ${role}`);
     }
   }
 

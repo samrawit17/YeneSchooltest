@@ -108,22 +108,32 @@ export class TimetableSlotController {
 
   @Get(':id')
   @Permissions('timetable:read')
-  async findOne(@Param('id') id: string) {
-    return this.timetableSlotService.findOne(id);
+  async findOne(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.timetableSlotService.findOne(id, schoolId);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('timetable:manage')
-  async update(@Param('id') id: string, @Body() body: UpdateTimetableSlotDto) {
-    return this.timetableSlotService.update(id, body);
+  async update(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: UpdateTimetableSlotDto,
+  ) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.timetableSlotService.update(id, schoolId, body);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('timetable:manage')
-  async delete(@Param('id') id: string) {
-    return this.timetableSlotService.delete(id);
+  async delete(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.timetableSlotService.delete(id, schoolId);
   }
 
   @Post('bulk')

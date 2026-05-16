@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Request,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -26,50 +27,61 @@ export class SirenController {
   // ==================== SCHEDULES (CRUD) ====================
 
   @Get('schedules')
-  async getSchedules(@Query('schoolId') schoolId: string) {
-    return this.sirenService.getSchedules(schoolId);
+  async getSchedules(@Request() req: any) {
+    return this.sirenService.getSchedules(req.user.schoolId);
   }
 
   @Post('schedules')
-  async createSchedule(@Body() data: any) {
-    return this.sirenService.createSchedule(data);
+  async createSchedule(@Request() req: any, @Body() data: any) {
+    return this.sirenService.createSchedule(req.user.schoolId, data);
   }
 
   @Put('schedules/:id')
-  async updateSchedule(@Param('id') id: string, @Body() data: any) {
-    return this.sirenService.updateSchedule(id, data);
+  async updateSchedule(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() data: any,
+  ) {
+    return this.sirenService.updateSchedule(req.user.schoolId, id, data);
   }
 
   @Delete('schedules/:id')
-  async deleteSchedule(@Param('id') id: string) {
-    return this.sirenService.deleteSchedule(id);
+  async deleteSchedule(@Request() req: any, @Param('id') id: string) {
+    return this.sirenService.deleteSchedule(req.user.schoolId, id);
   }
 
   // ==================== EVENTS (HISTORY) ====================
 
   @Get('events')
   async getEvents(
-    @Query('schoolId') schoolId: string,
+    @Request() req: any,
     @Query('limit') limit?: string,
   ) {
-    return this.sirenService.getEvents(schoolId, limit ? parseInt(limit) : 100);
+    return this.sirenService.getEvents(
+      req.user.schoolId,
+      limit ? parseInt(limit) : 100,
+    );
   }
 
   // ==================== HARDWARE (CONFIG + TEST) ====================
 
   @Get('hardware')
-  async getHardwareConfig(@Query('schoolId') schoolId: string) {
-    return this.sirenService.getHardwareConfig(schoolId);
+  async getHardwareConfig(@Request() req: any) {
+    return this.sirenService.getHardwareConfig(req.user.schoolId);
   }
 
   @Post('hardware')
-  async saveHardwareConfig(@Body() data: any) {
-    return this.sirenService.saveHardwareConfig(data);
+  async saveHardwareConfig(@Request() req: any, @Body() data: any) {
+    return this.sirenService.saveHardwareConfig(req.user.schoolId, data);
   }
 
   @Put('hardware/:id')
-  async updateHardwareConfig(@Param('id') id: string, @Body() data: any) {
-    return this.sirenService.updateHardwareConfig(id, data);
+  async updateHardwareConfig(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() data: any,
+  ) {
+    return this.sirenService.updateHardwareConfig(req.user.schoolId, id, data);
   }
 
   @Post('hardware/test')
@@ -82,7 +94,7 @@ export class SirenController {
 
   @Post('trigger')
   @HttpCode(HttpStatus.OK)
-  async manualTrigger(@Body() data: { schoolId: string; type: string }) {
-    return this.sirenService.manualTrigger(data.schoolId, data.type);
+  async manualTrigger(@Request() req: any, @Body() data: { type: string }) {
+    return this.sirenService.manualTrigger(req.user.schoolId, data.type);
   }
 }

@@ -161,9 +161,9 @@ export class EventService {
     return events;
   }
 
-  async findOne(id: string) {
-    const event = await this.prisma.schoolEvent.findUnique({
-      where: { id },
+  async findOne(id: string, schoolId: string) {
+    const event = await this.prisma.schoolEvent.findFirst({
+      where: { id, schoolId },
       include: {
         createdBy: {
           select: {

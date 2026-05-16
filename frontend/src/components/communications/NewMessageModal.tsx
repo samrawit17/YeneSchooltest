@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { parentsAPI, studentsAPI } from "@/lib/api";
@@ -54,17 +55,19 @@ export default function NewMessageModal({
       if (isParent) {
         const response = await parentsAPI.getRelatedTeachers();
         const teachers = response.data?.teachers || response.data || [];
-        const mapped = teachers.map((teacher: any) => ({
-          id: `${teacher.studentId}:${teacher.teacherId}:${teacher.relationType}`,
-          name: teacher.teacherName,
-          childName: teacher.childName,
-          className: teacher.className,
-          section: teacher.section,
-          subjectNames: Array.isArray(teacher.subjects) ? teacher.subjects : [],
-          relationType: teacher.relationType,
-          targetStudentId: teacher.studentId,
-          targetUserId: teacher.teacherId,
-        }));
+        const mapped = teachers
+          .filter((teacher: any) => teacher.relationType === "HOMEROOM")
+          .map((teacher: any) => ({
+            id: `${teacher.studentId}:${teacher.teacherId}:${teacher.relationType}`,
+            name: teacher.teacherName,
+            childName: teacher.childName,
+            className: teacher.className,
+            section: teacher.section,
+            subjectNames: Array.isArray(teacher.subjects) ? teacher.subjects : [],
+            relationType: teacher.relationType,
+            targetStudentId: teacher.studentId,
+            targetUserId: teacher.teacherId,
+          }));
 
         const query = (queryOverride ?? searchQuery).trim().toLowerCase();
         const filtered = mapped.filter(
@@ -196,8 +199,8 @@ export default function NewMessageModal({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-800">
         <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-6 py-4 dark:border-slate-700 dark:from-slate-800 dark:to-slate-800/50">
           <div className="flex items-center gap-3">
@@ -396,6 +399,7 @@ export default function NewMessageModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

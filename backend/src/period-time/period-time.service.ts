@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -23,7 +23,13 @@ export class PeriodTimeService {
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, schoolId: string, data: any) {
+    const existing = await this.prisma.periodTime.findFirst({
+      where: { id, schoolId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Period time not found');
+
     return this.prisma.periodTime.update({
       where: { id },
       data: {
@@ -34,7 +40,13 @@ export class PeriodTimeService {
     });
   }
 
-  async delete(id: string) {
+  async delete(id: string, schoolId: string) {
+    const existing = await this.prisma.periodTime.findFirst({
+      where: { id, schoolId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Period time not found');
+
     return this.prisma.periodTime.delete({ where: { id } });
   }
 }

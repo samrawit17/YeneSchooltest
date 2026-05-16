@@ -45,7 +45,15 @@ export class StudentController {
     @Request() req,
   ) {
     const createdById = req.user.id;
-    return this.studentService.createStudent(createStudentDto, createdById);
+    const schoolId = req.user.schoolId;
+    if (!schoolId) {
+      throw new BadRequestException('School context is required');
+    }
+
+    return this.studentService.createStudent(
+      { ...createStudentDto, schoolId },
+      createdById,
+    );
   }
 
   // FIXED: Handle classId param for attendance/offline cache (proxies ClassService.getStudentsByClass)
@@ -64,6 +72,9 @@ export class StudentController {
     @Query('rollNumber') rollNumber?: string,
   ) {
     const schoolId = req.user.schoolId;
+    if (!schoolId) {
+      throw new BadRequestException('School context is required');
+    }
 
     if (classId) {
       // Attendance/offline cache: delegate to ClassService for exact same logic as my-class page

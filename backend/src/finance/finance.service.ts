@@ -321,6 +321,33 @@ export class FinanceService {
     });
   }
 
+  private async assertAcademicYearInSchool(
+    schoolId: string,
+    academicYearId: string,
+  ) {
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: academicYearId, schoolId },
+      select: { id: true, name: true },
+    });
+    if (!academicYear) {
+      throw new Error('Academic year not found for this school');
+    }
+    return academicYear;
+  }
+
+  private async assertTermInSchool(schoolId: string, termId?: string) {
+    if (!termId || termId === 'all') return null;
+
+    const term = await this.prisma.term.findFirst({
+      where: { id: termId, academicYear: { schoolId } },
+      select: { id: true, name: true, order: true, academicYearId: true },
+    });
+    if (!term) {
+      throw new Error('Term not found for this school');
+    }
+    return term;
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_8AM)
   async notifyParentsForStartingCurriculumPeriods() {
     const today = new Date();
@@ -720,10 +747,10 @@ export class FinanceService {
   // ========================================================
 
   async generateStudentFees(dto: GenerateStudentFeesDto) {
-    const ay = await this.prisma.academicYear.findUnique({
-      where: { id: dto.academicYearId },
-    });
-    if (!ay) throw new Error('Academic year not found');
+    await this.assertAcademicYearInSchool(dto.schoolId, dto.academicYearId);
+    if (dto.termId) {
+      await this.assertTermInSchool(dto.schoolId, dto.termId);
+    }
 
     const feeStructuresWhere: any = {
       schoolId: dto.schoolId,
@@ -799,26 +826,31 @@ export class FinanceService {
     if (status) whereBase.status = status as PaymentStatus;
     if (studentId) whereBase.studentId = studentId;
     if (academicYearId) whereBase.academicYearId = academicYearId;
-    if (termId) whereBase.termId = termId;
+    if (academicYearId) {
+      await this.assertAcademicYearInSchool(schoolId, academicYearId);
+    }
+    if (termId) {
+      await this.assertTermInSchool(schoolId, termId);
+      whereBase.termId = termId;
+    }
 
     if (grade !== undefined || sectionId) {
       if (academicYearId) {
-        const ay = await this.prisma.academicYear.findUnique({
-          where: { id: academicYearId },
+        const ay = await this.assertAcademicYearInSchool(
+          schoolId,
+          academicYearId,
+        );
+        const scWhere: any = { schoolId, academicYear: ay.name };
+        if (grade !== undefined) scWhere.class = { grade };
+        if (sectionId) scWhere.sectionId = sectionId;
+        const studentClasses = await this.prisma.studentClass.findMany({
+          where: scWhere,
+          select: { studentId: true },
         });
-        if (ay) {
-          const scWhere: any = { schoolId, academicYear: ay.name };
-          if (grade !== undefined) scWhere.class = { grade };
-          if (sectionId) scWhere.sectionId = sectionId;
-          const studentClasses = await this.prisma.studentClass.findMany({
-            where: scWhere,
-            select: { studentId: true },
-          });
-          const ids = Array.from(
-            new Set(studentClasses.map((x) => x.studentId)),
-          );
-          if (ids.length > 0) whereBase.studentId = { in: ids };
-        }
+        const ids = Array.from(
+          new Set(studentClasses.map((x) => x.studentId)),
+        );
+        if (ids.length > 0) whereBase.studentId = { in: ids };
       }
     }
 
@@ -1075,7 +1107,7 @@ export class FinanceService {
             include: { payments: true },
           })
         : await tx.studentFee.findFirst({
-            where: { studentId: dto.studentId },
+            where: { schoolId: dto.schoolId, studentId: dto.studentId },
             orderBy: { createdAt: 'desc' },
             include: { payments: true },
           });
@@ -1088,10 +1120,17 @@ export class FinanceService {
       if (sf.schoolId !== dto.schoolId) {
         throw new Error('Fee does not match this school');
       }
+      if (sf.studentId !== dto.studentId) {
+        throw new Error('Fee does not match this student');
+      }
       const paymentTermId = dto.termId || sf.termId || null;
       if (dto.termId) {
         const term = await tx.term.findFirst({
-          where: { id: dto.termId, academicYearId: sf.academicYearId },
+          where: {
+            id: dto.termId,
+            academicYearId: sf.academicYearId,
+            academicYear: { schoolId: dto.schoolId },
+          },
           select: { id: true },
         });
         if (!term) {
@@ -1242,8 +1281,8 @@ export class FinanceService {
     }
 
     const term = payment.termId
-      ? await this.prisma.term.findUnique({
-          where: { id: payment.termId },
+      ? await this.prisma.term.findFirst({
+          where: { id: payment.termId, academicYear: { schoolId } },
           select: { id: true, name: true },
         })
       : null;
@@ -1380,6 +1419,10 @@ export class FinanceService {
 
   async dailyCollectionReport(query: ReportQueryDto) {
     const { schoolId, from, to, termId, academicYearId } = query;
+    if (academicYearId) {
+      await this.assertAcademicYearInSchool(schoolId, academicYearId);
+    }
+    await this.assertTermInSchool(schoolId, termId);
 
     // Parse dates or default to today
     let start = from ? new Date(from) : undefined;
@@ -1526,16 +1569,17 @@ export class FinanceService {
     academicYearId: string,
     termId?: string,
   ) {
-    const selectedTerm =
-      termId && termId !== 'all'
-        ? await this.prisma.term.findUnique({
-            where: { id: termId },
-            select: { id: true, name: true, order: true, academicYearId: true },
-          })
-        : null;
+    const academicYear = await this.assertAcademicYearInSchool(
+      schoolId,
+      academicYearId,
+    );
+    const selectedTerm = await this.assertTermInSchool(schoolId, termId);
     const curriculumType = await this.getFeeCollectionModeInternal(schoolId);
     const installmentCount = this.getInstallmentCountInternal(curriculumType);
-    const terms = await this.getTermsForAcademicYear(academicYearId);
+    const terms = await this.prisma.term.findMany({
+      where: { academicYearId, academicYear: { schoolId } },
+      orderBy: { order: 'asc' },
+    });
 
     const where: any = {
       schoolId,
@@ -1560,16 +1604,13 @@ export class FinanceService {
     });
 
     // Get academic year name (studentClass uses year name, not ID)
-    const academicYear = await this.prisma.academicYear.findUnique({
-      where: { id: academicYearId },
-      select: { name: true },
-    });
     const academicYearName = academicYear?.name;
 
     // Get student classes in parallel
     const studentIds = fees.map((f) => f.studentId);
     const studentClasses = await this.prisma.studentClass.findMany({
       where: {
+        schoolId,
         studentId: { in: studentIds },
         academicYear: academicYearName,
       },
@@ -1656,6 +1697,9 @@ export class FinanceService {
     academicYearId: string,
     termId?: string,
   ) {
+    await this.assertAcademicYearInSchool(schoolId, academicYearId);
+    await this.assertTermInSchool(schoolId, termId);
+
     const where: any = {
       schoolId,
       academicYearId,
@@ -1689,6 +1733,9 @@ export class FinanceService {
     academicYearId: string,
     termId?: string,
   ) {
+    await this.assertAcademicYearInSchool(schoolId, academicYearId);
+    await this.assertTermInSchool(schoolId, termId);
+
     const where: any = {
       schoolId,
       academicYearId,
@@ -1749,8 +1796,24 @@ export class FinanceService {
   }
 
   async paymentHistoryForStudent(schoolId: string, studentId: string) {
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: {
+        schoolId,
+        OR: [{ id: studentId }, { userId: studentId }],
+      },
+      select: { id: true, userId: true },
+    });
+
+    if (!studentProfile) {
+      throw new Error('Student not found');
+    }
+
+    const candidateStudentIds = [studentProfile.id, studentProfile.userId].filter(
+      (value): value is string => Boolean(value),
+    );
+
     const payments = await this.prisma.payment.findMany({
-      where: { schoolId, studentId },
+      where: { schoolId, studentId: { in: candidateStudentIds } },
       orderBy: { paymentDate: 'desc' },
       include: { studentFee: { include: { feeStructure: true } } },
     });
@@ -1763,11 +1826,15 @@ export class FinanceService {
   // ========================================================
 
   async getCurriculumInfo(schoolId: string, academicYearId: string) {
+    await this.assertAcademicYearInSchool(schoolId, academicYearId);
     const setting = await this.prisma.schoolSetting.findUnique({
       where: { schoolId_key: { schoolId, key: 'curriculum_type' } },
     });
     const curriculumType = setting?.value || 'TERM';
-    const terms = await this.getTermsForAcademicYear(academicYearId);
+    const terms = await this.prisma.term.findMany({
+      where: { academicYearId, academicYear: { schoolId } },
+      orderBy: { order: 'asc' },
+    });
     return { curriculumType, terms, termCount: terms.length };
   }
 
@@ -1781,17 +1848,13 @@ export class FinanceService {
     academicYearId: string,
     termId?: string,
   ) {
-    let student = await this.prisma.studentProfile.findUnique({
-      where: { id: studentId },
+    const student = await this.prisma.studentProfile.findFirst({
+      where: {
+        schoolId,
+        OR: [{ id: studentId }, { userId: studentId }],
+      },
       include: { user: { select: { name: true } } },
     });
-
-    if (!student) {
-      student = await this.prisma.studentProfile.findUnique({
-        where: { userId: studentId },
-        include: { user: { select: { name: true } } },
-      });
-    }
 
     if (!student) throw new Error('Student not found');
     const profileId = student.id;
@@ -1799,16 +1862,30 @@ export class FinanceService {
       (value): value is string => Boolean(value),
     );
 
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: academicYearId, schoolId },
+      select: { id: true },
+    });
+    if (!academicYear) {
+      throw new Error('Academic year not found');
+    }
+
     const selectedTerm =
       termId && termId !== 'all'
-        ? await this.prisma.term.findUnique({
-            where: { id: termId },
+        ? await this.prisma.term.findFirst({
+            where: { id: termId, academicYear: { schoolId } },
             select: { id: true, name: true, order: true, academicYearId: true },
           })
         : null;
+    if (termId && termId !== 'all' && !selectedTerm) {
+      throw new Error('Term not found');
+    }
     const curriculumType = await this.getFeeCollectionModeInternal(schoolId);
     const installmentCount = this.getInstallmentCountInternal(curriculumType);
-    const terms = await this.getTermsForAcademicYear(academicYearId);
+    const terms = await this.prisma.term.findMany({
+      where: { academicYearId, academicYear: { schoolId } },
+      orderBy: { order: 'asc' },
+    });
 
     const studentFeesWhere: any = {
       studentId: { in: candidateStudentIds },

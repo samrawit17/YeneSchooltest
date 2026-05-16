@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { announcementsAPI, CreateAnnouncementDto } from "@/lib/api/content";
+import { syncService } from "@/lib/db/sync-service";
 import { queryKeys } from "@/lib/query-keys";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +27,7 @@ const ROLES = [
 
 const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormProps) => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [formData, setFormData] = useState<CreateAnnouncementDto>({
     title: "",
     content: "",
@@ -44,6 +47,21 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
     onSuccess: () => {
       toast.success("Announcement published successfully");
       queryClient.invalidateQueries({ queryKey: queryKeys.announcements.all });
+      onSuccess?.();
+    },
+    onError: async (error: any, data) => {
+      const isNetworkError = !navigator.onLine || !error?.response;
+      if (!isNetworkError) {
+        toast.error(error?.response?.data?.message || "Failed to publish announcement");
+        return;
+      }
+
+      await syncService.saveAnnouncementDraftOffline({
+        ...data,
+        localId: `announcement:${Date.now()}`,
+        userId: user?.id,
+      });
+      toast.success("Announcement saved offline. It will publish when online.");
       onSuccess?.();
     },
   });

@@ -55,7 +55,11 @@ export class GradingController {
     @Request() req: AuthRequest,
     @Query('academicYear') academicYear: string,
   ) {
-    return this.gradingService.getTeacherAssignments(req.user.id, academicYear);
+    return this.gradingService.getTeacherAssignments(
+      req.user.id,
+      req.user.schoolId,
+      academicYear,
+    );
   }
 
   /**
@@ -73,6 +77,7 @@ export class GradingController {
   ) {
     return this.gradingService.getStudentsForGradeEntry(
       req.user.id,
+      req.user.schoolId,
       academicYear,
       termId,
       classId,
@@ -87,7 +92,7 @@ export class GradingController {
   @Post('teacher/grades')
   @Roles(Role.TEACHER)
   async enterGrade(@Request() req: AuthRequest, @Body() dto: CreateGradeDto) {
-    return this.gradingService.enterGrade(req.user.id, dto);
+    return this.gradingService.enterGrade(req.user.id, req.user.schoolId, dto);
   }
 
   /**
@@ -99,7 +104,11 @@ export class GradingController {
     @Request() req: AuthRequest,
     @Body() dto: BulkGradeEntryDto,
   ) {
-    return this.gradingService.bulkEnterGrades(req.user.id, dto);
+    return this.gradingService.bulkEnterGrades(
+      req.user.id,
+      req.user.schoolId,
+      dto,
+    );
   }
 
   /**
@@ -126,7 +135,7 @@ export class GradingController {
     }
     
     const csvData = file.buffer.toString('utf-8');
-    return this.gradingService.bulkUploadFromCsv(req.user.id, {
+    return this.gradingService.bulkUploadFromCsv(req.user.id, req.user.schoolId, {
       csvData,
       ...dto,
     });
@@ -139,12 +148,15 @@ export class GradingController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.TEACHER)
   async downloadTemplate(
+    @Request() req: AuthRequest,
     @Query('classId') classId: string,
     @Query('sectionId') sectionId: string,
     @Query('subjectId') subjectId: string,
     @Query('academicYear') academicYear: string,
   ) {
     return this.gradingService.generateGradeTemplate(
+      req.user.id,
+      req.user.schoolId,
       classId,
       sectionId,
       subjectId,
@@ -158,7 +170,7 @@ export class GradingController {
   @Put('teacher/grades/:id/draft')
   @Roles(Role.TEACHER)
   async saveDraft(@Request() req: AuthRequest, @Param('id') gradeId: string) {
-    return this.gradingService.saveDraft(req.user.id, gradeId);
+    return this.gradingService.saveDraft(req.user.id, req.user.schoolId, gradeId);
   }
 
   /**
@@ -170,7 +182,11 @@ export class GradingController {
     @Request() req: AuthRequest,
     @Param('id') gradeId: string,
   ) {
-    return this.gradingService.submitToRegistrar(req.user.id, gradeId);
+    return this.gradingService.submitToRegistrar(
+      req.user.id,
+      req.user.schoolId,
+      gradeId,
+    );
   }
 
   /**
@@ -188,6 +204,7 @@ export class GradingController {
   ) {
     return this.gradingService.submitAllToRegistrar(
       req.user.id,
+      req.user.schoolId,
       academicYear,
       termId,
       classId,
@@ -327,6 +344,7 @@ export class GradingController {
   ) {
     return this.gradingService.getStudentGrades(
       req.user.id,
+      req.user.schoolId,
       academicYear,
       termId,
     );
@@ -348,6 +366,7 @@ export class GradingController {
     return this.gradingService.getChildGradesWithAnalysis(
       req.user.id,
       childId,
+      req.user.schoolId,
       academicYear,
       termId,
     );
@@ -464,8 +483,8 @@ export class GradingController {
    */
   @Post('admin/teacher-assignments')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
-  async assignTeacher(@Body() dto: TeacherAssignmentDto) {
-    return this.gradingService.assignTeacher(dto);
+  async assignTeacher(@Request() req: AuthRequest, @Body() dto: TeacherAssignmentDto) {
+    return this.gradingService.assignTeacher(req.user.schoolId, dto);
   }
 
   /**
@@ -473,8 +492,14 @@ export class GradingController {
    */
   @Delete('admin/teacher-assignments/:id')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
-  async removeTeacherAssignment(@Param('id') assignmentId: string) {
-    return this.gradingService.removeTeacherAssignment(assignmentId);
+  async removeTeacherAssignment(
+    @Request() req: AuthRequest,
+    @Param('id') assignmentId: string,
+  ) {
+    return this.gradingService.removeTeacherAssignment(
+      req.user.schoolId,
+      assignmentId,
+    );
   }
 
   /**
@@ -499,6 +524,7 @@ export class GradingController {
 
     return this.gradingService.getStudentFinalGrades(
       targetStudentId,
+      req.user.schoolId,
       academicYear,
       classId,
       req.user.role === Role.STUDENT,
@@ -520,6 +546,7 @@ export class GradingController {
       return this.gradingService.getChildFinalGradesWithClass(
         req.user.id,
         studentId,
+        req.user.schoolId,
         academicYear,
         classId,
       );
@@ -527,6 +554,7 @@ export class GradingController {
 
     return this.gradingService.getStudentFinalGrades(
       studentId,
+      req.user.schoolId,
       academicYear,
       classId,
       false,
@@ -539,12 +567,14 @@ export class GradingController {
   @Get('subject/final-grade')
   @Roles(Role.TEACHER, Role.REGISTRAR, Role.ADMIN, Role.IT_MANAGER)
   async calculateSubjectFinalGrade(
+    @Request() req: AuthRequest,
     @Query('studentId') studentId: string,
     @Query('subjectId') subjectId: string,
     @Query('academicYear') academicYear: string,
   ) {
     return this.gradingService.calculateFinalGrade(
       studentId,
+      req.user.schoolId,
       subjectId,
       academicYear,
     );
@@ -579,6 +609,7 @@ export class GradingController {
       const isParent = await this.gradingService.verifyParentChild(
         req.user.id,
         studentId,
+        req.user.schoolId,
       );
       if (!isParent) {
         throw new ForbiddenException(
@@ -588,6 +619,7 @@ export class GradingController {
     }
     return this.gradingService.verifyFinancialClearance(
       studentId,
+      req.user.schoolId,
       academicYear,
       termId,
       checkOverdueOnly === 'true',

@@ -21,7 +21,6 @@ export interface BulkUserRecord {
   // Parent-specific fields
   parent_name?: string;
   parent_phone?: string;
-  parent_email?: string;
   student_email?: string;
   student_id?: string;
   relation?: string;
@@ -239,7 +238,7 @@ export class BulkUploadService {
 
     if (levelValue !== undefined && !isNaN(levelValue)) {
       if (allowedLevels && !allowedLevels.has(levelValue)) {
-        return { name: 'Unassigned' };
+        return { name: `Grade ${levelValue}`, level: levelValue };
       }
       const level = lookups.byLevel.get(levelValue);
       return level
@@ -324,7 +323,6 @@ export class BulkUploadService {
         'parent_mobile',
         'guardian_phone',
       ]);
-      const parentEmailIdx = findIdx(['parent_email', 'guardian_email']);
       const rollNumberIdx = findIdx(['roll_number', 'rollno', 'roll']);
 
       const records: BulkUserRecord[] = [];
@@ -392,8 +390,6 @@ export class BulkUploadService {
           parent_name: normalizedNames.parentName,
           parent_phone:
             parentPhoneIdx !== -1 ? values[parentPhoneIdx] : undefined,
-          parent_email:
-            parentEmailIdx !== -1 ? values[parentEmailIdx] : undefined,
           student_email: studEmailIdx !== -1 ? values[studEmailIdx] : undefined,
           relation: relationIdx !== -1 ? this.normalizeRelation(values[relationIdx]) : undefined,
         });
@@ -687,6 +683,17 @@ export class BulkUploadService {
         gradeLookups,
         allowedLevels,
       );
+      if (
+        allowedLevels &&
+        gradeInfo.level !== undefined &&
+        !allowedLevels.has(gradeInfo.level)
+      ) {
+        failedRecords.push({
+          record,
+          error: `Row ${i + 1}: ${gradeInfo.name} is outside this school's configured grade range`,
+        });
+        continue;
+      }
       const gradeKey = gradeInfo.name || rawGrade;
       if (!gradeGroups[gradeKey]) gradeGroups[gradeKey] = [];
       gradeGroups[gradeKey].push(record);
@@ -704,18 +711,6 @@ export class BulkUploadService {
       for (let i = 0; i < orderedStudents.length; i++) {
         const record = orderedStudents[i];
         try {
-          const normalizedEmail = record.email?.toLowerCase();
-          if (normalizedEmail) {
-            const existingUser = await this.prismaService.user.findUnique({
-              where: { email: normalizedEmail },
-            });
-
-            if (existingUser) {
-              skippedCount++;
-              continue;
-            }
-          }
-
           // Find or create section with available capacity
           const preferredSection = this.extractSectionFromClassLabel(
             record.current_class,
@@ -773,7 +768,7 @@ export class BulkUploadService {
             const user = await tx.user.create({
               data: {
                 // @ts-ignore - Email is optional in schema
-                email: normalizedEmail || null,
+                email: null,
                 username,
                 password: hashed,
                 name: (record.full_name || 'Student').trim(),
@@ -933,17 +928,11 @@ export class BulkUploadService {
             if (record.parent_name) {
               const pPhone =
                 record.parent_phone?.trim() || record.phone?.trim();
-              const pEmail = record.parent_email?.trim() || normalizedEmail;
 
               let parentUser: any = null;
               if (pPhone) {
                 parentUser = await tx.user.findFirst({
                   where: { schoolId, phone: pPhone, role: Role.PARENT },
-                });
-              }
-              if (!parentUser && pEmail) {
-                parentUser = await tx.user.findFirst({
-                  where: { schoolId, email: pEmail, role: Role.PARENT },
                 });
               }
 
@@ -965,7 +954,7 @@ export class BulkUploadService {
                 parentUser = await tx.user.create({
                   data: {
                     // @ts-ignore
-                    email: pEmail ? pEmail.toLowerCase() : null,
+                    email: null,
                     username: pUsername,
                     password: pHashed,
                     name: record.parent_name.trim(),
@@ -986,7 +975,7 @@ export class BulkUploadService {
 
                 credentials.push({
                   name: record.parent_name,
-                  email: pEmail || undefined,
+                  email: undefined,
                   username: pUsername!,
                   temporaryPassword: pTempPass,
                   role: Role.PARENT,
@@ -997,7 +986,7 @@ export class BulkUploadService {
                     schoolId,
                     userId: parentUser!.id,
                     name: record.parent_name,
-                    email: pEmail ? pEmail.toLowerCase() : null,
+                    email: null,
                     username: pUsername!,
                     temporaryPassword: pTempPass,
                     role: Role.PARENT.toString(),
@@ -1031,7 +1020,7 @@ export class BulkUploadService {
 
             credentials.push({
               name: record.full_name || 'Student',
-              email: record.email || '',
+              email: '',
               username,
               temporaryPassword: tempPass,
               role: Role.STUDENT,
@@ -1042,7 +1031,7 @@ export class BulkUploadService {
                 schoolId,
                 userId: user.id,
                 name: record.full_name || 'Student',
-                email: normalizedEmail || null,
+                email: null,
                 username,
                 temporaryPassword: tempPass,
                 role: Role.STUDENT.toString(),
@@ -1121,9 +1110,9 @@ export class BulkUploadService {
     return { credentials, total };
   }
 
-  async markCredentialSent(id: string, sentVia: string) {
+  async markCredentialSent(schoolId: string, id: string, sentVia: string) {
     return this.prismaService.pendingCredential.update({
-      where: { id },
+      where: { id, schoolId },
       data: { isSent: true, sentAt: new Date(), sentVia },
     });
   }
@@ -1135,8 +1124,10 @@ export class BulkUploadService {
     });
   }
 
-  async deletePendingCredential(id: string) {
-    return this.prismaService.pendingCredential.delete({ where: { id } });
+  async deletePendingCredential(id: string, schoolId: string) {
+    return this.prismaService.pendingCredential.delete({
+      where: { id, schoolId },
+    });
   }
 
   async exportPendingCredentials(schoolId: string, options: any) {

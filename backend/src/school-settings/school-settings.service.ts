@@ -138,7 +138,6 @@ export class SchoolSettingsService {
     'ALLOW_SELF_ENROLLMENT',
     'ATTENDANCE_TRACKING',
     'LATE_MARKING',
-    'EXAM_ENABLED',
     'ANNOUNCEMENTS_ENABLED',
     SCHOOL_SETTING_KEYS.TEACHER_PORTAL_ACCESS,
     SCHOOL_SETTING_KEYS.STUDENT_PORTAL_ACCESS,
@@ -334,6 +333,20 @@ export class SchoolSettingsService {
     schoolId: string,
     incomingValue: string,
   ) {
+    const existingCurriculumType = await this.getSetting(
+      schoolId,
+      SCHOOL_SETTING_KEYS.CURRICULUM_TYPE,
+    );
+    if (
+      existingCurriculumType !== null &&
+      existingCurriculumType !== undefined &&
+      String(existingCurriculumType).toUpperCase() !== incomingValue
+    ) {
+      throw new BadRequestException(
+        'Curriculum system is locked and can only be set once. Changing it later can affect terms, grading, fees, and academic records.',
+      );
+    }
+
     const existingFees = await this.prisma.studentFee.count({
       where: { schoolId },
     });
@@ -904,9 +917,13 @@ export class SchoolSettingsService {
 
   // Delete a school setting
   async deleteSetting(schoolId: string, key: string) {
-    if (key === SCHOOL_SETTING_KEYS.CALENDAR_TYPE) {
+    if (
+      key === SCHOOL_SETTING_KEYS.CALENDAR_TYPE ||
+      key === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE ||
+      key === SCHOOL_SETTING_KEYS.GRADE_SYSTEM
+    ) {
       throw new BadRequestException(
-        'Calendar type cannot be deleted after being set. It is locked to preserve data consistency.',
+        'This academic setting cannot be deleted after being set. It is locked to preserve data consistency.',
       );
     }
 

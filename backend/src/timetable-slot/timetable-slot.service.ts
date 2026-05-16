@@ -249,9 +249,9 @@ export class TimetableSlotService {
     });
   }
 
-  async findOne(id: string) {
-    const slot = await this.prisma.timetableSlot.findUnique({
-      where: { id },
+  async findOne(id: string, schoolId: string) {
+    const slot = await this.prisma.timetableSlot.findFirst({
+      where: { id, schoolId },
       include: {
         class: true,
         subject: true,
@@ -270,8 +270,8 @@ export class TimetableSlotService {
     return slot;
   }
 
-  async update(id: string, data: UpdateTimetableSlotDto) {
-    const existing = await this.findOne(id);
+  async update(id: string, schoolId: string, data: UpdateTimetableSlotDto) {
+    const existing = await this.findOne(id, schoolId);
 
     // Get values for conflict validation
     const dayOfWeek = data.dayOfWeek ?? existing.dayOfWeek;
@@ -313,8 +313,8 @@ export class TimetableSlotService {
     });
   }
 
-  async delete(id: string) {
-    await this.findOne(id); // Validate exists
+  async delete(id: string, schoolId: string) {
+    await this.findOne(id, schoolId); // Validate exists
 
     return this.prisma.timetableSlot.delete({
       where: { id },

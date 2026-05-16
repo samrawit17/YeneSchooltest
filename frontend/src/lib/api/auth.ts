@@ -56,6 +56,16 @@ export const authAPI = {
 
   getUserById: (id: string) => api.get(`/auth/users/${id}`),
 
+  uploadAvatar: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/auth/users/${id}/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
   updateUser: (
     id: string,
     data: {
@@ -81,4 +91,10 @@ export const userAPI = {
 
   changePassword: (currentPassword: string, newPassword: string, confirmPassword: string) =>
     api.post('/auth/change-password', { currentPassword, newPassword, confirmPassword }),
+
+  requestPasswordReset: (username: string) =>
+    api.post('/auth/request-password-reset', { username }),
+
+  adminResetUserPassword: (userId: string, temporaryPassword?: string) =>
+    api.post(`/auth/admin/reset-user-password/${userId}`, { temporaryPassword }),
 };

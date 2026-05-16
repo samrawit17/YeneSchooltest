@@ -58,16 +58,24 @@ bootstrap_database() {
   log "Generating Prisma client for container environment..."
   npx prisma generate --schema=./prisma/schema.prisma
 
-  if [[ "${NODE_ENV:-development}" == "development" ]]; then
-    log "Applying Prisma schema in development mode..."
+  if [[ "${PRISMA_SCHEMA_SYNC:-migrate}" == "push" ]]; then
+    log "Synchronizing Prisma schema with db push..."
+    npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss
+  elif [[ "${RUN_MIGRATIONS:-1}" == "1" ]]; then
+    log "Applying Prisma migrations..."
     if npx prisma migrate deploy --schema=./prisma/schema.prisma; then
       log "Prisma migrations applied successfully."
     else
-      log "Prisma migrate deploy failed. Falling back to prisma db push."
-      npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss --skip-generate
+      if [[ "${NODE_ENV:-development}" == "development" ]]; then
+        log "Prisma migrate deploy failed. Falling back to prisma db push."
+        npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss
+      else
+        log "Prisma migrate deploy failed."
+        exit 1
+      fi
     fi
   else
-    log "Skipping Prisma migrations in production (use manual migrations)."
+    log "Skipping Prisma migrations because RUN_MIGRATIONS is not 1."
   fi
 
   if [[ "${NODE_ENV:-development}" == "development" && "${PRISMA_SKIP_SEED:-0}" != "1" ]]; then

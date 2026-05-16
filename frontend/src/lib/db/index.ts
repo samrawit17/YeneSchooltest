@@ -32,6 +32,16 @@ export interface CachedStudent {
   updatedAt: number;
 }
 
+/** Cached timetable payload for offline access */
+export interface CachedTimetable {
+  id: string;
+  ownerType: 'teacher' | 'student' | 'class';
+  ownerId: string;
+  slots: Record<string, unknown>[];
+  schoolSettings?: Record<string, unknown>;
+  cachedAt: number;
+}
+
 /** Offline attendance record */
 export interface OfflineAttendance {
   id?: number;
@@ -89,7 +99,7 @@ export interface FormDraft {
 export interface SyncQueueItem {
   id?: number;
   operation: 'create' | 'update' | 'delete';
-  entity: 'attendance' | 'student' | 'grade' | 'enrollment';
+  entity: 'attendance' | 'student' | 'grade' | 'enrollment' | 'message' | 'conversation' | 'announcement';
   entityId: string;
   payload: Record<string, unknown>;
   priority: number;
@@ -142,6 +152,7 @@ export interface NetworkStatus {
 
 export class SMSDatabase extends Dexie {
   students!: Table<CachedStudent, string>;
+  timetables!: Table<CachedTimetable, string>;
   attendance!: Table<OfflineAttendance, number>;
   attendanceSessions!: Table<OfflineAttendanceSession, string>;
   formDrafts!: Table<FormDraft, number>;
@@ -161,6 +172,10 @@ export class SMSDatabase extends Dexie {
       syncMetadata: 'id',
       conflicts: '++id, entity, entityId, conflictType, resolvedAt'
     });
+
+    this.version(2).stores({
+      timetables: 'id, ownerType, ownerId, cachedAt',
+    });
   }
 }
 
@@ -179,6 +194,7 @@ export const db = new SMSDatabase();
  */
 export async function clearDatabase(): Promise<void> {
   await db.students.clear();
+  await db.timetables.clear();
   await db.attendance.clear();
   await db.attendanceSessions.clear();
   await db.formDrafts.clear();
@@ -205,8 +221,9 @@ export async function getDatabaseSize(): Promise<{ usage: number; quota: number 
  * Export database for backup
  */
 export async function exportDatabase(): Promise<Record<string, unknown>> {
-  const [students, attendance, sessions, drafts, syncQueue, conflicts] = await Promise.all([
+  const [students, timetables, attendance, sessions, drafts, syncQueue, conflicts] = await Promise.all([
     db.students.toArray(),
+    db.timetables.toArray(),
     db.attendance.toArray(),
     db.attendanceSessions.toArray(),
     db.formDrafts.toArray(),
@@ -219,6 +236,7 @@ export async function exportDatabase(): Promise<Record<string, unknown>> {
     exportedAt: new Date().toISOString(),
     data: {
       students,
+      timetables,
       attendance,
       attendanceSessions: sessions,
       formDrafts: drafts,
@@ -237,6 +255,7 @@ export async function importDatabase(backup: Record<string, unknown>): Promise<v
   await clearDatabase();
   
   if (data.students) await db.students.bulkAdd(data.students as CachedStudent[]);
+  if (data.timetables) await db.timetables.bulkAdd(data.timetables as CachedTimetable[]);
   if (data.attendance) await db.attendance.bulkAdd(data.attendance as OfflineAttendance[]);
   if (data.attendanceSessions) await db.attendanceSessions.bulkAdd(data.attendanceSessions as OfflineAttendanceSession[]);
   if (data.formDrafts) await db.formDrafts.bulkAdd(data.formDrafts as FormDraft[]);

@@ -512,7 +512,11 @@ const FormModal = ({
       if (!nextOpen && onClose) onClose();
       setOpen(nextOpen);
     }}>
-      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden" customCloseButton={false}>
+      <DialogContent
+        className="max-w-2xl p-0 gap-0 overflow-hidden font-sans"
+        style={{ fontFamily: "var(--font-sans), sans-serif" }}
+        customCloseButton={false}
+      >
         <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-[var(--brand-color,#e35336)] rounded-xl flex items-center justify-center shadow-md">
@@ -549,7 +553,10 @@ const FormModal = ({
   // Otherwise, render as button that opens modal
   const modalContent = (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4">
-      <div className="w-full max-w-lg max-h-[90vh] overflow-hidden rounded-2xl border bg-white font-sans shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+      <div
+        className="w-full max-w-lg max-h-[90vh] overflow-hidden rounded-2xl border bg-white font-sans shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+        style={{ fontFamily: "var(--font-sans), sans-serif" }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-3">

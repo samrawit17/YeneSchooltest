@@ -146,7 +146,7 @@ export const credentialsAPI = {
     staff: Array<{
       name: string;
       email: string;
-      role: "TEACHER" | "ADMIN" | "IT_MANAGER" | "PARENT" | "REGISTRAR";
+      role: "TEACHER" | "ADMIN" | "IT_MANAGER" | "PARENT" | "REGISTRAR" | "FINANCE";
       phone?: string;
       generateCredentials?: boolean;
       username?: string;

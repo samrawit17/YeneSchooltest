@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -31,9 +31,14 @@ export class DisciplineController {
 
   @Post()
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
-  async createIncident(@Body() dto: CreateIncidentDto & { reportedBy: string }) {
+  async createIncident(
+    @Request() req: any,
+    @Body() dto: CreateIncidentDto & { reportedBy: string },
+  ) {
     return this.disciplineService.createIncident({
       ...dto,
+      schoolId: req.user.schoolId,
+      reportedBy: req.user.id,
       incidentDate: new Date(dto.incidentDate),
     });
   }
@@ -41,35 +46,39 @@ export class DisciplineController {
   @Get()
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async getIncidents(
-    @Query('schoolId') schoolId: string,
+    @Request() req: any,
     @Query('studentId') studentId?: string,
     @Query('severity') severity?: string,
     @Query('status') status?: string,
   ) {
-    return this.disciplineService.getIncidents(schoolId, { studentId, severity, status });
+    return this.disciplineService.getIncidents(req.user.schoolId, { studentId, severity, status });
   }
 
   @Get('student/:studentId')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.PARENT)
-  async getStudentIncidents(@Param('studentId') studentId: string) {
-    return this.disciplineService.getStudentIncidents(studentId);
+  async getStudentIncidents(@Request() req: any, @Param('studentId') studentId: string) {
+    return this.disciplineService.getStudentIncidents(studentId, req.user.schoolId);
   }
 
   @Get(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
-  async getIncident(@Param('id') id: string) {
-    return this.disciplineService.getIncidentById(id);
+  async getIncident(@Request() req: any, @Param('id') id: string) {
+    return this.disciplineService.getIncidentById(id, req.user.schoolId);
   }
 
   @Put(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
-  async updateIncident(@Param('id') id: string, @Body() dto: UpdateIncidentDto) {
-    return this.disciplineService.updateIncident(id, dto);
+  async updateIncident(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateIncidentDto,
+  ) {
+    return this.disciplineService.updateIncident(id, req.user.schoolId, dto);
   }
 
   @Delete(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER)
-  async deleteIncident(@Param('id') id: string) {
-    return this.disciplineService.deleteIncident(id);
+  async deleteIncident(@Request() req: any, @Param('id') id: string) {
+    return this.disciplineService.deleteIncident(id, req.user.schoolId);
   }
 }

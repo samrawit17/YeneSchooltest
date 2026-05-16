@@ -3,11 +3,17 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ETHIOPIAN_MONTH_NAMES, convertToEthiopian, convertEthiopianToGregorian } from "@/lib/calendar-utils";
+import { TimePicker } from "@/components/ui/TimePicker";
+import {
+  ETHIOPIAN_MONTH_NAMES,
+  convertToEthiopian,
+  convertEthiopianToGregorian,
+  formatTimeByCalendarType,
+} from "@/lib/calendar-utils";
 import { cn } from "@/lib/utils";
 
 // Standard UI components (Assuming these exist or standard HTML inputs will be used instead)
@@ -19,7 +25,25 @@ interface CalendarDatePickerProps {
   className?: string;
   placeholder?: string;
   disabled?: boolean;
+  includeTime?: boolean;
 }
+
+const toTimeValue = (date?: Date) => {
+  if (!date) return "08:00";
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+};
+
+const applyTimeToDate = (date: Date, time: string) => {
+  const [hourText, minuteText] = time.split(":");
+  const next = new Date(date);
+  next.setHours(Number(hourText) || 0, Number(minuteText) || 0, 0, 0);
+  return next;
+};
+
+const mergeDateAndTime = (date: Date, existingDate: Date | undefined, includeTime: boolean) => {
+  if (!includeTime) return date;
+  return applyTimeToDate(date, toTimeValue(existingDate));
+};
 
 export function CalendarDatePicker({
   value,
@@ -27,16 +51,23 @@ export function CalendarDatePicker({
   className,
   placeholder = "Select Date",
   disabled = false,
+  includeTime = false,
 }: CalendarDatePickerProps) {
   const { user } = useAuth();
   const calendarType = user?.calendarType || "ETHIOPIAN";
   const [open, setOpen] = useState(false);
+  const selectedTime = toTimeValue(value);
 
   // === ETHIOPIAN CALENDAR STATE ===
   const todayEth = convertToEthiopian(new Date());
   const [ethYear, setEthYear] = useState<number>(todayEth.year);
   const [ethMonth, setEthMonth] = useState<number>(todayEth.month);
   const [ethDay, setEthDay] = useState<number>(todayEth.day);
+
+  const updateTime = (time: string) => {
+    const baseDate = value || convertEthiopianToGregorian(ethYear, ethMonth, ethDay);
+    onChange(applyTimeToDate(baseDate, time));
+  };
 
   // Sync incoming Gregorian Date to Ethiopian state
   useEffect(() => {
@@ -63,19 +94,27 @@ export function CalendarDatePicker({
             disabled={disabled}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {value ? format(value, "PPP") : <span>{placeholder}</span>}
+            {value ? format(value, includeTime ? "PPP p" : "PPP") : <span>{placeholder}</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent className="w-auto space-y-3 p-3" align="start">
           <Calendar
             mode="single"
             selected={value}
             onSelect={(date) => {
-              onChange(date);
-              setOpen(false);
+              onChange(date ? mergeDateAndTime(date, value, includeTime) : undefined);
+              if (!includeTime) setOpen(false);
             }}
             initialFocus
           />
+          {includeTime ? (
+            <div className="border-t border-slate-100 pt-3 dark:border-slate-700">
+              <TimePicker value={selectedTime} onChange={updateTime} />
+              <Button className="mt-3 h-9 w-full text-sm" onClick={() => setOpen(false)}>
+                Done
+              </Button>
+            </div>
+          ) : null}
         </PopoverContent>
       </Popover>
     );
@@ -116,13 +155,17 @@ export function CalendarDatePicker({
     setEthDay(newDay);
 
     // Convert back to Gregorian to pass up
-    const newGregorian = convertEthiopianToGregorian(newYear, newMonth, newDay);
+    const newGregorian = mergeDateAndTime(
+      convertEthiopianToGregorian(newYear, newMonth, newDay),
+      value,
+      includeTime,
+    );
     onChange(newGregorian);
   };
 
   // Format to show in trigger
   const ethiopianDisplay = value
-    ? `${ETHIOPIAN_MONTH_NAMES[ethMonth - 1]} ${ethDay}, ${ethYear} E.C.`
+    ? `${ETHIOPIAN_MONTH_NAMES[ethMonth - 1]} ${ethDay}, ${ethYear} E.C.${includeTime ? ` • ${formatTimeByCalendarType(selectedTime, "ETHIOPIAN")}` : ""}`
     : placeholder;
 
   return (
@@ -138,7 +181,7 @@ export function CalendarDatePicker({
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          <span>{ethiopianDisplay}</span>
+          <span className="truncate">{ethiopianDisplay}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[320px] p-4 bg-white dark:bg-gray-800" align="start">
@@ -209,9 +252,26 @@ export function CalendarDatePicker({
           {value && (
             <div className="pt-2 mt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-center text-muted-foreground">
               Gregorian equivalent:<br />
-              <span className="font-medium">{format(value, "PPP")}</span>
+              <span className="font-medium">{format(value, includeTime ? "PPP p" : "PPP")}</span>
             </div>
           )}
+
+          {includeTime ? (
+            <div className="space-y-2 border-t border-gray-100 pt-3 dark:border-gray-700">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Clock className="h-4 w-4" />
+                Ethiopian Time
+              </div>
+              <TimePicker
+                value={selectedTime}
+                onChange={updateTime}
+                placeholder="Select time"
+              />
+              <div className="rounded-md bg-slate-50 px-3 py-2 text-center text-sm font-medium text-slate-700 dark:bg-slate-700/60 dark:text-slate-200">
+                {formatTimeByCalendarType(selectedTime, "ETHIOPIAN")}
+              </div>
+            </div>
+          ) : null}
 
           <Button
             className="w-full h-8 text-xs"

@@ -1,19 +1,29 @@
 import api from "./core";
+import type { PlanTier } from "@/types/subscription";
 
 export interface SubscriptionPlan {
   id: string;
   name: string;
-  tier: string;
-  description?: string;
+  tier: PlanTier;
+  description: string | null;
   features: string[];
-  isActive?: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  subscriptionId?: string;
+  subscriptionStatus?: string;
+  subscriptionStartDate?: string;
+  subscriptionEndDate?: string | null;
 }
 
 export interface SubscriptionSchool {
   id: string;
   name: string;
   email: string;
-  plan: { id: string; name: string; tier: string } | null;
+  plan: SubscriptionPlan | null;
+  subscription?: SchoolSubscription | null;
+  planAssignedAt: string | null;
+  isActive: boolean;
   _count?: { users?: number };
 }
 
@@ -21,13 +31,16 @@ export interface SchoolSubscription {
   id: string;
   schoolId: string;
   planId: string;
-  status?: string;
+  status: string;
+  startDate: string;
+  endDate: string | null;
+  plan?: SubscriptionPlan;
 }
 
 export const subscriptionAPI = {
   getAllPlans: () => api.get<SubscriptionPlan[]>("/subscription/plans"),
   getPlan: (id: string) => api.get<SubscriptionPlan>(`/subscription/plans/${id}`),
-  createPlan: (data: { name: string; tier: string; description?: string; features: string[] }) =>
+  createPlan: (data: { name: string; tier: PlanTier; description?: string; features: string[] }) =>
     api.post<SubscriptionPlan>("/subscription/plans", data),
   updatePlan: (
     id: string,

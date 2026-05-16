@@ -1,0 +1,114 @@
+{
+  "Profile": {
+    "title": "Habaynta Profile-ka",
+    "description": "Maamul macluumaadka akoonkaaga, amniga, iyo doorbidyadaada",
+    "logout": "Ka bixid",
+    "tabs": {
+      "profile": "Profile-ka",
+      "security": "Amniga",
+      "notifications": "Ogaysiisyada",
+      "preferences": "Doorbidyada"
+    },
+    "info": {
+      "title": "Macluumaadka Profile-ka",
+      "description": "Macluumaadkaaga gaarka ah iyo faahfaahinta akoonkaaga",
+      "edit": "Wax ka beddel",
+      "cancel": "Iska daa",
+      "save": "Keydi isbedelada",
+      "saving": "Waa la keydinayaa...",
+      "saveSuccess": "Profile-ka si guul leh ayaa loo cusboonaysiiyay",
+      "fullName": "Magaca oo buuxa",
+      "email": "Cinwaanka iimaylka",
+      "phone": "Lambarka taleefanka",
+      "avatarUrl": "URL-ka sawirka profile-ka",
+      "schoolId": "ID-ga dugsiga",
+      "memberSince": "Xubin ilaa",
+      "class": "Fasalka",
+      "gradeLevel": "Heerka fasalka",
+      "section": "Qaybta",
+      "address": "Cinwaanka",
+      "role": "Kaalinta"
+    },
+    "avatar": {
+      "title": "Beddel sawirka profile-ka",
+      "description": "Soo rar sawir cusub ama geli URL sawir ah",
+      "placeholder": "Geli URL sawirka"
+    },
+    "roles": {
+      "user": "Isticmaale",
+      "teacher": "Macallin",
+      "admin": "Maamule",
+      "superadmin": "Maamulaha Guud",
+      "student": "Arday",
+      "parent": "Waali"
+    },
+    "actions": {
+      "leaveRequests": "Codsiyada fasaxa"
+    },
+    "activity": {
+      "title": "Dhaqdhaqaaqa Akoonka",
+      "description": "Dhaqdhaqaaqyadii ugu dambeeyay ee akoonka iyo cusboonaysiinta",
+      "lastUpdated": "Profile-ka markii ugu dambaysay ee la cusboonaysiiyay",
+      "updated": "La cusboonaysiiyay",
+      "emailVerified": "Iimaylka waa la xaqiijiyay",
+      "emailVerifiedDesc": "Cinwaankaaga iimaylka waa la xaqiijiyay",
+      "verified": "La xaqiijiyay",
+      "lastLogin": "Gelitaankii ugu dambeeyay",
+      "active": "Shaqaynaya"
+    },
+    "security": {
+      "title": "Beddel erayga sirta ah",
+      "description": "Cusboonaysii eraygaaga sirta ah si aad akoonkaaga u ilaaliso",
+      "saveSuccess": "Erayga sirta ah si guul leh ayaa loo beddelay",
+      "currentPassword": "Erayga sirta ah ee hadda",
+      "newPassword": "Eray sir ah oo cusub",
+      "confirmPassword": "Xaqiiji erayga sirta ah",
+      "currentPlaceholder": "Geli erayga sirta ah ee hadda",
+      "newPlaceholder": "Geli eray sir ah oo cusub",
+      "confirmPlaceholder": "Ku celi erayga sirta ah",
+      "passwordHelp": "Erayga sirta ah waa inuu ugu yaraan ka koobnaadaa 8 xaraf, uuna ku jiraan xaraf weyn, xaraf yar, lambar, iyo astaan gaar ah.",
+      "updateButton": "Cusboonaysii erayga sirta ah",
+      "updating": "Waa la cusboonaysiinayaa..."
+    },
+    "notifications": {
+      "title": "Doorbidyada Ogaysiiska",
+      "description": "Dooro sida aad rabto in laguugu soo wargeliyo cusboonaysiinta muhiimka ah",
+      "channels": "Hababka Ogaysiinta",
+      "email": "Ogaysiisyada Iimaylka",
+      "emailDesc": "Ku hel ogaysiisyada iimayl ahaan",
+      "sms": "Ogaysiisyada SMS-ka",
+      "smsDesc": "Ku hel ogaysiisyada farriin qoraal ah",
+      "push": "Ogaysiisyada Push-ka",
+      "pushDesc": "Ku hel ogaysiisyada qalabkaaga",
+      "types": "Noocyada Ogaysiinta",
+      "commBook": "Buugga Xiriirka",
+      "commBookDesc": "Hela cusboonaysiinta fariimaha buugga xiriirka",
+      "timetable": "Jadwalka",
+      "timetableDesc": "Hela cusboonaysiinta isbeddelada jadwalka",
+      "attendance": "Imaanshaha",
+      "attendanceDesc": "Hela digniinaha iyo cusboonaysiinta imaanshaha",
+      "announcements": "Ogeysiisyada",
+      "announcementsDesc": "Hela ogeysiisyada iyo ogeysiisyada dugsiga",
+      "assignments": "Shaqooyinka",
+      "assignmentsDesc": "Hela cusboonaysiinta shaqooyinka iyo layliyada",
+      "exams": "Natiijooyinka Imtixaanka",
+      "examsDesc": "Hela natiijooyinka imtixaanka iyo cusboonaysiinta akadeemiyadda",
+      "fees": "Lacag bixinta",
+      "feesDesc": "Hela xusuusinta lacag bixinta iyo rasiidhada",
+      "events": "Munaasabadaha",
+      "eventsDesc": "Hela ogaysiisyada munaasabadaha dugsiga",
+      "save": "Keydi doorbidyada"
+    },
+    "preferences": {
+      "appearance": "Muuqaalka",
+      "appearanceDesc": "Habee sida app-ku ugu muuqdo qalabkaaga",
+      "theme": "Muuqaalka guud",
+      "themeDesc": "Dooro muuqaalka aad doorbidid",
+      "light": "Iftiin",
+      "dark": "Madow",
+      "system": "Nidaamka",
+      "language": "Luqadda",
+      "languageDesc": "Dooro luqadda aad doorbidid"
+    }
+  }
+}

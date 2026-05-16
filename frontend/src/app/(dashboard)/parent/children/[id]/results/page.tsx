@@ -239,8 +239,16 @@ const ChildResultsPage = () => {
             average: Number(latestPublishedCard?.percentage) || average,
           },
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch results:", error);
+        if (error?.response?.status === 403) {
+          setPaymentGate({
+            blocked: true,
+            message:
+              error.response?.data?.message ||
+              "Results are locked until the current term or semester fees are paid.",
+          });
+        }
         setResults(null);
       } finally {
         setLoading(false);

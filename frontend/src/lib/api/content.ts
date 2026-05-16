@@ -128,7 +128,7 @@ export interface Lesson {
   title: string;
   objective?: string;
   lessonContent?: string;
-  homework?: string;
+  homework?: string | { id?: string; title?: string; description?: string };
   description?: string;
   instructions?: string;
   lessonDate: string;

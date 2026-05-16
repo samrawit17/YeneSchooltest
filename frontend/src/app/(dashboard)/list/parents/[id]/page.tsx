@@ -7,14 +7,52 @@ import { parentsAPI } from "@/lib/api/people";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
-import { Loader2, Plus } from "lucide-react";
-import UserDetailPage, { UserDetailData } from "@/components/UserDetailPage";
+import {
+  Activity,
+  Calendar,
+  CheckCircle,
+  Edit2,
+  GraduationCap,
+  Loader2,
+  MapPin,
+  Phone,
+  Plus,
+  Shield,
+  User,
+  Users,
+} from "lucide-react";
+import UserAvatarUpload from "@/components/UserAvatarUpload";
 import ParentChildLinkForm from "@/components/forms/ParentChildLinkForm";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { resolveAssetUrl } from "@/lib/asset-url";
 
 interface PageProps {
   params: { id: string };
 }
+
+const formatDate = (date?: string | null) => {
+  if (!date) return "N/A";
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "N/A";
+  return parsed.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "P";
 
 const SingleParentPage = ({ params }: PageProps) => {
   const router = useRouter();
@@ -22,6 +60,7 @@ const SingleParentPage = ({ params }: PageProps) => {
   const [linkChildOpen, setLinkChildOpen] = useState(false);
   const { user } = useAuth();
   const { setItems } = useBreadcrumb();
+  const currentRole = String(user?.role || '').toUpperCase();
 
   const { data: parent, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.parents.detail(parentId),
@@ -34,7 +73,7 @@ const SingleParentPage = ({ params }: PageProps) => {
   // Set breadcrumbs with parent name
   useEffect(() => {
     const parentName = parent?.user?.name || parent?.name || "Parent Profile";
-    const isAdmin = ((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') || user?.role === 'SUPER_ADMIN';
+    const isAdmin = ['ADMIN', 'IT_MANAGER', 'SUPER_ADMIN'].includes(currentRole);
     
     if (parent) {
       setItems([
@@ -45,7 +84,7 @@ const SingleParentPage = ({ params }: PageProps) => {
       ]);
     }
     return () => setItems(null);
-  }, [parent, setItems, user?.role]);
+  }, [parent, setItems, currentRole]);
 
   if (isLoading) {
     return (
@@ -69,60 +108,158 @@ const SingleParentPage = ({ params }: PageProps) => {
   }
 
   const userData = parent.user || {};
+  const parentUserId = userData.id || parent.userId;
+  const canUploadPhoto = ['ADMIN', 'REGISTRAR', 'IT_MANAGER', 'SUPER_ADMIN'].includes(currentRole);
   const children = (parent.children || []).map((c: any) => ({
     id: c.studentId || c.student?.id || c.id,
+    userId: c.student?.userId || c.student?.user?.id,
     name: c.student?.user?.name || c.studentName || "Unknown",
     studentCode: c.student?.studentCode || c.studentCode,
     relation: c.relation,
+    isPrimary: c.isPrimary,
+    emergencyContact: c.emergencyContact,
     grade: c.student?.className || c.student?.class?.name,
+    section: c.student?.section || c.section,
+    status: c.student?.enrollmentStatus || c.student?.status,
   }));
-
-  // Map parent data to UserDetailData
-  const userDetail: UserDetailData = {
-    id: parent.id,
-    name: userData.name || parent.name || "Unknown Parent",
-    email: userData.email || parent.email || "",
-    role: "PARENT",
-    avatarUrl: userData.img || userData.avatarUrl,
-    isActive: userData.isActive ?? true,
-    createdAt: userData.createdAt || parent.createdAt,
-    lastLogin: userData.lastLogin,
-    username: userData.email || parent.email,
-
-    // Personal info
-    phone: userData.phone || parent.phone,
-    gender: parent.gender,
-    address: parent.address || userData.address,
-
-    // Parent-specific
-    children,
-    occupation: parent.occupation,
-
-    // Activity log
-    activityLog: parent.activityLog,
-
-    // Documents
-    documents: parent.documents,
-  };
+  const parentName = userData.name || parent.name || "Unknown Parent";
+  const avatarUrl = userData.img || userData.avatarUrl;
+  const isActive = userData.isActive ?? true;
+  const username = userData.username || userData.email || parent.email || "N/A";
+  const phone = userData.phone || parent.phone || "N/A";
+  const address = parent.address || userData.address || "N/A";
+  const lastLogin = userData.lastLoginAt || userData.lastLogin;
+  const createdAt = userData.createdAt || parent.createdAt;
 
   return (
-    <>
-      <UserDetailPage
-        user={userDetail}
-        fullWidth
-        backUrl="/list/parents"
-        backLabel="Parents"
-        onEdit={() => router.push(`/list/parents/${parentId}/edit`)}
-        onResetPassword={() => {}}
-        onDeactivate={() => {}}
-        onSendMessage={() => {}}
-        childrenTabActions={
-          <Button size="sm" onClick={() => setLinkChildOpen(true)} style={{ backgroundColor: "#e35336" }}>
-            <Plus className="w-4 h-4 mr-1.5" />
-            Add child
-          </Button>
-        }
-      />
+    <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
+      <div className="w-full space-y-6">
+        <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <CardContent className="p-0">
+            <div className="flex flex-col gap-5 border-b border-slate-100 p-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+                <Avatar className="h-24 w-24 border-4 border-slate-100 shadow-sm dark:border-slate-800">
+                  {avatarUrl ? (
+                    <AvatarImage src={resolveAssetUrl(avatarUrl) || avatarUrl} alt={parentName} />
+                  ) : (
+                    <AvatarFallback className="text-2xl font-bold">
+                      {getInitials(parentName)}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="truncate text-2xl font-bold text-slate-900 dark:text-white">
+                      {parentName}
+                    </h1>
+                    <Badge className={isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}>
+                      {isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{username}</span>
+                    <span>{phone}</span>
+                    <span>{children.length} linked child{children.length === 1 ? "" : "ren"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {canUploadPhoto && parentUserId ? (
+            <UserAvatarUpload
+              userId={parentUserId}
+                    currentAvatarUrl={avatarUrl}
+              onUploaded={() => refetch()}
+            />
+                ) : null}
+                <Button variant="outline" size="sm" onClick={() => router.push(`/list/parents/${parentId}/edit`)}>
+                  <Edit2 className="mr-1.5 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button size="sm" onClick={() => setLinkChildOpen(true)} style={{ backgroundColor: "#e35336" }}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Add child
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
+              <SummaryItem icon={Users} label="Linked Children" value={String(children.length)} />
+              <SummaryItem icon={Shield} label="Account Status" value={isActive ? "Active" : "Inactive"} />
+              <SummaryItem icon={Activity} label="Last login" value={formatDate(lastLogin)} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_1fr]">
+          <div className="space-y-6">
+            <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <CardHeader>
+                <CardTitle className="text-base">Parent Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <InfoRow icon={User} label="Username" value={username} />
+                <InfoRow icon={Phone} label="Phone" value={phone} />
+                <InfoRow icon={MapPin} label="Address" value={address} />
+                <InfoRow icon={GraduationCap} label="Occupation" value={parent.occupation || "N/A"} />
+                <InfoRow icon={Calendar} label="Created" value={formatDate(createdAt)} />
+                <InfoRow icon={Activity} label="Last login" value={formatDate(lastLogin)} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">Linked Children</CardTitle>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Students connected to this parent account.
+                </p>
+              </div>
+              <Button size="sm" onClick={() => setLinkChildOpen(true)} style={{ backgroundColor: "#e35336" }}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add child
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {children.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 py-12 text-center dark:border-slate-700">
+                  <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" />
+                  <p className="font-medium text-slate-900 dark:text-white">No children linked</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Link a student to this parent profile.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
+                  {children.map((child: any) => (
+                    <Link
+                      key={`${child.id}-${child.userId || ""}`}
+                      href={`/list/students/${child.id}`}
+                      className="block rounded-xl border border-slate-200 p-4 transition-colors hover:border-[var(--brand-color,#e35336)] hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-slate-900 dark:text-white">{child.name}</p>
+                          <p className="mt-1 font-mono text-sm text-slate-500 dark:text-slate-400">{child.studentCode || "N/A"}</p>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          {child.isPrimary ? <Badge variant="outline">Primary</Badge> : null}
+                          {child.emergencyContact ? <Badge variant="outline">Emergency</Badge> : null}
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <MiniInfo label="Class" value={child.grade || "N/A"} />
+                        <MiniInfo label="Section" value={child.section || "N/A"} />
+                        <MiniInfo label="Relation" value={child.relation || "N/A"} />
+                        <MiniInfo label="Status" value={child.status || "Active"} />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
       <ParentChildLinkForm
         isOpen={linkChildOpen}
@@ -138,8 +275,42 @@ const SingleParentPage = ({ params }: PageProps) => {
         }}
         onSuccess={() => refetch()}
       />
-    </>
+      </div>
+    </div>
   );
 };
+
+function SummaryItem({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/70">
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+        <Icon className="h-4 w-4" />
+        {label}
+      </div>
+      <p className="mt-2 text-lg font-bold text-slate-900 dark:text-white">{value}</p>
+    </div>
+  );
+}
+
+function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{value || "N/A"}</p>
+      </div>
+    </div>
+  );
+}
+
+function MiniInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="truncate font-medium text-slate-700 dark:text-slate-200">{value || "N/A"}</p>
+    </div>
+  );
+}
 
 export default SingleParentPage;

@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
   UnauthorizedException,
   Res,
@@ -9,9 +10,15 @@ import type { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { Role } from './types/role.enum';
 import { EnrollmentStatus, Prisma } from '@prisma/client';
 import { CredentialService } from '../credential/credential.service';
+import {
+  NotificationService,
+  NotificationType,
+} from '../notification/notification.service';
 import {
   DEFAULT_ROLE_PERMISSIONS,
   IT_MANAGER_FORBIDDEN_PERMISSIONS,
@@ -22,6 +29,12 @@ export const JWT_COOKIE_NAME = 'Authentication';
 
 // School setting keys
 const SCHOOL_SETTING_ALLOW_SELF_ENROLLMENT = 'ALLOW_SELF_ENROLLMENT';
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const AVATAR_EXTENSIONS_BY_MIME: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
 
 @Injectable()
 export class AuthService {
@@ -29,7 +42,12 @@ export class AuthService {
     private prismaService: PrismaService,
     private jwtService: JwtService,
     private credentialService: CredentialService,
+    private notificationService: NotificationService,
   ) {}
+
+  private normalizeUsername(username: string) {
+    return username.trim();
+  }
 
   /**
    * Validate user by username, email, or phone
@@ -185,7 +203,7 @@ export class AuthService {
       ? Prisma.sql`AND "schoolId" = ${schoolId}`
       : Prisma.empty;
     const searchSql = searchPattern
-      ? Prisma.sql`AND ("name" ILIKE ${searchPattern} OR "email" ILIKE ${searchPattern})`
+      ? Prisma.sql`AND ("name" ILIKE ${searchPattern} OR "email" ILIKE ${searchPattern} OR "username" ILIKE ${searchPattern})`
       : Prisma.empty;
 
     const countRows = await this.prismaService.$queryRaw<Array<{ count: number }>>(
@@ -202,6 +220,7 @@ export class AuthService {
       Array<{
         id: string;
         email: string;
+        username: string | null;
         name: string;
         role: string;
         schoolId: string;
@@ -216,6 +235,7 @@ export class AuthService {
         SELECT
           "id",
           "email",
+          "username",
           "name",
           "role",
           "schoolId",
@@ -637,8 +657,9 @@ export class AuthService {
 
     if (filters?.search) {
       where.OR = [
-        { name: { contains: filters.search } },
-        { email: { contains: filters.search } },
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+        { username: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
 
@@ -653,6 +674,7 @@ export class AuthService {
       select: {
         id: true,
         email: true,
+        username: true,
         name: true,
         role: true,
         schoolId: true,
@@ -695,8 +717,9 @@ export class AuthService {
 
     if (filters?.search) {
       where.OR = [
-        { name: { contains: filters.search } },
-        { email: { contains: filters.search } },
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+        { username: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
 
@@ -711,6 +734,7 @@ export class AuthService {
       select: {
         id: true,
         email: true,
+        username: true,
         name: true,
         role: true,
         schoolId: true,
@@ -822,6 +846,79 @@ export class AuthService {
     });
   }
 
+  async uploadUserAvatar(
+    targetUserId: string,
+    requester: { id: string; role: Role | string; schoolId?: string | null },
+    file?: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Avatar file is required');
+    }
+
+    if (file.size > AVATAR_MAX_BYTES) {
+      throw new BadRequestException('Avatar image must be 2MB or smaller');
+    }
+
+    const extension = AVATAR_EXTENSIONS_BY_MIME[file.mimetype];
+    if (!extension) {
+      throw new BadRequestException(
+        'Avatar image must be a JPG, PNG, or WEBP file',
+      );
+    }
+
+    const targetUser = await this.prismaService.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        role: true,
+        schoolId: true,
+        avatarUrl: true,
+      },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const requesterRole = String(requester.role).toUpperCase();
+    const targetRole = String(targetUser.role).toUpperCase();
+    const isSelf = requester.id === targetUser.id;
+    const canManageSchoolAvatars =
+      ['ADMIN', 'REGISTRAR', 'IT_MANAGER'].includes(requesterRole) &&
+      ['STUDENT', 'PARENT', 'TEACHER'].includes(targetRole) &&
+      !!requester.schoolId &&
+      requester.schoolId === targetUser.schoolId;
+    const canManageAnyAvatar = requesterRole === Role.SUPER_ADMIN;
+
+    if (!isSelf && !canManageSchoolAvatars && !canManageAnyAvatar) {
+      throw new ForbiddenException('You cannot update this user photo');
+    }
+
+    const schoolSegment = targetUser.schoolId || 'platform';
+    const relativeDir = path.join('uploads', 'schools', schoolSegment, 'avatars');
+    const publicDir = path.join(process.cwd(), 'public', relativeDir);
+    const fileName = `${targetUser.id}-${Date.now()}${extension}`;
+    const filePath = path.join(publicDir, fileName);
+
+    await fs.mkdir(publicDir, { recursive: true });
+    await fs.writeFile(filePath, file.buffer);
+
+    const avatarUrl = `/${relativeDir.split(path.sep).join('/')}/${fileName}`;
+
+    return this.prismaService.user.update({
+      where: { id: targetUser.id },
+      data: { avatarUrl },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        schoolId: true,
+        avatarUrl: true,
+        updatedAt: true,
+      },
+    });
+  }
+
   async deleteUser(id: string) {
     return this.prismaService.user.delete({
       where: { id },
@@ -880,34 +977,55 @@ export class AuthService {
   }
 
   /**
-   * Request password reset - generates token and returns it
-   * In production, this would send an email
+   * Request password reset - notifies admins to reset the user's password
    */
-  async requestPasswordReset(email: string) {
-    // Find user by email
-    const user = await this.prismaService.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      // Don't reveal if user exists or not
-      return { tokenSent: false };
+  async requestPasswordReset(username: string) {
+    const normalizedUsername = this.normalizeUsername(username);
+    if (!normalizedUsername) {
+      return { notified: false };
     }
 
-    // Generate reset token
-    const token = await this.credentialService.createPasswordResetToken(
-      user.id,
-    );
+    const user = await this.prismaService.user.findFirst({
+      where: {
+        username: {
+          equals: normalizedUsername,
+          mode: 'insensitive',
+        },
+      },
+    });
 
-    // In production, send email with reset link
-    // For now, return the token (in production, this would be sent via email)
-    // Logging removed for production
+    if (!user?.schoolId) {
+      return { notified: false };
+    }
 
-    return {
-      tokenSent: true,
-      // In development, return token for testing
-      ...(process.env.NODE_ENV !== 'production' && { token }),
-    };
+    const admins = await this.prismaService.user.findMany({
+      where: {
+        schoolId: user.schoolId,
+        role: { in: [Role.ADMIN, Role.IT_MANAGER] },
+        isActive: true,
+      },
+      select: { id: true, schoolId: true },
+    });
+
+    if (admins.length > 0) {
+      const schoolId = user.schoolId;
+      await this.notificationService.createBulkNotifications({
+        schoolId,
+        userIds: admins.map((a) => a.id),
+        title: 'Password Reset Requested',
+        message: `${user.name} (${user.username}) has requested a password reset.`,
+        type: NotificationType.PASSWORD_RESET,
+        actionUrl: '/admin/credentials',
+        metadata: {
+          userId: user.id,
+          userName: user.name,
+          userEmail: user.email,
+          userUsername: user.username,
+        },
+      });
+    }
+
+    return { notified: admins.length > 0 };
   }
 
   /**
@@ -954,7 +1072,21 @@ export class AuthService {
   /**
    * Admin resets user password - generates new temporary password
    */
-  async adminResetUserPassword(targetUserId: string, adminUserId: string) {
+  async adminResetUserPassword(
+    targetUserId: string,
+    adminUserId: string,
+    adminSchoolId: string,
+    adminRole: Role,
+    requestedTemporaryPassword?: string,
+  ) {
+    if (![Role.ADMIN, Role.IT_MANAGER].includes(adminRole)) {
+      throw new ForbiddenException('Not allowed to reset user passwords');
+    }
+
+    if (!adminSchoolId) {
+      throw new ForbiddenException('Admin is not associated with any school');
+    }
+
     // Get target user
     const targetUser = await this.prismaService.user.findUnique({
       where: { id: targetUserId },
@@ -964,8 +1096,26 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    // Generate new temporary password
+    if (targetUser.role === Role.SUPER_ADMIN) {
+      throw new ForbiddenException('Cannot reset a super admin password here');
+    }
+
+    if (targetUser.schoolId !== adminSchoolId) {
+      throw new ForbiddenException(
+        'Cannot reset a password outside your school',
+      );
+    }
+
+    const customTemporaryPassword = requestedTemporaryPassword?.trim();
+    if (customTemporaryPassword && customTemporaryPassword.length < 8) {
+      throw new BadRequestException(
+        'Temporary password must be at least 8 characters',
+      );
+    }
+
+    // Generate or use the provided temporary password
     const temporaryPassword =
+      customTemporaryPassword ||
       this.credentialService.generateTemporaryPassword(12);
     const hashedPassword =
       await this.credentialService.hashPassword(temporaryPassword);

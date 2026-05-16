@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -70,9 +70,9 @@ export class DisciplineService {
     });
   }
 
-  async getIncidentById(id: string) {
-    return this.prisma.disciplineIncident.findUnique({
-      where: { id },
+  async getIncidentById(id: string, schoolId: string) {
+    return this.prisma.disciplineIncident.findFirst({
+      where: { id, schoolId },
       include: {
         student: {
           include: {
@@ -88,7 +88,7 @@ export class DisciplineService {
     });
   }
 
-  async updateIncident(id: string, data: {
+  async updateIncident(id: string, schoolId: string, data: {
     title?: string;
     description?: string;
     severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -96,6 +96,12 @@ export class DisciplineService {
     actionTaken?: string;
     outcome?: string;
   }) {
+    const existing = await this.prisma.disciplineIncident.findFirst({
+      where: { id, schoolId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Discipline incident not found');
+
     return this.prisma.disciplineIncident.update({
       where: { id },
       data,
@@ -111,15 +117,21 @@ export class DisciplineService {
     });
   }
 
-  async deleteIncident(id: string) {
+  async deleteIncident(id: string, schoolId: string) {
+    const existing = await this.prisma.disciplineIncident.findFirst({
+      where: { id, schoolId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Discipline incident not found');
+
     return this.prisma.disciplineIncident.delete({
       where: { id },
     });
   }
 
-  async getStudentIncidents(studentId: string) {
+  async getStudentIncidents(studentId: string, schoolId: string) {
     return this.prisma.disciplineIncident.findMany({
-      where: { studentId },
+      where: { studentId, schoolId },
       orderBy: { incidentDate: 'desc' },
       include: {
         reporter: {

@@ -97,7 +97,11 @@ export const reportCardsAPI = {
   getPublishedForParent: (
     childId: string,
     params?: { academicYear?: string; term?: string },
-  ) => api.get<ReportCard[]>(`/report-cards/parent/${childId}/published`, { params }),
+  ) =>
+    api.get<ReportCard[]>(`/report-cards/parent/${childId}/published`, {
+      params,
+      skipAuthErrorRedirect: true,
+    }),
   getByClass: (classId: string, params?: { academicYear?: string; term?: string }) =>
     api.get<ReportCard[]>(`/report-cards/class/${classId}`, { params }),
   generate: (data: { studentId: string; classId: string; sectionId: string; termId: string; termName: string }) =>

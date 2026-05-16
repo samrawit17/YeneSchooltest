@@ -83,9 +83,9 @@ export class ClassService {
     });
   }
 
-  async findOne(id: string) {
-    const classData = await this.prisma.class.findUnique({
-      where: { id },
+  async findOne(id: string, schoolId: string) {
+    const classData = await this.prisma.class.findFirst({
+      where: { id, schoolId },
       include: {
         sections: {
           orderBy: { name: 'asc' },
@@ -138,6 +138,7 @@ export class ClassService {
 
   async update(
     id: string,
+    schoolId: string,
     data: {
       academicYearId?: string;
       grade?: number;
@@ -147,11 +148,11 @@ export class ClassService {
   ) {
     // Check if updating would create a duplicate
     if (data.grade || data.academicYearId) {
-      const currentClass = await this.findOne(id);
+      const currentClass = await this.findOne(id, schoolId);
       const existingClass = await this.prisma.class.findFirst({
         where: {
           id: { not: id },
-          schoolId: currentClass.schoolId,
+          schoolId,
           academicYearId: data.academicYearId || currentClass.academicYearId,
           grade: data.grade,
         },
@@ -169,7 +170,7 @@ export class ClassService {
       const teacher = await this.prisma.user.findUnique({
         where: { id: data.homeroomTeacherId },
       });
-      if (!teacher) {
+      if (!teacher || teacher.schoolId !== schoolId) {
         throw new NotFoundException('Teacher not found');
       }
       if (teacher.role !== Role.TEACHER) {
@@ -210,8 +211,8 @@ export class ClassService {
     return updatedClass;
   }
 
-  async delete(id: string) {
-    await this.findOne(id); // Validate exists
+  async delete(id: string, schoolId: string) {
+    await this.findOne(id, schoolId); // Validate exists
 
     return this.prisma.class.delete({
       where: { id },
@@ -316,13 +317,14 @@ export class ClassService {
   }
 
   async getStudentsByClass(
+    schoolId: string,
     classId: string,
     sectionId?: string,
     search?: string,
     pagination?: { page: number; limit: number; orderBy?: string },
   ) {
     // First verify the class exists
-    const classData = await this.findOne(classId);
+    const classData = await this.findOne(classId, schoolId);
 
     // Calculate pagination
     const page = pagination?.page || 1;
@@ -331,7 +333,7 @@ export class ClassService {
     const orderByField = pagination?.orderBy || 'name';
 
     // First try to get students from StudentClass table
-    const where: any = { classId };
+    const where: any = { schoolId, classId };
     if (sectionId) {
       where.sectionId = sectionId;
     }
@@ -437,12 +439,12 @@ export class ClassService {
 
       // Get total count
       total = await this.prisma.studentProfile.count({
-        where: { OR: orConditions },
+        where: { schoolId, OR: orConditions },
       });
 
       // Get students
       const studentProfiles = await this.prisma.studentProfile.findMany({
-        where: { OR: orConditions },
+        where: { schoolId, OR: orConditions },
         include: {
           user: {
             select: {
@@ -524,12 +526,12 @@ export class ClassService {
     };
   }
 
-  async getClassStats(classId: string, sectionId?: string) {
+  async getClassStats(schoolId: string, classId: string, sectionId?: string) {
     // First verify the class exists
-    const classData = await this.findOne(classId);
+    const classData = await this.findOne(classId, schoolId);
 
     // Try to get students from StudentClass table first
-    const where: any = { classId };
+    const where: any = { schoolId, classId };
     if (sectionId) {
       where.sectionId = sectionId;
     }
@@ -588,7 +590,7 @@ export class ClassService {
       });
 
       const profiles = await this.prisma.studentProfile.findMany({
-        where: { OR: orConditions },
+        where: { schoolId, OR: orConditions },
       });
 
       for (const profile of profiles) {

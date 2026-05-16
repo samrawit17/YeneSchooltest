@@ -261,14 +261,15 @@ export class ReportCardController {
 
   @Get(':id')
   @Permissions('report_card:read')
-  async getReportCardById(@Param('id') id: string) {
-    return this.reportCardService.getReportCardById(id);
+  async getReportCardById(@Request() req, @Param('id') id: string) {
+    return this.reportCardService.getReportCardById(id, req.user.schoolId);
   }
 
   @Put(':id/remarks')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   async updateRemarks(
+    @Request() req,
     @Param('id') id: string,
     @Body()
     body: {
@@ -278,14 +279,14 @@ export class ReportCardController {
       behavior?: string;
     },
   ) {
-    return this.reportCardService.updateRemarks(id, body);
+    return this.reportCardService.updateRemarks(id, req.user.schoolId, body);
   }
 
   @Put('publish')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:publish')
-  async publishReportCards(@Body() body: { ids: string[] }) {
-    return this.reportCardService.publishReportCards(body.ids);
+  async publishReportCards(@Request() req, @Body() body: { ids: string[] }) {
+    return this.reportCardService.publishReportCards(body.ids, req.user.schoolId);
   }
 
   @Post('publish/class')
@@ -315,17 +316,22 @@ export class ReportCardController {
   @Put('unpublish')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:publish')
-  async unpublishReportCards(@Body() body: { ids: string[] }) {
-    return this.reportCardService.unpublishReportCards(body.ids);
+  async unpublishReportCards(@Request() req, @Body() body: { ids: string[] }) {
+    return this.reportCardService.unpublishReportCards(
+      body.ids,
+      req.user.schoolId,
+    );
   }
 
   @Post('calculate-ranks')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   async calculateRanks(
+    @Request() req,
     @Body() body: { classId: string; academicYear: string; term: string },
   ) {
     return this.reportCardService.calculateRanks(
+      req.user.schoolId,
       body.classId,
       body.academicYear,
       body.term,
@@ -335,8 +341,8 @@ export class ReportCardController {
   @Delete(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:delete')
-  async deleteReportCard(@Param('id') id: string) {
-    return this.reportCardService.deleteReportCard(id);
+  async deleteReportCard(@Request() req, @Param('id') id: string) {
+    return this.reportCardService.deleteReportCard(id, req.user.schoolId);
   }
 
   private async getActiveAcademicYear(schoolId: string): Promise<string> {

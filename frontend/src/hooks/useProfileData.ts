@@ -3,11 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { userAPI, timetableSlotsAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguageStore } from "@/lib/languageStore";
-import enMessages from "../../../messages/en.json";
-import amMessages from "../../../messages/am.json";
-import arMessages from "../../../messages/ar.json";
-import omMessages from "../../../messages/om.json";
-import soMessages from "../../../messages/so.json";
+import enMessages from "@/messages/en.json";
+import amMessages from "@/messages/am.json";
+import arMessages from "@/messages/ar.json";
+import omMessages from "@/messages/om.json";
+import soMessages from "@/messages/so.json";
 import { queryKeys } from "@/lib/query-keys";
 
 const profileMessagesByLanguage = {
@@ -69,7 +69,9 @@ export function useProfileData(): ProfileData {
   });
 
   const assignedSubjects = teacherSlots
-    ? Array.from(new Set(teacherSlots.map((slot: any) => slot.subject?.name))).filter(Boolean)
+    ? Array.from(new Set(teacherSlots.map((slot: any) => slot.subject?.name))).filter(
+        (name): name is string => typeof name === "string" && name.length > 0,
+      )
     : [];
 
   return {

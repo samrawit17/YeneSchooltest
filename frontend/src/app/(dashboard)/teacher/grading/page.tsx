@@ -7,6 +7,7 @@ import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { toast } from "sonner";
 import { gradingAPI } from "@/lib/api";
+import { syncService } from "@/lib/db/sync-service";
 import {
   BookOpen,
   Users,
@@ -618,6 +619,11 @@ export default function TeacherGradingPage() {
     }
   }, [selectedYear, selectedTerm, selectedClassSectionId, fetchStudents]);
 
+  useEffect(() => {
+    syncService.startAutoSync();
+    return () => syncService.stopAutoSync();
+  }, []);
+
   function calculateTotal(componentScores?: Record<string, number | null>, ca?: number | null, mid?: number | null, final?: number | null): number | null {
     if (componentScores && Object.keys(componentScores).length > 0) {
       const values = Object.values(componentScores).filter((value) => value !== null && value !== undefined) as number[];
@@ -747,6 +753,7 @@ export default function TeacherGradingPage() {
 
   const handleSaveDraft = async () => {
     setSaving(true);
+    let offlinePayload: Record<string, unknown> | null = null;
     try {
       const assignment = assignments.find((a) => a.id === selectedClassSectionId);
       if (!assignment) return;
@@ -787,6 +794,12 @@ export default function TeacherGradingPage() {
         return;
       }
 
+      offlinePayload = {
+        grades: gradesToSave,
+        userId: user?.id,
+        contextKey: `${selectedClassSectionId}:${selectedYear}:${selectedTerm}`,
+      };
+
       // Use bulk API for better performance
       const res = await gradingAPI.bulkEnterGrades({ grades: gradesToSave });
       const data = res.data;
@@ -806,7 +819,13 @@ export default function TeacherGradingPage() {
       }
     } catch (error: any) {
       console.error("Error saving draft:", error);
-      toast.error(error?.response?.data?.message || "Failed to save draft");
+      const isNetworkError = !navigator.onLine || !error?.response;
+      if (isNetworkError && offlinePayload) {
+        await syncService.saveGradeDraftOffline(offlinePayload);
+        toast.success("Grades saved offline. They will sync when online.");
+      } else {
+        toast.error(error?.response?.data?.message || "Failed to save draft");
+      }
     } finally {
       setSaving(false);
     }
