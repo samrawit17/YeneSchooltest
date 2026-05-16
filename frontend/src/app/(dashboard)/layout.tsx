@@ -10,11 +10,13 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import Image from "next/image";
 import { Wrench } from "lucide-react";
 import { platformSettingsAPI, schoolsAPI, schoolSettingsAPI } from "@/lib/api";
+import { resolveAssetUrl } from "@/lib/asset-url";
 import { APP_VERSION } from "@/lib/version";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentEthiopianYear } from "@/lib/calendar-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { queryKeys } from "@/lib/query-keys";
+import { useTranslations } from "@/hooks/useTranslations";
 
 const isValidHexColor = (value?: string | null): value is string =>
   !!value && /^#([0-9A-Fa-f]{6})$/.test(value);
@@ -41,6 +43,9 @@ const normalizeBrandNavigationSetting = (value: unknown, fallback = true): boole
   }
   return fallback;
 };
+
+const formatPortalLabel = (template: string, schoolName?: string | null, fallback?: string) =>
+  schoolName ? template.replace("{school}", schoolName) : fallback || "SMS Portal";
 
 interface CachedBrandSettings {
   themeColor?: string;
@@ -80,6 +85,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useTranslations<any>("layout");
   const { isAuthenticated, isLoading, user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -97,6 +103,7 @@ export default function DashboardLayout({
     },
     enabled: !!user?.schoolId,
   });
+  const schoolLogoSrc = resolveAssetUrl(school?.logoUrl);
   // Set document title to school name
   useEffect(() => {
     if (school?.name) {
@@ -106,16 +113,16 @@ export default function DashboardLayout({
 
   // Dynamically set favicon from school logo
   useEffect(() => {
-    if (school?.logoUrl) {
+    if (schoolLogoSrc) {
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (!link) {
         link = document.createElement('link');
         link.rel = 'icon';
         document.head.appendChild(link);
       }
-      link.href = school.logoUrl;
+      link.href = schoolLogoSrc;
     }
-  }, [school?.logoUrl]);
+  }, [schoolLogoSrc]);
 
   // Fetch brand color and apply CSS variables
   const cachedBrandSettings = useMemo(
@@ -328,7 +335,7 @@ export default function DashboardLayout({
         <aside
           onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseLeave={() => setIsSidebarHovered(false)}
-          className={`absolute inset-y-0 left-0 z-[60] flex h-full flex-col shadow-sm dark:bg-[#111827] dark:border-[#334155] transition-[width] duration-200 ease-out will-change-transform ${
+          className={`dashboard-sidebar-flyout absolute inset-y-0 left-0 z-[60] flex h-full flex-col shadow-sm dark:bg-[#111827] dark:border-[#334155] transition-[width] duration-200 ease-out will-change-transform ${
             brandNavigationEnabled
               ? 'bg-[rgba(var(--brand-color-rgb),0.18)] border-r border-[rgba(var(--brand-color-rgb),0.22)]'
               : 'bg-[#F1F5F9] border-r border-gray-200'
@@ -347,23 +354,21 @@ export default function DashboardLayout({
             </div>
           ) : (
             <div className={`flex w-full items-center ${isSidebarHovered ? "justify-start gap-3" : "justify-center"}`}>
-              {school?.logoUrl ? (
-                <Image
-                  src={school.logoUrl}
+              {schoolLogoSrc ? (
+                <img
+                  src={schoolLogoSrc}
                   alt={school.name || "School Logo"}
-                  width={44}
-                  height={44}
-                  className="h-11 w-11 shrink-0 rounded-xl object-cover"
+                  className="h-11 w-11 shrink-0 rounded-full object-cover"
                 />
               ) : (
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e35336]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e35336]">
                   <span className="text-xl font-bold text-white">
                     {school?.name?.charAt(0) || "S"}
                   </span>
                 </div>
               )}
               <span className={`text-base font-bold text-slate-900 dark:text-white ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`}>
-                {school?.name || "SMS Portal"}
+                {formatPortalLabel(t.portal, school?.name, t.defaultPortal)}
               </span>
             </div>
           )}
@@ -429,12 +434,12 @@ export default function DashboardLayout({
         <footer className="border-t border-gray-200 dark:border-[#334155] bg-[#F1F5F9] dark:bg-[#111827] px-3 sm:px-4 py-2 sm:py-3">
           <div className="flex flex-row items-center justify-between gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
             <div className="flex items-center gap-1 sm:gap-2">
-              <span className="font-medium">{school?.name ? `${school.name} Portal` : 'SMS Portal'}</span>
+              <span className="font-medium">{school?.name ? t.portal.replace("{school}", school.name) : t.defaultPortal}</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <span>© {user?.calendarType === 'ETHIOPIAN' ? `${getCurrentEthiopianYear()} E.C.` : new Date().getFullYear()}</span>
+              <span>© {user?.calendarType === 'ETHIOPIAN' ? `${getCurrentEthiopianYear()} ${t.era}` : new Date().getFullYear()}</span>
               <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
-              <span className="hidden md:inline">Lemari SMS</span>
+              <span className="hidden md:inline">{t.product}</span>
               <span className="text-gray-300 dark:text-gray-600 hidden sm:inline">|</span>
               <span>v{APP_VERSION}</span>
             </div>

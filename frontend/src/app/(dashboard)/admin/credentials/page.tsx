@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from "@/hooks/useTranslations";
 import { credentialsAPI, PendingCredential, CredentialStats } from '@/lib/api/admin';
 import { authAPI, userAPI } from '@/lib/api/auth';
 import type { User } from '@/context/AuthContext';
@@ -20,7 +21,6 @@ import {
   CheckCircle, 
   Clock, 
   Mail,
-  RefreshCw,
   Copy,
   Trash2,
   Send,
@@ -50,6 +50,7 @@ const roleColors: Record<string, string> = {
 };
 
 export default function CredentialsPage() {
+  const { t } = useTranslations<any>("credentials");
   const [credentials, setCredentials] = useState<PendingCredential[]>([]);
   const [stats, setStats] = useState<CredentialStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,7 +112,7 @@ export default function CredentialsPage() {
         setTotalItems(meta.total);
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to load credentials');
+      toast.error(error?.response?.data?.message || t.toasts.loadFailed);
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -129,25 +130,25 @@ export default function CredentialsPage() {
     setActionLoading(true);
     try {
       await credentialsAPI.markAsSent(id);
-      toast.success('Credential marked as sent');
+      toast.success(t.toasts.markedAsSent);
       loadData(false);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to update');
+      toast.error(error?.response?.data?.message || t.toasts.updateFailed);
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this credential?')) return;
+    if (!confirm(t.toasts.deleteConfirm)) return;
     
     setActionLoading(true);
     try {
       await credentialsAPI.delete(id);
-      toast.success('Credential deleted');
+      toast.success(t.toasts.deleted);
       loadData(false);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to delete');
+      toast.error(error?.response?.data?.message || t.toasts.deleteFailed);
     } finally {
       setActionLoading(false);
     }
@@ -155,7 +156,7 @@ export default function CredentialsPage() {
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast.success(`${label} copied to clipboard`);
+    toast.success(t.toasts.copied.replace("{label}", label));
   };
 
   const formatDate = (dateString: string) => {
@@ -188,7 +189,7 @@ export default function CredentialsPage() {
       const res = await authAPI.getUsers({ search, limit: 20 });
       setSearchResults(Array.isArray(res.data) ? res.data : res.data?.data || []);
     } catch {
-      toast.error('Failed to search users');
+      toast.error(t.toasts.searchFailed);
     } finally {
       setSearchingUsers(false);
     }
@@ -218,7 +219,7 @@ export default function CredentialsPage() {
   const handleResetUserPassword = async (user: User) => {
     const nextPassword = temporaryPassword.trim();
     if (!nextPassword) {
-      toast.error('Enter a temporary password first');
+      toast.error(t.toasts.enterPassword);
       return;
     }
 
@@ -226,9 +227,9 @@ export default function CredentialsPage() {
     try {
       const res = await userAPI.adminResetUserPassword(user.id, nextPassword);
       setResetResult({ user, tempPassword: res.data.temporaryPassword });
-      toast.success('Password reset successfully');
+      toast.success(t.toasts.resetSuccess);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to reset password');
+      toast.error(error?.response?.data?.message || t.toasts.resetFailed);
     } finally {
       setResettingUserId(null);
     }
@@ -245,7 +246,7 @@ export default function CredentialsPage() {
 
   const openResetDialogForCredential = (credential: PendingCredential) => {
     if (!credential.userId) {
-      toast.error('This credential is not linked to an active user account');
+      toast.error(t.toasts.noUserLink);
       return;
     }
 
@@ -281,17 +282,13 @@ export default function CredentialsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-black dark:text-white">Credentials Management</h1>
-            <p className="text-gray-500">View and manage generated user credentials</p>
+            <h1 className="text-2xl font-bold text-black dark:text-white">{t.title}</h1>
+            <p className="text-gray-500">{t.description}</p>
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={openResetDialog} variant="outline">
               <ShieldAlert className="w-4 h-4 mr-2" />
-              Reset Password
-            </Button>
-            <Button onClick={() => loadData(false)} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
+              {t.resetPassword}
             </Button>
           </div>
         </div>
@@ -303,36 +300,36 @@ export default function CredentialsPage() {
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <CardTitle className="text-lg dark:text-white">
-                Credentials List ({totalItems} total)
+                {t.listTitle.replace("{total}", String(totalItems))}
               </CardTitle>
               <div className="flex flex-wrap items-center gap-3">
                 <Input
-                  placeholder="Search by name, username, or email..."
+                  placeholder={t.filters.search}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="h-8 w-[350px] dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                 />
                 <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as any); setCurrentPage(1); }}>
                   <SelectTrigger className="h-8 w-[120px] dark:bg-slate-800 dark:border-slate-700">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder={t.filters.status} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="sent">Sent</SelectItem>
+                    <SelectItem value="all">{t.filters.all}</SelectItem>
+                    <SelectItem value="pending">{t.filters.pending}</SelectItem>
+                    <SelectItem value="sent">{t.filters.sent}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setCurrentPage(1); }}>
                   <SelectTrigger className="h-8 w-[130px] dark:bg-slate-800 dark:border-slate-700">
-                    <SelectValue placeholder="Role" />
+                    <SelectValue placeholder={t.filters.role} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Roles</SelectItem>
-                    <SelectItem value="STUDENT">Student</SelectItem>
-                    <SelectItem value="TEACHER">Teacher</SelectItem>
-                    <SelectItem value="PARENT">Parent</SelectItem>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="IT_MANAGER">IT Manager</SelectItem>
+                    <SelectItem value="all">{t.filters.allRoles}</SelectItem>
+                    <SelectItem value="STUDENT">{t.filters.roles.STUDENT}</SelectItem>
+                    <SelectItem value="TEACHER">{t.filters.roles.TEACHER}</SelectItem>
+                    <SelectItem value="PARENT">{t.filters.roles.PARENT}</SelectItem>
+                    <SelectItem value="ADMIN">{t.filters.roles.ADMIN}</SelectItem>
+                    <SelectItem value="IT_MANAGER">{t.filters.roles.IT_MANAGER}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -346,19 +343,19 @@ export default function CredentialsPage() {
             ) : credentials.length === 0 ? (
               <div className="text-center py-12">
                 <Key className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">No credentials found</p>
+                <p className="text-gray-500 dark:text-gray-400">{t.empty}</p>
               </div>
             ) : (
               <>
                 <Table className="w-full">
                   <TableHeader>
                     <TableRow className="bg-gray-50 dark:bg-slate-800">
-                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Name</TableHead>
-                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Username</TableHead>
-                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Role</TableHead>
-                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Status</TableHead>
-                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Created</TableHead>
-                      <TableHead className="py-3 px-4 text-right font-semibold text-gray-600 dark:text-gray-300">Actions</TableHead>
+                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">{t.table.name}</TableHead>
+                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">{t.table.username}</TableHead>
+                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">{t.table.role}</TableHead>
+                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">{t.table.status}</TableHead>
+                      <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">{t.table.created}</TableHead>
+                      <TableHead className="py-3 px-4 text-right font-semibold text-gray-600 dark:text-gray-300">{t.table.actions}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -380,19 +377,19 @@ export default function CredentialsPage() {
                         <TableCell className="py-3 px-4">
                           <Badge variant="outline" className={roleColors[cred.role] || 'text-gray-700 dark:text-gray-300'}>
                             {roleIcons[cred.role]}
-                            <span className="ml-1">{cred.role}</span>
+                            <span className="ml-1">{t.filters.roles[cred.role] || cred.role}</span>
                           </Badge>
                         </TableCell>
                         <TableCell className="py-3 px-4">
                           {cred.isSent ? (
                             <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
                               <CheckCircle className="w-3 h-3 mr-1" />
-                              Sent
+                              {t.badges.sent}
                             </Badge>
                           ) : (
                             <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400">
                               <Clock className="w-3 h-3 mr-1" />
-                              Pending
+                              {t.badges.pending}
                             </Badge>
                           )}
                         </TableCell>
@@ -409,7 +406,7 @@ export default function CredentialsPage() {
                               size="sm"
                               onClick={() => openResetDialogForCredential(cred)}
                               disabled={actionLoading}
-                              title="Edit password"
+                              title={t.actions.editPassword}
                             >
                               <Pencil className="w-4 h-4 text-blue-500" />
                             </Button>
@@ -457,7 +454,7 @@ export default function CredentialsPage() {
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-md dark:bg-slate-900">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Credential Details</DialogTitle>
+            <DialogTitle className="dark:text-white">{t.viewDialog.title}</DialogTitle>
           </DialogHeader>
           {selectedCredential && (
             <div className="space-y-4">
@@ -468,14 +465,14 @@ export default function CredentialsPage() {
                 <div>
                   <p className="font-semibold dark:text-white">{selectedCredential.name}</p>
                   <Badge variant="outline" className={roleColors[selectedCredential.role]}>
-                    {selectedCredential.role}
+                    {t.filters.roles[selectedCredential.role] || selectedCredential.role}
                   </Badge>
                 </div>
               </div>
 
               <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4 space-y-3">
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">Username</Label>
+                  <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.username}</Label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white">
                       {selectedCredential.username}
@@ -483,7 +480,7 @@ export default function CredentialsPage() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => copyToClipboard(selectedCredential.username, 'Username')}
+                      onClick={() => copyToClipboard(selectedCredential.username, t.viewDialog.username)}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -491,7 +488,7 @@ export default function CredentialsPage() {
                 </div>
 
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">Temporary Password</Label>
+                  <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.tempPassword}</Label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white">
                       {selectedCredential.temporaryPassword}
@@ -499,7 +496,7 @@ export default function CredentialsPage() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => copyToClipboard(selectedCredential.temporaryPassword, 'Password')}
+                      onClick={() => copyToClipboard(selectedCredential.temporaryPassword, t.viewDialog.tempPassword)}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -508,18 +505,18 @@ export default function CredentialsPage() {
 
                 {selectedCredential.email && (
                   <div>
-                    <Label className="text-gray-500 dark:text-gray-400">Email</Label>
+                    <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.email}</Label>
                     <p className="font-medium dark:text-white">{selectedCredential.email}</p>
                   </div>
                 )}
 
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">Created</Label>
+                  <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.created}</Label>
                   <p className="text-sm dark:text-gray-300">{formatDate(selectedCredential.createdAt)}</p>
                 </div>
 
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">Expires</Label>
+                  <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.expires}</Label>
                   <p className="text-sm dark:text-gray-300">{formatDate(selectedCredential.expiresAt)}</p>
                 </div>
 
@@ -527,8 +524,7 @@ export default function CredentialsPage() {
                   <div className="pt-2 border-t dark:border-slate-600">
                     <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
                       <CheckCircle className="w-3 h-3 mr-1" />
-                      Sent via {selectedCredential.sentVia}
-                      {selectedCredential.sentAt && ` on ${formatDate(selectedCredential.sentAt)}`}
+                      {t.viewDialog.sentVia.replace("{via}", selectedCredential.sentVia || "").replace("{date}", selectedCredential.sentAt ? formatDate(selectedCredential.sentAt) : "")}
                     </Badge>
                   </div>
                 )}
@@ -548,11 +544,11 @@ export default function CredentialsPage() {
                 disabled={actionLoading}
               >
                 <Send className="w-4 h-4 mr-2" />
-                Mark as Sent
+                {t.actions.markAsSent}
               </Button>
             )}
             <Button variant="secondary" onClick={() => setViewDialogOpen(false)}>
-              Close
+              {t.actions.close}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -562,7 +558,7 @@ export default function CredentialsPage() {
       <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <DialogContent className="max-w-lg dark:bg-slate-900">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Reset User Password</DialogTitle>
+            <DialogTitle className="dark:text-white">{t.resetDialog.title}</DialogTitle>
           </DialogHeader>
 
           {resetResult ? (
@@ -570,22 +566,22 @@ export default function CredentialsPage() {
               <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                 <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
                 <div>
-                  <p className="font-medium text-green-800 dark:text-green-300">Password Reset Successfully</p>
+                  <p className="font-medium text-green-800 dark:text-green-300">{t.resetDialog.success}</p>
                   <p className="text-sm text-green-600 dark:text-green-400">
-                    User: {resetResult.user.name} ({resetResult.user.email || resetResult.user.username})
+                    {t.resetDialog.user.replace("{name}", resetResult.user.name).replace("{email}", resetResult.user.email || resetResult.user.username || "")}
                   </p>
                 </div>
               </div>
 
               <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4 space-y-3">
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">Username</Label>
+                  <Label className="text-gray-500 dark:text-gray-400">{t.resetDialog.username}</Label>
                   <code className="block mt-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white">
                     {resetResult.user.username || resetResult.user.email}
                   </code>
                 </div>
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">Temporary Password</Label>
+                  <Label className="text-gray-500 dark:text-gray-400">{t.resetDialog.tempPassword}</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <code className="flex-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white font-mono text-lg">
                       {resetResult.tempPassword}
@@ -600,21 +596,21 @@ export default function CredentialsPage() {
                   </div>
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
                     <EyeOff className="w-3 h-3" />
-                    This password will only be shown once. Copy it now.
+                    {t.resetDialog.copyWarning}
                   </p>
                 </div>
               </div>
 
               <DialogFooter>
                 <Button onClick={() => { setResetDialogOpen(false); setResetResult(null); }}>
-                  Done
+                  {t.actions.done}
                 </Button>
               </DialogFooter>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="user-search" className="dark:text-gray-300">Search User</Label>
+                <Label htmlFor="user-search" className="dark:text-gray-300">{t.resetDialog.searchUser}</Label>
                 <div className="relative">
                   {searchingUsers ? (
                     <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
@@ -623,7 +619,7 @@ export default function CredentialsPage() {
                   )}
                   <Input
                     id="user-search"
-                    placeholder="Search by name, email, or username..."
+                    placeholder={t.resetDialog.searchPlaceholder}
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
@@ -632,17 +628,17 @@ export default function CredentialsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="temporary-password" className="dark:text-gray-300">New Temporary Password</Label>
+                <Label htmlFor="temporary-password" className="dark:text-gray-300">{t.resetDialog.newPassword}</Label>
                 <Input
                   id="temporary-password"
                   type="text"
-                  placeholder="Enter the password to assign"
+                  placeholder={t.resetDialog.passwordPlaceholder}
                   value={temporaryPassword}
                   onChange={(e) => setTemporaryPassword(e.target.value)}
                   className="font-mono dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  This overwrites the user's current password and forces a password change on next login.
+                  {t.resetDialog.passwordHint}
                 </p>
               </div>
 
@@ -662,11 +658,11 @@ export default function CredentialsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-sm dark:text-white truncate">{user.name}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {user.username || user.email} &middot; {user.role}
+                          {user.username || user.email} &middot; {t.filters.roles[user.role] || user.role}
                         </p>
                       </div>
                       <span className="ml-3 text-xs font-semibold text-[var(--brand-color,#e35336)]">
-                        {selectedResetUser?.id === user.id ? 'Selected' : 'Select'}
+                        {selectedResetUser?.id === user.id ? t.resetDialog.selected : t.resetDialog.select}
                       </span>
                     </button>
                   ))}
@@ -677,20 +673,20 @@ export default function CredentialsPage() {
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800/60">
                   <p className="font-medium text-slate-900 dark:text-white">{selectedResetUser.name}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {selectedResetUser.username || selectedResetUser.email} &middot; {selectedResetUser.role}
+                    {selectedResetUser.username || selectedResetUser.email} &middot; {t.filters.roles[selectedResetUser.role] || selectedResetUser.role}
                   </p>
                 </div>
               )}
 
               {searchResults.length === 0 && userSearch.trim() && !searchingUsers && (
                 <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
-                  No users found. Try a different search term.
+                  {t.resetDialog.noUsers}
                 </p>
               )}
 
               <DialogFooter>
                 <Button variant="secondary" onClick={() => setResetDialogOpen(false)}>
-                  Cancel
+                  {t.actions.cancel}
                 </Button>
                 <Button
                   onClick={() => selectedResetUser && handleResetUserPassword(selectedResetUser)}
@@ -699,7 +695,7 @@ export default function CredentialsPage() {
                   {resettingUserId === selectedResetUser?.id ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : null}
-                  Reset Password
+                  {t.resetDialog.resetPassword}
                 </Button>
               </DialogFooter>
             </div>

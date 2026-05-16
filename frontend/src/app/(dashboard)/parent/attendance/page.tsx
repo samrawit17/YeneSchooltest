@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { attendanceAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
 import BigCalendar, { type CalendarDisplayEvent } from "@/components/BigCalendar";
+import { FormattedDate } from "@/components/ui/FormattedDate";
 import { AlertCircle } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -474,7 +475,7 @@ export default function ParentAttendancePage() {
                       {attendance.map((record) => (
                         <tr key={record.id} className="border-t dark:border-slate-700">
                           <td className="px-4 py-3 text-sm dark:text-gray-300">
-                            {new Date(record.session.date).toLocaleDateString()}
+                            <FormattedDate date={record.session.date} />
                           </td>
                           <td className="px-4 py-3 text-sm dark:text-gray-300">
                             {record.session.className 

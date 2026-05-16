@@ -4,16 +4,28 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Event } from '@/lib/api/content';
 import { useCalendar } from '@/context/CalendarContext';
-import { convertToEthiopian, ETHIOPIAN_MONTH_NAMES } from '@/lib/calendar-utils';
+import { convertToEthiopian, formatEthiopianMonthYear } from '@/lib/calendar-utils';
+import { useTranslations } from '@/hooks/useTranslations';
 
 interface WeeklyCalendarProps {
   events: Event[];
   onEventClick?: (event: Event) => void;
 }
 
+interface NavigationMessages {
+  labels?: Record<string, string>;
+  calendar?: {
+    dayNames?: string[];
+    viewCalendar?: string;
+  };
+}
+
 export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { calendarType } = useCalendar();
+  const { t: navigationText, language, locale } = useTranslations<NavigationMessages>('navigation');
+  const calendarText = navigationText.calendar ?? {};
+  const todayLabel = navigationText.labels?.Today ?? 'Today';
 
   // Get the start of the week (Sunday)
   const getStartOfWeek = (date: Date) => {
@@ -74,10 +86,9 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
   // Format month and year
   const formatMonthYear = (date: Date) => {
     if (calendarType === 'ETHIOPIAN') {
-      const ethiopian = convertToEthiopian(date);
-      return `${ETHIOPIAN_MONTH_NAMES[ethiopian.month - 1]} ${ethiopian.year} E.C.`;
+      return formatEthiopianMonthYear(date, language);
     }
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
   };
 
   // Format day number
@@ -100,7 +111,7 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
   };
 
   // Day names
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayNames = calendarText.dayNames ?? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   // Get event color based on type with accent color
   const getEventColor = (eventType?: string) => {
@@ -136,7 +147,7 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
             onClick={goToToday}
             className="px-2 py-1 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[var(--brand-color,#e35336)] transition-colors"
           >
-            Today
+            {todayLabel}
           </button>
           <button
             onClick={goToNextWeek}
@@ -206,7 +217,7 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
           onClick={() => window.location.href = '/list/calendar'}
           className="w-full text-center text-xs text-[var(--brand-color,#e35336)] hover:text-[#c74428] hover:underline transition-colors"
         >
-          View Calendar
+          {calendarText.viewCalendar ?? 'View Calendar'}
         </button>
       </div>
     </div>

@@ -32,6 +32,7 @@ interface Notification {
   isRead: boolean;
   createdAt: string;
   actionUrl?: string;
+  type?: string;
 }
 
 const formatTimeAgo = (dateString: string) => {
@@ -248,11 +249,20 @@ const NotificationsPage = () => {
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleNotificationClick(notification)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleNotificationClick(notification);
+                      }
+                    }}
                     className={`p-4 rounded-lg border ${
                       notification.isRead
                         ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
                         : "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
-                    }`}
+                    } cursor-pointer transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#e35336] dark:hover:bg-slate-800`}
                   >
                     <div className="flex items-start">
                       <div className="flex-1 min-w-0">

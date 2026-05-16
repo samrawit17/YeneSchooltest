@@ -41,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useTranslations } from "@/hooks/useTranslations";
 import {
   Dialog,
   DialogContent,
@@ -138,6 +139,9 @@ const getGradeStatus = (avg: number): { text: string; color: string } => {
   return { text: "Needs Improvement", color: "text-red-600 dark:text-red-400" };
 };
 
+const formatMessage = (template: string, values: Record<string, string | number>) =>
+  Object.entries(values).reduce((message, [key, value]) => message.replaceAll(`{${key}}`, String(value)), template);
+
 const StudentDashboardSkeleton = () => (
   <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
     <div className="p-4 md:p-6 space-y-6">
@@ -184,6 +188,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const StudentPage = () => {
+  const { t } = useTranslations<any>("roleDashboard");
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -214,7 +219,7 @@ const StudentPage = () => {
       await fetchTopRank();
     } catch (error: any) {
       console.error("Failed to fetch dashboard data:", error);
-      toast.error("Failed to load dashboard data");
+      toast.error(t.common.failedLoad);
     } finally {
       setLoading(false);
     }
@@ -286,6 +291,7 @@ const StudentPage = () => {
   const gpa = calculateGPA(grades);
   const averageScore = calculateAverage(grades);
   const gradeStatus = getGradeStatus(averageScore);
+  const localizedGradeStatus = averageScore >= 90 ? t.student.excellent : averageScore >= 80 ? t.student.veryGood : averageScore >= 70 ? t.student.good : averageScore >= 60 ? t.student.pass : t.student.needsImprovement;
   const passedSubjects = hasGrades ? grades.filter(g => (g.totalScore || 0) >= 60).length : 0;
 
   const displaySubjectPerformance = hasGrades
@@ -321,27 +327,27 @@ const StudentPage = () => {
               <Trophy className="h-9 w-9" />
             </div>
             <DialogTitle className="text-2xl text-slate-900 dark:text-white">
-              Congratulations, {user?.name || "Student"}!
+              {formatMessage(t.student.congratulations, { name: user?.name || t.common.student })}
             </DialogTitle>
             <DialogDescription className="text-base text-slate-600 dark:text-slate-300">
-              You ranked #{topRankCard?.rankInClass} in {topRankCard?.term || "the latest published result"}.
+              {formatMessage(t.student.ranked, { rank: topRankCard?.rankInClass || "-", term: topRankCard?.term || t.student.latestResult })}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.06)] p-4 dark:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]">
-            <p className="text-sm text-slate-600 dark:text-slate-300">Overall result</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">{t.student.overallResult}</p>
             <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">
               {topRankCard?.percentage ?? "-"}%
             </p>
             <p className="mt-1 text-sm font-medium text-[var(--brand-color,#e35336)]">
-              {topRankCard?.overallGrade || "Published result"}
+              {topRankCard?.overallGrade || t.student.publishedResult}
             </p>
           </div>
           <DialogFooter className="sm:justify-center">
             <Button onClick={closeRankCongrats} className="bg-[var(--brand-color,#e35336)] text-white hover:opacity-90">
-              Continue
+              {t.student.continue}
             </Button>
             <Button variant="outline" onClick={() => router.push("/student/grades")}>
-              View Results
+              {t.student.viewResults}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -353,10 +359,10 @@ const StudentPage = () => {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Student Dashboard
+              {t.student.title}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Welcome back, {user?.name || "Student"} &middot; Track your academic progress
+              {formatMessage(t.student.welcome, { name: user?.name || t.common.student })}
             </p>
           </div>
           {grades.length > 0 && (
@@ -377,7 +383,7 @@ const StudentPage = () => {
             </Avatar>
             <div className="flex-1">
               <h3 className="font-semibold text-slate-900 dark:text-white">
-                {user?.name || "Student"}
+                {user?.name || t.common.student}
               </h3>
               <p className="text-sm text-slate-500">
                 {user?.email}
@@ -400,12 +406,12 @@ const StudentPage = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Attendance</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.attendance}</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{stats.attendance}</p>
                 <div className="flex items-center gap-1 mt-1">
                   <TrendingUp className="w-3 h-3 text-emerald-500" />
                   <span className="text-xs text-emerald-600 dark:text-emerald-400">+2.5%</span>
-                  <span className="text-xs text-slate-400">this term</span>
+                  <span className="text-xs text-slate-400">{t.student.thisTerm}</span>
                 </div>
               </div>
               <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30">
@@ -421,18 +427,18 @@ const StudentPage = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">GPA</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.gpa}</p>
                 {gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
                 ) : hasGrades ? (
                   <>
                     <p className={`text-2xl font-bold mt-1.5 ${getGPAColor(gpa)}`}>{gpa.toFixed(1)}</p>
-                    <span className={`text-xs ${gradeStatus.color}`}>{gradeStatus.text}</span>
+                    <span className={`text-xs ${gradeStatus.color}`}>{localizedGradeStatus}</span>
                   </>
                 ) : (
                   <>
                     <p className="text-2xl font-bold text-slate-400 mt-1.5">N/A</p>
-                    <span className="text-xs text-slate-400">No grades</span>
+                    <span className="text-xs text-slate-400">{t.student.noGrades}</span>
                   </>
                 )}
               </div>
@@ -445,7 +451,7 @@ const StudentPage = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Avg Score</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.avgScore}</p>
                 {gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
                 ) : hasGrades ? (
@@ -454,7 +460,7 @@ const StudentPage = () => {
                   <p className="text-2xl font-bold text-slate-400 mt-1.5">N/A</p>
                 )}
                 <p className="text-xs text-slate-400 mt-1">
-                  {passedSubjects}/{grades.length || stats.totalSubjects} subjects passed
+                  {formatMessage(t.student.subjectsPassed, { passed: passedSubjects, total: grades.length || stats.totalSubjects })}
                 </p>
               </div>
               <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-900/30">
@@ -466,9 +472,9 @@ const StudentPage = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Exams</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.exams}</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{stats.upcomingExams}</p>
-                <p className="text-xs text-slate-400 mt-1">Upcoming</p>
+                <p className="text-xs text-slate-400 mt-1">{t.student.upcoming}</p>
               </div>
               <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/30">
                 <ClipboardCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -481,8 +487,8 @@ const StudentPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Attendance Trend */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Attendance Trend</h3>
-            <p className="text-xs text-slate-500 mb-4">This term</p>
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t.student.attendanceTrend}</h3>
+            <p className="text-xs text-slate-500 mb-4">{t.student.thisTerm}</p>
             {attendanceTrendSeries.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={attendanceTrendSeries} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
@@ -495,15 +501,15 @@ const StudentPage = () => {
               </ResponsiveContainer>
             ) : (
               <div className="h-[260px] flex items-center justify-center text-sm text-slate-400">
-                No attendance data available
+                {t.student.noAttendanceData}
               </div>
             )}
           </div>
 
           {/* Subject Performance */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Subject Performance</h3>
-            <p className="text-xs text-slate-500 mb-4">Current term</p>
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t.student.subjectPerformance}</h3>
+            <p className="text-xs text-slate-500 mb-4">{t.student.currentTerm}</p>
             {gradesLoading ? (
               <div className="h-[260px] flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
@@ -516,13 +522,13 @@ const StudentPage = () => {
                   <YAxis axisLine={false} tick={{ fill: "#64748B", fontSize: 12 }} tickLine={false} tickMargin={8} domain={[0, 100]} />
                   <RechartsTooltip />
                   <Legend />
-                  <Bar dataKey="score" fill="#10b981" radius={[4, 4, 0, 0]} name="Score" />
-                  <Bar dataKey="average" fill="#94a3b8" radius={[4, 4, 0, 0]} opacity={0.6} name="Average" />
+                  <Bar dataKey="score" fill="#10b981" radius={[4, 4, 0, 0]} name={t.student.score} />
+                  <Bar dataKey="average" fill="#94a3b8" radius={[4, 4, 0, 0]} opacity={0.6} name={t.student.average} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-[260px] flex items-center justify-center text-sm text-slate-400">
-                No subject performance data available
+                {t.student.noSubjectData}
               </div>
             )}
           </div>
@@ -534,11 +540,11 @@ const StudentPage = () => {
           <div className="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white">Recent Grades</h3>
-                <p className="text-xs text-slate-500">Latest subject scores</p>
+                <h3 className="font-semibold text-slate-900 dark:text-white">{t.student.recentGrades}</h3>
+                <p className="text-xs text-slate-500">{t.student.latestScores}</p>
               </div>
               {hasGrades && (
-                <Badge variant="outline" className="text-xs">{grades.length} Subjects</Badge>
+                <Badge variant="outline" className="text-xs">{grades.length} {t.student.subjects}</Badge>
               )}
             </div>
             {gradesLoading ? (
@@ -601,12 +607,12 @@ const StudentPage = () => {
             ) : (
               <div className="text-center py-8">
                 <Award className="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                <p className="text-sm text-slate-500">No grades available yet</p>
+                <p className="text-sm text-slate-500">{t.student.noGradesYet}</p>
               </div>
             )}
             {hasGrades && (
               <Button variant="outline" className="w-full mt-4 gap-2" onClick={() => router.push("/student/grades")}>
-                View All Grades
+                {t.student.viewAllGrades}
                 <ChevronRight className="w-4 h-4" />
               </Button>
             )}
@@ -617,14 +623,14 @@ const StudentPage = () => {
             {/* Quick Actions */}
             {quickActions?.length > 0 && (
               <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Quick Actions</h3>
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.student.quickActions}</h3>
                 <div className="space-y-2">
                   {quickActions.slice(0, 4).map((action: any) => (
                     <button
                       key={action.id || action.label}
                       onClick={() => {
                         if (action.disabled) {
-                          toast.error(action.disabledReason || "Not available");
+                          toast.error(action.disabledReason || t.common.unavailable);
                           return;
                         }
                         router.push(action.url);
@@ -657,7 +663,7 @@ const StudentPage = () => {
 
             {/* Upcoming Events */}
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Upcoming Events</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.student.upcomingEvents}</h3>
               {upcomingEvents.length > 0 ? (
                 <div className="space-y-3">
                   {upcomingEvents.slice(0, 3).map((event: any, index: number) => (
@@ -685,12 +691,12 @@ const StudentPage = () => {
               ) : (
                 <div className="text-center py-6">
                   <CalendarDays className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                  <p className="text-sm text-slate-500">No upcoming events</p>
+                  <p className="text-sm text-slate-500">{t.student.noUpcomingEvents}</p>
                 </div>
               )}
               <Button variant="outline" size="sm" className="w-full mt-3 gap-1" onClick={() => router.push("/list/calendar")}>
                 <Calendar className="w-3.5 h-3.5" />
-                View Calendar
+                {t.student.viewCalendar}
               </Button>
             </div>
           </div>

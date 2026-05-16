@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { attendanceAPI } from "@/lib/api";
+import { FormattedDate } from "@/components/ui/FormattedDate";
 
 interface AttendanceRecord {
   id: string;
@@ -189,7 +190,7 @@ export default function StudentAttendancePage() {
               {attendance.map((record) => (
                 <tr key={record.id} className="border-b">
                   <td className="px-4 py-3">
-                    {new Date(record.session.date).toLocaleDateString()}
+                    <FormattedDate date={record.session.date} />
                   </td>
                   <td className="px-4 py-3">
                     {record.session.className 

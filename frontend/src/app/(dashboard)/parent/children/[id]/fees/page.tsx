@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 
 interface FeeItem {
   id: string;
@@ -75,6 +76,7 @@ const ChildFeesPage = () => {
   const params = useParams();
   const router = useRouter();
   const childId = params.id as string;
+  const { formatDate: formatSchoolDate } = useAcademicYear();
 
   const [child, setChild] = useState<ChildInfo | null>(null);
   const [feeItems, setFeeItems] = useState<FeeItem[]>([]);
@@ -121,11 +123,10 @@ const ChildFeesPage = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    });
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "N/A";
+    return formatSchoolDate(date);
   };
 
   const getStatusBadge = (status: string) => {

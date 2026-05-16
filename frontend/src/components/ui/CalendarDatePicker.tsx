@@ -9,12 +9,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TimePicker } from "@/components/ui/TimePicker";
 import {
-  ETHIOPIAN_MONTH_NAMES,
   convertToEthiopian,
   convertEthiopianToGregorian,
   formatTimeByCalendarType,
+  getLocalizedEthiopianEraLabel,
+  getLocalizedEthiopianMonthName,
 } from "@/lib/calendar-utils";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "@/hooks/useTranslations";
 
 // Standard UI components (Assuming these exist or standard HTML inputs will be used instead)
 import { Calendar } from "@/components/ui/calendar";
@@ -54,6 +56,10 @@ export function CalendarDatePicker({
   includeTime = false,
 }: CalendarDatePickerProps) {
   const { user } = useAuth();
+  const { t, language } = useTranslations<any>("calendar");
+  const displayPlaceholder = placeholder === "Select Date"
+    ? t.picker.selectDate
+    : placeholder;
   const calendarType = user?.calendarType || "ETHIOPIAN";
   const [open, setOpen] = useState(false);
   const selectedTime = toTimeValue(value);
@@ -94,7 +100,7 @@ export function CalendarDatePicker({
             disabled={disabled}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {value ? format(value, includeTime ? "PPP p" : "PPP") : <span>{placeholder}</span>}
+            {value ? format(value, includeTime ? "PPP p" : "PPP") : <span>{displayPlaceholder}</span>}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto space-y-3 p-3" align="start">
@@ -111,7 +117,7 @@ export function CalendarDatePicker({
             <div className="border-t border-slate-100 pt-3 dark:border-slate-700">
               <TimePicker value={selectedTime} onChange={updateTime} />
               <Button className="mt-3 h-9 w-full text-sm" onClick={() => setOpen(false)}>
-                Done
+                {t.picker.done}
               </Button>
             </div>
           ) : null}
@@ -165,8 +171,8 @@ export function CalendarDatePicker({
 
   // Format to show in trigger
   const ethiopianDisplay = value
-    ? `${ETHIOPIAN_MONTH_NAMES[ethMonth - 1]} ${ethDay}, ${ethYear} E.C.${includeTime ? ` • ${formatTimeByCalendarType(selectedTime, "ETHIOPIAN")}` : ""}`
-    : placeholder;
+    ? `${getLocalizedEthiopianMonthName(ethMonth, language)} ${ethDay}, ${ethYear} ${getLocalizedEthiopianEraLabel(language)}${includeTime ? ` • ${formatTimeByCalendarType(selectedTime, "ETHIOPIAN")}` : ""}`
+    : displayPlaceholder;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -187,12 +193,12 @@ export function CalendarDatePicker({
       <PopoverContent className="w-[320px] p-4 bg-white dark:bg-gray-800" align="start">
         <div className="space-y-4">
           <div className="flex items-center justify-between font-semibold text-sm">
-            <span>Ethiopian Calendar</span>
+            <span>{t.picker.ethiopianCalendar}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Month</label>
+              <label className="text-xs text-muted-foreground">{t.picker.month}</label>
               <Select
                 value={ethMonth.toString()}
                 onValueChange={(v) => handleEthChange("month", parseInt(v))}
@@ -201,7 +207,7 @@ export function CalendarDatePicker({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ETHIOPIAN_MONTH_NAMES.map((name, i) => (
+                  {Array.from({ length: 13 }, (_, i) => getLocalizedEthiopianMonthName(i + 1, language)).map((name, i) => (
                     <SelectItem key={i + 1} value={(i + 1).toString()}>
                       {name}
                     </SelectItem>
@@ -211,7 +217,7 @@ export function CalendarDatePicker({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Day</label>
+              <label className="text-xs text-muted-foreground">{t.picker.day}</label>
               <Select
                 value={ethDay.toString()}
                 onValueChange={(v) => handleEthChange("day", parseInt(v))}
@@ -230,7 +236,7 @@ export function CalendarDatePicker({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Year</label>
+              <label className="text-xs text-muted-foreground">{t.picker.year}</label>
               <Select
                 value={ethYear.toString()}
                 onValueChange={(v) => handleEthChange("year", parseInt(v))}
@@ -251,7 +257,7 @@ export function CalendarDatePicker({
 
           {value && (
             <div className="pt-2 mt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-center text-muted-foreground">
-              Gregorian equivalent:<br />
+              {t.picker.gregorianEquivalent}:<br />
               <span className="font-medium">{format(value, includeTime ? "PPP p" : "PPP")}</span>
             </div>
           )}
@@ -260,12 +266,12 @@ export function CalendarDatePicker({
             <div className="space-y-2 border-t border-gray-100 pt-3 dark:border-gray-700">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Clock className="h-4 w-4" />
-                Ethiopian Time
+                {t.picker.ethiopianTime}
               </div>
               <TimePicker
                 value={selectedTime}
                 onChange={updateTime}
-                placeholder="Select time"
+                placeholder={t.time.selectTime}
               />
               <div className="rounded-md bg-slate-50 px-3 py-2 text-center text-sm font-medium text-slate-700 dark:bg-slate-700/60 dark:text-slate-200">
                 {formatTimeByCalendarType(selectedTime, "ETHIOPIAN")}
@@ -283,7 +289,7 @@ export function CalendarDatePicker({
               setOpen(false);
             }}
           >
-            Confirm
+            {t.picker.confirm}
           </Button>
         </div>
       </PopoverContent>

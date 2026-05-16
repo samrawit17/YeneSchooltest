@@ -265,6 +265,8 @@ export class ParentDashboardService {
       childrenData.push({
         id: studentProfile.userId,
         name: studentUser.name,
+        photoUrl: studentUser.avatarUrl || null,
+        avatarUrl: studentUser.avatarUrl || null,
         studentCode: studentProfile.studentCode,
         className: studentProfile.className,
         section: studentProfile.section,

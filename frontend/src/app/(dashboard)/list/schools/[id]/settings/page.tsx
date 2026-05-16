@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import api, { API_URL } from '@/lib/api/core';
 import { schoolSettingsAPI, schoolsAPI, academicYearsAPI } from '@/lib/api';
 import { subscriptionAPI } from '@/lib/api/subscription';
+import { resolveAssetUrl } from '@/lib/asset-url';
 import { getCurrentEthiopianYear, normalizeCalendarType } from '@/lib/calendar-utils';
 import { useAuth } from '@/context/AuthContext';
 import { useBreadcrumb } from '@/context/BreadcrumbContext';
@@ -33,6 +35,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimePicker } from '@/components/ui/TimePicker';
+import { useTranslations } from '@/hooks/useTranslations';
 import { 
   Select,
   SelectContent,
@@ -63,6 +66,21 @@ interface SettingItem {
     min?: number;
     max?: number;
   };
+}
+
+interface SchoolSettingsMessages {
+  title: string;
+  allSettings: string;
+  allSettingsDescription: string;
+  configurePrefix: string;
+  configureSuffix: string;
+  actions: Record<string, string>;
+  badges: Record<string, string>;
+  labels: Record<string, string>;
+  messages: Record<string, string>;
+  categories: Record<string, string>;
+  settings: Record<string, string>;
+  options: Record<string, string>;
 }
 
 const SETTINGS_CONFIG: SettingItem[] = [
@@ -139,6 +157,47 @@ const SETTINGS_CONFIG: SettingItem[] = [
     category: 'access',
     systemDefault: true,
     requiredFeature: 'REPORT_CARDS',
+  },
+  {
+    key: 'fee_structure_mode',
+    label: 'Billing Schedule',
+    description: 'Choose how annual school fees are split for collection and parent fee summaries.',
+    type: 'select',
+    category: 'finance',
+    systemDefault: 'TERM',
+    requiredFeature: 'FINANCE_MANAGEMENT',
+    options: [
+      { value: 'MONTHLY', label: 'Monthly (12 payments)' },
+      { value: 'QUARTERLY', label: 'Quarterly (4 payments)' },
+      { value: 'SEMESTER', label: 'Semester (2 payments)' },
+      { value: 'TERM', label: 'Term (3 payments)' },
+      { value: 'YEARLY', label: 'Yearly (1 payment)' },
+    ],
+  },
+  {
+    key: 'fee_payment_due_day',
+    label: 'Payment Deadline Day',
+    description: 'Day of the billing period when payment is due before penalty.',
+    type: 'number',
+    category: 'finance',
+    systemDefault: 15,
+    requiredFeature: 'FINANCE_MANAGEMENT',
+    validation: {
+      min: 1,
+      max: 31,
+    },
+  },
+  {
+    key: 'fee_daily_penalty_amount',
+    label: 'Daily Late Payment Penalty',
+    description: 'Fixed ETB amount added for each day after the payment deadline. Use 0 if the school does not charge a penalty.',
+    type: 'number',
+    category: 'finance',
+    systemDefault: 0,
+    requiredFeature: 'FINANCE_MANAGEMENT',
+    validation: {
+      min: 0,
+    },
   },
 
   // Communication Settings
@@ -356,6 +415,13 @@ export default function SchoolSettingsPage() {
   const schoolId = params.id as string;
   const { user, updateUser } = useAuth();
   const { setItems } = useBreadcrumb();
+  const { t } = useTranslations<SchoolSettingsMessages>('schoolSettings');
+  const settingText = useCallback((value: string) => t.settings?.[value] ?? value, [t.settings]);
+  const optionText = useCallback((value: string) => t.options?.[value] ?? value, [t.options]);
+  const categoryText = useCallback((value: string) => t.categories?.[value] ?? value, [t.categories]);
+  const actionText = useCallback((value: string, fallback: string) => t.actions?.[value] ?? fallback, [t.actions]);
+  const badgeText = useCallback((value: string, fallback: string) => t.badges?.[value] ?? fallback, [t.badges]);
+  const messageText = useCallback((value: string, fallback: string) => t.messages?.[value] ?? fallback, [t.messages]);
   const [settings, setSettings] = useState<Record<string, any>>({});
   const [draftSettings, setDraftSettings] = useState<Record<string, any>>({});
   const [numberDrafts, setNumberDrafts] = useState<Record<string, string>>({});
@@ -377,6 +443,7 @@ export default function SchoolSettingsPage() {
   const [savingSchoolCode, setSavingSchoolCode] = useState(false);
   const [isEditingCode, setIsEditingCode] = useState(false);
   const [schoolLogo, setSchoolLogo] = useState('');
+  const schoolLogoSrc = resolveAssetUrl(schoolLogo);
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [savingLogo, setSavingLogo] = useState(false);
   const [isEditingLogo, setIsEditingLogo] = useState(false);
@@ -478,12 +545,12 @@ export default function SchoolSettingsPage() {
         return next;
       });
     } catch (err: any) {
-      setError('Failed to load settings');
+      setError(messageText('loadFailed', 'Failed to load settings'));
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [schoolId]);
+  }, [schoolId, messageText]);
 
   const fetchSchoolInfo = useCallback(async () => {
     try {
@@ -542,18 +609,18 @@ export default function SchoolSettingsPage() {
       setSavingLogo(true);
       if (selectedLogoFile) {
         const result = await schoolsAPI.uploadLogo(schoolId, selectedLogoFile);
-        setSchoolLogo(result.url || '');
-        toast.success('School logo uploaded successfully!');
+        const url = result?.url || '';
+        setSchoolLogo(url);
+        setSchoolInfo(prev => prev ? { ...prev, logoUrl: url } : prev);
+        toast.success(messageText('logoUploadSuccess', 'School logo uploaded successfully!'));
       } else {
         const response = await schoolsAPI.update(schoolId, { logoUrl: schoolLogo });
-        toast.success('School logo updated successfully!');
+        toast.success(messageText('logoUpdateSuccess', 'School logo updated successfully!'));
       }
       setIsEditingLogo(false);
       setSelectedLogoFile(null);
-      const schoolResponse = await schoolsAPI.getById(schoolId);
-      setSchoolInfo(schoolResponse.data);
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to update school logo';
+      const errorMessage = err.response?.data?.message || err.message || messageText('logoUpdateFailed', 'Failed to update school logo');
       toast.error(errorMessage);
     } finally {
       setSavingLogo(false);
@@ -564,11 +631,11 @@ export default function SchoolSettingsPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
+        toast.error(messageText('imageFile', 'Please select an image file'));
         return;
       }
       if (file.size > 2 * 1024 * 1024) {
-        toast.error('Image size must be less than 2MB');
+        toast.error(messageText('imageSize', 'Image size must be less than 2MB'));
         return;
       }
       setSelectedLogoFile(file);
@@ -580,12 +647,12 @@ export default function SchoolSettingsPage() {
     try {
       setSavingSchoolCode(true);
       const response = await schoolsAPI.update(schoolId, { code: schoolCode });
-      toast.success('School code updated successfully!');
+      toast.success(messageText('codeUpdateSuccess', 'School code updated successfully!'));
       setIsEditingCode(false);
       const schoolResponse = await schoolsAPI.getById(schoolId);
       setSchoolInfo(schoolResponse.data);
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to update school code';
+      const errorMessage = err.response?.data?.message || err.message || messageText('codeUpdateFailed', 'Failed to update school code');
       toast.error(errorMessage);
     } finally {
       setSavingSchoolCode(false);
@@ -594,7 +661,7 @@ export default function SchoolSettingsPage() {
 
   const handleSettingChange = async (key: string, value: any, setting: SettingItem) => {
     if (isSettingLocked(key)) {
-      toast.error(`${setting.label} is locked after it is set once`);
+      toast.error(`${settingText(setting.label)} ${messageText('lockedAfterSet', 'is locked after it is set once')}`);
       return;
     }
 
@@ -603,11 +670,11 @@ export default function SchoolSettingsPage() {
       if (setting.validation) {
         const num = Number(value);
         if (setting.validation.min !== undefined && num < setting.validation.min) {
-          toast.error(`Value must be at least ${setting.validation.min}`);
+          toast.error(`${messageText('valueAtLeast', 'Value must be at least')} ${setting.validation.min}`);
           return;
         }
         if (setting.validation.max !== undefined && num > setting.validation.max) {
-          toast.error(`Value must be at most ${setting.validation.max}`);
+          toast.error(`${messageText('valueAtMost', 'Value must be at most')} ${setting.validation.max}`);
           return;
         }
       }
@@ -617,7 +684,7 @@ export default function SchoolSettingsPage() {
     if (setting.type === 'time') {
       const isValid = /^([01]\d|2[0-3]):([0-5]\d)$/.test(String(value));
       if (!isValid) {
-        toast.error('Please enter a valid time in HH:mm format');
+        toast.error(messageText('validTime', 'Please enter a valid time in HH:mm format'));
         return;
       }
     }
@@ -644,9 +711,9 @@ export default function SchoolSettingsPage() {
         updateUser({ ...user, calendarType: value });
       }
 
-      toast.success(`${setting.label} updated successfully`);
+      toast.success(`${settingText(setting.label)} ${messageText('updatedSuccessfully', 'updated successfully')}`);
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to update setting';
+      const errorMessage = err.response?.data?.message || messageText('settingUpdateFailed', 'Failed to update setting');
       toast.error(errorMessage);
       setError(errorMessage);
     } finally {
@@ -688,7 +755,7 @@ export default function SchoolSettingsPage() {
 
   const handleResetSetting = async (key: string, setting: SettingItem) => {
     if (isSettingLocked(key)) {
-      toast.error(`${setting.label} is locked after it is set once`);
+      toast.error(`${settingText(setting.label)} ${messageText('lockedAfterSet', 'is locked after it is set once')}`);
       return;
     }
 
@@ -723,9 +790,9 @@ export default function SchoolSettingsPage() {
         updateUser({ ...user, calendarType: setting.systemDefault });
       }
 
-      toast.success(`${setting.label} reset to default`);
+      toast.success(`${settingText(setting.label)} ${messageText('resetToDefault', 'reset to default')}`);
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Failed to reset setting';
+      const errorMessage = err.response?.data?.message || messageText('resetFailed', 'Failed to reset setting');
       toast.error(errorMessage);
       setError(errorMessage);
     } finally {
@@ -753,13 +820,13 @@ export default function SchoolSettingsPage() {
     const nextValue = Number(nextDraft);
 
     if (Number.isNaN(nextValue)) {
-      toast.error('Please enter a valid number');
+      toast.error(messageText('validNumber', 'Please enter a valid number'));
       setNumberDrafts((prev) => ({ ...prev, [setting.key]: fallbackValue }));
       return;
     }
 
     if (setting.validation?.min !== undefined && nextValue < setting.validation.min) {
-      toast.error(`Value must be at least ${setting.validation.min}`);
+      toast.error(`${messageText('valueAtLeast', 'Value must be at least')} ${setting.validation.min}`);
       setNumberDrafts((prev) => ({
         ...prev,
         [setting.key]: String(getSettingValue(setting.key, setting)),
@@ -768,7 +835,7 @@ export default function SchoolSettingsPage() {
     }
 
     if (setting.validation?.max !== undefined && nextValue > setting.validation.max) {
-      toast.error(`Value must be at most ${setting.validation.max}`);
+      toast.error(`${messageText('valueAtMost', 'Value must be at most')} ${setting.validation.max}`);
       setNumberDrafts((prev) => ({
         ...prev,
         [setting.key]: String(getSettingValue(setting.key, setting)),
@@ -839,9 +906,9 @@ export default function SchoolSettingsPage() {
         await handleSettingChange(setting.key, nextValue, setting);
       }
 
-      toast.success('School settings saved successfully');
+      toast.success(messageText('settingsSaveSuccess', 'School settings saved successfully'));
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to save settings';
+      const errorMessage = err.response?.data?.message || err.message || messageText('settingsSaveFailed', 'Failed to save settings');
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -863,7 +930,7 @@ export default function SchoolSettingsPage() {
       return (
         <div className="flex w-full items-center gap-2 sm:w-auto">
           <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
-            Upgrade Required
+            {badgeText('upgradeRequired', 'Upgrade Required')}
           </Badge>
         </div>
       );
@@ -877,8 +944,8 @@ export default function SchoolSettingsPage() {
             onCheckedChange={(checked) => updateDraftSetting(setting.key, checked)}
             disabled={isSaving || isLocked}
           />
-          {isLocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
+          {isLocked && <Badge variant="outline" className="text-xs">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }
@@ -896,19 +963,19 @@ export default function SchoolSettingsPage() {
             disabled={isSaving || isLocked}
           >
             <SelectTrigger className="w-full bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white sm:w-48">
-              <SelectValue placeholder="Select an option..." />
+              <SelectValue placeholder={actionText('selectOption', 'Select an option...')} />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-800">
-              <SelectItem value="__select__">Select an option...</SelectItem>
+              <SelectItem value="__select__">{actionText('selectOption', 'Select an option...')}</SelectItem>
               {options.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {optionText(opt.label)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {isLocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
+          {isLocked && <Badge variant="outline" className="text-xs">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }
@@ -937,8 +1004,8 @@ export default function SchoolSettingsPage() {
             disabled={isSaving || isLocked}
             className="w-full sm:w-24"
           />
-          {isLocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
+          {isLocked && <Badge variant="outline" className="text-xs">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }
@@ -965,8 +1032,8 @@ export default function SchoolSettingsPage() {
               className="w-full sm:w-32"
             />
           )}
-          {isLocked && <Badge variant="outline" className="text-xs">Locked</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">Unsaved</Badge>}
+          {isLocked && <Badge variant="outline" className="text-xs">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }
@@ -1003,11 +1070,11 @@ export default function SchoolSettingsPage() {
               disabled={isSaving}
               className="h-10 shrink-0 text-xs"
             >
-              Use Default
+              {actionText('useDefault', 'Use Default')}
             </Button>
           )}
-          {isLocked && <Badge variant="outline" className="shrink-0 text-xs">Locked</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="shrink-0 text-xs">Unsaved</Badge>}
+          {isLocked && <Badge variant="outline" className="shrink-0 text-xs">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="shrink-0 text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }
@@ -1038,14 +1105,13 @@ export default function SchoolSettingsPage() {
     <div className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden p-3 sm:p-4 md:p-6">
       {/* School Header */}
       {schoolInfo && (
-        <Card className="mb-6 max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-          <CardContent className="min-w-0 p-4 sm:p-6">
-            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
-              {/* Logo */}
-              <div className="shrink-0">
-                {isEditingLogo ? (
-                  <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
-                    <div className="text-center">
+        <Card className="mb-6 overflow-hidden border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="relative shrink-0">
+                  {isEditingLogo ? (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-slate-300 bg-slate-50 dark:bg-slate-700">
                       <input
                         type="file"
                         accept="image/*"
@@ -1053,135 +1119,106 @@ export default function SchoolSettingsPage() {
                         className="hidden"
                         id="logo-upload"
                       />
-                      <label htmlFor="logo-upload" className="cursor-pointer">
-                        <ImageIcon className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-                        <span className="text-xs text-slate-500 dark:text-slate-400">Upload</span>
+                      <label htmlFor="logo-upload" className="flex h-full w-full cursor-pointer flex-col items-center justify-center rounded-full text-center">
+                        <ImageIcon className="mb-0.5 h-4 w-4 text-slate-400" />
+                        <span className="text-[10px] text-slate-500">{actionText('upload', 'Upload')}</span>
                       </label>
                     </div>
-                  </div>
-                ) : schoolInfo.logoUrl ? (
-                  <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200">
-                    <Image
-                      src={schoolInfo.logoUrl}
-                      alt={schoolInfo.name || "School Logo"}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-20 h-20 rounded-xl bg-[#e35336] flex items-center justify-center">
-                    <span className="text-white font-bold text-3xl">
-                      {schoolInfo.name?.charAt(0) || "S"}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Name and Code */}
-              <div className="flex-1 min-w-0">
-                <h1 className="break-words text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">{schoolInfo.name}</h1>
-                <div className="mt-2 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                  {isEditingCode ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Input
-                        value={schoolCode}
-                        onChange={(e) => setSchoolCode(e.target.value)}
-                        placeholder="School Code"
-                        className="h-8 w-full font-mono text-sm bg-white dark:bg-slate-700 sm:w-32"
-                        disabled={savingSchoolCode}
-                        autoFocus
+                  ) : schoolLogoSrc ? (
+                    <div className="group relative h-16 w-16 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-600 dark:bg-slate-700">
+                      <img
+                        src={schoolLogoSrc}
+                        alt={schoolInfo.name || "School Logo"}
+                        className="h-full w-full object-cover"
                       />
-                      <Button 
-                        size="sm" 
-                        onClick={handleSchoolCodeSave} 
-                        disabled={savingSchoolCode || !schoolCode}
-                        className="h-8 px-2"
+                      <div
+                        className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={() => setIsEditingLogo(true)}
                       >
-                        {savingSchoolCode ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => {
-                          setIsEditingCode(false);
-                          setSchoolCode(schoolInfo.code || '');
-                        }}
-                        disabled={savingSchoolCode}
-                        className="h-8 px-2"
-                      >
-                        Cancel
-                      </Button>
+                        <ImageIcon className="h-5 w-5 text-white" />
+                      </div>
                     </div>
                   ) : (
-                    <div 
-                      className="flex min-w-0 flex-wrap items-center gap-2 cursor-pointer group"
-                      onClick={() => setIsEditingCode(true)}
-                      title="Click to edit school code"
+                    <div
+                      className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] text-xl font-bold text-white shadow-sm transition-opacity hover:opacity-80"
+                      onClick={() => setIsEditingLogo(true)}
+                      title={messageText('clickToAddLogo', 'Click to add logo')}
                     >
-                      <span className="text-sm text-slate-500 dark:text-slate-400">Code:</span>
-                      {schoolInfo.code ? (
-                        <span className="max-w-full break-all font-mono font-medium text-sm bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300 group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors">
-                          {schoolInfo.code}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-amber-600 hover:underline">Add school code</span>
-                      )}
+                      {schoolInfo.name?.charAt(0) || "S"}
                     </div>
                   )}
-                  {schoolPlan && (
-                    <Badge className={`max-w-full whitespace-normal break-words ${
-                      schoolPlan.tier === 'CORE' ? 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300' :
-                      schoolPlan.tier === 'STANDARD' ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300' :
-                      'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300'
-                    }`}>
-                      {schoolPlan.tier} Plan
-                    </Badge>
+                  {isEditingLogo && selectedLogoFile && (
+                    <div className="mt-2 flex gap-1.5">
+                      <Button onClick={handleLogoSave} disabled={savingLogo} size="sm" className="h-7 px-2 text-xs">
+                        {savingLogo ? <Loader2 className="h-3 w-3 animate-spin" /> : actionText('saveLogo', 'Save Logo')}
+                      </Button>
+                      <Button variant="ghost" onClick={() => { setSelectedLogoFile(null); setIsEditingLogo(false); }} size="sm" className="h-7 px-2 text-xs">
+                        {actionText('cancel', 'Cancel')}
+                      </Button>
+                    </div>
                   )}
                 </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+                    {schoolInfo.name}
+                  </h1>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.labels?.code ?? 'Code'}:</span>
+                    {isEditingCode ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Input
+                          value={schoolCode}
+                          onChange={(e) => setSchoolCode(e.target.value)}
+                          placeholder={t.labels?.schoolCode ?? 'School Code'}
+                          className="h-7 w-28 font-mono text-xs"
+                          disabled={savingSchoolCode}
+                          autoFocus
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleSchoolCodeSave}
+                          disabled={savingSchoolCode || !schoolCode}
+                          className="h-7 px-2 text-xs"
+                        >
+                          {savingSchoolCode ? <Loader2 className="h-3 w-3 animate-spin" /> : actionText('save', 'Save')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setIsEditingCode(false);
+                            setSchoolCode(schoolInfo.code || '');
+                          }}
+                          disabled={savingSchoolCode}
+                          className="h-7 px-2 text-xs"
+                        >
+                          {actionText('cancel', 'Cancel')}
+                        </Button>
+                      </div>
+                    ) : schoolInfo.code ? (
+                      <span
+                        className="cursor-pointer rounded bg-slate-100 px-2 py-0.5 font-mono text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                        onClick={() => setIsEditingCode(true)}
+                        title={messageText('clickToEdit', 'Click to edit')}
+                      >
+                        {schoolInfo.code}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setIsEditingCode(true)}
+                        className="text-xs font-medium text-amber-600 hover:underline"
+                      >
+                        {actionText('addSchoolCode', 'Add school code')}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-
-              {/* Actions */}
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
-                {isEditingLogo && selectedLogoFile && (
-                  <>
-                    <Button onClick={handleLogoSave} disabled={savingLogo} size="sm">
-                      {savingLogo ? 'Saving...' : 'Save Logo'}
-                    </Button>
-                    <Button variant="ghost" onClick={() => {
-                      setSelectedLogoFile(null);
-                      setIsEditingLogo(false);
-                    }} size="sm">
-                      Cancel
-                    </Button>
-                  </>
-                )}
-                {!isEditingLogo && (
-                  <Button variant="outline" onClick={() => setIsEditingLogo(true)} size="sm">
-                    {schoolInfo.logoUrl ? 'Change Logo' : 'Add Logo'}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Academic Year Display */}
-            <div className="mt-4 flex flex-col gap-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-700/50 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <Calendar className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                <span className="text-sm text-slate-600 dark:text-slate-300">Current Academic Year:</span>
-                <span className="break-words font-medium">
-                  {loadingAcademicYears ? (
-                    <Loader2 className="w-4 h-4 animate-spin inline" />
-                  ) : (
-                    currentAcademicYear?.name || 'Not set'
-                  )}
-                </span>
-                <Badge variant="outline" className="text-xs">
-                  {calendarType === 'ETHIOPIAN' ? 'Ethiopian' : 'Gregorian'}
+              {schoolPlan && (
+                <Badge variant="outline" className="w-fit shrink-0 text-xs">
+                  {schoolPlan.tier}
                 </Badge>
-              </div>
-              <Button variant="ghost" size="sm" onClick={fetchAcademicYears}>
-                <RefreshCw className={`w-4 h-4 ${loadingAcademicYears ? 'animate-spin' : ''}`} />
-              </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1190,7 +1227,7 @@ export default function SchoolSettingsPage() {
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 max-w-full">
         <div className="mb-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <h2 className="min-w-0 text-lg font-semibold text-slate-900 dark:text-white">School Settings</h2>
+          <h2 className="min-w-0 text-lg font-semibold text-slate-900 dark:text-white">{t.title}</h2>
           <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
             <Button
               type="button"
@@ -1199,7 +1236,7 @@ export default function SchoolSettingsPage() {
               className="w-full sm:w-auto"
             >
               {savingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save Changes
+              {actionText('saveChanges', 'Save Changes')}
             </Button>
             <div className="-mx-4 max-w-[100vw] overflow-x-auto overflow-y-hidden px-4 pb-2 md:mx-0 md:max-w-full md:px-0 lg:w-auto">
               <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
@@ -1209,7 +1246,7 @@ export default function SchoolSettingsPage() {
                   return (
                     <TabsTrigger key={category} value={category} className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
                       <Icon className="h-3 w-3 shrink-0 md:h-4 md:w-4" />
-                      <span>{config?.label || category}</span>
+                      <span>{categoryText(category)}</span>
                     </TabsTrigger>
                   );
                 })}
@@ -1232,9 +1269,9 @@ export default function SchoolSettingsPage() {
                       <Icon className={`w-5 h-5 ${config?.color || 'text-gray-600'}`} />
                     </div>
                     <div className="min-w-0">
-                      <CardTitle className="break-words text-slate-900 dark:text-white">{config?.label || category}</CardTitle>
+                      <CardTitle className="break-words text-slate-900 dark:text-white">{categoryText(category)}</CardTitle>
                       <CardDescription className="break-words text-slate-500 dark:text-slate-400">
-                        Configure {config?.label?.toLowerCase() || category} settings for your school
+                        {t.configurePrefix} {categoryText(category).toLowerCase()} {t.configureSuffix}
                       </CardDescription>
                     </div>
                   </div>
@@ -1253,22 +1290,22 @@ export default function SchoolSettingsPage() {
                     >
                       <div className="min-w-0 flex-1 sm:pr-4">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <h4 className="break-words font-medium text-slate-900 dark:text-white">{setting.label}</h4>
+                          <h4 className="break-words font-medium text-slate-900 dark:text-white">{settingText(setting.label)}</h4>
                           {setting.requiredTier && (
                             <Badge variant="outline" className="whitespace-normal break-words text-xs">
                               {setting.requiredTier}
                             </Badge>
                           )}
                         </div>
-                        <p className="mt-0.5 break-words text-sm text-slate-500 dark:text-slate-400">{setting.description}</p>
+                        <p className="mt-0.5 break-words text-sm text-slate-500 dark:text-slate-400">{settingText(setting.description)}</p>
                         {isSettingLocked(setting.key) && (
                           <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                            Locked after first setup to protect existing academic records.
+                            {messageText('lockedAfterSetup', 'Locked after first setup to protect existing academic records.')}
                           </p>
                         )}
                         {!isSettingVisible(setting) && (
                           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                            Requires {setting.requiredFeature ? `${setting.requiredFeature} feature` : `${setting.requiredTier} plan`}
+                            {messageText('requires', 'Requires')} {setting.requiredFeature ? `${setting.requiredFeature} ${messageText('feature', 'feature')}` : `${setting.requiredTier} ${messageText('plan', 'plan')}`}
                           </p>
                         )}
                       </div>
@@ -1290,8 +1327,8 @@ export default function SchoolSettingsPage() {
       {visibleCategories.length > 6 && (
         <Card className="mt-4 max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <CardHeader className="min-w-0">
-            <CardTitle className="text-slate-900 dark:text-white">All Settings</CardTitle>
-            <CardDescription className="break-words text-slate-500 dark:text-slate-400">Complete list of all configurable settings</CardDescription>
+            <CardTitle className="text-slate-900 dark:text-white">{t.allSettings}</CardTitle>
+            <CardDescription className="break-words text-slate-500 dark:text-slate-400">{t.allSettingsDescription}</CardDescription>
           </CardHeader>
           <CardContent className="min-w-0">
             <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
@@ -1302,8 +1339,8 @@ export default function SchoolSettingsPage() {
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      <h4 className="break-words text-sm font-medium text-slate-900 dark:text-white">{setting.label}</h4>
-                      <p className="break-words text-xs text-slate-500 dark:text-slate-400">{setting.description}</p>
+                      <h4 className="break-words text-sm font-medium text-slate-900 dark:text-white">{settingText(setting.label)}</h4>
+                      <p className="break-words text-xs text-slate-500 dark:text-slate-400">{settingText(setting.description)}</p>
                     </div>
                     <div className="min-w-0 sm:ml-2">
                       {renderSettingInput(setting)}

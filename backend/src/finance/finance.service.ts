@@ -273,10 +273,16 @@ export class FinanceService {
   private async getFeeCollectionModeInternal(
     schoolId: string,
   ): Promise<string> {
-    const setting = await this.prisma.schoolSetting.findUnique({
-      where: { schoolId_key: { schoolId, key: 'curriculum_type' } },
-    });
-    return setting?.value || 'TERM';
+    const [feeStructureMode, curriculumType] = await Promise.all([
+      this.prisma.schoolSetting.findUnique({
+        where: { schoolId_key: { schoolId, key: 'fee_structure_mode' } },
+      }),
+      this.prisma.schoolSetting.findUnique({
+        where: { schoolId_key: { schoolId, key: 'curriculum_type' } },
+      }),
+    ]);
+
+    return feeStructureMode?.value || curriculumType?.value || 'TERM';
   }
 
   private getInstallmentCountInternal(feeCollectionMode: string): number {
@@ -590,16 +596,16 @@ export class FinanceService {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (existingStructures.length === 0) {
+    if (existingStructures.length === 0 && !dto.annualAmount) {
       return {
         created: 0,
         message:
-          'No base fee structure found. Create an annual fee structure first.',
+          'No base fee structure found. Create an annual fee structure first or provide annualAmount.',
       };
     }
 
     const baseStructure = existingStructures[0];
-    const annualAmount = baseStructure.amount;
+    const annualAmount = dto.annualAmount ?? baseStructure.amount;
     const baseAmount = this.calculateInstallmentAmountInternal(
       annualAmount,
       feeCollectionMode,
@@ -627,9 +633,14 @@ export class FinanceService {
         TERM: 'Term',
         YEARLY: 'Full Year',
       };
+      const displayFeeType = String(dto.feeType || 'Tuition').replace(
+        /_/g,
+        ' ',
+      );
 
       for (let i = 0; i < installmentCount; i++) {
         const installmentTermId = terms[i]?.id;
+        const periodName = terms[i]?.name || `${modeLabels[feeCollectionMode]} ${i + 1}`;
         const existingInstallment = await tx.feeStructure.findFirst({
           where: {
             schoolId: dto.schoolId,
@@ -648,7 +659,9 @@ export class FinanceService {
               feeType: `${dto.feeType || 'TUITION'}_INSTALLMENT_${i + 1}`,
               amount: amounts[i],
               grade: dto.grade ?? null,
-              description: `${modeLabels[feeCollectionMode]} ${i + 1} of ${installmentCount} for ${dto.feeType || 'Tuition'}`,
+              description:
+                dto.description ||
+                `${displayFeeType} installment for ${periodName}`,
               isActive: true,
             },
           });
@@ -740,6 +753,15 @@ export class FinanceService {
     if (!fs || fs.schoolId !== schoolId)
       throw new Error('Fee structure not found for this school');
     return this.prisma.feeStructure.delete({ where: { id } });
+  }
+
+  async deleteFeeStructuresBySchool(
+    schoolId: string,
+    academicYearId?: string,
+  ) {
+    const where: any = { schoolId };
+    if (academicYearId) where.academicYearId = academicYearId;
+    return this.prisma.feeStructure.deleteMany({ where });
   }
 
   // ========================================================
@@ -1037,11 +1059,22 @@ export class FinanceService {
     const termsCount = await tx.term.count({ where: { academicYearId } });
     if (termsCount > 0) return termsCount;
 
-    const setting = await tx.schoolSetting.findFirst({
-      where: { schoolId, key: 'curriculum_type' },
-      select: { value: true },
+    const settings = await tx.schoolSetting.findMany({
+      where: {
+        schoolId,
+        key: { in: ['fee_structure_mode', 'curriculum_type'] },
+      },
+      select: { key: true, value: true },
     });
-    return this.getInstallmentCountInternal(setting?.value || 'TERM');
+    const feeStructureMode = settings.find(
+      (setting) => setting.key === 'fee_structure_mode',
+    );
+    const curriculumType = settings.find(
+      (setting) => setting.key === 'curriculum_type',
+    );
+    return this.getInstallmentCountInternal(
+      feeStructureMode?.value || curriculumType?.value || 'TERM',
+    );
   }
 
   private async legacyGenerateReceiptNumber(schoolId: string) {

@@ -1,4 +1,5 @@
 import { toEthiopian, toGregorian } from 'ethiopian-calendar-new';
+import type { AppLanguage } from '@/lib/languageStore';
 
 /**
  * Ethiopian month names
@@ -18,6 +19,58 @@ export const ETHIOPIAN_MONTH_NAMES = [
     'Nehase',
     'Pagume',
 ] as const;
+
+export const ETHIOPIAN_MONTH_NAMES_BY_LANGUAGE: Record<AppLanguage, readonly string[]> = {
+    en: ETHIOPIAN_MONTH_NAMES,
+    am: [
+        'መስከረም',
+        'ጥቅምት',
+        'ኅዳር',
+        'ታኅሣሥ',
+        'ጥር',
+        'የካቲት',
+        'መጋቢት',
+        'ሚያዝያ',
+        'ግንቦት',
+        'ሰኔ',
+        'ሐምሌ',
+        'ነሐሴ',
+        'ጳጉሜ',
+    ],
+    om: [
+        'Fuulbaana',
+        'Onkololeessa',
+        'Sadaasa',
+        'Muddee',
+        'Amajjii',
+        'Guraandhala',
+        'Bitooteessa',
+        'Eebila',
+        'Caamsaa',
+        'Waxabajjii',
+        'Adooleessa',
+        'Hagayya',
+        'Qaammee',
+    ],
+    ar: ETHIOPIAN_MONTH_NAMES,
+    so: ETHIOPIAN_MONTH_NAMES,
+};
+
+const ETHIOPIAN_ERA_LABELS: Record<AppLanguage, string> = {
+    am: 'ዓ.ም.',
+    ar: 'E.C.',
+    en: 'E.C.',
+    om: 'W.I.',
+    so: 'E.C.',
+};
+
+export function getLocalizedEthiopianMonthName(month: number, language: AppLanguage = 'en'): string {
+    return ETHIOPIAN_MONTH_NAMES_BY_LANGUAGE[language]?.[month - 1] || ETHIOPIAN_MONTH_NAMES[month - 1] || '';
+}
+
+export function getLocalizedEthiopianEraLabel(language: AppLanguage = 'en'): string {
+    return ETHIOPIAN_ERA_LABELS[language] || ETHIOPIAN_ERA_LABELS.en;
+}
 
 /**
  * Convert a Gregorian date to Ethiopian date
@@ -45,17 +98,26 @@ export function convertEthiopianToGregorian(etYear: number, etMonth: number, etD
 /**
  * Format a date in Ethiopian calendar
  */
-export function formatEthiopianDate(date: Date | string): string {
+export function formatEthiopianDate(date: Date | string, language: AppLanguage = 'en'): string {
     const ethiopianDate = convertToEthiopian(date);
-    return `${ethiopianDate.monthName} ${ethiopianDate.day}, ${ethiopianDate.year} E.C.`;
+    return `${getLocalizedEthiopianMonthName(ethiopianDate.month, language)} ${ethiopianDate.day}, ${ethiopianDate.year} ${getLocalizedEthiopianEraLabel(language)}`;
+}
+
+export function formatEthiopianMonthYear(date: Date | string, language: AppLanguage = 'en'): string {
+    const ethiopianDate = convertToEthiopian(date);
+    return `${getLocalizedEthiopianMonthName(ethiopianDate.month, language)} ${ethiopianDate.year} ${getLocalizedEthiopianEraLabel(language)}`;
 }
 
 /**
  * Format a date based on calendar type
  */
-export function formatDateByCalendarType(date: Date | string, calendarType: 'GREGORIAN' | 'ETHIOPIAN'): string {
+export function formatDateByCalendarType(
+    date: Date | string,
+    calendarType: 'GREGORIAN' | 'ETHIOPIAN',
+    language: AppLanguage = 'en',
+): string {
     if (calendarType === 'ETHIOPIAN') {
-        return formatEthiopianDate(date);
+        return formatEthiopianDate(date, language);
     }
 
     const d = typeof date === 'string' ? new Date(date) : date;

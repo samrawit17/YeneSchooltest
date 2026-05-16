@@ -10,12 +10,21 @@ import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { useThemeStore } from "@/lib/themeStore";
-import { Lock, Mail, Eye, EyeOff, LogIn, School, User, Sun, Moon } from "lucide-react";
+import { AppLanguage, useLanguageStore } from "@/lib/languageStore";
+import { useTranslations } from "@/hooks/useTranslations";
+import { Eye, EyeOff, Languages, Lock, LogIn, Moon, School, Sun, User } from "lucide-react";
 
 // Shadcn/ui Components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -25,20 +34,49 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-const loginSchema = z.object({
-  loginIdentifier: z.string().min(1, { message: "Please enter your email or username" }),
-  password: z.string().min(1, { message: "Password is required" }),
-  rememberMe: z.boolean().optional(),
-});
+type LoginFormData = {
+  loginIdentifier: string;
+  password: string;
+  rememberMe?: boolean;
+};
 
-type LoginFormData = z.infer<typeof loginSchema>;
+const languageOptions: Array<{ value: AppLanguage; label: string }> = [
+  { value: "en", label: "English" },
+  { value: "am", label: "አማርኛ" },
+  { value: "om", label: "Afaan Oromo" },
+  { value: "so", label: "Soomaali" },
+  { value: "ar", label: "العربية" },
+];
+
+const getTranslatedLoginError = (message: string | undefined, fallback: string) => {
+  const normalizedMessage = (message || "").trim().toLowerCase();
+  if (!normalizedMessage) return fallback;
+
+  const knownCredentialErrors = new Set([
+    "invalid credentials",
+    "login failed",
+    "unauthorized",
+    "unauthorized exception",
+  ]);
+
+  return knownCredentialErrors.has(normalizedMessage) ? fallback : message || fallback;
+};
 
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
   const { resolvedTheme, setTheme } = useThemeStore();
+  const language = useLanguageStore((state) => state.language);
+  const setLanguage = useLanguageStore((state) => state.setLanguage);
+  const { t } = useTranslations<any>("login");
   const router = useRouter();
+
+  const loginSchema = z.object({
+    loginIdentifier: z.string().min(1, { message: t.validationIdentifier }),
+    password: z.string().min(1, { message: t.validationPassword }),
+    rememberMe: z.boolean().optional(),
+  });
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -72,13 +110,13 @@ const LoginPage = () => {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      const user = await login(data.loginIdentifier, data.password);
+      const user = await login(data.loginIdentifier, data.password, !!data.rememberMe);
       
-      toast.success(`Welcome back, ${user.name}!`);
+      toast.success(t.welcomeToast.replace("{name}", user.name));
       
       if (user.mustChangePassword) {
         router.push("/change-password");
-        toast.info("Please change your temporary password to continue.");
+        toast.info(t.changePasswordToast);
         return;
       }
       
@@ -98,7 +136,7 @@ const LoginPage = () => {
       
       router.push(redirectPath);
     } catch (error: any) {
-      const errorMessage = error?.message || "Invalid credentials. Please try again.";
+      const errorMessage = getTranslatedLoginError(error?.message, t.invalidCredentials);
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -122,13 +160,13 @@ const LoginPage = () => {
             <div className="bg-white/20 backdrop-blur-sm p-2 rounded-xl">
               <School className="w-8 h-8" />
             </div>
-            <h1 className="text-3xl font-light tracking-tight">EduPortal</h1>
+            <h1 className="text-3xl font-light tracking-tight">{t.brand}</h1>
           </div>
           <p className="text-4xl font-bold leading-tight mb-4">
-            Where education meets innovation
+            {t.heroTitle}
           </p>
           <p className="text-lg text-white/80">
-            A minimalist approach to modern school management
+            {t.heroSubtitle}
           </p>
         </div>
       </div>
@@ -136,7 +174,23 @@ const LoginPage = () => {
       {/* Right Side - Minimal Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-900 relative">
         {/* Theme Toggle Button */}
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
+            <SelectTrigger
+              aria-label={t.language}
+              className="h-10 w-[132px] rounded-full bg-gray-100 dark:bg-gray-800 border-0 text-gray-700 dark:text-gray-200"
+            >
+              <Languages className="mr-2 h-4 w-4" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              {languageOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             variant="ghost"
             size="icon"
@@ -157,16 +211,16 @@ const LoginPage = () => {
             <div className="rounded-xl bg-[var(--brand-color,#e35336)] p-2">
               <School className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-semibold text-gray-900">EduPortal</span>
+            <span className="text-2xl font-semibold text-gray-900 dark:text-white">{t.brand}</span>
           </div>
 
           {/* Header */}
           <div className="space-y-2">
             <h2 className="text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
-              Welcome back
+              {t.welcome}
             </h2>
             <p className="text-gray-500 dark:text-gray-400">
-              Please enter your details to sign in
+              {t.subtitle}
             </p>
           </div>
 
@@ -183,12 +237,12 @@ const LoginPage = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Email or Username
+                      {t.loginIdentifier}
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
-                          placeholder="Enter your email or username"
+                          placeholder={t.loginIdentifierPlaceholder}
                           {...field}
                           className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-700 transition-colors text-gray-900 dark:text-white"
                           disabled={isLoading}
@@ -207,13 +261,13 @@ const LoginPage = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Password
+                      {t.password}
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showPassword ? "text" : "password"}
-                          placeholder="••••••••"
+                          placeholder={t.passwordPlaceholder}
                           {...field}
                           className="pl-10 pr-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-700 transition-colors text-gray-900 dark:text-white"
                           disabled={isLoading}
@@ -255,7 +309,7 @@ const LoginPage = () => {
                         />
                       </FormControl>
                       <FormLabel className="text-sm font-normal text-gray-600 dark:text-gray-400 cursor-pointer">
-                        Remember me
+                        {t.rememberMe}
                       </FormLabel>
                     </FormItem>
                   )}
@@ -266,7 +320,7 @@ const LoginPage = () => {
                   className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-0 h-auto"
                   asChild
                 >
-                  <Link href="/forgot-password">Forgot password?</Link>
+                  <Link href="/forgot-password">{t.forgotPassword}</Link>
                 </Button>
               </div>
 
@@ -278,12 +332,12 @@ const LoginPage = () => {
                 {isLoading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Signing in...</span>
+                    <span>{t.signingIn}</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <LogIn className="w-4 h-4" />
-                    Sign In
+                    {t.signIn}
                   </div>
                 )}
               </Button>
@@ -292,19 +346,19 @@ const LoginPage = () => {
 
           {/* Enrollment link */}
           <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-            Need admission?{" "}
+            {t.needAdmission}{" "}
             <Button
               variant="link"
               className="h-auto p-0 font-medium text-[var(--brand-color,#e35336)] hover:opacity-80"
               asChild
             >
-              <Link href="/enroll">Enroll Now</Link>
+              <Link href="/enroll">{t.enrollNow}</Link>
             </Button>
           </p>
 
           {/* Footer */}
           <div className="text-center text-xs text-gray-400 dark:text-gray-500 pt-8">
-            <p>© 2026 EduPortal. All rights reserved.</p>
+            <p>{t.footer}</p>
           </div>
         </div>
       </div>

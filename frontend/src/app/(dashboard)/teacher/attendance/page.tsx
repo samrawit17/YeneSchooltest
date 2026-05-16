@@ -7,7 +7,8 @@ import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { syncService } from "@/lib/db/sync-service";
 import { toast } from "sonner";
 import { attendanceAPI, timetableSlotsAPI, teachersAPI } from "@/lib/api";
-import { toEthiopian } from "ethiopian-calendar-new";
+import { formatEthiopianDate } from "@/lib/calendar-utils";
+import { useTranslations } from "@/hooks/useTranslations";
 import {
   Calendar,
   Users,
@@ -114,28 +115,36 @@ const defaultTrendData = {
   ],
 };
 
-const ETHIOPIAN_MONTHS = [
-  "Meskerem",
-  "Tikemet",
-  "Hidar",
-  "Tahsas",
-  "Ter",
-  "Yekatit",
-  "Megabit",
-  "Miyazia",
-  "Ginbot",
-  "Sene",
-  "Hamle",
-  "Nehase",
-  "Pagume",
-];
+const formatDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
-const FALLBACK_ETH_DATE = "Meskerem 1, 2019 E.C.";
+const getTodayDate = () => formatDateInputValue(new Date());
 
 export default function TeacherAttendancePage() {
   const { isLoading, user } = useAuth();
   const { isOnline, wasOffline } = useNetworkStatus();
   const { setItems } = useBreadcrumb();
+  const { language } = useTranslations("navigation");
+
+  const getFallbackEthiopianDate = useCallback(
+    () => formatEthiopianDate(new Date(), language),
+    [language],
+  );
+
+  const getEthiopianDate = useCallback((gregorianDate: string): string => {
+    try {
+      const date = new Date(`${gregorianDate}T00:00:00`);
+      if (isNaN(date.getTime())) return getFallbackEthiopianDate();
+      return formatEthiopianDate(date, language);
+    } catch (e) {
+      console.error('Error converting date:', e);
+      return getFallbackEthiopianDate();
+    }
+  }, [getFallbackEthiopianDate, language]);
 
   useEffect(() => {
     setItems([
@@ -146,19 +155,10 @@ export default function TeacherAttendancePage() {
   }, [setItems]);
 
   // Filters
-  const getTodayDate = () => new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [ethiopianDate, setEthiopianDate] = useState(() => {
     const today = getTodayDate();
-    const date = new Date(`${today}T00:00:00`);
-    if (isNaN(date.getTime())) return FALLBACK_ETH_DATE;
-    const eth = toEthiopian(
-      date.getFullYear(),
-      date.getMonth() + 1,
-      date.getDate(),
-    );
-    const monthName = ETHIOPIAN_MONTHS[eth.month - 1] || "Meskerem";
-    return `${monthName} ${eth.day}, ${eth.year} E.C.`;
+    return getEthiopianDate(today);
   });
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedSubject, setSelectedSubject] = useState<string>("");
@@ -378,6 +378,12 @@ export default function TeacherAttendancePage() {
         }
       };
 
+      if (selectedDate > getTodayDate()) {
+        setIsSubmitted(false);
+        await fetchStudentsDirectly(classId, sectionName, sectionId);
+        return;
+      }
+
       try {
         // Try to open/get attendance session
         const sessionResponse = await attendanceAPI.openSession(slotId, selectedDate);
@@ -567,36 +573,29 @@ export default function TeacherAttendancePage() {
 
   const isWeekendSelection = isWeekendDate(selectedDate);
 
-  // Ethiopian date conversion
-  const getEthiopianDate = (gregorianDate: string): string => {
-    try {
-      const date = new Date(`${gregorianDate}T00:00:00`);
-      if (isNaN(date.getTime())) {
-        return FALLBACK_ETH_DATE; // Fallback
-      }
-
-      const eth = toEthiopian(
-        date.getFullYear(),
-        date.getMonth() + 1,
-        date.getDate(),
-      );
-      const monthName = ETHIOPIAN_MONTHS[eth.month - 1] || "Meskerem";
-      return `${monthName} ${eth.day}, ${eth.year} E.C.`;
-    } catch (e) {
-      console.error('Error converting date:', e);
-      return FALLBACK_ETH_DATE; // Fallback on error
-    }
-  };
-
   // Update Ethiopian date when selectedDate changes
   useEffect(() => {
     setEthiopianDate(getEthiopianDate(selectedDate));
-  }, [selectedDate]);
+  }, [selectedDate, getEthiopianDate]);
 
-  // Check if user can edit (teacher cannot edit past dates or submitted sessions)
+  const todayDate = getTodayDate();
+  const isTodaySelection = selectedDate === todayDate;
+  const isFutureSelection = selectedDate > todayDate;
+  const isPastSelection = selectedDate < todayDate;
+
+  const getAttendanceLockMessage = () => {
+    if (isFutureSelection) return 'Future attendance is locked. Teachers can only take attendance for today.';
+    if (isPastSelection) return 'Past attendance is read-only. Teachers can only take attendance for today.';
+    if (isWeekendSelection) return 'Attendance is locked on Saturday and Sunday.';
+    if (isSubmitted) return 'Attendance has already been submitted.';
+    return null;
+  };
+
+  const attendanceLockMessage = getAttendanceLockMessage();
+
+  // Teachers can only edit today's attendance until it is submitted.
   const canEdit = () => {
-    const today = new Date().toISOString().split('T')[0];
-    return selectedDate >= today && !isSubmitted && !isWeekendSelection;
+    return isTodaySelection && !isSubmitted && !isWeekendSelection;
   };
 
   const selectedClassMeta = classOptions.find((c) => c.key === selectedClass);
@@ -613,6 +612,12 @@ export default function TeacherAttendancePage() {
 
   // Handlers
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
+    if (!canEdit()) {
+      const lockMessage = getAttendanceLockMessage();
+      if (lockMessage) toast.error(lockMessage, { dismissible: true });
+      return;
+    }
+
     setStudents(prev => prev.map(s =>
       s.id === studentId
         ? { ...s, status, lastUpdated: new Date().toISOString() }
@@ -622,6 +627,8 @@ export default function TeacherAttendancePage() {
   };
 
   const handleRemarkChange = (studentId: string, remark: string) => {
+    if (!canEdit()) return;
+
     setStudents(prev => prev.map(s =>
       s.id === studentId
         ? { ...s, remark }
@@ -631,6 +638,12 @@ export default function TeacherAttendancePage() {
   };
 
   const handleMarkAllPresent = () => {
+    if (!canEdit()) {
+      const lockMessage = getAttendanceLockMessage();
+      if (lockMessage) toast.error(lockMessage, { dismissible: true });
+      return;
+    }
+
     setStudents(prev => prev.map(s => ({
       ...s,
       status: 'PRESENT' as AttendanceStatus,
@@ -678,6 +691,12 @@ export default function TeacherAttendancePage() {
   };
 
   const handleSave = async () => {
+    const lockMessage = getAttendanceLockMessage();
+    if (lockMessage) {
+      toast.error(lockMessage, { dismissible: true });
+      return;
+    }
+
     if (!selectedClass) {
       toast.error('Please select a class first', { dismissible: true });
       return;
@@ -870,9 +889,9 @@ export default function TeacherAttendancePage() {
             <div className="min-w-0 order-1">
               <h1 className="text-2xl font-bold text-black">Attendance</h1>
               <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Mark and monitor daily student attendance</p>
-              {isWeekendSelection && (
+              {attendanceLockMessage && !isSubmitted && (
                 <div className="mt-2 inline-flex max-w-full items-start gap-1 rounded-full bg-amber-100 px-3 py-1 text-sm text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                  <span>Attendance is locked on Saturday and Sunday</span>
+                  <span>{attendanceLockMessage}</span>
                 </div>
               )}
               {isSubmitted && (
@@ -914,9 +933,9 @@ export default function TeacherAttendancePage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => {
-                    const prevDate = new Date(selectedDate);
+                    const prevDate = new Date(`${selectedDate}T00:00:00`);
                     prevDate.setDate(prevDate.getDate() - 1);
-                    setSelectedDate(prevDate.toISOString().split('T')[0]);
+                    setSelectedDate(formatDateInputValue(prevDate));
                   }}
                   className="h-7 w-7 sm:h-8 sm:w-8 text-[var(--brand-color,#e35336)]"
                 >
@@ -932,9 +951,9 @@ export default function TeacherAttendancePage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => {
-                    const nextDate = new Date(selectedDate);
+                    const nextDate = new Date(`${selectedDate}T00:00:00`);
                     nextDate.setDate(nextDate.getDate() + 1);
-                    setSelectedDate(nextDate.toISOString().split('T')[0]);
+                    setSelectedDate(formatDateInputValue(nextDate));
                   }}
                   className="h-7 w-7 sm:h-8 sm:w-8 text-[var(--brand-color,#e35336)]"
                 >

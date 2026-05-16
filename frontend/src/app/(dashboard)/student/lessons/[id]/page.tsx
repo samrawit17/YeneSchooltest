@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { lessonsAPI, Lesson } from "@/lib/api/content";
 import { toast } from "sonner";
 import {
@@ -22,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default function StudentLessonDetailPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const { setItems } = useBreadcrumb();
+  const { formatDate: formatSchoolDate } = useAcademicYear();
   const params = useParams();
   const router = useRouter();
   const lessonId = params.id as string;
@@ -67,12 +69,9 @@ export default function StudentLessonDetailPage() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "N/A";
+    return formatSchoolDate(date);
   };
 
   const homework =

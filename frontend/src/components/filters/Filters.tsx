@@ -13,6 +13,7 @@ import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { useTranslations } from "@/hooks/useTranslations";
 
 export interface FilterConfig {
   academicYear?: boolean;
@@ -80,6 +81,12 @@ interface ClassData {
   sections?: SectionData[];
 }
 
+const formatMessage = (template: string, values: Record<string, string | number>) =>
+  Object.entries(values).reduce(
+    (message, [key, value]) => message.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+
 export function Filters({
   config,
   options,
@@ -105,6 +112,7 @@ export function Filters({
   disabled = false,
   className = "",
 }: FiltersProps) {
+  const { t } = useTranslations<any>("filters");
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [grades, setGrades] = useState<{ id: string; grade: number }[]>([]);
@@ -239,10 +247,10 @@ export function Filters({
   };
 
   const defaultStatusOptions = [
-    { value: "SUBMITTED", label: "Submitted" },
-    { value: "APPROVED", label: "Approved" },
-    { value: "REJECTED", label: "Rejected" },
-    { value: "DRAFT", label: "Draft" },
+    { value: "SUBMITTED", label: t.labels.submitted },
+    { value: "APPROVED", label: t.labels.approved },
+    { value: "REJECTED", label: t.labels.rejected },
+    { value: "DRAFT", label: t.labels.draft },
   ];
 
   const statusOptions = options?.statusOptions || defaultStatusOptions;
@@ -268,7 +276,7 @@ export function Filters({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
-            placeholder={searchPlaceholder}
+            placeholder={searchPlaceholder === "Search..." ? t.placeholders.search : searchPlaceholder}
             className="pl-10 h-9 text-sm w-full"
             value={selectedSearch}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -284,17 +292,17 @@ export function Filters({
           disabled={disabled}
         >
           <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            <SelectValue placeholder="Academic Year" />
+            <SelectValue placeholder={t.placeholders.academicYear} />
           </SelectTrigger>
           <SelectContent>
             {academicYears.length === 0 ? (
               <SelectItem value="no-data" disabled>
-                No academic years
+                {t.empty.academicYears}
               </SelectItem>
             ) : (
               academicYears.map((year) => (
                 <SelectItem key={year.id} value={year.id}>
-                  {year.name} {year.isActive && "(Active)"}
+                  {year.name} {year.isActive && `(${t.labels.active})`}
                 </SelectItem>
               ))
             )}
@@ -309,12 +317,12 @@ export function Filters({
           disabled={disabled}
         >
           <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            <SelectValue placeholder="Term" />
+            <SelectValue placeholder={t.placeholders.term} />
           </SelectTrigger>
           <SelectContent>
             {!termOptions || termOptions.length === 0 ? (
               <SelectItem value="no-data" disabled>
-                No terms
+                {t.empty.terms}
               </SelectItem>
             ) : (
               termOptions.map((term) => (
@@ -334,12 +342,12 @@ export function Filters({
           disabled={disabled}
         >
           <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            <SelectValue placeholder="Curriculum" />
+            <SelectValue placeholder={t.placeholders.curriculum} />
           </SelectTrigger>
           <SelectContent>
             {curriculumOptions.length === 0 ? (
               <SelectItem value="no-data" disabled>
-                No curriculum
+                {t.empty.curriculum}
               </SelectItem>
             ) : (
               curriculumOptions.map((curr) => (
@@ -362,18 +370,18 @@ export function Filters({
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <SelectValue placeholder="Grade" />
+              <SelectValue placeholder={t.placeholders.grade} />
             )}
           </SelectTrigger>
           <SelectContent>
             {grades.length === 0 ? (
               <SelectItem value="no-data" disabled>
-                No grades
+                {t.empty.grades}
               </SelectItem>
             ) : (
               grades.map((grade) => (
                 <SelectItem key={grade.id} value={String(grade.grade)}>
-                  Grade {grade.grade}
+                  {formatMessage(t.labels.grade, { grade: grade.grade })}
                 </SelectItem>
               ))
             )}
@@ -388,17 +396,17 @@ export function Filters({
           disabled={disabled || !selectedYear || loading}
         >
           <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            <SelectValue placeholder="Section" />
+            <SelectValue placeholder={t.placeholders.section} />
           </SelectTrigger>
           <SelectContent>
             {sections.length === 0 ? (
               <SelectItem value="no-data" disabled>
-                No sections
+                {t.empty.sections}
               </SelectItem>
             ) : (
               <>
                 <SelectItem value="all">
-                  All Sections
+                  {t.labels.allSections}
                 </SelectItem>
                 {sections.map((section) => (
                   <SelectItem 
@@ -421,7 +429,7 @@ export function Filters({
           disabled={disabled}
         >
           <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t.placeholders.status} />
           </SelectTrigger>
           <SelectContent>
             {statusOptions.map((status) => (

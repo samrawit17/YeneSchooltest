@@ -123,6 +123,62 @@ export class ReportCardController {
     );
   }
 
+  @Get('parent-presentation')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('report_card:read')
+  async getParentPresentationReport(
+    @Request() req,
+    @Query()
+    query: {
+      academicYearId: string;
+      fromTermId: string;
+      toTermId: string;
+      classId?: string;
+    },
+  ) {
+    return this.reportCardService.getParentPresentationReport(req.user.schoolId, query);
+  }
+
+  @Get('parent-presentation/pdf')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('report_card:read')
+  async downloadParentPresentationPdf(
+    @Request() req,
+    @Query()
+    query: {
+      academicYearId: string;
+      fromTermId: string;
+      toTermId: string;
+      classId?: string;
+    },
+    @Res() res: Response,
+  ) {
+    const pdf = await this.reportCardService.generateParentPresentationPdf(req.user.schoolId, query);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="term-performance-brief.pdf"');
+    res.send(pdf);
+  }
+
+  @Get('parent-presentation/excel')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('report_card:read')
+  async downloadParentPresentationExcel(
+    @Request() req,
+    @Query()
+    query: {
+      academicYearId: string;
+      fromTermId: string;
+      toTermId: string;
+      classId?: string;
+    },
+    @Res() res: Response,
+  ) {
+    const excel = await this.reportCardService.generateParentPresentationExcel(req.user.schoolId, query);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="term-performance-brief.xlsx"');
+    res.send(excel);
+  }
+
   @Get('student/published')
   @Roles(Role.STUDENT)
   async getMyPublishedReportCards(

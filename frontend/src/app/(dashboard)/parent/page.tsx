@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "@/hooks/useTranslations";
 import { academicYearsAPI, financeAPI } from "@/lib/api";
 import { gradingAPI } from "@/lib/api/assessment";
 import { parentDashboardAPI } from "@/lib/api/parent";
 import { reportCardsAPI } from "@/lib/api/reporting";
+import { resolveAssetUrl } from "@/lib/asset-url";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { useSchoolFeatureSetting } from "@/hooks/useSchoolFeatureSetting";
 import {
@@ -80,6 +82,8 @@ interface Child {
   totalPaid: number;
   totalDue: number;
   feePeriods?: FeePeriodSummary[];
+  photoUrl?: string | null;
+  avatarUrl?: string | null;
   reportCard: {
     status: string;
     percentage: number | null;
@@ -108,10 +112,13 @@ interface FeePeriodSummary {
 interface TopRankChild {
   childName: string;
   reportCardId: string;
+  childId: string;
   rank: number;
   term: string;
   percentage: number | null;
   grade: string | null;
+  canViewResults: boolean;
+  blockedReason?: string;
 }
 
 interface SubjectGrade {
@@ -238,13 +245,13 @@ const ParentDashboardSkeleton = () => (
 );
 
 // Custom tooltip for the chart
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, translation }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-3 shadow-sm">
         <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
         <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-          {payload[0].value}% Attendance
+          {translation.percentAttendance.replace("{value}", String(payload[0].value))}
         </p>
       </div>
     );
@@ -304,7 +311,9 @@ const getSubjectProgressRows = (
   fallbackGrades: Child["grades"] = [],
 ) => {
   if (grades.length > 0) {
-    return grades.map((grade, index) => {
+    const rowsBySubject = new Map<string, { id: string; subject: string; progress: number }>();
+
+    grades.forEach((grade, index) => {
       const progress = parsePercentValue((grade as any).totalScore)
         ?? parsePercentValue((grade as any).average)
         ?? parsePercentValue((grade as any).percentage)
@@ -314,13 +323,25 @@ const getSubjectProgressRows = (
         (grade as any).subjectName ||
         (typeof (grade as any).subject === "string" ? (grade as any).subject : "Subject");
       const subjectCode = (grade as any).subject?.code || (grade as any).subjectCode;
+      const subjectId = (grade as any).subjectId || (grade as any).subject?.id || subjectCode || subjectName;
+      const subjectKey = String(subjectId).trim().toLowerCase();
+      const subjectLabel = subjectCode ? `${subjectName} (${subjectCode})` : subjectName;
 
-      return {
+      const existing = rowsBySubject.get(subjectKey);
+      const row = {
         id: grade.id || `${subjectName}-${index}`,
-        subject: subjectCode ? `${subjectName} (${subjectCode})` : subjectName,
+        subject: subjectLabel,
         progress: clampProgress(progress),
       };
+
+      if (!existing || row.progress > existing.progress) {
+        rowsBySubject.set(subjectKey, row);
+      }
     });
+
+    return Array.from(rowsBySubject.values()).sort((a, b) =>
+      a.subject.localeCompare(b.subject),
+    );
   }
 
   return fallbackGrades.map((grade, index) => ({
@@ -331,7 +352,18 @@ const getSubjectProgressRows = (
 };
 
 const ParentDashboard = () => {
-  const { currentTerm, displayTermName, periodLabel } = useAcademicYear();
+  const { t } = useTranslations<any>("parent");
+  const translateStatus = (statusText: string) => {
+    const map: Record<string, string> = {
+      "Excellent": t.statuses.excellent,
+      "Very Good": t.statuses.veryGood,
+      "Good": t.statuses.good,
+      "Pass": t.statuses.pass,
+      "Needs Improvement": t.statuses.needsImprovement,
+    };
+    return map[statusText] || statusText;
+  };
+  const { currentTerm, displayTermName, periodLabel, formatDate } = useAcademicYear();
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -346,6 +378,7 @@ const ParentDashboard = () => {
   const [gradesLoading, setGradesLoading] = useState(false);
   const [topRankChild, setTopRankChild] = useState<TopRankChild | null>(null);
   const [showRankCongrats, setShowRankCongrats] = useState(false);
+  const [gradeAccessByChild, setGradeAccessByChild] = useState<Record<string, { canView: boolean; reason?: string }>>({});
   const {
     enabled: parentGradesEnabled,
     isLoading: parentGradesSettingLoading,
@@ -421,6 +454,7 @@ const ParentDashboard = () => {
             return {
               ...child,
               overallGrade: child.overallGrade || child.latestGrade || "N/A",
+              photoUrl: child.photoUrl || child.avatarUrl || null,
               feeBalance,
               totalPaid,
               totalDue,
@@ -435,6 +469,7 @@ const ParentDashboard = () => {
 
         // Fetch grades for all children only when parent grade viewing is enabled.
         const gradesMap: Record<string, SubjectGrade[]> = {};
+        const gradeAccessMap: Record<string, { canView: boolean; reason?: string }> = {};
         let topRankCandidate: TopRankChild | null = null;
         if (parentGradesEnabled) {
           setGradesLoading(true);
@@ -442,18 +477,20 @@ const ParentDashboard = () => {
             const childId = child.userId || child.id;
             if (activeYearId && childId) {
               try {
-                if (currentTerm?.id) {
-                  const clearanceRes = await gradingAPI.verifyFinancialClearance({
-                    studentId: childId,
-                    academicYear: activeYearId,
-                    termId: currentTerm.id,
-                    checkOverdueOnly: false,
-                  });
-                  if (!clearanceRes.data?.isCleared) {
-                    gradesMap[childId] = [];
-                    continue;
-                  }
-                }
+                const clearanceRes = await gradingAPI.verifyFinancialClearance({
+                  studentId: childId,
+                  academicYear: activeYearId,
+                  ...(currentTerm?.id ? { termId: currentTerm.id } : {}),
+                  checkOverdueOnly: false,
+                });
+                const isCleared = clearanceRes.data?.isCleared !== false;
+                const blockedReason =
+                  clearanceRes.data?.message ||
+                  t.resultsLockedDesc;
+                gradeAccessMap[childId] = {
+                  canView: isCleared,
+                  reason: isCleared ? undefined : blockedReason,
+                };
 
                 const gradesRes = await reportCardsAPI.getPublishedForParent(childId, {
                   ...(activeYearName ? { academicYear: activeYearName } : {}),
@@ -474,29 +511,43 @@ const ParentDashboard = () => {
                     topRankCandidate = {
                       childName: child.name,
                       reportCardId: latestPublishedCard.id,
+                      childId,
                       rank: latestPublishedCard.rankInClass,
                       term: latestPublishedCard.term,
                       percentage: latestPublishedCard.percentage,
                       grade: latestPublishedCard.overallGrade,
+                      canViewResults: isCleared,
+                      blockedReason: isCleared ? undefined : blockedReason,
                     };
                   }
                 }
                 const gradesData = Array.isArray(latestPublishedCard?.gradeDetails)
                   ? latestPublishedCard.gradeDetails
                   : [];
-                gradesMap[childId] = gradesData as unknown as SubjectGrade[];
+                gradesMap[childId] = isCleared ? (gradesData as unknown as SubjectGrade[]) : [];
               } catch (gradeError) {
                 console.error("Could not fetch grades for child:", childId, gradeError);
+                gradeAccessMap[childId] = {
+                  canView: false,
+                  reason: t.clearanceFailed,
+                };
                 gradesMap[childId] = [];
               }
             }
           }
           setGradesLoading(false);
         }
+        setGradeAccessByChild(gradeAccessMap);
         setChildGrades(gradesMap);
         if (parentGradesEnabled && topRankCandidate) {
           setTopRankChild(topRankCandidate);
           setShowRankCongrats(true);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(
+              `parent-rank-congrats:${topRankCandidate.reportCardId}:${topRankCandidate.rank}`,
+              "shown",
+            );
+          }
         }
 
         const normalizedData = {
@@ -548,6 +599,11 @@ const ParentDashboard = () => {
   
   // Get grades for selected child
   const selectedChildId = selectedChild?.userId || selectedChild?.id;
+  const selectedChildGradeAccess = selectedChildId
+    ? gradeAccessByChild[selectedChildId]
+    : undefined;
+  const canSelectedChildViewGrades =
+    parentGradesEnabled && selectedChildGradeAccess?.canView !== false;
   const grades = selectedChildId ? childGrades[selectedChildId] || [] : [];
   const averageScore = calculateAverage(grades);
   const gpa = calculateGPA(grades);
@@ -559,6 +615,7 @@ const ParentDashboard = () => {
   const overallGrade = hasGrades ? gpa : (selectedChild?.overallGrade || "N/A");
   const feeBalance = selectedChild?.feeBalance || 0;
   const upcomingExams = selectedChild?.upcomingExams || 0;
+  const selectedChildPhotoSrc = resolveAssetUrl(selectedChild?.photoUrl || selectedChild?.avatarUrl);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
@@ -572,31 +629,44 @@ const ParentDashboard = () => {
               <Trophy className="h-9 w-9" />
             </div>
             <DialogTitle className="text-2xl text-slate-900 dark:text-white">
-              Congratulations!
+              {t.congratulations}
             </DialogTitle>
             <DialogDescription className="text-base text-slate-600 dark:text-slate-300">
-              {topRankChild?.childName || "Your child"} ranked #{topRankChild?.rank} in {topRankChild?.term || "the latest published result"}.
+              {t.ranked.replace("{name}", topRankChild?.childName || t.yourChild).replace("{rank}", String(topRankChild?.rank)).replace("{term}", topRankChild?.term || t.latestResult)}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.06)] p-4 dark:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]">
-            <p className="text-sm text-slate-600 dark:text-slate-300">Overall result</p>
+            <p className="text-sm text-slate-600 dark:text-slate-300">{t.overallResult}</p>
             <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">
               {topRankChild?.percentage ?? "-"}%
             </p>
             <p className="mt-1 text-sm font-medium text-[var(--brand-color,#e35336)]">
-              {topRankChild?.grade || "Published result"}
+              {topRankChild?.grade || t.publishedResult}
             </p>
           </div>
           <DialogFooter className="sm:justify-center">
             <Button onClick={closeRankCongrats} className="bg-[var(--brand-color,#e35336)] text-white hover:opacity-90">
-              Continue
+              {t.continue}
             </Button>
             {parentGradesEnabled && (
-              <Button variant="outline" onClick={() => router.push("/parent/grades")}>
-                View Results
+              <Button
+                variant="outline"
+                disabled={!topRankChild?.canViewResults}
+                onClick={() => {
+                  if (!topRankChild?.canViewResults) return;
+                  closeRankCongrats();
+                  router.push("/parent/grades");
+                }}
+              >
+                {topRankChild?.canViewResults ? t.viewResults : t.resultsLocked}
               </Button>
             )}
           </DialogFooter>
+          {topRankChild?.blockedReason ? (
+            <p className="text-center text-xs text-amber-600 dark:text-amber-400">
+              {topRankChild.blockedReason}
+            </p>
+          ) : null}
         </DialogContent>
       </Dialog>
 
@@ -606,15 +676,15 @@ const ParentDashboard = () => {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Parent Dashboard
+              {t.title}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Monitor your children&apos;s academic progress
+              {t.description}
             </p>
           </div>
           {displayTermName ? (
             <div className="text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
-              {periodLabel}: {displayTermName}
+              {displayTermName}
             </div>
           ) : null}
         </div>
@@ -628,13 +698,17 @@ const ParentDashboard = () => {
                 className="flex items-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 hover:border-slate-300 dark:hover:border-slate-600 transition-colors min-w-[220px]"
               >
                 <Avatar className="w-9 h-9">
-                  <AvatarFallback className="text-sm bg-[var(--brand-color,#e35336)] text-white">
-                    {selectedChild?.name?.charAt(0) || "S"}
-                  </AvatarFallback>
+                  {selectedChildPhotoSrc ? (
+                    <img src={selectedChildPhotoSrc} alt={selectedChild?.name || t.selectStudent} className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    <AvatarFallback className="text-sm bg-[var(--brand-color,#e35336)] text-white">
+                      {selectedChild?.name?.charAt(0) || "S"}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
                 <div className="flex-1 text-left">
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                    {selectedChild?.name || "Select Student"}
+                    {selectedChild?.name || t.selectStudent}
                   </p>
                   <p className="text-xs text-slate-500">
                     {selectedChild?.className} &middot; {selectedChild?.section}
@@ -646,6 +720,9 @@ const ParentDashboard = () => {
               {studentDropdownOpen && (
                 <div className="absolute top-full left-0 mt-1 w-72 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden">
                   {children.map((child) => (
+                    (() => {
+                      const childPhotoSrc = resolveAssetUrl(child.photoUrl || child.avatarUrl);
+                      return (
                     <button
                       key={child.id}
                       onClick={() => {
@@ -659,9 +736,13 @@ const ParentDashboard = () => {
                       }`}
                     >
                       <Avatar className="w-9 h-9">
-                        <AvatarFallback className="text-sm bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200">
-                          {child.name.charAt(0)}
-                        </AvatarFallback>
+                        {childPhotoSrc ? (
+                          <img src={childPhotoSrc} alt={child.name} className="h-full w-full rounded-full object-cover" />
+                        ) : (
+                          <AvatarFallback className="text-sm bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200">
+                            {child.name.charAt(0)}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                       <div>
                         <p className="text-sm font-medium text-slate-900 dark:text-white">
@@ -672,6 +753,8 @@ const ParentDashboard = () => {
                         </p>
                       </div>
                     </button>
+                      );
+                    })()
                   ))}
                 </div>
               )}
@@ -682,20 +765,24 @@ const ParentDashboard = () => {
             <div className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-3">
               <div className="flex items-center gap-4">
                 <Avatar className="w-12 h-12">
-                  <AvatarFallback className="text-base bg-[var(--brand-color,#e35336)] text-white">
-                    {selectedChild.name.charAt(0)}
-                  </AvatarFallback>
+                  {selectedChildPhotoSrc ? (
+                    <img src={selectedChildPhotoSrc} alt={selectedChild.name} className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    <AvatarFallback className="text-base bg-[var(--brand-color,#e35336)] text-white">
+                      {selectedChild.name.charAt(0)}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
                 <div>
                   <h3 className="font-semibold text-slate-900 dark:text-white">
                     {selectedChild.name}
                   </h3>
                   <p className="text-sm text-slate-500">
-                    Grade {selectedChild.className} &middot; Section {selectedChild.section}
+                    {t.grade} {selectedChild.className} &middot; {t.section} {selectedChild.section}
                   </p>
                 </div>
                 <div className="ml-auto text-right">
-                  <p className="text-xs text-slate-400">Student Code</p>
+                  <p className="text-xs text-slate-400">{t.studentCode}</p>
                   <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     {selectedChild.studentCode}
                   </p>
@@ -710,12 +797,12 @@ const ParentDashboard = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Attendance</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.attendance}</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{attendancePercentage}%</p>
                 <div className="flex items-center gap-1 mt-1">
                   <TrendingUp className="w-3 h-3 text-emerald-500" />
                   <span className="text-xs text-emerald-600 dark:text-emerald-400">+2.5%</span>
-                  <span className="text-xs text-slate-400">this term</span>
+                  <span className="text-xs text-slate-400">{t.thisTerm}</span>
                 </div>
               </div>
               <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30">
@@ -727,18 +814,18 @@ const ParentDashboard = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">GPA</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.gpa}</p>
                 {gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
                 ) : hasGrades ? (
                   <>
                     <p className={`text-2xl font-bold mt-1.5 ${getGPAColor(parseFloat(gpa))}`}>{gpa}</p>
-                    <span className={`text-xs ${gradeStatus.color}`}>{gradeStatus.text}</span>
+                    <span className={`text-xs ${gradeStatus.color}`}>{translateStatus(gradeStatus.text)}</span>
                   </>
                 ) : (
                   <>
-                    <p className="text-2xl font-bold text-slate-400 mt-1.5">N/A</p>
-                    <span className="text-xs text-slate-400">No grades</span>
+                    <p className="text-2xl font-bold text-slate-400 mt-1.5">{t.nA}</p>
+                    <span className="text-xs text-slate-400">{t.noGrades}</span>
                   </>
                 )}
               </div>
@@ -751,15 +838,15 @@ const ParentDashboard = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Avg Score</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.avgScore}</p>
                 {gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
                 ) : hasGrades ? (
                   <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{averageScore}%</p>
                 ) : (
-                  <p className="text-2xl font-bold text-slate-400 mt-1.5">N/A</p>
+                  <p className="text-2xl font-bold text-slate-400 mt-1.5">{t.nA}</p>
                 )}
-                <p className="text-xs text-slate-400 mt-1">out of 100</p>
+                <p className="text-xs text-slate-400 mt-1">{t.outOf100}</p>
               </div>
               <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-900/30">
                 <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -770,7 +857,7 @@ const ParentDashboard = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Fee Balance</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.feeBalance}</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">
                   {feeBalance.toLocaleString()} Br
                 </p>
@@ -778,12 +865,12 @@ const ParentDashboard = () => {
                   {feeBalance > 0 ? (
                     <>
                       <AlertCircle className="w-3 h-3 text-amber-500" />
-                      <span className="text-xs text-amber-600 dark:text-amber-400">Due</span>
+                      <span className="text-xs text-amber-600 dark:text-amber-400">{t.due}</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle className="w-3 h-3 text-emerald-500" />
-                      <span className="text-xs text-emerald-600 dark:text-emerald-400">Paid</span>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400">{t.paid}</span>
                     </>
                   )}
                 </div>
@@ -798,15 +885,15 @@ const ParentDashboard = () => {
         {/* Chart + Notices + Fees */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">Attendance Trend</h3>
-            <p className="text-xs text-slate-500 mb-4">This term</p>
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t.attendanceTrend}</h3>
+            <p className="text-xs text-slate-500 mb-4">{t.thisTerm}</p>
             {selectedChild?.attendanceTrend && (
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={selectedChild.attendanceTrend} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} className="dark:stroke-slate-700" />
                   <XAxis dataKey="week" axisLine={false} tick={{ fill: "#64748B", fontSize: 12 }} tickLine={false} dy={8} />
                   <YAxis axisLine={false} tick={{ fill: "#64748B", fontSize: 12 }} tickLine={false} tickMargin={8} domain={[0, 100]} />
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip content={<CustomTooltip translation={t} />} />
                   <Line type="monotone" dataKey="percentage" stroke="#3B82F6" strokeWidth={2.5} dot={{ fill: "#3B82F6", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: "#3B82F6" }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -815,7 +902,7 @@ const ParentDashboard = () => {
 
           <div className="space-y-6">
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Recent Notices</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.recentNotices}</h3>
               <div className="space-y-3">
                 {dashboardData?.recentNotices?.length ? (
                   dashboardData.recentNotices.map((notice) => (
@@ -837,19 +924,19 @@ const ParentDashboard = () => {
                           <p className="text-xs text-slate-500 truncate">{notice.description}</p>
                         )}
                         <p className="text-xs text-slate-400 mt-0.5">
-                          {new Date(notice.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          {formatDate(notice.date)}
                         </p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-slate-400">No recent notices</p>
+                  <p className="text-sm text-slate-400">{t.noRecentNotices}</p>
                 )}
               </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Fee Summary</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.feeSummary}</h3>
               <div className="space-y-3">
                 {selectedChild?.feePeriods?.length ? (
                   selectedChild.feePeriods.map((period) => (
@@ -861,14 +948,14 @@ const ParentDashboard = () => {
                         </span>
                       </div>
                       <div className="flex gap-4 text-xs text-slate-500">
-                        <span>Paid: <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalPaid)}</strong></span>
-                        <span>Due: <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalDue)}</strong></span>
+                        <span>{t.paidLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalPaid)}</strong></span>
+                        <span>{t.dueLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalDue)}</strong></span>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600 dark:text-slate-300">Balance</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-300">{t.balance}</span>
                     <span className={`text-lg font-bold ${(selectedChild?.feeBalance || 0) > 0 ? "text-amber-600" : "text-emerald-600"}`}>
                       {formatBirr(selectedChild?.feeBalance || 0)}
                     </span>
@@ -877,7 +964,7 @@ const ParentDashboard = () => {
               </div>
               {(selectedChild?.totalDue || 0) > 0 && (
                 <Button className="w-full mt-4 bg-blue-900 hover:bg-blue-800 text-white">
-                  Pay Now
+                  {t.payNow}
                 </Button>
               )}
             </div>
@@ -889,11 +976,11 @@ const ParentDashboard = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white">Grades Overview</h3>
-                <p className="text-xs text-slate-500">Current term performance</p>
+                <h3 className="font-semibold text-slate-900 dark:text-white">{t.gradesOverview}</h3>
+                <p className="text-xs text-slate-500">{t.currentTermPerformance}</p>
               </div>
               {hasGradeOverview && (
-                <Badge variant="outline" className="text-xs">{gradeOverviewRows.length} Subjects</Badge>
+                <Badge variant="outline" className="text-xs">{t.subjects.replace("{count}", String(gradeOverviewRows.length))}</Badge>
               )}
             </div>
             {gradesLoading ? (
@@ -905,9 +992,9 @@ const ParentDashboard = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-700">
-                      <th className="text-left text-xs font-medium text-slate-500 pb-3">Subject</th>
-                      <th className="w-56 text-left text-xs font-medium text-slate-500 pb-3">Progress</th>
-                      <th className="text-left text-xs font-medium text-slate-500 pb-3">Status</th>
+                      <th className="text-left text-xs font-medium text-slate-500 pb-3">{t.subject}</th>
+                      <th className="w-56 text-left text-xs font-medium text-slate-500 pb-3">{t.progress}</th>
+                      <th className="text-left text-xs font-medium text-slate-500 pb-3">{t.status}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -929,7 +1016,7 @@ const ParentDashboard = () => {
                               status === "Excellent" ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800" :
                               status === "Good" || status === "Very Good" ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800" :
                               "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800"
-                            }`}>{status}</Badge>
+                            }`}>{translateStatus(status)}</Badge>
                           </td>
                         </tr>
                       );
@@ -940,10 +1027,16 @@ const ParentDashboard = () => {
             ) : (
               <div className="text-center py-8">
                 <BookOpen className="h-8 w-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                <p className="text-sm text-slate-500">No grades available yet</p>
-                <Button variant="link" asChild className="mt-2">
-                  <a href="/parent/grades">View Grades</a>
-                </Button>
+                <p className="text-sm text-slate-500">{t.noGradesYet}</p>
+                {canSelectedChildViewGrades ? (
+                  <Button variant="link" asChild className="mt-2">
+                    <a href="/parent/grades">{t.viewGrades}</a>
+                  </Button>
+                ) : (
+                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                    {selectedChildGradeAccess?.reason || t.gradesLocked}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -951,7 +1044,7 @@ const ParentDashboard = () => {
 
         {/* Recent Activity */}
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Recent Activity</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.recentActivity}</h3>
           <div className="space-y-1">
             {dashboardData?.recentActivity?.length ? (
               dashboardData.recentActivity.map((activity, index) => (
@@ -977,13 +1070,13 @@ const ParentDashboard = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-900 dark:text-white">{activity.message}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      {new Date(activity.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {formatDate(activity.date)}
                     </p>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-400 py-4">No recent activity</p>
+              <p className="text-sm text-slate-400 py-4">{t.noRecentActivity}</p>
             )}
           </div>
         </div>

@@ -291,7 +291,7 @@ export default function TeacherGradingPage() {
   useEffect(() => {
     setItems([
       { label: "Dashboard", href: "/dashboard", isCurrent: false },
-      { label: "Grade Entry", isCurrent: true },
+      { label: "Marks Entry", isCurrent: true },
     ]);
     return () => setItems(null);
   }, [setItems]);
@@ -913,10 +913,10 @@ export default function TeacherGradingPage() {
       <div className="min-w-0">
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-xl font-bold text-black sm:text-2xl">
-            Grade Entry
+            Marks Entry
           </h1>
           <p className="mt-1 text-sm text-muted-foreground text-gray-500 dark:text-gray-400 sm:text-base">
-            Enter and manage student grades for your assigned subjects
+            Enter and manage student marks for your assigned subjects
           </p>
         </div>
       </div>
@@ -993,12 +993,12 @@ export default function TeacherGradingPage() {
         </CardContent>
       </Card>
 
-      {/* Grade Entry Table */}
+      {/* Marks Entry Table */}
       {selectedAssignmentData && (
         <Card className="w-full min-w-0 max-w-full overflow-hidden border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <CardHeader className="flex w-full flex-col gap-4 border-b border-gray-100 dark:border-slate-700 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Student Grades</CardTitle>
+              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Student Marks</CardTitle>
               <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
                 {gradeEntryStatusMessage}
               </CardDescription>

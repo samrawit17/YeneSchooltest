@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { studentsAPI } from "@/lib/api";
 import { bulkUploadAPI } from "@/lib/api/bulk-upload";
 import { queryKeys } from "@/lib/query-keys";
@@ -11,6 +12,7 @@ import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import { useAuth } from "@/context/AuthContext";
 import { Filters, useFilters } from "@/components/filters/Filters";
+import { useTranslations } from "@/hooks/useTranslations";
 import {
   UserPlus,
   Filter,
@@ -84,7 +86,14 @@ interface StudentsResponse {
   totalPages: number;
 }
 
+const formatMessage = (template: string, values: Record<string, string | number>) =>
+  Object.entries(values).reduce(
+    (message, [key, value]) => message.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+
 const StudentsListPage = () => {
+  const { t } = useTranslations<any>("peopleLists");
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -178,11 +187,11 @@ const StudentsListPage = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => studentsAPI.delete(id),
     onSuccess: () => {
-      toast.success("Student deleted successfully");
+      toast.success(t.messages.studentDeleted);
       queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to delete student");
+      toast.error(error.response?.data?.message || t.messages.deleteStudentFailed);
     },
   });
 
@@ -210,11 +219,11 @@ const StudentsListPage = () => {
   };
 
   const getStatusText = (status: string, isActive: boolean) => {
-    if (!isActive) return "Inactive";
+    if (!isActive) return t.status.inactive;
     switch (status) {
-      case "APPROVED": return "Active";
-      case "PENDING": return "Pending";
-      case "REJECTED": return "Rejected";
+      case "APPROVED": return t.status.active;
+      case "PENDING": return t.status.pending;
+      case "REJECTED": return t.status.rejected;
       default: return status;
     }
   };
@@ -235,7 +244,7 @@ const StudentsListPage = () => {
 
   const handleAddStudent = async () => {
     if (!newStudent.full_name || !newStudent.email) {
-      toast.error("Name and email are required");
+      toast.error(t.messages.studentRequired);
       return;
     }
 
@@ -251,12 +260,12 @@ const StudentsListPage = () => {
         // Store the credentials to display
         setImportResult(response.data);
         queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
-        toast.success(`Student created successfully!`);
+        toast.success(t.messages.studentCreated);
       } else {
-        toast.error("Failed to create student");
+        toast.error(t.messages.createStudentFailed);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to create student");
+      toast.error(error.response?.data?.message || t.messages.createStudentFailed);
     }
   };
 
@@ -331,9 +340,9 @@ const StudentsListPage = () => {
           {/* Top Section - Title and Buttons */}
           <div className="flex flex-row flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-black dark:text-white">Students Management</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-black dark:text-white">{t.titles.students}</h1>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                View and manage all student records. Use the search bar to find specific students or filter by class and status.
+                {t.subtitles.students}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -345,7 +354,7 @@ const StudentsListPage = () => {
                       className="dark:border-slate-700 dark:hover:bg-slate-800"
                     >
                       <Upload className="w-4 h-4 mr-2" />
-                      Bulk Import
+                      {t.actions.bulkImport}
                     </Button>
                   </Link>
                   <Button
@@ -353,7 +362,7 @@ const StudentsListPage = () => {
                     onClick={handleAddStudentClick}
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
-                    Add Student
+                    {t.actions.addStudent}
                   </Button>
                 </>
               )}
@@ -369,7 +378,7 @@ const StudentsListPage = () => {
                   <TableSearch
                     search={searchInput}
                     setSearch={updateSearch}
-                    placeholder="Search by student name, email, or student ID..."
+                    placeholder={t.placeholders.studentSearch}
                     className="w-full"
                   />
                 </div>
@@ -394,9 +403,9 @@ const StudentsListPage = () => {
                     onStatusChange={updateStatusFilter}
                     options={{
                       statusOptions: [
-                        { value: "Active", label: "Active" },
-                        { value: "Inactive", label: "Inactive" },
-                        { value: "Pending", label: "Pending" },
+                        { value: "Active", label: t.status.active },
+                        { value: "Inactive", label: t.status.inactive },
+                        { value: "Pending", label: t.status.pending },
                       ]
                     }}
                     className="w-full"
@@ -412,14 +421,14 @@ const StudentsListPage = () => {
               <Table className="w-full">
                 <TableHeader className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
                   <TableRow className="border-b border-gray-100 dark:border-slate-700">
-                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Photo</TableHead>
-                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Student Name</TableHead>
-                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Student ID</TableHead>
-                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Grade</TableHead>
-                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Section</TableHead>
-                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent</TableHead>
-                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent Phone</TableHead>
-                    <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Status</TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.photo}</TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.studentName}</TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.studentId}</TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.grade}</TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.section}</TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.parent}</TableHead>
+                    <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.parentPhone}</TableHead>
+                    <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.status}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -446,7 +455,7 @@ const StudentsListPage = () => {
                         {student.studentCode || "-"}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                        {student.grade ? `Grade ${student.grade}` : "-"}
+                        {student.grade ? `${t.table.grade} ${student.grade}` : "-"}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                         {student.section || "-"}
@@ -471,10 +480,10 @@ const StudentsListPage = () => {
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
                   <p className="text-lg font-medium text-gray-900 dark:text-white">
-                    No students found
+                    {t.empty.noStudents}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    No students match "{searchInput}". Try different keywords.
+                    {formatMessage(t.empty.noStudentsSearch, { query: searchInput })}
                   </p>
                 </div>
               )}
@@ -486,8 +495,8 @@ const StudentsListPage = () => {
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {searchInput
-                  ? `Showing ${startItem}–${Math.min(endItem, total)} of ${total} students for "${searchInput}"`
-                  : `Showing ${startItem}–${endItem} of ${total} students`}
+                  ? formatMessage(t.pagination.studentsSearch, { start: startItem, end: Math.min(endItem, total), total, query: searchInput })
+                  : formatMessage(t.pagination.students, { start: startItem, end: endItem, total })}
               </p>
               <Pagination
                 page={currentPage}
@@ -505,56 +514,56 @@ const StudentsListPage = () => {
       <Dialog open={addStudentDialogOpen} onOpenChange={setAddStudentDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Student</DialogTitle>
+            <DialogTitle>{t.actions.addNewStudent}</DialogTitle>
             <DialogDescription>
-              Create a new student account. A username and temporary password will be generated automatically.
+              {t.modal.description}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Full Name *</label>
+              <label className="text-sm font-medium">{t.modal.fullName}</label>
               <input
                 type="text"
                 value={newStudent.full_name}
                 onChange={(e) => setNewStudent({ ...newStudent, full_name: e.target.value })}
                 className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
-                placeholder="Enter full name"
+                placeholder={t.placeholders.fullName}
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium">Email *</label>
+              <label className="text-sm font-medium">{t.modal.email}</label>
               <input
                 type="email"
                 value={newStudent.email}
                 onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
                 className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
-                placeholder="Enter email address"
+                placeholder={t.placeholders.email}
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium">Phone</label>
+              <label className="text-sm font-medium">{t.modal.phone}</label>
               <input
                 type="text"
                 value={newStudent.phone}
                 onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
                 className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
-                placeholder="Enter phone number"
+                placeholder={t.placeholders.phone}
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium">Gender</label>
+              <label className="text-sm font-medium">{t.modal.gender}</label>
               <select
                 value={newStudent.gender}
                 onChange={(e) => setNewStudent({ ...newStudent, gender: e.target.value })}
                 className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
               >
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
-                <option value="OTHER">Other</option>
+                <option value="MALE">{t.modal.male}</option>
+                <option value="FEMALE">{t.modal.female}</option>
+                <option value="OTHER">{t.modal.other}</option>
               </select>
             </div>
 
@@ -563,23 +572,23 @@ const StudentsListPage = () => {
               <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <span className="font-medium text-green-800">Student created successfully!</span>
+                  <span className="font-medium text-green-800">{t.modal.created}</span>
                 </div>
-                <p className="text-sm text-green-700 mb-2">User credentials:</p>
+                <p className="text-sm text-green-700 mb-2">{t.modal.credentials}</p>
                 <div className="bg-white p-3 rounded border text-sm font-mono">
-                  <div><span className="font-semibold">Name:</span> {importResult.credentials[0]?.name}</div>
-                  <div><span className="font-semibold">Email:</span> <span className="text-blue-600">{importResult.credentials[0]?.email}</span></div>
-                  <div><span className="font-semibold">Username:</span> <span className="text-blue-600">{importResult.credentials[0]?.username}</span></div>
+                  <div><span className="font-semibold">{t.modal.name}</span> {importResult.credentials[0]?.name}</div>
+                  <div><span className="font-semibold">{t.modal.emailLabel}</span> <span className="text-blue-600">{importResult.credentials[0]?.email}</span></div>
+                  <div><span className="font-semibold">{t.modal.username}</span> <span className="text-blue-600">{importResult.credentials[0]?.username}</span></div>
                 </div>
               </div>
             )}
 
             <div className="flex justify-end gap-2 pt-4">
               <Button variant="outline" onClick={() => setAddStudentDialogOpen(false)}>
-                Cancel
+                {t.actions.cancel}
               </Button>
               <Button onClick={handleAddStudent} style={{ backgroundColor: "#1E3A8A" }}>
-                Create Student
+                {t.actions.createStudent}
               </Button>
             </div>
           </div>

@@ -1,30 +1,8 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { userAPI, timetableSlotsAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { useLanguageStore } from "@/lib/languageStore";
-import enMessages from "@/messages/en.json";
-import amMessages from "@/messages/am.json";
-import arMessages from "@/messages/ar.json";
-import omMessages from "@/messages/om.json";
-import soMessages from "@/messages/so.json";
 import { queryKeys } from "@/lib/query-keys";
-
-const profileMessagesByLanguage = {
-  am: amMessages.Profile,
-  ar: arMessages.Profile,
-  en: enMessages.Profile,
-  om: omMessages.Profile,
-  so: soMessages.Profile,
-} as const;
-
-const dateLocales: Record<string, string> = {
-  am: "am-ET",
-  ar: "ar",
-  en: "en-US",
-  om: "om-ET",
-  so: "so-SO",
-};
+import { useTranslations } from "@/hooks/useTranslations";
 
 interface ProfileData {
   profileData: any;
@@ -38,15 +16,13 @@ interface ProfileData {
 
 export function useProfileData(): ProfileData {
   const { user } = useAuth();
-  const language = useLanguageStore((state) => state.language);
-
-  const t = useMemo(() => profileMessagesByLanguage[language], [language]);
+  const { t, locale } = useTranslations("profile");
 
   const formatDate = (value: string, options?: Intl.DateTimeFormatOptions) =>
-    new Date(value).toLocaleDateString(dateLocales[language], options);
+    new Date(value).toLocaleDateString(locale, options);
 
   const formatDateTime = (value: string) =>
-    new Date(value).toLocaleString(dateLocales[language]);
+    new Date(value).toLocaleString(locale);
 
   // Fetch user profile
   const { data: profileData, isLoading: isLoadingProfile } = useQuery({

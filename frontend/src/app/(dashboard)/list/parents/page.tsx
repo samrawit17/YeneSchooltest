@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import FormModal from "@/components/FormModal";
 import TableSearch from "@/components/TableSearch";
 import Pagination from "@/components/Pagination";
+import { useTranslations } from "@/hooks/useTranslations";
 
 // Shadcn/ui Components
 import {
@@ -63,7 +64,14 @@ type Parent = {
   createdAt: string;
 };
 
+const formatMessage = (template: string, values: Record<string, string | number>) =>
+  Object.entries(values).reduce(
+    (message, [key, value]) => message.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+
 const ParentListPage = () => {
+  const { t } = useTranslations<any>("peopleLists");
   const { user } = useAuth();
   const router = useRouter();
   const hasLoadedRef = useRef(false);
@@ -133,7 +141,7 @@ const ParentListPage = () => {
         setParents(normalized);
       } catch (error: any) {
         console.error("Failed to fetch parents:", error);
-        toast.error("Failed to fetch parents from server");
+        toast.error(t.messages.fetchParentsFailed);
         setParents([]);
       } finally {
         hasLoadedRef.current = true;
@@ -142,7 +150,7 @@ const ParentListPage = () => {
     };
 
     fetchParents();
-  }, [searchInput, currentPage, limit]);
+  }, [searchInput, currentPage, limit, t.messages.fetchParentsFailed]);
 
   const updateSearch = (value: string) => {
     setSearchInput(value);
@@ -169,14 +177,14 @@ const ParentListPage = () => {
   });
 
   const handleDeleteParent = async (parentId: string) => {
-    if (window.confirm("Are you sure you want to delete this parent?")) {
+    if (window.confirm(t.messages.deleteParentConfirm)) {
       try {
         await parentsAPI.delete(parentId);
         setParents(parents.filter((p) => p.id !== parentId));
-        toast.success("Parent deleted successfully");
+        toast.success(t.messages.parentDeleted);
       } catch (error) {
         console.error("Failed to delete parent:", error);
-        toast.error("Failed to delete parent");
+        toast.error(t.messages.deleteParentFailed);
       }
     }
   };
@@ -232,9 +240,9 @@ const ParentListPage = () => {
           {/* Top Section - Title and Buttons */}
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 w-full min-w-0">
             <div>
-              <h1 className="text-2xl font-bold text-black dark:text-white">Parents</h1>
+              <h1 className="text-2xl font-bold text-black dark:text-white">{t.titles.parents}</h1>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                View and manage all parents linked to students. Use the search bar to find specific parents or filter by status.
+                {t.subtitles.parents}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -250,7 +258,7 @@ const ParentListPage = () => {
                   <TableSearch
                     search={searchInput}
                     setSearch={updateSearch}
-                    placeholder="Search by name, email, or phone..."
+                    placeholder={t.placeholders.parentSearch}
                     className="w-full"
                   />
                 </div>
@@ -262,9 +270,9 @@ const ParentListPage = () => {
                     onChange={(e) => updateStatusFilter(e.target.value)}
                     className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                   >
-                    <option value="">All Status</option>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="">{t.filters.allStatus}</option>
+                    <option value="Active">{t.status.active}</option>
+                    <option value="Inactive">{t.status.inactive}</option>
                   </select>
 
                   <select
@@ -272,9 +280,9 @@ const ParentListPage = () => {
                     onChange={(e) => updateChildrenFilter(e.target.value)}
                     className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                   >
-                    <option value="">All Parents</option>
-                    <option value="With Children">With Children</option>
-                    <option value="Without Children">Without Children</option>
+                    <option value="">{t.filters.allParents}</option>
+                    <option value="With Children">{t.filters.withChildren}</option>
+                    <option value="Without Children">{t.filters.withoutChildren}</option>
                   </select>
                 </div>
               </div>
@@ -287,25 +295,25 @@ const ParentListPage = () => {
               {filteredParents.length === 0 ? (
                 <div className="p-8 text-center">
                   <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400 font-semibold">No parents found</p>
+                  <p className="text-gray-600 dark:text-gray-400 font-semibold">{t.empty.noParents}</p>
                   <p className="text-gray-500 dark:text-gray-500 text-sm mt-2">
                     {statusFilter || childrenFilter
-                      ? "Try adjusting your filters or search query"
-                      : "Start by adding your first parent"}
+                      ? t.empty.adjustFilters
+                      : t.empty.addFirstParent}
                   </p>
                 </div>
               ) : (
                 <Table className="w-full">
                   <TableHeader className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
                     <TableRow className="border-b border-gray-100 dark:border-slate-700">
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Photo</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent Name</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Phone</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Children</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Grade</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Section</TableHead>
-	                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Status</TableHead>
-                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Actions</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.photo}</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.parentName}</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.phone}</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.children}</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.grade}</TableHead>
+	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.section}</TableHead>
+	                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.status}</TableHead>
+                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.actions}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="w-full">
@@ -354,7 +362,7 @@ const ParentListPage = () => {
                                 )}
                               </>
                             ) : (
-                              <span className="text-sm text-gray-400">No children linked</span>
+                              <span className="text-sm text-gray-400">{t.empty.noChildrenLinked}</span>
                             )}
 	                          </div>
 	                        </TableCell>
@@ -407,7 +415,7 @@ const ParentListPage = () => {
                             ) : (
                               <XCircle className="w-3 h-3" />
                             )}
-                            {parent.isActive ? "Active" : "Inactive"}
+                            {parent.isActive ? t.status.active : t.status.inactive}
                           </span>
                         </TableCell>
                         <TableCell className="px-4 py-3">
@@ -415,7 +423,7 @@ const ParentListPage = () => {
                             <Link
                               href={`/list/parents/${parent.id}`}
                               className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                              title="View"
+                              title={t.actions.view}
                             >
                               <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                             </Link>
@@ -433,7 +441,7 @@ const ParentListPage = () => {
           {filteredParents.length > 0 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Showing {startItem}–{endItem} of {total} parents
+                {formatMessage(t.pagination.parents, { start: startItem, end: endItem, total })}
               </p>
               <Pagination
                 page={currentPage}
@@ -450,7 +458,7 @@ const ParentListPage = () => {
       <FormModal
         isOpen={isModalOpen}
         setIsOpen={setIsModalOpen}
-        title={modalType === "create" ? "Add New Parent" : "Edit Parent"}
+        title={modalType === "create" ? t.actions.addNewParent : t.actions.editParent}
         type={modalType}
         table="parent"
         data={selectedParent}
@@ -460,7 +468,7 @@ const ParentListPage = () => {
       <FormModal
         isOpen={showLinkModal}
         setIsOpen={setShowLinkModal}
-        title="Link Child to Parent"
+        title={t.actions.linkChild}
         type="create"
         table="parent_child_link"
         data={selectedParent}

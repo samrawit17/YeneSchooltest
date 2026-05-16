@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { useSchoolFeatureSetting } from "@/hooks/useSchoolFeatureSetting";
+import { useTranslations } from "@/hooks/useTranslations";
 
 type SearchableEntity = 
     | 'students' 
@@ -83,7 +84,7 @@ const ROLE_QUICK_LINKS: Record<string, QuickLink[]> = {
     teacher: [
         { label: "Dashboard", href: "/teacher", icon: <School className="h-4 w-4" /> },
         { label: "My Classes", href: "/teacher/my-class", icon: <School className="h-4 w-4" /> },
-        { label: "Grade Entry", href: "/teacher/grading", icon: <BookOpen className="h-4 w-4" /> },
+        { label: "Marks Entry", href: "/teacher/grading", icon: <BookOpen className="h-4 w-4" /> },
         { label: "Attendance", href: "/teacher/attendance", icon: <Calendar className="h-4 w-4" /> },
         { label: "Lessons", href: "/teacher/lessons", icon: <BookOpen className="h-4 w-4" /> },
     ],
@@ -108,7 +109,6 @@ const ROLE_QUICK_LINKS: Record<string, QuickLink[]> = {
     registrar: [
         { label: "Dashboard", href: "/registrar", icon: <School className="h-4 w-4" /> },
         { label: "Students", href: "/list/students", icon: <GraduationCap className="h-4 w-4" /> },
-        { label: "Grading", href: "/registrar/grading", icon: <BookOpen className="h-4 w-4" /> },
         { label: "Bulk Upload", href: "/admin/bulk-upload", icon: <Users className="h-4 w-4" /> },
     ],
 };
@@ -148,6 +148,27 @@ interface GlobalSearchProps {
     shortcut?: string;
 }
 
+interface NavigationMessages {
+    labels?: Record<string, string>;
+    search?: Record<string, string>;
+}
+
+const SEARCH_LABEL_KEYS: Record<string, string> = {
+    Assignments: "assignments",
+    "Bulk Upload": "bulkUpload",
+    Children: "children",
+    Classes: "classes",
+    Finance: "finance",
+    Grades: "grades",
+    Lessons: "lessons",
+    Payments: "payments",
+    Schedule: "schedule",
+    Sections: "sections",
+    Siren: "siren",
+    Subjects: "subjects",
+    Teachers: "teachers",
+};
+
 export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");
@@ -163,6 +184,17 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     const { user } = useAuth();
     const { enabled: parentGradesEnabled } = useSchoolFeatureSetting("PARENT_VIEW_GRADES");
     const { enabled: announcementsEnabled } = useSchoolFeatureSetting("ANNOUNCEMENTS_ENABLED");
+    const { t: navigationText } = useTranslations<NavigationMessages>("navigation");
+    const searchText = useCallback(
+        (key: string, fallback: string) => navigationText.search?.[key] ?? fallback,
+        [navigationText.search],
+    );
+    const navLabel = useCallback(
+        (label: string) =>
+            navigationText.labels?.[label] ??
+            (SEARCH_LABEL_KEYS[label] ? searchText(SEARCH_LABEL_KEYS[label], label) : label),
+        [navigationText.labels, searchText],
+    );
 
     // Needed for portal to work
     useEffect(() => {
@@ -176,18 +208,18 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         return role;
     }, [user?.role]);
 
-    const isSchoolSettingVisible = (settingKey?: string) => {
+    const isSchoolSettingVisible = useCallback((settingKey?: string) => {
         if (!settingKey) return true;
         if (settingKey === "PARENT_VIEW_GRADES") return parentGradesEnabled;
         if (settingKey === "ANNOUNCEMENTS_ENABLED") return announcementsEnabled;
         return true;
-    };
+    }, [parentGradesEnabled, announcementsEnabled]);
 
     // Quick links based on role and school feature settings
     const quickLinks = useMemo(
         () => (ROLE_QUICK_LINKS[roleKey] || ROLE_QUICK_LINKS.admin)
             .filter((link) => isSchoolSettingVisible(link.schoolSettingFlag)),
-        [roleKey, parentGradesEnabled, announcementsEnabled],
+        [roleKey, isSchoolSettingVisible],
     );
 
     // Fetch permissions on mount
@@ -298,11 +330,11 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                 id: `nav-${link.href}`,
                 type: 'nav' as any,
                 title: link.label,
-                subtitle: `Navigate to ${link.label}`,
+                subtitle: `${searchText("navigateTo", "Navigate to")} ${navLabel(link.label)}`,
                 href: link.href,
                 icon: link.icon
             }));
-    }, [query, user?.role, parentGradesEnabled, announcementsEnabled]);
+    }, [query, user?.role, isSchoolSettingVisible, navLabel, searchText]);
 
     // Group results by type
     const groupedResults = useMemo(() => {
@@ -334,18 +366,18 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
 
     // Get allowed entity types for the user's role
     const allowedEntities = [
-        { key: 'students', icon: <GraduationCap className="h-3 w-3" />, label: 'Students' },
-        { key: 'teachers', icon: <User className="h-3 w-3" />, label: 'Teachers' },
-        { key: 'parents', icon: <Users className="h-3 w-3" />, label: 'Parents' },
-        { key: 'staff', icon: <User className="h-3 w-3" />, label: 'Staff' },
-        { key: 'exams', icon: <ClipboardList className="h-3 w-3" />, label: 'Exams' },
-        { key: 'lessons', icon: <BookOpen className="h-3 w-3" />, label: 'Lessons' },
-        { key: 'classes', icon: <School className="h-3 w-3" />, label: 'Classes' },
-        { key: 'sections', icon: <Users className="h-3 w-3" />, label: 'Sections' },
-        { key: 'subjects', icon: <BookOpen className="h-3 w-3" />, label: 'Subjects' },
-        { key: 'grades', icon: <BarChart3 className="h-3 w-3" />, label: 'Grades', visible: user?.role?.toLowerCase() !== "parent" || parentGradesEnabled },
-        { key: 'announcements', icon: <Megaphone className="h-3 w-3" />, label: 'Announcements', visible: announcementsEnabled },
-        { key: 'events', icon: <Calendar className="h-3 w-3" />, label: 'Calendar' },
+        { key: 'students', icon: <GraduationCap className="h-3 w-3" />, label: navLabel('Students') },
+        { key: 'teachers', icon: <User className="h-3 w-3" />, label: searchText('teachers', 'Teachers') },
+        { key: 'parents', icon: <Users className="h-3 w-3" />, label: navLabel('Parents') },
+        { key: 'staff', icon: <User className="h-3 w-3" />, label: navLabel('Staff') },
+        { key: 'exams', icon: <ClipboardList className="h-3 w-3" />, label: navLabel('Exams') },
+        { key: 'lessons', icon: <BookOpen className="h-3 w-3" />, label: searchText('lessons', 'Lessons') },
+        { key: 'classes', icon: <School className="h-3 w-3" />, label: searchText('classes', 'Classes') },
+        { key: 'sections', icon: <Users className="h-3 w-3" />, label: searchText('sections', 'Sections') },
+        { key: 'subjects', icon: <BookOpen className="h-3 w-3" />, label: searchText('subjects', 'Subjects') },
+        { key: 'grades', icon: <BarChart3 className="h-3 w-3" />, label: searchText('grades', 'Grades'), visible: user?.role?.toLowerCase() !== "parent" || parentGradesEnabled },
+        { key: 'announcements', icon: <Megaphone className="h-3 w-3" />, label: navLabel('Announcements'), visible: announcementsEnabled },
+        { key: 'events', icon: <Calendar className="h-3 w-3" />, label: navLabel('Calendar') },
     ].filter(entity => entity.visible !== false && permissions.includes(entity.key));
 
     return (
@@ -366,7 +398,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                         ref={inputRef}
                         placeholder={
                             lastSearchedQuery ||
-                            `Search ${allowedEntities.slice(0, 3).map(e => e.label.toLowerCase()).join(', ')}...`
+                            `${searchText("searchPlaceholder", "Search")} ${allowedEntities.slice(0, 3).map(e => e.label.toLowerCase()).join(', ')}...`
                         }
                         value={query}
                         onValueChange={(val) => {
@@ -407,7 +439,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                                     <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
                                         <div className="flex items-center gap-2 text-xs text-gray-500">
                                             <Shield className="h-3 w-3" />
-                                            <span>Searching within your permissions</span>
+                                            <span>{searchText("searchScopes", "Searching within your permissions")}</span>
                                             <div className="flex-1" />
                                             <Badge variant="outline" className="text-xs">
                                                 {user?.role?.replace('_', ' ')}
@@ -417,7 +449,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
 
                                     {/* Quick links */}
                                     <div className="px-4 py-2">
-                                        <p className="text-xs font-semibold text-gray-400 mb-2">Quick Links</p>
+                                        <p className="text-xs font-semibold text-gray-400 mb-2">{searchText("quickLinks", "Quick Links")}</p>
                                         <div className="flex flex-wrap gap-2">
                                              {quickLinks.slice(0, 6).map((link) => (
                                                 <CommandItem
@@ -426,7 +458,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                                                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors cursor-pointer border-none"
                                                 >
                                                     {link.icon}
-                                                    {link.label}
+                                                    {navLabel(link.label)}
                                                 </CommandItem>
                                             ))}
                                         </div>
@@ -434,7 +466,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
 
                                     {/* Available search categories */}
                                     <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800">
-                                        <p className="text-xs font-semibold text-gray-400 mb-2">You can search</p>
+                                        <p className="text-xs font-semibold text-gray-400 mb-2">{searchText("youCanSearch", "You can search")}</p>
                                         <div className="flex flex-wrap gap-2">
                                             {allowedEntities.slice(0, 8).map((entity) => (
                                                 <div
@@ -455,7 +487,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                                     <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/40">
                                         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                                             <Search className="h-4 w-4 text-gray-500" />
-                                            <span>Search for</span>
+                                            <span>{searchText("searchFor", "Search for")}</span>
                                             <span className="font-semibold text-gray-900 dark:text-white">
                                                 {query}
                                             </span>
@@ -468,15 +500,15 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                                         </div>
                                     ) : !hasDisplayResults ? (
                                         <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-                                            <p>No results found for "{query}"</p>
-                                            <p className="text-xs mt-1">Try searching with different keywords</p>
+                                            <p>{searchText("noResults", "No results found for")} "{query}"</p>
+                                            <p className="text-xs mt-1">{searchText("tryDifferentKeywords", "Try searching with different keywords")}</p>
                                         </div>
                                     ) : (
                                         <CommandGroup>
                                             {Object.entries(groupedResults).map(([type, items]) => (
                                                 <div key={type}>
                                                     <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 uppercase">
-                                                        {type === 'navigation' ? 'Actions & Pages' : (typeLabels[type] || type)}
+                                                        {type === 'navigation' ? searchText("actionsAndPages", "Actions & Pages") : navLabel(typeLabels[type] || type)}
                                                     </div>
                                                     {items.map((result) => (
                                                         <CommandItem
@@ -486,7 +518,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                                                         >
                                                             {result.type === 'nav' ? result.icon : (typeIcons[result.type] || <Search className="h-4 w-4" />)}
                                                             <div className="flex flex-col">
-                                                                <span className="text-sm font-medium dark:text-white">{result.title}</span>
+                                                                <span className="text-sm font-medium dark:text-white">{result.type === 'nav' ? navLabel(result.title) : result.title}</span>
                                                                 {result.subtitle && <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-none">{result.subtitle}</span>}
                                                             </div>
                                                         </CommandItem>

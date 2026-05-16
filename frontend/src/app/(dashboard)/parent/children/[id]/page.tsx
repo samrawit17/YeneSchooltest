@@ -30,6 +30,8 @@ import { gradingAPI } from "@/lib/api/assessment";
 import { termsAPI } from "@/lib/api/academics";
 import { communicationsAPI } from "@/lib/api/communications";
 import { reportCardsAPI } from "@/lib/api/reporting";
+import { resolveAssetUrl } from "@/lib/asset-url";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import NewMessageModal from "@/components/communications/NewMessageModal";
 import { useSchoolFeatureSetting } from "@/hooks/useSchoolFeatureSetting";
 
@@ -61,6 +63,8 @@ interface ChildDetail {
   admissionDate: string;
   academicYear?: string;
   parentName?: string;
+  photoUrl?: string | null;
+  avatarUrl?: string | null;
   teachingTeachers?: Array<{
     id: string;
     name: string;
@@ -113,6 +117,7 @@ const ChildDetailPage = () => {
   const router = useRouter();
   const childId = params.id as string;
   const { setItems } = useBreadcrumb();
+  const { formatDate: formatSchoolDate } = useAcademicYear();
   const breadcrumbSetRef = useRef(false);
 
   const [child, setChild] = useState<ChildDetail | null>(null);
@@ -341,6 +346,8 @@ const ChildDetailPage = () => {
           admissionDate: childData?.admissionDate || studentProfile?.createdAt || "",
           academicYear: childData?.academicYear || studentProfile?.academicYear || undefined,
           parentName: childData?.parentName || childData?.parent?.user?.name || undefined,
+          photoUrl: childData?.photoUrl || childData?.avatarUrl || studentUser?.avatarUrl || null,
+          avatarUrl: childData?.avatarUrl || studentUser?.avatarUrl || null,
           teachingTeachers: childData?.teachingTeachers || [],
           homeroomTeacher: childData?.homeroomTeacher || null,
         });
@@ -406,11 +413,7 @@ const ChildDetailPage = () => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return "N/A";
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric"
-    });
+    return formatSchoolDate(date);
   };
 
   const getAge = (dateOfBirth: string) => {
@@ -438,6 +441,7 @@ const ChildDetailPage = () => {
       setIsSendingMessage(false);
     }
   };
+  const childPhotoSrc = resolveAssetUrl(child?.photoUrl || child?.avatarUrl);
 
   if (loading) {
     return (
@@ -488,9 +492,13 @@ const ChildDetailPage = () => {
                 {/* Left - Student Photo and Basic Info */}
                 <div className="flex items-center gap-4">
                   <Avatar className="w-24 h-24">
-                    <AvatarFallback className="text-3xl">
-                      {child.name.charAt(0)}
-                    </AvatarFallback>
+                    {childPhotoSrc ? (
+                      <img src={childPhotoSrc} alt={child.name} className="h-full w-full rounded-full object-cover" />
+                    ) : (
+                      <AvatarFallback className="text-3xl">
+                        {child.name.charAt(0)}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                   <div>
                     <h1 className="text-2xl font-bold text-black dark:text-white">
@@ -769,11 +777,7 @@ const ChildDetailPage = () => {
                     <div className="flex-1 pb-4">
                       <p className="text-sm text-gray-900 dark:text-white">{activity.message}</p>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        {new Date(activity.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                        {formatDate(activity.date)}
                       </p>
                     </div>
                   </div>

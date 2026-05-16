@@ -279,7 +279,7 @@ export default function CertificateTemplatePage() {
     setSaving(true);
     try {
       if (!templateRecordId) {
-        toast.error("No certificate template found. Activate one from Template Manager.");
+        toast.error("No active certificate template found. Upload or activate a certificate template first.");
         return;
       }
       const requiredFields = ["school_logo", "student_name", "marks_table"];
@@ -384,13 +384,6 @@ export default function CertificateTemplatePage() {
                   <p className="truncate text-slate-700 dark:text-slate-200">
                     {form.templateBackgroundUrl || "No active template selected"}
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/admin/templates")}
-                    className="mt-2 text-xs font-medium text-[var(--brand-color,#e35336)]"
-                  >
-                    Manage uploaded templates
-                  </button>
                 </div>
               </div>
 

@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useMe
 import { authAPI } from '@/lib/api';
 import { toast } from 'sonner';
 import { useThemeStore } from '@/lib/themeStore';
+import { useLanguageStore } from '@/lib/languageStore';
+import { getModuleMessages } from '@/messages/registry';
 
 // User role types based on backend
 export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'IT_MANAGER' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'REGISTRAR' | 'FINANCE';
@@ -31,12 +33,24 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (loginIdentifier: string, password: string) => Promise<User>;
+  login: (loginIdentifier: string, password: string, rememberMe?: boolean) => Promise<User>;
   logout: () => void;
   updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const clearStoredAuth = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('user');
+};
+
+const getAuthStorage = () => {
+  if (localStorage.getItem('token') || localStorage.getItem('user')) return localStorage;
+  return sessionStorage;
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -50,8 +64,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      
      const checkAuth = async () => {
        try {
-         const storedToken = localStorage.getItem('token');
-         const storedUser = localStorage.getItem('user');
+         const persistentToken = localStorage.getItem('token');
+         const persistentUser = localStorage.getItem('user');
+         const sessionToken = sessionStorage.getItem('token');
+         const sessionUser = sessionStorage.getItem('user');
+         const storedToken = persistentToken || sessionToken;
+         const storedUser = persistentUser || sessionUser;
 
          if (storedToken && storedUser) {
            setToken(storedToken);
@@ -60,8 +78,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
              setUser(parsedUser);
            } catch (error) {
              console.error('Failed to parse user data from localStorage:', error);
-             localStorage.removeItem('token');
-             localStorage.removeItem('user');
+             clearStoredAuth();
            }
          }
        } catch (error) {
@@ -82,14 +99,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      return null;
    }
 
-   const login = async (loginIdentifier: string, password: string): Promise<User> => {
+   const login = async (loginIdentifier: string, password: string, rememberMe = false): Promise<User> => {
      try {
        const response = await authAPI.login(loginIdentifier, password);
        const { access_token, user: userData } = response.data;
 
-       // Store in localStorage
-       localStorage.setItem('token', access_token);
-       localStorage.setItem('user', JSON.stringify(userData));
+       clearStoredAuth();
+       const storage = rememberMe ? localStorage : sessionStorage;
+       storage.setItem('token', access_token);
+       storage.setItem('user', JSON.stringify(userData));
        // Save user's theme preference to Zustand store
        const userTheme = (userData.theme || 'SYSTEM').toLowerCase() as 'light' | 'dark' | 'system';
        useThemeStore.getState().setTheme(userTheme);
@@ -106,18 +124,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    };
 
    const logout = () => {
-     localStorage.removeItem('token');
-     localStorage.removeItem('user');
+     clearStoredAuth();
      // Reset theme to system default via Zustand store
      useThemeStore.getState().setTheme('system');
      setToken(null);
      setUser(null);
-     toast.success('Logged out successfully');
+     const language = useLanguageStore.getState().language;
+     const navigationText = getModuleMessages<{ labels?: Record<string, string> }>(language, 'navigation');
+     toast.success(navigationText.labels?.['Logged out successfully'] || 'Logged out successfully');
    };
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    getAuthStorage().setItem('user', JSON.stringify(updatedUser));
   };
 
   return (

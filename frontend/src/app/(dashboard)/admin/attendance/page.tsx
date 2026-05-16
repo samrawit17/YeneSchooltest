@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { useTranslations } from "@/hooks/useTranslations";
 import { attendanceAPI, classesAPI, gradingAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
@@ -52,6 +53,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 // Missing Classes component
 function MissingClasses({ date, grade, section }: { date: string; grade: string; section: string }) {
+  const { t } = useTranslations<any>("attendance");
   const [data, setData] = useState<Array<{ id: string; name: string; grade: number; section: string }>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [notifying, setNotifying] = useState<boolean>(false);
@@ -61,7 +63,7 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
       try {
         setLoading(true);
         const params: any = { date };
-        if (grade && grade !== 'all') params.grade = grade.replace('Grade ', '');
+        if (grade && grade !== 'all') params.grade = extractGradeValue(grade);
         if (section && section !== 'all') params.section = section;
         const res = await attendanceAPI.getMissing(params);
         setData(res.data || []);
@@ -78,9 +80,9 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
     try {
       setNotifying(true);
       await attendanceAPI.notifyMissingAttendance({ date });
-      toast.success('Notifications sent to homeroom teachers');
+      toast.success(t.notificationsSent);
     } catch (e) {
-      toast.error('Failed to send notifications');
+      toast.error(t.notificationsFailed);
     } finally {
       setNotifying(false);
     }
@@ -90,9 +92,9 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
     try {
       setNotifying(true);
       await attendanceAPI.notifyMissingAttendance({ date });
-      toast.success('Notifications sent to homeroom teachers with missing attendance');
+      toast.success(t.notificationsSentDetailed);
     } catch (e) {
-      toast.error('Failed to send notifications');
+      toast.error(t.notificationsFailed);
     } finally {
       setNotifying(false);
     }
@@ -115,7 +117,7 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
   }
 
   if (!data || data.length === 0) {
-    return <p className="text-center text-gray-500 py-4">All classes have attendance recorded</p>;
+    return <p className="text-center text-gray-500 py-4">{t.allClassesRecorded}</p>;
   }
 
   return (
@@ -129,17 +131,19 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
           className="bg-orange-500 hover:bg-orange-600 text-white"
         >
           {notifying ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Bell className="w-4 h-4 mr-1" />}
-          Notify All Teachers
+          {t.notifyAll}
         </Button>
       </div>
       <ScrollArea className="h-[300px] pr-2">
         {data.map((c) => (
         <div key={c.id} className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
           <div>
-            <p className="font-medium text-gray-900 dark:text-white">{c.name} - Section {c.section}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Grade {c.grade}</p>
+            <p className="font-medium text-gray-900 dark:text-white">
+              {formatClassSectionLabel(t, c.name, c.grade, c.section)}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{formatGradeLabel(t, c.grade, c.name)}</p>
           </div>
-          <Badge variant="outline" className="text-orange-600 border-orange-300">Missing</Badge>
+          <Badge variant="outline" className="text-orange-600 border-orange-300">{t.missing}</Badge>
         </div>
       ))}
       </ScrollArea>
@@ -224,7 +228,41 @@ interface DashboardData {
 const GRADES: string[] = [];
 const SECTIONS: string[] = [];
 
+const stripLocalizedPrefix = (value: string | null | undefined, prefixes: string[]) => {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const prefixPattern = prefixes.map((prefix) => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  return text.replace(new RegExp(`^(${prefixPattern})\\s+`, "i"), "").trim();
+};
+
+const extractGradeValue = (grade: string | number | null | undefined, fallback?: string | null) => {
+  if (grade !== null && grade !== undefined && String(grade).trim()) {
+    return stripLocalizedPrefix(String(grade), ["Grade", "Fasalka", "Kutaa", "الصف", "ክፍል"]);
+  }
+  const fallbackText = String(fallback || "");
+  const match = fallbackText.match(/(?:Grade|Fasalka|Kutaa|الصف|ክፍል)\s*([0-9A-Za-z]+)/i);
+  return match?.[1] || fallbackText.trim();
+};
+
+const formatGradeLabel = (t: any, grade: string | number | null | undefined, fallback?: string | null) => {
+  const gradeValue = extractGradeValue(grade, fallback);
+  return gradeValue ? `${t.gradeLabel} ${gradeValue}` : (fallback || t.unknown);
+};
+
+const formatSectionLabel = (t: any, section: string | null | undefined) => {
+  const sectionValue = stripLocalizedPrefix(section, ["Section", "Qaybta", "Ramaddii", "الشعبة", "ሴክሽን", "ክፍል"]);
+  return sectionValue ? `${t.sectionLabel} ${sectionValue}` : t.nA;
+};
+
+const formatClassSectionLabel = (
+  t: any,
+  className: string | null | undefined,
+  grade: string | number | null | undefined,
+  section: string | null | undefined
+) => `${formatGradeLabel(t, grade, className)} - ${formatSectionLabel(t, section)}`;
+
 export default function AttendanceManagementPage() {
+  const { t } = useTranslations<any>("attendance");
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   
@@ -328,7 +366,7 @@ export default function AttendanceManagementPage() {
         const uniqueGrades = Array.from(gradeMap.keys()).sort((a, b) => a - b);
         const uniqueSections = Array.from(sectionMap.keys()).sort();
         
-        setGradeList(uniqueGrades.map(g => `Grade ${g}`));
+        setGradeList(uniqueGrades.map(g => String(g)));
         setSectionList(uniqueSections);
       } catch (error) {
         console.error('Failed to fetch classes:', error);
@@ -365,7 +403,7 @@ export default function AttendanceManagementPage() {
       
       try {
         setLoading(true);
-        const gradeParam = selectedGrade !== "all" ? selectedGrade.replace("Grade ", "") : undefined;
+        const gradeParam = selectedGrade !== "all" ? extractGradeValue(selectedGrade) : undefined;
         let dateParam = selectedDate;
         if (viewMode === 'period' && selectedPeriod && selectedPeriod !== 'all') {
           const period = periods.find(p => p.id === selectedPeriod);
@@ -422,7 +460,7 @@ export default function AttendanceManagementPage() {
       }
       
       // Parse grade from "Grade X" format to just the number
-      const gradeParam = selectedGrade !== "all" ? selectedGrade.replace("Grade ", "") : undefined;
+      const gradeParam = selectedGrade !== "all" ? extractGradeValue(selectedGrade) : undefined;
       
       try {
         setSessionsLoading(true);
@@ -476,7 +514,7 @@ export default function AttendanceManagementPage() {
     const teacherName = s.timetableSlot?.teacher?.name || s.takenBy?.name || '';
     const normalizedSearch = searchTerm.trim().toLowerCase();
     
-    if (selectedGrade !== "all" && classGrade !== parseInt(selectedGrade.replace("Grade ", ""))) {
+    if (selectedGrade !== "all" && classGrade !== parseInt(extractGradeValue(selectedGrade))) {
       return false;
     }
     if (selectedSection !== "all" && sectionName !== selectedSection) {
@@ -523,7 +561,7 @@ export default function AttendanceManagementPage() {
     if (!chartData || chartData.length === 0) {
       return (
         <div className="flex items-center justify-center h-[200px] text-gray-500">
-          No data available
+          {t.noData}
         </div>
       );
     }
@@ -553,15 +591,15 @@ export default function AttendanceManagementPage() {
         <div className="flex items-center justify-center gap-6 text-xs pt-2 border-t border-gray-100 dark:border-gray-700">
           <span className="flex items-center gap-1.5">
             <span className={`w-2.5 h-2.5 rounded-full ${chartAccentClasses.solid}`}></span> 
-            <span className="text-gray-600 dark:text-gray-400">Excellent (90%+)</span>
+            <span className="text-gray-600 dark:text-gray-400">{t.excellent}</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className={`w-2.5 h-2.5 rounded-full ${chartAccentClasses.medium}`}></span> 
-            <span className="text-gray-600 dark:text-gray-400">Good (75-89%)</span>
+            <span className="text-gray-600 dark:text-gray-400">{t.good}</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 bg-red-500 rounded-full"></span> 
-            <span className="text-gray-600 dark:text-gray-400">Needs Improvement (&lt;75%)</span>
+            <span className="text-gray-600 dark:text-gray-400">{t.needsImprovement}</span>
           </span>
         </div>
       </div>
@@ -605,7 +643,7 @@ export default function AttendanceManagementPage() {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-3xl font-bold text-gray-900 dark:text-white">{presentPercentage}%</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">Present</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{t.present}</span>
         </div>
       </div>
     );
@@ -674,7 +712,7 @@ export default function AttendanceManagementPage() {
   };
 
   const handleExport = () => {
-    toast.success("Attendance report exported successfully!");
+    toast.success(t.exportSuccess);
   };
 
   if (isLoading || loading) {
@@ -816,8 +854,8 @@ export default function AttendanceManagementPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-[#E2E8F0] dark:border-gray-700 p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-black">Attendance Dashboard</h1>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Monitor and analyze student attendance across all classes</p>
+              <h1 className="text-2xl font-bold text-black">{t.title}</h1>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{t.description}</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -880,7 +918,7 @@ export default function AttendanceManagementPage() {
                 }
               }}>
                 <SelectTrigger className="w-[160px] border-[#E2E8F0] dark:border-gray-600">
-                  <SelectValue placeholder="Academic Year" />
+                  <SelectValue placeholder={t.academicYear} />
                 </SelectTrigger>
                 <SelectContent>
                   {academicYears.length > 0 ? (
@@ -888,7 +926,7 @@ export default function AttendanceManagementPage() {
                       <SelectItem key={year.id} value={year.id || ''}>{year.name}</SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="_none_" disabled>No academic years</SelectItem>
+                    <SelectItem value="_none_" disabled>{t.noAcademicYears}</SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -896,7 +934,7 @@ export default function AttendanceManagementPage() {
               {/* Period/Term */}
               <Select value={selectedPeriod || 'all'} onValueChange={setSelectedPeriod}>
                 <SelectTrigger className="w-[140px] border-[#E2E8F0] dark:border-gray-600">
-                  <SelectValue placeholder="Period" />
+                  <SelectValue placeholder={t.period} />
                 </SelectTrigger>
                 <SelectContent>
                   {periods.length > 0 ? (
@@ -904,7 +942,7 @@ export default function AttendanceManagementPage() {
                       <SelectItem key={period.id} value={period.id || ''}>{period.name}</SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="_none_" disabled>No periods</SelectItem>
+                    <SelectItem value="_none_" disabled>{t.noPeriods}</SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -912,16 +950,16 @@ export default function AttendanceManagementPage() {
               {/* Grade */}
               <Select value={selectedGrade || 'all'} onValueChange={setSelectedGrade}>
                 <SelectTrigger className="w-[140px] border-[#E2E8F0] dark:border-gray-600">
-                  <SelectValue placeholder="Grade" />
+                  <SelectValue placeholder={t.grade} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
+                  <SelectItem value="all">{t.allGrades}</SelectItem>
                   {gradeList.length > 0 ? (
                     gradeList.map(grade => (
-                      <SelectItem key={grade} value={grade || '_grade_'}>{(grade || '')}</SelectItem>
+                      <SelectItem key={grade} value={grade || '_grade_'}>{formatGradeLabel(t, grade)}</SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="_none_" disabled>No grades</SelectItem>
+                    <SelectItem value="_none_" disabled>{t.noGrades}</SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -929,16 +967,16 @@ export default function AttendanceManagementPage() {
               {/* Section */}
               <Select value={selectedSection || 'all'} onValueChange={setSelectedSection}>
                 <SelectTrigger className="w-[140px] border-[#E2E8F0] dark:border-gray-600">
-                  <SelectValue placeholder="Section" />
+                  <SelectValue placeholder={t.section} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Sections</SelectItem>
+                  <SelectItem value="all">{t.allSections}</SelectItem>
                   {sectionList.length > 0 ? (
                     sectionList.map(section => (
                       <SelectItem key={section} value={section || '_section_'}>{section || ''}</SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="_none_" disabled>No sections</SelectItem>
+                    <SelectItem value="_none_" disabled>{t.noSections}</SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -954,12 +992,12 @@ export default function AttendanceManagementPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-[#e35336]" />
-                  Weekly Attendance Trend
+                  {t.weeklyTrend}
                 </CardTitle>
                 <Tabs value={timeRange} onValueChange={setTimeRange} className="h-8">
                   <TabsList className="bg-gray-100 dark:bg-gray-700 h-7">
-                    <TabsTrigger value="weekly" className="text-xs h-5 px-2 dark:text-gray-300">Week</TabsTrigger>
-                    <TabsTrigger value="monthly" className="text-xs h-5 px-2 dark:text-gray-300">Month</TabsTrigger>
+                    <TabsTrigger value="weekly" className="text-xs h-5 px-2 dark:text-gray-300">{t.week}</TabsTrigger>
+                    <TabsTrigger value="monthly" className="text-xs h-5 px-2 dark:text-gray-300">{t.month}</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -974,7 +1012,7 @@ export default function AttendanceManagementPage() {
             <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
               <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <PieChart className="w-5 h-5 text-[#e35336]" />
-                Today's Overview
+                {t.todayOverview}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -983,21 +1021,21 @@ export default function AttendanceManagementPage() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 bg-[var(--brand-color,#e35336)] rounded-full"></span>
-                    Present
+                    {t.present}
                   </span>
                   <span className="font-medium">{stats.present} ({presentPercentage}%)</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 bg-red-400 rounded-full"></span>
-                    Absent
+                    {t.absent}
                   </span>
                   <span className="font-medium">{stats.absent} ({absentPercentage}%)</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 bg-[rgba(var(--brand-color-rgb),0.55)] rounded-full"></span>
-                    Late
+                    {t.late}
                   </span>
                   <span className="font-medium">{stats.late} ({latePercentage}%)</span>
                 </div>
@@ -1013,7 +1051,7 @@ export default function AttendanceManagementPage() {
           <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
           <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <Activity className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
-          Missing Attendance
+          {t.missingAttendance}
           </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
@@ -1027,7 +1065,7 @@ export default function AttendanceManagementPage() {
             <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
               <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <TrendingDown className="w-5 h-5 text-red-500" />
-                Recent Absences
+                {t.recentAbsences}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
@@ -1047,13 +1085,13 @@ export default function AttendanceManagementPage() {
                         </div>
                       </div>
                       <Badge variant="outline" className="text-red-600 border-red-300">
-                        {item.className} - {item.sectionName}
+                        {formatClassSectionLabel(t, item.className, undefined, item.sectionName)}
                       </Badge>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-4">No recent absences</p>
+                <p className="text-center text-gray-500 py-4">{t.noRecentAbsences}</p>
               )}
             </CardContent>
           </Card>
@@ -1064,13 +1102,13 @@ export default function AttendanceManagementPage() {
           <CardHeader className="border-b border-[#E2E8F0] pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                Attendance Sessions - {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {t.attendanceSessions} - {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </CardTitle>
               <div className="relative w-64">
                 <TableSearch
                   search={searchTerm}
                   setSearch={setSearchTerm}
-                  placeholder="Search..."
+                  placeholder={t.search}
                 />
               </div>
             </div>
@@ -1095,13 +1133,13 @@ export default function AttendanceManagementPage() {
                <Table className="w-full">
                  <TableHeader>
                    <TableRow className="bg-gray-50 border-b border-[#E2E8F0] dark:border-gray-600">
-                     <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</TableHead>
-                     <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</TableHead>
-                     <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher</TableHead>
-                     <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</TableHead>
-                     <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Present</TableHead>
-                     <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Absent</TableHead>
-                     <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.class}</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.subject}</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.teacher}</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.status}</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.present}</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.absent}</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.rate}</TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody className="divide-y divide-[#E2E8F0]">
@@ -1113,19 +1151,24 @@ export default function AttendanceManagementPage() {
                      
                      return (
                        <TableRow key={session.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                         <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                           {session.timetableSlot?.class?.name || session.class?.name || 'Unknown'} - {session.timetableSlot?.section?.name || session.class?.section || 'N/A'}
-                         </TableCell>
-                         <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                           {session.timetableSlot?.subject?.name || 'Homeroom'}
-                         </TableCell>
-                         <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                           {session.timetableSlot?.teacher?.name || session.takenBy?.name || 'N/A'}
+                          <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                            {formatClassSectionLabel(
+                              t,
+                              session.timetableSlot?.class?.name || session.class?.name,
+                              session.timetableSlot?.class?.grade || session.class?.grade,
+                              session.timetableSlot?.section?.name || session.class?.section
+                            )}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                            {session.timetableSlot?.subject?.name || t.homeroom}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                            {session.timetableSlot?.teacher?.name || session.takenBy?.name || t.nA}
                          </TableCell>
                          <TableCell className="px-4 py-3">
-                           <Badge variant={session.status === 'SUBMITTED' ? 'default' : 'destructive'}>
-                             {session.status === 'SUBMITTED' ? 'Submitted' : 'Not Submitted'}
-                           </Badge>
+                            <Badge variant={session.status === 'SUBMITTED' ? 'default' : 'destructive'}>
+                              {session.status === 'SUBMITTED' ? t.submitted : t.notSubmitted}
+                            </Badge>
                          </TableCell>
                          <TableCell className="px-4 py-3 text-sm text-green-600 font-medium">{present}</TableCell>
                          <TableCell className="px-4 py-3 text-sm text-red-600 font-medium">{absent}</TableCell>
@@ -1149,7 +1192,7 @@ export default function AttendanceManagementPage() {
            ) : (
              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-               <p>No attendance sessions found for this date</p>
+                <p>{t.noSessions}</p>
              </div>
            )}
         </Card>

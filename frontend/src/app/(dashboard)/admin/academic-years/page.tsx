@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useTranslations } from '@/hooks/useTranslations';
 
 interface Term {
   id: string;
@@ -64,6 +65,7 @@ const CALENDAR_TYPES = [
 ];
 
 export default function AcademicYearsPage() {
+  const { t } = useTranslations<any>('academicYears');
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -163,7 +165,7 @@ export default function AcademicYearsPage() {
       }
     } catch (error) {
       console.error('Error fetching academic years:', error);
-      toast.error('Failed to load academic years');
+      toast.error(t.messages.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -185,10 +187,10 @@ export default function AcademicYearsPage() {
       await refreshAcademicContext();
       setShowCreateModal(false);
       setNewYear({ name: '', startDate: '', endDate: '', curriculumType: '' } as any);
-      toast.success('Academic year created successfully');
+      toast.success(t.messages.yearCreated);
     } catch (error) {
       console.error('Error creating academic year:', error);
-      toast.error('Failed to create academic year');
+      toast.error(t.messages.yearCreateFailed);
     } finally {
       setSaving(false);
     }
@@ -203,10 +205,10 @@ export default function AcademicYearsPage() {
       await refreshAcademicContext();
       const updated = academicYears.find(y => y.id === selectedYear.id);
       if (updated) setSelectedYear({ ...updated, curriculumType: curriculumType as any });
-      toast.success('Curriculum type updated successfully');
+      toast.success(t.messages.curriculumUpdated);
     } catch (error) {
       console.error('Error updating curriculum type:', error);
-      toast.error('Cannot change curriculum type after grading has begun');
+      toast.error(t.messages.curriculumLocked);
     } finally {
       setSaving(false);
     }
@@ -226,10 +228,10 @@ export default function AcademicYearsPage() {
           : prev,
       );
       await refreshAcademicContext();
-      toast.success('Academic year activated successfully');
+      toast.success(t.messages.yearActivated);
     } catch (error) {
       console.error('Error activating academic year:', error);
-      toast.error('Failed to activate academic year');
+      toast.error(t.messages.yearActivateFailed);
     } finally {
       setSaving(false);
     }
@@ -245,10 +247,10 @@ export default function AcademicYearsPage() {
       await refreshAcademicContext();
       setShowTermModal(false);
       setNewTerm({ name: '', order: 1, percentageWeight: 0, startDate: '', endDate: '' });
-      toast.success('Period created successfully');
+      toast.success(t.messages.periodCreated);
     } catch (error) {
       console.error('Error creating term:', error);
-      toast.error('Failed to create period');
+      toast.error(t.messages.periodCreateFailed);
     } finally {
       setSaving(false);
     }
@@ -264,10 +266,10 @@ export default function AcademicYearsPage() {
       await refreshAcademicContext();
       setEditingTerm(null);
       setShowTermModal(false);
-      toast.success('Period updated successfully');
+      toast.success(t.messages.periodUpdated);
     } catch (error) {
       console.error('Error updating term:', error);
-      toast.error('Failed to update period');
+      toast.error(t.messages.periodUpdateFailed);
     } finally {
       setSaving(false);
     }
@@ -279,26 +281,26 @@ export default function AcademicYearsPage() {
       await academicYearsAPI.lockTerm(termId, !isLocked);
       await fetchAcademicYears(schoolId);
       await refreshAcademicContext();
-      toast.success(`Period ${!isLocked ? 'locked' : 'unlocked'} successfully`);
+      toast.success(!isLocked ? t.messages.periodLocked : t.messages.periodUnlocked);
     } catch (error) {
       console.error('Error locking term:', error);
-      toast.error(`Failed to ${!isLocked ? 'lock' : 'unlock'} period`);
+      toast.error(!isLocked ? t.messages.periodLockFailed : t.messages.periodUnlockFailed);
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteTerm = async (termId: string) => {
-    if (!confirm('Are you sure you want to delete this period?')) return;
+    if (!confirm(t.messages.deleteConfirm)) return;
     try {
       setSaving(true);
       await academicYearsAPI.deleteTerm(termId);
       await fetchAcademicYears(schoolId);
       await refreshAcademicContext();
-      toast.success('Period deleted successfully');
+      toast.success(t.messages.periodDeleted);
     } catch (error) {
       console.error('Error deleting term:', error);
-      toast.error('Cannot delete a period that has grades or is locked');
+      toast.error(t.messages.periodDeleteFailed);
     } finally {
       setSaving(false);
     }
@@ -322,30 +324,30 @@ export default function AcademicYearsPage() {
   };
 
   const getYearStatus = (year: AcademicYear) => {
-    if (year.isActive) return 'Active';
+    if (year.isActive) return t.active;
     const now = new Date();
     const start = new Date(year.startDate);
     const end = new Date(year.endDate);
-    if (now >= start && now <= end) return 'Current';
-    if (now < start) return 'Upcoming';
-    return 'Past';
+    if (now >= start && now <= end) return t.current;
+    if (now < start) return t.upcoming;
+    return t.past;
   };
 
   const getTermStatus = (term: Term) => {
     const now = new Date();
     const start = new Date(term.startDate);
     const end = new Date(term.endDate);
-    if (term.isLocked) return 'Locked';
-    if (now >= start && now <= end) return 'Active';
-    if (now < start) return 'Upcoming';
-    return 'Completed';
+    if (term.isLocked) return t.locked;
+    if (now >= start && now <= end) return t.active;
+    if (now < start) return t.upcoming;
+    return t.completed;
   };
 
   const getTermStatusColor = (status: string) => {
     switch (status) {
-      case 'Active': return 'bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.18)] text-[var(--brand-color)]';
-      case 'Locked': return 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400';
-      case 'Completed': return 'bg-gray-100 dark:bg-gray-900/50 text-gray-700 dark:text-gray-400';
+      case t.active: return 'bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.18)] text-[var(--brand-color)]';
+      case t.locked: return 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400';
+      case t.completed: return 'bg-gray-100 dark:bg-gray-900/50 text-gray-700 dark:text-gray-400';
       default: return 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400';
     }
   };
@@ -363,21 +365,21 @@ export default function AcademicYearsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="mt-3 text-2xl font-bold text-black">Academic Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Configure your school's academic structure and calendars</p>
+          <h1 className="mt-3 text-2xl font-bold text-black">{t.title}</h1>
+          <p className="text-gray-600 dark:text-gray-400">{t.subtitle}</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
           className="rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
         >
-          + New Academic Year
+          {t.newAcademicYear}
         </button>
       </div>
 
       {!selectedYear && academicYears.length === 0 && (
         <div className="flex min-h-[55vh] items-center justify-center">
           <p className="text-center text-lg font-medium text-gray-500 dark:text-gray-400">
-            No Academic year start by creating new one
+            {t.empty}
           </p>
         </div>
       )}
@@ -389,10 +391,10 @@ export default function AcademicYearsPage() {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold dark:text-white">
-                  Periods ({schoolCurriculumType})
+                  {t.periods} ({schoolCurriculumType})
                 </h2>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  You can edit each period's name and dates based on your school's needs.
+                  {t.periodDescription}
                 </p>
               </div>
               <div className="w-full md:w-auto md:min-w-[340px]">
@@ -421,18 +423,18 @@ export default function AcademicYearsPage() {
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="bg-gray-50 dark:bg-slate-800">
-                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Period Name</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Order</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Start Date</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">End Date</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Status</TableHead>
-                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Actions</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">{t.periodName}</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">{t.order}</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">{t.startDate}</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">{t.endDate}</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">{t.status}</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">{t.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-gray-200 dark:divide-slate-700">
                   {selectedYear.terms.sort((a, b) => a.order - b.order).map(term => {
                     const status = getTermStatus(term);
-                    const isCurrent = status === 'Active';
+                    const isCurrent = status === t.active;
                     return (
                       <TableRow key={term.id} className={`${term.isLocked ? 'bg-gray-50 dark:bg-slate-800' : 'dark:hover:bg-slate-800/50'} ${isCurrent ? 'ring-2 ring-inset ring-[var(--brand-color)]' : ''}`}>
                         <TableCell className="px-4 py-3 font-medium dark:text-white">
@@ -457,7 +459,7 @@ export default function AcademicYearsPage() {
                               <button
                                 type="button"
                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-slate-800 dark:hover:text-gray-200"
-                                aria-label="Open actions"
+                                aria-label={t.actions}
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </button>
@@ -467,19 +469,19 @@ export default function AcademicYearsPage() {
                                 onClick={() => openEditTerm(term)}
                                 disabled={term.isLocked}
                               >
-                                Edit
+                                {t.edit}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleLockTerm(term.id, term.isLocked)}
                               >
-                                {term.isLocked ? 'Unlock' : 'Lock'}
+                                {term.isLocked ? t.unlock : t.lock}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDeleteTerm(term.id)}
                                 disabled={term.isLocked}
                                 className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
                               >
-                                Delete
+                                {t.delete}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -493,7 +495,7 @@ export default function AcademicYearsPage() {
 
             {selectedYear.terms.length === 0 && (
               <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-                No periods configured. The curriculum type will auto-create periods when you save.
+                {t.noPeriods}
               </p>
             )}
           </div>
@@ -506,11 +508,11 @@ export default function AcademicYearsPage() {
                 disabled={saving || getTotalWeight() !== 100}
                 className="rounded-lg bg-[var(--brand-color,#e35336)] px-6 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20 disabled:opacity-50"
               >
-                Activate Academic Year
+                {t.activate}
               </button>
               {getTotalWeight() !== 100 && (
                 <p className="text-yellow-600 dark:text-yellow-400 mt-2">
-                  Please ensure period weights total 100% before activating.
+                  {t.weightWarning}
                 </p>
               )}
             </div>
@@ -522,14 +524,14 @@ export default function AcademicYearsPage() {
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="max-w-md border dark:border-slate-800 dark:bg-slate-900">
           <DialogHeader>
-            <DialogTitle>Create Academic Year</DialogTitle>
+            <DialogTitle>{t.createYear}</DialogTitle>
           </DialogHeader>
             <form onSubmit={handleCreateAcademicYear} className="space-y-4">
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
-                Periods will be created from the school curriculum system: <strong>{schoolCurriculumType}</strong>
+                {t.curriculumNotice} <strong>{schoolCurriculumType}</strong>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t.name}</label>
                 <input
                   type="text"
                   value={newYear.name}
@@ -541,14 +543,14 @@ export default function AcademicYearsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.startDate}</label>
                   <CalendarDatePicker
                     value={newYear.startDate ? new Date(newYear.startDate) : undefined}
                     onChange={(date) => setNewYear({ ...newYear, startDate: date ? date.toISOString() : '' })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.endDate}</label>
                   <CalendarDatePicker
                     value={newYear.endDate ? new Date(newYear.endDate) : undefined}
                     onChange={(date) => setNewYear({ ...newYear, endDate: date ? date.toISOString() : '' })}
@@ -561,14 +563,14 @@ export default function AcademicYearsPage() {
                   onClick={() => setShowCreateModal(false)}
                   className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg dark:text-gray-300"
                 >
-                  Cancel
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
                   className="rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
                 >
-                  {saving ? 'Creating...' : 'Create'}
+                  {saving ? t.creating : t.create}
                 </button>
               </div>
             </form>
@@ -580,11 +582,11 @@ export default function AcademicYearsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-lg p-6 w-full max-w-md border dark:border-slate-800">
             <h3 className="text-lg font-semibold mb-4 dark:text-white">
-              {editingTerm ? 'Edit Period' : 'Add Period'}
+              {editingTerm ? t.editPeriod : t.addPeriod}
             </h3>
             <form onSubmit={editingTerm ? handleUpdateTerm : handleCreateTerm} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Period Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t.periodName}</label>
                 <input
                   type="text"
                   value={newTerm.name}
@@ -596,7 +598,7 @@ export default function AcademicYearsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Order</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t.order}</label>
                   <input
                     type="number"
                     value={newTerm.order}
@@ -607,7 +609,7 @@ export default function AcademicYearsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Weight %</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t.weight}</label>
                   <input
                     type="number"
                     value={newTerm.percentageWeight}
@@ -622,14 +624,14 @@ export default function AcademicYearsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.startDate}</label>
                   <CalendarDatePicker
                     value={newTerm.startDate ? new Date(newTerm.startDate) : undefined}
                     onChange={(date) => setNewTerm({ ...newTerm, startDate: date ? date.toISOString() : '' })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.endDate}</label>
                   <CalendarDatePicker
                     value={newTerm.endDate ? new Date(newTerm.endDate) : undefined}
                     onChange={(date) => setNewTerm({ ...newTerm, endDate: date ? date.toISOString() : '' })}
@@ -645,14 +647,14 @@ export default function AcademicYearsPage() {
                   }}
                   className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg dark:text-gray-300"
                 >
-                  Cancel
+                  {t.cancel}
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
                   className="rounded-lg bg-[var(--brand-color,#e35336)] px-4 py-2 text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
                 >
-                  {saving ? 'Saving...' : editingTerm ? 'Update' : 'Create'}
+                  {saving ? t.saving : editingTerm ? t.update : t.create}
                 </button>
               </div>
             </form>

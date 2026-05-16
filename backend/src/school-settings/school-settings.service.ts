@@ -64,6 +64,8 @@ export const SCHOOL_SETTING_KEYS = {
   CALENDAR_TYPE: 'calendar_type',
   GRADE_SYSTEM: 'grade_system',
   FEE_STRUCTURE_MODE: 'fee_structure_mode',
+  FEE_PAYMENT_DUE_DAY: 'fee_payment_due_day',
+  FEE_DAILY_PENALTY_AMOUNT: 'fee_daily_penalty_amount',
   PARENT_VIEW_GRADES: 'parent_view_grades',
   ATTENDANCE_CUTOFF_TIME: 'ATTENDANCE_CUTOFF_TIME',
   DEFAULT_SECTION_CAPACITY: 'DEFAULT_SECTION_CAPACITY',
@@ -245,6 +247,24 @@ export class SchoolSettingsService {
         );
       }
       return normalizedValue;
+    }
+
+    if (key === SCHOOL_SETTING_KEYS.FEE_PAYMENT_DUE_DAY) {
+      const day = Number(value);
+      if (!Number.isInteger(day) || day < 1 || day > 31) {
+        throw new BadRequestException(`${key} must be an integer between 1 and 31`);
+      }
+      return day;
+    }
+
+    if (key === SCHOOL_SETTING_KEYS.FEE_DAILY_PENALTY_AMOUNT) {
+      const amount = Number(value);
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new BadRequestException(
+          'fee_daily_penalty_amount must be a number greater than or equal to 0',
+        );
+      }
+      return Math.round(amount * 100) / 100;
     }
 
     if (key === SCHOOL_SETTING_KEYS.DEFAULT_SECTION_CAPACITY) {

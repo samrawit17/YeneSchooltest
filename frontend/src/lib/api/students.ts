@@ -36,7 +36,7 @@ export const studentsAPI = {
   rejectEnrollment: (id: string, rejectionReason: string) =>
     api.post(`/students/enrollments/${id}/reject`, { rejectionReason }),
 
-  assignClass: (id: string, data: { className: string; section: string; rollNumber: string }) =>
+  assignClass: (id: string, data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string }) =>
     api.post(`/students/${id}/assign-class`, data),
 
   uploadDocuments: (id: string, documents: any[]) =>
@@ -100,7 +100,7 @@ export const registrarAPI = {
   rejectEnrollment: (id: string, rejectionReason: string) =>
     api.post(`/registrar/enrollments/${id}/reject`, { rejectionReason }),
 
-  assignClass: (id: string, data: { className: string; section: string; rollNumber: string }) =>
+  assignClass: (id: string, data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string }) =>
     api.post(`/registrar/students/${id}/assign-class`, data),
 
   uploadDocuments: (id: string, documents: any[]) =>

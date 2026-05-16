@@ -182,8 +182,9 @@ export default function EntryProgressPage() {
     const partial = data.filter((row) => getProgressStatus(row) === "PARTIAL").length;
     const empty = data.filter((row) => getProgressStatus(row) === "EMPTY").length;
     const noStudents = data.filter((row) => getProgressStatus(row) === "NO_STUDENTS").length;
-    const overallPct = totalStudents > 0 ? Math.round((totalEntered / totalStudents) * 100) : 100;
-    return { total, totalStudents, totalEntered, totalMissing, complete, partial, empty, noStudents, overallPct };
+    const hasScoreEntries = totalStudents > 0;
+    const overallPct = hasScoreEntries ? Math.round((totalEntered / totalStudents) * 100) : 0;
+    return { total, totalStudents, totalEntered, totalMissing, complete, partial, empty, noStudents, overallPct, hasScoreEntries };
   }, [data]);
 
   const rows = useMemo(() => {
@@ -257,8 +258,14 @@ export default function EntryProgressPage() {
         <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
           <CardContent className="p-4">
             <p className="text-xs uppercase tracking-wide text-gray-500">Overall Progress</p>
-            <p className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">{stats.overallPct}%</p>
-            <p className="mt-1 text-xs text-gray-500">{stats.totalEntered}/{stats.totalStudents} grades entered</p>
+            <p className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+              {stats.hasScoreEntries ? `${stats.overallPct}%` : "No data"}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {stats.hasScoreEntries
+                ? `${stats.totalEntered}/${stats.totalStudents} score entries`
+                : "No assessment score entries for this term"}
+            </p>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
@@ -272,14 +279,14 @@ export default function EntryProgressPage() {
           <CardContent className="p-4">
             <p className="text-xs uppercase tracking-wide text-gray-500">Pending</p>
             <p className="mt-2 text-2xl font-semibold text-amber-600">{stats.totalMissing}</p>
-            <p className="mt-1 text-xs text-gray-500">student grades still missing</p>
+            <p className="mt-1 text-xs text-gray-500">score entries still missing</p>
           </CardContent>
         </Card>
         <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
           <CardContent className="p-4">
             <p className="text-xs uppercase tracking-wide text-gray-500">Not Started</p>
             <p className="mt-2 text-2xl font-semibold text-red-600">{stats.empty}</p>
-            <p className="mt-1 text-xs text-gray-500">teacher assignments with zero entries</p>
+            <p className="mt-1 text-xs text-gray-500">assessment assignments with zero entries</p>
           </CardContent>
         </Card>
       </div>

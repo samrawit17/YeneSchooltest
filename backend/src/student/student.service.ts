@@ -75,6 +75,8 @@ export interface AssignClassDto {
   className: string;
   section: string;
   rollNumber: string;
+  classId?: string;
+  sectionId?: string;
 }
 
 export interface StudentsByClassResult {
@@ -1370,7 +1372,62 @@ export class StudentService {
       throw new NotFoundException('Student not found');
     }
 
-    const { className, section, rollNumber } = assignData;
+    const { className, section, rollNumber, classId, sectionId } = assignData;
+
+    let academicYear = student.academicYear;
+
+    if (classId && sectionId) {
+      const targetSection = await this.prismaService.section.findFirst({
+        where: { id: sectionId, classId, class: { schoolId } },
+        include: { class: true },
+      });
+
+      if (!targetSection) {
+        throw new BadRequestException('Selected class and section are not valid');
+      }
+
+      const activeAcademicYear = await this.prismaService.academicYear.findFirst({
+        where: { schoolId, isActive: true },
+        select: { name: true },
+      });
+
+      academicYear = student.academicYear || activeAcademicYear?.name || new Date().getFullYear().toString();
+
+      const enrolledCount = await this.prismaService.studentClass.count({
+        where: {
+          schoolId,
+          classId,
+          sectionId,
+          academicYear,
+          studentId: { not: studentId },
+        },
+      });
+
+      if (targetSection.capacity && enrolledCount >= targetSection.capacity) {
+        throw new BadRequestException('Selected section is already at capacity');
+      }
+
+      await this.prismaService.studentClass.upsert({
+        where: {
+          studentId_academicYear: {
+            studentId,
+            academicYear,
+          },
+        },
+        create: {
+          studentId,
+          classId,
+          sectionId,
+          schoolId,
+          academicYear,
+        },
+        update: {
+          classId,
+          sectionId,
+          schoolId,
+        },
+      });
+    }
 
     // Update student profile with class assignment
     await this.prismaService.studentProfile.update({
@@ -1379,6 +1436,7 @@ export class StudentService {
         className,
         section,
         rollNumber,
+        academicYear,
       },
     });
 

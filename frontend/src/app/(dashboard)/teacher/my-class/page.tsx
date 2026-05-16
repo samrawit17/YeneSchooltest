@@ -265,8 +265,8 @@ const MyClassesPage = () => {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <CardTitle className="text-lg">Class {cls.name}</CardTitle>
-                      <CardDescription>Grade {cls.grade} • Section {cls.section}</CardDescription>
+                      <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">Class {cls.name}</CardTitle>
+                      <CardDescription className="text-sm font-medium text-slate-600 dark:text-slate-400">Grade {cls.grade} • Section {cls.section}</CardDescription>
                     </div>
                   </div>
                   <DropdownMenu>
@@ -318,9 +318,9 @@ const MyClassesPage = () => {
                       <span className="font-medium">{cls.studentCount}</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Schedule</span>
-                    <span className="font-medium text-xs">{cls.schedule}</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Schedule</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{cls.schedule}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Room</span>

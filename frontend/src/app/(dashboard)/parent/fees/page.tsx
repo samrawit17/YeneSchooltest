@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CreditCard, AlertCircle, CheckCircle, Receipt, Calendar, Clock, Wallet, ChevronDown, ChevronUp, DollarSign } from "lucide-react";
 import { parentsAPI } from "@/lib/api/people";
 import { financeAPI } from "@/lib/api/finance";
+import { schoolSettingsAPI } from "@/lib/api";
 
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -70,6 +71,7 @@ interface Child {
   studentCode: string;
   className: string;
   section: string;
+  schoolId?: string;
   fees?: ChildFees;
   curriculumType?: string;
   periodCount?: number;
@@ -106,6 +108,68 @@ const getPeriodTitles = (curriculumType: string): string[] => {
     YEARLY: ["Full Year"],
   };
   return titles[normalized] || Array.from({ length: count }, (_, i) => `${normalized} ${i + 1}`);
+};
+
+const getInstallmentPeriodTitles = (
+  curriculumType: string,
+  academicYear?: AcademicYear,
+  formatDate?: (date: Date | string) => string,
+  periodRange?: { startDate?: string; endDate?: string } | null,
+): string[] => {
+  const normalized = normalizeCurriculumType(curriculumType);
+
+  if (normalized !== "MONTHLY") {
+    return getPeriodTitles(normalized);
+  }
+
+  const startDate = academicYear?.startDate ? new Date(academicYear.startDate) : null;
+  if (!startDate || Number.isNaN(startDate.getTime())) {
+    return getPeriodTitles(normalized);
+  }
+
+  const rangeStart = periodRange?.startDate ? new Date(periodRange.startDate) : null;
+  const rangeEnd = periodRange?.endDate ? new Date(periodRange.endDate) : null;
+  const firstMonth =
+    rangeStart && !Number.isNaN(rangeStart.getTime())
+      ? new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1)
+      : new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  const lastMonth =
+    rangeEnd && !Number.isNaN(rangeEnd.getTime())
+      ? new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1)
+      : new Date(startDate.getFullYear(), startDate.getMonth() + 11, 1);
+
+  const titles: string[] = [];
+  const cursor = new Date(firstMonth);
+  while (cursor <= lastMonth && titles.length < 12) {
+    const monthDate = new Date(cursor);
+    const formatted = formatDate ? formatDate(monthDate) : monthDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    titles.push(formatted.replace(/\s+\d{1,2},/, ""));
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return titles.length ? titles : getPeriodTitles(normalized);
+};
+
+const getActiveAcademicPeriodRange = (
+  selectedYear: string,
+  currentAcademicYear?: AcademicYear | null,
+  currentTerm?: { name?: string; order?: number; startDate?: string; endDate?: string } | null,
+  terms?: Array<{ name?: string; order?: number; startDate?: string; endDate?: string }>,
+) => {
+  const isCurrentAcademicYear =
+    !selectedYear || !currentAcademicYear?.id || selectedYear === currentAcademicYear.id;
+
+  if (!isCurrentAcademicYear) {
+    return null;
+  }
+
+  const matchingTerm = terms?.find((term) => {
+    if (currentTerm?.name && term.name === currentTerm.name) return true;
+    if (currentTerm?.order && term.order === currentTerm.order) return true;
+    return false;
+  });
+
+  return matchingTerm || currentTerm || null;
 };
 
 const getPeriodCount = (curriculumType: string): number => {
@@ -198,17 +262,26 @@ const buildPeriodPaymentHistory = (
 };
 
 const ParentFeesPage = () => {
-  const { currentAcademicYear, currentTerm, getAllAcademicYears, curriculumType, periodLabel, periodLabelPlural } = useAcademicYear();
+  const { currentAcademicYear, currentTerm, getAllAcademicYears, curriculumType, periodLabel, periodLabelPlural, formatDate } = useAcademicYear();
   const [children, setChildren] = useState<Child[]>([]);
+  const [feeDeadlineDay, setFeeDeadlineDay] = useState(15);
+  const [dailyPenaltyAmount, setDailyPenaltyAmount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>("");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
+  const [selectedChildId, setSelectedChildId] = useState<string>("");
   const [periodTouched, setPeriodTouched] = useState(false);
 
-  const periodTitles = getPeriodTitles(normalizeCurriculumType(curriculumType || "SEMESTER"));
+  const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear) || currentAcademicYear || undefined;
+  const periodTitles = getInstallmentPeriodTitles(
+    normalizeCurriculumType(curriculumType || "SEMESTER"),
+    selectedAcademicYear,
+    formatDate,
+    getActiveAcademicPeriodRange(selectedYear, currentAcademicYear, currentTerm),
+  );
   const systemPeriodLabel = PARENT_LABELS[normalizeCurriculumType(curriculumType || "SEMESTER")] || periodLabel;
 
   const toggleGroup = (key: string) => {
@@ -242,6 +315,22 @@ const ParentFeesPage = () => {
           setAcademicYears(years);
           const effectiveYearId = selectedYear || currentAcademicYear?.id || years[0]?.id || "";
           if (effectiveYearId) setSelectedYear(effectiveYearId);
+          const firstSchoolId =
+            childrenData[0]?.schoolId || childrenData[0]?.student?.schoolId || "";
+          if (firstSchoolId) {
+            try {
+              const settingsResponse = await schoolSettingsAPI.getAll(firstSchoolId);
+              const settings = settingsResponse.data || {};
+              const deadlineDay = Number(settings.fee_payment_due_day ?? 15);
+              const penaltyAmount = Number(settings.fee_daily_penalty_amount ?? 0);
+              setFeeDeadlineDay(Number.isInteger(deadlineDay) && deadlineDay >= 1 ? deadlineDay : 15);
+              setDailyPenaltyAmount(Number.isFinite(penaltyAmount) && penaltyAmount >= 0 ? penaltyAmount : 0);
+            } catch (error) {
+              console.error("Failed to fetch fee penalty settings:", error);
+              setFeeDeadlineDay(15);
+              setDailyPenaltyAmount(0);
+            }
+          }
 
           const childrenWithFees = await Promise.all(childrenData.map(async (child: any) => {
             const childId =
@@ -268,10 +357,20 @@ const ParentFeesPage = () => {
             }
 
             const childCurriculumType = normalizeCurriculumType(curriculumInfo?.curriculumType || currentAcademicYear?.curriculumType || curriculumType || "TERM");
-            const childPeriodTitles = (curriculumInfo?.terms?.length
+            const selectedAcademicYearForChild =
+              years.find((year) => year.id === effectiveYearId) ||
+              currentAcademicYear ||
+              undefined;
+            const activePeriodRange = getActiveAcademicPeriodRange(
+              effectiveYearId,
+              currentAcademicYear,
+              currentTerm,
+              curriculumInfo?.terms || [],
+            );
+            const childPeriodTitles = (childCurriculumType !== "MONTHLY" && curriculumInfo?.terms?.length
               ? curriculumInfo.terms.map((term: any) => term.name)
-              : getPeriodTitles(childCurriculumType));
-            const childPeriodCount = childPeriodTitles.length || getPeriodCount(childCurriculumType);
+              : getInstallmentPeriodTitles(childCurriculumType, selectedAcademicYearForChild, formatDate, activePeriodRange));
+            const childPeriodCount = getPeriodCount(childCurriculumType);
             const feeItems = Array.isArray(feeSummary?.feeItems) ? feeSummary.feeItems : [];
             const paymentItems = Array.isArray(feeSummary?.payments) ? feeSummary.payments : [];
 
@@ -373,6 +472,7 @@ const ParentFeesPage = () => {
               name: child.name || child.student?.name || "Unknown",
               className: child.className || child.student?.className || "N/A",
               section: child.section || child.student?.section || "N/A",
+              schoolId,
               curriculumType: childCurriculumType,
               periodCount: childPeriodCount,
               periodLabels: childPeriodTitles,
@@ -388,6 +488,12 @@ const ParentFeesPage = () => {
             };
           }));
           setChildren(childrenWithFees);
+          setSelectedChildId((current) => {
+            if (current && childrenWithFees.some((child) => child.id === current)) {
+              return current;
+            }
+            return childrenWithFees[0]?.id || "";
+          });
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -398,7 +504,7 @@ const ParentFeesPage = () => {
     };
 
     fetchData();
-  }, [getAllAcademicYears, currentAcademicYear, curriculumType, selectedYear]);
+  }, [getAllAcademicYears, currentAcademicYear, currentTerm, curriculumType, selectedYear, formatDate]);
 
   // Set default period to current term
   useEffect(() => {
@@ -420,6 +526,73 @@ const ParentFeesPage = () => {
 
   const formatCurrency = (amount: number) => {
     return `ETB ${amount.toLocaleString()}`;
+  };
+
+  const getMonthlyDueDate = (periodTitle: string, academicYear?: AcademicYear) => {
+    if (!academicYear?.startDate) return null;
+    const startDate = new Date(academicYear.startDate);
+    if (Number.isNaN(startDate.getTime())) return null;
+
+    for (let index = 0; index < 12; index++) {
+      const monthDate = new Date(startDate);
+      monthDate.setMonth(startDate.getMonth() + index);
+      const label = formatDate(monthDate).replace(/\s+\d{1,2},/, "");
+      if (label === periodTitle) {
+        const lastDayOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+        return new Date(
+          monthDate.getFullYear(),
+          monthDate.getMonth(),
+          Math.min(feeDeadlineDay, lastDayOfMonth),
+          23,
+          59,
+          59,
+          999,
+        );
+      }
+    }
+
+    return null;
+  };
+
+  const getPeriodPenalty = (periodTitle: string, balance: number, billingMode: string) => {
+    if (balance <= 0 || dailyPenaltyAmount <= 0) {
+      return { daysLate: 0, penalty: 0, dueDate: null as Date | null };
+    }
+
+    const normalizedMode = normalizeCurriculumType(billingMode);
+    let dueDate: Date | null = null;
+
+    if (normalizedMode === "MONTHLY") {
+      dueDate = getMonthlyDueDate(periodTitle, selectedAcademicYear);
+    } else if (currentTerm?.startDate && currentTerm.name === periodTitle) {
+      const periodStart = new Date(currentTerm.startDate);
+      if (!Number.isNaN(periodStart.getTime())) {
+        const lastDayOfMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 0).getDate();
+        dueDate = new Date(
+          periodStart.getFullYear(),
+          periodStart.getMonth(),
+          Math.min(feeDeadlineDay, lastDayOfMonth),
+          23,
+          59,
+          59,
+          999,
+        );
+      }
+    }
+
+    if (!dueDate) return { daysLate: 0, penalty: 0, dueDate: null as Date | null };
+
+    const now = new Date();
+    const daysLate = Math.max(
+      0,
+      Math.floor((now.getTime() - dueDate.getTime()) / (24 * 60 * 60 * 1000)),
+    );
+
+    return {
+      daysLate,
+      penalty: Math.round(daysLate * dailyPenaltyAmount * 100) / 100,
+      dueDate,
+    };
   };
 
   const getStatusBadge = (status: string, balance: number) => {
@@ -449,6 +622,8 @@ const ParentFeesPage = () => {
     selectedPeriod === "all"
       ? `All ${systemPeriodLabel}s`
       : selectedPeriod || currentTerm?.name || `Current ${systemPeriodLabel}`;
+  const selectedChild = children.find((child) => child.id === selectedChildId) || children[0] || null;
+  const visibleChildren = selectedChild ? [selectedChild] : [];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
@@ -456,10 +631,24 @@ const ParentFeesPage = () => {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Fee Information</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">View tuition fees split by curriculum periods</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">View tuition fees for one child at a time</p>
           </div>
-          <div className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)]">
-            {activePeriodText}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Select value={selectedChildId} onValueChange={setSelectedChildId}>
+              <SelectTrigger className="h-9 w-full bg-white text-sm dark:bg-slate-800 sm:w-64">
+                <SelectValue placeholder="Select child" />
+              </SelectTrigger>
+              <SelectContent>
+                {children.map((child) => (
+                  <SelectItem key={child.id} value={child.id}>
+                    {child.name} · {child.className}{child.section ? ` ${child.section}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-semibold bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)]">
+              {activePeriodText}
+            </div>
           </div>
         </div>
 
@@ -473,7 +662,7 @@ const ParentFeesPage = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6">
-            {children.map((child) => {
+            {visibleChildren.map((child) => {
               const fees = child.fees || {
                 total: 0,
                 paid: 0,
@@ -487,7 +676,12 @@ const ParentFeesPage = () => {
               const curriculumType = normalizeCurriculumType(rawCurriculum);
               const periodTitles = child.periodLabels?.length
                 ? child.periodLabels
-                : getPeriodTitles(curriculumType);
+                : getInstallmentPeriodTitles(
+                    curriculumType,
+                    selectedAcademicYear,
+                    formatDate,
+                    getActiveAcademicPeriodRange(selectedYear, currentAcademicYear, currentTerm),
+                  );
               const periodLabel = PARENT_LABELS[curriculumType] || "Term";
               const visibleBreakdown = fees.breakdown.map((group) => {
                 if (selectedPeriod === "all") {
@@ -522,13 +716,19 @@ const ParentFeesPage = () => {
                   const groupTotal = group.periods.reduce((sum, period) => sum + period.finalAmount, 0);
                   const groupPaid = group.periods.reduce((sum, period) => sum + period.paid, 0);
                   const groupBalance = group.periods.reduce((sum, period) => sum + period.balance, 0);
+                  const groupPenalty = group.periods.reduce((sum, period) => {
+                    const penalty = getPeriodPenalty(period.termName, period.balance, curriculumType).penalty;
+                    return sum + penalty;
+                  }, 0);
                   acc.total += groupTotal;
                   acc.paid += groupPaid;
                   acc.balance += groupBalance;
+                  acc.penalty += groupPenalty;
                   return acc;
                 },
-                { total: 0, paid: 0, balance: 0 }
+                { total: 0, paid: 0, balance: 0, penalty: 0 }
               );
+              const totalDueWithPenalty = visibleTotals.balance + visibleTotals.penalty;
               const visiblePaidPercentage = visibleTotals.total > 0 ? Math.round((visibleTotals.paid / visibleTotals.total) * 100) : 0;
               const periodPaymentHistory = buildPeriodPaymentHistory(
                 fees.payments || [],
@@ -585,7 +785,7 @@ const ParentFeesPage = () => {
                       </div>
                     </div>
                   <div className="p-5 space-y-5">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                       <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
                         <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total</p>
                         <p className="font-bold text-lg text-slate-900 dark:text-white mt-1">{formatCurrency(visibleTotals.total)}</p>
@@ -601,8 +801,12 @@ const ParentFeesPage = () => {
                         </p>
                       </div>
                       <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Paid %</p>
-                        <p className="font-bold text-lg text-slate-900 dark:text-white mt-1">{visiblePaidPercentage}%</p>
+                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Penalty</p>
+                        <p className="font-bold text-lg text-red-600 dark:text-red-400 mt-1">{formatCurrency(visibleTotals.penalty)}</p>
+                      </div>
+                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
+                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Due</p>
+                        <p className="font-bold text-lg text-slate-900 dark:text-white mt-1">{formatCurrency(totalDueWithPenalty)}</p>
                       </div>
                     </div>
 
@@ -670,6 +874,7 @@ const ParentFeesPage = () => {
                                         const balance = periodAmount - paid;
                                         const hasPayment = paid > 0;
                                         const isFullPaid = balance <= 0 && paid > 0;
+                                        const periodPenalty = getPeriodPenalty(title, balance, curriculumType);
 
                                         return (
                                           <div
@@ -702,6 +907,11 @@ const ParentFeesPage = () => {
                                                 <span className="inline-flex flex-col gap-0.5 text-xs text-slate-500 dark:text-slate-400">
                                                   <span className="font-medium text-red-600 dark:text-red-400">Unpaid</span>
                                                   <span>Due {formatCurrency(balance)}</span>
+                                                  {periodPenalty.penalty > 0 && (
+                                                    <span className="font-medium text-red-600 dark:text-red-400">
+                                                      Penalty {formatCurrency(periodPenalty.penalty)} ({periodPenalty.daysLate} days)
+                                                    </span>
+                                                  )}
                                                 </span>
                                               ) : (
                                                 <span className="text-xs text-slate-400">No payment</span>
@@ -790,9 +1000,7 @@ const ParentFeesPage = () => {
                                     {formatCurrency(payment.displayAmount)}
                                   </td>
                                   <td className="px-4 py-3">
-                                    {payment.paidAt
-                                      ? new Date(payment.paidAt).toLocaleDateString()
-                                      : "-"}
+                                    {payment.paidAt ? formatDate(payment.paidAt) : "-"}
                                   </td>
                                 </tr>
                               ))}
