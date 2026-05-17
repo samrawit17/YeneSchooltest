@@ -28,6 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { schoolsAPI, authAPI } from "@/lib/api";
 
 const createAdminSchema = z.object({
@@ -63,6 +65,7 @@ export default function SchoolAdminForm({
   onSuccess,
   onCancel,
 }: SchoolAdminFormProps) {
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
@@ -116,6 +119,7 @@ export default function SchoolAdminForm({
       });
       toast.success("Admin created successfully");
       onSuccess?.();
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || "Failed to create admin";
       // Check for email already exists error
@@ -140,6 +144,7 @@ export default function SchoolAdminForm({
       });
       toast.success("Admin updated successfully");
       onSuccess?.();
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update admin");
     } finally {

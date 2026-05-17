@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import {
   UserPlus,
   AlertCircle,
@@ -96,6 +98,7 @@ export default function UnifiedStaffForm({
   allowedRoles = ["TEACHER", "ADMIN", "IT_MANAGER", "PARENT", "REGISTRAR", "FINANCE"],
 }: UnifiedStaffFormProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [schoolCode, setSchoolCode] = useState<string | undefined>(propSchoolCode);
   const [schoolId, setSchoolId] = useState<string>(propSchoolId || user?.schoolId || "");
@@ -203,6 +206,7 @@ export default function UnifiedStaffForm({
       });
 
       onSuccess?.();
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error: any) {
       const message = error.response?.data?.message || "Failed to create staff";
       toast.error(message);
@@ -235,6 +239,7 @@ export default function UnifiedStaffForm({
 
       toast.success("Staff updated successfully!");
       onSuccess?.();
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error: any) {
       const message = error.response?.data?.message || "Failed to update staff";
       toast.error(message);

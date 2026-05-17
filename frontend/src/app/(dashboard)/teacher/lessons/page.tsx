@@ -300,7 +300,7 @@ const TeacherLessonsPage = () => {
       setFormGrade("");
       setFormSection("");
       setFormSubjectId("");
-      fetchLessons();
+      await fetchLessons();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to create lesson");
     } finally {
@@ -314,7 +314,7 @@ const TeacherLessonsPage = () => {
     try {
       await lessonsAPI.delete(id);
       toast.success('Lesson deleted successfully');
-      fetchLessons();
+      await fetchLessons();
     } catch (error: any) {
       console.error('Failed to delete lesson:', error);
       toast.error('Failed to delete lesson');
