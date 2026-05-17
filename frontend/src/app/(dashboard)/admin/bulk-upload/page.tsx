@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -174,6 +176,7 @@ function normalizeStudentAndParentNames(fullName?: string, explicitParentName?: 
 export default function BulkUploadPage() {
   const { t } = useTranslations<any>("bulkUpload");
   const router = useRouter();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState("import");
@@ -392,6 +395,10 @@ export default function BulkUploadPage() {
       } else {
         toast.error(response.data.message || t.errors.importFailed);
       }
+      if (response.data.status === "success" || response.data.status === "partial") {
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.message || t.errors.importProcessFailed);
     } finally {
@@ -457,6 +464,8 @@ export default function BulkUploadPage() {
       }
 
       toast.success(t.messages.userCreated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
     } catch (error: any) {
       toast.error(error.response?.data?.message || t.errors.createFailed);
     } finally {

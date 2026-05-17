@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import {
   UserPlus,
   AlertCircle,
@@ -111,6 +113,7 @@ export default function UnifiedStudentForm({
   onCancel,
 }: UnifiedStudentFormProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [schoolCode, setSchoolCode] = useState<string | undefined>(propSchoolCode);
   const [schoolId, setSchoolId] = useState<string>(propSchoolId || user?.schoolId || "");
@@ -290,6 +293,8 @@ export default function UnifiedStudentForm({
       });
 
       onSuccess?.();
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error: any) {
       const message = error.response?.data?.message || "Failed to create student";
       toast.error(message);
@@ -324,6 +329,8 @@ export default function UnifiedStudentForm({
 
       toast.success("Student updated successfully!");
       onSuccess?.();
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error: any) {
       const message = error.response?.data?.message || "Failed to update student";
       toast.error(message);

@@ -75,7 +75,7 @@ export default function StaffPage() {
   const [searchInput, setSearchInput] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("");
   const { data, isLoading, error } = useQuery<UsersResponse>({
-    queryKey: ["staff-users", page, searchInput, selectedRole],
+    queryKey: ["users", "staff", page, searchInput, selectedRole],
     queryFn: async () => {
       const response = await authAPI.getUsers({
         roles: selectedRole ? [selectedRole] : STAFF_ROLES,

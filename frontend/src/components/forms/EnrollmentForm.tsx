@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import InputField from "../InputField";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { registrarAPI } from "@/lib/api";
 import { enrollmentAPI } from "@/lib/api/enrollment";
 import { toast } from "sonner";
@@ -37,6 +39,7 @@ const EnrollmentForm = ({
   data?: any;
   setOpen?: (open: boolean) => void;
 }) => {
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [schools, setSchools] = useState<any[]>([]);
   const [schoolsLoading, setSchoolsLoading] = useState(true);
@@ -78,6 +81,8 @@ const EnrollmentForm = ({
       if (setOpen) {
         setOpen(false);
       }
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Operation failed!");
     } finally {
