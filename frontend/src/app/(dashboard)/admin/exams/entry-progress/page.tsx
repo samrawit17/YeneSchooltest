@@ -21,9 +21,14 @@ import {
   ChevronUp,
   ArrowUpDown,
   Users,
+  Mail,
+  ExternalLink,
+  Download,
+  CalendarClock,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -137,7 +142,7 @@ export default function EntryProgressPage() {
         setTerms(nextTerms);
         if (nextTerms.length > 0) {
           const today = new Date();
-          const currentTerm = nextTerms.find((term) => {
+          const currentTerm = nextTerms.find((term: { startDate?: string; endDate?: string }) => {
             if (!term.startDate || !term.endDate) return false;
             const start = new Date(term.startDate);
             const end = new Date(term.endDate);
@@ -225,6 +230,79 @@ export default function EntryProgressPage() {
     return filtered;
   }, [data, search, sortDir, sortKey, statusFilter]);
 
+  const deadlineLabel = useMemo(() => {
+    const term = terms.find((item) => item.id === selectedTerm);
+    if (!term?.endDate) return "No deadline";
+    const end = new Date(term.endDate);
+    const today = new Date();
+    const days = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (days < 0) return `Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"}`;
+    if (days === 0) return "Due today";
+    return `${days} day${days === 1 ? "" : "s"} left`;
+  }, [selectedTerm, terms]);
+
+  const getDeadlineTone = (row: EntryProgressRow) => {
+    if (getProgressStatus(row) === "COMPLETE") return "text-emerald-600 dark:text-emerald-400";
+    if (deadlineLabel.startsWith("Overdue") || deadlineLabel === "Due today") return "text-red-600 dark:text-red-400";
+    return "text-amber-600 dark:text-amber-400";
+  };
+
+  const openTeacherEntry = (row: EntryProgressRow) => {
+    const params = new URLSearchParams();
+    params.set("academicYear", selectedYear);
+    if (selectedTerm) params.set("termId", selectedTerm);
+    if (row.classId) params.set("classId", row.classId);
+    if (row.sectionId) params.set("sectionId", row.sectionId);
+    if (row.subjectId) params.set("subjectId", row.subjectId);
+    router.push(`/teacher/grading?${params.toString()}`);
+  };
+
+  const messageTeacher = (row: EntryProgressRow) => {
+    if (!row.teacherId || row.teacherId === "unassigned") {
+      toast.error("No teacher is assigned to this assessment subject");
+      return;
+    }
+    router.push(`/messages?recipientId=${row.teacherId}`);
+  };
+
+  const exportMissingRows = () => {
+    const exportRows = rows
+      .filter((row) => row.missingGrades > 0)
+      .map((row) => ({
+        teacher: row.teacherName || row.teacherId || "Unassigned",
+        subject: row.subject,
+        class: row.className,
+        section: row.sectionName || "",
+        entered: row.enteredGrades,
+        total: row.totalStudents,
+        missing: row.missingGrades,
+        progress: `${row.percentage}%`,
+        deadline: deadlineLabel,
+      }));
+
+    if (exportRows.length === 0) {
+      toast.success("No missing marks to export");
+      return;
+    }
+
+    const headers = Object.keys(exportRows[0]);
+    const csv = [
+      headers.join(","),
+      ...exportRows.map((row) =>
+        headers
+          .map((header) => `"${String(row[header as keyof typeof row]).replace(/"/g, '""')}"`)
+          .join(","),
+      ),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "missing-marks.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
@@ -251,6 +329,12 @@ export default function EntryProgressPage() {
           <p className="text-sm text-gray-500 mt-0.5">
             Track grading entry progress from teacher submissions
           </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportMissingRows}>
+            <Download className="mr-2 h-4 w-4" />
+            Export Missing
+          </Button>
         </div>
       </div>
 
@@ -386,6 +470,12 @@ export default function EntryProgressPage() {
                       <th className="text-left px-3 py-2.5">
                         <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</span>
                       </th>
+                      <th className="text-left px-3 py-2.5">
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Deadline</span>
+                      </th>
+                      <th className="text-right px-4 py-2.5">
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Actions</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 dark:divide-slate-800/60">
@@ -428,6 +518,27 @@ export default function EntryProgressPage() {
                           </td>
                           <td className="px-3 py-3">
                             <StatusChip status={status} />
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium ${getDeadlineTone(row)}`}>
+                              <CalendarClock className="h-3.5 w-3.5" />
+                              {status === "COMPLETE" ? "Done" : deadlineLabel}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => messageTeacher(row)}
+                                disabled={!row.teacherId || row.teacherId === "unassigned"}
+                              >
+                                <Mail className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => openTeacherEntry(row)}>
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );

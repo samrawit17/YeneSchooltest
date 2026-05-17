@@ -464,6 +464,25 @@ export default function FinanceListPage() {
     return labels[mode] || mode;
   };
 
+  const getBillingPeriodLabel = (mode: string) => {
+    const labels: Record<string, string> = {
+      MONTHLY: 'Billing Month',
+      QUARTERLY: 'Billing Quarter',
+      SEMESTER: 'Billing Semester',
+      TERM: 'Billing Term',
+      YEARLY: 'Billing Period',
+    };
+    return labels[mode] || 'Billing Period';
+  };
+
+  const getFeeStructurePeriod = (fs: FeeStructure) => {
+    if (fs.term?.name) return fs.term.name;
+    const installmentMatch = fs.description?.match(/\bfor\s+(.+)$/i);
+    if (installmentMatch?.[1]) return installmentMatch[1];
+    if (fs.semester) return `Semester ${fs.semester}`;
+    return 'Whole Academic Year';
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
@@ -577,7 +596,7 @@ export default function FinanceListPage() {
                   <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={handleGenerateInstallments} className="border-green-600 text-green-700 hover:bg-green-50">
                       <Plus className="w-4 h-4 mr-2" />
-                      Auto-Generate {installmentCount}x
+                      Auto-Generate / Reconcile {installmentCount}x
                     </Button>
                     <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
                       setFormData({ feeType: 'TUITION', grade: 'all', amount: '', termId: '', semester: '', description: '', isActive: true });
@@ -595,7 +614,7 @@ export default function FinanceListPage() {
                     <TableRow>
                       <TableHead className="whitespace-nowrap">Fee Type</TableHead>
                       <TableHead className="whitespace-nowrap">Grade</TableHead>
-                      <TableHead className="whitespace-nowrap">{curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'}</TableHead>
+                      <TableHead className="whitespace-nowrap">{getBillingPeriodLabel(feeCollectionMode)}</TableHead>
                       <TableHead className="whitespace-nowrap">Amount (ETB)</TableHead>
                       <TableHead className="whitespace-nowrap">Description</TableHead>
                       <TableHead className="whitespace-nowrap">Status</TableHead>
@@ -608,7 +627,7 @@ export default function FinanceListPage() {
                         <TableRow key={fs.id}>
                           <TableCell className="font-medium">{fs.feeType}</TableCell>
                           <TableCell>{fs.grade ? `Grade ${fs.grade}` : 'All Grades'}</TableCell>
-                          <TableCell>{fs.term?.name || (fs.semester ? `Semester ${fs.semester}` : 'All')}</TableCell>
+                          <TableCell>{getFeeStructurePeriod(fs)}</TableCell>
                           <TableCell>{formatCurrency(fs.amount)}</TableCell>
                           <TableCell>{fs.description || '-'}</TableCell>
                           <TableCell>

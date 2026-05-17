@@ -968,7 +968,13 @@ export class ReportCardService {
     const [classes, enrollments, reportCards, assessmentSubjects, certificate] = await Promise.all([
       this.prisma.class.findMany({
         where: { schoolId, academicYearId },
-        select: { id: true, name: true, grade: true, section: true },
+        select: {
+          id: true,
+          name: true,
+          grade: true,
+          section: true,
+          sections: { select: { id: true, name: true } },
+        },
         orderBy: [{ grade: 'asc' }, { name: 'asc' }],
       }),
       this.prisma.studentClass.findMany({
@@ -1017,15 +1023,26 @@ export class ReportCardService {
     ]);
 
     const expectedByClass = new Map<string, number>();
+    const expectedByClassSection = new Map<string, number>();
     const studentIdsByClass = new Map<string, Set<string>>();
+    const studentIdsByClassSection = new Map<string, Set<string>>();
     for (const enrollment of enrollments) {
       const bucket =
         studentIdsByClass.get(enrollment.classId) ?? new Set<string>();
       bucket.add(enrollment.studentId);
       studentIdsByClass.set(enrollment.classId, bucket);
+
+      const sectionKey = `${enrollment.classId}:${enrollment.sectionId ?? 'all'}`;
+      const sectionBucket =
+        studentIdsByClassSection.get(sectionKey) ?? new Set<string>();
+      sectionBucket.add(enrollment.studentId);
+      studentIdsByClassSection.set(sectionKey, sectionBucket);
     }
     for (const [classId, studentIds] of studentIdsByClass.entries()) {
       expectedByClass.set(classId, studentIds.size);
+    }
+    for (const [classSectionKey, studentIds] of studentIdsByClassSection.entries()) {
+      expectedByClassSection.set(classSectionKey, studentIds.size);
     }
 
     const enrollmentStudentIdsByClassSection = new Map<string, Set<string>>();
@@ -1088,12 +1105,28 @@ export class ReportCardService {
 
     return classes.map((cls) => {
       const classCards = cardsByClass.get(cls.id) ?? [];
-      const expectedEntries = expectedByClass.get(cls.id) ?? 0;
+      const displaySectionId = cls.sections.find(
+        (section) => section.name === cls.section,
+      )?.id;
+      const classSectionStudentIds = displaySectionId
+        ? studentIdsByClassSection.get(`${cls.id}:${displaySectionId}`)
+        : undefined;
+      const expectedStudentIds =
+        classSectionStudentIds ??
+        (cls.section ? new Set<string>() : studentIdsByClass.get(cls.id) ?? new Set<string>());
+      const expectedEntries = displaySectionId
+        ? expectedByClassSection.get(`${cls.id}:${displaySectionId}`) ?? 0
+        : cls.section
+          ? 0
+          : expectedByClass.get(cls.id) ?? 0;
       const generatedStudentIds = new Set(
-        classCards.map((card) => card.studentId),
+        classCards
+          .filter((card) => expectedStudentIds.has(card.studentId))
+          .map((card) => card.studentId),
       );
       const publishedStudentIds = new Set(
         classCards
+          .filter((card) => expectedStudentIds.has(card.studentId))
           .filter((card) => card.status === ReportCardStatus.PUBLISHED)
           .map((card) => card.studentId),
       );
@@ -1102,6 +1135,7 @@ export class ReportCardService {
       const missingEntries = Math.max(expectedEntries - generatedEntries, 0);
       const completeStudentIds = new Set(
         classCards
+          .filter((card) => expectedStudentIds.has(card.studentId))
           .filter((card) => {
             const details = this.parseGradeDetails(card.gradeDetails);
             return (
@@ -1117,6 +1151,7 @@ export class ReportCardService {
       const hasIncompleteCards = incompleteEntries > 0;
       const rankingEntries = new Set(
         classCards
+          .filter((card) => expectedStudentIds.has(card.studentId))
           .filter((card) => card.rankInClass !== null || card.rank !== null)
           .map((card) => card.studentId),
       ).size;
@@ -1143,7 +1178,6 @@ export class ReportCardService {
       }
       let status: 'published' | 'ready' | 'has_issues' | 'no_students' =
         'has_issues';
-      const expectedStudentIds = studentIdsByClass.get(cls.id) ?? new Set<string>();
       const allExpectedPublished = Array.from(expectedStudentIds).every(
         (studentId) => publishedStudentIds.has(studentId),
       );

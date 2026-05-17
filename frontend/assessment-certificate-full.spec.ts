@@ -115,7 +115,7 @@ test('professional assessment to certificate generation flow with five teachers 
   test.setTimeout(180000);
 
   const admin = await login(request, process.env.SMS_TEST_ADMIN_LOGIN || 'admin001');
-  const parent = await login(request, process.env.SMS_TEST_PARENT_LOGIN || 'PR-002');
+  const parent = await login(request, process.env.SMS_TEST_PARENT_LOGIN || 'PR-019');
 
   const years = await apiGet(request, admin.access_token, '/academic-years');
   const activeYear = years.find((year: any) => year.isActive) ?? years[0];

@@ -12,7 +12,9 @@ import {
   Loader2,
   Download,
   Award,
-  Medal
+  Medal,
+  Send,
+  Info
 } from "lucide-react";
 
 // Shadcn components
@@ -119,9 +121,7 @@ export default function StudentRankingsPage() {
       }
 
       setRankingsResult(res.data);
-      toast.success(
-        `Rankings calculated for ${results.length} student records. Updated ${res.data?.updatedReportCards || 0} parent report cards and notified ${res.data?.notifiedParents || 0} parents.`
-      );
+      toast.success(`Previewed rankings for ${results.length} student records. Use Publish Results to release final rankings to parents.`);
     } catch (error: any) {
       console.error(error);
       toast.error(error?.response?.data?.message || 'Failed to calculate rankings');
@@ -143,15 +143,28 @@ export default function StudentRankingsPage() {
     <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A] min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-black">Student Rankings</h1>
-          <p className="text-gray-500">Calculate and view student performance rankings</p>
+          <h1 className="text-2xl font-bold text-black">Preview Rankings</h1>
+          <p className="text-gray-500">Preview class rankings before final publishing. Parent-visible rankings are finalized in Publish Results.</p>
         </div>
+        <Button onClick={() => router.push("/admin/exams/publish")} className="bg-[var(--brand-color)] text-white hover:opacity-90">
+          <Send className="mr-2 h-4 w-4" />
+          Open Publish Results
+        </Button>
       </div>
+
+      <Card className="border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20">
+        <CardContent className="flex gap-3 pt-6 text-sm text-blue-900 dark:text-blue-100">
+          <Info className="mt-0.5 h-5 w-5 shrink-0" />
+          <p>
+            This page is for checking ranking order only. The final action that updates parent-visible report cards, publishes rankings, and notifies parents is on Publish Results.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Rankings Configuration</CardTitle>
-          <CardDescription>Select parameters to calculate student rankings</CardDescription>
+          <CardTitle>Preview Configuration</CardTitle>
+          <CardDescription>Select a class and term to preview ranking order before publishing</CardDescription>
         </CardHeader>
         <CardContent>
           <Filters
@@ -179,7 +192,7 @@ export default function StudentRankingsPage() {
               className="bg-amber-600 hover:bg-amber-700"
             >
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trophy className="w-4 h-4 mr-2" />}
-              Calculate Rankings
+              Preview Rankings
             </Button>
           </div>
         </CardContent>
@@ -192,10 +205,10 @@ export default function StudentRankingsPage() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-green-600" />
-                  Rankings Results
+                  Ranking Preview
                 </CardTitle>
                 <CardDescription>
-                  {rankingsResult.calculated ? `Calculated on: ${new Date(rankingsResult.calculated).toLocaleString()}` : 'Rankings calculated'}
+                  {rankingsResult.calculated ? `Preview generated on: ${new Date(rankingsResult.calculated).toLocaleString()}` : 'Ranking preview generated'}
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm">

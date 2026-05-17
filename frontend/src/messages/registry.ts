@@ -4193,6 +4193,164 @@ const parentMessages = {
   },
 } as const;
 
+const examsMessages = {
+  en: {
+    page: { title: "Assessment Management", subtitle: "One unified workflow for quizzes, tests, mid assessments, and final assessments" },
+    actions: { editWeight: "Edit Assessment Weight", newAssessment: "New Assessment", createAssessment: "Create Assessment", add: "Add" },
+    filters: { allTypes: "All types", allStatuses: "All statuses", active: "Active", locked: "Locked", draft: "Draft", completed: "Completed" },
+    empty: { noAssessments: "No assessments found", createFirst: "Create your first assessment to get started", adjustFilters: "Try adjusting the filters above" },
+    assessmentType: {
+      QUIZ: { label: "Quiz", description: "Short knowledge checks" },
+      TEST: { label: "Test", description: "Chapter or unit tests" },
+      MID: { label: "Mid Assessment", description: "Semester midpoint assessment" },
+      FINAL: { label: "Final Assessment", description: "End-of-term assessment" },
+      ATTENDANCE: { label: "Attendance", description: "Participation score" },
+    },
+    subjectRow: { subject: "Subject", class: "Class", section: "Section", noSections: "No sections", teacher: "Teacher", max: "Max", pass: "Pass" },
+    assessmentCard: { subjects: "subjects", scoresEntered: "scores entered", lockTooltip: "Lock assessment", noSubjects: "No subjects assigned yet.", colSubject: "Subject", colClass: "Class", colSection: "Section", colTeacher: "Teacher", colScores: "Scores" },
+    weightModal: { title: "Edit Assessment Weight", description: "Update the current assessment percentages. Total must equal 100.", addNewType: "Add new assessment type", typePlaceholder: "e.g. Project", total: "Total", cancel: "Cancel", save: "Save" },
+    newAssessmentModal: {
+      title: "New Assessment", description: "Set the assessment details, schedule, and target grades in one place.",
+      stepBasicInfo: "1 · Basic information", stepGradeRanges: "2 · Grade ranges", gradeRangesHint: "A quiz or test created here will be applied to all assigned subjects in the selected grades.",
+      assessmentTitle: "Assessment title", titlePlaceholder: "e.g. Grade 10 — Mathematics Mid Assessment, Semester 1",
+      assessmentType: "Assessment type", academicYear: "Academic year", selectAcademicYear: "Select academic year",
+      termSemester: "Term / Semester", selectYearFirst: "Select year first", noTerms: "No terms found", selectTerm: "Select term",
+      startDate: "Start date", selectStartDate: "Select start date", endDate: "End date", selectEndDate: "Select end date",
+      addToCalendar: "Add to calendar", calendarHint: "Mid, final, and test assessments should appear on the school calendar by default.",
+      allGrades: "All Grades", grade: "Grade", subjects: "Subjects", allSubjects: "All Subjects",
+      selectScopeHint: "Select grades and subjects to preview the scope.",
+      assignmentsIncluded: "class-subject assignments will be included.",
+      cancel: "Cancel", create: "Create", creating: "Creating..."
+    },
+    lockDialog: { title: "Lock assessment?", description: "Locking will prevent teachers from entering or editing scores. Only registrars and admins can override a locked assessment. This action cannot be undone without manual intervention.", cancel: "Cancel", lock: "Lock assessment" },
+    toasts: { loadFailed: "Failed to load assessments", weightsLoadFailed: "Failed to load assessment weights", formDataLoadFailed: "Failed to load form data", titleRequired: "Title is required", typeRequired: "Assessment type is required", academicYearRequired: "Academic year is required", datesRequired: "Start and end dates are required", endDateBeforeStart: "End date cannot be before start date", gradeRequired: "Select at least one grade", subjectRequired: "Select at least one subject", noClassSubjects: "No class subjects found for the selected grades and subjects", maxMarkZero: "Assessment type max mark must be greater than 0", created: "Assessment created successfully", createFailed: "Failed to create assessment", weightExceeds100: "Total assessment weight cannot exceed 100%", invalidTypeName: "Enter a valid assessment type name", typeExists: "Assessment type already exists", weightsMustTotal100: "Assessment weights must total 100", weightsUpdated: "Assessment weights updated", weightsUpdateFailed: "Failed to update assessment weights", locked: "Assessment locked successfully", lockFailed: "Failed to lock assessment" },
+  },
+  am: {
+    page: { title: "የምዘና አስተዳደር", subtitle: "ለጥያሄዎች፣ ፈተናዎች፣ የግማሽ ዘመን እና የመጨረሻ ምዘናዎች አንድ የተዋሃደ የስራ ሂደት" },
+    actions: { editWeight: "የምዘና ክብደት አርትዕ", newAssessment: "አዲስ ምዘና", createAssessment: "ምዘና ፍጠር", add: "ጨምር" },
+    filters: { allTypes: "ሁሉም ዓይነቶች", allStatuses: "ሁሉም ሁኔታዎች", active: "ንቁ", locked: "የተቆለፈ", draft: "ረቂቅ", completed: "የተጠናቀቀ" },
+    empty: { noAssessments: "ምንም ምዘና አልተገኘም", createFirst: "ለመጀመር የመጀመሪያውን ምዘና ይፍጠሩ", adjustFilters: "ከላይ ያሉትን ማጣሪያዎች ያስተካክሉ" },
+    assessmentType: {
+      QUIZ: { label: "ጥያሄ", description: "አጭር የእውቀት ማረጋገጫዎች" },
+      TEST: { label: "ፈተና", description: "የምእራፍ ወይም የክፍል ፈተናዎች" },
+      MID: { label: "የግማሽ ዘመን ምዘና", description: "የሴሚስተር መካከለኛ ምዘና" },
+      FINAL: { label: "የመጨረሻ ምዘና", description: "የዘመን መጨረሻ ምዘና" },
+      ATTENDANCE: { label: "መገኘት", description: "የተሳትፎ ነጥብ" },
+    },
+    subjectRow: { subject: "የትምህርት ዓይነት", class: "ክፍል", section: "ክፍልፋይ", noSections: "ክፍልፋይ የለም", teacher: "መምህር", max: "ከፍተኛ", pass: "ማለፊያ" },
+    assessmentCard: { subjects: "የትምህርት ዓይነቶች", scoresEntered: "ውጤቶች ገብተዋል", lockTooltip: "ምዘና ቆልፍ", noSubjects: "እስካሁን ምንም የትምህርት ዓይነት አልተመደበም።", colSubject: "የትምህርት ዓይነት", colClass: "ክፍል", colSection: "ክፍልፋይ", colTeacher: "መምህር", colScores: "ውጤቶች" },
+    weightModal: { title: "የምዘና ክብደት አርትዕ", description: "የአሁኑን የምዘና መቶኛዎች ያዘምኑ። ድምሩ 100 መሆን አለበት።", addNewType: "አዲስ የምዘና አይነት ጨምር", typePlaceholder: "ለምሳሌ ፕሮጀክት", total: "ድምር", cancel: "ሰርዝ", save: "አስቀምጥ" },
+    newAssessmentModal: {
+      title: "አዲስ ምዘና", description: "የምዘና ዝርዝሮችን፣ መርሐ ግብር እና የታለሙ ክፍሎችን በአንድ ቦታ ያዘጋጁ።",
+      stepBasicInfo: "1 \u00b7 መሠረታዊ መረጃ", stepGradeRanges: "2 \u00b7 የክፍል ክልሎች", gradeRangesHint: "እዚህ የተፈጠረ ጥያሄ ወይም ፈተና በተመረጡት ክፍሎች ውስጥ ለተመደቡ ሁሉም የትምህርት ዓይነቶች ይተገበራል።",
+      assessmentTitle: "የምዘና ርዕስ", titlePlaceholder: "ለምሳሌ ክፍል 10 \u2014 የሂሳብ የግማሽ ዘመን ምዘና፣ ሴሚስተር 1",
+      assessmentType: "የምዘና አይነት", academicYear: "የትምህርት ዘመን", selectAcademicYear: "የትምህርት ዘመን ይምረጡ",
+      termSemester: "ዘመን / ሴሚስተር", selectYearFirst: "መጀመሪያ ዓመት ይምረጡ", noTerms: "ምንም ዘመናት አልተገኙም", selectTerm: "ዘመን ይምረጡ",
+      startDate: "የመጀመሪያ ቀን", selectStartDate: "የመጀመሪያ ቀን ይምረጡ", endDate: "የመጨረሻ ቀን", selectEndDate: "የመጨረሻ ቀን ይምረጡ",
+      addToCalendar: "ወደ ቀን መቁጠሪያ ጨምር", calendarHint: "የግማሽ ዘመን፣ የመጨረሻ እና የፈተና ምዘናዎች በነባሪ በትምህርት ቤት ቀን መቁጠሪያ ላይ መታየት አለባቸው።",
+      allGrades: "ሁሉም ክፍሎች", grade: "ክፍል", subjects: "የትምህርት ዓይነቶች", allSubjects: "ሁሉም የትምህርት ዓይነቶች",
+      selectScopeHint: "ወሰን ለማየት ክፍሎችን እና የትምህርት ዓይነቶችን ይምረጡ።",
+      assignmentsIncluded: "የክፍል-ትምህርት ምደባዎች ይካተታሉ።",
+      cancel: "ሰርዝ", create: "ፍጠር", creating: "በመፍጠር ላይ..."
+    },
+    lockDialog: { title: "ምዘና ቆልፍ?", description: "መቆለፍ መምህራን ውጤቶችን እንዳያስገቡ ወይም እንዳያርትዑ ይከለክላል። ሬጅስትራሮች እና አስተዳዳሪዎች ብቻ የተቆለፈ ምዘናን መቀልበስ ይችላሉ። ይህ እርምጃ ያለ የእጅ ጣልቃ ገብነት ሊቀለበስ አይችልም።", cancel: "ሰርዝ", lock: "ምዘና ቆልፍ" },
+    toasts: { loadFailed: "ምዘናዎችን መጫን አልተሳካም", weightsLoadFailed: "የምዘና ክብደቶችን መጫን አልተሳካም", formDataLoadFailed: "የቅጽ ውሂብ መጫን አልተሳካም", titleRequired: "ርዕስ ያስፈልጋል", typeRequired: "የምዘና አይነት ያስፈልጋል", academicYearRequired: "የትምህርት ዘመን ያስፈልጋል", datesRequired: "የመጀመሪያ እና የመጨረሻ ቀኖች ያስፈልጋሉ", endDateBeforeStart: "የመጨረሻ ቀን ከመጀመሪያ ቀን በፊት መሆን አይችልም", gradeRequired: "ቢያንስ አንድ ክፍል ይምረጡ", subjectRequired: "ቢያንስ አንድ የትምህርት ዓይነት ይምረጡ", noClassSubjects: "ለተመረጡት ክፍሎች እና የትምህርት ዓይነቶች ምንም የክፍል ትምህርቶች አልተገኙም", maxMarkZero: "የምዘና አይነት ከፍተኛ ምልክት ከዜሮ በላይ መሆን አለበት", created: "ምዘና በተሳካ ሁኔታ ተፈጥሯል", createFailed: "ምዘና መፍጠር አልተሳካም", weightExceeds100: "ጠቅላላ የምዘና ክብደት ከ100% መብለጥ አይችልም", invalidTypeName: "ትክክለኛ የምዘና አይነት ስም ያስገቡ", typeExists: "የምዘና አይነት ቀድሞውኑ አለ", weightsMustTotal100: "የምዘና ክብደቶች በአጠቃላይ 100 መሆን አለባቸው", weightsUpdated: "የምዘና ክብደቶች ተዘምነዋል", weightsUpdateFailed: "የምዘና ክብደቶችን ማዘመን አልተሳካም", locked: "ምዘና በተሳካ ሁኔታ ተቆልፏል", lockFailed: "ምዘና መቆለፍ አልተሳካም" },
+  },
+  ar: {
+    page: { title: "إدارة التقييمات", subtitle: "سير عمل موحد للاختبارات القصيرة والاختبارات والتقييمات النصفية والنهائية" },
+    actions: { editWeight: "تعديل وزن التقييم", newAssessment: "تقييم جديد", createAssessment: "إنشاء تقييم", add: "إضافة" },
+    filters: { allTypes: "جميع الأنواع", allStatuses: "جميع الحالات", active: "نشط", locked: "مقفل", draft: "مسودة", completed: "مكتمل" },
+    empty: { noAssessments: "لم يتم العثور على تقييمات", createFirst: "أنشئ تقييمك الأول للبدء", adjustFilters: "حاول ضبط الفلاتر أعلاه" },
+    assessmentType: {
+      QUIZ: { label: "اختبار قصير", description: "فحوص معرفية قصيرة" },
+      TEST: { label: "اختبار", description: "اختبارات الفصل أو الوحدة" },
+      MID: { label: "تقييم نصف الفصل", description: "تقييم منتصف الفصل" },
+      FINAL: { label: "التقييم النهائي", description: "تقييم نهاية الفصل" },
+      ATTENDANCE: { label: "الحضور", description: "درجة المشاركة" },
+    },
+    subjectRow: { subject: "المادة", class: "الفصل", section: "الشعبة", noSections: "لا يوجد شعب", teacher: "المعلم", max: "القصوى", pass: "النجاح" },
+    assessmentCard: { subjects: "مواد", scoresEntered: "درجة مدخلة", lockTooltip: "قفل التقييم", noSubjects: "لم يتم تعيين مواد بعد.", colSubject: "المادة", colClass: "الفصل", colSection: "الشعبة", colTeacher: "المعلم", colScores: "الدرجات" },
+    weightModal: { title: "تعديل وزن التقييم", description: "تحديث نسب التقييم الحالية. يجب أن يكون المجموع 100.", addNewType: "إضافة نوع تقييم جديد", typePlaceholder: "مثال: مشروع", total: "المجموع", cancel: "إلغاء", save: "حفظ" },
+    newAssessmentModal: {
+      title: "تقييم جديد", description: "حدد تفاصيل التقييم والجدول الزمني والصفوف المستهدفة في مكان واحد.",
+      stepBasicInfo: "1 \u00b7 المعلومات الأساسية", stepGradeRanges: "2 \u00b7 نطاقات الصفوف", gradeRangesHint: "سيتم تطبيق اختبار أو اختبار قصير تم إنشاؤه هنا على جميع المواد المخصصة في الصفوف المحددة.",
+      assessmentTitle: "عنوان التقييم", titlePlaceholder: "مثال: الصف 10 \u2014 تقييم منتصف الفصل للرياضيات، الفصل 1",
+      assessmentType: "نوع التقييم", academicYear: "السنة الدراسية", selectAcademicYear: "اختر السنة الدراسية",
+      termSemester: "الفصل / الترم", selectYearFirst: "اختر السنة أولاً", noTerms: "لم يتم العثور على فصول", selectTerm: "اختر الفصل",
+      startDate: "تاريخ البداية", selectStartDate: "اختر تاريخ البداية", endDate: "تاريخ النهاية", selectEndDate: "اختر تاريخ النهاية",
+      addToCalendar: "إضافة إلى التقويم", calendarHint: "يجب أن تظهر التقييمات النصفية والنهائية والاختبارات في تقويم المدرسة افتراضياً.",
+      allGrades: "جميع الصفوف", grade: "الصف", subjects: "المواد", allSubjects: "جميع المواد",
+      selectScopeHint: "اختر الصفوف والمواد لمعاينة النطاق.",
+      assignmentsIncluded: "تعيينات صف-مادة سيتم تضمينها.",
+      cancel: "إلغاء", create: "إنشاء", creating: "جارٍ الإنشاء..."
+    },
+    lockDialog: { title: "قفل التقييم؟", description: "سيؤدي القفل إلى منع المعلمين من إدخال أو تعديل الدرجات. يمكن للمسجلين والمسؤولين فقط تجاوز التقييم المقفل. لا يمكن التراجع عن هذا الإجراء دون تدخل يدوي.", cancel: "إلغاء", lock: "قفل التقييم" },
+    toasts: { loadFailed: "فشل تحميل التقييمات", weightsLoadFailed: "فشل تحميل أوزان التقييم", formDataLoadFailed: "فشل تحميل بيانات النموذج", titleRequired: "العنوان مطلوب", typeRequired: "نوع التقييم مطلوب", academicYearRequired: "السنة الدراسية مطلوبة", datesRequired: "تواريخ البداية والنهاية مطلوبة", endDateBeforeStart: "لا يمكن أن يكون تاريخ النهاية قبل تاريخ البداية", gradeRequired: "اختر صفاً واحداً على الأقل", subjectRequired: "اختر مادة واحدة على الأقل", noClassSubjects: "لم يتم العثور على مواد صفية للصفوف والمواد المحددة", maxMarkZero: "يجب أن تكون الدرجة القصوى لنوع التقييم أكبر من 0", created: "تم إنشاء التقييم بنجاح", createFailed: "فشل إنشاء التقييم", weightExceeds100: "لا يمكن أن يتجاوز إجمالي وزن التقييم 100%", invalidTypeName: "أدخل اسم نوع تقييم صحيح", typeExists: "نوع التقييم موجود بالفعل", weightsMustTotal100: "يجب أن يكون مجموع أوزان التقييم 100", weightsUpdated: "تم تحديث أوزان التقييم", weightsUpdateFailed: "فشل تحديث أوزان التقييم", locked: "تم قفل التقييم بنجاح", lockFailed: "فشل قفل التقييم" },
+  },
+  om: {
+    page: { title: "Madaallii Bulchuu", subtitle: "Tartiibii hojii tokkoo qormaata gabaabaa, qormaata, madaallii walakkaa fi madaallii dhumaatiif" },
+    actions: { editWeight: "Madaallii Ulfaatina Gulaali", newAssessment: "Madaallii Haaraa", createAssessment: "Madaallii Uumi", add: "Dabali" },
+    filters: { allTypes: "Gosa hunda", allStatuses: "Haala hunda", active: "Hojii irra", locked: "Cufame", draft: "Qopheessaa", completed: "Xumurame" },
+    empty: { noAssessments: "Madaallii hin argamne", createFirst: "Madaallii jalqabaa uumuun jalqabi", adjustFilters: "Calallii olii sirreessuun yaali" },
+    assessmentType: {
+      QUIZ: { label: "Qormaata Gabaabaa", description: "Mirkaneessa beekumsa gabaabaa" },
+      TEST: { label: "Qormaata", description: "Qormaata boqonnaa ykn kutaa" },
+      MID: { label: "Madaallii Walakkaa", description: "Madaallii walakkaa seemisteeraa" },
+      FINAL: { label: "Madaallii Dhumaa", description: "Madaallii dhuma barnootaa" },
+      ATTENDANCE: { label: "Argama", description: "Qabxii hirmaannaa" },
+    },
+    subjectRow: { subject: "Mataduree", class: "Kutaa", section: "Ramaddii", noSections: "Ramaddii hin jirtu", teacher: "Barsiisaa", max: "Ol'aanaa", pass: "Darbe" },
+    assessmentCard: { subjects: "Mataduree", scoresEntered: "Qabxii galan", lockTooltip: "Madaallii Cufi", noSubjects: "Matadureen amma hin ramadamne.", colSubject: "Mataduree", colClass: "Kutaa", colSection: "Ramaddii", colTeacher: "Barsiisaa", colScores: "Qabxii" },
+    weightModal: { title: "Madaallii Ulfaatina Gulaali", description: "Pirseentii madaallii ammaa haaromsi. Waliigalli 100 ta'uu qaba.", addNewType: "Gosa madaallii haaraa dabali", typePlaceholder: "fkn. Piroojektii", total: "Waliigala", cancel: "Dhiisi", save: "Olkaa'i" },
+    newAssessmentModal: {
+      title: "Madaallii Haaraa", description: "Bal'ina madaallii, sagantaa, fi kutaa fe'uu baarre tokko keessatti qindeessi.",
+      stepBasicInfo: "1 \u00b7 Odeeffannoo bu'uuraa", stepGradeRanges: "2 \u00b7 Sadarkaa kutaa", gradeRangesHint: "Qormaanni asitti uumame kutaa filataman keessatti mataduree hundaaf ni hojiirra oola.",
+      assessmentTitle: "Mata-duree Madaallii", titlePlaceholder: "fkn. Kutaa 10 \u2014 Madaallii Walakkaa Herregaa, Seemisteera 1",
+      assessmentType: "Gosa Madaallii", academicYear: "Waggaa Barnootaa", selectAcademicYear: "Waggaa barnootaa filadhu",
+      termSemester: "Termii / Seemisteera", selectYearFirst: "Durra waggaa filadhu", noTerms: "Termiin hin argamne", selectTerm: "Termii filadhu",
+      startDate: "Guyyaa Jalqabaa", selectStartDate: "Guyyaa jalqabaa filadhu", endDate: "Guyyaa Xumuraa", selectEndDate: "Guyyaa xumuraa filadhu",
+      addToCalendar: "Kaalaandariitti Dabali", calendarHint: "Madaallii walakkaa, dhuma fi qormaanni durtiidhaan kaalaandarii mana barumsaa irratti mul'achuu qabu.",
+      allGrades: "Kutaa Hunda", grade: "Kutaa", subjects: "Mataduree", allSubjects: "Mataduree Hunda",
+      selectScopeHint: "Daangaa durargii ilaaluuf kutaa fi mataduree filadhu.",
+      assignmentsIncluded: "Ramaddii kutaa-mataduree ni dabalamu.",
+      cancel: "Dhiisi", create: "Uumi", creating: "Uumaa jira..."
+    },
+    lockDialog: { title: "Madaallii Cufaa?", description: "Cufuun barsiisota qabxii galchuu ykn gulaaluu irraa ni dhorka. Galmeessitoonnii fi bulchitoonnii qofatu madaallii cufame cabsuu danda'a. Tarkaanfiin kun harki seenuu malee deebi'uu hin danda'u.", cancel: "Dhiisi", lock: "Madaallii Cufi" },
+    toasts: { loadFailed: "Madaallii fe'uun hin danda'amne", weightsLoadFailed: "Ulfaatina madaallii fe'uun hin danda'amne", formDataLoadFailed: "Daataa foormaa fe'uun hin danda'amne", titleRequired: "Mata-dureen barbaachisa", typeRequired: "Gosti madaallii barbaachisa", academicYearRequired: "Waggaa barnootaa barbaachisa", datesRequired: "Guyyaa jalqabaa fi xumuraa barbaachisu", endDateBeforeStart: "Guyyaan xumuraa guyyaa jalqabaa dura ta'uu hin danda'u", gradeRequired: "Yoo xiqqaate kutaa tokko filadhu", subjectRequired: "Yoo xiqqaate mataduree tokko filadhu", noClassSubjects: "Kutaa fi mataduree filatamaniif matadureen kutaa hin argamne", maxMarkZero: "Madaallii gosa qabxii ol'aanaa 0 ol ta'uu qaba", created: "Madaalliin milkaa'inaan uumame", createFailed: "Madaallii uumuun hin danda'amne", weightExceeds100: "Ulfaatinni madaallii waliigalaa 100% ol ta'uu hin danda'u", invalidTypeName: "Maqaa gosa madaallii sirrii galchi", typeExists: "Gosti madaallii duraanuu jira", weightsMustTotal100: "Ulfaatinni madaallii waliigalaa 100 ta'uu qaba", weightsUpdated: "Ulfaatinni madaallii haaromfame", weightsUpdateFailed: "Ulfaatina madaallii haaromsuun hin danda'amne", locked: "Madaalliin milkaa'inaan cufame", lockFailed: "Madaallii cufuun hin danda'amne" },
+  },
+  so: {
+    page: { title: "Maareynta Qiimeynta", subtitle: "Hal hab oo isku dhafan oo loogu talagalay imtixaannada gaagaaban, imtixaannada, qiimeynta dhexe iyo qiimeynta kama dambaysta" },
+    actions: { editWeight: "Tafatir Miisaanka Qiimeynta", newAssessment: "Qiimeyn Cusub", createAssessment: "Abuur Qiimeyn", add: "Ku dar" },
+    filters: { allTypes: "Dhammaan noocyada", allStatuses: "Dhammaan xaaladaha", active: "Firfircoon", locked: "Xiran", draft: "Qabyo", completed: "Dhammaystiran" },
+    empty: { noAssessments: "Qiimeyn lama helin", createFirst: "Abuur qiimeyntaada koowaad si aad u bilowdo", adjustFilters: "Isku day hagaajinta shaandhooyinka kor ku xusan" },
+    assessmentType: {
+      QUIZ: { label: "Imtixaan Gaaban", description: "Hubin aqooneed oo gaaban" },
+      TEST: { label: "Imtixaan", description: "Imtixaannada cutubka ama fasalka" },
+      MID: { label: "Qiimeyn Dhexe", description: "Qiimeynta bartamaha semester-ka" },
+      FINAL: { label: "Qiimeynta Ugu Dambeysa", description: "Qiimeynta dhammaadka xilliga" },
+      ATTENDANCE: { label: "Imaansho", description: "Dhibcaha ka qaybgalka" },
+    },
+    subjectRow: { subject: "Maadada", class: "Fasalka", section: "Qaybta", noSections: "Qaybaha ma jiraan", teacher: "Macallinka", max: "Ugu Badan", pass: "Gudub" },
+    assessmentCard: { subjects: "maaddood", scoresEntered: "dhibcood oo la geliyey", lockTooltip: "Xir qiimeynta", noSubjects: "Weli maadooyin looma qoondeeyin.", colSubject: "Maadada", colClass: "Fasalka", colSection: "Qaybta", colTeacher: "Macallinka", colScores: "Dhibcaha" },
+    weightModal: { title: "Tafatir Miisaanka Qiimeynta", description: "Cusbooneysii boqolleyda qiimeynta hadda. Waa inuu wadartu noqotaa 100.", addNewType: "Ku dar nooc qiimeyn oo cusub", typePlaceholder: "tusaale: Mashruuc", total: "Wadarta", cancel: "Jooji", save: "Kaydi" },
+    newAssessmentModal: {
+      title: "Qiimeyn Cusub", description: "Deji faahfaahinta qiimeynta, jadwalka, iyo fasallada la beegsanayo hal meel.",
+      stepBasicInfo: "1 \u00b7 Macluumaadka aasaasiga ah", stepGradeRanges: "2 \u00b7 Kala duwanaanshaha fasalka", gradeRangesHint: "Imtixaan ama imtixaan gaaban oo halkan lagu abuuray waxaa lagu dabaqi doonaa dhammaan maadooyinka loo qoondeeyay ee fasallada la xushay.",
+      assessmentTitle: "Cinwaanka Qiimeynta", titlePlaceholder: "tusaale: Fasalka 10 \u2014 Qiimeynta Dhexe ee Xisaabta, Semester 1",
+      assessmentType: "Nooca Qiimeynta", academicYear: "Sanadka Waxbarashada", selectAcademicYear: "Dooro sanadka waxbarashada",
+      termSemester: "Xilliga / Semester-ka", selectYearFirst: "Marka hore dooro sanadka", noTerms: "Xilliyo lama helin", selectTerm: "Dooro xilliga",
+      startDate: "Taariikhda Bilowga", selectStartDate: "Dooro taariikhda bilowga", endDate: "Taariikhda Dhammaadka", selectEndDate: "Dooro taariikhda dhammaadka",
+      addToCalendar: "Ku dar kalandarka", calendarHint: "Qiimeynta dhexe, kama dambaysta iyo imtixaannada waa inay ka muuqdaan kalandarka dugsiga marka la eego.",
+      allGrades: "Dhammaan Fasallada", grade: "Fasalka", subjects: "Maadooyinka", allSubjects: "Dhammaan Maadooyinka",
+      selectScopeHint: "Dooro fasallada iyo maadooyinka si aad u hor fiiriso kala duwanaanshaha.",
+      assignmentsIncluded: "qoondeyn fasal-maado ah ayaa lagu dari doonaa.",
+      cancel: "Jooji", create: "Abuur", creating: "Abuurayaa..."
+    },
+    lockDialog: { title: "Qiimeynta la xiro?", description: "Xirista waxay ka celin doontaa macallimiinta gelinta ama tafatirka dhibcaha. Diiwaangaliyayaasha iyo maamulayaasha oo kaliya ayaa ka gudbi kara qiimeyn xiran. Ficilkan dib looguma noqon karo faragelin gacanta la'aan.", cancel: "Jooji", lock: "Xir Qiimeynta" },
+    toasts: { loadFailed: "Qiimeynta lama soo gelin", weightsLoadFailed: "Miisaanka qiimeynta lama soo gelin", formDataLoadFailed: "Xogta foomka lama soo gelin", titleRequired: "Cinwaanku waa loo baahan yahay", typeRequired: "Nooca qiimeynta ayaa loo baahan yahay", academicYearRequired: "Sanadka waxbarashada ayaa loo baahan yahay", datesRequired: "Taariikhaha bilowga iyo dhammaadka ayaa loo baahan yahay", endDateBeforeStart: "Taariikhda dhammaadku kama horraysiin karto taariikhda bilowga", gradeRequired: "Dooro ugu yaraan hal fasal", subjectRequired: "Dooro ugu yaraan hal maado", noClassSubjects: "Maadooyin fasal ah looma helin fasallada iyo maadooyinka la xushay", maxMarkZero: "Qiimeynta nooca buundada ugu badan waa inay ka weyn tahay 0", created: "Qiimeynta si guul leh ayaa loo abuuray", createFailed: "Qiimeynta lama abuuri karin", weightExceeds100: "Miisaanka qiimeynta guud kama badnaan karo 100%", invalidTypeName: "Geli magac nooc qiimeyn oo sax ah", typeExists: "Nooca qiimeynta ayaa horay u jiray", weightsMustTotal100: "Miisaanka qiimeynta waa inuu wadartoodu noqotaa 100", weightsUpdated: "Miisaanka qiimeynta waa la cusbooneysiiyey", weightsUpdateFailed: "Miisaanka qiimeynta lama cusbooneysiin karin", locked: "Qiimeynta si guul leh ayaa loo xiray", lockFailed: "Qiimeynta lama xiri karin" },
+  },
+} as const;
+
 const getLegacyModule = (language: AppLanguage, module: MessageModule) => {
   if (module === "communications") {
     return communicationsMessages[language as keyof typeof communicationsMessages] ?? communicationsMessages.en;
@@ -4249,6 +4407,9 @@ const getLegacyModule = (language: AppLanguage, module: MessageModule) => {
   }
   if (module === "login") {
     return loginMessages[language as keyof typeof loginMessages] ?? loginMessages.en;
+  }
+  if (module === "exams") {
+    return examsMessages[language as keyof typeof examsMessages] ?? examsMessages.en;
   }
 
   const legacyKey = legacyModuleKeys[module];
