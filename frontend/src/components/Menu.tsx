@@ -42,7 +42,6 @@ import {
   Clock,
   Settings,
   Shield,
-  LogOut,
   ChevronDown,
   ChevronRight,
   MenuIcon,
@@ -503,7 +502,7 @@ const Menu = ({
   onItemClick?: () => void;
   useBrandNavigation?: boolean;
 }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const pathname = usePathname();
   const { t: navigationText, language } = useTranslations<NavigationMessages>("navigation");
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
@@ -912,7 +911,7 @@ const Menu = ({
 
             if (isVisible) {
               if (collapsed) {
-                const collapsedItemClasses = `flex h-12 w-12 items-center justify-center rounded-lg transition-colors ${
+                const collapsedItemClasses = `flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
                   isActive && !parentWithSameChild
                     ? useBrandNavigation
                       ? "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
@@ -1055,23 +1054,6 @@ const Menu = ({
           })}
         </div>
       ))}
-
-      {/* Logout Button */}
-      <div className="mt-8">
-        <button
-          onClick={() => {
-            onItemClick?.();
-            logout();
-          }}
-          className={`flex min-h-12 w-full items-center justify-start gap-3 rounded-lg py-3 text-slate-700 transition-colors dark:text-white ${collapsed ? 'justify-center px-0' : 'px-4'} ${useBrandNavigation ? 'hover:bg-white/55 dark:hover:bg-[#1E293B]' : 'hover:bg-slate-100 dark:hover:bg-[#1E293B]'}`}
-          title={collapsed ? getNavigationLabel("Logout") : undefined}
-        >
-          <LogOut className="w-5 h-5 text-slate-500 dark:text-gray-300" />
-          <span className={`text-sm font-medium ${textRevealClass(collapsed)}`} dir={textDirection}>
-            {getNavigationLabel("Logout")}
-          </span>
-        </button>
-      </div>
     </div>
   );
 };

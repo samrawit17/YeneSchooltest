@@ -55,6 +55,7 @@ interface TeacherAssignment {
   class: { id: string; name: string };
   section: { id: string; name: string };
   type?: string;
+  isHomeroom?: boolean;
 }
 
 interface StudentGrade {
@@ -100,6 +101,8 @@ interface Term {
   id: string;
   name: string;
   order: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 const formatAssessmentLabel = (code: string) => {
@@ -212,6 +215,7 @@ export default function TeacherGradingPage() {
   const [selectedTerm, setSelectedTerm] = useState<string>("");
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [selectedClassSectionId, setSelectedClassSectionId] = useState<string>("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Derived: get unique subjects from assignments (prioritize by grade)
   const subjectOptions = useMemo(() => {
@@ -299,7 +303,7 @@ export default function TeacherGradingPage() {
   const fetchInitialData = useCallback(async () => {
     try {
       // Use centralized context to get academic years
-      let years = await getAllAcademicYears();
+      let years = (await getAllAcademicYears()) as AcademicYear[];
 
       // Set display name - if ethiopianYear field exists, use it; otherwise use name directly
       years = years.map((year: AcademicYear) => ({
@@ -470,10 +474,14 @@ export default function TeacherGradingPage() {
           (!queryAssignment.sectionId || assignment.section?.id === queryAssignment.sectionId)
         );
       });
-      setSelectedClassSectionId(preferredAssignment?.id || parsedAssignments[0]?.id || "");
+      const nonHomeroomAssignments = parsedAssignments.filter((a) => a.type !== 'homeroom' && a.isHomeroom !== true);
+      const nextAssignment = preferredAssignment || nonHomeroomAssignments[0] || parsedAssignments[0];
+      setSelectedSubjectId(nextAssignment?.subject?.id || "");
+      setSelectedClassSectionId(nextAssignment?.id || "");
     } catch (error) {
       console.error("Error fetching assignments:", error);
       setAssignments([]);
+      setSelectedSubjectId("");
       setSelectedClassSectionId("");
     }
   }, [queryAssignment]);
@@ -603,6 +611,7 @@ export default function TeacherGradingPage() {
             return String(a.studentName || "").localeCompare(String(b.studentName || ""));
           }) as StudentGrade[],
       );
+      setHasUnsavedChanges(false);
       setIsTermLocked(locked);
     } catch (error: any) {
       console.error("Error fetching students:", error);
@@ -707,6 +716,7 @@ export default function TeacherGradingPage() {
       
       return newStudent;
     }));
+    setHasUnsavedChanges(true);
   };
 
   const isComponentStarted = (code: string) =>
@@ -747,9 +757,83 @@ export default function TeacherGradingPage() {
     (col) => componentAvailability[col.code.toUpperCase()] && !isComponentStarted(col.code),
   );
 
+  const lockedOrUpcomingColumns = assessmentColumns.filter((col) => !canEditComponent(col.code));
+
   const gradeEntryStatusMessage = !hasStartedAssessment && hasPendingAssessmentStart
-    ? "Wait until the exams are started to enter marks."
+    ? "Marks entry is locked until the scheduled assessment start date. Check the column status below for when each assessment opens."
     : "Enter marks for the assessments that are currently active.";
+
+  const componentCompletion = useMemo(() => {
+    return assessmentColumns.map((column) => {
+      const code = column.code.toUpperCase();
+      const entered = students.filter((student) => {
+        const value = student.componentScores?.[code];
+        return value !== null && value !== undefined;
+      }).length;
+      return { code, entered, total: students.length };
+    });
+  }, [assessmentColumns, students]);
+
+  const handlePasteScores = (studentId: string, startCode: string, rawText: string) => {
+    const rows = rawText
+      .trim()
+      .split(/\r?\n/)
+      .map((row) => row.split(/\t|,/).map((cell) => cell.trim()));
+
+    if (rows.length === 0 || rows.every((row) => row.every((cell) => cell === ""))) return;
+
+    const startStudentIndex = students.findIndex((student) => student.studentId === studentId);
+    const startColumnIndex = assessmentColumns.findIndex(
+      (column) => column.code.toUpperCase() === startCode.toUpperCase(),
+    );
+    if (startStudentIndex === -1 || startColumnIndex === -1) return;
+
+    let changed = 0;
+    setStudents((prev) => {
+      const next = prev.map((student) => ({ ...student, componentScores: { ...(student.componentScores || {}) } }));
+      rows.forEach((row, rowOffset) => {
+        const targetStudent = next[startStudentIndex + rowOffset];
+        if (!targetStudent) return;
+
+        row.forEach((cell, columnOffset) => {
+          const column = assessmentColumns[startColumnIndex + columnOffset];
+          if (!column || cell === "" || !canEditComponent(column.code)) return;
+
+          const clamped = clampScoreInput(cell, column.code);
+          if (clamped === "") return;
+
+          targetStudent.componentScores![column.code.toUpperCase()] = Number(clamped);
+          const total = calculateTotal(
+            targetStudent.componentScores,
+            targetStudent.caScore,
+            targetStudent.midScore,
+            targetStudent.finalScore,
+          );
+          targetStudent.totalScore = total;
+          targetStudent.gradeLetter = total !== null ? calculateGrade(total) : null;
+          changed += 1;
+        });
+      });
+      return next;
+    });
+
+    if (changed > 0) {
+      setHasUnsavedChanges(true);
+      toast.success(`Pasted ${changed} marks`);
+    }
+  };
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const handleSaveDraft = async () => {
     setSaving(true);
@@ -807,12 +891,14 @@ export default function TeacherGradingPage() {
       // Handle both success response and direct response
       if (data?.successful !== undefined) {
         toast.success(`Saved ${data.successful} grades successfully`);
+        setHasUnsavedChanges(false);
         if (data.failed > 0) {
           toast.warning(`${data.failed} grades failed to save`);
         }
         fetchStudents();
       } else if (data?.success) {
         toast.success("Grades saved successfully");
+        setHasUnsavedChanges(false);
         fetchStudents();
       } else {
         toast.error(data?.message || "Failed to save grades");
@@ -823,6 +909,7 @@ export default function TeacherGradingPage() {
       if (isNetworkError && offlinePayload) {
         await syncService.saveGradeDraftOffline(offlinePayload);
         toast.success("Grades saved offline. They will sync when online.");
+        setHasUnsavedChanges(false);
       } else {
         toast.error(error?.response?.data?.message || "Failed to save draft");
       }
@@ -860,6 +947,7 @@ export default function TeacherGradingPage() {
       // Handle both success response and direct response
       if (data?.success || data?.message?.includes('success')) {
         toast.success("Grades submitted to registrar successfully");
+        setHasUnsavedChanges(false);
         fetchStudents();
       } else {
         toast.error(data?.message || "Failed to submit grades");
@@ -1004,6 +1092,11 @@ export default function TeacherGradingPage() {
               </CardDescription>
             </div>
             <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row">
+              {hasUnsavedChanges && (
+                <Badge variant="outline" className="h-9 justify-center border-amber-200 bg-amber-50 px-3 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                  Unsaved changes
+                </Badge>
+              )}
               <Button 
                 variant="outline" 
                 onClick={handleSaveDraft} 
@@ -1028,6 +1121,30 @@ export default function TeacherGradingPage() {
               <div className="mx-4 mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300 sm:mx-6">
                 <AlertCircle className="h-5 w-5 shrink-0" />
                 <p className="text-sm font-medium">This term is locked for grading. You can view existing grades but cannot make changes.</p>
+              </div>
+            )}
+            {!isTermLocked && lockedOrUpcomingColumns.length > 0 && (
+              <div className="mx-4 mb-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300 sm:mx-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+                  <div>
+                    <p className="text-sm font-medium">
+                      Some mark columns are not editable yet.
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {lockedOrUpcomingColumns.map((column) => `${column.label}: ${getComponentStartLabel(column.code)}`).join(" · ")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {students.length > 0 && (
+              <div className="mx-4 mb-4 flex flex-wrap gap-2 sm:mx-6">
+                {componentCompletion.map((item) => (
+                  <Badge key={item.code} variant="outline" className="bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                    {formatAssessmentLabel(item.code)}: {item.entered}/{item.total} entered
+                  </Badge>
+                ))}
               </div>
             )}
             {loading ? (
@@ -1078,6 +1195,13 @@ export default function TeacherGradingPage() {
                                   }
                                 }}
                                 onChange={(e) => handleScoreChange(student.studentId, col.code, e.target.value)}
+                                onPaste={(e) => {
+                                  const text = e.clipboardData.getData("text");
+                                  if (text.includes("\n") || text.includes("\t") || text.includes(",")) {
+                                    e.preventDefault();
+                                    handlePasteScores(student.studentId, col.code, text);
+                                  }
+                                }}
                                 disabled={student.isLocked || isTermLocked || !canEditComponent(col.code)}
                                 placeholder={getComponentMaxScore(col.code) !== undefined ? `0-${getComponentMaxScore(col.code)}` : "N/A"}
                               />
@@ -1144,6 +1268,13 @@ export default function TeacherGradingPage() {
                                 }
                               }}
                               onChange={(e) => handleScoreChange(student.studentId, col.code, e.target.value)}
+                                onPaste={(e) => {
+                                  const text = e.clipboardData.getData("text");
+                                  if (text.includes("\n") || text.includes("\t") || text.includes(",")) {
+                                    e.preventDefault();
+                                    handlePasteScores(student.studentId, col.code, text);
+                                  }
+                                }}
                               disabled={student.isLocked || isTermLocked || !canEditComponent(col.code)}
                               placeholder={getComponentMaxScore(col.code) !== undefined ? `0-${getComponentMaxScore(col.code)}` : "N/A"}
                             />

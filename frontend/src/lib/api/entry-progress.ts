@@ -2,6 +2,10 @@ import api from "./core";
 
 export interface EntryProgressRow {
   teacherId: string;
+  teacherName: string | null;
+  subjectId: string;
+  classId: string;
+  sectionId: string | null;
   subject: string;
   className: string;
   sectionName: string | null;
@@ -21,6 +25,10 @@ export const entryProgressAPI = {
     const response = await api.get<
       Array<{
         teacherId: string;
+        teacherName?: string | null;
+        subjectId: string;
+        classId: string;
+        sectionId?: string | null;
         subject: string;
         class: string;
         section: string | null;
@@ -47,6 +55,10 @@ export const entryProgressAPI = {
 
           return {
             teacherId: row.teacherId,
+            teacherName: row.teacherName ?? null,
+            subjectId: row.subjectId,
+            classId: row.classId,
+            sectionId: row.sectionId ?? null,
             subject: row.subject,
             className: row.class,
             sectionName: row.section ?? null,

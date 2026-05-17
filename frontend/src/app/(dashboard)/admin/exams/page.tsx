@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslations } from "@/hooks/useTranslations";
 import { assessmentsAPI, termsAPI, classesAPI, subjectsAPI, teachersAPI } from "@/lib/api";
 import { classSubjectsAPI } from "@/lib/api/admin";
 import { toast } from "sonner";
@@ -25,6 +26,10 @@ import {
   Users,
   CalendarDays,
   Pencil,
+  Wand2,
+  Info,
+  Globe,
+  Eye,
 } from "lucide-react";
 import {
   Card,
@@ -35,6 +40,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
@@ -263,7 +269,9 @@ function SubjectRow({
   onRemove: (id: string) => void;
   canRemove: boolean;
 }) {
+  const { t } = useTranslations<any>("exams");
   const filteredSections = sections.filter((s) => s.classId === entry.classId);
+
 
   return (
     <div className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg border border-gray-200 dark:border-slate-700">
@@ -273,13 +281,13 @@ function SubjectRow({
 
       {/* Subject */}
       <div className="col-span-2">
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Subject</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.subject}</Label>
         <Select
           value={entry.subjectId}
           onValueChange={(v) => onChange(entry.id, "subjectId", v)}
         >
           <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
-            <SelectValue placeholder="Subject" />
+            <SelectValue placeholder={t.subjectRow.subject} />
           </SelectTrigger>
           <SelectContent>
             {subjects.map((s) => (
@@ -293,7 +301,7 @@ function SubjectRow({
 
       {/* Class */}
       <div className="col-span-2">
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Class</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.class}</Label>
         <Select
           value={entry.classId}
           onValueChange={(v) => {
@@ -302,7 +310,7 @@ function SubjectRow({
           }}
         >
           <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
-            <SelectValue placeholder="Class" />
+            <SelectValue placeholder={t.subjectRow.class} />
           </SelectTrigger>
           <SelectContent>
             {classes.map((c) => (
@@ -316,14 +324,14 @@ function SubjectRow({
 
       {/* Section */}
       <div className="col-span-2">
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Section</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.section}</Label>
         <Select
           value={entry.sectionId}
           onValueChange={(v) => onChange(entry.id, "sectionId", v)}
           disabled={!entry.classId || filteredSections.length === 0}
         >
           <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
-            <SelectValue placeholder={filteredSections.length === 0 ? "No sections" : "Section"} />
+            <SelectValue placeholder={filteredSections.length === 0 ? t.subjectRow.noSections : t.subjectRow.section} />
           </SelectTrigger>
           <SelectContent>
             {filteredSections.map((s) => (
@@ -337,13 +345,13 @@ function SubjectRow({
 
       {/* Teacher */}
       <div className="col-span-2">
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Teacher</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.teacher}</Label>
         <Select
           value={entry.teacherId}
           onValueChange={(v) => onChange(entry.id, "teacherId", v)}
         >
           <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
-            <SelectValue placeholder="Teacher" />
+            <SelectValue placeholder={t.subjectRow.teacher} />
           </SelectTrigger>
           <SelectContent>
             {teachers.map((t) => (
@@ -357,7 +365,7 @@ function SubjectRow({
 
       {/* Max Score */}
       <div className="col-span-1">
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Max</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.max}</Label>
         <Input
           type="number"
           min={1}
@@ -370,7 +378,7 @@ function SubjectRow({
 
       {/* Pass Mark */}
       <div className="col-span-1">
-        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Pass</Label>
+        <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.pass}</Label>
         <Input
           type="number"
           min={0}
@@ -407,6 +415,7 @@ function AssessmentCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslations<any>("exams");
   const type = getTypeMeta(assessment.type);
   const status = STATUS_META[assessment.status];
   const totalScored = assessment.subjects.reduce((sum, s) => sum + s._count.scores, 0);
@@ -441,13 +450,13 @@ function AssessmentCard({
 
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
-            <span>{assessment.subjects.length} subjects</span>
+            <span>{assessment.subjects.length} {t.assessmentCard.subjects}</span>
             <span className="text-gray-300 dark:text-gray-600">·</span>
-            <span>{totalScored} scores entered</span>
+            <span>{totalScored} {t.assessmentCard.scoresEntered}</span>
           </div>
           <div className={`flex items-center gap-1.5 text-sm font-medium ${status.color}`}>
             {status.icon}
-            {status.label}
+            {t.filters[assessment.status.toLowerCase()] ?? assessment.status}
           </div>
           {assessment.status === "ACTIVE" && (
             <button
@@ -456,7 +465,7 @@ function AssessmentCard({
                 onLock(assessment.id);
               }}
               className="flex items-center gap-1 text-xs text-gray-400 transition-colors hover:text-[var(--brand-color)]"
-              title="Lock assessment"
+              title={t.assessmentCard.lockTooltip}
             >
               <Lock className="w-3.5 h-3.5" />
             </button>
@@ -473,16 +482,16 @@ function AssessmentCard({
         <div className="border-t border-gray-100 dark:border-slate-800 px-6 py-4 bg-gray-50 dark:bg-slate-800/50">
           {assessment.subjects.length === 0 ? (
             <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-2">
-              No subjects assigned yet.
+              {t.assessmentCard.noSubjects}
             </p>
           ) : (
             <div className="space-y-2">
               <div className="grid grid-cols-5 gap-2 px-2">
-                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">Subject</span>
-                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">Class</span>
-                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">Section</span>
-                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">Teacher</span>
-                <span className="text-xs font-medium text-gray-400 dark:text-gray-500 text-right">Scores</span>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t.assessmentCard.colSubject}</span>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t.assessmentCard.colClass}</span>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t.assessmentCard.colSection}</span>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t.assessmentCard.colTeacher}</span>
+                <span className="text-xs font-medium text-gray-400 dark:text-gray-500 text-right">{t.assessmentCard.colScores}</span>
               </div>
               {assessment.subjects.map((sub) => (
                 <div
@@ -520,6 +529,7 @@ function AssessmentCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AssessmentManagementPage() {
+  const { t } = useTranslations<any>("exams");
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -538,6 +548,7 @@ export default function AssessmentManagementPage() {
   const [weightsSaving, setWeightsSaving] = useState(false);
   const [assessmentWeights, setAssessmentWeights] = useState<AssessmentWeightRow[]>([]);
   const [newAssessmentTypeName, setNewAssessmentTypeName] = useState("");
+  const [createStep, setCreateStep] = useState<"basic" | "scope" | "review">("basic");
 
   // Lock confirm
   const [lockTarget, setLockTarget] = useState<string | null>(null);
@@ -625,7 +636,7 @@ export default function AssessmentManagementPage() {
       const data = Array.isArray(res.data) ? res.data : res.data.data ?? [];
       setAssessments(data);
     } catch {
-      toast.error("Failed to load assessments");
+      toast.error(t.toasts.loadFailed);
     } finally {
       setListLoading(false);
     }
@@ -646,7 +657,7 @@ export default function AssessmentManagementPage() {
         );
       }
     } catch {
-      toast.error("Failed to load assessment weights");
+      toast.error(t.toasts.weightsLoadFailed);
     }
   };
 
@@ -675,7 +686,7 @@ export default function AssessmentManagementPage() {
       setSubjects(normalize(subjectsRes.data));
       setTeachers(normalize(teachersRes.data));
     } catch {
-      toast.error("Failed to load form data");
+      toast.error(t.toasts.formDataLoadFailed);
     }
   };
 
@@ -727,19 +738,8 @@ export default function AssessmentManagementPage() {
       });
   }, [formData.academicYearId, user?.schoolId]);
 
-  // ── Submit
-  const handleSubmit = async () => {
-    if (!formData.title.trim()) return toast.error("Title is required");
-    if (!formData.type) return toast.error("Assessment type is required");
-    if (!formData.academicYearId) return toast.error("Academic year is required");
-    if (!formData.startDate || !formData.endDate) return toast.error("Start and end dates are required");
-    if (new Date(formData.endDate) < new Date(formData.startDate))
-      return toast.error("End date cannot be before start date");
-
-    if (selectedGrades.length === 0) return toast.error("Select at least one grade");
-    if (selectedSubjectIds.length === 0) return toast.error("Select at least one subject");
-
-    const selectedAssignments = classSubjectAssignments.filter((assignment) => {
+  const selectedAssignments = useMemo(() => {
+    return classSubjectAssignments.filter((assignment) => {
       const grade = assignment.class?.grade;
       return (
         grade !== null &&
@@ -748,14 +748,71 @@ export default function AssessmentManagementPage() {
         selectedSubjectIds.includes(assignment.subjectId)
       );
     });
+  }, [classSubjectAssignments, selectedGrades, selectedSubjectIds]);
+
+  const assignmentsWithoutTeacher = useMemo(
+    () => selectedAssignments.filter((assignment) => !assignment.teacherId),
+    [selectedAssignments],
+  );
+
+  const gradeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          classes
+            .map((item) => item.grade)
+            .filter((grade): grade is number => grade !== null && grade !== undefined),
+        ),
+      ).sort((a, b) => a - b),
+    [classes],
+  );
+
+  const canContinueBasic =
+    Boolean(formData.title.trim()) &&
+    Boolean(formData.type) &&
+    Boolean(formData.academicYearId) &&
+    Boolean(formData.startDate) &&
+    Boolean(formData.endDate) &&
+    new Date(formData.endDate) >= new Date(formData.startDate);
+
+  const applyAssessmentTemplate = (type: string, grade?: number) => {
+    const now = new Date();
+    const startDate = now.toISOString().split("T")[0];
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 7);
+
+    setFormData((prev) => ({
+      ...prev,
+      type,
+      title: `${getTypeMeta(type).label}${grade ? ` for Grade ${grade}` : ""}`,
+      startDate: prev.startDate || startDate,
+      endDate: prev.endDate || endDate.toISOString().split("T")[0],
+      addToCalendar: shouldDefaultToCalendar(type),
+    }));
+    setSelectedGrades(grade ? [String(grade)] : gradeOptions.map(String));
+    setSelectedSubjectIds(Array.from(new Set(subjects.map((subject) => subject.id))));
+    setCreateStep("scope");
+  };
+
+  // ── Submit
+  const handleSubmit = async () => {
+    if (!formData.title.trim()) return toast.error(t.toasts.titleRequired);
+    if (!formData.type) return toast.error(t.toasts.typeRequired);
+    if (!formData.academicYearId) return toast.error(t.toasts.academicYearRequired);
+    if (!formData.startDate || !formData.endDate) return toast.error(t.toasts.datesRequired);
+    if (new Date(formData.endDate) < new Date(formData.startDate))
+      return toast.error(t.toasts.endDateBeforeStart);
+
+    if (selectedGrades.length === 0) return toast.error(t.toasts.gradeRequired);
+    if (selectedSubjectIds.length === 0) return toast.error(t.toasts.subjectRequired);
 
     if (selectedAssignments.length === 0) {
-      return toast.error("No class subjects found for the selected grades and subjects");
+      return toast.error(t.toasts.noClassSubjects);
     }
 
     const typeMaxScore = getWeightValue(formData.type);
     if (typeMaxScore <= 0) {
-      return toast.error("Assessment type max mark must be greater than 0");
+      return toast.error(t.toasts.maxMarkZero);
     }
 
     setSubmitting(true);
@@ -778,12 +835,12 @@ export default function AssessmentManagementPage() {
         })),
       });
 
-      toast.success("Assessment created successfully");
+      toast.success(t.toasts.created);
       setModalOpen(false);
       resetForm();
       loadAssessments();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? "Failed to create assessment");
+      toast.error(err?.response?.data?.message ?? t.toasts.createFailed);
     } finally {
       setSubmitting(false);
     }
@@ -801,6 +858,7 @@ export default function AssessmentManagementPage() {
     });
     setSelectedGrades([]);
     setSelectedSubjectIds([]);
+    setCreateStep("basic");
   };
 
   const getWeightValue = (type: AssessmentType) =>
@@ -817,7 +875,7 @@ export default function AssessmentManagementPage() {
     );
 
     if (otherTotal + nextValue > 100) {
-      toast.error("Total assessment weight cannot exceed 100%");
+      toast.error(t.toasts.weightExceeds100);
       return;
     }
 
@@ -834,12 +892,12 @@ export default function AssessmentManagementPage() {
       .replace(/^_+|_+$/g, "");
 
     if (!normalizedType) {
-      toast.error("Enter a valid assessment type name");
+      toast.error(t.toasts.invalidTypeName);
       return;
     }
 
     if (assessmentWeights.some((row) => row.type.toUpperCase() === normalizedType)) {
-      toast.error("Assessment type already exists");
+      toast.error(t.toasts.typeExists);
       return;
     }
 
@@ -850,7 +908,7 @@ export default function AssessmentManagementPage() {
   const handleSaveWeights = async () => {
     const total = assessmentWeights.reduce((sum, row) => sum + row.percentage, 0);
     if (Math.round(total * 100) / 100 !== 100) {
-      toast.error("Assessment weights must total 100");
+      toast.error(t.toasts.weightsMustTotal100);
       return;
     }
 
@@ -862,9 +920,9 @@ export default function AssessmentManagementPage() {
       const data = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
       setAssessmentWeights(data as AssessmentWeightRow[]);
       setWeightsOpen(false);
-      toast.success("Assessment weights updated");
+      toast.success(t.toasts.weightsUpdated);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? "Failed to update assessment weights");
+      toast.error(err?.response?.data?.message ?? t.toasts.weightsUpdateFailed);
     } finally {
       setWeightsSaving(false);
     }
@@ -876,11 +934,11 @@ export default function AssessmentManagementPage() {
     setLocking(true);
     try {
       await assessmentsAPI.lock(lockTarget);
-      toast.success("Assessment locked successfully");
+      toast.success(t.toasts.locked);
       setLockTarget(null);
       loadAssessments();
     } catch {
-      toast.error("Failed to lock assessment");
+      toast.error(t.toasts.lockFailed);
     } finally {
       setLocking(false);
     }
@@ -930,9 +988,9 @@ export default function AssessmentManagementPage() {
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-black">Assessment Management</h1>
+          <h1 className="text-2xl font-bold text-black">{t.page.title}</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            One unified workflow for quizzes, tests, mid assessments, and final assessments
+            {t.page.subtitle}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -943,7 +1001,7 @@ export default function AssessmentManagementPage() {
             style={brandSoftStyle}
           >
             <Pencil className="w-4 h-4 mr-2" />
-            Edit Assessment Weight
+            {t.actions.editWeight}
           </Button>
           <Button
             onClick={() => setModalOpen(true)}
@@ -951,7 +1009,7 @@ export default function AssessmentManagementPage() {
             style={brandSolidStyle}
           >
             <Plus className="w-4 h-4 mr-2" />
-            New Assessment
+            {t.actions.newAssessment}
           </Button>
         </div>
       </div>
@@ -969,15 +1027,15 @@ export default function AssessmentManagementPage() {
           }`}
           style={filterType === "ALL" ? brandSolidStyle : undefined}
         >
-          All types
+          {t.filters.allTypes}
         </button>
-        {configuredAssessmentTypes.map((t) => {
-          const m = getTypeMeta(t);
-          const active = filterType === t;
+        {configuredAssessmentTypes.map((at) => {
+          const m = getTypeMeta(at);
+          const active = filterType === at;
           return (
             <button
-              key={t}
-              onClick={() => setFilterType(t)}
+              key={at}
+              onClick={() => setFilterType(at)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all border flex items-center gap-1.5 ${
                 active
                   ? ""
@@ -986,8 +1044,8 @@ export default function AssessmentManagementPage() {
               style={active ? brandSoftStyle : undefined}
             >
               {m.icon}
-              {m.label}
-              <span className="opacity-60">{getWeightValue(t)}%</span>
+              {(t.assessmentType[at]?.label) ?? at}
+              <span className="opacity-60">{getWeightValue(at)}%</span>
             </button>
           );
         })}
@@ -998,11 +1056,11 @@ export default function AssessmentManagementPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL" className="text-xs">All statuses</SelectItem>
-              <SelectItem value="ACTIVE" className="text-xs">Active</SelectItem>
-              <SelectItem value="LOCKED" className="text-xs">Locked</SelectItem>
-              <SelectItem value="DRAFT" className="text-xs">Draft</SelectItem>
-              <SelectItem value="COMPLETED" className="text-xs">Completed</SelectItem>
+              <SelectItem value="ALL" className="text-xs">{t.filters.allStatuses}</SelectItem>
+              <SelectItem value="ACTIVE" className="text-xs">{t.filters.active}</SelectItem>
+              <SelectItem value="LOCKED" className="text-xs">{t.filters.locked}</SelectItem>
+              <SelectItem value="DRAFT" className="text-xs">{t.filters.draft}</SelectItem>
+              <SelectItem value="COMPLETED" className="text-xs">{t.filters.completed}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1017,11 +1075,11 @@ export default function AssessmentManagementPage() {
         <Card className="border-dashed border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
           <CardContent className="py-14 text-center">
             <ClipboardList className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-400 dark:text-gray-500">No assessments found</p>
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500">{t.empty.noAssessments}</p>
             <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
               {assessments.length === 0
-                ? "Create your first assessment to get started"
-                : "Try adjusting the filters above"}
+                ? t.empty.createFirst
+                : t.empty.adjustFilters}
             </p>
             {assessments.length === 0 && (
               <Button
@@ -1031,7 +1089,7 @@ export default function AssessmentManagementPage() {
                 style={brandSolidStyle}
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
-                Create Assessment
+                {t.actions.createAssessment}
               </Button>
             )}
           </CardContent>
@@ -1050,13 +1108,13 @@ export default function AssessmentManagementPage() {
         </div>
       )}
 
-      {/* ── Create Assessment Modal ── */}
+      {/* ── Weight Modal ── */}
       <Dialog open={weightsOpen} onOpenChange={setWeightsOpen}>
         <DialogContent className="max-w-lg bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle>Edit Assessment Weight</DialogTitle>
+            <DialogTitle>{t.weightModal.title}</DialogTitle>
             <DialogDescription>
-              Update the current assessment percentages. Total must equal 100.
+              {t.weightModal.description}
             </DialogDescription>
           </DialogHeader>
 
@@ -1067,10 +1125,10 @@ export default function AssessmentManagementPage() {
               <div key={type} className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {getTypeMeta(type).label}
+                    {t.assessmentType[type]?.label ?? type}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {getTypeMeta(type).description}
+                    {t.assessmentType[type]?.description ?? ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1089,22 +1147,22 @@ export default function AssessmentManagementPage() {
             })}
             <div className="rounded-lg border border-dashed border-gray-200 p-3 dark:border-slate-700">
               <p className="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-                Add new assessment type
+                {t.weightModal.addNewType}
               </p>
               <div className="flex items-center gap-2">
                 <Input
                   value={newAssessmentTypeName}
                   onChange={(e) => setNewAssessmentTypeName(e.target.value)}
-                  placeholder="e.g. Project"
+                  placeholder={t.weightModal.typePlaceholder}
                   className="h-9"
                 />
                 <Button type="button" variant="outline" onClick={handleAddAssessmentType}>
-                  Add
+                  {t.actions.add}
                 </Button>
               </div>
             </div>
             <div className="flex items-center justify-between rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm dark:border-slate-700">
-              <span className="text-gray-500 dark:text-gray-400">Total</span>
+              <span className="text-gray-500 dark:text-gray-400">{t.weightModal.total}</span>
               <span className="font-semibold text-gray-900 dark:text-gray-100">
                 {assessmentWeights.reduce((sum, row) => sum + row.percentage, 0)}%
               </span>
@@ -1113,11 +1171,11 @@ export default function AssessmentManagementPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setWeightsOpen(false)} disabled={weightsSaving}>
-              Cancel
+              {t.weightModal.cancel}
             </Button>
             <Button onClick={handleSaveWeights} disabled={weightsSaving} style={brandSolidStyle}>
               {weightsSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Save
+              {t.weightModal.save}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1128,28 +1186,70 @@ export default function AssessmentManagementPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2" style={brandTextStyle}>
               <Plus className="w-5 h-5" />
-              New Assessment
+              {t.newAssessmentModal.title}
             </DialogTitle>
             <DialogDescription className="text-gray-500 dark:text-gray-400">
-              Set the assessment details, schedule, and target grades in one place.
+              {t.newAssessmentModal.description}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 py-2">
-            {/* ── Step 1: Basic Info ── */}
-            <div>
+          <Tabs value={createStep} onValueChange={(v) => setCreateStep(v as "basic" | "scope" | "review")} className="min-w-0 max-w-full">
+            <div className="-mx-4 max-w-[100vw] overflow-x-auto overflow-y-hidden px-4 pb-2 md:mx-0 md:max-w-full md:px-0">
+              <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0 md:w-full">
+                <TabsTrigger value="basic" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
+                  <Info className="h-3 w-3 shrink-0 md:h-4 md:w-4" />
+                  <span>Basic Info</span>
+                </TabsTrigger>
+                <TabsTrigger value="scope" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
+                  <Globe className="h-3 w-3 shrink-0 md:h-4 md:w-4" />
+                  <span>Scope</span>
+                </TabsTrigger>
+                <TabsTrigger value="review" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
+                  <Eye className="h-3 w-3 shrink-0 md:h-4 md:w-4" />
+                  <span>Review</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div className="space-y-6 py-2">
+              <TabsContent value="basic" className="space-y-4 mt-0">
+              <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+                <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <Wand2 className="h-4 w-4" />
+                  Quick templates
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => applyAssessmentTemplate("FINAL")}>
+                    Final exam for all grades
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => applyAssessmentTemplate("MID")}>
+                    Mid assessment for all grades
+                  </Button>
+                  {gradeOptions.slice(0, 6).map((grade) => (
+                    <Button
+                      key={grade}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyAssessmentTemplate("FINAL", grade)}
+                    >
+                      Final Grade {grade}
+                    </Button>
+                  ))}
+                </div>
+              </div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
-                1 · Basic information
+                {t.newAssessmentModal.stepBasicInfo}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Title */}
                 <div className="md:col-span-2">
                   <Label htmlFor="title" className="text-sm text-gray-700 dark:text-gray-300">
-                    Assessment title <span className="text-red-400">*</span>
+                    {t.newAssessmentModal.assessmentTitle} <span className="text-red-400">*</span>
                   </Label>
                   <Input
                     id="title"
-                    placeholder="e.g. Grade 10 — Mathematics Mid Assessment, Semester 1"
+                    placeholder={t.newAssessmentModal.titlePlaceholder}
                     value={formData.title}
                     onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
                     className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
@@ -1159,21 +1259,21 @@ export default function AssessmentManagementPage() {
                 {/* Type */}
                 <div>
                   <Label className="text-sm text-gray-700 dark:text-gray-300">
-                    Assessment type <span className="text-red-400">*</span>
+                    {t.newAssessmentModal.assessmentType} <span className="text-red-400">*</span>
                   </Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
-                    {configuredAssessmentTypes.map((t) => {
-                      const m = getTypeMeta(t);
-                      const selected = formData.type === t;
+                    {configuredAssessmentTypes.map((at) => {
+                      const m = getTypeMeta(at);
+                      const selected = formData.type === at;
                       return (
                         <button
-                          key={t}
+                          key={at}
                           type="button"
                           onClick={() =>
                             setFormData((p) => ({
                               ...p,
-                              type: t,
-                              addToCalendar: shouldDefaultToCalendar(t),
+                              type: at,
+                              addToCalendar: shouldDefaultToCalendar(at),
                             }))
                           }
                           className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition-all ${
@@ -1194,13 +1294,13 @@ export default function AssessmentManagementPage() {
                         >
                           <div className="flex items-center gap-1.5 mb-0.5">
                             {m.icon}
-                            <span className="text-xs font-semibold">{m.label}</span>
+                            <span className="text-xs font-semibold">{t.assessmentType[at]?.label ?? at}</span>
                             <span className={`text-xs ml-auto ${selected ? "opacity-70" : "text-gray-300 dark:text-gray-600"}`}>
                               {m.weight}
                             </span>
                           </div>
                           <span className={`text-xs ${selected ? "opacity-70" : "text-gray-400 dark:text-gray-500"}`}>
-                            {m.description}
+                            {t.assessmentType[at]?.description ?? ""}
                           </span>
                         </button>
                       );
@@ -1212,7 +1312,7 @@ export default function AssessmentManagementPage() {
                 <div className="flex flex-col gap-4">
                   <div>
                     <Label className="text-sm text-gray-700 dark:text-gray-300">
-                      Academic year <span className="text-red-400">*</span>
+                      {t.newAssessmentModal.academicYear} <span className="text-red-400">*</span>
                     </Label>
                     <Select
                       value={formData.academicYearId}
@@ -1221,7 +1321,7 @@ export default function AssessmentManagementPage() {
                       }
                     >
                       <SelectTrigger className="mt-1 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-gray-900 dark:border-[rgba(var(--brand-color-rgb),0.22)] dark:bg-slate-800 dark:text-gray-100">
-                        <SelectValue placeholder="Select academic year" />
+                        <SelectValue placeholder={t.newAssessmentModal.selectAcademicYear} />
                       </SelectTrigger>
                       <SelectContent>
                         {academicYears.map((y) => (
@@ -1235,7 +1335,7 @@ export default function AssessmentManagementPage() {
 
                   {/* Term */}
                   <div>
-                    <Label className="text-sm text-gray-700 dark:text-gray-300">Term / Semester</Label>
+                    <Label className="text-sm text-gray-700 dark:text-gray-300">{t.newAssessmentModal.termSemester}</Label>
                     <Select
                       value={formData.termId}
                       onValueChange={(v) => setFormData((p) => ({ ...p, termId: v }))}
@@ -1245,10 +1345,10 @@ export default function AssessmentManagementPage() {
                         <SelectValue
                           placeholder={
                             !formData.academicYearId
-                              ? "Select year first"
+                              ? t.newAssessmentModal.selectYearFirst
                               : terms.length === 0
-                              ? "No terms found"
-                              : "Select term"
+                              ? t.newAssessmentModal.noTerms
+                              : t.newAssessmentModal.selectTerm
                           }
                         />
                       </SelectTrigger>
@@ -1268,7 +1368,7 @@ export default function AssessmentManagementPage() {
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
                   <Label htmlFor="startDate" className="text-sm text-gray-700 dark:text-gray-300">
-                    Start date <span className="text-red-400">*</span>
+                    {t.newAssessmentModal.startDate} <span className="text-red-400">*</span>
                   </Label>
                   <CalendarDatePicker
                     value={formData.startDate ? new Date(formData.startDate) : undefined}
@@ -1284,13 +1384,13 @@ export default function AssessmentManagementPage() {
                             : p.endDate,
                       }))
                     }
-                    placeholder="Select start date"
+                    placeholder={t.newAssessmentModal.selectStartDate}
                     className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
                   <Label htmlFor="endDate" className="text-sm text-gray-700 dark:text-gray-300">
-                    End date <span className="text-red-400">*</span>
+                    {t.newAssessmentModal.endDate} <span className="text-red-400">*</span>
                   </Label>
                   <CalendarDatePicker
                     value={formData.endDate ? new Date(formData.endDate) : undefined}
@@ -1300,7 +1400,7 @@ export default function AssessmentManagementPage() {
                         endDate: value ? value.toISOString().split("T")[0] : "",
                       }))
                     }
-                    placeholder="Select end date"
+                    placeholder={t.newAssessmentModal.selectEndDate}
                     className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100"
                   />
                 </div>
@@ -1310,10 +1410,10 @@ export default function AssessmentManagementPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Add to calendar
+                      {t.newAssessmentModal.addToCalendar}
                     </p>
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Mid, final, and test assessments should appear on the school calendar by default.
+                      {t.newAssessmentModal.calendarHint}
                     </p>
                   </div>
                   <Switch
@@ -1324,16 +1424,16 @@ export default function AssessmentManagementPage() {
                   />
                 </div>
               </div>
-            </div>
+          </TabsContent>
 
             {/* ── Step 2: Grades ── */}
-            <div>
+          <TabsContent value="scope" className="mt-0">
               <div className="mb-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  2 · Grade ranges
+                  {t.newAssessmentModal.stepGradeRanges}
                 </h3>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  A quiz or test created here will be applied to all assigned subjects in the selected grades.
+                  {t.newAssessmentModal.gradeRangesHint}
                 </p>
               </div>
 
@@ -1368,7 +1468,7 @@ export default function AssessmentManagementPage() {
                       : undefined
                   }
                 >
-                  All Grades
+                  {t.newAssessmentModal.allGrades}
                 </button>
                 {Array.from(
                   new Set(
@@ -1393,7 +1493,7 @@ export default function AssessmentManagementPage() {
                         }`}
                         style={selected ? brandSolidStyle : undefined}
                       >
-                        Grade {grade}
+                        {t.newAssessmentModal.grade} {grade}
                       </button>
                     );
                   })}
@@ -1401,7 +1501,7 @@ export default function AssessmentManagementPage() {
 
               <div className="mt-5">
                 <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  Subjects
+                  {t.newAssessmentModal.subjects}
                 </h4>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -1418,7 +1518,7 @@ export default function AssessmentManagementPage() {
                         : undefined
                     }
                   >
-                    All Subjects
+                    {t.newAssessmentModal.allSubjects}
                   </button>
                   {subjects.map((subject) => {
                     const selected = selectedSubjectIds.includes(subject.id);
@@ -1444,20 +1544,65 @@ export default function AssessmentManagementPage() {
               <div className="mt-4 rounded-xl border border-dashed border-gray-200 p-4 dark:border-slate-700">
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   {selectedGrades.length === 0 || selectedSubjectIds.length === 0
-                    ? "Select grades and subjects to preview the scope."
-                    : `${classSubjectAssignments.filter((assignment) => {
-                        const grade = assignment.class?.grade;
-                        return (
-                          grade !== null &&
-                          grade !== undefined &&
-                          selectedGrades.includes(String(grade)) &&
-                          selectedSubjectIds.includes(assignment.subjectId)
-                        );
-                      }).length} class-subject assignments will be included.`}
+                    ? t.newAssessmentModal.selectScopeHint
+                    : `${selectedAssignments.length} ${t.newAssessmentModal.assignmentsIncluded}`}
                 </p>
+                {assignmentsWithoutTeacher.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                    {assignmentsWithoutTeacher.length} selected class-subject assignment{assignmentsWithoutTeacher.length === 1 ? "" : "s"} have no teacher assigned. They will be created, but teachers may not see them until a teacher is assigned.
+                  </div>
+                )}
               </div>
-            </div>
+          </TabsContent>
+
+          <TabsContent value="review" className="space-y-4 mt-0">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                Review before creating
+              </h3>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Assessment</p>
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{formData.title || "Untitled"}</p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{formData.type || "No type selected"}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Scope</p>
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{selectedGrades.length} grade{selectedGrades.length === 1 ? "" : "s"}</p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{selectedSubjectIds.length} subject{selectedSubjectIds.length === 1 ? "" : "s"}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Will create</p>
+                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{selectedAssignments.length}</p>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">class-subject assessment entries</p>
+                </div>
+              </div>
+              {assignmentsWithoutTeacher.length > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                  <p className="font-medium">Teacher assignment warning</p>
+                  <p className="mt-1">
+                    {assignmentsWithoutTeacher.length} selected entry{assignmentsWithoutTeacher.length === 1 ? "" : "s"} do not have teachers yet. Assign teachers before expecting teacher marks entry to appear.
+                  </p>
+                </div>
+              )}
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-slate-700">
+                {selectedAssignments.length === 0 ? (
+                  <p className="p-4 text-sm text-gray-500 dark:text-gray-400">No class-subject entries match the selected scope.</p>
+                ) : (
+                  selectedAssignments.slice(0, 30).map((assignment) => (
+                    <div key={assignment.id} className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-2 text-sm last:border-b-0 dark:border-slate-700">
+                      <span className="text-gray-800 dark:text-gray-200">
+                        {assignment.class?.name} {assignment.section?.name ? `- ${assignment.section.name}` : ""} · {assignment.subject?.name}
+                      </span>
+                      <span className={assignment.teacherId ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                        {assignment.teacherId ? "Teacher assigned" : "No teacher"}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+          </TabsContent>
           </div>
+        </Tabs>
 
           <DialogFooter className="gap-2 pt-2 border-t border-gray-200 dark:border-slate-700">
             <Button
@@ -1470,26 +1615,58 @@ export default function AssessmentManagementPage() {
                 borderColor: "rgba(var(--brand-color-rgb),0.24)",
               }}
             >
-              Cancel
+              {t.newAssessmentModal.cancel}
             </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="min-w-[120px] text-white shadow-sm hover:opacity-90"
-              style={brandSolidStyle}
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Create Assessment
-                </>
-              )}
-            </Button>
+            {createStep !== "basic" && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateStep(createStep === "review" ? "scope" : "basic")}
+                disabled={submitting}
+              >
+                Back
+              </Button>
+            )}
+            {createStep !== "review" ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  if (createStep === "basic" && !canContinueBasic) {
+                    toast.error("Complete the basic assessment details first");
+                    return;
+                  }
+                  if (createStep === "scope" && selectedAssignments.length === 0) {
+                    toast.error("Select grades and subjects with class-subject assignments");
+                    return;
+                  }
+                  setCreateStep(createStep === "basic" ? "scope" : "review");
+                }}
+                className="min-w-[120px] text-white shadow-sm hover:opacity-90"
+                style={brandSolidStyle}
+              >
+                Continue
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={submitting || selectedAssignments.length === 0}
+                className="min-w-[120px] text-white shadow-sm hover:opacity-90"
+                style={brandSolidStyle}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t.newAssessmentModal.creating}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t.newAssessmentModal.create}
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1500,12 +1677,10 @@ export default function AssessmentManagementPage() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
               <Lock className="w-4 h-4" style={brandTextStyle} />
-              Lock assessment?
+              {t.lockDialog.title}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-500 dark:text-gray-400">
-              Locking will prevent teachers from entering or editing scores. Only registrars
-              and admins can override a locked assessment. This action cannot be undone without
-              manual intervention.
+              {t.lockDialog.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1517,7 +1692,7 @@ export default function AssessmentManagementPage() {
                 borderColor: "rgba(var(--brand-color-rgb),0.24)",
               }}
             >
-              Cancel
+              {t.lockDialog.cancel}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLock}
@@ -1526,7 +1701,7 @@ export default function AssessmentManagementPage() {
               style={brandSolidStyle}
             >
               {locking ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Lock assessment
+              {t.lockDialog.lock}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

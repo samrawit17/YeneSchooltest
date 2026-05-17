@@ -7,7 +7,6 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import Menu from "@/components/Menu";
 import Navbar from "@/components/Navbar";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import Image from "next/image";
 import { Wrench } from "lucide-react";
 import { platformSettingsAPI, schoolsAPI, schoolSettingsAPI } from "@/lib/api";
 import { resolveAssetUrl } from "@/lib/asset-url";
@@ -104,6 +103,7 @@ export default function DashboardLayout({
     enabled: !!user?.schoolId,
   });
   const schoolLogoSrc = resolveAssetUrl(school?.logoUrl);
+  const userAvatarSrc = resolveAssetUrl(user?.avatarUrl) || "/avatar.svg";
   // Set document title to school name
   useEffect(() => {
     if (school?.name) {
@@ -331,7 +331,7 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
       {/* Desktop Sidebar */}
-      <div className="relative hidden shrink-0 md:block md:w-20">
+      <div className="relative hidden shrink-0 md:block md:w-16">
         <aside
           onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseLeave={() => setIsSidebarHovered(false)}
@@ -339,7 +339,7 @@ export default function DashboardLayout({
             brandNavigationEnabled
               ? 'bg-[rgba(var(--brand-color-rgb),0.18)] border-r border-[rgba(var(--brand-color-rgb),0.22)]'
               : 'bg-[#F1F5F9] border-r border-gray-200'
-          } ${isSidebarHovered ? 'w-64' : 'w-20'} group/sidebar`}
+          } ${isSidebarHovered ? 'w-64' : 'w-16'} group/sidebar`}
         >
         {/* Logo */}
         <div className={`flex h-24 items-center px-4 border-b dark:border-[#334155] shrink-0 ${
@@ -375,8 +375,8 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation Menu */}
-        <div className="flex flex-1 overflow-y-auto py-4 pl-4">
-          <div className={isSidebarHovered ? 'w-56' : 'w-12'}>
+        <div className={`flex flex-1 overflow-y-auto py-4 ${isSidebarHovered ? 'pl-4' : 'px-3'}`}>
+          <div className={isSidebarHovered ? 'w-56' : 'w-10'}>
           <Menu
             collapsed={!isSidebarHovered}
             useBrandNavigation={brandNavigationEnabled}
@@ -385,18 +385,20 @@ export default function DashboardLayout({
         </div>
 
         {/* User Info */}
-        <div className={`m-4 border-t dark:border-[#334155] ${
+        <div className={`${isSidebarHovered ? 'm-4 border-t pt-0' : 'mx-0 mb-4 mt-2 flex justify-center border-t-0'} dark:border-[#334155] ${
           brandNavigationEnabled
             ? 'border-[rgba(var(--brand-color-rgb),0.18)]'
             : 'border-gray-200'
         }`}>
-          <div className={`mt-4 flex min-h-[72px] items-center rounded-lg border border-white/60 bg-white/80 p-3 backdrop-blur dark:border-slate-700/70 dark:bg-[#1E293B] ${isSidebarHovered ? 'justify-start gap-3' : 'justify-center'}`}>
-            <Image
-              src="/avatar.svg"
+          <div className={`flex items-center ${
+            isSidebarHovered
+              ? 'mt-4 min-h-[72px] justify-start gap-3 rounded-lg border border-white/60 bg-white/80 p-3 backdrop-blur dark:border-slate-700/70 dark:bg-[#1E293B]'
+              : 'h-10 w-10 justify-center rounded-full bg-transparent p-0'
+          }`}>
+            <img
+              src={userAvatarSrc}
               alt={user?.name || "User"}
-              width={32}
-              height={32}
-              className="rounded-full shrink-0"
+              className="h-8 w-8 rounded-full shrink-0 object-cover"
             />
             <div className={`min-w-0 flex-1 ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`}>
                 <p className="text-sm font-medium text-slate-800 dark:text-white truncate">

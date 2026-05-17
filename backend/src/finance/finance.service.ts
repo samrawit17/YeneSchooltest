@@ -318,6 +318,68 @@ export class FinanceService {
     return Math.round((annualAmount - installmentAmount * count) * 100) / 100;
   }
 
+  private getInstallmentPeriodLabel(
+    feeCollectionMode: string,
+    index: number,
+    term?: { name?: string | null } | null,
+  ): string {
+    const normalizedMode = String(feeCollectionMode || '').toUpperCase();
+    if (
+      term?.name &&
+      !['MONTH', 'MONTHLY', 'YEAR', 'YEARLY'].includes(normalizedMode)
+    ) {
+      return term.name;
+    }
+
+    const modeLabels: Record<string, string> = {
+      MONTH: 'Month',
+      MONTHLY: 'Month',
+      QUARTER: 'Quarter',
+      QUARTERLY: 'Quarter',
+      SEMESTER: 'Semester',
+      SEMESTERLY: 'Semester',
+      TERM: 'Term',
+      TERMLY: 'Term',
+      YEAR: 'Full Year',
+      YEARLY: 'Full Year',
+    };
+    const label = modeLabels[normalizedMode] || 'Installment';
+    return normalizedMode === 'YEAR' || normalizedMode === 'YEARLY'
+      ? label
+      : `${label} ${index + 1}`;
+  }
+
+  private getFeeStructureInstallmentIndex(feeType?: string | null) {
+    const match = String(feeType || '').match(/_INSTALLMENT_(\d+)$/i);
+    return match ? Number(match[1]) : null;
+  }
+
+  private getInstallmentRangeForTerm(
+    academicYearStartDate: Date | null | undefined,
+    term: { startDate?: Date | null; endDate?: Date | null } | null,
+    installmentCount: number,
+  ) {
+    if (
+      !academicYearStartDate ||
+      !term?.startDate ||
+      installmentCount <= 1 ||
+      Number.isNaN(academicYearStartDate.getTime()) ||
+      Number.isNaN(term.startDate.getTime())
+    ) {
+      return null;
+    }
+
+    const monthDiff = (date: Date) =>
+      (date.getFullYear() - academicYearStartDate.getFullYear()) * 12 +
+      (date.getMonth() - academicYearStartDate.getMonth());
+    const start = Math.max(1, Math.min(installmentCount, monthDiff(term.startDate) + 1));
+    const end = term.endDate && !Number.isNaN(term.endDate.getTime())
+      ? Math.max(start, Math.min(installmentCount, monthDiff(term.endDate) + 1))
+      : start;
+
+    return { start, end };
+  }
+
   private async getTermsForAcademicYear(
     academicYearId: string,
   ): Promise<any[]> {
@@ -626,26 +688,25 @@ export class FinanceService {
 
     let created = 0;
     await this.prisma.$transaction(async (tx) => {
-      const modeLabels: Record<string, string> = {
-        MONTHLY: 'Month',
-        QUARTERLY: 'Quarter',
-        SEMESTER: 'Semester',
-        TERM: 'Term',
-        YEARLY: 'Full Year',
-      };
       const displayFeeType = String(dto.feeType || 'Tuition').replace(
         /_/g,
         ' ',
       );
+      const installmentFeePrefix = `${dto.feeType || 'TUITION'}_INSTALLMENT_`;
 
       for (let i = 0; i < installmentCount; i++) {
-        const installmentTermId = terms[i]?.id;
-        const periodName = terms[i]?.name || `${modeLabels[feeCollectionMode]} ${i + 1}`;
+        const periodName = this.getInstallmentPeriodLabel(
+          feeCollectionMode,
+          i,
+          terms[i],
+        );
+        const installmentTermId =
+          periodName === terms[i]?.name ? terms[i]?.id : null;
         const existingInstallment = await tx.feeStructure.findFirst({
           where: {
             schoolId: dto.schoolId,
             academicYearId: dto.academicYearId,
-            feeType: `${dto.feeType || 'TUITION'}_INSTALLMENT_${i + 1}`,
+            feeType: `${installmentFeePrefix}${i + 1}`,
             ...(dto.grade ? { grade: dto.grade } : {}),
           },
         });
@@ -656,7 +717,7 @@ export class FinanceService {
               schoolId: dto.schoolId,
               academicYearId: dto.academicYearId,
               termId: installmentTermId || null,
-              feeType: `${dto.feeType || 'TUITION'}_INSTALLMENT_${i + 1}`,
+              feeType: `${installmentFeePrefix}${i + 1}`,
               amount: amounts[i],
               grade: dto.grade ?? null,
               description:
@@ -666,13 +727,41 @@ export class FinanceService {
             },
           });
           created++;
+        } else {
+          await tx.feeStructure.update({
+            where: { id: existingInstallment.id },
+            data: {
+              termId: installmentTermId || null,
+              amount: amounts[i],
+              description:
+                dto.description ||
+                `${displayFeeType} installment for ${periodName}`,
+              isActive: true,
+            },
+          });
         }
       }
+
+      await tx.feeStructure.updateMany({
+        where: {
+          schoolId: dto.schoolId,
+          academicYearId: dto.academicYearId,
+          feeType: { startsWith: installmentFeePrefix },
+          ...(dto.grade ? { grade: dto.grade } : {}),
+          NOT: Array.from({ length: installmentCount }, (_, index) => ({
+            feeType: `${installmentFeePrefix}${index + 1}`,
+          })),
+        },
+        data: { isActive: false },
+      });
     });
 
     return {
       created,
-      message: `Generated ${created} installment fee structures`,
+      message:
+        created > 0
+          ? `Generated ${created} installment fee structures`
+          : `Installment fee structures updated for ${feeCollectionMode}`,
       breakdown: amounts.map((amount, index) => ({
         installment: index + 1,
         amount,
@@ -1606,6 +1695,10 @@ export class FinanceService {
       schoolId,
       academicYearId,
     );
+    const academicYearWithDates = await this.prisma.academicYear.findFirst({
+      where: { id: academicYearId, schoolId },
+      select: { startDate: true },
+    });
     const selectedTerm = await this.assertTermInSchool(schoolId, termId);
     const curriculumType = await this.getFeeCollectionModeInternal(schoolId);
     const installmentCount = this.getInstallmentCountInternal(curriculumType);
@@ -1665,16 +1758,53 @@ export class FinanceService {
       });
     });
 
-    const rows = fees.map((sf) => {
+    const selectedTermWithDates = selectedTerm
+      ? terms.find((term) => term.id === selectedTerm.id) || null
+      : null;
+    const selectedTermInstallmentRange =
+      selectedTerm && terms.length > 0 && installmentCount > terms.length
+        ? this.getInstallmentRangeForTerm(
+            academicYearWithDates?.startDate,
+            selectedTermWithDates,
+            installmentCount,
+          ) || {
+            start:
+              Math.floor(((selectedTerm.order - 1) * installmentCount) / terms.length) +
+              1,
+            end: Math.floor((selectedTerm.order * installmentCount) / terms.length),
+          }
+        : null;
+
+    const rows = fees.flatMap((sf) => {
       const paid = sf.payments.reduce((s, p) => s + p.amountPaid, 0);
-      const isYearWide = !sf.termId;
+      const installmentIndex = this.getFeeStructureInstallmentIndex(
+        sf.feeStructure.feeType,
+      );
+      const isInstallmentFee = installmentIndex !== null;
+      const isYearWide = !sf.termId && !isInstallmentFee;
       const isPeriodView = Boolean(selectedTerm);
+
+      if (
+        selectedTermInstallmentRange &&
+        installmentIndex !== null &&
+        (installmentIndex < selectedTermInstallmentRange.start ||
+          installmentIndex > selectedTermInstallmentRange.end)
+      ) {
+        return [];
+      }
 
       let displayTotal = sf.finalAmount;
       let displayPaid = paid;
       let displayRemaining = Math.max(0, sf.finalAmount - paid);
       let displayStatus = sf.status;
       let scopeLabel =
+        installmentIndex !== null
+          ? this.getInstallmentPeriodLabel(
+              curriculumType,
+              installmentIndex - 1,
+              sf.term || sf.feeStructure.term,
+            )
+          :
         sf.term?.name ||
         sf.feeStructure.term?.name ||
         'Whole Academic Year';
@@ -1705,7 +1835,7 @@ export class FinanceService {
       }
 
       const studentClass = classMap.get(sf.studentId);
-      return {
+      return [{
         studentId: sf.studentId,
         studentName: sf.student?.name,
         grade: studentClass?.grade || null,
@@ -1717,7 +1847,7 @@ export class FinanceService {
         paid: displayPaid,
         remaining: displayRemaining,
         status: displayStatus,
-      };
+      }];
     });
     const totalOutstanding = rows.reduce((s, r) => s + r.remaining, 0);
     // Total Revenue = actual amount collected (sum of all payments made)

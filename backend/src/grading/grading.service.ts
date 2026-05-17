@@ -3402,6 +3402,7 @@ export class GradingService {
         subject: true,
         class: true,
         section: true,
+        teacher: { select: { id: true, name: true } },
         scores: true,
       },
     });
@@ -3427,6 +3428,10 @@ export class GradingService {
       string,
       {
         teacherId: string;
+        teacherName: string | null;
+        subjectId: string;
+        classId: string;
+        sectionId: string | null;
         subject: string;
         class: string;
         section: string | null;
@@ -3452,6 +3457,10 @@ export class GradingService {
       ).length;
       const existing = progressByAssignment.get(key) ?? {
         teacherId,
+        teacherName: assessmentSubject.teacher?.name ?? null,
+        subjectId: assessmentSubject.subjectId,
+        classId: assessmentSubject.classId,
+        sectionId: assessmentSubject.sectionId ?? null,
         subject: assessmentSubject.subject.name,
         class: assessmentSubject.class.name,
         section: assessmentSubject.section?.name ?? null,

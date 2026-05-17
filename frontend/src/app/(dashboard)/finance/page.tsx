@@ -472,23 +472,49 @@ export default function FinanceDashboardPage() {
   // Current user (mock - in real app get from auth)
   const currentUser = { name: 'Finance Manager', role: 'FINANCE' };
 
-  // Load academic years and then dashboard data
+  // Load academic years after auth has restored the school context.
   useEffect(() => {
     const loadSetupData = async () => {
+      if (!user?.schoolId) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
       try {
-        const response = await academicYearsAPI.getAll();
-        console.log('Years loaded:', response.data);
-        if (response.data.length > 0) {
-          setAcademicYears(response.data);
-          const activeYear = response.data.find((year: AcademicYear) => year.isActive);
-          setSelectedYear((activeYear || response.data[0]).id);
+        const response = await academicYearsAPI.getAll({ schoolId: user.schoolId });
+        const years = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data?.data)
+            ? response.data.data
+            : [];
+
+        setAcademicYears(years);
+        if (years.length > 0) {
+          const activeYear = years.find((year: AcademicYear) => year.isActive) || years[0];
+          setSelectedYear((current) =>
+            current && years.some((year: AcademicYear) => year.id === current)
+              ? current
+              : activeYear.id,
+          );
+        } else {
+          setSelectedYear('');
+          setTerms([]);
+          setSelectedTerm('');
         }
       } catch (error) {
-        console.error('Error loading:', error);
+        console.error('Error loading academic years:', error);
+        setAcademicYears([]);
+        setSelectedYear('');
+        setTerms([]);
+        setSelectedTerm('');
+        toast.error('Failed to load academic years');
+      } finally {
+        setLoading(false);
       }
     };
     loadSetupData();
-  }, []);
+  }, [user?.schoolId]);
 
   // Load curriculum info when academic year changes
   useEffect(() => {
@@ -530,7 +556,7 @@ export default function FinanceDashboardPage() {
       }
     };
     loadCurriculumInfo();
-  }, [selectedTerm, selectedYear, user?.schoolId]);
+  }, [selectedYear, user?.schoolId]);
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
@@ -841,6 +867,21 @@ export default function FinanceDashboardPage() {
 
     return fee.description || null;
   };
+
+  const formatOutstandingScopeLabel = (scopeLabel?: string | null) => {
+    const label = scopeLabel || '';
+    const monthMatch = label.match(/^Month\s+(\d+)$/i);
+    if (monthMatch) return getInstallmentMonthName(Number(monthMatch[1]));
+    return label || '-';
+  };
+
+  const outstandingFeesNote = (() => {
+    const modeLabel = feeCollectionMode?.modeLabel || 'configured billing';
+    if (selectedTerm && selectedTerm !== 'all') {
+      return `This view is filtered by the selected curriculum period. Annual fees are shown as a ${modeLabel.toLowerCase()} share; generated installments keep their own billing period.`;
+    }
+    return `Outstanding balances follow the school's ${modeLabel.toLowerCase()} billing method.`;
+  })();
 
   const displayFeeStructures = (() => {
     const grouped = new Map<
@@ -1446,6 +1487,25 @@ setIsCreatingFeeStructure(true);
                     return;
                   }
                   try {
+                    const result = await financeAPI.generateInstallmentFees({
+                      schoolId: user.schoolId,
+                      academicYearId: selectedYear,
+                      feeType: 'TUITION',
+                    });
+                    toast.success(result.data?.message || 'Tuition installments reconciled');
+                    loadDashboardData();
+                  } catch (e: any) {
+                    toast.error(e.response?.data?.message || e.message || 'Failed to reconcile installments');
+                  }
+                }}>
+                  Reconcile Tuition Installments
+                </Button>
+                <Button size="sm" variant="outline" onClick={async () => {
+                  if (!selectedYear || !user?.schoolId) {
+                    toast.error('Select academic year first');
+                    return;
+                  }
+                  try {
                     console.log('Generating fees with:', { schoolId: user.schoolId, academicYearId: selectedYear });
                     const result = await financeAPI.generateStudentFees({
                       schoolId: user.schoolId,
@@ -1513,10 +1573,10 @@ setIsCreatingFeeStructure(true);
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold">Revenue Trend</CardTitle>
                 <Tabs value={chartView} onValueChange={(v) => setChartView(v as ChartView)}>
-                  <TabsList className="h-8">
-                    <TabsTrigger value="daily" className="text-xs px-3">Daily</TabsTrigger>
-                    <TabsTrigger value="weekly" className="text-xs px-3">Weekly</TabsTrigger>
-                    <TabsTrigger value="monthly" className="text-xs px-3">Monthly</TabsTrigger>
+                  <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
+                    <TabsTrigger value="daily" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">Daily</TabsTrigger>
+                    <TabsTrigger value="weekly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">Weekly</TabsTrigger>
+                    <TabsTrigger value="monthly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">Monthly</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -1678,36 +1738,36 @@ setIsCreatingFeeStructure(true);
           {/* Outstanding Fees */}
           <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
             <CardHeader className="pb-2 border-b dark:border-slate-700">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
+              <div className="flex flex-col gap-3">
+                <div className="min-w-0">
                   <CardTitle className="text-base font-semibold dark:text-white">Outstanding Fees</CardTitle>
-                  {selectedTerm && selectedTerm !== 'all' && (
-                    <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
-                      Year-wide fees are split into the selected curriculum period share in this view.
-                    </p>
-                  )}
+                  <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
+                    {outstandingFeesNote}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
                   <Input
                     placeholder="Search student..."
                     value={outstandingSearch}
                     onChange={(e) => setOutstandingSearch(e.target.value)}
-                    className="h-8 w-96 text-xs"
+                    className="h-8 w-full min-w-0 flex-1 text-xs"
                   />
-                  <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-0.5">
+                  <div className="-mx-1 max-w-full overflow-x-auto overflow-y-hidden px-1">
+                    <div className="inline-flex h-auto w-max min-w-full flex-nowrap bg-transparent p-0 shadow-none border-0 lg:min-w-0">
                     {['all', 'PAID', 'PARTIAL', 'UNPAID'].map((status) => (
                       <button
                         key={status}
                         onClick={() => setOutstandingStatusFilter(status)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        className={`shrink-0 flex-1 border-b-2 px-3 py-1.5 text-xs font-semibold transition-all rounded-none lg:flex-none md:px-4 md:text-sm ${
                           outstandingStatusFilter === status
-                            ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm'
-                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                            ? 'border-[var(--brand-color,#e35336)] bg-transparent text-[var(--brand-color,#e35336)] shadow-none'
+                            : 'border-transparent bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                         }`}
                       >
                         {status === 'all' ? 'All' : status === 'PAID' ? 'Paid' : status === 'PARTIAL' ? 'Partial' : 'Unpaid'}
                       </button>
                     ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1719,7 +1779,7 @@ setIsCreatingFeeStructure(true);
                     <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[25%] text-left">Student</TableHead>
                       <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-left">Grade</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-left">Scope</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-left">Fee Period</TableHead>
                       <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">Total</TableHead>
                       <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">Paid</TableHead>
                       <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">Balance</TableHead>
@@ -1733,7 +1793,7 @@ setIsCreatingFeeStructure(true);
                             <TableCell className="text-xs font-medium dark:text-white py-3 px-4 w-[25%] text-left">{fee.studentName}</TableCell>
                             <TableCell className="text-xs dark:text-gray-300 py-3 px-4 w-[15%] text-left">{fee.grade ? `${fee.grade}${fee.section ? ` - ${fee.section}` : ''}` : '-'}</TableCell>
                             <TableCell className="py-3 px-4 w-[15%] text-left">
-                              <div className="text-xs dark:text-gray-300">{fee.scopeLabel || '-'}</div>
+                              <div className="text-xs dark:text-gray-300">{formatOutstandingScopeLabel(fee.scopeLabel)}</div>
                               {fee.isYearWide && (
                                 <div className="text-[10px] text-slate-500 dark:text-gray-400">Derived from annual fee</div>
                               )}

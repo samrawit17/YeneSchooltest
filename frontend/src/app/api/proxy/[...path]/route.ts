@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:5000';
 
 async function handler(
   req: NextRequest,
@@ -19,12 +19,24 @@ async function handler(
 
   const method = req.method.toUpperCase();
   const hasBody = !['GET', 'HEAD'].includes(method);
-  const upstream = await fetch(targetUrl, {
-    method,
-    headers,
-    body: hasBody ? await req.text() : undefined,
-    cache: 'no-store',
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(targetUrl, {
+      method,
+      headers,
+      body: hasBody ? await req.text() : undefined,
+      cache: 'no-store',
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        message: 'Backend proxy request failed',
+        targetUrl,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 502 },
+    );
+  }
 
   const responseHeaders = new Headers();
   const upstreamType = upstream.headers.get('content-type');
