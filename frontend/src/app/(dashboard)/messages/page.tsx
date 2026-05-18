@@ -275,7 +275,7 @@ export default function MessagesPage() {
     <div className="p-3 md:p-6 h-full overflow-hidden flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 md:gap-4 mb-3 md:mb-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">{t.title.messages}</h1>
+          <h1 className="text-2xl font-bold text-black">{t.title.messages}</h1>
           <p className="text-xs md:text-sm text-gray-500 hidden sm:block">{t.subtitle.internal}</p>
         </div>
 
@@ -367,9 +367,9 @@ export default function MessagesPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[280px_1fr] xl:grid-cols-[360px_1fr] gap-3 md:gap-4 flex-1 min-h-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[280px_1fr] xl:grid-cols-[360px_1fr] gap-3 md:gap-4">
         {/* Conversations */}
-        <Card className="h-full flex flex-col order-2 md:order-1">
+        <Card className="h-[calc(100vh-180px)] flex flex-col order-2 md:order-1 md:h-[calc(100vh-220px)]">
           <CardHeader className="pb-2 md:pb-3 shrink-0">
             <CardTitle className="text-base">{t.states.inbox}</CardTitle>
             <div className="flex items-center gap-2 mt-2">
@@ -425,7 +425,7 @@ export default function MessagesPage() {
         </Card>
 
         {/* Thread */}
-        <Card className="h-full flex flex-col order-1 md:order-2">
+        <Card className="h-[calc(100vh-180px)] flex flex-col order-1 md:order-2 md:h-[calc(100vh-220px)]">
           <CardHeader className="pb-2 md:pb-3 flex-shrink-0">
             <CardTitle className="text-base truncate">
               {selectedConversation ? getConversationTitle(selectedConversation) : t.states.selectConversation}

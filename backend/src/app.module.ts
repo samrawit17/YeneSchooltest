@@ -43,6 +43,7 @@ import { DisciplineModule } from './discipline/discipline.module';
 import { SirenModule } from './siren/siren.module';
 import { PeriodTimeModule } from './period-time/period-time.module';
 import { TemplatesModule } from './templates/templates.module';
+import { DataQualityModule } from './data-quality/data-quality.module';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { TemplatesModule } from './templates/templates.module';
     SirenModule,
     PeriodTimeModule,
     TemplatesModule,
+    DataQualityModule,
   ],
   controllers: [AppController],
   providers: [AppService],

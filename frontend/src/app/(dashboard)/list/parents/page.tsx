@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { parentsAPI } from "@/lib/api/people";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -10,6 +9,7 @@ import FormModal from "@/components/FormModal";
 import TableSearch from "@/components/TableSearch";
 import Pagination from "@/components/Pagination";
 import { useTranslations } from "@/hooks/useTranslations";
+import { resolveAssetUrl } from "@/lib/asset-url";
 
 // Shadcn/ui Components
 import {
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -26,7 +26,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Users,
   UserPlus,
-  Eye,
   Edit2,
   Trash2,
   Link2,
@@ -59,6 +58,7 @@ type Parent = {
   phone?: string;
   address?: string;
   occupation?: string;
+  avatarUrl?: string;
   isActive: boolean;
   children: LinkedChild[];
   createdAt: string;
@@ -122,6 +122,7 @@ const ParentListPage = () => {
               phone: p.user?.phone ?? p.phone ?? "",
               address: p.address ?? p.user?.address ?? "",
               occupation: p.occupation ?? "",
+              avatarUrl: p.user?.img ?? p.user?.avatarUrl ?? "",
               isActive: p.user?.isActive ?? true,
 	              children: (p.children || []).map((c: any) => ({
 	                id: c.id,
@@ -313,20 +314,24 @@ const ParentListPage = () => {
 	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.grade}</TableHead>
 	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.section}</TableHead>
 	                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.status}</TableHead>
-                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.actions}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="w-full">
                     {filteredParents.map((parent) => (
                       <TableRow
                         key={parent.id}
-                        className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors"
+                        className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/list/parents/${parent.id}`)}
                       >
                         <TableCell className="px-4 py-3">
                           <Avatar className="w-10 h-10">
-                            <AvatarFallback className="text-sm">
-                              {getInitials(parent.name || "?")}
-                            </AvatarFallback>
+                            {parent.avatarUrl ? (
+                              <AvatarImage src={resolveAssetUrl(parent.avatarUrl) || parent.avatarUrl} alt={parent.name} />
+                            ) : (
+                              <AvatarFallback className="text-sm">
+                                {getInitials(parent.name || "?")}
+                              </AvatarFallback>
+                            )}
                           </Avatar>
                         </TableCell>
                         <TableCell className="px-4 py-3">
@@ -417,17 +422,6 @@ const ParentListPage = () => {
                             )}
                             {parent.isActive ? t.status.active : t.status.inactive}
                           </span>
-                        </TableCell>
-                        <TableCell className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            <Link
-                              href={`/list/parents/${parent.id}`}
-                              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                              title={t.actions.view}
-                            >
-                              <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                            </Link>
-                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

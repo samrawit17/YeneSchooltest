@@ -384,6 +384,48 @@ const Navbar = ({
     }
   };
 
+  const markBellNotificationsAsSeen = async () => {
+    const unreadNotifications = bellNotifications.filter(
+      (notification: Notification) => !isNotificationRead(notification),
+    );
+
+    if (unreadNotifications.length === 0) {
+      return;
+    }
+
+    const globalNotificationIds = unreadNotifications
+      .filter((notification: Notification) => notification.userId === null)
+      .map((notification: Notification) => notification.id);
+    const userNotificationIds = unreadNotifications
+      .filter((notification: Notification) => notification.userId !== null)
+      .map((notification: Notification) => notification.id);
+
+    if (globalNotificationIds.length > 0) {
+      rememberSeenGlobalNotifications(globalNotificationIds);
+    }
+
+    queryClient.setQueryData(queryKeys.notifications.list(user?.id, user?.schoolId), (old: any) => {
+      if (!old) return old;
+      const readIds = new Set(unreadNotifications.map((notification: Notification) => notification.id));
+
+      return {
+        ...old,
+        bellNotifications: (old.bellNotifications || []).map((notification: Notification) =>
+          readIds.has(notification.id) ? { ...notification, isRead: true } : notification,
+        ),
+        bellUnreadCount: 0,
+      };
+    });
+
+    const results = await Promise.allSettled(
+      userNotificationIds.map((id: string) => notificationsAPI.markRead(id)),
+    );
+
+    if (results.some((result) => result.status === "rejected")) {
+      invalidateNotificationQueries();
+    }
+  };
+
   const invalidateNotificationQueries = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.categories });
@@ -674,6 +716,9 @@ const Navbar = ({
                   open={notificationsOpen}
                   onOpenChange={(open) => {
                     setNotificationsOpen(open);
+                    if (open) {
+                      void markBellNotificationsAsSeen();
+                    }
                   }}
                 >
                   <DropdownMenuTrigger asChild>

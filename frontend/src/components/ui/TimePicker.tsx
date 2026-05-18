@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,35 @@ import {
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/hooks/useTranslations";
 
+type EthiopianPeriod = "morning" | "afternoon" | "evening" | "night";
+
+const ETHIOPIAN_PERIOD_HOURS: Record<EthiopianPeriod, string[]> = {
+  morning: ["12", "1", "2", "3", "4", "5"],
+  afternoon: ["6", "7", "8", "9", "10", "11"],
+  evening: ["12", "1", "2", "3", "4", "5"],
+  night: ["6", "7", "8", "9", "10", "11"],
+};
+
+const getEthiopianHoursForPeriod = (period: EthiopianPeriod) => ETHIOPIAN_PERIOD_HOURS[period];
+
+const normalizeHourForPeriod = (hour12: number, period: EthiopianPeriod) => {
+  const validHours = getEthiopianHoursForPeriod(period);
+  const nextHour = String(hour12);
+  return Number(validHours.includes(nextHour) ? nextHour : validHours[0]);
+};
+
+const toStoredHourFromEthiopian = (ethHour12: number, period: EthiopianPeriod) => {
+  const periodBase = {
+    morning: 0,
+    afternoon: 0,
+    evening: 12,
+    night: 12,
+  }[period];
+  const normalizedHour = normalizeHourForPeriod(ethHour12, period);
+  const ethHour24 = periodBase + (normalizedHour % 12);
+  return String((ethHour24 + 6) % 24).padStart(2, "0");
+};
+
 interface TimePickerProps {
   value?: string;
   onChange: (time: string) => void;
@@ -23,6 +52,9 @@ interface TimePickerProps {
   disabled?: boolean;
   calendarType?: CalendarType;
   showCalendarLabel?: boolean;
+  allowedEthiopianPeriods?: EthiopianPeriod[];
+  defaultEthiopianPeriod?: EthiopianPeriod;
+  onCommit?: (time: string) => void | Promise<void>;
 }
 
 export function TimePicker({
@@ -33,6 +65,9 @@ export function TimePicker({
   disabled = false,
   calendarType,
   showCalendarLabel = true,
+  allowedEthiopianPeriods,
+  defaultEthiopianPeriod = "afternoon",
+  onCommit,
 }: TimePickerProps) {
   const { t } = useTranslations<any>("calendar");
   const { user } = useAuth();
@@ -41,6 +76,14 @@ export function TimePicker({
   const isEthiopian = activeCalendarType === "ETHIOPIAN";
   const normalized = normalizeTimeValue(value);
   const ethiopianTime = getEthiopianClockParts(`${normalized.hour}:${normalized.minute}`);
+  const allowedPeriodSet = useMemo(
+    () => new Set(allowedEthiopianPeriods),
+    [allowedEthiopianPeriods],
+  );
+  const selectedEthiopianPeriod =
+    !allowedEthiopianPeriods || allowedPeriodSet.has(ethiopianTime.period)
+      ? ethiopianTime.period
+      : defaultEthiopianPeriod;
 
   const hours = useMemo(
     () => Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0")),
@@ -55,37 +98,58 @@ export function TimePicker({
     { value: "afternoon", label: t.time.afternoon },
     { value: "evening", label: t.time.evening },
     { value: "night", label: t.time.night },
-  ] as const;
+  ].filter((period) => !allowedEthiopianPeriods || allowedPeriodSet.has(period.value as EthiopianPeriod)) as {
+    value: EthiopianPeriod;
+    label: string;
+  }[];
+  const selectedPeriodLabel =
+    ethiopianPeriods.find((period) => period.value === selectedEthiopianPeriod)?.label ?? selectedEthiopianPeriod;
+  const displayValue = value
+    ? isEthiopian
+      ? `${formatTimeByCalendarType(value, activeCalendarType)} ${selectedPeriodLabel}`
+      : formatTimeByCalendarType(value, activeCalendarType)
+    : placeholder === "Select time"
+      ? t.time.selectTime
+      : placeholder;
   const minutes = useMemo(
     () => Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, "0")),
     []
   );
-
+  const selectedEthiopianHours = isEthiopian
+    ? getEthiopianHoursForPeriod(selectedEthiopianPeriod)
+    : ethiopianHours;
+  const selectedHour12 = String(ethiopianTime.hour12);
+  const selectedHourForPeriod = selectedEthiopianHours.includes(selectedHour12)
+    ? selectedHour12
+    : selectedEthiopianHours[0];
   const updateTime = (nextHour: string, nextMinute: string) => {
     onChange(`${nextHour}:${nextMinute}`);
   };
 
-  const toStoredHourFromEthiopian = (
-    ethHour12: number,
-    period: "morning" | "afternoon" | "evening" | "night",
-  ) => {
-    const periodBase = {
-      morning: 0,
-      afternoon: 6,
-      evening: 12,
-      night: 18,
-    }[period];
-    const ethHour24 = periodBase + (ethHour12 % 12);
-    return String((ethHour24 + 6) % 24).padStart(2, "0");
-  };
-
   const updateEthiopianTime = (
     nextHour12: number,
-    nextPeriod: "morning" | "afternoon" | "evening" | "night",
+    nextPeriod: EthiopianPeriod,
     nextMinute: string,
   ) => {
     updateTime(toStoredHourFromEthiopian(nextHour12, nextPeriod), nextMinute);
   };
+
+  useEffect(() => {
+    if (!isEthiopian || !allowedEthiopianPeriods || allowedPeriodSet.has(ethiopianTime.period)) {
+      return;
+    }
+
+    onChange(`${toStoredHourFromEthiopian(normalizeHourForPeriod(ethiopianTime.hour12, defaultEthiopianPeriod), defaultEthiopianPeriod)}:${normalized.minute}`);
+  }, [
+    allowedEthiopianPeriods,
+    allowedPeriodSet,
+    defaultEthiopianPeriod,
+    ethiopianTime.hour12,
+    ethiopianTime.period,
+    isEthiopian,
+    normalized.minute,
+    onChange,
+  ]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -101,7 +165,7 @@ export function TimePicker({
           )}
         >
           <Clock className="mr-2 h-4 w-4 shrink-0 text-slate-500" />
-          <span>{value ? formatTimeByCalendarType(value, activeCalendarType) : placeholder === "Select time" ? t.time.selectTime : placeholder}</span>
+          <span>{displayValue}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 bg-white p-4 dark:bg-slate-800" align="start">
@@ -117,10 +181,10 @@ export function TimePicker({
             <div className="space-y-1">
               <label className="text-xs text-slate-500 dark:text-slate-400">{t.time.hour}</label>
               <Select
-                value={isEthiopian ? String(ethiopianTime.hour12) : normalized.hour}
+                value={isEthiopian ? selectedHourForPeriod : normalized.hour}
                 onValueChange={(hour) => {
                   if (isEthiopian) {
-                    updateEthiopianTime(Number(hour), ethiopianTime.period, normalized.minute);
+                    updateEthiopianTime(Number(hour), selectedEthiopianPeriod, normalized.minute);
                     return;
                   }
                   updateTime(hour, normalized.minute);
@@ -130,7 +194,7 @@ export function TimePicker({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(isEthiopian ? ethiopianHours : hours).map((hour) => (
+                  {(isEthiopian ? selectedEthiopianHours : hours).map((hour) => (
                     <SelectItem key={hour} value={hour}>
                       {hour}
                     </SelectItem>
@@ -143,13 +207,9 @@ export function TimePicker({
               <div className="space-y-1">
                 <label className="text-xs text-slate-500 dark:text-slate-400">{t.time.block}</label>
                 <Select
-                  value={ethiopianTime.period}
+                  value={selectedEthiopianPeriod}
                   onValueChange={(period) =>
-                    updateEthiopianTime(
-                      ethiopianTime.hour12,
-                      period as "morning" | "afternoon" | "evening" | "night",
-                      normalized.minute,
-                    )
+                    updateEthiopianTime(normalizeHourForPeriod(ethiopianTime.hour12, period as EthiopianPeriod), period as EthiopianPeriod, normalized.minute)
                   }
                 >
                   <SelectTrigger className="h-9 bg-white dark:bg-slate-700">
@@ -172,7 +232,7 @@ export function TimePicker({
                 value={normalized.minute}
                 onValueChange={(minute) => {
                   if (isEthiopian) {
-                    updateEthiopianTime(ethiopianTime.hour12, ethiopianTime.period, minute);
+                    updateEthiopianTime(Number(selectedHourForPeriod), selectedEthiopianPeriod, minute);
                     return;
                   }
                   updateTime(normalized.hour, minute);
@@ -194,11 +254,20 @@ export function TimePicker({
 
           <div className="rounded-md bg-slate-50 px-3 py-2 text-center text-sm font-medium text-slate-700 dark:bg-slate-700/60 dark:text-slate-200">
             {showCalendarLabel
-              ? formatTimeByCalendarType(`${normalized.hour}:${normalized.minute}`, activeCalendarType)
+              ? isEthiopian
+                ? `${formatTimeByCalendarType(`${normalized.hour}:${normalized.minute}`, activeCalendarType)} ${selectedPeriodLabel}`
+                : formatTimeByCalendarType(`${normalized.hour}:${normalized.minute}`, activeCalendarType)
               : `${normalized.hour}:${normalized.minute}`}
           </div>
 
-          <Button type="button" className="h-9 w-full text-sm" onClick={() => setOpen(false)}>
+          <Button
+            type="button"
+            className="h-9 w-full text-sm"
+            onClick={() => {
+              void onCommit?.(`${normalized.hour}:${normalized.minute}`);
+              setOpen(false);
+            }}
+          >
             {t.time.done}
           </Button>
         </div>

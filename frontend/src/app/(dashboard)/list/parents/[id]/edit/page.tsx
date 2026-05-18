@@ -8,6 +8,7 @@ import { parentsAPI } from "@/lib/api/people";
 import { queryKeys } from "@/lib/query-keys";
 import { ArrowLeft, Loader2, Save, User, Users, Phone, Mail, MapPin, Briefcase } from "lucide-react";
 import { toast } from "sonner";
+import { useBreadcrumb } from "@/context/BreadcrumbContext";
 
 // Shadcn/ui Components
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ export default function EditParentPage() {
   const parentId = params.id as string;
 
   const [activeTab, setActiveTab] = useState("personal");
+  const { setItems: setBreadcrumb } = useBreadcrumb();
   const [isLoading, setIsLoading] = useState(true);
 
   // Form state
@@ -125,6 +127,19 @@ export default function EditParentPage() {
       toast.error(error.message || "Failed to update parent profile");
     },
   });
+
+  // Update breadcrumb when parent data loads
+  useEffect(() => {
+    const name = userData?.name || parentProfile?.user?.name || parentProfile?.name || "Parent";
+    if (name && parentId) {
+      setBreadcrumb([
+        { label: "Dashboard", href: "/admin" },
+        { label: "Parents", href: "/list/parents" },
+        { label: name, href: `/list/parents/${parentId}` },
+        { label: "Edit", isCurrent: true },
+      ]);
+    }
+  }, [userData, parentProfile, parentId, setBreadcrumb]);
 
   // Initialize form data
   useEffect(() => {
@@ -193,7 +208,7 @@ export default function EditParentPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-[#e35336]">Edit {userData?.name || parentProfile?.user?.name || parentProfile?.name || "Parent"}</h1>
+            <h1 className="text-2xl font-bold text-black dark:text-white">Edit {userData?.name || parentProfile?.user?.name || parentProfile?.name || "Parent"}</h1>
             <p className="text-gray-500">Update parent information and manage children</p>
           </div>
         </div>

@@ -121,6 +121,8 @@ const StudentsListPage = () => {
     full_name: "",
     email: "",
     phone: "",
+    mother_name: "",
+    mother_phone: "",
     gender: "MALE"
   });
   const [importResult, setImportResult] = useState<{ credentials?: { name: string; email: string; username: string; role: string }[] } | null>(null);
@@ -250,7 +252,7 @@ const StudentsListPage = () => {
 
     try {
       // Create a file with single student data for the bulk API
-      const csvContent = `full_name,email,phone,role\n${newStudent.full_name},${newStudent.email},${newStudent.phone || ""},student`;
+      const csvContent = `full_name,email,phone,mother_name,mother_phone,role\n${newStudent.full_name},${newStudent.email},${newStudent.phone || ""},${newStudent.mother_name || ""},${newStudent.mother_phone || ""},student`;
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const file = new File([blob], 'single_student.csv', { type: 'text/csv' });
 
@@ -551,6 +553,28 @@ const StudentsListPage = () => {
                 onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
                 className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
                 placeholder={t.placeholders.phone}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Mother's Name</label>
+              <input
+                type="text"
+                value={newStudent.mother_name}
+                onChange={(e) => setNewStudent({ ...newStudent, mother_name: e.target.value })}
+                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                placeholder="Enter mother's full name"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Mother's Phone</label>
+              <input
+                type="text"
+                value={newStudent.mother_phone}
+                onChange={(e) => setNewStudent({ ...newStudent, mother_phone: e.target.value })}
+                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                placeholder="Enter mother's phone number"
               />
             </div>
 

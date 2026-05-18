@@ -471,6 +471,8 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const avatarUrl = userData.img || userData.avatarUrl;
   const username = userData.username || student.studentCode || t.nA;
   const phone = student.phone || userData.phone || t.nA;
+  const motherName = student.motherName || t.nA;
+  const motherPhone = student.motherPhone || t.nA;
   const address = student.address || userData.address || t.nA;
   const gender = student.gender || t.nA;
   const dateOfBirth = student.dateOfBirth || student.birthday;
@@ -576,6 +578,8 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
               <CardContent className="space-y-3">
                 <InfoRow icon={Shield} label={t.info.username} value={username} />
                 <InfoRow icon={Phone} label={t.info.phone} value={phone} />
+                <InfoRow icon={User} label="Mother's Name" value={motherName} />
+                <InfoRow icon={Phone} label="Mother's Phone" value={motherPhone} />
                 <InfoRow icon={User} label={t.info.gender} value={gender} />
                 <InfoRow icon={Calendar} label={t.info.dateOfBirth} value={formatDate(dateOfBirth)} />
                 <InfoRow icon={MapPin} label={t.info.address} value={address} />

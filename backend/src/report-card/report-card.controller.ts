@@ -9,12 +9,12 @@ import {
   Query,
   UseGuards,
   Request,
-  Inject,
-  UseInterceptors,
-  UploadedFile,
+  Res,
   HttpException,
   HttpStatus,
-  Res,
+  BadRequestException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
@@ -254,29 +254,19 @@ export class ReportCardController {
     );
   }
 
-  @Post('certificate-template/upload')
+  @Post('certificate-template/watermark')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   @UseInterceptors(FileInterceptor('file'))
-  async uploadCertificateTemplate(
+  async uploadCertificateWatermark(
     @Request() req,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    try {
-      if (!file) {
-        throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
-      }
-      const url = await this.reportCardService.uploadCertificateTemplate(
-        req.user.schoolId,
-        file,
-      );
-      return { url };
-    } catch (error) {
-      throw new HttpException(
-        'Failed to upload certificate template: ' + error.message,
-        error.status || HttpStatus.BAD_REQUEST,
-      );
+    if (!file) {
+      throw new BadRequestException('Watermark image is required');
     }
+    const url = await this.reportCardService.uploadCertificateWatermark(req.user.schoolId, file);
+    return { url };
   }
 
   @Get(':id/certificate')

@@ -2073,14 +2073,25 @@ export class FinanceService {
 
     const feeItems = studentFees.map((sf) => {
       const paid = sf.payments.reduce((s, p) => s + p.amountPaid, 0);
-      const isYearWide = !sf.termId;
+      const installmentIndex = this.getFeeStructureInstallmentIndex(
+        sf.feeStructure.feeType,
+      );
+      const isInstallmentFee = installmentIndex !== null;
+      const isYearWide = !sf.termId && !isInstallmentFee;
       const isPeriodView = Boolean(selectedTerm);
 
       let amount = sf.totalAmount;
       let paidAmount = paid;
       let balance = Math.max(0, sf.finalAmount - paid);
       let status = sf.status;
-      let termName = sf.term?.name || sf.feeStructure.term?.name || null;
+      let termName =
+        installmentIndex !== null
+          ? this.getInstallmentPeriodLabel(
+              curriculumType,
+              installmentIndex - 1,
+              sf.term || sf.feeStructure.term,
+            )
+          : sf.term?.name || sf.feeStructure.term?.name || null;
 
       if (isPeriodView && isYearWide && selectedTerm) {
         const perPeriodAmount =
@@ -2116,8 +2127,20 @@ export class FinanceService {
       };
     });
 
-    const payments = studentFees.flatMap((sf) =>
-      sf.payments.map((p) => ({
+    const payments = studentFees.flatMap((sf) => {
+      const installmentIndex = this.getFeeStructureInstallmentIndex(
+        sf.feeStructure.feeType,
+      );
+      const termName =
+        installmentIndex !== null
+          ? this.getInstallmentPeriodLabel(
+              curriculumType,
+              installmentIndex - 1,
+              sf.term || sf.feeStructure.term,
+            )
+          : sf.term?.name || sf.feeStructure.term?.name || null;
+
+      return sf.payments.map((p) => ({
         id: p.id,
         receiptNumber: p.receiptNumber,
         studentFeeId: sf.id,
@@ -2126,12 +2149,11 @@ export class FinanceService {
         paidAt: p.paymentDate.toISOString(),
         feeItemName: sf.feeStructure.feeType,
         termId: p.termId || sf.termId,
-        termName:
-          p.term?.name || sf.term?.name || sf.feeStructure.term?.name || null,
-        isYearWide: !sf.termId,
+        termName: p.term?.name || termName,
+        isYearWide: !sf.termId && installmentIndex === null,
         status: 'COMPLETED',
-      })),
-    );
+      }));
+    });
 
     const totalFees = feeItems.reduce((s, f) => s + f.amount, 0);
     const totalPaid = feeItems.reduce((s, f) => s + f.paidAmount, 0);

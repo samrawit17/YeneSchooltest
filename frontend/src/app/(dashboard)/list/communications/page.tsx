@@ -663,7 +663,7 @@ function CommunicationsContent() {
     <div className="p-3 md:p-6">
       <div className="mb-3 flex flex-col gap-3 md:mb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">{t.title.communicationBook}</h1>
+          <h1 className="text-2xl font-bold text-black">{t.title.communicationBook}</h1>
           <p className="hidden text-xs text-gray-500 sm:block md:text-sm">{t.subtitle.book}</p>
         </div>
         <Button onClick={() => setShowNewMessageModal(true)} className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-sm text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]">

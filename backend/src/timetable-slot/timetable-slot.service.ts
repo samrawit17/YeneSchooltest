@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTimetableSlotDto } from './dto/create-timetable-slot.dto';
@@ -10,6 +11,109 @@ import { UpdateTimetableSlotDto } from './dto/update-timetable-slot.dto';
 @Injectable()
 export class TimetableSlotService {
   constructor(private prisma: PrismaService) {}
+
+  private buildAcademicYearFilter(academicYearId?: string) {
+    if (!academicYearId) {
+      return {};
+    }
+
+    return {
+      OR: [{ academicYearId }, { academicYearId: null }],
+    };
+  }
+
+  async assertParentCanViewClassTimetable(
+    schoolId: string,
+    parentUserId: string,
+    classId: string,
+    sectionId?: string,
+  ) {
+    const parentProfile = await this.prisma.parentProfile.findFirst({
+      where: { schoolId, userId: parentUserId },
+      select: { id: true },
+    });
+
+    if (!parentProfile) {
+      throw new ForbiddenException('Parent profile not found');
+    }
+
+    const linkedStudent = await this.prisma.parentStudent.findFirst({
+      where: {
+        schoolId,
+        parentId: parentProfile.id,
+      },
+      select: {
+        studentId: true,
+      },
+    });
+
+    if (!linkedStudent) {
+      throw new ForbiddenException('No linked child found for this parent');
+    }
+
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: { id: linkedStudent.studentId, schoolId },
+      select: { userId: true },
+    });
+
+    if (!studentProfile?.userId) {
+      throw new ForbiddenException('Linked child profile is incomplete');
+    }
+
+    const studentAssignments = await this.prisma.studentClass.findMany({
+      where: {
+        schoolId,
+        studentId: studentProfile.userId,
+        classId,
+        ...(sectionId ? { sectionId } : {}),
+      },
+      select: { id: true },
+      take: 1,
+    });
+
+    if (studentAssignments.length === 0) {
+      throw new ForbiddenException(
+        'You can only view the timetable for your linked child',
+      );
+    }
+  }
+
+  async resolveTeacherTimetableTarget(
+    schoolId: string,
+    requester: { id: string; role: string },
+    targetTeacherId: string,
+  ) {
+    const normalizedRole = String(requester.role || '').toUpperCase();
+    const canInspectOthers = new Set([
+      'ADMIN',
+      'IT_MANAGER',
+      'REGISTRAR',
+      'SUPER_ADMIN',
+    ]);
+
+    if (canInspectOthers.has(normalizedRole)) {
+      return targetTeacherId;
+    }
+
+    const selfTeacherProfile = await this.prisma.teacherProfile.findFirst({
+      where: { schoolId, OR: [{ userId: requester.id }, { id: requester.id }] },
+      select: { id: true, userId: true },
+    });
+
+    const allowedIds = new Set(
+      [requester.id, selfTeacherProfile?.id, selfTeacherProfile?.userId].filter(
+        (value): value is string => Boolean(value),
+      ),
+    );
+
+    if (!allowedIds.has(targetTeacherId)) {
+      throw new ForbiddenException(
+        'You can only view your own timetable',
+      );
+    }
+
+    return selfTeacherProfile?.userId || requester.id;
+  }
 
   /**
    * Check if two time slots overlap
@@ -411,10 +515,12 @@ export class TimetableSlotService {
     schoolId: string,
     classId: string,
     sectionId?: string,
+    academicYearId?: string,
   ) {
     const where: any = {
       schoolId,
       classId,
+      ...this.buildAcademicYearFilter(academicYearId),
     };
 
     if (sectionId) {
