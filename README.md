@@ -1,161 +1,74 @@
 # SMS - School Management System
 
-A full-stack School Management System built with **Next.js** (frontend) and **NestJS** (backend), backed by **Prisma/PostgreSQL**.
+A full-stack School Management System built with **Next.js** and **NestJS**. Supports multi-tenant schools with role-based access, offline-first attendance, and multi-language support (English, Amharic, Arabic, Oromo, Somali).
 
-## 🚀 Tech Stack
+## Quick Start
 
-### Backend
-- **Framework:** NestJS (TypeScript)
-- **Database:** PostgreSQL with Prisma ORM
-- **Auth:** JWT + Role-based access control (RBAC)
-- **Roles:** SUPER_ADMIN, ADMIN, TEACHER, STUDENT, PARENT, REGISTRAR, FINANCE, HR
-
-### Frontend
-- **Framework:** Next.js 14 (App Router)
-- **State:** React Query (TanStack Query) + React Context
-- **UI:** Shadcn/ui + Tailwind CSS
-- **Forms:** React Hook Form + Zod validation
-- **Language:** TypeScript (strict)
-
-## 🎯 Features
-
-### Academic Management
-- Academic years & terms (Semesters/Quarters/Terms)
-- Class & section management
-- Subject assignment
-- Timetable management with grid view
-
-### User Management
-- Multi-role authentication (6+ roles)
-- Student enrollment & approval workflow
-- Teacher assignment to classes/subjects
-- Parent-child linking
-
-### Grading & Assessments
-- Multiple assessment types (CA, Mid, Final)
-- Grade entry with bulk operations
-- Report cards & promotions
-- Grade review workflow (Teacher → Registrar)
-
-### Attendance
-- Offline-first attendance with sync
-- Class-wise attendance tracking
-- Student attendance reports
-
-### Communication
-- Internal messaging system
-- Announcements by role
-- Push notifications (webhook support)
-- Email/SMS integration ready
-
-### Finance
-- Student fee management
-- Payment tracking
-- Payroll management
-- Financial reports
-
-### Siren/Bell System
-- Configurable period times
-- Siren schedules by day
-- Hardware integration (webhook support)
-- Manual & automatic triggering
-
-## 🛠️ Setup
-
-### Prerequisites
-- Node.js 18+
-- PostgreSQL 14+
-- npm or yarn
-
-### Backend Setup
 ```bash
-cd backend
-npm install
-cp .env.example .env  # Configure DATABASE_URL, JWT_SECRET, etc.
+# Backend
+cd backend && npm install
+cp .env.example .env
 npx prisma migrate dev
 npm run start:dev
-```
 
-### Frontend Setup
-```bash
-cd frontend
-npm install
-cp .env.local.example .env.local  # Configure NEXT_PUBLIC_API_URL
+# Frontend
+cd frontend && npm install
+cp .env.local.example .env.local
 npm run dev
 ```
 
-### Docker Setup
-```bash
-docker-compose up -d
-```
+## Tech Stack
 
-## 📡 API Architecture
+| Layer | Tech |
+|-------|------|
+| **Backend** | NestJS, PostgreSQL, Prisma |
+| **Frontend** | Next.js 14 (App Router), Tailwind, Shadcn/ui |
+| **Auth** | JWT + RBAC (8 roles) |
 
-### Backend (NestJS)
-- **50+ modules** following NestJS modular architecture
-- Each feature has: `*.controller.ts`, `*.service.ts`, `*.module.ts`
-- Global RBAC guards & decorators
-- Prisma for type-safe database access
+## Core Features
 
-### Frontend (Next.js)
-- **Modular API layer:** `frontend/src/lib/api/`
-  - 50+ API modules (one per backend module)
-  - Centralized exports via `lib/api.ts` barrel
-  - Type-safe API calls with axios interceptors
-- **React Query:** Centralized query keys in `lib/query-keys.ts`
-- **Custom hooks:** Extracted data logic (e.g., `useProfileData`)
-- **Offline support:** IndexedDB + sync service for attendance
+- **Academic** — Years, terms, classes, subjects, timetables, grade books, report cards
+- **Attendance** — Offline-first tracking with auto-sync
+- **Finance** — Fee management, installment plans, payment tracking
+- **Communication** — Internal messaging, announcements, push notifications
+- **Siren/Bell** — Configurable schedules with hardware webhook support
+- **Multi-Language** — English, Amharic, Arabic, Oromo, Somali + Ethiopian calendar
 
-## 🔐 Environment Variables
+## Roles
 
-### Backend (`backend/.env`)
+`SUPER_ADMIN` · `ADMIN` · `TEACHER` · `STUDENT` · `PARENT` · `REGISTRAR` · `FINANCE` · `HR`
+
+## Environment
+
+**Backend** (`.env`):
 ```
 DATABASE_URL="postgresql://user:pass@localhost:5432/sms"
 JWT_SECRET="your-secret-key"
 ```
 
-### Frontend (`frontend/.env.local`)
+**Frontend** (`.env.local`):
 ```
 NEXT_PUBLIC_API_URL="http://localhost:5000"
 ```
 
-## 🧪 Development
+## Docker
 
-### Backend
 ```bash
-cd backend
-npm run start:dev    # Development with hot reload
-npm run test       # Unit tests
-npm run lint        # Linting
+docker-compose up -d
 ```
 
-### Frontend
-```bash
-cd frontend
-npm run dev          # Next.js dev server
-npm run build        # Production build
-npx tsc --noEmit  # TypeScript check
-```
+## Scripts
 
-## 📦 Database Schema
+| Command | Description |
+|---------|-------------|
+| `npm run start:dev` | Start with hot reload |
+| `npm run build` | Production build |
+| `npm run test` | Run tests |
+| `npx tsc --noEmit` | Type check |
 
-Key models (see `backend/prisma/schema.prisma`):
-- User (with roles)
-- School
-- Student, Teacher, Parent
-- Class, Section, Subject
-- AcademicYear, Term
-- Attendance, Grade, Assessment
-- Fee, Payment
-- Message, Announcement
-- SirenSchedule, PeriodTime
+## Contributing
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-
+1. Fork the repo
+2. Create a branch (`git checkout -b feature/name`)
+3. Commit and push
+4. Open a Pull Request
