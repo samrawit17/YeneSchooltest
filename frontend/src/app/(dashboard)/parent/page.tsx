@@ -138,31 +138,50 @@ interface SubjectGrade {
 
 const formatBirr = (amount: number) => `Brr ${Math.round(amount).toLocaleString()}`;
 
+const getInstallmentNumber = (feeType?: string | null) => {
+  const match = String(feeType || "").match(/_INSTALLMENT_(\d+)$/i);
+  return match ? Number(match[1]) : null;
+};
+
 const buildFeePeriodSummary = (feeData: any): FeePeriodSummary[] => {
   const terms = Array.isArray(feeData?.terms) ? feeData.terms : [];
   const feeItems = Array.isArray(feeData?.feeItems) ? feeData.feeItems : [];
   const payments = Array.isArray(feeData?.payments) ? feeData.payments : [];
+  const monthlyTitles = Array.from({ length: 12 }, (_, index) => `Month ${index + 1}`);
+  const billingMode = String(feeData?.curriculumType || "").toUpperCase();
+  const periodTitles = billingMode === "MONTHLY" || billingMode === "MONTH"
+    ? monthlyTitles
+    : terms.length > 0
+    ? terms.map((term: any) => String(term.name || term.period || "Period"))
+    : monthlyTitles;
 
-  if (terms.length === 0) {
+  if (periodTitles.length === 0) {
     return [];
   }
 
-  return terms.map((term: any) => {
-    const termId = String(term.id || term.termId || term.name);
-    const termName = String(term.name || term.period || "Period");
+  return periodTitles.map((termName: string, index: number) => {
+    const term = terms[index];
+    const termId = String(term?.id || term?.termId || termName);
     let totalDue = 0;
 
     for (const item of feeItems) {
       const amount = Number(item.amount) || 0;
-      if (item.isYearWide) {
-        totalDue += amount / terms.length;
-      } else if (item.termId === termId || item.termName === termName) {
+      const installmentNumber = getInstallmentNumber(item.name || item.category);
+      const installmentTitle = installmentNumber ? periodTitles[installmentNumber - 1] : null;
+
+      if (item.isYearWide && !installmentNumber) {
+        totalDue += amount / periodTitles.length;
+      } else if (item.termId === termId || item.termName === termName || installmentTitle === termName) {
         totalDue += amount;
       }
     }
 
     const totalPaid = payments
-      .filter((payment: any) => payment.termId === termId || payment.termName === termName)
+      .filter((payment: any) => {
+        const installmentNumber = getInstallmentNumber(payment.feeItemName);
+        const installmentTitle = installmentNumber ? periodTitles[installmentNumber - 1] : null;
+        return payment.termId === termId || payment.termName === termName || installmentTitle === termName;
+      })
       .reduce((sum: number, payment: any) => sum + (Number(payment.amount) || 0), 0);
 
     return {
@@ -492,6 +511,11 @@ const ParentDashboard = () => {
                   reason: isCleared ? undefined : blockedReason,
                 };
 
+                if (!isCleared) {
+                  gradesMap[childId] = [];
+                  continue;
+                }
+
                 const gradesRes = await reportCardsAPI.getPublishedForParent(childId, {
                   ...(activeYearName ? { academicYear: activeYearName } : {}),
                 });
@@ -516,15 +540,14 @@ const ParentDashboard = () => {
                       term: latestPublishedCard.term,
                       percentage: latestPublishedCard.percentage,
                       grade: latestPublishedCard.overallGrade,
-                      canViewResults: isCleared,
-                      blockedReason: isCleared ? undefined : blockedReason,
+                      canViewResults: true,
                     };
                   }
                 }
                 const gradesData = Array.isArray(latestPublishedCard?.gradeDetails)
                   ? latestPublishedCard.gradeDetails
                   : [];
-                gradesMap[childId] = isCleared ? (gradesData as unknown as SubjectGrade[]) : [];
+                gradesMap[childId] = gradesData as unknown as SubjectGrade[];
               } catch (gradeError) {
                 console.error("Could not fetch grades for child:", childId, gradeError);
                 gradeAccessMap[childId] = {

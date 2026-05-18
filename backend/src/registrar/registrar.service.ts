@@ -16,6 +16,8 @@ export interface CreateStudentDto {
   gender?: string;
   address?: string;
   phone?: string;
+  motherName?: string;
+  motherPhone?: string;
   emergencyContact?: {
     name: string;
     phone: string;
@@ -37,6 +39,8 @@ export interface UpdateStudentDto {
   gender?: string;
   address?: string;
   phone?: string;
+  motherName?: string;
+  motherPhone?: string;
   emergencyContact?: {
     name: string;
     phone: string;
@@ -88,6 +92,8 @@ export class RegistrarService {
       gender,
       address,
       phone,
+      motherName,
+      motherPhone,
       emergencyContact,
       guardianName,
       guardianPhone,
@@ -147,6 +153,8 @@ export class RegistrarService {
         gender,
         address,
         phone,
+        motherName,
+        motherPhone,
         emergencyContact: emergencyContact
           ? JSON.stringify(emergencyContact)
           : undefined,
@@ -264,6 +272,8 @@ export class RegistrarService {
       gender,
       address,
       phone,
+      motherName,
+      motherPhone,
       emergencyContact,
       guardianName,
       guardianPhone,
@@ -284,6 +294,8 @@ export class RegistrarService {
         ...(gender && { gender }),
         ...(address && { address }),
         ...(phone && { phone }),
+        ...(motherName !== undefined && { motherName }),
+        ...(motherPhone !== undefined && { motherPhone }),
         ...(emergencyContact && {
           emergencyContact: JSON.stringify(emergencyContact),
         }),

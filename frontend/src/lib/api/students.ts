@@ -53,20 +53,20 @@ export const studentsAPI = {
   saveIdCardTemplate: (template: {
     title: string;
     themeColor: string;
-    templateBackgroundUrl: string;
     schoolName: string;
     schoolPhone: string;
     schoolAddress: string;
-    schoolEmail: string;
-    schoolLogoUrl: string;
+    showEmergencyContact: boolean;
+    showBloodGroup: boolean;
+    useCustomBackground: boolean;
+    customBackgroundUrl: string;
   }) => api.put('/students/id-cards/template', { template }),
-  uploadIdCardTemplate: async (file: File) => {
+  uploadIdCardWatermark: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await api.post('/students/id-cards/template/upload', formData, {
+    return api.post('/students/id-cards/template/watermark', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data;
   },
   downloadIdCardPdf: (studentId: string) =>
     api.get(`/students/id-cards/${studentId}/pdf`, { responseType: 'blob' }),

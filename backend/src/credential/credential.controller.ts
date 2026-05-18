@@ -754,6 +754,8 @@ export class CredentialController {
         name: string;
         email?: string;
         phone?: string;
+        motherName?: string;
+        motherPhone?: string;
         parentEmail?: string;
         generateCredentials?: boolean;
         username?: string;
@@ -900,6 +902,8 @@ export class CredentialController {
               section: assignedSectionName,
               rollNumber,
               phone: student.phone,
+              motherName: student.motherName || null,
+              motherPhone: student.motherPhone || null,
             },
           });
 

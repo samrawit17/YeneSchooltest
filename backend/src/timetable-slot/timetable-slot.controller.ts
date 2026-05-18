@@ -102,7 +102,16 @@ export class TimetableSlotController {
       return { success: false, message: 'School ID is required' };
     }
 
-    const result = await this.timetableSlotService.findByTeacher(schoolId, targetTeacherId);
+    const resolvedTeacherId =
+      await this.timetableSlotService.resolveTeacherTimetableTarget(
+        schoolId,
+        req.user,
+        targetTeacherId,
+      );
+    const result = await this.timetableSlotService.findByTeacher(
+      schoolId,
+      resolvedTeacherId,
+    );
     return result;
   }
 
@@ -179,6 +188,7 @@ export class TimetableSlotController {
     @Request() req: AuthenticatedRequest,
     @Param('classId') classId: string,
     @Query('sectionId') sectionId?: string,
+    @Query('academicYearId') academicYearId?: string,
   ) {
     const schoolId = req.user.schoolId;
 
@@ -186,10 +196,20 @@ export class TimetableSlotController {
       return { success: false, message: 'School ID is required' };
     }
 
+    if (req.user.role === Role.PARENT) {
+      await this.timetableSlotService.assertParentCanViewClassTimetable(
+        schoolId,
+        req.user.id,
+        classId,
+        sectionId,
+      );
+    }
+
     return this.timetableSlotService.getTimetableGrid(
       schoolId,
       classId,
       sectionId,
+      academicYearId,
     );
   }
 }

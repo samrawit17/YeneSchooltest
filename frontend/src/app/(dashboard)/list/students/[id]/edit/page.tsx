@@ -8,6 +8,7 @@ import { parentsAPI } from "@/lib/api/people";
 import { queryKeys } from "@/lib/query-keys";
 import { Loader2, ArrowLeft, Save, User, BookOpen, Users, FileText, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { toast } from "sonner";
 
 // Shadcn/ui Components
@@ -43,6 +44,8 @@ interface Student {
   studentCode: string;
   rollNumber: string;
   phone: string;
+  motherName?: string;
+  motherPhone?: string;
   gender: string;
   address: string;
   dateOfBirth?: string;
@@ -95,6 +98,8 @@ export default function EditStudentPage() {
     fullName: "",
     email: "",
     phone: "",
+    motherName: "",
+    motherPhone: "",
     gender: "MALE",
     address: "",
     dateOfBirth: "",
@@ -121,6 +126,7 @@ export default function EditStudentPage() {
   const [userId, setUserId] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState("personal");
+  const { setItems: setBreadcrumb } = useBreadcrumb();
 
   // Fetch student data
   const { data: student, isLoading: isLoadingStudent, error: studentError } = useQuery<Student>({
@@ -133,6 +139,19 @@ export default function EditStudentPage() {
     },
     retry: 1,
   });
+
+  // Update breadcrumb when student data loads
+  useEffect(() => {
+    if (student) {
+      const name = (student.user as Record<string, any>)?.name || "Student";
+      setBreadcrumb([
+        { label: "Dashboard", href: "/admin" },
+        { label: "Students", href: "/list/students" },
+        { label: name, href: `/list/students/${studentId}` },
+        { label: "Edit", isCurrent: true },
+      ]);
+    }
+  }, [student, studentId, setBreadcrumb]);
 
   // Fetch classes
   const { data: classesData } = useQuery<ClassOption[]>({
@@ -226,6 +245,8 @@ export default function EditStudentPage() {
         fullName: userData.name || "",
         email: userData.email || "",
         phone: student.phone || userData.phone || "",
+        motherName: student.motherName || "",
+        motherPhone: student.motherPhone || "",
         gender: student.gender || "MALE",
         address: student.address || "",
         dateOfBirth: student.dateOfBirth || "",
@@ -346,6 +367,8 @@ export default function EditStudentPage() {
     // Only send fields that the backend accepts: name, gender, address, phone
     const updateData: any = {
       phone: formData.phone,
+      motherName: formData.motherName,
+      motherPhone: formData.motherPhone,
       gender: formData.gender,
       address: formData.address,
     };
@@ -458,7 +481,7 @@ export default function EditStudentPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-[#e35336]">Edit {student?.user?.name || "Student"}</h1>
+          <h1 className="text-2xl font-bold text-black dark:text-white">Edit {student?.user?.name || "Student"}</h1>
           <p className="text-sm text-gray-500">Update student information</p>
         </div>
       </div>
@@ -533,6 +556,26 @@ export default function EditStudentPage() {
                     value={formData.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     placeholder="Enter phone number"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="motherName">Mother's Name</Label>
+                  <Input
+                    id="motherName"
+                    value={formData.motherName}
+                    onChange={(e) => handleInputChange("motherName", e.target.value)}
+                    placeholder="Enter mother's full name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="motherPhone">Mother's Phone</Label>
+                  <Input
+                    id="motherPhone"
+                    value={formData.motherPhone}
+                    onChange={(e) => handleInputChange("motherPhone", e.target.value)}
+                    placeholder="Enter mother's phone number"
                   />
                 </div>
                 

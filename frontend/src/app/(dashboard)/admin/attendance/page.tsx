@@ -8,6 +8,7 @@ import { useTranslations } from "@/hooks/useTranslations";
 import { attendanceAPI, classesAPI, gradingAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
+import DynamicChart from "@/components/charts/DynamicChart";
 import { 
   Download,
   Users,
@@ -24,7 +25,14 @@ import {
   BarChart3,
   PieChart,
   Activity,
-  Bell
+  Bell,
+  AlertTriangle,
+  AlertCircle,
+  CheckCircle2,
+  Info,
+  RefreshCw,
+  LayoutGrid,
+  ClipboardCheck
 } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,10 +43,12 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -57,36 +67,29 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
   const [data, setData] = useState<Array<{ id: string; name: string; grade: number; section: string }>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [notifying, setNotifying] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchMissing = async () => {
-      try {
-        setLoading(true);
-        const params: any = { date };
-        if (grade && grade !== 'all') params.grade = extractGradeValue(grade);
-        if (section && section !== 'all') params.section = section;
-        const res = await attendanceAPI.getMissing(params);
-        setData(res.data || []);
-      } catch (e) {
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchMissing();
+  const fetchMissing = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params: any = { date };
+      if (grade && grade !== 'all') params.grade = extractGradeValue(grade);
+      if (section && section !== 'all') params.section = section;
+      const res = await attendanceAPI.getMissing(params);
+      setData(res.data || []);
+    } catch (e: any) {
+      const message = e?.response?.data?.message || "Failed to load missing attendance";
+      setError(message);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   }, [date, grade, section]);
 
-  const handleNotifyAll = async () => {
-    try {
-      setNotifying(true);
-      await attendanceAPI.notifyMissingAttendance({ date });
-      toast.success(t.notificationsSent);
-    } catch (e) {
-      toast.error(t.notificationsFailed);
-    } finally {
-      setNotifying(false);
-    }
-  };
+  useEffect(() => {
+    fetchMissing();
+  }, [fetchMissing]);
 
   const handleNotifyAllTeachers = async () => {
     try {
@@ -116,19 +119,39 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+        <AlertCircle className="w-10 h-10 text-[var(--brand-color,#e35336)]" />
+        <div>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">{t.errorTitle || "Unable to load missing attendance"}</p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{error}</p>
+        </div>
+        <Button onClick={fetchMissing} variant="outline" size="sm">
+          <RefreshCw className="w-4 h-4 mr-1" />
+          {t.tryAgain || "Try again"}
+        </Button>
+      </div>
+    );
+  }
+
   if (!data || data.length === 0) {
-    return <p className="text-center text-gray-500 py-4">{t.allClassesRecorded}</p>;
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <CheckCircle2 className="w-10 h-10 text-[var(--brand-color,#e35336)] mb-2" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t.allClassesRecorded}</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-3">
       <div className="flex justify-between mb-2 gap-2">
-
         <Button 
           onClick={handleNotifyAllTeachers} 
           disabled={notifying}
           size="sm"
-          className="bg-orange-500 hover:bg-orange-600 text-white"
+          className="bg-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.85)] text-white"
         >
           {notifying ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Bell className="w-4 h-4 mr-1" />}
           {t.notifyAll}
@@ -136,19 +159,82 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
       </div>
       <ScrollArea className="h-[300px] pr-2">
         {data.map((c) => (
-        <div key={c.id} className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+        <div key={c.id} className="flex items-center justify-between p-3 bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)] rounded-lg">
           <div>
             <p className="font-medium text-gray-900 dark:text-white">
               {formatClassSectionLabel(t, c.name, c.grade, c.section)}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{formatGradeLabel(t, c.grade, c.name)}</p>
           </div>
-          <Badge variant="outline" className="text-orange-600 border-orange-300">{t.missing}</Badge>
+          <Badge variant="outline" className="text-[var(--brand-color,#e35336)] border-[rgba(var(--brand-color-rgb),0.3)]">{t.missing}</Badge>
         </div>
       ))}
       </ScrollArea>
     </div>
   );
+}
+
+interface AttendanceDashboardMessages {
+  title: string;
+  description: string;
+  academicYear: string;
+  noAcademicYears: string;
+  period: string;
+  noPeriods: string;
+  grade: string;
+  allGrades: string;
+  noGrades: string;
+  section: string;
+  allSections: string;
+  noSections: string;
+  weeklyTrend: string;
+  week: string;
+  month: string;
+  todayOverview: string;
+  present: string;
+  absent: string;
+  late: string;
+  excused: string;
+  excellent: string;
+  good: string;
+  needsImprovement: string;
+  noData: string;
+  missingAttendance: string;
+  notifyAll: string;
+  allClassesRecorded: string;
+  missing: string;
+  gradeLabel: string;
+  sectionLabel: string;
+  recentAbsences: string;
+  noRecentAbsences: string;
+  attendanceSessions: string;
+  search: string;
+  class: string;
+  subject: string;
+  teacher: string;
+  status: string;
+  rate: string;
+  submitted: string;
+  notSubmitted: string;
+  noSessions: string;
+  unknown: string;
+  nA: string;
+  homeroom: string;
+  exportSuccess: string;
+  notificationsSent: string;
+  notificationsSentDetailed: string;
+  notificationsFailed: string;
+  errorTitle: string;
+  tryAgain: string;
+  refresh: string;
+  attendanceRate: string;
+  today: string;
+  ofTotal: string;
+  sessions: string;
+  submittedShort: string;
+  totalMarked: string;
+  studentsToday: string;
+  attendanceByClass: string;
 }
 
 // Types
@@ -262,7 +348,7 @@ const formatClassSectionLabel = (
 ) => `${formatGradeLabel(t, grade, className)} - ${formatSectionLabel(t, section)}`;
 
 export default function AttendanceManagementPage() {
-  const { t } = useTranslations<any>("attendance");
+  const { t } = useTranslations<AttendanceDashboardMessages>("attendance");
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
   
@@ -278,7 +364,11 @@ export default function AttendanceManagementPage() {
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
 
   // Dynamic grades and sections from API
   const [gradeList, setGradeList] = useState<string[]>([]);
@@ -299,28 +389,71 @@ export default function AttendanceManagementPage() {
     user?.role?.toUpperCase() === 'ADMIN' ||
     user?.role?.toUpperCase() === 'IT_MANAGER' ||
     user?.role?.toUpperCase() === 'SUPER_ADMIN';
-  const { currentAcademicYear, currentTerm, getAllAcademicYears, getTermsForYear } = useAcademicYear();
+  const { currentAcademicYear, currentTerm, getAllAcademicYears, getTermsForYear, formattedYearLabel, displayTermName, formatDate: formatSchoolDate } = useAcademicYear();
+
+  const fetchDashboard = useCallback(async (isRefresh = false) => {
+    if (!isAuthenticated || !isAdmin) return;
+    
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      
+      const gradeParam = selectedGrade !== "all" ? extractGradeValue(selectedGrade) : undefined;
+      let dateParam = selectedDate;
+      if (viewMode === 'period' && selectedPeriod && selectedPeriod !== 'all') {
+        const period = periods.find(p => p.id === selectedPeriod);
+        if (period?.startDate) dateParam = period.startDate;
+      }
+      const response = await attendanceAPI.getAdminDashboard({ 
+        date: dateParam,
+        grade: gradeParam,
+        section: selectedSection !== "all" ? selectedSection : undefined,
+        range: timeRange,
+      });
+      setDashboardData(response.data);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Failed to load attendance data';
+      setError(message);
+      toast.error(message);
+      setDashboardData({
+        todayStats: {
+          totalSessions: 0,
+          submittedSessions: 0,
+          notSubmittedSessions: 0,
+          attendanceRate: 0,
+          totalStudentsMarked: 0,
+          presentCount: 0,
+          absentCount: 0,
+          lateCount: 0,
+          excusedCount: 0,
+        },
+        weeklyStats: [],
+        missingAttendance: [],
+        recentAbsences: []
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [isAuthenticated, isAdmin, selectedDate, selectedGrade, selectedSection, timeRange, selectedPeriod, periods, viewMode]);
 
   // Fetch academic years and periods
   useEffect(() => {
     const fetchAcademicData = async () => {
       try {
-        // Fetch all academic years for the dropdown using centralized context
         const years = await getAllAcademicYears();
         if (years && years.length > 0) {
           setAcademicYears(years);
           
-          // Use current academic year from context or find active year
           const activeYear = currentAcademicYear || years.find((y: any) => y.isActive) || years[0];
           if (activeYear?.id) {
             setSelectedAcademicYear(activeYear.id);
           }
           
-          // Get terms for the active year
           const terms = await getTermsForYear(activeYear?.id);
           setPeriods(terms);
           
-          // Select current term: match by id, then by date range, fallback to first
           const selectCurrentTerm = (termList: any[]) => {
             if (currentTerm?.id && termList.some((t: any) => t.id === currentTerm.id)) {
               setSelectedPeriod(currentTerm.id);
@@ -351,12 +484,10 @@ export default function AttendanceManagementPage() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        // Fetch all classes without filtering by academic year to get all grades/sections
         const response = await classesAPI.getAll();
         const classData = response.data || [];
         setClasses(classData);
         
-        // Extract unique grades and sections from all classes
         const gradeMap = new Map<number, boolean>();
         const sectionMap = new Map<string, boolean>();
         classData.forEach((c: Class) => {
@@ -374,6 +505,11 @@ export default function AttendanceManagementPage() {
     };
     fetchClasses();
   }, []);
+
+  // Fetch dashboard data
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
 
   // Fetch grades data when academic year or period changes
   useEffect(() => {
@@ -396,74 +532,27 @@ export default function AttendanceManagementPage() {
     fetchGradesData();
   }, [selectedAcademicYear, selectedPeriod]);
 
-  // Fetch dashboard data
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!isAuthenticated || !isAdmin) return;
-      
-      try {
-        setLoading(true);
-        const gradeParam = selectedGrade !== "all" ? extractGradeValue(selectedGrade) : undefined;
-        let dateParam = selectedDate;
-        if (viewMode === 'period' && selectedPeriod && selectedPeriod !== 'all') {
-          const period = periods.find(p => p.id === selectedPeriod);
-          if (period?.startDate) dateParam = period.startDate;
-        }
-        const response = await attendanceAPI.getAdminDashboard({ 
-          date: dateParam,
-          grade: gradeParam,
-          section: selectedSection !== "all" ? selectedSection : undefined,
-          range: timeRange,
-        });
-        setDashboardData(response.data);
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-        setDashboardData({
-          todayStats: {
-            totalSessions: 0,
-            submittedSessions: 0,
-            notSubmittedSessions: 0,
-            attendanceRate: 0,
-            totalStudentsMarked: 0,
-            presentCount: 0,
-            absentCount: 0,
-            lateCount: 0,
-            excusedCount: 0,
-          },
-          weeklyStats: [],
-          missingAttendance: [],
-          recentAbsences: []
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDashboardData();
-  }, [isAuthenticated, isAdmin, selectedDate, selectedGrade, selectedSection, timeRange, selectedPeriod, periods, viewMode]);
-
   // Fetch sessions for selected date and period
   useEffect(() => {
     const fetchSessions = async () => {
       if (!isAuthenticated || !isAdmin) return;
       
-      // Get period date range if selected
       let startDate = selectedDate;
       let endDate = selectedDate;
       
       if (viewMode === 'period' && selectedPeriod && periods.length > 0) {
         const period = periods.find(p => p.id === selectedPeriod);
         if (period) {
-          // Use period date range
           startDate = period.startDate;
           endDate = period.endDate;
         }
       }
       
-      // Parse grade from "Grade X" format to just the number
       const gradeParam = selectedGrade !== "all" ? extractGradeValue(selectedGrade) : undefined;
       
       try {
         setSessionsLoading(true);
+        setSessionsError(null);
         const response = await attendanceAPI.getAllSessions({
           startDate,
           endDate,
@@ -471,7 +560,9 @@ export default function AttendanceManagementPage() {
           section: selectedSection !== "all" ? selectedSection : undefined,
         });
         setSessions(response.data || []);
-      } catch (error) {
+      } catch (error: any) {
+        const message = error?.response?.data?.message || 'Failed to load attendance sessions';
+        setSessionsError(message);
         console.error('Failed to fetch sessions:', error);
         setSessions([]);
       } finally {
@@ -480,6 +571,40 @@ export default function AttendanceManagementPage() {
     };
     fetchSessions();
   }, [selectedDate, selectedPeriod, selectedGrade, selectedSection, isAuthenticated, isAdmin, periods, viewMode]);
+
+  // Lazy load charts
+  useEffect(() => {
+    setShowCharts(false);
+
+    if (!dashboardData) return;
+
+    const schedule =
+      typeof window !== "undefined" && "requestIdleCallback" in window
+        ? (window as Window & {
+            requestIdleCallback: (
+              callback: IdleRequestCallback,
+              options?: IdleRequestOptions,
+            ) => number;
+          }).requestIdleCallback(
+            () => setShowCharts(true),
+            { timeout: 300 },
+          )
+        : setTimeout(() => setShowCharts(true), 120);
+
+    return () => {
+      if (typeof schedule === "number") {
+        if (
+          typeof window !== "undefined" &&
+          "cancelIdleCallback" in window &&
+          typeof (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback === "function"
+        ) {
+          (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(schedule);
+        } else {
+          window.clearTimeout(schedule);
+        }
+      }
+    };
+  }, [dashboardData]);
 
   // Use stats from dashboardData when available, fallback to sessions calculation
   const stats = dashboardData?.todayStats ? {
@@ -503,10 +628,11 @@ export default function AttendanceManagementPage() {
   const presentPercentage = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
   const absentPercentage = stats.total > 0 ? Math.round((stats.absent / stats.total) * 100) : 0;
   const latePercentage = stats.total > 0 ? Math.round((stats.late / stats.total) * 100) : 0;
+  const excusedPercentage = stats.total > 0 ? Math.round((stats.excused / stats.total) * 100) : 0;
+  const attendanceRate = dashboardData?.todayStats?.attendanceRate || presentPercentage;
 
-  // Filter sessions - handle both regular sessions (timetableSlot) and homeroom sessions (class)
+  // Filter sessions
   const filteredSessions = sessions.filter(s => {
-    // Get class grade from either timetableSlot or direct class reference
     const classGrade = s.timetableSlot?.class?.grade || s.class?.grade;
     const sectionName = s.timetableSlot?.section?.name || s.class?.section;
     const className = s.timetableSlot?.class?.name || s.class?.name || '';
@@ -529,187 +655,64 @@ export default function AttendanceManagementPage() {
     return true;
   });
 
-  // Use actual weekly stats from API
   const weeklyStatsData = dashboardData?.weeklyStats || [];
 
-  const chartAccentClasses = {
-    solid: "bg-[var(--brand-color,#e35336)]",
-    medium: "bg-[rgba(var(--brand-color-rgb),0.72)]",
-    soft: "bg-[rgba(var(--brand-color-rgb),0.42)]",
-    surface: "bg-[rgba(var(--brand-color-rgb),0.12)]",
-    text: "text-[var(--brand-color,#e35336)]",
-    ring: "border-[rgba(var(--brand-color-rgb),0.22)]",
-  };
-
-  // Bar Chart Component - Weekly Attendance Trend
-  const BarChart = ({ data }: { data: Array<{ date: string; attendanceRate: number; presentCount?: number; totalStudentsMarked?: number }> }) => {
-    const chartData = data;
-    
-    // Format date to show day name
-    const formatDate = (dateStr: string) => {
-      const date = new Date(dateStr);
+  // Build chart data for DynamicChart
+  const attendanceChartData = weeklyStatsData.length > 0 ? {
+    type: "bar" as const,
+    title: t.weeklyTrend,
+    labels: weeklyStatsData.map((d: any) => {
+      const date = new Date(d.date);
       return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    };
+    }),
+    datasets: [{
+      label: t.present,
+      data: weeklyStatsData.map((d: any) => d.attendanceRate),
+      backgroundColor: weeklyStatsData.map((d: any) => {
+        if (d.attendanceRate >= 90) return 'rgba(227, 83, 54, 0.85)';
+        if (d.attendanceRate >= 75) return 'rgba(227, 83, 54, 0.6)';
+        return 'rgba(227, 83, 54, 0.4)';
+      }),
+      borderColor: 'var(--brand-color, #e35336)',
+    }],
+  } : null;
 
-    // Get color based on attendance rate
-    const getBarColor = (rate: number) => {
-      if (rate >= 90) return chartAccentClasses.solid;
-      if (rate >= 75) return chartAccentClasses.medium;
-      return 'bg-red-500';
-    };
-    
-    if (!chartData || chartData.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-[200px] text-gray-500">
-          {t.noData}
-        </div>
-      );
-    }
-    
-    return (
-      <div className="space-y-4">
-        <div className="flex items-end justify-between h-[200px] gap-3">
-          {chartData.map((item, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center gap-2">
-              <div className="w-full flex flex-col items-center gap-1 h-[160px] justify-end">
-                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  {item.attendanceRate}%
-                </span>
-                <div 
-                  className={`w-full ${getBarColor(item.attendanceRate)} rounded-t-md transition-all duration-500 shadow-sm`}
-                  style={{ height: `${Math.max(item.attendanceRate, 5)}%` }}
-                />
-              </div>
-              <span className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                {formatDate(item.date)}
-              </span>
-            </div>
-          ))}
-        </div>
-        
-        {/* Legend */}
-        <div className="flex items-center justify-center gap-6 text-xs pt-2 border-t border-gray-100 dark:border-gray-700">
-          <span className="flex items-center gap-1.5">
-            <span className={`w-2.5 h-2.5 rounded-full ${chartAccentClasses.solid}`}></span> 
-            <span className="text-gray-600 dark:text-gray-400">{t.excellent}</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className={`w-2.5 h-2.5 rounded-full ${chartAccentClasses.medium}`}></span> 
-            <span className="text-gray-600 dark:text-gray-400">{t.good}</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 bg-red-500 rounded-full"></span> 
-            <span className="text-gray-600 dark:text-gray-400">{t.needsImprovement}</span>
-          </span>
-        </div>
-      </div>
-    );
+  const overviewChartData = {
+    type: "doughnut" as const,
+    title: t.todayOverview,
+    labels: [t.present, t.absent, t.late, t.excused || 'Excused'],
+    datasets: [{
+      label: t.todayOverview,
+      data: [stats.present, stats.absent, stats.late, stats.excused],
+      backgroundColor: [
+        'rgba(227, 83, 54, 0.85)',
+        'rgba(227, 83, 54, 0.55)',
+        'rgba(227, 83, 54, 0.35)',
+        'rgba(227, 83, 54, 0.2)',
+      ],
+      borderColor: '#ffffff',
+    }],
   };
 
-  // Donut Chart Component
-  const DonutChart = () => {
-    const radius = 60;
-    const circumference = 2 * Math.PI * radius;
-    const presentOffset = circumference - (presentPercentage / 100) * circumference;
-    const absentOffset = circumference - (absentPercentage / 100) * circumference;
-    const lateOffset = circumference - (latePercentage / 100) * circumference;
-    
-    return (
-      <div className="relative w-[200px] h-[200px] mx-auto">
-        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 150 150">
-          {/* Background circle */}
-          <circle cx="75" cy="75" r={radius} fill="none" stroke="#E5E7EB" strokeWidth="20" />
-          {/* Present */}
-          <circle 
-            cx="75" cy="75" r={radius} fill="none" stroke="var(--brand-color, #e35336)" strokeWidth="20"
-            strokeDasharray={circumference}
-            strokeDashoffset={presentOffset}
-            className="transition-all duration-500"
-          />
-          {/* Absent */}
-          <circle 
-            cx="75" cy="75" r={radius - 24} fill="none" stroke="#F87171" strokeWidth="12"
-            strokeDasharray={circumference}
-            strokeDashoffset={absentOffset}
-            className="transition-all duration-500"
-          />
-          {/* Late */}
-          <circle 
-            cx="75" cy="75" r={radius - 44} fill="none" stroke="rgba(var(--brand-color-rgb), 0.55)" strokeWidth="8"
-            strokeDasharray={circumference}
-            strokeDashoffset={lateOffset}
-            className="transition-all duration-500"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold text-gray-900 dark:text-white">{presentPercentage}%</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">{t.present}</span>
-        </div>
-      </div>
-    );
-  };
-
-  // Line Chart Component for trends
-  const LineChart = ({ data }: { data: Array<{ date: string; attendanceRate: number; presentCount?: number; totalStudentsMarked?: number }> }) => {
-    const maxRate = 100;
-    const chartData = data.filter(d => d.attendanceRate > 0);
-    
-    return (
-      <div className="relative h-[200px]">
-        {/* Y-axis */}
-        <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-400 pr-2">
-          <span>100%</span>
-          <span>75%</span>
-          <span>50%</span>
-          <span>25%</span>
-          <span>0%</span>
-        </div>
-        
-        {/* Chart area */}
-        <div className="ml-8 h-full relative">
-          {/* Grid lines */}
-          <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-            {[0, 25, 50, 75, 100].map((tick) => (
-              <div key={tick} className="w-full border-b border-gray-100 dark:border-gray-700"></div>
-            ))}
-          </div>
-          
-          {/* Line chart */}
-          <div className="absolute inset-0 flex items-end">
-            <div className="w-full flex items-end gap-1">
-              {chartData.map((item, index) => {
-                const x = (index / (chartData.length - 1 || 1)) * 100;
-                const y = 100 - item.attendanceRate;
-                const prevY = index > 0 ? 100 - chartData[index - 1].attendanceRate : y;
-                const isUp = item.attendanceRate >= chartData[index - 1]?.attendanceRate;
-                
-                return (
-                  <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                    <div 
-                      className="w-3 h-3 rounded-full bg-[var(--brand-color,#e35336)] absolute transform -translate-x-1/2"
-                      style={{ bottom: `${item.attendanceRate}%` }}
-                    />
-                    {index > 0 && (
-                      <div 
-                        className="absolute h-0.5 bg-[var(--brand-color,#e35336)] transform origin-left"
-                        style={{
-                          bottom: `${chartData[index - 1].attendanceRate}%`,
-                          width: `${Math.sqrt(Math.pow(100 / chartData.length, 2) + Math.pow(Math.abs(y - prevY), 2))}%`,
-                          left: `${((index - 1) / (chartData.length - 1)) * 100}%`,
-                          transform: `rotate(${Math.atan2(y - prevY, 100 / chartData.length) * (180 / Math.PI)}deg)`
-                        }}
-                      />
-                    )}
-                    <span className="text-xs text-gray-500 absolute -bottom-6">{item.date}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const attendanceByClassChartData = sessions.length > 0 ? {
+    type: "bar" as const,
+    title: t.attendanceByClass,
+    labels: filteredSessions.slice(0, 8).map(s => {
+      const name = s.timetableSlot?.class?.name || s.class?.name || '';
+      const section = s.timetableSlot?.section?.name || s.class?.section || '';
+      return `${name} ${section}`;
+    }),
+    datasets: [{
+      label: t.present,
+      data: filteredSessions.slice(0, 8).map(s => {
+        const present = s.attendanceRecords.filter(r => r.status === 'PRESENT').length;
+        const total = s.attendanceRecords.length;
+        return total > 0 ? Math.round((present / total) * 100) : 0;
+      }),
+      backgroundColor: 'rgba(227, 83, 54, 0.75)',
+      borderColor: 'var(--brand-color, #e35336)',
+    }],
+  } : null;
 
   const handleExport = () => {
     toast.success(t.exportSuccess);
@@ -717,485 +720,535 @@ export default function AttendanceManagementPage() {
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-900">
-        <div className="w-full p-2 space-y-6">
-          {/* Header Skeleton */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-[#E2E8F0] dark:border-gray-700 p-6">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="space-y-2">
-                <Skeleton className="h-7 w-48" />
-                <Skeleton className="h-4 w-72" />
-              </div>
-              <div className="flex gap-3">
-                <Skeleton className="h-9 w-[180px] rounded-lg" />
-                <Skeleton className="h-9 w-[160px] rounded-lg" />
-                <Skeleton className="h-9 w-[140px] rounded-lg" />
-                <Skeleton className="h-9 w-[140px] rounded-lg" />
-                <Skeleton className="h-9 w-24 rounded-lg" />
-              </div>
-            </div>
-          </div>
-
-          {/* Stats Cards Skeleton */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
+      <div className="min-h-screen overflow-x-hidden bg-gray-50 p-3 dark:bg-slate-900 sm:p-4 md:p-6">
+        <div className="w-full space-y-5 md:space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i}>
                 <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <Skeleton className="h-3 w-24" />
-                      <Skeleton className="h-8 w-16" />
-                    </div>
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                  </div>
+                  <Skeleton className="h-20 w-full" />
                 </CardContent>
               </Card>
             ))}
           </div>
-
-          {/* Charts Skeleton */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm lg:col-span-2 dark:bg-gray-800">
-              <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-7 w-28 rounded-lg" />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex items-end justify-between h-[200px] gap-3">
-                  {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                      <Skeleton className="h-3 w-8" />
-                      <Skeleton
-                        className="w-full rounded-t-md"
-                        style={{ height: `${Math.max(20 + i * 10, 40)}%` }}
-                      />
-                      <Skeleton className="h-3 w-12" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-              <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
-                <Skeleton className="h-5 w-36" />
-              </CardHeader>
-              <CardContent className="pt-6 flex flex-col items-center">
-                <Skeleton className="h-[200px] w-[200px] rounded-full" />
-                <div className="mt-4 w-full space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-16" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Bottom Row Skeleton */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
             {[1, 2].map((i) => (
-              <Card key={i} className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-                <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
-                  <Skeleton className="h-5 w-40" />
-                </CardHeader>
-                <CardContent className="pt-4 space-y-3">
-                  {[1, 2, 3].map((j) => (
-                    <div key={j} className="flex items-center justify-between p-3">
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <div className="space-y-1">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-3 w-24" />
-                        </div>
-                      </div>
-                      <Skeleton className="h-5 w-24 rounded-full" />
-                    </div>
-                  ))}
+              <Card key={i}>
+                <CardContent className="pt-6">
+                  <Skeleton className="h-64 w-full" />
                 </CardContent>
               </Card>
             ))}
           </div>
-
-          {/* Table Skeleton */}
-          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600 pb-4">
-              <div className="flex items-center justify-between">
-                <Skeleton className="h-5 w-64" />
-                <Skeleton className="h-9 w-64 rounded-lg" />
-              </div>
-            </CardHeader>
-            <div className="p-4 space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-4 flex-1" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-5 w-24 rounded-full" />
-                  <Skeleton className="h-4 w-10" />
-                  <Skeleton className="h-4 w-10" />
-                  <Skeleton className="h-4 w-16" />
-                </div>
-              ))}
-            </div>
-          </Card>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-900">
-      <div className="min-w-0 max-w-full overflow-x-hidden space-y-6 p-3 sm:p-4 md:p-8">
-        {/* Top Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-[#E2E8F0] dark:border-gray-700 p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-black">{t.title}</h1>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{t.description}</p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-
-
-              {/* Date Picker */}
-              {viewMode === 'date' && (
-                <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-700 rounded-lg border border-[#E2E8F0] dark:border-gray-600 p-1">
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => {
-                    const prevDate = new Date(selectedDate);
-                    prevDate.setDate(prevDate.getDate() - 1);
-                    setSelectedDate(prevDate.toISOString().split('T')[0]);
-                  }}
-                  className="h-8 w-8 hover:bg-[#e35336] hover:text-white transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <CalendarDatePicker
-                  value={selectedDate ? new Date(selectedDate) : undefined}
-                  onChange={(date) => {
-                    if (date) {
-                      setSelectedDate(date.toISOString().split('T')[0]);
-                    }
-                  }}
-                  className="w-[180px] bg-transparent border-0 shadow-none dark:bg-transparent dark:text-white"
-                />
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={() => {
-                    const nextDate = new Date(selectedDate);
-                    nextDate.setDate(nextDate.getDate() + 1);
-                    setSelectedDate(nextDate.toISOString().split('T')[0]);
-                  }}
-                  className="h-8 w-8 hover:bg-[#e35336] hover:text-white transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-              )}
-
-              {/* Academic Year */}
-              <Select value={selectedAcademicYear || 'all'} onValueChange={(value) => {
-                if (!value || value === '_none_') return;
-                setSelectedAcademicYear(value);
-                const year = academicYears.find(y => y.id === value);
-                const termList = year?.terms || [];
-                setPeriods(termList);
-                if (termList.length > 0) {
-                  const today = new Date();
-                  const dateMatch = termList.find((t: any) => {
-                    const start = t.startDate ? new Date(t.startDate) : null;
-                    const end = t.endDate ? new Date(t.endDate) : null;
-                    return start && end && today >= start && today <= end;
-                  });
-                  setSelectedPeriod(dateMatch?.id || termList[0].id);
-                }
-              }}>
-                <SelectTrigger className="w-[160px] border-[#E2E8F0] dark:border-gray-600">
-                  <SelectValue placeholder={t.academicYear} />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYears.length > 0 ? (
-                    academicYears.map(year => (
-                      <SelectItem key={year.id} value={year.id || ''}>{year.name}</SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="_none_" disabled>{t.noAcademicYears}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-
-              {/* Period/Term */}
-              <Select value={selectedPeriod || 'all'} onValueChange={setSelectedPeriod}>
-                <SelectTrigger className="w-[140px] border-[#E2E8F0] dark:border-gray-600">
-                  <SelectValue placeholder={t.period} />
-                </SelectTrigger>
-                <SelectContent>
-                  {periods.length > 0 ? (
-                    periods.map(period => (
-                      <SelectItem key={period.id} value={period.id || ''}>{period.name}</SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="_none_" disabled>{t.noPeriods}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-
-              {/* Grade */}
-              <Select value={selectedGrade || 'all'} onValueChange={setSelectedGrade}>
-                <SelectTrigger className="w-[140px] border-[#E2E8F0] dark:border-gray-600">
-                  <SelectValue placeholder={t.grade} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t.allGrades}</SelectItem>
-                  {gradeList.length > 0 ? (
-                    gradeList.map(grade => (
-                      <SelectItem key={grade} value={grade || '_grade_'}>{formatGradeLabel(t, grade)}</SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="_none_" disabled>{t.noGrades}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-
-              {/* Section */}
-              <Select value={selectedSection || 'all'} onValueChange={setSelectedSection}>
-                <SelectTrigger className="w-[140px] border-[#E2E8F0] dark:border-gray-600">
-                  <SelectValue placeholder={t.section} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t.allSections}</SelectItem>
-                  {sectionList.length > 0 ? (
-                    sectionList.map(section => (
-                      <SelectItem key={section} value={section || '_section_'}>{section || ''}</SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="_none_" disabled>{t.noSections}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Weekly Trend Bar Chart */}
-          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm lg:col-span-2 dark:bg-gray-800">
-            <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-[#e35336]" />
-                  {t.weeklyTrend}
-                </CardTitle>
-                <Tabs value={timeRange} onValueChange={setTimeRange} className="h-8">
-                  <TabsList className="bg-gray-100 dark:bg-gray-700 h-7">
-                    <TabsTrigger value="weekly" className="text-xs h-5 px-2 dark:text-gray-300">{t.week}</TabsTrigger>
-                    <TabsTrigger value="monthly" className="text-xs h-5 px-2 dark:text-gray-300">{t.month}</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <BarChart data={weeklyStatsData} />
-            </CardContent>
-          </Card>
-
-          {/* Today's Donut Chart */}
-          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
-              <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-[#e35336]" />
-                {t.todayOverview}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <DonutChart />
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 bg-[var(--brand-color,#e35336)] rounded-full"></span>
-                    {t.present}
-                  </span>
-                  <span className="font-medium">{stats.present} ({presentPercentage}%)</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 bg-red-400 rounded-full"></span>
-                    {t.absent}
-                  </span>
-                  <span className="font-medium">{stats.absent} ({absentPercentage}%)</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 bg-[rgba(var(--brand-color-rgb),0.55)] rounded-full"></span>
-                    {t.late}
-                  </span>
-                  <span className="font-medium">{stats.late} ({latePercentage}%)</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Additional Stats Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Missing Attendance */}
-          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-          <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
-          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
-          {t.missingAttendance}
-          </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-          {/* Prefer exact classes without any recorded sessions via dedicated endpoint */}
-          <MissingClasses date={selectedDate} grade={selectedGrade} section={selectedSection} />
+  if (error && !dashboardData) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 text-center space-y-4">
+            <AlertCircle className="w-12 h-12 text-[var(--brand-color,#e35336)] mx-auto" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t.errorTitle}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{error}</p>
+            <Button onClick={() => fetchDashboard()} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              {t.tryAgain}
+            </Button>
           </CardContent>
-          </Card>
+        </Card>
+      </div>
+    );
+  }
 
-          {/* Recent Absences */}
-          <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-            <CardHeader className="border-b border-[#E2E8F0] dark:border-gray-600">
-              <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <TrendingDown className="w-5 h-5 text-red-500" />
-                {t.recentAbsences}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              {dashboardData?.recentAbsences && dashboardData.recentAbsences.length > 0 ? (
-                <div className="space-y-3">
-                  {dashboardData.recentAbsences.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="text-xs">
-                            {item.studentName.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{item.studentName}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{item.studentCode}</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-red-600 border-red-300">
-                        {formatClassSectionLabel(t, item.className, undefined, item.sectionName)}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-gray-500 py-4">{t.noRecentAbsences}</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+  return (
+    <div className="min-h-screen overflow-x-hidden bg-gray-50 transition-colors dark:bg-slate-900">
+      <div className="p-3 sm:p-4 md:p-6">
+        <div className="w-full space-y-5 md:space-y-6">
+          {/* Header */}
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-black sm:text-2xl">
+                {t.title}
+              </h1>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 sm:text-base">
+                {t.description}
+              </p>
+            </div>
+            {displayTermName && (
+              <div className="shrink-0 text-left sm:text-right">
+                <p className="text-base font-bold text-black sm:text-xl">{displayTermName}</p>
+              </div>
+            )}
+          </div>
 
-        {/* Sessions Table */}
-        <Card className="border-[#E2E8F0] dark:border-gray-700 shadow-sm dark:bg-gray-800">
-          <CardHeader className="border-b border-[#E2E8F0] pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                {t.attendanceSessions} - {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </CardTitle>
-              <div className="relative w-64">
-                <TableSearch
-                  search={searchTerm}
-                  setSearch={setSearchTerm}
-                  placeholder={t.search}
-                />
+          {error && (
+            <div className="flex items-start gap-3 rounded-lg border border-[rgba(var(--brand-color-rgb),0.3)] bg-[rgba(var(--brand-color-rgb),0.06)] p-3 text-sm text-gray-700 dark:text-gray-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-color,#e35336)]" />
+              <div className="min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white">{t.errorTitle || "Attendance data is incomplete"}</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{error}</p>
               </div>
             </div>
-          </CardHeader>
-          
-          {sessionsLoading ? (
-            <div className="p-6 space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-4 flex-1" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-5 w-24 rounded-full" />
-                  <Skeleton className="h-4 w-10" />
-                  <Skeleton className="h-4 w-10" />
-                  <Skeleton className="h-4 w-16" />
+          )}
+
+          {/* Filters */}
+          <Card className="w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <CardContent className="p-3 sm:p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-center">
+                {/* Date Picker */}
+                {viewMode === 'date' && (
+                  <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-700 rounded-lg border border-[#E2E8F0] dark:border-gray-600 p-1 w-full">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => {
+                        const prevDate = new Date(selectedDate);
+                        prevDate.setDate(prevDate.getDate() - 1);
+                        setSelectedDate(prevDate.toISOString().split('T')[0]);
+                      }}
+                      className="h-8 w-8 hover:bg-[#e35336] hover:text-white transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <CalendarDatePicker
+                      value={selectedDate ? new Date(selectedDate) : undefined}
+                      onChange={(date) => {
+                        if (date) {
+                          setSelectedDate(date.toISOString().split('T')[0]);
+                        }
+                      }}
+                      className="flex-1 bg-transparent border-0 shadow-none dark:bg-transparent dark:text-white min-w-0"
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => {
+                        const nextDate = new Date(selectedDate);
+                        nextDate.setDate(nextDate.getDate() + 1);
+                        setSelectedDate(nextDate.toISOString().split('T')[0]);
+                      }}
+                      className="h-8 w-8 hover:bg-[#e35336] hover:text-white transition-colors"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Academic Year */}
+                <Select value={selectedAcademicYear || 'all'} onValueChange={(value) => {
+                  if (!value || value === '_none_') return;
+                  setSelectedAcademicYear(value);
+                  const year = academicYears.find(y => y.id === value);
+                  const termList = year?.terms || [];
+                  setPeriods(termList);
+                  if (termList.length > 0) {
+                    const today = new Date();
+                    const dateMatch = termList.find((t: any) => {
+                      const start = t.startDate ? new Date(t.startDate) : null;
+                      const end = t.endDate ? new Date(t.endDate) : null;
+                      return start && end && today >= start && today <= end;
+                    });
+                    setSelectedPeriod(dateMatch?.id || termList[0].id);
+                  }
+                }}>
+                  <SelectTrigger className="w-full border-[#E2E8F0] dark:border-gray-600">
+                    <SelectValue placeholder={t.academicYear} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicYears.length > 0 ? (
+                      academicYears.map(year => (
+                        <SelectItem key={year.id} value={year.id || ''}>{year.name}</SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="_none_" disabled>{t.noAcademicYears}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+
+                {/* Period/Term */}
+                <Select value={selectedPeriod || 'all'} onValueChange={setSelectedPeriod}>
+                  <SelectTrigger className="w-full border-[#E2E8F0] dark:border-gray-600">
+                    <SelectValue placeholder={t.period} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periods.length > 0 ? (
+                      periods.map(period => (
+                        <SelectItem key={period.id} value={period.id || ''}>{period.name}</SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="_none_" disabled>{t.noPeriods}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+
+                {/* Grade */}
+                <Select value={selectedGrade || 'all'} onValueChange={setSelectedGrade}>
+                  <SelectTrigger className="w-full border-[#E2E8F0] dark:border-gray-600">
+                    <SelectValue placeholder={t.grade} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t.allGrades}</SelectItem>
+                    {gradeList.length > 0 ? (
+                      gradeList.map(grade => (
+                        <SelectItem key={grade} value={grade || '_grade_'}>{formatGradeLabel(t, grade)}</SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="_none_" disabled>{t.noGrades}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+
+                {/* Section */}
+                <Select value={selectedSection || 'all'} onValueChange={setSelectedSection}>
+                  <SelectTrigger className="w-full border-[#E2E8F0] dark:border-gray-600">
+                    <SelectValue placeholder={t.section} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t.allSections}</SelectItem>
+                    {sectionList.length > 0 ? (
+                      sectionList.map(section => (
+                        <SelectItem key={section} value={section || '_section_'}>{section || ''}</SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="_none_" disabled>{t.noSections}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+
+                {/* Refresh Button */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => fetchDashboard(true)}
+                  disabled={refreshing}
+                  className="w-full"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+                  {t.refresh}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* KPI Row */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {/* Attendance Rate */}
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.attendanceRate}</p>
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                      {attendanceRate}%
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{t.today}</p>
+                  </div>
+                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
+                    <ClipboardCheck className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  </div>
                 </div>
-              ))}
-            </div>
-           ) : filteredSessions.length > 0 ? (
-             <div className="overflow-x-auto">
-               <Table className="w-full">
-                 <TableHeader>
-                   <TableRow className="bg-gray-50 border-b border-[#E2E8F0] dark:border-gray-600">
-                    <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.class}</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.subject}</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.teacher}</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.status}</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.present}</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.absent}</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.rate}</TableHead>
-                   </TableRow>
-                 </TableHeader>
-                 <TableBody className="divide-y divide-[#E2E8F0]">
-                   {filteredSessions.map((session) => {
-                     const present = session.attendanceRecords.filter(r => r.status === 'PRESENT').length;
-                     const absent = session.attendanceRecords.filter(r => r.status === 'ABSENT').length;
-                     const total = session.attendanceRecords.length;
-                     const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-                     
-                     return (
-                       <TableRow key={session.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                          <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                            {formatClassSectionLabel(
-                              t,
-                              session.timetableSlot?.class?.name || session.class?.name,
-                              session.timetableSlot?.class?.grade || session.class?.grade,
-                              session.timetableSlot?.section?.name || session.class?.section
-                            )}
-                          </TableCell>
-                          <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                            {session.timetableSlot?.subject?.name || t.homeroom}
-                          </TableCell>
-                          <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                            {session.timetableSlot?.teacher?.name || session.takenBy?.name || t.nA}
-                         </TableCell>
-                         <TableCell className="px-4 py-3">
-                            <Badge variant={session.status === 'SUBMITTED' ? 'default' : 'destructive'}>
-                              {session.status === 'SUBMITTED' ? t.submitted : t.notSubmitted}
-                            </Badge>
-                         </TableCell>
-                         <TableCell className="px-4 py-3 text-sm text-green-600 font-medium">{present}</TableCell>
-                         <TableCell className="px-4 py-3 text-sm text-red-600 font-medium">{absent}</TableCell>
-                         <TableCell className="px-4 py-3">
-                           <div className="flex items-center gap-2">
-                             <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
-                               <div 
-                                 className={`h-full rounded-full ${rate >= 90 ? 'bg-[var(--brand-color,#e35336)]' : rate >= 75 ? 'bg-[rgba(var(--brand-color-rgb),0.72)]' : 'bg-red-500'}`}
-                                 style={{ width: `${rate}%` }}
-                               />
+              </CardContent>
+            </Card>
+
+            {/* Present Today */}
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.present}</p>
+                    <p className="mt-1 text-lg font-bold text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)] sm:text-xl">
+                      {stats.present.toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{presentPercentage}% {t.ofTotal}</p>
+                  </div>
+                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
+                    <UserCheck className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Absent Today */}
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.absent}</p>
+                    <p className="mt-1 text-lg font-bold text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)] sm:text-xl">
+                      {stats.absent.toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{absentPercentage}% {t.ofTotal}</p>
+                  </div>
+                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
+                    <UserX className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Late Today */}
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.late}</p>
+                    <p className="mt-1 text-lg font-bold text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)] sm:text-xl">
+                      {stats.late.toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{latePercentage}% {t.ofTotal}</p>
+                  </div>
+                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
+                    <Clock className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Submitted Sessions */}
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.sessions}</p>
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                      {stats.submittedSessions}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">/{stats.submittedSessions + stats.notSubmittedSessions} {t.submittedShort}</p>
+                  </div>
+                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
+                    <LayoutGrid className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total Students */}
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+              <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{t.totalMarked}</p>
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
+                      {stats.total.toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{t.studentsToday}</p>
+                  </div>
+                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
+                    <Users className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+            {/* Weekly Attendance Chart */}
+            {attendanceChartData && (
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+                <CardContent className="p-3 sm:p-4">
+                  {showCharts ? (
+                    <DynamicChart chartData={attendanceChartData} height={240} />
+                  ) : (
+                    <Skeleton className="h-[240px] w-full" />
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Today Overview - Doughnut */}
+            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+              <CardContent className="p-3 sm:p-4">
+                {showCharts ? (
+                  <DynamicChart chartData={overviewChartData} height={240} />
+                ) : (
+                  <Skeleton className="h-[240px] w-full" />
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Attendance by Class - Full Width */}
+          {attendanceByClassChartData && (
+            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+              <CardContent className="p-3 sm:p-4">
+                {showCharts ? (
+                  <DynamicChart chartData={attendanceByClassChartData} height={240} />
+                ) : (
+                  <Skeleton className="h-[240px] w-full" />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Additional Stats Row */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
+            {/* Missing Attendance */}
+            <Card className="min-w-0 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardHeader className="border-b border-gray-200 dark:border-slate-700 pb-3">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-[var(--brand-color,#e35336)]" />
+                  {t.missingAttendance}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <MissingClasses date={selectedDate} grade={selectedGrade} section={selectedSection} />
+              </CardContent>
+            </Card>
+
+            {/* Recent Absences */}
+            <Card className="min-w-0 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <CardHeader className="border-b border-gray-200 dark:border-slate-700 pb-3">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4 text-[var(--brand-color,#e35336)]" />
+                  {t.recentAbsences}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {dashboardData?.recentAbsences && dashboardData.recentAbsences.length > 0 ? (
+                  <div className="space-y-3">
+                    {dashboardData.recentAbsences.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)] rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="text-xs">
+                              {item.studentName.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">{item.studentName}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{item.studentCode}</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-[var(--brand-color,#e35336)] border-[rgba(var(--brand-color-rgb),0.3)]">
+                          {formatClassSectionLabel(t, item.className, undefined, item.sectionName)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <CheckCircle2 className="w-10 h-10 text-[var(--brand-color,#e35336)] mb-2" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{t.noRecentAbsences}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sessions Table */}
+          <Card className="min-w-0 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <CardHeader className="border-b border-gray-200 dark:border-slate-700 pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
+                  {t.attendanceSessions} - {new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </CardTitle>
+                <div className="relative w-64">
+                  <TableSearch
+                    search={searchTerm}
+                    setSearch={setSearchTerm}
+                    placeholder={t.search}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            
+            {sessionsLoading ? (
+              <div className="p-6 space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-4 flex-1" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                    <Skeleton className="h-4 w-10" />
+                    <Skeleton className="h-4 w-10" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+             ) : sessionsError ? (
+               <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                 <AlertCircle className="h-10 w-10 text-[var(--brand-color,#e35336)]" />
+                 <div>
+                   <p className="text-sm font-medium text-gray-900 dark:text-white">{t.errorTitle || "Unable to load attendance sessions"}</p>
+                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{sessionsError}</p>
+                 </div>
+               </div>
+             ) : filteredSessions.length > 0 ? (
+               <div className="overflow-x-auto">
+                 <Table className="w-full">
+                   <TableHeader>
+                     <TableRow className="bg-gray-50 border-b border-[#E2E8F0] dark:border-gray-600">
+                      <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.class}</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.subject}</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.teacher}</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.status}</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.present}</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.absent}</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t.rate}</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody className="divide-y divide-[#E2E8F0]">
+                     {filteredSessions.map((session) => {
+                       const present = session.attendanceRecords.filter(r => r.status === 'PRESENT').length;
+                       const absent = session.attendanceRecords.filter(r => r.status === 'ABSENT').length;
+                       const total = session.attendanceRecords.length;
+                       const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+                       
+                       return (
+                         <TableRow key={session.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                              {formatClassSectionLabel(
+                                t,
+                                session.timetableSlot?.class?.name || session.class?.name,
+                                session.timetableSlot?.class?.grade || session.class?.grade,
+                                session.timetableSlot?.section?.name || session.class?.section
+                              )}
+                            </TableCell>
+                            <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                              {session.timetableSlot?.subject?.name || t.homeroom}
+                            </TableCell>
+                            <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                              {session.timetableSlot?.teacher?.name || session.takenBy?.name || t.nA}
+                           </TableCell>
+                           <TableCell className="px-4 py-3">
+                              <Badge variant={session.status === 'SUBMITTED' ? 'default' : 'destructive'}>
+                                {session.status === 'SUBMITTED' ? t.submitted : t.notSubmitted}
+                              </Badge>
+                           </TableCell>
+                           <TableCell className="px-4 py-3 text-sm text-[var(--brand-color,#e35336)] font-medium">{present}</TableCell>
+                           <TableCell className="px-4 py-3 text-sm text-[var(--brand-color,#e35336)] font-medium">{absent}</TableCell>
+                           <TableCell className="px-4 py-3">
+                             <div className="flex items-center gap-2">
+                                <div className="w-16 h-2 bg-[rgba(var(--brand-color-rgb),0.1)] rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full ${rate >= 90 ? 'bg-[var(--brand-color,#e35336)]' : rate >= 75 ? 'bg-[rgba(var(--brand-color-rgb),0.72)]' : 'bg-[rgba(var(--brand-color-rgb),0.45)]'}`}
+                                   style={{ width: `${rate}%` }}
+                                 />
+                               </div>
+                               <span className="text-xs font-medium">{rate}%</span>
                              </div>
-                             <span className="text-xs font-medium">{rate}%</span>
-                           </div>
-                         </TableCell>
-                       </TableRow>
-                     );
-                   })}
-                 </TableBody>
-               </Table>
-             </div>
-           ) : (
-             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-               <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>{t.noSessions}</p>
-             </div>
-           )}
-        </Card>
+                           </TableCell>
+                         </TableRow>
+                       );
+                     })}
+                   </TableBody>
+                 </Table>
+               </div>
+             ) : (
+                <div className="text-center py-12 text-[var(--brand-color,#e35336)]">
+                  <Users className="w-12 h-12 mx-auto mb-4 text-[var(--brand-color,#e35336)]" />
+                  <p className="text-[var(--brand-color,#e35336)]">{t.noSessions}</p>
+               </div>
+             )}
+          </Card>
+        </div>
       </div>
     </div>
   );

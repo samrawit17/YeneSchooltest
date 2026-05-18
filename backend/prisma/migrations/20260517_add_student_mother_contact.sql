@@ -1,0 +1,3 @@
+ALTER TABLE "StudentProfile"
+  ADD COLUMN IF NOT EXISTS "motherName" TEXT,
+  ADD COLUMN IF NOT EXISTS "motherPhone" TEXT;

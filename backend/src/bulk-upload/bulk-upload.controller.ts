@@ -130,7 +130,7 @@ export class BulkUploadController {
     if (type === 'staff') {
       template = `full_name,email,phone,role\nAli Ahmed,ali@example.com,0911111111,teacher\nAbebe Tesfaye,abebe@example.com,0922222222,finance\nRegistrar User,reg@example.com,0944444444,registrar`;
     } else if (type === 'students-auto') {
-      template = `first_name,middle_name,last_name,student_code,roll_number,phone,gender,current_class,section,parent_name,parent_phone,relation\nStudentFirstName,MiddleName,LastName,STU-001,1,0911111111,MALE,9,A,ParentFullName,0922222222,Father`;
+      template = `first_name,middle_name,last_name,student_code,roll_number,phone,gender,mother_name,mother_phone,current_class,section,parent_name,parent_phone,relation\nStudentFirstName,MiddleName,LastName,STU-001,1,0911111111,MALE,MotherFullName,0933333333,9,A,ParentFullName,0922222222,Father`;
     } else {
       template = `first_name,middle_name,last_name,email,phone,gender,current_class,gender,next_class\nAli,Ahmed,Tesfaye,,0911111111,MALE,9,10`;
     }

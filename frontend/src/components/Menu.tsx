@@ -223,6 +223,12 @@ const menuItems: MenuSection[] = [
             subscriptionFeature: "REPORT_CARDS",
           },
           {
+            icon: <Shield className="w-4 h-4" />,
+            label: "Student Data Health",
+            href: "/admin/reports/data-consistency",
+            visible: ["admin", "registrar", "it_manager"],
+          },
+          {
             icon: <FileText className="w-4 h-4" />,
             label: "Certificate Template",
             href: "/admin/report-cards/certificate-template",

@@ -13,7 +13,6 @@ import {
   Loader2,
   BarChart3,
   ExternalLink,
-  Settings,
   Download,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -354,10 +353,12 @@ export default function ReportCardsPage() {
     }
   };
 
-  const handleBulkDownloadCertificates = async () => {
-    const ids = Array.from(selectedCards);
+  const handleBulkDownloadReportCards = async () => {
+    const ids = selectedCards.size > 0
+      ? Array.from(selectedCards)
+      : filteredCards.map((card) => card.id);
     if (!ids.length) {
-      toast.error("Select report cards first");
+      toast.error("No report cards available to download");
       return;
     }
     try {
@@ -366,11 +367,11 @@ export default function ReportCardsPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "certificates.zip";
+      a.download = selectedCards.size > 0 ? "selected-report-cards.zip" : "report-cards.zip";
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to download certificates");
+      toast.error(err.response?.data?.message || "Failed to download report cards");
     }
   };
 
@@ -441,13 +442,13 @@ export default function ReportCardsPage() {
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                {isAdmin && selectedCards.size > 0 && (
+                {isAdmin && filteredCards.length > 0 && (
                   <button
-                    onClick={handleBulkDownloadCertificates}
+                    onClick={handleBulkDownloadReportCards}
                     className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
                   >
                     <Download className="w-4 h-4" />
-                    Certificates ({selectedCards.size})
+                    Download Report Cards ({selectedCards.size > 0 ? selectedCards.size : filteredCards.length})
                   </button>
                 )}
                 {isAdmin && selectedCards.size > 0 && (
@@ -470,13 +471,6 @@ export default function ReportCardsPage() {
                     Generate All
                   </button>
                 )}
-                <button
-                  onClick={() => router.push("/admin/report-cards/certificate-template")}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-800"
-                >
-                  <Settings className="w-4 h-4" />
-                  Certificate Template
-                </button>
                 <button
                   onClick={() => router.push("/admin/exams/publish")}
                   className="flex items-center gap-2 px-3 py-2 bg-[var(--brand-color,#e35336)] text-white rounded-lg text-sm hover:opacity-90"

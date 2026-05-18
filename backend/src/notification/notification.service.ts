@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import * as webpush from 'web-push';
 import { randomUUID } from 'crypto';
+import { notificationMessages, NotificationLanguage } from './notification-messages';
 
 type PushSubscriptionPayload = {
   endpoint: string;
@@ -49,6 +51,7 @@ export enum NotificationType {
   SCHEDULE_CHANGED = 'SCHEDULE_CHANGED',
   CLASS_CANCELLED = 'CLASS_CANCELLED',
   TIMETABLE_UPDATED = 'TIMETABLE_UPDATED',
+  PICKUP_REMINDER = 'PICKUP_REMINDER',
 
   // Communication notifications
   MESSAGE_RECEIVED = 'MESSAGE_RECEIVED',
@@ -115,6 +118,33 @@ export class NotificationService {
 
   constructor(private prisma: PrismaService) {
     this.configureWebPush();
+  }
+
+  private async getUserLanguage(userId: string): Promise<NotificationLanguage> {
+    if (!userId) return 'en';
+    try {
+      const users = await this.prisma.$queryRaw<Array<{ language: string | null }>>(
+        Prisma.sql`SELECT language FROM "User" WHERE id = ${userId} LIMIT 1`,
+      );
+      const lang = users[0]?.language;
+      if (lang && ['en', 'am', 'ar', 'om', 'so'].includes(lang)) {
+        return lang as NotificationLanguage;
+      }
+    } catch {
+      // Ignore errors, default to English
+    }
+    return 'en';
+  }
+
+  private translate(key: string, language: NotificationLanguage, ...args: string[]): { title: string; message: string } {
+    const langMessages = notificationMessages[language] || notificationMessages.en;
+    const template = langMessages[key];
+    if (!template) {
+      const fallback = notificationMessages.en[key];
+      if (!fallback) return { title: '', message: '' };
+      return typeof fallback === 'function' ? fallback(...args) : fallback;
+    }
+    return typeof template === 'function' ? template(...args) : template;
   }
 
   private buildDefaultPreferencesForRole(
@@ -210,6 +240,7 @@ export class NotificationService {
         NotificationType.SCHEDULE_CHANGED,
         NotificationType.CLASS_CANCELLED,
         NotificationType.TIMETABLE_UPDATED,
+        NotificationType.PICKUP_REMINDER,
       ].includes(type as NotificationType)
     ) {
       return 'timetableEnabled';
@@ -305,14 +336,28 @@ export class NotificationService {
       role = users[0]?.role || 'STUDENT';
     }
 
-    return this.prisma.notificationPreference.upsert({
-      where: { userId },
-      update: {},
-      create: {
-        userId,
-        ...this.buildDefaultPreferencesForRole(role),
-      },
-    });
+    try {
+      return await this.prisma.notificationPreference.upsert({
+        where: { userId },
+        update: {},
+        create: {
+          userId,
+          ...this.buildDefaultPreferencesForRole(role),
+        },
+      });
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        const existing = await this.prisma.notificationPreference.findUnique({
+          where: { userId },
+        });
+
+        if (existing) {
+          return existing;
+        }
+      }
+
+      throw error;
+    }
   }
 
   async getNotificationPreferences(userId: string, userRole: string) {
@@ -544,7 +589,12 @@ export class NotificationService {
         'RESULT_PUBLISHED',
         'GRADE_UPDATED',
       ],
-      schedule: ['SCHEDULE_CHANGED', 'CLASS_CANCELLED', 'TIMETABLE_UPDATED'],
+      schedule: [
+        'SCHEDULE_CHANGED',
+        'CLASS_CANCELLED',
+        'TIMETABLE_UPDATED',
+        'PICKUP_REMINDER',
+      ],
       communication: ['MESSAGE_RECEIVED', 'ANNOUNCEMENT', 'COMMUNICATION'],
       event: ['EVENT', 'EVENT_UPDATED', 'EVENT_DELETED'],
       finance: ['FEE_DUE', 'FEE_PAID', 'PAYMENT_RECEIVED'],
@@ -647,9 +697,12 @@ export class NotificationService {
         categories.academic.total++;
         if (isUnread) categories.academic.unread++;
       } else if (
-        ['SCHEDULE_CHANGED', 'CLASS_CANCELLED', 'TIMETABLE_UPDATED'].includes(
-          type,
-        )
+        [
+          'SCHEDULE_CHANGED',
+          'CLASS_CANCELLED',
+          'TIMETABLE_UPDATED',
+          'PICKUP_REMINDER',
+        ].includes(type)
       ) {
         categories.schedule.total++;
         if (isUnread) categories.schedule.unread++;
@@ -811,14 +864,20 @@ export class NotificationService {
     });
 
     if (data.userId) {
-      await this.sendPushToUsers([data.userId], {
-        title: data.title,
-        message: data.message,
-        type: data.type,
-        actionUrl: data.actionUrl,
-        notificationId: notification.id,
-        metadata: data.metadata,
-      });
+      try {
+        await this.sendPushToUsers([data.userId], {
+          title: data.title,
+          message: data.message,
+          type: data.type,
+          actionUrl: data.actionUrl,
+          notificationId: notification.id,
+          metadata: data.metadata,
+        });
+      } catch (error: any) {
+        this.logger.warn(
+          `Push delivery lookup failed for notification ${notification.id}: ${error?.message || 'unknown error'}`,
+        );
+      }
     }
 
     return notification;
@@ -860,6 +919,246 @@ export class NotificationService {
     });
 
     return notifications;
+  }
+
+  private toHHMM(date: Date, timeZone = 'Africa/Addis_Ababa') {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+    const hours = parts.find((part) => part.type === 'hour')?.value || '00';
+    const minutes = parts.find((part) => part.type === 'minute')?.value || '00';
+    return `${hours}:${minutes}`;
+  }
+
+  private normalizeHHMM(value: unknown) {
+    const text = String(value || '').trim();
+    const match = text.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
+  private parseSettingValue(value: string | undefined) {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+
+  private isWeekend(date: Date, timeZone = 'Africa/Addis_Ababa') {
+    const weekday = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      weekday: 'short',
+    }).format(date);
+    return weekday === 'Sat' || weekday === 'Sun';
+  }
+
+  private getLocalDayRange(date: Date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+
+  @Cron('0 * * * * *')
+  async sendSchoolPickupReminders() {
+    try {
+      const now = new Date();
+      const reminderTime = new Date(now.getTime() + 20 * 60 * 1000);
+
+      const schools = await this.prisma.school.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          timezone: true,
+        },
+      });
+      const endTimeSettings = await this.prisma.schoolSetting.findMany({
+        where: {
+          key: { in: ['SCHOOL_END_TIME', 'calendar_type'] },
+          schoolId: { in: schools.map((school) => school.id) },
+        },
+        select: {
+          schoolId: true,
+          key: true,
+          value: true,
+        },
+      });
+      const endTimeBySchoolId = new Map(
+        endTimeSettings
+          .filter((setting) => setting.key === 'SCHOOL_END_TIME')
+          .map((setting) => [setting.schoolId, setting.value]),
+      );
+      const calendarTypeBySchoolId = new Map(
+        endTimeSettings
+          .filter((setting) => setting.key === 'calendar_type')
+          .map((setting) => [
+            setting.schoolId,
+            this.parseSettingValue(setting.value),
+          ]),
+      );
+
+      for (const school of schools) {
+        const calendarType = calendarTypeBySchoolId.get(school.id);
+        const timeZone =
+          calendarType === 'ETHIOPIAN'
+            ? 'Africa/Addis_Ababa'
+            : school.timezone || 'Africa/Addis_Ababa';
+        const targetTime = this.toHHMM(reminderTime, timeZone);
+
+        if (this.isWeekend(now, timeZone)) {
+          continue;
+        }
+
+        const schoolEndTime = this.normalizeHHMM(
+          this.parseSettingValue(endTimeBySchoolId.get(school.id)) || '15:00',
+        );
+
+        if (schoolEndTime !== targetTime) {
+          continue;
+        }
+
+        await this.sendPickupReminderForSchool(
+          school.id,
+          school.name,
+          schoolEndTime,
+          now,
+        );
+      }
+    } catch (error) {
+      this.logger.error('Failed to send school pickup reminders', error);
+    }
+  }
+
+  private async sendPickupReminderForSchool(
+    schoolId: string,
+    schoolName: string,
+    schoolEndTime: string,
+    now: Date,
+  ) {
+    const { start, end } = this.getLocalDayRange(now);
+    const lockKey = `pickup-reminder:${schoolId}:${schoolEndTime}:${start.toISOString().slice(0, 10)}`;
+    const notifications = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+      const parentLinks = await tx.parentStudent.findMany({
+        where: {
+          schoolId,
+          student: {
+            enrollmentStatus: 'APPROVED',
+          },
+        },
+        select: {
+          parent: {
+            select: {
+              userId: true,
+              user: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const parentNameByUserId = new Map<string, string>();
+      for (const link of parentLinks) {
+        if (link.parent.userId) {
+          parentNameByUserId.set(link.parent.userId, link.parent.user.name);
+        }
+      }
+      const parentUserIds = Array.from(parentNameByUserId.keys());
+
+      if (parentUserIds.length === 0) {
+        return [];
+      }
+
+      const existing = await tx.notification.findMany({
+        where: {
+          schoolId,
+          userId: { in: parentUserIds },
+          type: NotificationType.PICKUP_REMINDER,
+          createdAt: {
+            gte: start,
+            lte: end,
+          },
+        },
+        select: { userId: true, metadata: true },
+      });
+      const alreadySent = new Set(
+        existing
+          .filter((notification) => {
+            const metadata = notification.metadata as Record<string, unknown> | null;
+            return metadata?.schoolEndTime === schoolEndTime;
+          })
+          .map((notification) => notification.userId),
+      );
+      const unsentParentIds = parentUserIds.filter((userId) => !alreadySent.has(userId));
+
+      if (unsentParentIds.length === 0) {
+        return [];
+      }
+
+      return Promise.all(
+        unsentParentIds.map(async (parentUserId) => {
+          const lang = await this.getUserLanguage(parentUserId);
+          const t = this.translate('pickupReminder', lang);
+          return tx.notification.create({
+            data: {
+              schoolId,
+              userId: parentUserId,
+              title: t.title,
+              message: t.message,
+              type: NotificationType.PICKUP_REMINDER,
+              actionUrl: '/parent',
+              metadata: JSON.stringify({
+                schoolEndTime,
+                reminderMinutes: 20,
+              }),
+            },
+          });
+        })
+      );
+    });
+
+    await Promise.all(
+      notifications.map((notification) =>
+        this.sendPushToUsers([notification.userId].filter(Boolean) as string[], {
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          actionUrl: notification.actionUrl || undefined,
+          notificationId: notification.id,
+          metadata: {
+            schoolEndTime,
+            reminderMinutes: 20,
+          },
+        }).catch((error: any) => {
+          this.logger.warn(
+            `Push delivery lookup failed for notification ${notification.id}: ${error?.message || 'unknown error'}`,
+          );
+        }),
+      ),
+    );
   }
 
   async createGlobalNotification(data: {
@@ -1173,7 +1472,6 @@ export class NotificationService {
     studentName: string,
     grade: string,
   ) {
-    // Get all admins and registrars for this school
     const users = await this.prisma.user.findMany({
       where: {
         schoolId,
@@ -1184,15 +1482,23 @@ export class NotificationService {
 
     if (users.length === 0) return;
 
-    return this.createBulkNotifications({
-      schoolId,
-      userIds: users.map((u) => u.id),
-      title: 'New Enrollment Request',
-      message: `${studentName} has submitted an enrollment request for Grade ${grade}`,
-      type: NotificationType.ENROLLMENT_PENDING,
-      actionUrl: '/admin/enrollment',
-      metadata: { studentName, grade },
-    });
+    const notifications = await Promise.all(
+      users.map(async (u) => {
+        const lang = await this.getUserLanguage(u.id);
+        const t = this.translate('newEnrollment', lang, studentName, grade);
+        return this.createNotification({
+          schoolId,
+          userId: u.id,
+          title: t.title,
+          message: t.message,
+          type: NotificationType.ENROLLMENT_PENDING,
+          actionUrl: '/admin/enrollment',
+          metadata: { studentName, grade },
+        });
+      })
+    );
+
+    return { count: notifications.length };
   }
 
   /**
@@ -1204,40 +1510,38 @@ export class NotificationService {
     studentName: string,
     className: string,
   ) {
+    const lang = await this.getUserLanguage(userId);
+    const t = this.translate('enrollmentApproved', lang, studentName, className);
     return this.createNotification({
       schoolId,
       userId,
-      title: 'Enrollment Approved',
-      message: `Congratulations! ${studentName}'s enrollment has been approved for ${className}`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.ENROLLMENT_APPROVED,
       actionUrl: '/student/profile',
       metadata: { studentName, className },
     });
   }
 
-  /**
-   * Notify student/parent of enrollment rejection
-   */
   async notifyEnrollmentRejection(
     schoolId: string,
     userId: string,
     studentName: string,
     reason?: string,
   ) {
+    const lang = await this.getUserLanguage(userId);
+    const t = this.translate('enrollmentRejected', lang, studentName, reason || '');
     return this.createNotification({
       schoolId,
       userId,
-      title: 'Enrollment Update',
-      message: `We regret to inform you that ${studentName}'s enrollment application was not approved. ${reason ? `Reason: ${reason}` : ''}`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.ENROLLMENT_REJECTED,
       actionUrl: '/enroll',
       metadata: { studentName, reason },
     });
   }
 
-  /**
-   * Notify parents when their child is marked absent
-   */
   async notifyParentOfAbsence(
     schoolId: string,
     parentId: string,
@@ -1245,20 +1549,19 @@ export class NotificationService {
     date: string,
     className: string,
   ) {
+    const lang = await this.getUserLanguage(parentId);
+    const t = this.translate('attendanceAlert', lang, studentName, date, className);
     return this.createNotification({
       schoolId,
       userId: parentId,
-      title: 'Attendance Alert',
-      message: `${studentName} was marked absent in ${className} on ${date}`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.ATTENDANCE_ABSENT,
       actionUrl: '/parent/attendance',
       metadata: { studentName, date, className },
     });
   }
 
-  /**
-   * Notify parents when their child is late
-   */
   async notifyParentOfLate(
     schoolId: string,
     parentId: string,
@@ -1266,40 +1569,38 @@ export class NotificationService {
     time: string,
     className: string,
   ) {
+    const lang = await this.getUserLanguage(parentId);
+    const t = this.translate('lateArrival', lang, studentName, time, className);
     return this.createNotification({
       schoolId,
       userId: parentId,
-      title: 'Late Arrival Notice',
-      message: `${studentName} arrived late at ${time} for ${className}`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.ATTENDANCE_LATE,
       actionUrl: '/parent/attendance',
       metadata: { studentName, time, className },
     });
   }
 
-  /**
-   * Notify teacher that attendance session is ready
-   */
   async notifyTeacherAttendanceSession(
     schoolId: string,
     teacherId: string,
     className: string,
     subject: string,
   ) {
+    const lang = await this.getUserLanguage(teacherId);
+    const t = this.translate('attendanceSessionOpened', lang, className, subject);
     return this.createNotification({
       schoolId,
       userId: teacherId,
-      title: 'Attendance Session Opened',
-      message: `Attendance session is ready for ${className} - ${subject}`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.ATTENDANCE_SESSION_OPENED,
       actionUrl: '/teacher/attendance',
       metadata: { className, subject },
     });
   }
 
-  /**
-   * Notify teacher that attendance time is approaching
-   */
   async notifyTeacherAttendanceReminder(
     schoolId: string,
     teacherId: string,
@@ -1307,20 +1608,19 @@ export class NotificationService {
     subject: string,
     startTime: string,
   ) {
+    const lang = await this.getUserLanguage(teacherId);
+    const t = this.translate('attendanceReminder', lang, className, subject, startTime);
     return this.createNotification({
       schoolId,
       userId: teacherId,
-      title: 'Attendance Reminder',
-      message: `Attendance for ${className} - ${subject} starts at ${startTime}. Don't forget to take attendance!`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.ATTENDANCE_SESSION_OPENED,
       actionUrl: '/teacher/attendance',
       metadata: { className, subject, startTime },
     });
   }
 
-  /**
-   * Notify homeroom teachers about missing attendance for their classes
-   */
   async notifyHomeroomMissingAttendance(
     schoolId: string,
     teacherId: string,
@@ -1329,11 +1629,13 @@ export class NotificationService {
     section: string,
     date: string,
   ) {
+    const lang = await this.getUserLanguage(teacherId);
+    const t = this.translate('missingAttendanceReminder', lang, className, String(grade), section, date);
     return this.createNotification({
       schoolId,
       userId: teacherId,
-      title: 'Missing Attendance Reminder',
-      message: `Please take attendance for Grade ${grade} - ${section} (${className}) for ${date}. Attendance has not been recorded yet.`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.ATTENDANCE_SESSION_OPENED,
       actionUrl: '/teacher/attendance',
       metadata: { className, grade, section, date },
@@ -1341,9 +1643,6 @@ export class NotificationService {
     });
   }
 
-  /**
-   * Notify students of new assignment
-   */
   async notifyStudentsOfAssignment(
     schoolId: string,
     studentIds: string[],
@@ -1351,20 +1650,24 @@ export class NotificationService {
     dueDate: string,
     className: string,
   ) {
-    return this.createBulkNotifications({
-      schoolId,
-      userIds: studentIds,
-      title: 'New Assignment',
-      message: `New assignment "${assignmentTitle}" has been posted for ${className}. Due: ${dueDate}`,
-      type: NotificationType.ASSIGNMENT_CREATED,
-      actionUrl: '/student/assignments',
-      metadata: { assignmentTitle, dueDate, className },
-    });
+    const notifications = await Promise.all(
+      studentIds.map(async (studentId) => {
+        const lang = await this.getUserLanguage(studentId);
+        const t = this.translate('newAssignment', lang, assignmentTitle, dueDate, className);
+        return this.createNotification({
+          schoolId,
+          userId: studentId,
+          title: t.title,
+          message: t.message,
+          type: NotificationType.ASSIGNMENT_CREATED,
+          actionUrl: '/student/assignments',
+          metadata: { assignmentTitle, dueDate, className },
+        });
+      })
+    );
+    return { count: notifications.length };
   }
 
-  /**
-   * Notify parents of new assignment for their children
-   */
   async notifyParentsOfAssignment(
     schoolId: string,
     parentIds: string[],
@@ -1372,20 +1675,24 @@ export class NotificationService {
     dueDate: string,
     studentName: string,
   ) {
-    return this.createBulkNotifications({
-      schoolId,
-      userIds: parentIds,
-      title: 'New Assignment for Your Child',
-      message: `${studentName} has a new assignment "${assignmentTitle}" due on ${dueDate}`,
-      type: NotificationType.ASSIGNMENT_CREATED,
-      actionUrl: '/parent/assignments',
-      metadata: { assignmentTitle, dueDate, studentName },
-    });
+    const notifications = await Promise.all(
+      parentIds.map(async (parentId) => {
+        const lang = await this.getUserLanguage(parentId);
+        const t = this.translate('assignmentForChild', lang, studentName, assignmentTitle, dueDate);
+        return this.createNotification({
+          schoolId,
+          userId: parentId,
+          title: t.title,
+          message: t.message,
+          type: NotificationType.ASSIGNMENT_CREATED,
+          actionUrl: '/parent/assignments',
+          metadata: { assignmentTitle, dueDate, studentName },
+        });
+      })
+    );
+    return { count: notifications.length };
   }
 
-  /**
-   * Notify student of assignment grade
-   */
   async notifyStudentOfGrade(
     schoolId: string,
     studentId: string,
@@ -1393,20 +1700,19 @@ export class NotificationService {
     grade: string,
     className: string,
   ) {
+    const lang = await this.getUserLanguage(studentId);
+    const t = this.translate('assignmentGraded', lang, assignmentTitle, grade, className);
     return this.createNotification({
       schoolId,
       userId: studentId,
-      title: 'Assignment Graded',
-      message: `Your assignment "${assignmentTitle}" for ${className} has been graded. Grade: ${grade}`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.ASSIGNMENT_GRADED,
       actionUrl: '/student/results',
       metadata: { assignmentTitle, grade, className },
     });
   }
 
-  /**
-   * Notify parent of child's grade
-   */
   async notifyParentOfChildGrade(
     schoolId: string,
     parentId: string,
@@ -1414,40 +1720,43 @@ export class NotificationService {
     assignmentTitle: string,
     grade: string,
   ) {
+    const lang = await this.getUserLanguage(parentId);
+    const t = this.translate('childAssignmentGraded', lang, studentName, assignmentTitle, grade);
     return this.createNotification({
       schoolId,
       userId: parentId,
-      title: "Child's Assignment Graded",
-      message: `${studentName}'s assignment "${assignmentTitle}" has been graded. Grade: ${grade}`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.ASSIGNMENT_GRADED,
       actionUrl: '/parent/results',
       metadata: { studentName, assignmentTitle, grade },
     });
   }
 
-  /**
-   * Notify of result publication
-   */
   async notifyResultPublished(
     schoolId: string,
     userIds: string[],
     term: string,
     className: string,
   ) {
-    return this.createBulkNotifications({
-      schoolId,
-      userIds,
-      title: 'Results Published',
-      message: `Results for ${term} in ${className} have been published`,
-      type: NotificationType.RESULT_PUBLISHED,
-      actionUrl: '/results',
-      metadata: { term, className },
-    });
+    const notifications = await Promise.all(
+      userIds.map(async (userId) => {
+        const lang = await this.getUserLanguage(userId);
+        const t = this.translate('resultsPublished', lang, term, className);
+        return this.createNotification({
+          schoolId,
+          userId,
+          title: t.title,
+          message: t.message,
+          type: NotificationType.RESULT_PUBLISHED,
+          actionUrl: '/results',
+          metadata: { term, className },
+        });
+      })
+    );
+    return { count: notifications.length };
   }
 
-  /**
-   * Notify teachers of new assessment created by admin
-   */
   async notifyAssessmentStarted(
     schoolId: string,
     teacherIds: string[],
@@ -1457,63 +1766,69 @@ export class NotificationService {
     subjectName: string,
     metadata?: Record<string, unknown>,
   ) {
-    return this.createBulkNotifications({
-      schoolId,
-      userIds: teacherIds,
-      title: 'Assessment Started',
-      message: `${assessmentType} "${assessmentTitle}" is now active for ${className} - ${subjectName}. Please enter scores.`,
-      type: NotificationType.ASSESSMENT_CREATED,
-      actionUrl: '/teacher/exams',
-      metadata: {
-        assessmentTitle,
-        assessmentType,
-        className,
-        subjectName,
-        ...metadata,
-      },
-    });
+    const notifications = await Promise.all(
+      teacherIds.map(async (teacherId) => {
+        const lang = await this.getUserLanguage(teacherId);
+        const t = this.translate('assessmentStarted', lang, assessmentType, assessmentTitle, className, subjectName);
+        return this.createNotification({
+          schoolId,
+          userId: teacherId,
+          title: t.title,
+          message: t.message,
+          type: NotificationType.ASSESSMENT_CREATED,
+          actionUrl: '/teacher/exams',
+          metadata: { assessmentTitle, assessmentType, className, subjectName, ...metadata },
+        });
+      })
+    );
+    return { count: notifications.length };
   }
 
-  /**
-   * Notify of schedule change
-   */
   async notifyScheduleChange(
     schoolId: string,
     userIds: string[],
     message: string,
   ) {
-    return this.createBulkNotifications({
-      schoolId,
-      userIds,
-      title: 'Schedule Change',
-      message,
-      type: NotificationType.SCHEDULE_CHANGED,
-      actionUrl: '/schedule',
-    });
+    const notifications = await Promise.all(
+      userIds.map(async (userId) => {
+        const lang = await this.getUserLanguage(userId);
+        const t = this.translate('scheduleChange', lang);
+        return this.createNotification({
+          schoolId,
+          userId,
+          title: t.title,
+          message: message || t.message,
+          type: NotificationType.SCHEDULE_CHANGED,
+          actionUrl: '/schedule',
+        });
+      })
+    );
+    return { count: notifications.length };
   }
 
-  /**
-   * Notify of timetable update
-   */
   async notifyTimetableUpdate(
     schoolId: string,
     userIds: string[],
     className: string,
   ) {
-    return this.createBulkNotifications({
-      schoolId,
-      userIds,
-      title: 'Timetable Updated',
-      message: `The timetable for ${className} has been updated. Please check your new schedule.`,
-      type: NotificationType.TIMETABLE_UPDATED,
-      actionUrl: '/timetable',
-      metadata: { className },
-    });
+    const notifications = await Promise.all(
+      userIds.map(async (userId) => {
+        const lang = await this.getUserLanguage(userId);
+        const t = this.translate('timetableUpdated', lang, className);
+        return this.createNotification({
+          schoolId,
+          userId,
+          title: t.title,
+          message: t.message,
+          type: NotificationType.TIMETABLE_UPDATED,
+          actionUrl: '/timetable',
+          metadata: { className },
+        });
+      })
+    );
+    return { count: notifications.length };
   }
 
-  /**
-   * Notify of fee due
-   */
   async notifyFeeDue(
     schoolId: string,
     userId: string,
@@ -1521,34 +1836,72 @@ export class NotificationService {
     dueDate: string,
     studentName?: string,
   ) {
+    const lang = await this.getUserLanguage(userId);
+    const t = this.translate('feeReminder', lang, amount, dueDate, studentName || '');
     return this.createNotification({
       schoolId,
       userId,
-      title: 'Fee Payment Reminder',
-      message: `${studentName ? `Fee for ${studentName}: ` : ''}Payment of ${amount} is due on ${dueDate}`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.FEE_DUE,
       actionUrl: '/fees',
       metadata: { amount, dueDate, studentName },
     });
   }
 
-  /**
-   * Notify of payment received
-   */
   async notifyPaymentReceived(
     schoolId: string,
     userId: string,
     amount: string,
     receiptNumber: string,
   ) {
+    const lang = await this.getUserLanguage(userId);
+    const t = this.translate('paymentReceived', lang, amount, receiptNumber);
     return this.createNotification({
       schoolId,
       userId,
-      title: 'Payment Received',
-      message: `Your payment of ${amount} has been received. Receipt #: ${receiptNumber}`,
+      title: t.title,
+      message: t.message,
       type: NotificationType.PAYMENT_RECEIVED,
       actionUrl: '/fees',
       metadata: { amount, receiptNumber },
+    });
+  }
+
+  async notifyNewMessage(
+    schoolId: string,
+    userId: string,
+    senderName: string,
+    preview: string,
+  ) {
+    const lang = await this.getUserLanguage(userId);
+    const shortPreview = preview.length > 50 ? `${preview.substring(0, 50)}...` : preview;
+    const t = this.translate('newMessage', lang, senderName, shortPreview);
+    return this.createNotification({
+      schoolId,
+      userId,
+      title: t.title,
+      message: t.message,
+      type: NotificationType.MESSAGE_RECEIVED,
+      actionUrl: '/messages',
+      metadata: { senderName },
+    });
+  }
+
+  async notifyAccountCreated(
+    schoolId: string,
+    userId: string,
+    tempPassword?: boolean,
+  ) {
+    const lang = await this.getUserLanguage(userId);
+    const t = this.translate('welcome', lang, tempPassword ? 'true' : 'false');
+    return this.createNotification({
+      schoolId,
+      userId,
+      title: t.title,
+      message: t.message,
+      type: NotificationType.ACCOUNT_CREATED,
+      actionUrl: '/profile',
     });
   }
 
@@ -1594,46 +1947,6 @@ export class NotificationService {
   }
 
   /**
-   * Notify of new message
-   */
-  async notifyNewMessage(
-    schoolId: string,
-    userId: string,
-    senderName: string,
-    preview: string,
-  ) {
-    return this.createNotification({
-      schoolId,
-      userId,
-      title: 'New Message',
-      message: `${senderName}: ${preview.substring(0, 50)}...`,
-      type: NotificationType.MESSAGE_RECEIVED,
-      actionUrl: '/messages',
-      metadata: { senderName },
-    });
-  }
-
-  /**
-   * Notify user of account creation
-   */
-  async notifyAccountCreated(
-    schoolId: string,
-    userId: string,
-    tempPassword?: boolean,
-  ) {
-    return this.createNotification({
-      schoolId,
-      userId,
-      title: 'Welcome to School Management System',
-      message: tempPassword
-        ? 'Your account has been created. Please check your email for login credentials.'
-        : 'Your account has been created. You can now log in.',
-      type: NotificationType.ACCOUNT_CREATED,
-      actionUrl: '/profile',
-    });
-  }
-
-  /**
    * Create system alert
    */
   async createSystemAlert(
@@ -1651,9 +1964,6 @@ export class NotificationService {
     });
   }
 
-  /**
-   * Notify teachers of class cancellation
-   */
   async notifyClassCancellation(
     schoolId: string,
     teacherIds: string[],
@@ -1661,20 +1971,24 @@ export class NotificationService {
     date: string,
     reason?: string,
   ) {
-    return this.createBulkNotifications({
-      schoolId,
-      userIds: teacherIds,
-      title: 'Class Cancelled',
-      message: `${className} on ${date} has been cancelled. ${reason ? `Reason: ${reason}` : ''}`,
-      type: NotificationType.CLASS_CANCELLED,
-      actionUrl: '/schedule',
-      metadata: { className, date, reason },
-    });
+    const notifications = await Promise.all(
+      teacherIds.map(async (teacherId) => {
+        const lang = await this.getUserLanguage(teacherId);
+        const t = this.translate('classCancelled', lang, className, date, reason || '');
+        return this.createNotification({
+          schoolId,
+          userId: teacherId,
+          title: t.title,
+          message: t.message,
+          type: NotificationType.CLASS_CANCELLED,
+          actionUrl: '/schedule',
+          metadata: { className, date, reason },
+        });
+      })
+    );
+    return { count: notifications.length };
   }
 
-  /**
-   * Notify students of class cancellation
-   */
   async notifyStudentsOfClassCancellation(
     schoolId: string,
     studentIds: string[],
@@ -1682,15 +1996,22 @@ export class NotificationService {
     subject: string,
     date: string,
   ) {
-    return this.createBulkNotifications({
-      schoolId,
-      userIds: studentIds,
-      title: 'Class Cancelled',
-      message: `${subject} class for ${className} on ${date} has been cancelled`,
-      type: NotificationType.CLASS_CANCELLED,
-      actionUrl: '/student/schedule',
-      metadata: { className, subject, date },
-    });
+    const notifications = await Promise.all(
+      studentIds.map(async (studentId) => {
+        const lang = await this.getUserLanguage(studentId);
+        const t = this.translate('studentClassCancelled', lang, subject, className, date);
+        return this.createNotification({
+          schoolId,
+          userId: studentId,
+          title: t.title,
+          message: t.message,
+          type: NotificationType.CLASS_CANCELLED,
+          actionUrl: '/student/schedule',
+          metadata: { className, subject, date },
+        });
+      })
+    );
+    return { count: notifications.length };
   }
 
   async notifyAccountDeactivated(
@@ -1698,13 +2019,13 @@ export class NotificationService {
     schoolId: string,
     reason?: string,
   ) {
+    const lang = await this.getUserLanguage(userId);
+    const t = this.translate('accountDeactivated', lang, reason || '');
     return this.createNotification({
       schoolId,
       userId,
-      title: 'Account Deactivated',
-      message:
-        reason ||
-        'Your account has been deactivated. Please contact school administration for more information.',
+      title: t.title,
+      message: t.message,
       type: NotificationType.ALERT,
       actionUrl: '/profile',
       metadata: { reason },
@@ -1712,11 +2033,13 @@ export class NotificationService {
   }
 
   async notifyAccountActivated(userId: string, schoolId: string) {
+    const lang = await this.getUserLanguage(userId);
+    const t = this.translate('accountActivated', lang);
     return this.createNotification({
       schoolId,
       userId,
-      title: 'Account Activated',
-      message: 'Your account has been activated. You can now log in.',
+      title: t.title,
+      message: t.message,
       type: NotificationType.INFO,
       actionUrl: '/login',
       metadata: {},
@@ -1743,38 +2066,42 @@ export class NotificationService {
 
     if (teacherIds.length === 0) return;
 
-    const sirenLabel = this.formatSirenLabel(type);
     const isDynamic = triggerType === 'DYNAMIC';
     const isPeriodStart = type === 'PERIOD_START';
     const isPeriodEnd = type === 'PERIOD_END';
-    const title = isDynamic
-      ? isPeriodStart
-        ? 'Your Class Is Starting'
-        : isPeriodEnd
-          ? 'Your Class Has Ended'
-          : 'Class Bell'
-      : 'School Bell';
-    const message = isDynamic
-      ? isPeriodStart
-        ? 'The bell has rung for your current class. Please proceed to your classroom.'
-        : isPeriodEnd
-          ? 'The bell has rung to end your current class.'
-          : `${sirenLabel} bell has rung for your timetable.`
-      : 'The school bell has been triggered.';
 
-    return this.createBulkNotifications({
-      schoolId,
-      userIds: teacherIds,
-      title,
-      message,
-      type: NotificationType.SIREN_ALERT,
-      actionUrl: '/teacher',
-      metadata: {
-        source: 'siren',
-        sirenType: type,
-        triggerType,
-      },
-    });
+    const notifications = await Promise.all(
+      teacherIds.map(async (teacherId) => {
+        const lang = await this.getUserLanguage(teacherId);
+        let t: { title: string; message: string };
+        if (isDynamic) {
+          if (isPeriodStart) {
+            t = this.translate('classStarting', lang);
+          } else if (isPeriodEnd) {
+            t = this.translate('classEnded', lang);
+          } else {
+            const sirenLabel = this.formatSirenLabel(type);
+            t = this.translate('classBell', lang, sirenLabel);
+          }
+        } else {
+          t = this.translate('schoolBell', lang);
+        }
+        return this.createNotification({
+          schoolId,
+          userId: teacherId,
+          title: t.title,
+          message: t.message,
+          type: NotificationType.SIREN_ALERT,
+          actionUrl: '/teacher',
+          metadata: {
+            source: 'siren',
+            sirenType: type,
+            triggerType,
+          },
+        });
+      })
+    );
+    return { count: notifications.length };
   }
 
   private formatSirenLabel(type: string) {

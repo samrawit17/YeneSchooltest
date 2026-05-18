@@ -188,7 +188,8 @@ export const timetableSlotsAPI = {
     academicYearId?: string;
   }) => api.get('/timetable-slots', { params }),
   getByClass: (classId: string) => api.get(`/timetable-slots/class/${classId}`),
-  getByTeacher: (teacherId: string) => api.get(`/timetable-slots/teacher/${teacherId}`),
+  getByTeacher: (teacherId: string) =>
+    api.get(`/timetable-slots/teacher/${teacherId}`),
   getById: (id: string) => api.get(`/timetable-slots/${id}`),
   update: (
     id: string,
@@ -217,8 +218,10 @@ export const timetableSlotsAPI = {
   }[]) => api.post('/timetable-slots/bulk', { slots }),
   deleteByClassSection: (classId: string, sectionId: string) =>
     api.delete(`/timetable-slots/class/${classId}/section/${sectionId}`),
-  getGrid: (classId: string, sectionId?: string) =>
-    api.get(`/timetable-slots/grid/class/${classId}`, { params: { sectionId } }),
+  getGrid: (classId: string, sectionId?: string, academicYearId?: string) =>
+    api.get(`/timetable-slots/grid/class/${classId}`, {
+      params: { sectionId, academicYearId },
+    }),
 };
 
 export const subjectsAPI = {

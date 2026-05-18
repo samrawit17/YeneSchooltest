@@ -22,6 +22,8 @@ import {
   BookText,
   GraduationCap,
 } from "lucide-react";
+import { useTranslations } from "@/hooks/useTranslations";
+import type { ParentTimetableMessages } from "@/messages/registry";
 
 interface Child {
   id: string;
@@ -43,6 +45,7 @@ export default function ParentTimetablePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { t } = useTranslations<ParentTimetableMessages>("parentTimetable");
   const [children, setChildren] = useState<ChildEnrollment[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -120,6 +123,11 @@ export default function ParentTimetablePage() {
     [children, selectedChildId],
   );
 
+  const translatedClassName = useMemo(() => {
+    if (!selectedChild?.className) return "";
+    return selectedChild.className.replace(/^Grade\s*/i, `${t.grade} `);
+  }, [selectedChild?.className, t.grade]);
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
@@ -140,10 +148,10 @@ export default function ParentTimetablePage() {
         {/* Header */}
         <div>
           <div className="mb-1">
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">Class Timetable</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            View your child's weekly class schedule and academic program
+            {t.subtitle}
           </p>
         </div>
 
@@ -154,19 +162,22 @@ export default function ParentTimetablePage() {
               <Users className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
             </div>
             <div className="flex-1">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Select Child</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.selectChild}</p>
               <Select value={selectedChildId} onValueChange={setSelectedChildId}>
                 <SelectTrigger className="w-full h-9 border-slate-200 dark:border-slate-700">
-                  <SelectValue placeholder="Choose a child" />
+                  <SelectValue placeholder={t.chooseChild} />
                 </SelectTrigger>
                 <SelectContent>
-                  {children.map((child) => (
+                {children.map((child) => {
+                  const childClassName = child.className?.replace(/^Grade\s*/i, `${t.grade} `) || "";
+                  return (
                     <SelectItem key={child.id} value={child.id}>
                       {child.name}
-                      {child.className ? ` • ${child.className}` : ""}
-                      {child.section ? ` (Section ${child.section})` : ""}
+                      {childClassName ? ` • ${childClassName}` : ""}
+                      {child.section ? ` (${t.section} ${child.section})` : ""}
                     </SelectItem>
-                  ))}
+                  );
+                })}
                 </SelectContent>
               </Select>
             </div>
@@ -177,7 +188,7 @@ export default function ParentTimetablePage() {
               <GraduationCap className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Child</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.child}</p>
               <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[120px]">
                 {selectedChild?.name || "N/A"}
               </p>
@@ -189,10 +200,10 @@ export default function ParentTimetablePage() {
               <BookText className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Class</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t.class}</p>
               <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[120px]">
                 {selectedChild?.className || selectedChild?.section
-                  ? `${selectedChild.className || "N/A"}${selectedChild.section ? ` - ${selectedChild.section}` : ""}`
+                  ? `${translatedClassName || "N/A"}${selectedChild.section ? ` - ${selectedChild.section}` : ""}`
                   : "N/A"}
               </p>
             </div>
@@ -204,9 +215,9 @@ export default function ParentTimetablePage() {
             <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-4">
               <School className="w-7 h-7 text-slate-400" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">No Children Found</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{t.noChildren}</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              No children are linked to your account. Contact the school to link your children.
+              {t.noChildrenDesc}
             </p>
           </div>
         )}
@@ -216,18 +227,18 @@ export default function ParentTimetablePage() {
           schoolId={user?.schoolId}
           classId={selectedChild?.classId}
           sectionId={selectedChild?.sectionId}
-          ownerName={selectedChild?.name || "Child"}
-          title="Weekly Schedule"
+          ownerName={selectedChild?.name || t.child}
+          title={t.weeklyProgram}
           subtitle={
-            selectedChild?.className
-              ? `${selectedChild.className}${selectedChild.section ? ` • Section ${selectedChild.section}` : ""}`
-              : "Select a child to view their class timetable"
+            translatedClassName
+              ? `${translatedClassName}${selectedChild.section ? ` • ${t.section} ${selectedChild.section}` : ""}`
+              : t.selectChildSubtitle
           }
-          emptyTitle="No Class Program Available"
+          emptyTitle={t.noProgram}
           emptyDescription={
             children.length === 0
-              ? "Please ensure your child is linked to your account and has an assigned class."
-              : "The selected child doesn't have a published timetable yet. Please check back later."
+              ? t.noProgramDescNoChild
+              : t.noProgramDescNoTimetable
           }
         />
       </div>

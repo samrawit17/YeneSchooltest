@@ -209,7 +209,7 @@ export default function PublishResultsPage() {
     if (row.incompleteEntries > 0) blockers.push(`${row.incompleteEntries} report cards are incomplete.`);
     if (row.rankingMissingEntries > 0) blockers.push(`${row.rankingMissingEntries} ranking entries will be finalized during publish.`);
     if (!row.certificateReady && row.certificateIssue) blockers.push(row.certificateIssue);
-    return [...blockers, ...row.issueReasons].filter(Boolean);
+    return Array.from(new Set([...blockers, ...row.issueReasons].filter(Boolean)));
   };
 
   const publishClass = async (classId: string) => {
