@@ -10,6 +10,8 @@ export interface BulkUserRecord {
   last_name?: string;
   email?: string;
   phone?: string;
+  mother_name?: string;
+  mother_phone?: string;
   role: string;
   // Student-specific fields
   current_class?: string;
@@ -323,6 +325,16 @@ export class BulkUploadService {
         'parent_mobile',
         'guardian_phone',
       ]);
+      const motherNameIdx = findIdx([
+        'mother_name',
+        'mother_fullname',
+        'mothers_name',
+      ]);
+      const motherPhoneIdx = findIdx([
+        'mother_phone',
+        'mother_mobile',
+        'mothers_phone',
+      ]);
       const rollNumberIdx = findIdx(['roll_number', 'rollno', 'roll']);
 
       const records: BulkUserRecord[] = [];
@@ -381,6 +393,10 @@ export class BulkUploadService {
           last_name: values[lastIdx] || undefined,
           email: values[emailIdx] || undefined,
           phone: values[phoneIdx] || undefined,
+          mother_name:
+            motherNameIdx !== -1 ? values[motherNameIdx] : undefined,
+          mother_phone:
+            motherPhoneIdx !== -1 ? values[motherPhoneIdx] : undefined,
           role: roleIdx !== -1 ? values[roleIdx] || 'student' : 'student',
           current_class: currentClass,
           gender: genderIdx !== -1 ? values[genderIdx] : undefined,
@@ -787,6 +803,8 @@ export class BulkUploadService {
                 academicYear: yearId,
                 enrollmentStatus: 'APPROVED',
                 gender: record.gender ? record.gender.toUpperCase() : undefined,
+                motherName: record.mother_name || undefined,
+                motherPhone: record.mother_phone || undefined,
               },
             });
 

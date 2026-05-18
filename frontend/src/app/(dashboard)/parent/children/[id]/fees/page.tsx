@@ -44,7 +44,9 @@ interface FeeItem {
   paidAmount: number;
   balance: number;
   category: string;
-  term: string;
+  term?: string;
+  termName?: string | null;
+  isYearWide?: boolean;
 }
 
 interface PaymentRecord {
@@ -54,6 +56,7 @@ interface PaymentRecord {
   paymentMethod: string;
   paidAt: string;
   feeItemName: string;
+  termName?: string | null;
   status: string;
 }
 
@@ -76,12 +79,13 @@ const ChildFeesPage = () => {
   const params = useParams();
   const router = useRouter();
   const childId = params.id as string;
-  const { formatDate: formatSchoolDate } = useAcademicYear();
+  const { currentAcademicYear, formatDate: formatSchoolDate } = useAcademicYear();
 
   const [child, setChild] = useState<ChildInfo | null>(null);
   const [feeItems, setFeeItems] = useState<FeeItem[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [summary, setSummary] = useState<FeeSummary | null>(null);
+  const [curriculumType, setCurriculumType] = useState<string>("TERM");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -104,6 +108,7 @@ const ChildFeesPage = () => {
         setPayments(data.payments || []);
         setSummary(data.summary || null);
         setChild(data.student || null);
+        setCurriculumType(data.curriculumType || "TERM");
       } catch (error) {
         console.error("Failed to fetch fees:", error);
         setFeeItems([]);
@@ -120,6 +125,30 @@ const ChildFeesPage = () => {
 
   const formatCurrency = (amount: number) => {
     return `Brr ${amount.toLocaleString()}`;
+  };
+
+  const cleanFeeTypeName = (feeType?: string | null) => {
+    const raw = String(feeType || "Fee").trim();
+    return raw
+      .replace(/_INSTALLMENT_\d+$/i, "")
+      .replace(/_ANNUAL$/i, "")
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  const formatPeriodLabel = (item: { term?: string | null; termName?: string | null; isYearWide?: boolean }) => {
+    const termName = item.termName || item.term;
+    const monthMatch = termName?.match(/^Month\s+(\d+)$/i);
+    if (monthMatch && currentAcademicYear?.startDate) {
+      const startDate = new Date(currentAcademicYear.startDate);
+      const monthDate = new Date(startDate);
+      monthDate.setMonth(startDate.getMonth() + Number(monthMatch[1]) - 1);
+      return formatSchoolDate(monthDate).replace(/\s+\d{1,2},/, "");
+    }
+    if (termName) return termName;
+    if (String(curriculumType).toUpperCase().startsWith("MONTH")) return "Current Month";
+    return item.isYearWide ? "Whole Academic Year" : "Current Period";
   };
 
   const formatDate = (dateString: string) => {
@@ -281,10 +310,10 @@ const ChildFeesPage = () => {
                       {feeItems.map((item) => (
                         <TableRow key={item.id} className="border-b border-gray-50 dark:border-slate-700/50 last:border-0">
                           <TableCell className="py-3">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{item.category}</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">{cleanFeeTypeName(item.name)}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{formatPeriodLabel(item)}</p>
                           </TableCell>
-                          <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-400">{item.term}</TableCell>
+                          <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-400">{formatPeriodLabel(item)}</TableCell>
                           <TableCell className="py-3 text-right text-sm font-medium text-gray-900 dark:text-white">
                             {formatCurrency(item.amount)}
                           </TableCell>
@@ -400,10 +429,11 @@ const ChildFeesPage = () => {
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                         <div>
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {payment.feeItemName}
+                            {cleanFeeTypeName(payment.feeItemName)}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
                             Invoice: {payment.receiptNumber} • {payment.paymentMethod}
+                            {payment.termName ? ` • ${payment.termName}` : ""}
                           </p>
                         </div>
                         <div className="flex items-center gap-3">

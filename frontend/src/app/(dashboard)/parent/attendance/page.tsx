@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Views } from "react-big-calendar";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslations } from "@/hooks/useTranslations";
 import { attendanceAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
 import BigCalendar, { type CalendarDisplayEvent } from "@/components/BigCalendar";
@@ -16,45 +17,35 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { academicYearsAPI } from "@/lib/api";
 
-const buildMonthOptions = (
-  selectedYear: string,
-  academicYears: { id: string; name: string; startDate?: string; endDate?: string }[]
-) => {
-  const yearConfig = academicYears.find((year) => year.id === selectedYear);
-  const now = new Date();
-
-  if (!yearConfig?.startDate) {
-    return Array.from({ length: 12 }, (_, index) => {
-      const monthDate = new Date(now.getFullYear(), index, 1);
-      return {
-        value: `${monthDate.getFullYear()}-${String(index + 1).padStart(2, "0")}`,
-        label: monthDate.toLocaleDateString("en-US", {
-          month: "long",
-          year: "numeric",
-        }),
-      };
-    });
-  }
-
-  const start = new Date(yearConfig.startDate);
-  const configuredEnd = yearConfig.endDate ? new Date(yearConfig.endDate) : now;
-  const end = configuredEnd < now ? configuredEnd : now;
-  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-  const options: Array<{ value: string; label: string }> = [];
-
-  while (cursor <= end) {
-    options.push({
-      value: `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
-      label: cursor.toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      }),
-    });
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-
-  return options;
-};
+interface ParentAttendanceMessages {
+  title: string;
+  description: string;
+  selectChild: string;
+  selectChildPlaceholder: string;
+  academicYear: string;
+  selectYearPlaceholder: string;
+  selectedYearFallback: string;
+  unknown: string;
+  nA: string;
+  errorLoadFailed: string;
+  attendance: string;
+  totalDays: string;
+  present: string;
+  absent: string;
+  late: string;
+  excused: string;
+  absenceAlert: string;
+  calendarTitle: string;
+  calendarDesc: string;
+  emptyMessage: string;
+  emptyMessageNoChild: string;
+  emptyHint: string;
+  detailsTitle: string;
+  detailsDesc: string;
+  date: string;
+  status: string;
+  remark: string;
+}
 
 const AttendanceSkeleton = () => (
   <div className="p-6 space-y-6 dark:bg-[#0F172A] min-h-screen">
@@ -115,7 +106,25 @@ interface AttendanceSummary {
   attendancePercentage: number;
 }
 
+interface DailyAttendanceRecord {
+  id: string;
+  date: string;
+  status: string;
+  remark?: string;
+}
+
+const ATTENDANCE_STATUS_PRIORITY: Record<string, number> = {
+  ABSENT: 4,
+  LATE: 3,
+  EXCUSED: 2,
+  PRESENT: 1,
+};
+
+const formatStatusLabel = (status: string) =>
+  status.charAt(0) + status.slice(1).toLowerCase();
+
 export default function ParentAttendancePage() {
+  const { t } = useTranslations<ParentAttendanceMessages>("parentAttendance");
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const router = useRouter();
   const [children, setChildren] = useState<Child[]>([]);
@@ -124,10 +133,9 @@ export default function ParentAttendancePage() {
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string; startDate?: string; endDate?: string }[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>("");
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
-  const monthOptions = buildMonthOptions(selectedYear, academicYears);
 
   const fetchChildren = useCallback(async () => {
     try {
@@ -169,31 +177,13 @@ export default function ParentAttendancePage() {
         const activeYear = activeYearRes.data?.data || activeYearRes.data;
         if (activeYear?.id) {
           setSelectedYear(activeYear.id);
-          if (!activeYear.startDate) {
-            const currentDate = new Date();
-            const defaultMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-            setSelectedMonth(defaultMonth);
-          } else {
-            const startDate = new Date(activeYear.startDate);
-            const currentDate = new Date();
-            const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
-            const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-            setSelectedMonth(currentMonth >= startMonth ? currentMonth : startMonth);
-          }
           if (years.length === 0) {
             setAcademicYears([{ id: activeYear.id, name: activeYear.name, startDate: activeYear.startDate, endDate: activeYear.endDate }]);
           }
         } else if (years.length > 0) {
           setSelectedYear(years[0].id);
-          const currentDate = new Date();
-          const defaultMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-          setSelectedMonth(defaultMonth);
         }
-      } catch (error) {
-        const currentDate = new Date();
-        const defaultMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-        setSelectedMonth(defaultMonth);
-      }
+      } catch (error) {}
     } catch (err: any) {
       console.error("Error fetching children:", err);
     } finally {
@@ -207,7 +197,8 @@ export default function ParentAttendancePage() {
 
     try {
       setLoading(true);
-      const studentIdentifier = selectedChild.userId || selectedChild.profileId || selectedChild.id;
+      setErrorMessage("");
+      const studentIdentifier = selectedChild.profileId || selectedChild.id || selectedChild.userId;
       
       const params: { month?: string; academicYear?: string; startDate?: string; endDate?: string } = {};
       
@@ -221,10 +212,6 @@ export default function ParentAttendancePage() {
         } else {
           params.academicYear = selectedYear;
         }
-      }
-      
-      if (selectedMonth) {
-        params.month = selectedMonth;
       }
       
       const response = await attendanceAPI.getStudentAttendance(studentIdentifier, params);
@@ -241,10 +228,19 @@ export default function ParentAttendancePage() {
       );
     } catch (err: any) {
       console.error("Error fetching attendance:", err);
+      setAttendance([]);
+      setSummary({
+        totalDays: 0,
+        present: 0,
+        absent: 0,
+        late: 0,
+        attendancePercentage: 0,
+      });
+      setErrorMessage(err?.response?.data?.message || err?.message || "Failed to load attendance records");
     } finally {
       setLoading(false);
     }
-  }, [selectedChild, selectedYear, selectedMonth, academicYears]);
+  }, [selectedChild, selectedYear, academicYears]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -274,14 +270,55 @@ export default function ParentAttendancePage() {
       default: return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
     }
   };
-  const attendanceCalendarEvents: CalendarDisplayEvent[] = attendance.map((record) => ({
+  const dailyAttendance = Array.from(
+    attendance.reduce((grouped, record) => {
+      const dateKey = record.session.date.split("T")[0];
+      const existing = grouped.get(dateKey);
+      const existingPriority = existing ? ATTENDANCE_STATUS_PRIORITY[existing.status] || 0 : 0;
+      const recordPriority = ATTENDANCE_STATUS_PRIORITY[record.status] || 0;
+
+      if (!existing || recordPriority > existingPriority) {
+        grouped.set(dateKey, {
+          id: record.id,
+          date: record.session.date,
+          status: record.status,
+          remark: record.remark,
+        });
+      }
+
+      return grouped;
+    }, new Map<string, DailyAttendanceRecord>()).values(),
+  ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const displaySummary = summary
+    ? {
+        totalDays: dailyAttendance.length,
+        present: dailyAttendance.filter((record) => record.status === "PRESENT").length,
+        absent: dailyAttendance.filter((record) => record.status === "ABSENT").length,
+        late: dailyAttendance.filter((record) => record.status === "LATE").length,
+        excused: dailyAttendance.filter((record) => record.status === "EXCUSED").length,
+        attendancePercentage:
+          dailyAttendance.length > 0
+            ? Math.round(
+                (dailyAttendance.filter((record) => record.status === "PRESENT").length /
+                  dailyAttendance.length) *
+                  100,
+              )
+            : 0,
+      }
+    : null;
+
+  const attendanceCalendarEvents: CalendarDisplayEvent[] = dailyAttendance.map((record) => ({
     id: record.id,
-    title: `${record.status.charAt(0) + record.status.slice(1).toLowerCase()}${record.session.subjectName ? ` - ${record.session.subjectName}` : ""}`,
-    startDate: record.session.date,
-    endDate: record.session.date,
-    eventType: record.status === "ABSENT" ? "ADMINISTRATIVE" : "ACADEMIC",
+    title: formatStatusLabel(record.status),
+    startDate: record.date,
+    endDate: record.date,
+    eventType: `ATTENDANCE_${record.status}`,
     resource: record,
   }));
+  const emptyAttendanceMessage = selectedChild
+    ? `No submitted attendance for ${selectedChild.name} in ${getSelectedYearName(selectedYear, academicYears)}.`
+    : "No submitted attendance for this child in the selected academic year.";
 
   if (authLoading || !isAuthenticated || user?.role !== "PARENT") {
     return <AttendanceSkeleton />;
@@ -300,7 +337,7 @@ export default function ParentAttendancePage() {
           <p className="text-gray-500 dark:text-gray-400 mt-1">View your children's attendance records</p>
         </div>
 
-        {/* Child, Year and Month Selector */}
+        {/* Child and Year Selector */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Child</label>
@@ -327,17 +364,7 @@ export default function ParentAttendancePage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Academic Year</label>
             <Select
               value={selectedYear}
-              onValueChange={(value) => {
-                setSelectedYear(value);
-                const year = academicYears.find(y => y.id === value);
-                if (year?.startDate) {
-                  const startDate = new Date(year.startDate);
-                  const currentDate = new Date();
-                  const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
-                  const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-                  setSelectedMonth(currentMonth >= startMonth ? currentMonth : startMonth);
-                }
-              }}
+              onValueChange={setSelectedYear}
             >
               <SelectTrigger className="w-full dark:bg-slate-800 dark:border-slate-700 dark:text-white">
                 <SelectValue placeholder="Select year" />
@@ -351,71 +378,61 @@ export default function ParentAttendancePage() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Month</label>
-            <Select
-              value={selectedMonth}
-              onValueChange={setSelectedMonth}
-            >
-              <SelectTrigger className="w-full dark:bg-slate-800 dark:border-slate-700 dark:text-white">
-                <SelectValue placeholder="Select month" />
-              </SelectTrigger>
-              <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
-                {monthOptions.map((month) => (
-                  <SelectItem key={month.value} value={month.value}>
-                    {month.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {selectedChild && (
           <>
+            {errorMessage && (
+              <Card className="mb-6 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+                <CardContent className="pt-4">
+                  <p className="text-sm text-red-700 dark:text-red-300">{errorMessage}</p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Summary Cards */}
-            {summary && (
+            {displaySummary && (
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                 <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Attendance</p>
-                    <p className="text-2xl font-bold" style={{ color: 'var(--brand-color, #e35336)' }}>{summary.attendancePercentage}%</p>
+                    <p className="text-2xl font-bold" style={{ color: 'var(--brand-color, #e35336)' }}>{displaySummary.attendancePercentage}%</p>
                   </CardContent>
                 </Card>
                 <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Total Days</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{summary.totalDays}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{displaySummary.totalDays}</p>
                   </CardContent>
                 </Card>
                 <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Present</p>
-                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{summary.present}</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{displaySummary.present}</p>
                   </CardContent>
                 </Card>
                 <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Absent</p>
-                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{summary.absent}</p>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{displaySummary.absent}</p>
                   </CardContent>
                 </Card>
                 <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Late</p>
-                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{summary.late}</p>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{displaySummary.late}</p>
                   </CardContent>
                 </Card>
               </div>
             )}
 
             {/* Absence Alert */}
-            {summary && summary.absent > 3 && (
+            {displaySummary && displaySummary.absent > 3 && (
               <Card className="mb-6 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                 <CardContent className="pt-4 flex items-center gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                   <p className="text-red-700 dark:text-red-300">
-                    Your child has been absent {summary.absent} times this month. 
+                    Your child has been absent {displaySummary.absent} times in the selected period.
                     Please contact the school if you have concerns.
                   </p>
                 </CardContent>
@@ -436,10 +453,15 @@ export default function ParentAttendancePage() {
                   views={[Views.MONTH]}
                   height={620}
                 />
-                {attendance.length === 0 && !loading && (
-                  <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                    No attendance records found for this period.
-                  </p>
+                {dailyAttendance.length === 0 && !loading && (
+                  <div className="mt-4 rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center dark:border-slate-700 dark:bg-slate-900/50">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                      {emptyAttendanceMessage}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Once the school submits attendance for this child, the calendar and daily marks will appear here.
+                    </p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -451,46 +473,33 @@ export default function ParentAttendancePage() {
                   <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin mx-auto" style={{ borderColor: 'var(--brand-color, #e35336)', borderTopColor: 'transparent' }}></div>
                 </CardContent>
               </Card>
-            ) : attendance.length === 0 ? (
+            ) : dailyAttendance.length === 0 ? (
               null
             ) : (
               <>
               <Card className="dark:bg-slate-800 dark:border-slate-700">
                 <CardHeader>
                   <CardTitle>Attendance Details</CardTitle>
-                  <CardDescription>Daily records for the selected period.</CardDescription>
+                  <CardDescription>One daily attendance mark for the selected period.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                   <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-slate-700">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium dark:text-gray-200">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium dark:text-gray-200">Class</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium dark:text-gray-200">Subject</th>
                         <th className="px-4 py-3 text-center text-sm font-medium dark:text-gray-200">Status</th>
                         <th className="px-4 py-3 text-left text-sm font-medium dark:text-gray-200">Remark</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {attendance.map((record) => (
+                      {dailyAttendance.map((record) => (
                         <tr key={record.id} className="border-t dark:border-slate-700">
                           <td className="px-4 py-3 text-sm dark:text-gray-300">
-                            <FormattedDate date={record.session.date} />
-                          </td>
-                          <td className="px-4 py-3 text-sm dark:text-gray-300">
-                            {record.session.className 
-                              ? `${record.session.className}${record.session.sectionName ? ` - ${record.session.sectionName}` : ''}`
-                              : record.session.timetableSlot 
-                                ? `${record.session.timetableSlot.className} - ${record.session.timetableSlot.sectionName}`
-                                : '-'
-                            }
-                          </td>
-                          <td className="px-4 py-3 text-sm dark:text-gray-300">
-                            {record.session.subjectName || record.session.timetableSlot?.subjectName || '-'}
+                            <FormattedDate date={record.date} />
                           </td>
                           <td className="px-4 py-3 text-center">
                             <Badge className={getStatusColor(record.status)}>
-                              {record.status.charAt(0) + record.status.slice(1).toLowerCase()}
+                              {formatStatusLabel(record.status)}
                             </Badge>
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{record.remark || "-"}</td>

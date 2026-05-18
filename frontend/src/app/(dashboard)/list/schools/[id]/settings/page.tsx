@@ -65,6 +65,7 @@ interface SettingItem {
   validation?: {
     min?: number;
     max?: number;
+    step?: number;
   };
 }
 
@@ -138,16 +139,6 @@ const SETTINGS_CONFIG: SettingItem[] = [
     systemDefault: true,
     requiredFeature: 'ATTENDANCE_TRACKING',
   },
-  {
-    key: 'ATTENDANCE_CUTOFF_TIME',
-    label: 'Attendance Cutoff Time',
-    description: 'Time after which missing attendance is marked (24-hour format)',
-    type: 'time',
-    category: 'attendance',
-    systemDefault: '03:00',
-    requiredFeature: 'ATTENDANCE_TRACKING',
-  },
-
   // Finance Settings
   {
     key: 'PARENT_VIEW_GRADES',
@@ -189,14 +180,15 @@ const SETTINGS_CONFIG: SettingItem[] = [
   },
   {
     key: 'fee_daily_penalty_amount',
-    label: 'Daily Late Payment Penalty',
-    description: 'Fixed ETB amount added for each day after the payment deadline. Use 0 if the school does not charge a penalty.',
+    label: 'Daily Penalty Price',
+    description: 'ETB amount charged to parents for each day after the payment deadline. Use 0 if the school does not charge a penalty.',
     type: 'number',
     category: 'finance',
     systemDefault: 0,
     requiredFeature: 'FINANCE_MANAGEMENT',
     validation: {
       min: 0,
+      step: 0.01,
     },
   },
 
@@ -850,6 +842,13 @@ export default function SchoolSettingsPage() {
 
     setNumberDrafts((prev) => ({ ...prev, [setting.key]: String(nextValue) }));
     updateDraftSetting(setting.key, nextValue);
+    return nextValue;
+  };
+
+  const saveNumberSetting = async (setting: SettingItem) => {
+    const nextValue = await commitNumberSetting(setting);
+    if (nextValue === undefined) return;
+    await handleSettingChange(setting.key, nextValue, setting);
   };
 
   const hasSettingChanged = (setting: SettingItem) => {
@@ -938,14 +937,14 @@ export default function SchoolSettingsPage() {
 
     if (setting.type === 'boolean') {
       return (
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Switch
             checked={value === true || value === 'true'}
             onCheckedChange={(checked) => updateDraftSetting(setting.key, checked)}
             disabled={isSaving || isLocked}
           />
-          {isLocked && <Badge variant="outline" className="text-xs">{badgeText('locked', 'Locked')}</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
+          {isLocked && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }
@@ -956,13 +955,13 @@ export default function SchoolSettingsPage() {
         : [];
 
       return (
-        <div className="flex w-full items-center gap-2 sm:w-auto">
+        <div className="flex items-center gap-2">
           <Select
             value={String(value || '')}
             onValueChange={(val) => updateDraftSetting(setting.key, val === '__select__' ? '' : val)}
             disabled={isSaving || isLocked}
           >
-            <SelectTrigger className="w-full bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white sm:w-48">
+            <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white">
               <SelectValue placeholder={actionText('selectOption', 'Select an option...')} />
             </SelectTrigger>
             <SelectContent className="bg-white dark:bg-slate-800">
@@ -974,38 +973,66 @@ export default function SchoolSettingsPage() {
               ))}
             </SelectContent>
           </Select>
-          {isLocked && <Badge variant="outline" className="text-xs">{badgeText('locked', 'Locked')}</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
+          {isLocked && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }
 
     if (setting.type === 'number') {
+      const isPenaltyAmount = setting.key === 'fee_daily_penalty_amount';
+      const draftValue = numberDrafts[setting.key] ?? String(value);
+      const numericDraftValue = Number(draftValue || 0);
+
       return (
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <Input
-            type="number"
-            value={numberDrafts[setting.key] ?? String(value)}
-            min={setting.validation?.min}
-            max={setting.validation?.max}
-            onChange={(e) =>
-              setNumberDrafts((prev) => ({
-                ...prev,
-                [setting.key]: e.target.value,
-              }))
-            }
-            onBlur={() => void commitNumberSetting(setting)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                void commitNumberSetting(setting);
+        <div className="flex flex-col items-start gap-1.5">
+          <div className="flex items-center gap-2">
+            {isPenaltyAmount && (
+              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                ETB
+              </span>
+            )}
+            <Input
+              type="number"
+              value={draftValue}
+              min={setting.validation?.min}
+              max={setting.validation?.max}
+              step={setting.validation?.step}
+              onChange={(e) =>
+                setNumberDrafts((prev) => ({
+                  ...prev,
+                  [setting.key]: e.target.value,
+                }))
               }
-            }}
-            disabled={isSaving || isLocked}
-            className="w-full sm:w-24"
-          />
-          {isLocked && <Badge variant="outline" className="text-xs">{badgeText('locked', 'Locked')}</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
+              onBlur={() => void commitNumberSetting(setting)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void saveNumberSetting(setting);
+                }
+              }}
+              disabled={isSaving || isLocked}
+              className={isPenaltyAmount ? "w-32" : "w-24"}
+            />
+            {hasSettingChanged(setting) && !isLocked && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void saveNumberSetting(setting)}
+                disabled={isSaving || savingAll}
+                className="h-9"
+              >
+                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : actionText('save', 'Save')}
+              </Button>
+            )}
+            {isLocked && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
+            {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
+          </div>
+          {isPenaltyAmount && (
+            <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">
+              Parents are charged {Number.isFinite(numericDraftValue) ? `ETB ${numericDraftValue.toLocaleString()}` : 'this amount'} per late day after the payment deadline.
+            </p>
+          )}
         </div>
       );
     }
@@ -1014,14 +1041,17 @@ export default function SchoolSettingsPage() {
       const useTimePicker = setting.key === 'SCHOOL_START_TIME' || setting.key === 'SCHOOL_END_TIME';
 
       return (
-        <div className="flex w-full items-center gap-2 sm:w-auto">
+        <div className="flex items-center gap-2">
           {useTimePicker ? (
             <TimePicker
               value={value || setting.systemDefault || '08:00'}
               onChange={(time) => updateDraftSetting(setting.key, time)}
+              onCommit={(time) => handleSettingChange(setting.key, time, setting)}
               disabled={isSaving || isLocked}
               calendarType={normalizeCalendarType(calendarType)}
-              className="sm:w-40"
+              allowedEthiopianPeriods={setting.key === 'SCHOOL_END_TIME' ? ['afternoon', 'evening'] : ['morning', 'afternoon']}
+              defaultEthiopianPeriod={setting.key === 'SCHOOL_END_TIME' ? 'afternoon' : 'morning'}
+              className="w-56"
             />
           ) : (
             <Input
@@ -1029,18 +1059,18 @@ export default function SchoolSettingsPage() {
               value={value || setting.systemDefault || '08:00'}
               onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
               disabled={isSaving || isLocked}
-              className="w-full sm:w-32"
+              className="w-32"
             />
           )}
-          {isLocked && <Badge variant="outline" className="text-xs">{badgeText('locked', 'Locked')}</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
+          {isLocked && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }
 
     if (setting.type === 'color') {
       return (
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:justify-end sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="relative">
             <input
               type="color"
@@ -1058,7 +1088,7 @@ export default function SchoolSettingsPage() {
               updateDraftSetting(setting.key, val);
             }}
             disabled={isSaving || isLocked}
-            className="w-24 font-mono text-sm sm:w-28"
+            className="w-24 sm:w-28 font-mono text-sm"
           />
           {setting.key === 'theme_color' && hasCustomValue && !isLocked && (
             <Button
@@ -1073,8 +1103,8 @@ export default function SchoolSettingsPage() {
               {actionText('useDefault', 'Use Default')}
             </Button>
           )}
-          {isLocked && <Badge variant="outline" className="shrink-0 text-xs">{badgeText('locked', 'Locked')}</Badge>}
-          {hasSettingChanged(setting) && <Badge variant="outline" className="shrink-0 text-xs">{badgeText('unsaved', 'Unsaved')}</Badge>}
+          {isLocked && <Badge variant="outline" className="shrink-0 text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="shrink-0 text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }
@@ -1280,9 +1310,7 @@ export default function SchoolSettingsPage() {
                   {settings.map((setting) => (
                     <div
                       key={setting.key}
-                      className={`flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:justify-between ${
-                        setting.key === 'theme_color' ? 'sm:items-center' : 'sm:items-start'
-                      } ${
+                      className={`flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between ${
                         !isSettingVisible(setting) 
                           ? 'bg-slate-50 dark:bg-slate-700/50 opacity-60' 
                           : 'bg-white dark:bg-slate-800/50'
@@ -1309,9 +1337,7 @@ export default function SchoolSettingsPage() {
                           </p>
                         )}
                       </div>
-                      <div className={`min-w-0 w-full sm:w-auto sm:shrink-0 ${
-                        setting.key === 'theme_color' ? 'sm:flex sm:justify-end' : ''
-                      }`}>
+                      <div className="sm:w-auto sm:flex-shrink-0">
                         {renderSettingInput(setting)}
                       </div>
                     </div>
@@ -1342,7 +1368,7 @@ export default function SchoolSettingsPage() {
                       <h4 className="break-words text-sm font-medium text-slate-900 dark:text-white">{settingText(setting.label)}</h4>
                       <p className="break-words text-xs text-slate-500 dark:text-slate-400">{settingText(setting.description)}</p>
                     </div>
-                    <div className="min-w-0 sm:ml-2">
+                    <div className="sm:w-auto sm:flex-shrink-0 sm:ml-2">
                       {renderSettingInput(setting)}
                     </div>
                   </div>

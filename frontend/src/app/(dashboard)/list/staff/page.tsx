@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api";
 import TableSearch from "@/components/TableSearch";
 import Pagination from "@/components/Pagination";
@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslations } from "@/hooks/useTranslations";
 import {
-  Eye,
   Search,
 } from "lucide-react";
 
@@ -71,6 +70,7 @@ const getInitials = (name: string) => {
 
 export default function StaffPage() {
   const { t } = useTranslations<any>("peopleLists");
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("");
@@ -198,12 +198,11 @@ export default function StaffPage() {
                     <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.usernameStaffId}</th>
                     <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.phone}</th>
                     <th className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.status}</th>
-                    <th className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.actions}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {staffList.map((item) => (
-                    <tr key={item.id} className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <tr key={item.id} className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onClick={() => router.push(`/list/staff/${item.id}`)}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <Avatar className="w-10 h-10">
@@ -243,17 +242,6 @@ export default function StaffPage() {
                         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(item.isActive)}`}>
                           {item.isActive ? t.status.active : t.status.inactive}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <Link
-                            href={`/list/staff/${item.id}`}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                            title={t.actions.view}
-                          >
-                            <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400 hover:text-primary" />
-                          </Link>
-                        </div>
                       </td>
                     </tr>
                   ))}

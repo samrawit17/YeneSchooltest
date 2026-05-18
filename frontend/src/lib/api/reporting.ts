@@ -218,32 +218,43 @@ export const reportCardsAPI = {
   getCertificateTemplate: () =>
     api.get<{
       schoolId: string;
+      curriculumType: string;
+      currentPeriodName: string;
+      activeAcademicYearName: string;
+      assessmentColumns: Array<{ code: string; name: string; percentage: number }>;
       title: string;
       themeColor: string;
-      templateBackgroundUrl: string;
       principalName: string;
       schoolName: string;
       schoolPhone: string;
       schoolAddress: string;
       schoolLogoUrl: string;
+      showRank: boolean;
+      showAttendance: boolean;
+      showGPA: boolean;
+      useCustomBackground: boolean;
+      customBackgroundUrl: string;
     }>('/report-cards/certificate-template'),
   saveCertificateTemplate: (template: {
     title: string;
     themeColor: string;
-    templateBackgroundUrl: string;
     principalName: string;
     schoolName: string;
     schoolPhone: string;
     schoolAddress: string;
     schoolLogoUrl: string;
+    showRank: boolean;
+    showAttendance: boolean;
+    showGPA: boolean;
+    useCustomBackground: boolean;
+    customBackgroundUrl: string;
   }) => api.put('/report-cards/certificate-template', { template }),
-  uploadCertificateTemplate: async (file: File) => {
+  uploadCertificateWatermark: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await api.post('/report-cards/certificate-template/upload', formData, {
+    return api.post('/report-cards/certificate-template/watermark', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data;
   },
   getCertificatePayload: (reportCardId: string) =>
     api.get(`/report-cards/${reportCardId}/certificate`),

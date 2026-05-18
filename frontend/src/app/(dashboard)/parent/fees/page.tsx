@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CreditCard, AlertCircle, CheckCircle, Receipt, Calendar, Clock, Wallet, ChevronDown, ChevronUp, DollarSign } from "lucide-react";
 import { parentsAPI } from "@/lib/api/people";
 import { financeAPI } from "@/lib/api/finance";
@@ -11,6 +11,9 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AcademicYear, useAcademicYear } from "@/context/AcademicYearContext";
+import { toEthiopianDate, toGregorianDate } from "@/utils/date";
+import { useTranslations } from "@/hooks/useTranslations";
+import type { ParentFeesMessages } from "@/messages/registry";
 
 interface PeriodItem {
   feeId: string;
@@ -86,6 +89,14 @@ const PARENT_LABELS: Record<string, string> = {
   YEARLY: "Full Year",
 };
 
+const PARENT_LABEL_PLURALS: Record<string, string> = {
+  MONTHLY: "Months",
+  QUARTERLY: "Quarters",
+  SEMESTER: "Semesters",
+  TERM: "Terms",
+  YEARLY: "Full Year",
+};
+
 const normalizeCurriculumType = (type: string): string => {
   const map: Record<string, string> = {
     QUARTER: "QUARTERLY",
@@ -150,28 +161,6 @@ const getInstallmentPeriodTitles = (
   return titles.length ? titles : getPeriodTitles(normalized);
 };
 
-const getActiveAcademicPeriodRange = (
-  selectedYear: string,
-  currentAcademicYear?: AcademicYear | null,
-  currentTerm?: { name?: string; order?: number; startDate?: string; endDate?: string } | null,
-  terms?: Array<{ name?: string; order?: number; startDate?: string; endDate?: string }>,
-) => {
-  const isCurrentAcademicYear =
-    !selectedYear || !currentAcademicYear?.id || selectedYear === currentAcademicYear.id;
-
-  if (!isCurrentAcademicYear) {
-    return null;
-  }
-
-  const matchingTerm = terms?.find((term) => {
-    if (currentTerm?.name && term.name === currentTerm.name) return true;
-    if (currentTerm?.order && term.order === currentTerm.order) return true;
-    return false;
-  });
-
-  return matchingTerm || currentTerm || null;
-};
-
 const getPeriodCount = (curriculumType: string): number => {
   const counts: Record<string, number> = {
     MONTHLY: 12,
@@ -183,8 +172,22 @@ const getPeriodCount = (curriculumType: string): number => {
   return counts[curriculumType] || 3;
 };
 
+const getGroupPeriodBalance = (breakdown: FeeGroup[], periodTitle: string) =>
+  breakdown.reduce((sum, group) => {
+    const period = group.periods.find((item) => item.termName === periodTitle);
+    return sum + (period?.balance || 0);
+  }, 0);
+
+const getFirstUnpaidPeriodTitle = (breakdown: FeeGroup[], periodTitles: string[]) =>
+  periodTitles.find((title) => getGroupPeriodBalance(breakdown, title) > 0) || null;
+
 const cleanFeeTypeName = (feeType: string) => {
-  return feeType.replace(/_ANNUAL$/, "").replace(/_/g, " ");
+  return feeType.replace(/_INSTALLMENT_\d+$/i, "").replace(/_ANNUAL$/, "").replace(/_/g, " ");
+};
+
+const getInstallmentNumber = (feeType?: string | null) => {
+  const match = String(feeType || "").match(/_INSTALLMENT_(\d+)$/i);
+  return match ? Number(match[1]) : null;
 };
 
 const buildPeriodPaymentHistory = (
@@ -262,7 +265,8 @@ const buildPeriodPaymentHistory = (
 };
 
 const ParentFeesPage = () => {
-  const { currentAcademicYear, currentTerm, getAllAcademicYears, curriculumType, periodLabel, periodLabelPlural, formatDate } = useAcademicYear();
+  const { currentAcademicYear, currentTerm, getAllAcademicYears, curriculumType, periodLabel, formatDate, schoolCalendarType } = useAcademicYear();
+  const { t } = useTranslations<ParentFeesMessages>("parentFees");
   const [children, setChildren] = useState<Child[]>([]);
   const [feeDeadlineDay, setFeeDeadlineDay] = useState(15);
   const [dailyPenaltyAmount, setDailyPenaltyAmount] = useState(0);
@@ -280,9 +284,11 @@ const ParentFeesPage = () => {
     normalizeCurriculumType(curriculumType || "SEMESTER"),
     selectedAcademicYear,
     formatDate,
-    getActiveAcademicPeriodRange(selectedYear, currentAcademicYear, currentTerm),
   );
-  const systemPeriodLabel = PARENT_LABELS[normalizeCurriculumType(curriculumType || "SEMESTER")] || periodLabel;
+  const selectedChild = children.find((child) => child.id === selectedChildId) || children[0] || null;
+  const selectedChildBillingMode = normalizeCurriculumType(selectedChild?.curriculumType || curriculumType || "SEMESTER");
+  const systemPeriodLabel = PARENT_LABELS[selectedChildBillingMode] || periodLabel;
+  const systemPeriodLabelPlural = PARENT_LABEL_PLURALS[selectedChildBillingMode] || `${systemPeriodLabel}s`;
 
   const toggleGroup = (key: string) => {
     setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
@@ -361,28 +367,28 @@ const ParentFeesPage = () => {
               years.find((year) => year.id === effectiveYearId) ||
               currentAcademicYear ||
               undefined;
-            const activePeriodRange = getActiveAcademicPeriodRange(
-              effectiveYearId,
-              currentAcademicYear,
-              currentTerm,
-              curriculumInfo?.terms || [],
-            );
             const childPeriodTitles = (childCurriculumType !== "MONTHLY" && curriculumInfo?.terms?.length
               ? curriculumInfo.terms.map((term: any) => term.name)
-              : getInstallmentPeriodTitles(childCurriculumType, selectedAcademicYearForChild, formatDate, activePeriodRange));
+              : getInstallmentPeriodTitles(childCurriculumType, selectedAcademicYearForChild, formatDate));
             const childPeriodCount = getPeriodCount(childCurriculumType);
             const feeItems = Array.isArray(feeSummary?.feeItems) ? feeSummary.feeItems : [];
             const paymentItems = Array.isArray(feeSummary?.payments) ? feeSummary.payments : [];
 
             const groupedFees = new Map<string, FeeGroup>();
             feeItems.forEach((fee: any) => {
-              const groupKey = `${fee.name}|${fee.isYearWide ? "year" : fee.termName || fee.termId || "single"}`;
+              const installmentNumber = getInstallmentNumber(fee.name);
+              const installmentPeriodTitle =
+                installmentNumber && childPeriodTitles[installmentNumber - 1]
+                  ? childPeriodTitles[installmentNumber - 1]
+                  : fee.termName || fee.termId || "Current Period";
+              const shouldSplitAcrossPeriods = fee.isYearWide && !installmentNumber;
+              const groupKey = `${cleanFeeTypeName(fee.name)}|${shouldSplitAcrossPeriods ? "year" : installmentPeriodTitle}`;
               if (!groupedFees.has(groupKey)) {
                 groupedFees.set(groupKey, {
-                  feeType: fee.name,
+                  feeType: cleanFeeTypeName(fee.name),
                   periodLabel: PARENT_LABELS[childCurriculumType] || "Term",
-                  periodCount: fee.isYearWide ? childPeriodCount : 1,
-                  amountPerPeriod: fee.isYearWide
+                  periodCount: shouldSplitAcrossPeriods ? childPeriodCount : 1,
+                  amountPerPeriod: shouldSplitAcrossPeriods
                     ? Math.round(((fee.amount || 0) / Math.max(childPeriodCount, 1)) * 100) / 100
                     : (fee.amount || 0),
                   periods: [],
@@ -395,7 +401,7 @@ const ParentFeesPage = () => {
 
               const group = groupedFees.get(groupKey)!;
 
-              if (fee.isYearWide) {
+              if (shouldSplitAcrossPeriods) {
                 const periodPayments = new Map<string, number>();
                 paymentItems
                   .filter((payment: any) => payment.isYearWide && payment.feeItemName === fee.name)
@@ -432,7 +438,7 @@ const ParentFeesPage = () => {
               } else {
                 group.periods.push({
                   feeId: fee.id,
-                  feeType: fee.name,
+                  feeType: cleanFeeTypeName(fee.name),
                   amount: fee.amount || 0,
                   discount: 0,
                   finalAmount: fee.amount || 0,
@@ -440,7 +446,7 @@ const ParentFeesPage = () => {
                   balance: fee.balance || 0,
                   status: fee.status || "PENDING",
                   termId: fee.termId || null,
-                  termName: fee.termName || "Current Period",
+                  termName: installmentPeriodTitle,
                   isYearWide: false,
                 });
               }
@@ -506,26 +512,122 @@ const ParentFeesPage = () => {
     fetchData();
   }, [getAllAcademicYears, currentAcademicYear, currentTerm, curriculumType, selectedYear, formatDate]);
 
-  // Set default period to current term
+  const getCurrentMonthlyPeriodTitle = useCallback((periodTitles: string[]) => {
+    const now = new Date();
+    const currentMonthTitle = formatDate(now).replace(/\s+\d{1,2},/, "");
+    return (
+      periodTitles.find((title) => title === currentMonthTitle) ||
+      periodTitles.find((title) => title.toLowerCase().includes(currentMonthTitle.toLowerCase())) ||
+      null
+    );
+  }, [formatDate]);
+
+  const getPreferredBillingPeriod = useCallback((child: Child | null) => {
+    if (!child?.fees) return null;
+
+    const billingMode = normalizeCurriculumType(child.curriculumType || curriculumType || "TERM");
+    const periodTitles = child.periodLabels?.length
+      ? child.periodLabels
+      : getInstallmentPeriodTitles(
+          billingMode,
+          selectedAcademicYear,
+          formatDate,
+        );
+
+    if (periodTitles.length === 0) return null;
+
+    const currentPeriod =
+      billingMode === "MONTHLY"
+        ? getCurrentMonthlyPeriodTitle(periodTitles)
+        : billingMode === "QUARTERLY"
+          ? currentTerm?.name && periodTitles.includes(currentTerm.name)
+            ? currentTerm.name
+            : periodTitles.find((title) =>
+                currentTerm?.name
+                  ? title.toLowerCase().includes(currentTerm.name.toLowerCase())
+                  : false,
+              ) || null
+          : currentTerm?.name && periodTitles.includes(currentTerm.name)
+            ? currentTerm.name
+            : null;
+
+    if (
+      currentPeriod &&
+      getGroupPeriodBalance(child.fees.breakdown, currentPeriod) > 0
+    ) {
+      return currentPeriod;
+    }
+
+    return (
+      getFirstUnpaidPeriodTitle(child.fees.breakdown, periodTitles) ||
+      currentPeriod ||
+      periodTitles[0]
+    );
+  }, [
+    curriculumType,
+    currentTerm,
+    formatDate,
+    getCurrentMonthlyPeriodTitle,
+    selectedAcademicYear,
+  ]);
+
+  // Default to the billing period the parent is expected to pay now.
   useEffect(() => {
-    if (periodTouched || !currentTerm?.name) {
+    if (periodTouched) {
       return;
     }
 
-    const availablePeriods =
-      children.find((child) => child.periodLabels?.length)?.periodLabels ||
-      periodTitles;
-    const match = availablePeriods.find((title) =>
-      title.toLowerCase().includes(currentTerm.name.toLowerCase()),
-    );
+    const selectedChild = children.find((child) => child.id === selectedChildId) || children[0] || null;
+    const preferredPeriod = getPreferredBillingPeriod(selectedChild);
 
-    if (match && selectedPeriod !== match) {
-      setSelectedPeriod(match);
+    if (preferredPeriod && selectedPeriod !== preferredPeriod) {
+      setSelectedPeriod(preferredPeriod);
     }
-  }, [children, currentTerm, periodTitles, periodTouched, selectedPeriod]);
+  }, [children, selectedChildId, getPreferredBillingPeriod, periodTouched, selectedPeriod, selectedYear]);
 
   const formatCurrency = (amount: number) => {
     return `ETB ${amount.toLocaleString()}`;
+  };
+
+  const buildDueDateFromPeriodStart = (periodStart: Date) => {
+    if (Number.isNaN(periodStart.getTime())) return null;
+
+    if (schoolCalendarType === "ETHIOPIAN") {
+      const etPeriodStart = toEthiopianDate(periodStart);
+      let etDay = Math.min(feeDeadlineDay, 30);
+      while (etDay > 0) {
+        try {
+          return new Date(
+            toGregorianDate({
+              year: etPeriodStart.year,
+              month: etPeriodStart.month,
+              day: etDay,
+            }).setHours(23, 59, 59, 999),
+          );
+        } catch {
+          etDay -= 1;
+        }
+      }
+
+      return new Date(
+        toGregorianDate({
+          year: etPeriodStart.year,
+          month: etPeriodStart.month,
+          day: 1,
+        }).setHours(23, 59, 59, 999),
+      );
+    }
+
+    const lastDayOfMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 0).getDate();
+    return new Date(
+      periodStart.getFullYear(),
+      periodStart.getMonth(),
+      Math.min(feeDeadlineDay, lastDayOfMonth),
+      23,
+      59,
+      59,
+      999,
+    );
   };
 
   const getMonthlyDueDate = (periodTitle: string, academicYear?: AcademicYear) => {
@@ -538,16 +640,7 @@ const ParentFeesPage = () => {
       monthDate.setMonth(startDate.getMonth() + index);
       const label = formatDate(monthDate).replace(/\s+\d{1,2},/, "");
       if (label === periodTitle) {
-        const lastDayOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
-        return new Date(
-          monthDate.getFullYear(),
-          monthDate.getMonth(),
-          Math.min(feeDeadlineDay, lastDayOfMonth),
-          23,
-          59,
-          59,
-          999,
-        );
+        return buildDueDateFromPeriodStart(monthDate);
       }
     }
 
@@ -565,27 +658,17 @@ const ParentFeesPage = () => {
     if (normalizedMode === "MONTHLY") {
       dueDate = getMonthlyDueDate(periodTitle, selectedAcademicYear);
     } else if (currentTerm?.startDate && currentTerm.name === periodTitle) {
-      const periodStart = new Date(currentTerm.startDate);
-      if (!Number.isNaN(periodStart.getTime())) {
-        const lastDayOfMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 0).getDate();
-        dueDate = new Date(
-          periodStart.getFullYear(),
-          periodStart.getMonth(),
-          Math.min(feeDeadlineDay, lastDayOfMonth),
-          23,
-          59,
-          59,
-          999,
-        );
-      }
+      dueDate = buildDueDateFromPeriodStart(new Date(currentTerm.startDate));
     }
 
     if (!dueDate) return { daysLate: 0, penalty: 0, dueDate: null as Date | null };
 
     const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueDayStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
     const daysLate = Math.max(
       0,
-      Math.floor((now.getTime() - dueDate.getTime()) / (24 * 60 * 60 * 1000)),
+      Math.floor((todayStart.getTime() - dueDayStart.getTime()) / (24 * 60 * 60 * 1000)),
     );
 
     return {
@@ -620,9 +703,8 @@ const ParentFeesPage = () => {
 
   const activePeriodText =
     selectedPeriod === "all"
-      ? `All ${systemPeriodLabel}s`
+      ? t.allPeriods.replace("{period}s", `${systemPeriodLabelPlural}`)
       : selectedPeriod || currentTerm?.name || `Current ${systemPeriodLabel}`;
-  const selectedChild = children.find((child) => child.id === selectedChildId) || children[0] || null;
   const visibleChildren = selectedChild ? [selectedChild] : [];
 
   return (
@@ -630,13 +712,13 @@ const ParentFeesPage = () => {
       <div className="px-4 py-6 md:px-6 space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Fee Information</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">View tuition fees for one child at a time</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Select value={selectedChildId} onValueChange={setSelectedChildId}>
               <SelectTrigger className="h-9 w-full bg-white text-sm dark:bg-slate-800 sm:w-64">
-                <SelectValue placeholder="Select child" />
+                <SelectValue placeholder={t.selectChild} />
               </SelectTrigger>
               <SelectContent>
                 {children.map((child) => (
@@ -657,8 +739,8 @@ const ParentFeesPage = () => {
             <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-4">
               <CreditCard className="w-7 h-7 text-slate-400" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">No Children Found</h3>
-            <p className="text-sm text-slate-500 mt-1">No children are linked to your account.</p>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{t.noChildren}</h3>
+            <p className="text-sm text-slate-500 mt-1">{t.noChildrenDesc}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6">
@@ -680,7 +762,6 @@ const ParentFeesPage = () => {
                     curriculumType,
                     selectedAcademicYear,
                     formatDate,
-                    getActiveAcademicPeriodRange(selectedYear, currentAcademicYear, currentTerm),
                   );
               const periodLabel = PARENT_LABELS[curriculumType] || "Term";
               const visibleBreakdown = fees.breakdown.map((group) => {
@@ -750,7 +831,7 @@ const ParentFeesPage = () => {
                     <div className="flex items-center gap-2">
                         <Select value={selectedYear} onValueChange={setSelectedYear}>
                           <SelectTrigger className="h-8 text-xs w-32">
-                            <SelectValue placeholder="Year" />
+                            <SelectValue placeholder={t.year} />
                           </SelectTrigger>
                           <SelectContent>
                             {academicYears.map((year) => (
@@ -769,7 +850,7 @@ const ParentFeesPage = () => {
                             <SelectValue placeholder={systemPeriodLabel} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all" className="text-xs">All {systemPeriodLabel}s</SelectItem>
+                            <SelectItem value="all" className="text-xs">{t.allPeriods.replace("{period}s", `${systemPeriodLabelPlural}`)}</SelectItem>
                             {periodTitles.map((title, i) => (
                               <SelectItem key={i} value={title} className="text-xs">{title}</SelectItem>
                             ))}
@@ -780,39 +861,39 @@ const ParentFeesPage = () => {
                             ? "bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)]"
                             : "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
                         }`}>
-                          {visibleTotals.balance > 0 ? "Outstanding" : "Fully Paid"}
+                          {visibleTotals.balance > 0 ? t.outstanding : t.fullyPaid}
                         </span>
                       </div>
                     </div>
                   <div className="p-5 space-y-5">
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                       <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total</p>
+                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.total}</p>
                         <p className="font-bold text-lg text-slate-900 dark:text-white mt-1">{formatCurrency(visibleTotals.total)}</p>
                       </div>
                       <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Paid</p>
+                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.paid}</p>
                         <p className="font-bold text-lg text-green-600 dark:text-green-400 mt-1">{formatCurrency(visibleTotals.paid)}</p>
                       </div>
                       <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Balance</p>
+                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.balance}</p>
                         <p className="font-bold text-lg mt-1" style={{ color: visibleTotals.balance > 0 ? 'var(--brand-color, #e35336)' : 'var(--brand-color, #e35336)' }}>
                           {formatCurrency(visibleTotals.balance)}
                         </p>
                       </div>
                       <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Penalty</p>
+                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.penalty}</p>
                         <p className="font-bold text-lg text-red-600 dark:text-red-400 mt-1">{formatCurrency(visibleTotals.penalty)}</p>
                       </div>
                       <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Due</p>
+                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.totalDue}</p>
                         <p className="font-bold text-lg text-slate-900 dark:text-white mt-1">{formatCurrency(totalDueWithPenalty)}</p>
                       </div>
                     </div>
 
                     <div>
                       <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 mb-1.5">
-                        <span>Payment Progress</span>
+                        <span>{t.paymentProgress}</span>
                         <span>{visiblePaidPercentage}%</span>
                       </div>
                       <Progress
@@ -847,8 +928,8 @@ const ParentFeesPage = () => {
                                       {getCleanFeeType(group.feeType)}
                                     </p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                                      {formatCurrency(group.amountPerPeriod)} / {periodLabel}
-                                      {group.periods[0]?.isYearWide ? ` · split across ${periodTitles.length} ${periodLabel}s` : ""}
+                                      {formatCurrency(group.amountPerPeriod)} {t.perPeriod.replace("{period}", periodLabel)}
+                                      {group.periods[0]?.isYearWide ? ` · ${t.splitAcross.replace("{count}", String(periodTitles.length)).replace("{period}s", `${periodLabel}s`)}` : ""}
                                     </p>
                                   </div>
                                 </div>
@@ -897,24 +978,24 @@ const ParentFeesPage = () => {
                                               {isFullPaid ? (
                                                 <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
                                                   <CheckCircle className="w-3 h-3" />
-                                                  Fully Paid
+                                                  {t.fullyPaid}
                                                 </span>
                                               ) : hasPayment && !isFullPaid ? (
                                                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                                                  Paid {formatCurrency(paid)} &middot; Due {formatCurrency(balance)}
+                                                  {t.paid} {formatCurrency(paid)} &middot; {t.due} {formatCurrency(balance)}
                                                 </span>
                                               ) : balance > 0 ? (
                                                 <span className="inline-flex flex-col gap-0.5 text-xs text-slate-500 dark:text-slate-400">
-                                                  <span className="font-medium text-red-600 dark:text-red-400">Unpaid</span>
-                                                  <span>Due {formatCurrency(balance)}</span>
+                                                  <span className="font-medium text-red-600 dark:text-red-400">{t.unpaid}</span>
+                                                  <span>{t.due} {formatCurrency(balance)}</span>
                                                   {periodPenalty.penalty > 0 && (
                                                     <span className="font-medium text-red-600 dark:text-red-400">
-                                                      Penalty {formatCurrency(periodPenalty.penalty)} ({periodPenalty.daysLate} days)
+                                                      {t.penalty} {formatCurrency(periodPenalty.penalty)} ({periodPenalty.daysLate} {t.days})
                                                     </span>
                                                   )}
                                                 </span>
                                               ) : (
-                                                <span className="text-xs text-slate-400">No payment</span>
+                                                <span className="text-xs text-slate-400">{t.noPayment}</span>
                                               )}
                                             </div>
 
@@ -931,10 +1012,10 @@ const ParentFeesPage = () => {
 
                                   <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-700/30 border-t border-slate-200 dark:border-slate-700 text-sm">
                                     <span className="text-slate-500 dark:text-slate-400">
-                                      Total Paid: <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(group.paidAmount)}</span>
+                                      {t.totalPaidLabel}: <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(group.paidAmount)}</span>
                                     </span>
                                     <span className="text-slate-500 dark:text-slate-400">
-                                      Balance: <span className="font-semibold" style={{ color: group.balanceAmount > 0 ? 'var(--brand-color, #e35336)' : undefined }}>
+                                      {t.balance}: <span className="font-semibold" style={{ color: group.balanceAmount > 0 ? 'var(--brand-color, #e35336)' : undefined }}>
                                         {formatCurrency(group.balanceAmount)}
                                       </span>
                                     </span>
@@ -950,9 +1031,9 @@ const ParentFeesPage = () => {
                         <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-3">
                           <Receipt className="w-6 h-6 text-slate-400" />
                         </div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">No fees generated yet</p>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t.noFees}</p>
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                          The school will generate tuition fees split by {periodLabel}s.
+                          {t.noFeesDesc.replace("{period}s", `${periodLabel}s`)}
                         </p>
                       </div>
                     )}
@@ -960,10 +1041,10 @@ const ParentFeesPage = () => {
                     <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                       <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-700/50">
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Payment History</h3>
+                          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t.paymentHistory}</h3>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
                             {selectedPeriod === "all"
-                              ? `All ${periodLabel}s`
+                              ? t.allPeriods.replace("{period}s", `${periodLabel}s`)
                               : selectedPeriod}
                           </p>
                         </div>
@@ -975,12 +1056,12 @@ const ParentFeesPage = () => {
                           <table className="w-full text-sm">
                             <thead className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                               <tr className="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                <th className="px-4 py-3 font-semibold">Receipt</th>
+                                <th className="px-4 py-3 font-semibold">{t.receipt}</th>
                                 <th className="px-4 py-3 font-semibold">{periodLabel}</th>
-                                <th className="px-4 py-3 font-semibold">Fee</th>
-                                <th className="px-4 py-3 font-semibold">Method</th>
-                                <th className="px-4 py-3 font-semibold text-right">Amount</th>
-                                <th className="px-4 py-3 font-semibold">Date</th>
+                                <th className="px-4 py-3 font-semibold">{t.fee}</th>
+                                <th className="px-4 py-3 font-semibold">{t.method}</th>
+                                <th className="px-4 py-3 font-semibold text-right">{t.amount}</th>
+                                <th className="px-4 py-3 font-semibold">{t.date}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-900">
@@ -1009,12 +1090,12 @@ const ParentFeesPage = () => {
                         </div>
                       ) : (
                         <div className="px-4 py-8 text-center bg-white dark:bg-slate-900">
-                          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                            No payments found for this {selectedPeriod === "all" ? "academic year" : periodLabel.toLowerCase()}.
-                          </p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                            Payments will appear here after finance records them.
-                          </p>
+                            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                              {t.noPayments.replace("{period}", selectedPeriod === "all" ? t.academicYear : periodLabel.toLowerCase())}
+                            </p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                              {t.noPaymentsDesc}
+                            </p>
                         </div>
                       )}
                     </div>

@@ -16,7 +16,6 @@ import {
   Users,
   CheckCircle,
   Eye,
-  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { resolveAssetUrl } from "@/lib/asset-url";
 
 // ===================== TYPES =====================
 
@@ -188,6 +188,7 @@ interface StudentIdCardProps {
   student: StudentIdCardData;
   school?: SchoolInfo;
   template?: IdCardTemplate;
+  templateConfig?: StudentIdCardGeneratorProps["templateConfig"];
   showBack?: boolean;
 }
 
@@ -195,285 +196,69 @@ const StudentIdCard = ({
   student,
   school = defaultSchoolInfo,
   template = cardTemplates[0],
-  showBack = false,
+  templateConfig,
 }: StudentIdCardProps) => {
-  const accent = template.accentColor || template.secondaryColor;
+  const logoSrc = resolveAssetUrl(school.logo);
+  const photoSrc = resolveAssetUrl(student.photoUrl);
+  const watermarkSrc = templateConfig?.useCustomBackground
+    ? resolveAssetUrl(templateConfig.customBackgroundUrl)
+    : undefined;
 
-  // ---- VERTICAL CARD (front) ----
-  const renderVerticalFront = () => (
-    <div
-      className="w-[320px] h-[500px] rounded-xl overflow-hidden shadow-2xl bg-white relative flex flex-col"
-      style={{ borderTop: `6px solid ${template.primaryColor}` }}
-    >
-      {/* Header */}
-      <div className="px-4 py-3 text-white relative" style={{ background: `linear-gradient(135deg, ${template.primaryColor}, ${template.secondaryColor})` }}>
-        <div className="flex items-center gap-2">
-          {school.logo ? (
-            <img src={school.logo} alt="" className="w-10 h-10 rounded-full bg-white/20 p-0.5 object-cover" />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-              <School className="w-5 h-5" />
-            </div>
-          )}
-          <div className="min-w-0">
-            <h3 className="font-bold text-sm leading-tight truncate">{school.name}</h3>
-            {school.tagline && <p className="text-[9px] opacity-90 truncate">{school.tagline}</p>}
-          </div>
-        </div>
-        <Badge variant="outline" className="absolute top-2 right-2 bg-white/10 border-white/30 text-white text-[8px] px-1.5 py-0.5">
-          STUDENT ID
-        </Badge>
-      </div>
-
-      {/* Photo + Name */}
-      <div className="flex flex-col items-center -mt-8 relative z-10 px-4">
-        {student.photoUrl ? (
-          <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-200">
-            <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
-          </div>
+  return (
+    <div className="relative w-[540px] h-[340px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl">
+      {watermarkSrc && (
+        <img src={watermarkSrc} alt="" className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-[58%] -translate-x-1/2 -translate-y-1/2 object-contain opacity-10" />
+      )}
+      <div className="relative z-10 flex h-[76px] items-center justify-between px-5 text-white" style={{ backgroundColor: template.primaryColor }}>
+        {logoSrc ? (
+          <img src={logoSrc} alt="" className="h-11 w-11 rounded bg-white/95 object-contain p-1" />
         ) : (
-          <InitialsAvatar name={student.name} bgColor={template.primaryColor} />
+          <div className="flex h-11 w-11 items-center justify-center rounded bg-white/95 text-[10px] font-semibold text-slate-500">LOGO</div>
         )}
-        <h2 className="mt-2 font-bold text-base text-center text-gray-900 leading-tight">{student.name}</h2>
-        <div className="mt-1 px-3 py-0.5 rounded-full text-[11px] font-semibold text-white" style={{ backgroundColor: template.primaryColor }}>
-          Grade {student.grade} {student.stream ? `• ${student.stream}` : ""} • Section {student.section}
-        </div>
-      </div>
-
-      {/* Details */}
-      <div className="flex-1 px-5 mt-3 space-y-1.5">
-        {[
-          { icon: Hash, label: "ID Number", value: student.studentCode },
-          { icon: Calendar, label: "Academic Year", value: student.academicYear },
-          ...(student.rollNumber ? [{ icon: Users, label: "Roll No.", value: student.rollNumber }] : []),
-          ...(student.gender ? [{ icon: User, label: "Gender", value: student.gender }] : []),
-          ...(student.bloodGroup ? [{ icon: CheckCircle, label: "Blood Group", value: student.bloodGroup }] : []),
-        ].map((item) => (
-          <div key={item.label} className="flex justify-between items-center text-[12px]">
-            <span className="text-gray-500 flex items-center gap-1">
-              <item.icon className="w-3 h-3" /> {item.label}
-            </span>
-            <span className="font-semibold text-gray-800">{item.value}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* QR + Footer */}
-      <div className="mt-auto">
-        {template.showQR && (
-          <div className="flex justify-center py-2">
-            <div dangerouslySetInnerHTML={{ __html: generateQRSvg(student.studentCode, 60) }} />
-          </div>
-        )}
-        <div className="px-3 py-2 bg-gray-50 border-t text-center">
-          <p className="text-[8px] text-gray-500 flex items-center justify-center gap-1">
-            <MapPin className="w-2.5 h-2.5" /> {school.address}
+        <div className="min-w-0 flex-1 px-4">
+          <h3 className="truncate text-xl font-bold leading-tight">{school.name || "School Name"}</h3>
+          <p className="truncate text-[12px] leading-tight opacity-90">
+            {[school.phone, school.address].filter(Boolean).join(" • ") || "Phone • Address"}
           </p>
-          <p className="text-[7px] text-gray-400 mt-0.5">Valid: {student.academicYear}</p>
         </div>
-      </div>
-    </div>
-  );
-
-  // ---- VERTICAL CARD BACK ----
-  const renderVerticalBack = () => (
-    <div
-      className="w-[320px] h-[500px] rounded-xl overflow-hidden shadow-2xl bg-white relative flex flex-col"
-      style={{ borderTop: `6px solid ${template.primaryColor}` }}
-    >
-      <div className="px-4 py-3 text-white text-center" style={{ background: `linear-gradient(135deg, ${template.primaryColor}, ${template.secondaryColor})` }}>
-        <h3 className="font-bold text-sm">{school.name}</h3>
-        <p className="text-[9px] opacity-90">Student Identity Card - Back</p>
+        <div className="text-right text-[12px] font-bold uppercase tracking-wide">Student ID</div>
       </div>
 
-      <div className="flex-1 px-5 py-4 space-y-4 text-[11px]">
-        {/* Emergency Contact */}
-        {student.emergencyContact && (
-          <div className="p-3 rounded-lg bg-red-50 border border-red-100">
-            <p className="font-bold text-red-700 text-xs mb-1">Emergency Contact</p>
-            <p className="text-gray-700"><strong>{student.emergencyContact.name}</strong> ({student.emergencyContact.relation})</p>
-            <p className="text-gray-600">{student.emergencyContact.phone}</p>
-          </div>
-        )}
-
-        {/* Contact */}
-        <div className="space-y-1.5">
-          <p className="font-bold text-gray-700 text-xs">Contact Information</p>
-          {student.phone && (
-            <p className="flex items-center gap-1 text-gray-600"><Phone className="w-3 h-3" /> {student.phone}</p>
-          )}
-          {student.email && (
-            <p className="flex items-center gap-1 text-gray-600"><Mail className="w-3 h-3" /> {student.email}</p>
-          )}
-          {student.address && (
-            <p className="flex items-center gap-1 text-gray-600"><MapPin className="w-3 h-3" /> {student.address}</p>
-          )}
-        </div>
-
-        {/* Rules */}
-        <div className="space-y-1">
-          <p className="font-bold text-gray-700 text-xs">Terms of Use</p>
-          <ul className="text-[10px] text-gray-500 space-y-0.5 list-disc pl-3">
-            <li>This card must be carried at all times on campus.</li>
-            <li>Report lost cards to the school office immediately.</li>
-            <li>This card is non-transferable.</li>
-            <li>Misuse will result in disciplinary action.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="mt-auto px-5 py-3 border-t">
-        <div className="flex items-center justify-between text-[9px] text-gray-400">
-          <span>{school.phone}</span>
-          <span>{school.email}</span>
-        </div>
-        <div className="mt-2 pt-3 border-t border-dashed border-gray-200">
-          <p className="text-[8px] text-gray-400 text-center">Authorized Signature</p>
-          <div className="h-6 border-b border-gray-300 mt-1 w-3/4 mx-auto" />
-        </div>
-      </div>
-    </div>
-  );
-
-  // ---- HORIZONTAL CARD ----
-  const renderHorizontalCard = () => (
-    <div
-      className="w-[540px] h-[310px] rounded-xl overflow-hidden shadow-2xl bg-white flex"
-      style={{ borderLeft: `8px solid ${template.primaryColor}` }}
-    >
-      {/* Left - Photo */}
-      <div className="w-[180px] flex flex-col items-center justify-center p-4" style={{ background: `linear-gradient(180deg, ${template.primaryColor}08, ${template.primaryColor}15)` }}>
-        {student.photoUrl ? (
-          <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-200">
-            <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
-          </div>
-        ) : (
-          <InitialsAvatar name={student.name} size="lg" bgColor={template.primaryColor} />
-        )}
-        <h3 className="mt-2 font-bold text-sm text-center text-gray-900">{student.name}</h3>
-        <p className="text-[11px] text-gray-500">{student.studentCode}</p>
-      </div>
-
-      {/* Right - Details */}
-      <div className="flex-1 p-4 flex flex-col justify-between">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            {school.logo ? (
-              <img src={school.logo} alt="" className="w-8 h-8 rounded object-cover" />
-            ) : (
-              <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center">
-                <School className="w-4 h-4 text-gray-600" />
-              </div>
-            )}
-            <div>
-              <h3 className="font-bold text-sm text-gray-900">{school.name}</h3>
-              {school.tagline && <p className="text-[9px] text-gray-500">{school.tagline}</p>}
-            </div>
-          </div>
-          <Badge className="text-[9px]" style={{ backgroundColor: template.primaryColor }}>STUDENT ID</Badge>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          {[
-            { icon: Users, label: "Grade & Section", value: `${student.grade}${student.section}${student.stream ? ` ${student.stream}` : ""}` },
-            { icon: Calendar, label: "Academic Year", value: student.academicYear },
-            { icon: MapPin, label: "Address", value: student.address || school.address },
-            { icon: Phone, label: "Contact", value: student.phone || school.phone },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-1.5 text-[11px]">
-              <item.icon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[9px] text-gray-500">{item.label}</p>
-                <p className="font-semibold text-gray-800 truncate">{item.value}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-end justify-between mt-2 pt-2 border-t">
-          <div className="text-[9px] text-gray-500">
-            {student.emergencyContact && <p>Emergency: {student.emergencyContact.name} - {student.emergencyContact.phone}</p>}
-          </div>
-          <div className="flex items-center gap-2">
-            {template.showQR && (
-              <div dangerouslySetInnerHTML={{ __html: generateQRSvg(student.studentCode, 40) }} />
-            )}
-            <div className="flex items-center gap-0.5">
-              <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-              <span className="text-[9px] font-bold text-green-600">VALID</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ---- COMPACT CARD ----
-  const renderCompactCard = () => (
-    <div
-      className="w-[400px] h-[230px] rounded-lg overflow-hidden shadow-xl bg-white flex"
-      style={{ borderLeft: `6px solid ${template.primaryColor}` }}
-    >
-      <div className="w-[110px] bg-gray-50 flex flex-col items-center justify-center p-2">
-        {student.photoUrl ? (
-          <div className="w-20 h-20 rounded-full border-2 border-white overflow-hidden bg-gray-200">
-            <img src={student.photoUrl} alt={student.name} className="w-full h-full object-cover" />
-          </div>
-        ) : (
-          <InitialsAvatar name={student.name} size="sm" bgColor={template.primaryColor} />
-        )}
-      </div>
-      <div className="flex-1 p-3 flex flex-col justify-between">
-        <div>
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-[9px] px-1.5 py-0.5 rounded text-white font-semibold" style={{ backgroundColor: template.primaryColor }}>STUDENT</span>
-            {student.bloodGroup && (
-              <span className="text-[8px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 font-bold">{student.bloodGroup}</span>
-            )}
-          </div>
-          <h3 className="font-bold text-sm text-gray-900">{student.name}</h3>
-          <p className="text-[11px] text-gray-500">{student.studentCode}</p>
-        </div>
-        <div className="space-y-1">
-          <div className="flex justify-between text-[11px]">
-            <span className="text-gray-500">Grade/Section</span>
-            <span className="font-semibold">{student.grade}-{student.section}</span>
-          </div>
-          <div className="flex justify-between text-[11px]">
-            <span className="text-gray-500">Academic Year</span>
-            <span className="font-semibold">{student.academicYear}</span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between text-[8px] text-gray-400 pt-1 border-t">
-          <span>{school.name}</span>
-          {template.showQR ? (
-            <div dangerouslySetInnerHTML={{ __html: generateQRSvg(student.studentCode, 28) }} />
+      <div className="relative z-10 grid grid-cols-[110px_1fr_82px] gap-5 p-5">
+        <div className="flex h-36 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+          {photoSrc ? (
+            <img src={photoSrc} alt={student.name} className="h-full w-full object-cover" />
           ) : (
-            <span className="font-mono tracking-widest">{student.studentCode}</span>
+            <InitialsAvatar name={student.name || "Student"} size="sm" bgColor={template.primaryColor} />
           )}
+        </div>
+        <div className="min-w-0 space-y-2 text-[13px]">
+          <h2 className="truncate text-xl font-bold" style={{ color: template.primaryColor }}>{student.name || "Student Name"}</h2>
+          <p><span className="font-semibold text-slate-500">ID:</span> {student.studentCode || "-"}</p>
+          <p><span className="font-semibold text-slate-500">Class:</span> Grade {student.grade || "-"} {student.section || ""}</p>
+          <p><span className="font-semibold text-slate-500">Academic Year:</span> {student.academicYear || "-"}</p>
+          {student.bloodGroup && <p><span className="font-semibold text-slate-500">Blood Group:</span> {student.bloodGroup}</p>}
+          {student.emergencyContact?.phone && (
+            <p><span className="font-semibold text-slate-500">Emergency:</span> {student.emergencyContact.phone}</p>
+          )}
+        </div>
+        <div className="flex flex-col items-center justify-start gap-1 pt-2">
+          <div className="rounded border border-slate-200 bg-white p-1" dangerouslySetInnerHTML={{ __html: generateQRSvg(student.studentCode || student.studentId || "id", 58) }} />
+          <span className="text-[10px] text-slate-500">Scan to verify</span>
+        </div>
+      </div>
+      <div className="relative z-10 flex items-end justify-between bg-slate-50 px-5 py-2 text-[11px] text-slate-500">
+        <div className="w-32 text-center">
+          <div className="mb-1 border-t border-slate-400" />
+          <span>School Stamp</span>
+        </div>
+        <div className="w-40 text-center">
+          <div className="mb-1 border-t border-slate-400" />
+          <span>Principal Signature</span>
         </div>
       </div>
     </div>
   );
-
-  const renderFront = () => {
-    switch (template.type) {
-      case "horizontal": return renderHorizontalCard();
-      case "compact": return renderCompactCard();
-      default: return renderVerticalFront();
-    }
-  };
-
-  if (showBack && template.type === "vertical") {
-    return (
-      <div className="flex gap-6 flex-wrap justify-center">
-        {renderVerticalFront()}
-        {renderVerticalBack()}
-      </div>
-    );
-  }
-
-  return renderFront();
 };
 
 // ===================== PRINT HTML GENERATOR =====================
@@ -482,78 +267,74 @@ function generatePrintHTML(
   students: StudentIdCardData[],
   school: SchoolInfo,
   template: IdCardTemplate,
-  cardsPerRow: number = 2,
+  templateConfig?: StudentIdCardGeneratorProps["templateConfig"],
 ): string {
-  const isVertical = template.type === "vertical";
-  const cardW = isVertical ? 320 : template.type === "compact" ? 400 : 540;
-  const cardH = isVertical ? 500 : template.type === "compact" ? 230 : 310;
-
+  const watermarkSrc = templateConfig?.useCustomBackground
+    ? resolveAssetUrl(templateConfig.customBackgroundUrl)
+    : undefined;
   const cards = students.map((s) => {
     const initials = s.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
-    const colors = ["#4f46e5","#7c3aed","#db2777","#dc2626","#ea580c","#059669","#0d9488","#2563eb"];
-    const colorIdx = s.name.split("").reduce((a,c)=>a+c.charCodeAt(0),0)%colors.length;
+    const logoSrc = resolveAssetUrl(school.logo);
+    const photoSrc = resolveAssetUrl(s.photoUrl);
+    const photo = photoSrc
+      ? `<img src="${photoSrc}" style="width:100%;height:100%;object-fit:cover"/>`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f1f5f9;color:${template.primaryColor};font-weight:800;font-size:24px">${initials}</div>`;
 
-    const qr = template.showQR ? `<div style="display:flex;justify-content:center;padding:4px 0">${generateQRSvg(s.studentCode, 50)}</div>` : "";
-
-    const details = [
-      `<div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:#6b7280">ID Number</span><span style="font-weight:600">${s.studentCode}</span></div>`,
-      `<div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:#6b7280">Academic Year</span><span style="font-weight:600">${s.academicYear}</span></div>`,
-      s.rollNumber ? `<div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:#6b7280">Roll No.</span><span style="font-weight:600">${s.rollNumber}</span></div>` : "",
-    ].filter(Boolean).join("");
-
-    const photo = s.photoUrl
-      ? `<img src="${s.photoUrl}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.15)"/>`
-      : `<div style="width:80px;height:80px;border-radius:50%;background:${colors[colorIdx]};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center"><span style="font-size:28px;font-weight:bold;color:white">${initials}</span></div>`;
-
-    if (isVertical) {
-      return `<div style="width:${cardW}px;height:${cardH}px;border-radius:12px;overflow:hidden;background:white;border-top:6px solid ${template.primaryColor};display:flex;flex-direction:column;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
-        <div style="padding:10px 14px;background:linear-gradient(135deg,${template.primaryColor},${template.secondaryColor});color:white;display:flex;align-items:center;gap:8px">
-          <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:16px">🎓</div>
-          <div><div style="font-weight:bold;font-size:12px">${school.name}</div>${school.tagline?`<div style="font-size:8px;opacity:0.9">${school.tagline}</div>`:""}</div>
+    return `<div class="id-card">
+      ${watermarkSrc ? `<img src="${watermarkSrc}" class="watermark"/>` : ""}
+      <div class="card-header">
+        ${logoSrc ? `<img src="${logoSrc}" class="logo"/>` : `<div class="logo-placeholder">LOGO</div>`}
+        <div class="school-block">
+          <div class="school-name">${school.name || "School Name"}</div>
+          <div class="school-contact">${[school.phone, school.address].filter(Boolean).join(" • ") || "Phone • Address"}</div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:center;margin-top:-28px;position:relative;z-index:2">
-          ${photo}
-          <div style="margin-top:6px;font-weight:bold;font-size:14px;text-align:center;color:#111">${s.name}</div>
-          <div style="margin-top:3px;padding:1px 10px;border-radius:9999px;font-size:10px;color:white;background:${template.primaryColor};font-weight:600">Grade ${s.grade} • Section ${s.section}</div>
-        </div>
-        <div style="padding:8px 18px;flex:1;display:flex;flex-direction:column;gap:4px">${details}</div>
-        ${qr}
-        <div style="padding:6px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;font-size:7px;color:#9ca3af">${school.address} | Valid: ${s.academicYear}</div>
-      </div>`;
-    }
-
-    // Horizontal/Compact - simplified for print
-    return `<div style="width:${cardW}px;height:${cardH}px;border-radius:10px;overflow:hidden;background:white;border-left:6px solid ${template.primaryColor};display:flex;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
-      <div style="width:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;background:${template.primaryColor}08">
-        ${photo}
-        <div style="margin-top:6px;font-weight:bold;font-size:12px;text-align:center">${s.name}</div>
-        <div style="font-size:10px;color:#6b7280">${s.studentCode}</div>
+        <div class="card-title">Student ID</div>
       </div>
-      <div style="flex:1;padding:12px;display:flex;flex-direction:column;justify-content:space-between">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-weight:bold;font-size:12px">${school.name}</div><div style="background:${template.primaryColor};color:white;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:600">STUDENT ID</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">${details}</div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid #e5e7eb;padding-top:6px;margin-top:6px">
-          <div style="font-size:8px;color:#9ca3af">${school.address}</div>
-          ${qr ? `<div>${generateQRSvg(s.studentCode, 32)}</div>` : ""}
+      <div class="card-body">
+        <div class="photo">${photo}</div>
+        <div class="details">
+          <div class="student-name">${s.name || "Student Name"}</div>
+          <div><b>ID:</b> ${s.studentCode || "-"}</div>
+          <div><b>Class:</b> Grade ${s.grade || "-"} ${s.section || ""}</div>
+          <div><b>Academic Year:</b> ${s.academicYear || "-"}</div>
+          ${s.bloodGroup ? `<div><b>Blood Group:</b> ${s.bloodGroup}</div>` : ""}
+          ${s.emergencyContact?.phone ? `<div><b>Emergency:</b> ${s.emergencyContact.phone}</div>` : ""}
         </div>
+        <div class="qr">${generateQRSvg(s.studentCode || s.studentId || "id", 58)}<span>Scan to verify</span></div>
       </div>
+      <div class="card-footer"><div class="footer-slot"><div class="footer-line"></div><span>School Stamp</span></div><div class="footer-slot signature"><div class="footer-line"></div><span>Principal Signature</span></div></div>
     </div>`;
   });
 
-  const gap = 16;
   return `<!DOCTYPE html><html><head><title>Student ID Cards - ${school.name}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#fff}
-.page{display:flex;flex-wrap:wrap;gap:${gap}px;justify-content:center;align-items:flex-start;padding:12mm;page-break-after:always}
+.page{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;align-items:flex-start;padding:10mm;page-break-after:always}
 .page:last-child{page-break-after:auto}
+.id-card{position:relative;width:540px;height:340px;overflow:hidden;border-radius:12px;border:1px solid #e2e8f0;background:#fff;color:#0f172a;box-shadow:0 4px 12px rgba(15,23,42,.08)}
+.watermark{position:absolute;left:50%;top:50%;width:58%;max-height:72%;object-fit:contain;transform:translate(-50%,-50%);opacity:.1;z-index:0}
+.card-header{position:relative;z-index:1;height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:${template.primaryColor};color:white}
+.logo,.logo-placeholder{width:44px;height:44px;border-radius:6px;background:rgba(255,255,255,.95);object-fit:contain;padding:4px;color:#64748b;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.school-block{min-width:0;flex:1;padding:0 16px}
+.school-name{font-size:20px;line-height:1.1;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.school-contact{font-size:12px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-title{text-align:right;text-transform:uppercase;font-size:12px;font-weight:800;letter-spacing:.04em}
+.card-body{position:relative;z-index:1;display:grid;grid-template-columns:110px 1fr 82px;gap:20px;padding:20px}
+.photo{height:144px;overflow:hidden;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc}
+.details{font-size:13px;line-height:1.65;min-width:0}
+.student-name{font-size:20px;line-height:1.2;font-weight:800;color:${template.primaryColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.qr{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:8px;font-size:10px;color:#64748b}
+.qr svg{border:1px solid #e2e8f0;border-radius:4px;padding:4px;background:#fff}
+.card-footer{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;background:#f8fafc;padding:8px 20px;font-size:11px;color:#64748b}
+.footer-slot{width:128px;text-align:center}.footer-slot.signature{width:160px}.footer-line{border-top:1px solid #94a3b8;margin-bottom:4px}
 @media print{
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   @page{size:A4;margin:8mm}
 }
 </style></head><body>
 ${(() => {
-    const perPage = isVertical ? 4 : template.type === "compact" ? 6 : 2;
+    const perPage = 4;
     let pages = "";
     for (let i = 0; i < cards.length; i += perPage) {
       pages += `<div class="page">${cards.slice(i, i + perPage).join("")}</div>`;
@@ -571,7 +352,8 @@ interface StudentIdCardGeneratorProps {
   templateConfig?: {
     title?: string;
     themeColor?: string;
-    templateBackgroundUrl?: string;
+    useCustomBackground?: boolean;
+    customBackgroundUrl?: string;
   };
   autoDownload?: boolean;
 }
@@ -587,7 +369,6 @@ export default function StudentIdCardGenerator({
   const [previewStudent, setPreviewStudent] = useState<StudentIdCardData>(students[0] || defaultStudentData);
   const [localSchool, setLocalSchool] = useState<SchoolInfo>(school);
   const [activeTab, setActiveTab] = useState("preview");
-  const [showCardBack, setShowCardBack] = useState(false);
   useEffect(() => {
     setLocalSchool(school);
   }, [school]);
@@ -609,7 +390,7 @@ export default function StudentIdCardGenerator({
       toast.error("No students selected");
       return;
     }
-    const html = generatePrintHTML(toPrint, localSchool, selectedTemplate);
+    const html = generatePrintHTML(toPrint, localSchool, selectedTemplate, templateConfig);
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(html);
@@ -617,7 +398,7 @@ export default function StudentIdCardGenerator({
       printWindow.focus();
       setTimeout(() => printWindow.print(), 600);
     }
-  }, [students, selectedStudents, localSchool, selectedTemplate]);
+  }, [students, selectedStudents, localSchool, selectedTemplate, templateConfig]);
 
   const toggleStudent = (id: string) => {
     setSelectedStudents((prev) =>
@@ -645,18 +426,10 @@ export default function StudentIdCardGenerator({
         {/* ---- PREVIEW TAB ---- */}
         <TabsContent value="preview">
           <Card className="dark:bg-slate-900 dark:border-slate-800">
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <CreditCard className="w-5 h-5" /> Card Preview
               </CardTitle>
-              <div className="flex items-center gap-2">
-                {selectedTemplate.type === "vertical" && (
-                  <Button variant="outline" size="sm" onClick={() => setShowCardBack(!showCardBack)}>
-                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                    {showCardBack ? "Front Only" : "Show Back"}
-                  </Button>
-                )}
-              </div>
             </CardHeader>
             <CardContent>
               {/* Preview Student Selector */}
@@ -689,7 +462,7 @@ export default function StudentIdCardGenerator({
                   student={previewStudent}
                   school={localSchool}
                   template={selectedTemplate}
-                  showBack={showCardBack}
+                  templateConfig={templateConfig}
                 />
               </div>
 

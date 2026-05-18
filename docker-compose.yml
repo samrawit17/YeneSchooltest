@@ -71,6 +71,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s

@@ -8,13 +8,13 @@ import * as path from 'path';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import * as QRCode from 'qrcode';
 import archiver from 'archiver';
+import sharp from 'sharp';
 import { PrismaService } from '../prisma/prisma.service';
 import { CredentialService } from '../credential/credential.service';
 import { Role, EnrollmentStatus } from '@prisma/client';
 import { ClassService } from '../class/class.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
-import { TemplatesService } from '../templates/templates.service';
 
 export interface CreateStudentDto {
   email?: string;
@@ -28,6 +28,8 @@ export interface CreateStudentDto {
   gender?: string;
   address?: string;
   phone?: string;
+  motherName?: string;
+  motherPhone?: string;
   emergencyContact?: {
     name: string;
     phone: string;
@@ -49,6 +51,8 @@ export interface UpdateStudentDto {
   gender?: string;
   address?: string;
   phone?: string;
+  motherName?: string;
+  motherPhone?: string;
   emergencyContact?: {
     name: string;
     phone: string;
@@ -112,7 +116,6 @@ export class StudentService {
     private credentialService: CredentialService,
     private classService: ClassService, // Fixed param order
     private cacheService: CacheService,
-    private templatesService: TemplatesService,
   ) {}
 
   private getStudentListNamespace(schoolId: string) {
@@ -212,6 +215,8 @@ export class StudentService {
       gender,
       address,
       phone,
+      motherName,
+      motherPhone,
       emergencyContact,
       guardianName,
       guardianPhone,
@@ -273,6 +278,8 @@ export class StudentService {
         gender,
         address,
         phone,
+        motherName,
+        motherPhone,
         emergencyContact: emergencyContact
           ? JSON.stringify(emergencyContact)
           : undefined,
@@ -839,6 +846,31 @@ export class StudentService {
       academicYearName = activeAy?.name || '';
     }
 
+    const profileAcademicYearValues = Array.from(
+      new Set(
+        studentProfiles
+          .map((profile) => profile.academicYear)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    );
+    const academicYearRows = profileAcademicYearValues.length
+      ? await this.prismaService.academicYear.findMany({
+          where: {
+            schoolId,
+            OR: [
+              { id: { in: profileAcademicYearValues } },
+              { name: { in: profileAcademicYearValues } },
+            ],
+          },
+          select: { id: true, name: true },
+        })
+      : [];
+    const academicYearLabelByValue = new Map<string, string>();
+    for (const year of academicYearRows) {
+      academicYearLabelByValue.set(year.id, year.name);
+      academicYearLabelByValue.set(year.name, year.name);
+    }
+
     // Transform to ID card data format
     const students = studentProfiles.map((profile) => {
       // Extract grade number from className
@@ -881,7 +913,11 @@ export class StudentService {
         name: profile.user?.name || 'Unknown',
         grade: gradeNum,
         section: profile.section || 'N/A',
-        academicYear: profile.academicYear || academicYearName,
+        academicYear:
+          academicYearLabelByValue.get(profile.academicYear || '') ||
+          academicYearName ||
+          profile.academicYear ||
+          '',
         dateOfBirth: null, // Not stored in current schema
         gender: profile.gender || undefined,
         bloodGroup,
@@ -912,7 +948,7 @@ export class StudentService {
   async getIdCardTemplate(schoolId: string) {
     const school = await this.prismaService.school.findUnique({
       where: { id: schoolId },
-      select: { name: true, phone: true, address: true, email: true, logoUrl: true },
+      select: { name: true, phone: true, address: true, logoUrl: true },
     });
 
     const stored = await this.prismaService.schoolSetting.findFirst({
@@ -932,26 +968,29 @@ export class StudentService {
     return {
       schoolId,
       title: template.title || 'Student ID Card',
-      themeColor: template.themeColor || '#1f2937',
-      templateBackgroundUrl: template.templateBackgroundUrl || '',
+      themeColor: this.normalizeHexColor(template.themeColor, '#1B4F72'),
       schoolName: template.schoolName || school?.name || '',
       schoolPhone: template.schoolPhone || school?.phone || '',
       schoolAddress: template.schoolAddress || school?.address || '',
-      schoolEmail: template.schoolEmail || school?.email || '',
-      schoolLogoUrl: template.schoolLogoUrl || school?.logoUrl || '',
+      schoolLogoUrl: school?.logoUrl || '',
+      showEmergencyContact: template.showEmergencyContact !== false,
+      showBloodGroup: template.showBloodGroup === true,
+      useCustomBackground: template.useCustomBackground === true,
+      customBackgroundUrl: template.customBackgroundUrl || '',
     };
   }
 
   async saveIdCardTemplate(schoolId: string, value: Record<string, any>) {
     const normalized = {
       title: String(value.title || 'Student ID Card').trim(),
-      themeColor: String(value.themeColor || '#1f2937').trim(),
-      templateBackgroundUrl: String(value.templateBackgroundUrl || '').trim(),
+      themeColor: this.normalizeHexColor(value.themeColor, '#1B4F72'),
       schoolName: String(value.schoolName || '').trim(),
       schoolPhone: String(value.schoolPhone || '').trim(),
       schoolAddress: String(value.schoolAddress || '').trim(),
-      schoolEmail: String(value.schoolEmail || '').trim(),
-      schoolLogoUrl: String(value.schoolLogoUrl || '').trim(),
+      showEmergencyContact: value.showEmergencyContact !== false,
+      showBloodGroup: value.showBloodGroup === true,
+      useCustomBackground: value.useCustomBackground === true,
+      customBackgroundUrl: String(value.customBackgroundUrl || '').trim(),
     };
 
     const existing = await this.prismaService.schoolSetting.findFirst({
@@ -977,147 +1016,168 @@ export class StudentService {
     return this.getIdCardTemplate(schoolId);
   }
 
-  async uploadIdCardTemplate(schoolId: string, file: Express.Multer.File): Promise<string> {
-    const backendPublicDir = path.join(
-      process.cwd(),
-      'public',
-      'uploads',
-      'id-card-templates',
-    );
-    const frontendPublicDir = path.join(
-      process.cwd(),
-      '..',
-      'frontend',
-      'public',
-      'uploads',
-      'id-card-templates',
-    );
-
-    if (!fs.existsSync(backendPublicDir)) {
-      fs.mkdirSync(backendPublicDir, { recursive: true });
+  async uploadIdCardWatermark(schoolId: string, file: Express.Multer.File): Promise<string> {
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
+      throw new BadRequestException('Watermark must be a PNG, JPG, or WEBP image');
     }
-    if (!fs.existsSync(frontendPublicDir)) {
-      fs.mkdirSync(frontendPublicDir, { recursive: true });
-    }
-
-    const fileName = `${schoolId}-${Date.now()}${path.extname(file.originalname)}`;
-    const backendFilePath = path.join(backendPublicDir, fileName);
-    const frontendFilePath = path.join(frontendPublicDir, fileName);
-
-    fs.writeFileSync(backendFilePath, file.buffer);
-    fs.copyFileSync(backendFilePath, frontendFilePath);
-
-    return `/uploads/id-card-templates/${fileName}`;
+    const extension =
+      file.mimetype === 'image/png' ? '.png' :
+      file.mimetype === 'image/webp' ? '.webp' :
+      '.jpg';
+    const relativeDir = path.join('uploads', 'id-card-watermarks');
+    const publicDir = path.join(process.cwd(), 'public', relativeDir);
+    const fileName = `${schoolId}-${Date.now()}${extension}`;
+    await fs.promises.mkdir(publicDir, { recursive: true });
+    await fs.promises.writeFile(path.join(publicDir, fileName), file.buffer);
+    return `/${relativeDir.split(path.sep).join('/')}/${fileName}`;
   }
 
-  private resolvePublicAssetPath(urlPath: string): string {
-    const clean = String(urlPath || '').trim().replace(/^\/+/, '');
-    return path.join(process.cwd(), '..', 'frontend', 'public', clean);
+  private normalizeHexColor(value: any, fallback: string) {
+    const raw = String(value || '').trim();
+    return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
   }
 
-  private async renderIdCardPdfFromTemplate(templatePath: string, payload: {
-    title: string;
-    schoolName: string;
-    schoolAddress: string;
-    schoolPhone: string;
-    schoolEmail: string;
-    studentName: string;
-    studentCode: string;
-    classLabel: string;
-    photoUrl?: string;
-    fieldMap?: Array<Record<string, any>>;
-  }): Promise<Buffer> {
-    const templateBytes = fs.readFileSync(templatePath);
-    const pdfDoc = await PDFDocument.load(templateBytes);
-    const page = pdfDoc.getPage(0);
-    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const normal = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const { width, height } = page.getSize();
+  private hexToRgbColor(value: string) {
+    const raw = this.normalizeHexColor(value, '#1B4F72').replace('#', '');
+    return rgb(
+      parseInt(raw.slice(0, 2), 16) / 255,
+      parseInt(raw.slice(2, 4), 16) / 255,
+      parseInt(raw.slice(4, 6), 16) / 255,
+    );
+  }
 
-    const getVal = (k: string) => ({
-      title: payload.title,
-      school_name: payload.schoolName,
-      school_phone: payload.schoolPhone,
-      school_address: payload.schoolAddress,
-      school_email: payload.schoolEmail,
-      student_name: payload.studentName,
-      cert_id: payload.studentCode,
-      grade: payload.classLabel,
-    } as any)[k] || '';
-
-    const fields = Array.isArray(payload.fieldMap) ? payload.fieldMap : [];
-    if (fields.length > 0) {
-      for (const f of fields) {
-        const x = (Number(f.x_percent || 0) / 100) * width;
-        const y = height - (Number(f.y_percent || 0) / 100) * height;
-        const w = (Number(f.width_percent ?? f.w_percent ?? 0) / 100) * width || width * 0.16;
-        const h = (Number(f.height_percent ?? f.h_percent ?? 0) / 100) * height || height * 0.16;
-        const size = Number(f.font_size || 10);
-        const color = String(f.font_color || '#000000').replace('#', '');
-        const r = parseInt(color.slice(0, 2) || '00', 16) / 255;
-        const g = parseInt(color.slice(2, 4) || '00', 16) / 255;
-        const b = parseInt(color.slice(4, 6) || '00', 16) / 255;
-        if (f.field_key === 'photo' && payload.photoUrl) {
-          try {
-            const photoPath = this.resolvePublicAssetPath(payload.photoUrl);
-            if (fs.existsSync(photoPath)) {
-              const photoBytes = fs.readFileSync(photoPath);
-              const isPng = payload.photoUrl.toLowerCase().endsWith('.png');
-              const img = isPng ? await pdfDoc.embedPng(photoBytes) : await pdfDoc.embedJpg(photoBytes);
-              page.drawImage(img, { x, y: y - h, width: w, height: h });
-            }
-          } catch {}
-          continue;
-        }
-        if (f.field_key === 'qr_code') {
-          const qrDataUrl = await QRCode.toDataURL(payload.studentCode || payload.studentName || 'id');
-          const qrBytes = Buffer.from(qrDataUrl.split(',')[1], 'base64');
-          const qrImage = await pdfDoc.embedPng(qrBytes);
-          page.drawImage(qrImage, { x, y: y - h, width: w, height: h });
-          continue;
-        }
-        page.drawText(String(getVal(String(f.field_key || ''))), { x, y, size, font: f.bold ? font : normal, color: rgb(r, g, b) });
-      }
-    } else {
-      page.drawText(payload.title || 'Student ID Card', { x: width * 0.06, y: height * 0.9, size: 14, font, color: rgb(0, 0, 0) });
-      page.drawText(payload.schoolName || '', { x: width * 0.06, y: height * 0.86, size: 10, font: normal });
-      page.drawText(`${payload.schoolAddress || ''} ${payload.schoolPhone || ''}`.trim(), { x: width * 0.06, y: height * 0.84, size: 9, font: normal });
-      if (payload.schoolEmail) page.drawText(payload.schoolEmail, { x: width * 0.06, y: height * 0.82, size: 9, font: normal });
-      page.drawText(payload.studentName || '', { x: width * 0.06, y: height * 0.72, size: 13, font });
-      page.drawText(payload.studentCode || '', { x: width * 0.06, y: height * 0.685, size: 10, font: normal });
-      page.drawText(payload.classLabel || '', { x: width * 0.06, y: height * 0.655, size: 10, font: normal });
-    }
-
-    return Buffer.from(await pdfDoc.save());
+  private resolvePublicAssetPath(urlPath: string): string | null {
+    const raw = String(urlPath || '').trim();
+    if (!raw) return null;
+    if (path.isAbsolute(raw) && !raw.includes('..') && fs.existsSync(raw)) return raw;
+    const clean = raw.replace(/^\/+/, '');
+    if (!clean || clean.includes('..')) return null;
+    const candidates = [
+      path.join(process.cwd(), 'public', clean),
+      path.join(process.cwd(), 'backend', 'public', clean),
+      path.join(process.cwd(), 'frontend', 'public', clean),
+      path.resolve(__dirname, '..', '..', 'public', clean),
+      path.resolve(__dirname, '..', '..', '..', 'frontend', 'public', clean),
+      path.join(process.cwd(), '..', 'frontend', 'public', clean),
+    ].filter(Boolean);
+    return candidates.find((candidate) => fs.existsSync(candidate)) || null;
   }
 
   async generateIdCardPdf(schoolId: string, studentId: string): Promise<Buffer> {
     const template = await this.getIdCardTemplate(schoolId);
-    const activeTemplate = await this.templatesService.getActiveTemplate(schoolId, 'ID_CARD');
-    if (!activeTemplate?.backgroundUrl) {
-      throw new BadRequestException('Activate an ID card template first');
-    }
-    const templatePath = this.resolvePublicAssetPath(activeTemplate.backgroundUrl);
-    if (!fs.existsSync(templatePath)) {
-      throw new NotFoundException('ID card template file not found');
-    }
     const list = await this.getStudentsForIdCards(schoolId, { studentIds: [studentId] });
     const student = list.students?.[0];
     if (!student) throw new NotFoundException('Student not found for ID card');
-    return this.renderIdCardPdfFromTemplate(templatePath, {
-      title: template.title,
-      schoolName: template.schoolName,
-      schoolAddress: template.schoolAddress,
-      schoolPhone: template.schoolPhone,
-      schoolEmail: template.schoolEmail,
-      studentName: student.name,
+
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([336, 212]);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const { width, height } = page.getSize();
+    const theme = this.hexToRgbColor(template.themeColor);
+    const darkText = rgb(0.08, 0.1, 0.14);
+    const mutedText = rgb(0.38, 0.42, 0.48);
+    const lightSurface = rgb(0.95, 0.97, 1);
+
+    const drawText = (text: string, x: number, y: number, size = 8, textFont = font, color = darkText) => {
+      page.drawText(String(text || ''), { x, y, size, font: textFont, color });
+    };
+    const readImageBytes = async (url: string | undefined): Promise<Buffer | null> => {
+      const clean = String(url || '').trim();
+      if (!clean) return null;
+      if (clean.startsWith('data:image/')) {
+        const encoded = clean.split(',')[1];
+        return encoded ? Buffer.from(encoded, 'base64') : null;
+      }
+      const assetPath = this.resolvePublicAssetPath(clean);
+      if (!assetPath || !fs.existsSync(assetPath)) return null;
+      return fs.readFileSync(assetPath);
+    };
+    const drawImage = async (url: string | undefined, x: number, y: number, w: number, h: number) => {
+      const bytes = await readImageBytes(url);
+      if (!bytes) return false;
+      try {
+        const lower = String(url || '').toLowerCase();
+        const image = lower.includes('image/png') || lower.endsWith('.png')
+          ? await pdfDoc.embedPng(bytes)
+          : lower.includes('image/jpeg') || lower.includes('image/jpg') || lower.endsWith('.jpg') || lower.endsWith('.jpeg')
+            ? await pdfDoc.embedJpg(bytes)
+            : await pdfDoc.embedPng(await sharp(bytes).png().toBuffer());
+        page.drawImage(image, { x, y, width: w, height: h });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const drawWatermark = async () => {
+      if (!template.useCustomBackground || !template.customBackgroundUrl) return;
+      const bytes = await readImageBytes(template.customBackgroundUrl);
+      if (!bytes) return;
+      try {
+        const lower = template.customBackgroundUrl.toLowerCase();
+        const image = lower.endsWith('.png')
+          ? await pdfDoc.embedPng(bytes)
+          : lower.endsWith('.jpg') || lower.endsWith('.jpeg')
+            ? await pdfDoc.embedJpg(bytes)
+            : await pdfDoc.embedPng(await sharp(bytes).png().toBuffer());
+        const watermarkW = width * 0.58;
+        const watermarkH = watermarkW * (image.height / image.width);
+        page.drawImage(image, {
+          x: (width - watermarkW) / 2,
+          y: (height - watermarkH) / 2 - 4,
+          width: watermarkW,
+          height: watermarkH,
+          opacity: 0.12,
+        });
+      } catch {
+        return;
+      }
+    };
+
+    page.drawRectangle({ x: 0, y: 0, width, height, color: rgb(1, 1, 1) });
+    await drawWatermark();
+    page.drawRectangle({ x: 0, y: height - 48, width, height: 48, color: theme });
+    page.drawRectangle({ x: 0, y: 0, width, height: 24, color: lightSurface });
+    await drawImage(template.schoolLogoUrl, 14, height - 40, 28, 28);
+    drawText(template.schoolName || 'School Name', 50, height - 24, 13, bold, rgb(1, 1, 1));
+    drawText([template.schoolPhone, template.schoolAddress].filter(Boolean).join('  •  '), 50, height - 39, 6.4, font, rgb(0.88, 0.94, 1));
+    drawText(template.title || 'Student ID Card', width - 98, height - 24, 9, bold, rgb(1, 1, 1));
+
+    const photoX = 18;
+    const photoY = 70;
+    page.drawRectangle({ x: photoX, y: photoY, width: 78, height: 92, color: rgb(1, 1, 1), borderColor: theme, borderWidth: 1 });
+    const hasPhoto = await drawImage(student.photoUrl, photoX + 4, photoY + 4, 70, 84);
+    if (!hasPhoto) {
+      page.drawRectangle({ x: photoX + 4, y: photoY + 4, width: 70, height: 84, color: lightSurface });
+      drawText('PHOTO', photoX + 23, photoY + 43, 8, bold, mutedText);
+    }
+
+    const detailsX = 112;
+    drawText(student.name || 'Student Name', detailsX, 151, 15, bold, theme);
+    drawText(`ID: ${student.studentCode || '-'}`, detailsX, 133, 9, bold, darkText);
+    drawText(`Class: Grade ${student.grade || '-'} ${student.section || ''}`.trim(), detailsX, 118, 8.5, font, darkText);
+    drawText(`Academic Year: ${student.academicYear || list.academicYear || '-'}`, detailsX, 104, 8.5, font, darkText);
+    if (template.showBloodGroup && student.bloodGroup) drawText(`Blood Group: ${student.bloodGroup}`, detailsX, 90, 8.5, font, darkText);
+    if (template.showEmergencyContact && student.emergencyContact?.phone) {
+      drawText(`Emergency: ${student.emergencyContact.phone}`, detailsX, 76, 8, font, darkText);
+    }
+
+    const qrDataUrl = await QRCode.toDataURL(JSON.stringify({
+      studentId: student.studentId,
       studentCode: student.studentCode,
-      classLabel: `Grade ${student.grade} - ${student.section}`,
-      photoUrl: student.photoUrl,
-      fieldMap: (() => {
-        try { return activeTemplate.fieldMapJson ? JSON.parse(activeTemplate.fieldMapJson) : []; } catch { return []; }
-      })(),
-    });
+      schoolId,
+    }));
+    const qrBytes = Buffer.from(qrDataUrl.split(',')[1], 'base64');
+    const qrImage = await pdfDoc.embedPng(qrBytes);
+    page.drawImage(qrImage, { x: width - 70, y: 54, width: 48, height: 48 });
+    drawText('Scan to verify', width - 70, 44, 6.5, font, mutedText);
+
+    page.drawLine({ start: { x: 24, y: 14 }, end: { x: 104, y: 14 }, thickness: 0.7, color: mutedText });
+    page.drawLine({ start: { x: width - 116, y: 14 }, end: { x: width - 24, y: 14 }, thickness: 0.7, color: mutedText });
+    drawText('School Stamp', 42, 6, 6.5, font, mutedText);
+    drawText('Principal Signature', width - 100, 6, 6.5, font, mutedText);
+
+    return Buffer.from(await pdfDoc.save());
   }
 
   async generateIdCardBulkZip(schoolId: string, studentIds: string[]): Promise<Buffer> {
@@ -1158,6 +1218,8 @@ export class StudentService {
       gender,
       address,
       phone,
+      motherName,
+      motherPhone,
       emergencyContact,
       guardianName,
       guardianPhone,
@@ -1184,6 +1246,8 @@ export class StudentService {
         ...(gender && { gender }),
         ...(address && { address }),
         ...(phone && { phone }),
+        ...(motherName !== undefined && { motherName }),
+        ...(motherPhone !== undefined && { motherPhone }),
         ...(emergencyContact && {
           emergencyContact: JSON.stringify(emergencyContact),
         }),

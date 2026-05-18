@@ -10,11 +10,9 @@ import {
   UseGuards,
   Request,
   BadRequestException,
+  Res,
   UseInterceptors,
   UploadedFile,
-  HttpException,
-  HttpStatus,
-  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { StudentService } from './student.service';
@@ -147,25 +145,18 @@ export class StudentController {
     return this.studentService.saveIdCardTemplate(req.user.schoolId, body.template || {});
   }
 
-  @Post('id-cards/template/upload')
+  @Post('id-cards/template/watermark')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @UseInterceptors(FileInterceptor('file'))
-  async uploadIdCardTemplate(
+  async uploadIdCardWatermark(
     @Request() req,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    try {
-      if (!file) {
-        throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
-      }
-      const url = await this.studentService.uploadIdCardTemplate(req.user.schoolId, file);
-      return { url };
-    } catch (error) {
-      throw new HttpException(
-        'Failed to upload ID card template: ' + error.message,
-        error.status || HttpStatus.BAD_REQUEST,
-      );
+    if (!file) {
+      throw new BadRequestException('Watermark image is required');
     }
+    const url = await this.studentService.uploadIdCardWatermark(req.user.schoolId, file);
+    return { url };
   }
 
   @Get('id-cards/:studentId/pdf')

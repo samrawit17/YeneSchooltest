@@ -80,6 +80,7 @@ const ROUTE_CONFIG: Record<string, RouteConfig> = {
   // Students Module
   "students": { label: "Students", href: "/list/students", parent: "dashboard" },
   "students-detail": { label: "Student Profile", parent: "students" },
+  "students-edit": { label: "Edit Student", parent: "students-detail" },
 
   // Teachers Module
   "teachers": { label: "Teachers", href: "/list/teachers", parent: "dashboard" },
@@ -428,7 +429,7 @@ function getRouteConfigForPath(segments: string[], index: number): RouteConfig |
   const pathKey = previous ? `${previous}-${segment}` : segment;
   const reversePathKey = next && isLikelyIdSegment(next) ? `${segment}-detail` : undefined;
 
-  return ROUTE_CONFIG[pathKey] ?? (reversePathKey ? ROUTE_CONFIG[reversePathKey] : undefined) ?? ROUTE_CONFIG[segment];
+  return ROUTE_CONFIG[pathKey] ?? ROUTE_CONFIG[segment] ?? (reversePathKey ? ROUTE_CONFIG[reversePathKey] : undefined);
 }
 
 function isNonLinkBreadcrumbPath(href: string): boolean {

@@ -277,16 +277,16 @@ export default function CredentialsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
-      <div className="w-full space-y-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-3 sm:p-6">
+      <div className="w-full space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-black dark:text-white">{t.title}</h1>
-            <p className="text-gray-500">{t.description}</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-black dark:text-white">{t.title}</h1>
+            <p className="text-sm text-gray-500">{t.description}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={openResetDialog} variant="outline">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button onClick={openResetDialog} variant="outline" className="w-full sm:w-auto">
               <ShieldAlert className="w-4 h-4 mr-2" />
               {t.resetPassword}
             </Button>
@@ -298,19 +298,22 @@ export default function CredentialsPage() {
         {/* Credentials Table */}
         <Card className="dark:bg-slate-900 dark:border-slate-800">
           <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <CardTitle className="text-lg dark:text-white">
+            <div className="flex flex-col gap-4">
+              <CardTitle className="text-base sm:text-lg dark:text-white">
                 {t.listTitle.replace("{total}", String(totalItems))}
               </CardTitle>
-              <div className="flex flex-wrap items-center gap-3">
-                <Input
-                  placeholder={t.filters.search}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-8 w-[350px] dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full">
+                <div className="relative w-full sm:w-auto sm:flex-1 sm:max-w-[350px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder={t.filters.search}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-8 w-full pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  />
+                </div>
                 <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as any); setCurrentPage(1); }}>
-                  <SelectTrigger className="h-8 w-[120px] dark:bg-slate-800 dark:border-slate-700">
+                  <SelectTrigger className="h-8 w-full sm:w-[120px] dark:bg-slate-800 dark:border-slate-700">
                     <SelectValue placeholder={t.filters.status} />
                   </SelectTrigger>
                   <SelectContent>
@@ -320,7 +323,7 @@ export default function CredentialsPage() {
                   </SelectContent>
                 </Select>
                 <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setCurrentPage(1); }}>
-                  <SelectTrigger className="h-8 w-[130px] dark:bg-slate-800 dark:border-slate-700">
+                  <SelectTrigger className="h-8 w-full sm:w-[130px] dark:bg-slate-800 dark:border-slate-700">
                     <SelectValue placeholder={t.filters.role} />
                   </SelectTrigger>
                   <SelectContent>
@@ -337,17 +340,18 @@ export default function CredentialsPage() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+              <div className="flex items-center justify-center py-8 sm:py-12">
+                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-gray-400" />
               </div>
             ) : credentials.length === 0 ? (
-              <div className="text-center py-12">
-                <Key className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">{t.empty}</p>
+              <div className="text-center py-8 sm:py-12">
+                <Key className="w-8 h-8 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3 sm:mb-4" />
+                <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">{t.empty}</p>
               </div>
             ) : (
               <>
-                <Table className="w-full">
+                <div className="overflow-x-auto">
+                  <Table className="w-full min-w-[640px]">
                   <TableHeader>
                     <TableRow className="bg-gray-50 dark:bg-slate-800">
                       <TableHead className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">{t.table.name}</TableHead>
@@ -362,10 +366,10 @@ export default function CredentialsPage() {
                     {credentials.map((cred) => (
                       <TableRow key={cred.id} className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                         <TableCell className="py-3 px-4">
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">{cred.name}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 dark:text-white truncate max-w-[150px]">{cred.name}</p>
                             {cred.email && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{cred.email}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px]">{cred.email}</p>
                             )}
                           </div>
                         </TableCell>
@@ -397,8 +401,8 @@ export default function CredentialsPage() {
                           {formatDate(cred.createdAt)}
                         </TableCell>
                         <TableCell className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => viewCredential(cred)}>
+                          <div className="flex items-center justify-end gap-0.5">
+                            <Button variant="ghost" size="sm" onClick={() => viewCredential(cred)} className="h-8 w-8 p-0">
                               <Key className="w-4 h-4" />
                             </Button>
                             <Button
@@ -407,6 +411,7 @@ export default function CredentialsPage() {
                               onClick={() => openResetDialogForCredential(cred)}
                               disabled={actionLoading}
                               title={t.actions.editPassword}
+                              className="h-8 w-8 p-0"
                             >
                               <Pencil className="w-4 h-4 text-blue-500" />
                             </Button>
@@ -416,6 +421,7 @@ export default function CredentialsPage() {
                                 size="sm" 
                                 onClick={() => handleMarkAsSent(cred.id)}
                                 disabled={actionLoading}
+                                className="h-8 w-8 p-0"
                               >
                                 <Send className="w-4 h-4 text-green-500" />
                               </Button>
@@ -425,6 +431,7 @@ export default function CredentialsPage() {
                               size="sm" 
                               onClick={() => handleDelete(cred.id)}
                               disabled={actionLoading}
+                              className="h-8 w-8 p-0"
                             >
                               <Trash2 className="w-4 h-4 text-red-500" />
                             </Button>
@@ -433,7 +440,8 @@ export default function CredentialsPage() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                  </Table>
+                </div>
 
                 {totalPages > 1 && (
                   <div className="mt-4">
@@ -452,86 +460,90 @@ export default function CredentialsPage() {
 
       {/* View Credential Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-md dark:bg-slate-900">
+        <DialogContent className="max-w-md w-[calc(100%-2rem)] dark:bg-slate-900 max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">{t.viewDialog.title}</DialogTitle>
+            <DialogTitle className="dark:text-white text-base sm:text-lg">{t.viewDialog.title}</DialogTitle>
           </DialogHeader>
           {selectedCredential && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center shrink-0">
                   {roleIcons[selectedCredential.role]}
                 </div>
-                <div>
-                  <p className="font-semibold dark:text-white">{selectedCredential.name}</p>
+                <div className="min-w-0">
+                  <p className="font-semibold dark:text-white text-sm sm:text-base break-words">{selectedCredential.name}</p>
                   <Badge variant="outline" className={roleColors[selectedCredential.role]}>
                     {t.filters.roles[selectedCredential.role] || selectedCredential.role}
                   </Badge>
                 </div>
               </div>
 
-              <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4 space-y-3">
+              <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-3 sm:p-4 space-y-3">
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.username}</Label>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white">
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs">{t.viewDialog.username}</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 min-w-0 bg-white dark:bg-slate-700 px-2 sm:px-3 py-2 rounded border dark:border-slate-600 dark:text-white text-xs sm:text-sm break-all leading-relaxed">
                       {selectedCredential.username}
                     </code>
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => copyToClipboard(selectedCredential.username, t.viewDialog.username)}
+                      className="shrink-0 h-8 w-8 sm:h-9 sm:w-9 p-0"
                     >
-                      <Copy className="w-4 h-4" />
+                      <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Button>
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.tempPassword}</Label>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white">
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs">{t.viewDialog.tempPassword}</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 min-w-0 bg-white dark:bg-slate-700 px-2 sm:px-3 py-2 rounded border dark:border-slate-600 dark:text-white text-xs sm:text-sm break-all leading-relaxed">
                       {selectedCredential.temporaryPassword}
                     </code>
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => copyToClipboard(selectedCredential.temporaryPassword, t.viewDialog.tempPassword)}
+                      className="shrink-0 h-8 w-8 sm:h-9 sm:w-9 p-0"
                     >
-                      <Copy className="w-4 h-4" />
+                      <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Button>
                   </div>
                 </div>
 
                 {selectedCredential.email && (
                   <div>
-                    <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.email}</Label>
-                    <p className="font-medium dark:text-white">{selectedCredential.email}</p>
+                    <Label className="text-gray-500 dark:text-gray-400 text-xs">{t.viewDialog.email}</Label>
+                    <p className="font-medium dark:text-white text-sm break-all mt-1">{selectedCredential.email}</p>
                   </div>
                 )}
 
-                <div>
-                  <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.created}</Label>
-                  <p className="text-sm dark:text-gray-300">{formatDate(selectedCredential.createdAt)}</p>
-                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-gray-500 dark:text-gray-400 text-xs">{t.viewDialog.created}</Label>
+                    <p className="text-xs sm:text-sm dark:text-gray-300 mt-1">{formatDate(selectedCredential.createdAt)}</p>
+                  </div>
 
-                <div>
-                  <Label className="text-gray-500 dark:text-gray-400">{t.viewDialog.expires}</Label>
-                  <p className="text-sm dark:text-gray-300">{formatDate(selectedCredential.expiresAt)}</p>
+                  <div>
+                    <Label className="text-gray-500 dark:text-gray-400 text-xs">{t.viewDialog.expires}</Label>
+                    <p className="text-xs sm:text-sm dark:text-gray-300 mt-1">{formatDate(selectedCredential.expiresAt)}</p>
+                  </div>
                 </div>
 
                 {selectedCredential.isSent && (
                   <div className="pt-2 border-t dark:border-slate-600">
-                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 text-xs">
                       <CheckCircle className="w-3 h-3 mr-1" />
-                      {t.viewDialog.sentVia.replace("{via}", selectedCredential.sentVia || "").replace("{date}", selectedCredential.sentAt ? formatDate(selectedCredential.sentAt) : "")}
+                      <span className="break-words">{t.viewDialog.sentVia.replace("{via}", selectedCredential.sentVia || "").replace("{date}", selectedCredential.sentAt ? formatDate(selectedCredential.sentAt) : "")}</span>
                     </Badge>
                   </div>
                 )}
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
             {!selectedCredential?.isSent && (
               <Button 
                 variant="outline" 
@@ -542,12 +554,13 @@ export default function CredentialsPage() {
                   }
                 }}
                 disabled={actionLoading}
+                className="w-full sm:w-auto"
               >
                 <Send className="w-4 h-4 mr-2" />
                 {t.actions.markAsSent}
               </Button>
             )}
-            <Button variant="secondary" onClick={() => setViewDialogOpen(false)}>
+            <Button variant="secondary" onClick={() => setViewDialogOpen(false)} className="w-full sm:w-auto">
               {t.actions.close}
             </Button>
           </DialogFooter>
@@ -556,53 +569,54 @@ export default function CredentialsPage() {
 
       {/* Reset Password Dialog */}
       <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <DialogContent className="max-w-lg dark:bg-slate-900">
+        <DialogContent className="max-w-lg w-[calc(100%-2rem)] dark:bg-slate-900 max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">{t.resetDialog.title}</DialogTitle>
+            <DialogTitle className="dark:text-white text-base sm:text-lg">{t.resetDialog.title}</DialogTitle>
           </DialogHeader>
 
           {resetResult ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
-                <div>
-                  <p className="font-medium text-green-800 dark:text-green-300">{t.resetDialog.success}</p>
-                  <p className="text-sm text-green-600 dark:text-green-400">
+              <div className="flex items-start gap-3 p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="font-medium text-green-800 dark:text-green-300 text-sm sm:text-base">{t.resetDialog.success}</p>
+                  <p className="text-xs sm:text-sm text-green-600 dark:text-green-400 break-words mt-1">
                     {t.resetDialog.user.replace("{name}", resetResult.user.name).replace("{email}", resetResult.user.email || resetResult.user.username || "")}
                   </p>
                 </div>
               </div>
 
-              <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4 space-y-3">
+              <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-3 sm:p-4 space-y-3">
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">{t.resetDialog.username}</Label>
-                  <code className="block mt-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white">
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs">{t.resetDialog.username}</Label>
+                  <code className="block mt-1 bg-white dark:bg-slate-700 px-2 sm:px-3 py-2 rounded border dark:border-slate-600 dark:text-white text-xs sm:text-sm break-all">
                     {resetResult.user.username || resetResult.user.email}
                   </code>
                 </div>
                 <div>
-                  <Label className="text-gray-500 dark:text-gray-400">{t.resetDialog.tempPassword}</Label>
+                  <Label className="text-gray-500 dark:text-gray-400 text-xs">{t.resetDialog.tempPassword}</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    <code className="flex-1 bg-white dark:bg-slate-700 px-3 py-2 rounded border dark:border-slate-600 dark:text-white font-mono text-lg">
+                    <code className="flex-1 min-w-0 bg-white dark:bg-slate-700 px-2 sm:px-3 py-2 rounded border dark:border-slate-600 dark:text-white font-mono text-xs sm:text-sm break-all leading-relaxed">
                       {resetResult.tempPassword}
                     </code>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => copyToClipboard(resetResult.tempPassword, 'Password')}
+                      className="shrink-0 h-8 w-8 sm:h-9 sm:w-9 p-0"
                     >
-                      <Copy className="w-4 h-4" />
+                      <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Button>
                   </div>
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
-                    <EyeOff className="w-3 h-3" />
+                    <EyeOff className="w-3 h-3 flex-shrink-0" />
                     {t.resetDialog.copyWarning}
                   </p>
                 </div>
               </div>
 
-              <DialogFooter>
-                <Button onClick={() => { setResetDialogOpen(false); setResetResult(null); }}>
+              <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
+                <Button onClick={() => { setResetDialogOpen(false); setResetResult(null); }} className="w-full sm:w-auto">
                   {t.actions.done}
                 </Button>
               </DialogFooter>
@@ -610,7 +624,7 @@ export default function CredentialsPage() {
           ) : (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="user-search" className="dark:text-gray-300">{t.resetDialog.searchUser}</Label>
+                <Label htmlFor="user-search" className="dark:text-gray-300 text-xs">{t.resetDialog.searchUser}</Label>
                 <div className="relative">
                   {searchingUsers ? (
                     <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
@@ -622,20 +636,20 @@ export default function CredentialsPage() {
                     placeholder={t.resetDialog.searchPlaceholder}
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
-                    className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                    className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white text-sm"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="temporary-password" className="dark:text-gray-300">{t.resetDialog.newPassword}</Label>
+                <Label htmlFor="temporary-password" className="dark:text-gray-300 text-xs">{t.resetDialog.newPassword}</Label>
                 <Input
                   id="temporary-password"
                   type="text"
                   placeholder={t.resetDialog.passwordPlaceholder}
                   value={temporaryPassword}
                   onChange={(e) => setTemporaryPassword(e.target.value)}
-                  className="font-mono dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  className="font-mono dark:bg-slate-800 dark:border-slate-700 dark:text-white text-sm"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {t.resetDialog.passwordHint}
@@ -643,25 +657,25 @@ export default function CredentialsPage() {
               </div>
 
               {searchResults.length > 0 && (
-                <div className="max-h-64 overflow-y-auto space-y-1">
+                <div className="max-h-40 sm:max-h-64 overflow-y-auto space-y-1">
                   {searchResults.map((user) => (
                     <button
                       type="button"
                       key={user.id}
                       onClick={() => selectResetUser(user)}
-                      className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors dark:border-slate-700 ${
+                      className={`flex w-full items-center justify-between rounded-lg border p-2.5 sm:p-3 text-left transition-colors dark:border-slate-700 ${
                         selectedResetUser?.id === user.id
                           ? 'border-[var(--brand-color,#e35336)] bg-[rgba(var(--brand-color-rgb),0.10)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]'
                           : 'hover:bg-gray-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm dark:text-white truncate">{user.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        <p className="font-medium text-xs sm:text-sm dark:text-white truncate">{user.name}</p>
+                        <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 truncate">
                           {user.username || user.email} &middot; {t.filters.roles[user.role] || user.role}
                         </p>
                       </div>
-                      <span className="ml-3 text-xs font-semibold text-[var(--brand-color,#e35336)]">
+                      <span className="ml-2 text-[11px] sm:text-xs font-semibold text-[var(--brand-color,#e35336)] shrink-0">
                         {selectedResetUser?.id === user.id ? t.resetDialog.selected : t.resetDialog.select}
                       </span>
                     </button>
@@ -670,7 +684,7 @@ export default function CredentialsPage() {
               )}
 
               {selectedResetUser && (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:p-3 text-xs sm:text-sm dark:border-slate-700 dark:bg-slate-800/60">
                   <p className="font-medium text-slate-900 dark:text-white">{selectedResetUser.name}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {selectedResetUser.username || selectedResetUser.email} &middot; {t.filters.roles[selectedResetUser.role] || selectedResetUser.role}
@@ -679,18 +693,19 @@ export default function CredentialsPage() {
               )}
 
               {searchResults.length === 0 && userSearch.trim() && !searchingUsers && (
-                <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                <p className="text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400 py-6 sm:py-8">
                   {t.resetDialog.noUsers}
                 </p>
               )}
 
-              <DialogFooter>
-                <Button variant="secondary" onClick={() => setResetDialogOpen(false)}>
+              <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
+                <Button variant="secondary" onClick={() => setResetDialogOpen(false)} className="w-full sm:w-auto">
                   {t.actions.cancel}
                 </Button>
                 <Button
                   onClick={() => selectedResetUser && handleResetUserPassword(selectedResetUser)}
                   disabled={!selectedResetUser || !temporaryPassword.trim() || resettingUserId === selectedResetUser?.id}
+                  className="w-full sm:w-auto"
                 >
                   {resettingUserId === selectedResetUser?.id ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

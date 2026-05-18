@@ -49,6 +49,8 @@ const createStudentSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone: z.string().optional(),
+  motherName: z.string().optional(),
+  motherPhone: z.string().optional(),
   parentEmail: z.string().email("Invalid parent email").optional().or(z.literal("")),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   classId: z.string().optional(),
@@ -64,6 +66,8 @@ const updateStudentSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone: z.string().optional(),
+  motherName: z.string().optional(),
+  motherPhone: z.string().optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   address: z.string().optional(),
   classId: z.string().optional(),
@@ -80,6 +84,8 @@ interface StudentUserData {
   name: string;
   email?: string;
   phone?: string;
+  motherName?: string;
+  motherPhone?: string;
   gender?: string;
   address?: string;
   studentProfile?: {
@@ -204,6 +210,8 @@ export default function UnifiedStudentForm({
       name: "",
       email: "",
       phone: "",
+      motherName: "",
+      motherPhone: "",
       parentEmail: "",
       gender: undefined,
       classId: undefined,
@@ -222,6 +230,8 @@ export default function UnifiedStudentForm({
       name: initialData?.name || "",
       email: initialData?.email || "",
       phone: initialData?.phone || "",
+      motherName: initialData?.motherName || "",
+      motherPhone: initialData?.motherPhone || "",
       gender: initialData?.gender as any || undefined,
       address: initialData?.address || "",
       classId: initialData?.studentProfile?.classId || "",
@@ -238,6 +248,8 @@ export default function UnifiedStudentForm({
         name: initialData.name || "",
         email: initialData.email || "",
         phone: initialData.phone || "",
+        motherName: initialData.motherName || "",
+        motherPhone: initialData.motherPhone || "",
         gender: initialData.gender as any || undefined,
         address: initialData.address || "",
         classId: initialData.studentProfile?.classId || "",
@@ -261,6 +273,8 @@ export default function UnifiedStudentForm({
           name: data.name,
           email: data.email || undefined,
           phone: data.phone || undefined,
+          motherName: data.motherName || undefined,
+          motherPhone: data.motherPhone || undefined,
           parentEmail: data.parentEmail || undefined,
           gender: data.gender,
           classId: data.classId || undefined,
@@ -279,6 +293,8 @@ export default function UnifiedStudentForm({
         name: "",
         email: "",
         phone: "",
+        motherName: "",
+        motherPhone: "",
         parentEmail: "",
         gender: undefined,
         classId: undefined,
@@ -311,6 +327,8 @@ export default function UnifiedStudentForm({
         name: data.name,
         email: data.email,
         phone: data.phone,
+        motherName: data.motherName,
+        motherPhone: data.motherPhone,
         gender: data.gender,
         address: data.address,
         classId: data.classId,
@@ -387,6 +405,34 @@ export default function UnifiedStudentForm({
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
                       <Input placeholder="+1234567890" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={createForm.control}
+                name="motherName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mother's Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter mother's full name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={createForm.control}
+                name="motherPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mother's Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter mother's phone number" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -723,6 +769,34 @@ export default function UnifiedStudentForm({
                   <FormLabel>Phone</FormLabel>
                   <FormControl>
                     <Input placeholder="+1234567890" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={updateForm.control}
+              name="motherName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mother's Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter mother's full name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={updateForm.control}
+              name="motherPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mother's Phone</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter mother's phone number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

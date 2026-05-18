@@ -391,6 +391,8 @@ model StudentProfile {
   gender              String?
   address             String?
   phone               String?
+  motherName          String?
+  motherPhone         String?
   emergencyContact    String?
   medicalInfo         String?
   nationality         String?

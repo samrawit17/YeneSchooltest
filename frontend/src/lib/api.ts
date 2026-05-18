@@ -78,6 +78,12 @@ export {
 export { superadminAPI, type SuperAdminStatsResponse } from "./api/superadmin";
 export { adminTimetableAPI } from "./api/timetable";
 export {
+  dataQualityAPI,
+  type DataQualityIssue,
+  type DataQualitySeverity,
+  type StudentConsistencyReport,
+} from "./api/data-quality";
+export {
   calendarAPI,
   examSeatingAPI,
   searchAPI,

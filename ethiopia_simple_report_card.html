@@ -1,0 +1,193 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #fff; }
+.page { background: #fff; width: 680px; font-family: var(--font-sans); border: 0.5px solid var(--color-border-tertiary); }
+.flag { height: 5px; background: linear-gradient(to right, #078930 33.3%, #FCDD09 33.3% 66.6%, #EF3340 66.6%); }
+.header { padding: 16px 32px; display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #1B4F72; }
+.logo { width: 56px; height: 56px; border-radius: 50%; border: 1.5px solid #1B4F72; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo span { font-size: 10px; color: #1B4F72; text-align: center; line-height: 1.3; font-weight: 500; }
+.school-block { flex: 1; text-align: center; }
+.s-name-am { font-size: 15px; color: #1B4F72; margin-bottom: 2px; }
+.s-name-en { font-size: 16px; font-weight: 500; color: #1B4F72; }
+.s-sub { font-size: 11px; color: #888; margin-top: 2px; }
+.header-meta { text-align: right; font-size: 11px; color: #555; line-height: 1.8; }
+.header-meta strong { color: #1B4F72; }
+
+.title-bar { background: #1B4F72; padding: 7px 32px; display: flex; justify-content: center; align-items: center; gap: 16px; }
+.title-am { color: #AED6F1; font-size: 13px; }
+.title-en { color: #fff; font-size: 13px; font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase; }
+.title-dot { color: #AED6F1; }
+
+.body { padding: 14px 32px; }
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 0.5px solid #BDD7EE; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+.info-cell { padding: 7px 12px; border-right: 0.5px solid #BDD7EE; border-bottom: 0.5px solid #BDD7EE; }
+.info-cell:nth-child(2n) { border-right: none; }
+.info-cell:nth-last-child(-n+2) { border-bottom: none; }
+.i-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
+.i-value { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+
+table.grades { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+table.grades thead tr { background: #1B4F72; }
+table.grades thead th { color: #fff; padding: 6px 10px; font-weight: 500; font-size: 11px; }
+table.grades thead th.c { text-align: center; }
+table.grades tbody tr:nth-child(even) { background: #F4F9FD; }
+table.grades tbody td { padding: 5px 10px; border-bottom: 0.5px solid #E2EEF7; color: #1a1a1a; }
+table.grades tbody td.c { text-align: center; }
+table.grades tfoot tr { background: #EBF4FB; }
+table.grades tfoot td { padding: 6px 10px; font-weight: 500; font-size: 12px; color: #1B4F72; }
+table.grades tfoot td.c { text-align: center; }
+
+.g-badge { display: inline-block; padding: 1px 8px; border-radius: 3px; font-weight: 500; font-size: 11px; }
+.gA  { background: #EAF3DE; color: #3B6D11; }
+.gB  { background: #E6F1FB; color: #185FA5; }
+.gC  { background: #FAEEDA; color: #854F0B; }
+.gD  { background: #FCEBEB; color: #A32D2D; }
+.gF  { background: #f5c6c6; color: #7B0000; }
+
+.bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+
+.att-box { border: 0.5px solid #BDD7EE; border-radius: 4px; padding: 8px 12px; }
+.box-label { font-size: 10px; color: #2471A3; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+.att-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-b { background: #378ADD; }
+.dot-g { background: #639922; }
+.dot-r { background: #E24B4A; }
+.att-text { font-size: 12px; color: #444; flex: 1; }
+.att-val { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+
+.remarks-box { border: 0.5px solid #BDD7EE; border-radius: 4px; padding: 8px 12px; }
+.remark-section { margin-bottom: 6px; }
+.remark-section:last-child { margin-bottom: 0; }
+.r-label { font-size: 10px; color: #2471A3; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
+.r-text { font-size: 12px; color: #333; line-height: 1.5; }
+
+.footer { border-top: 1.5px solid #1B4F72; padding: 10px 32px 14px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.sig { text-align: center; }
+.sig-line { border-bottom: 0.5px solid #1B4F72; height: 28px; margin: 0 8px 4px; }
+.sig-name { font-size: 11px; font-weight: 500; color: #1B4F72; }
+.sig-role { font-size: 10px; color: #888; }
+
+.cert-id { font-size: 10px; color: #bbb; text-align: center; padding-bottom: 8px; }
+</style>
+
+<div class="page">
+  <div class="flag"></div>
+
+  <div class="header">
+    <div class="logo"><span>LOGO</span></div>
+    <div class="school-block">
+      <div class="s-name-am">ቅዱስ ገብርኤል አካዳሚ</div>
+      <div class="s-name-en">St. Gabriel Academy</div>
+      <div class="s-sub">Addis Ababa · +251 91 234 5678</div>
+    </div>
+    <div class="header-meta">
+      <div>Year / ዓ.ም &nbsp;<strong>2016 E.C.</strong></div>
+      <div>Term / ሴሚስተር &nbsp;<strong>Term 2</strong></div>
+      <div>Date / ቀን &nbsp;<strong>15 Sene 2016</strong></div>
+    </div>
+  </div>
+
+  <div class="title-bar">
+    <span class="title-am">የተማሪ ሪፖርት ካርድ</span>
+    <span class="title-dot">·</span>
+    <span class="title-en">Student Report Card</span>
+  </div>
+
+  <div class="body">
+
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="i-label">Full name / ሙሉ ስም</div>
+        <div class="i-value">Abebe Kebede Tadesse</div>
+      </div>
+      <div class="info-cell">
+        <div class="i-label">Student ID / መለያ</div>
+        <div class="i-value">ETH-2016-00342</div>
+      </div>
+      <div class="info-cell">
+        <div class="i-label">Class / ክፍል</div>
+        <div class="i-value">Grade 8 — Section A</div>
+      </div>
+      <div class="info-cell">
+        <div class="i-label">Class teacher / አስተማሪ</div>
+        <div class="i-value">Tigist Haile</div>
+      </div>
+    </div>
+
+    <table class="grades">
+      <thead>
+        <tr>
+          <th style="width:22px" class="c">#</th>
+          <th>Subject / ትምህርት</th>
+          <th class="c">CA (30)</th>
+          <th class="c">Mid (30)</th>
+          <th class="c">Final (40)</th>
+          <th class="c">Total</th>
+          <th class="c">Grade</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="c">1</td><td>Mathematics / ሂሳብ</td><td class="c">27</td><td class="c">26</td><td class="c">35</td><td class="c" style="font-weight:500">88</td><td class="c"><span class="g-badge gA">A</span></td></tr>
+        <tr><td class="c">2</td><td>English / እንግሊዘኛ</td><td class="c">24</td><td class="c">22</td><td class="c">30</td><td class="c" style="font-weight:500">76</td><td class="c"><span class="g-badge gB">B</span></td></tr>
+        <tr><td class="c">3</td><td>Amharic / አማርኛ</td><td class="c">29</td><td class="c">27</td><td class="c">38</td><td class="c" style="font-weight:500">94</td><td class="c"><span class="g-badge gA">A</span></td></tr>
+        <tr><td class="c">4</td><td>Science / ሳይንስ</td><td class="c">22</td><td class="c">20</td><td class="c">28</td><td class="c" style="font-weight:500">70</td><td class="c"><span class="g-badge gB">B</span></td></tr>
+        <tr><td class="c">5</td><td>Social Studies / ማህበ. ሳይንስ</td><td class="c">25</td><td class="c">24</td><td class="c">32</td><td class="c" style="font-weight:500">81</td><td class="c"><span class="g-badge gA">A</span></td></tr>
+        <tr><td class="c">6</td><td>Physics / ፊዚክስ</td><td class="c">20</td><td class="c">19</td><td class="c">25</td><td class="c" style="font-weight:500">64</td><td class="c"><span class="g-badge gC">C</span></td></tr>
+        <tr><td class="c">7</td><td>Biology / ባዮሎጂ</td><td class="c">26</td><td class="c">23</td><td class="c">33</td><td class="c" style="font-weight:500">82</td><td class="c"><span class="g-badge gA">A</span></td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="font-size:11px;color:#555">Average / አማካይ</td>
+          <td class="c">79.3</td>
+          <td class="c"><span class="g-badge gB">B+</span></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="bottom-row">
+      <div class="att-box">
+        <div class="box-label">Attendance / መገኘት</div>
+        <div class="att-row"><div class="dot dot-b"></div><div class="att-text">Total days / ጠቅላላ ቀናት</div><div class="att-val">92</div></div>
+        <div class="att-row"><div class="dot dot-g"></div><div class="att-text">Present / የተሳተፈ</div><div class="att-val">88</div></div>
+        <div class="att-row"><div class="dot dot-r"></div><div class="att-text">Absent / ያልተሳተፈ</div><div class="att-val">4</div></div>
+        <div style="margin-top:6px;font-size:12px;color:#3B6D11;font-weight:500">95.7% attendance</div>
+      </div>
+
+      <div class="remarks-box">
+        <div class="remark-section">
+          <div class="r-label">Teacher's remark / የአስተማሪ አስተያየት</div>
+          <div class="r-text">Good progress this term. Needs more focus on Physics.</div>
+        </div>
+        <div style="border-top:0.5px solid #E2EEF7;margin:6px 0"></div>
+        <div class="remark-section">
+          <div class="r-label">Principal's remark / የርዕሰ መምህር አስተያየት</div>
+          <div class="r-text">Well-behaved student. Keep up the good work.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <div class="sig">
+      <div class="sig-line"></div>
+      <div class="sig-name">Tigist Haile</div>
+      <div class="sig-role">Class teacher / አስተማሪ</div>
+    </div>
+    <div class="sig">
+      <div class="sig-line"></div>
+      <div class="sig-name">Dr. Solomon Girma</div>
+      <div class="sig-role">Principal / ርዕሰ መምህር</div>
+    </div>
+    <div class="sig">
+      <div class="sig-line"></div>
+      <div class="sig-name">School Stamp</div>
+      <div class="sig-role">Official seal / ማህተም</div>
+    </div>
+  </div>
+  <div class="cert-id">RC-2016-T2-00342 · St. Gabriel Academy · lemari.edu.et</div>
+  <div class="flag"></div>
+</div>

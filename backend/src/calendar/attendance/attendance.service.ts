@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
-import { SchoolSettingsService } from '../../school-settings/school-settings.service';
+import {
+  SCHOOL_SETTING_KEYS,
+  SchoolSettingsService,
+} from '../../school-settings/school-settings.service';
+import { formatSchoolDate } from '../../common/date.util';
 import {
   CreateAttendanceSessionDto,
   BulkMarkAttendanceDto,
@@ -1791,11 +1795,16 @@ export class AttendanceService {
         parentRelationsByStudent.set(relation.studentId, existing);
       }
 
-      // Format date for display
-      const dateStr =
-        session.date instanceof Date
-          ? session.date.toLocaleDateString()
-          : new Date(session.date).toLocaleDateString();
+      const calendarType =
+        (await this.schoolSettings.getSetting(
+          session.schoolId,
+          SCHOOL_SETTING_KEYS.CALENDAR_TYPE,
+        )) || 'ETHIOPIAN';
+      const sessionDate =
+        session.date instanceof Date ? session.date : new Date(session.date);
+      const dateStr = formatSchoolDate(sessionDate, {
+        calendarType: calendarType === 'GREGORIAN' ? 'GREGORIAN' : 'ETHIOPIAN',
+      });
 
       // Build notification promises
       const notificationPromises: Promise<unknown>[] = [];
@@ -2785,9 +2794,8 @@ export class AttendanceService {
       throw new ForbiddenException('Only admins can access this endpoint');
     }
 
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
-    const targetDateStr = targetDate.toISOString().split('T')[0];
+    const { start: targetDateStart, end: targetDateEnd } =
+      this.getLocalDayRange(date);
 
     // Build where clause for class filter
     const classWhere: any = {
@@ -2799,6 +2807,16 @@ export class AttendanceService {
 
     if (grade) {
       classWhere.grade = parseInt(grade);
+    }
+    if (section) {
+      classWhere.OR = [
+        { section },
+        {
+          sections: {
+            some: { name: section },
+          },
+        },
+      ];
     }
 
     // Get ALL active classes for the school
@@ -2814,7 +2832,10 @@ export class AttendanceService {
     const targetSessions = await this.prisma.attendanceSession.findMany({
       where: {
         schoolId: user.schoolId,
-        date: targetDate,
+        date: {
+          gte: targetDateStart,
+          lte: targetDateEnd,
+        },
       },
       include: {
         timetableSlot: {
@@ -2846,6 +2867,10 @@ export class AttendanceService {
             : [{ name: cls.section || 'A' }];
 
         for (const sec of sections) {
+          if (section && sec.name !== section) {
+            continue;
+          }
+
           missingAttendance.push({
             classId: cls.id,
             className: cls.name,
@@ -2877,9 +2902,9 @@ export class AttendanceService {
       throw new ForbiddenException('Only admins can access this endpoint');
     }
 
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
-    const targetDateStr = targetDate.toISOString().split('T')[0];
+    const { start: targetDateStart, end: targetDateEnd } =
+      this.getLocalDayRange(date);
+    const targetDateStr = this.getDateString(targetDateStart);
 
     // Match the same class/session logic used by getMissingClasses, but only
     // notify classes that actually have a homeroom teacher assigned.
@@ -2899,7 +2924,10 @@ export class AttendanceService {
     const targetSessions = await this.prisma.attendanceSession.findMany({
       where: {
         schoolId: user.schoolId,
-        date: targetDate,
+        date: {
+          gte: targetDateStart,
+          lte: targetDateEnd,
+        },
       },
       include: {
         timetableSlot: {

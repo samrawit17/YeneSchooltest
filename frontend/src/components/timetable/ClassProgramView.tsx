@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { useTranslations } from "@/hooks/useTranslations";
+import type { ParentTimetableMessages } from "@/messages/registry";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -17,10 +17,9 @@ import { schoolSettingsAPI, timetableSlotsAPI } from "@/lib/api";
 import {
   getSchoolTimeBounds,
   SCHOOL_WEEK_DAYS,
-  toMinutes,
 } from "@/lib/timetable";
 import { formatTimeByCalendarType } from "@/lib/calendar-utils";
-import { BookOpen, Calendar, Clock, MapPin, RefreshCw, UserRound } from "lucide-react";
+import { BookOpen, Calendar, Clock, MapPin, UserRound } from "lucide-react";
 import { toast } from "sonner";
 
 interface TimetableSlot {
@@ -60,10 +59,12 @@ function ClassSlotCard({
   slot,
   timeLabel,
   periodLabel,
+  t,
 }: {
   slot: TimetableSlot;
   timeLabel: string;
   periodLabel: string;
+  t: ParentTimetableMessages;
 }) {
   const subjectCode = slot.subject?.code ? ` (${slot.subject.code})` : "";
 
@@ -75,7 +76,7 @@ function ClassSlotCard({
             {periodLabel}
           </Badge>
           <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-            {slot.subject?.name || "Subject"}
+            {slot.subject?.name || t.subject}
             {subjectCode}
           </p>
           <p className="mt-1 flex items-center gap-1 text-xs font-medium text-[var(--brand-color,#e35336)]">
@@ -89,11 +90,11 @@ function ClassSlotCard({
       <div className="mt-3 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
         <p className="flex min-w-0 items-center gap-1.5">
           <UserRound className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-          <span className="truncate">{slot.teacher?.name || "Teacher pending"}</span>
+          <span className="truncate">{slot.teacher?.name || t.teacherPending}</span>
         </p>
         <p className="flex min-w-0 items-center gap-1.5">
           <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-          <span className="truncate">{slot.room || "Room not set"}</span>
+          <span className="truncate">{slot.room || t.roomNotSet}</span>
         </p>
       </div>
     </article>
@@ -110,10 +111,9 @@ export default function ClassProgramView({
   emptyTitle,
   emptyDescription,
 }: ClassProgramViewProps) {
-  const router = useRouter();
-  const { schoolCalendarType } = useAcademicYear();
+  const { schoolCalendarType, currentAcademicYear } = useAcademicYear();
+  const { t } = useTranslations<ParentTimetableMessages>("parentTimetable");
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [schoolSettings, setSchoolSettings] = useState<Record<string, any>>({});
   const [slots, setSlots] = useState<TimetableSlot[]>([]);
 
@@ -130,60 +130,44 @@ export default function ClassProgramView({
     [slots],
   );
 
-  const displayDays = useMemo(
-    () => [
-      ...SCHOOL_WEEK_DAYS,
-      { value: 6, name: "Saturday", shortName: "Sat" },
-      { value: 7, name: "Sunday", shortName: "Sun" },
-    ],
-    [],
-  );
+  const displayDays = useMemo(() => SCHOOL_WEEK_DAYS, []);
 
-  const loadProgram = useCallback(async (isRefresh = false) => {
+  const loadProgram = useCallback(async () => {
     if (!schoolId || !classId) {
       setLoading(false);
       return;
     }
 
     try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      setLoading(true);
 
       const [settingsResponse, timetableResponse] = await Promise.all([
         schoolSettingsAPI.getAll(schoolId),
-        timetableSlotsAPI.getGrid(classId, sectionId),
+        timetableSlotsAPI.getGrid(
+          classId,
+          sectionId,
+          currentAcademicYear?.id,
+        ),
       ]);
 
       setSchoolSettings(settingsResponse.data || {});
       setSlots(timetableResponse.data?.slots || []);
     } catch (error: any) {
       console.error("Failed to load class program:", error);
-      toast.error(error.response?.data?.message || "Failed to load class program");
+      toast.error(error.response?.data?.message || t.failedLoad);
       setSlots([]);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  }, [classId, schoolId, sectionId]);
+  }, [classId, currentAcademicYear?.id, schoolId, sectionId]);
 
   useEffect(() => {
     loadProgram();
   }, [loadProgram]);
 
-  const totalTeachingMinutes = weekdaySlots.reduce(
-    (sum, slot) => sum + Math.max(0, toMinutes(slot.endTime) - toMinutes(slot.startTime)),
-    0,
-  );
-
   const today = new Date().getDay();
   const todayIsWeekday = today >= 1 && today <= 5;
   const todayDayOfWeek = todayIsWeekday ? today : null;
-  const todayClasses = todayDayOfWeek
-    ? weekdaySlots.filter((slot) => slot.dayOfWeek === todayDayOfWeek)
-    : [];
 
   const periodLabelByTime = useMemo(() => {
     const uniqueRanges = Array.from(
@@ -199,14 +183,14 @@ export default function ClassProgramView({
     });
 
     return uniqueRanges.reduce<Record<string, string>>((acc, range, index) => {
-      acc[range] = `Period ${index + 1}`;
+      acc[range] = `${t.period} ${index + 1}`;
       return acc;
     }, {});
-  }, [weekdaySlots]);
+  }, [weekdaySlots, t.period]);
 
   const getPeriodLabel = (slot: TimetableSlot, fallbackIndex?: number) =>
     periodLabelByTime[`${slot.startTime}-${slot.endTime}`] ||
-    `Period ${(fallbackIndex ?? 0) + 1}`;
+    `${t.period} ${(fallbackIndex ?? 0) + 1}`;
 
   const getSlotsForDay = (dayOfWeek: number) =>
     slots
@@ -245,72 +229,27 @@ export default function ClassProgramView({
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
-      <Card className="border-0 shadow-sm bg-white dark:bg-[#1E293B]">
-        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <CardTitle className="text-2xl text-gray-900 dark:text-white">{title}</CardTitle>
-            <CardDescription className="mt-1 text-sm">
-              {subtitle}
-            </CardDescription>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Badge variant="secondary">{ownerName}</Badge>
-              <Badge variant="outline">
-                School hours {formatSlotTime(schoolStartTime, schoolEndTime)}
-              </Badge>
-              <Badge variant="outline">Monday to Friday</Badge>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => router.back()}>
-              Back
-            </Button>
-            <Button onClick={() => loadProgram(true)} disabled={refreshing}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-
+    <div className="bg-[#F8FAFC] dark:bg-[#0F172A]">
       <Card className="overflow-hidden dark:bg-[#1E293B] dark:border-[#334155]">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Weekly Class Program</CardTitle>
+          <CardTitle className="text-gray-900 dark:text-white">{t.weeklyProgram}</CardTitle>
           <CardDescription>
-            This timetable reflects the assigned class program for the current class and section.
+            {t.programDesc}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {weekdaySlots.length === 0 ? (
             <div className="py-16 text-center text-gray-500 dark:text-gray-400">
               <Calendar className="mx-auto mb-3 h-12 w-12 opacity-30" />
-              <p>No timetable has been published for this class yet.</p>
+              <p>{t.noTimetable}</p>
             </div>
           ) : (
             <div className="space-y-4 p-4">
-              {todayClasses.length > 0 && (
-                <div className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.06)] p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-[var(--brand-color,#e35336)]" />
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Today&apos;s Classes</h3>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {todayClasses.map((slot, index) => (
-                      <ClassSlotCard
-                        key={slot.id}
-                        slot={slot}
-                        periodLabel={getPeriodLabel(slot, index)}
-                        timeLabel={formatSlotTime(slot.startTime, slot.endTime)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="grid gap-4 lg:grid-cols-7">
+              <div className="grid gap-4 lg:grid-cols-5">
                 {displayDays.map((day) => {
                   const daySlots = getSlotsForDay(day.value);
                   const isToday = todayIsWeekday && day.value === todayDayOfWeek;
+                  const translatedDay = (t.weekdays as Record<string, string>)[day.name] || day.name;
 
                   return (
                     <section
@@ -323,10 +262,10 @@ export default function ClassProgramView({
                     >
                       <div className="mb-3 flex items-center justify-between gap-2 border-b border-slate-100 pb-2 dark:border-[#334155]">
                         <div>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white">{day.name}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{daySlots.length} class{daySlots.length === 1 ? "" : "es"}</p>
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white">{translatedDay}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{daySlots.length} {daySlots.length === 1 ? t.class : t.classes}</p>
                         </div>
-                        {isToday && <Badge className="bg-[var(--brand-color,#e35336)] text-white">Today</Badge>}
+                        {isToday && <Badge className="bg-[var(--brand-color,#e35336)] text-white">{t.today}</Badge>}
                       </div>
 
                       {daySlots.length > 0 ? (
@@ -337,12 +276,13 @@ export default function ClassProgramView({
                               slot={slot}
                               periodLabel={getPeriodLabel(slot, index)}
                               timeLabel={formatSlotTime(slot.startTime, slot.endTime)}
+                              t={t}
                             />
                           ))}
                         </div>
                       ) : (
                         <div className="flex min-h-[150px] items-center justify-center rounded-md border border-dashed border-slate-200 text-center text-xs font-medium text-slate-400 dark:border-[#334155]">
-                          Not Scheduled
+                          {t.notScheduled}
                         </div>
                       )}
                     </section>

@@ -13,8 +13,9 @@ import * as path from 'path';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import PDFKitDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-import archiver from 'archiver';
-import { TemplatesService } from '../templates/templates.service';
+import sharp from 'sharp';
+
+const { ZipArchive } = require('archiver');
 
 export enum ReportCardStatus {
   DRAFT = 'DRAFT',
@@ -84,7 +85,6 @@ export class ReportCardService {
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
-    private templatesService: TemplatesService,
   ) {}
 
   private async resolveAcademicYearName(schoolId: string, academicYearId: string) {
@@ -256,6 +256,185 @@ export class ReportCardService {
     } catch {
       return [];
     }
+  }
+
+  private async resolveReportCardGradeDetails(reportCard: {
+    id: string;
+    schoolId: string;
+    studentId: string;
+    classId: string;
+    sectionId: string;
+    academicYear: string;
+    term: string;
+    gradeDetails?: string | null;
+  }): Promise<Array<Record<string, any>>> {
+    const storedDetails = this.parseGradeDetails(reportCard.gradeDetails);
+    if (storedDetails.length > 0) return storedDetails;
+
+    const [academicYearRecord, termRecord] = await Promise.all([
+      this.prisma.academicYear.findFirst({
+        where: {
+          schoolId: reportCard.schoolId,
+          OR: [{ id: reportCard.academicYear }, { name: reportCard.academicYear }],
+        },
+        select: { id: true, name: true },
+      }),
+      this.prisma.term.findFirst({
+        where: {
+          academicYear: {
+            schoolId: reportCard.schoolId,
+            OR: [{ id: reportCard.academicYear }, { name: reportCard.academicYear }],
+          },
+          name: reportCard.term,
+        },
+        select: { id: true, name: true },
+      }),
+    ]);
+
+    const academicYearKeys = Array.from(
+      new Set([academicYearRecord?.id, academicYearRecord?.name, reportCard.academicYear].filter(Boolean) as string[]),
+    );
+
+    if (termRecord) {
+      const subjectGrades = await this.prisma.subjectGrade.findMany({
+        where: {
+          schoolId: reportCard.schoolId,
+          studentId: reportCard.studentId,
+          academicYear: { in: academicYearKeys },
+          termId: termRecord.id,
+        },
+        include: {
+          subject: { select: { id: true, name: true, code: true } },
+          gradeScores: {
+            include: {
+              component: { select: { id: true, code: true, name: true } },
+            },
+            orderBy: [{ component: { createdAt: 'asc' } }],
+          },
+        },
+        orderBy: [{ subject: { name: 'asc' } }],
+      });
+
+      const details = subjectGrades
+        .sort((a, b) => {
+          const bScore = Number(b.classId === reportCard.classId) + Number(b.sectionId === reportCard.sectionId);
+          const aScore = Number(a.classId === reportCard.classId) + Number(a.sectionId === reportCard.sectionId);
+          return bScore - aScore;
+        })
+        .filter((grade, index, allGrades) => {
+          const firstIndex = allGrades.findIndex((item) => item.subjectId === grade.subjectId);
+          if (firstIndex === index) return true;
+          return false;
+        })
+        .filter((grade) => grade.totalScore !== null && grade.totalScore !== undefined)
+        .map((grade) => ({
+          subjectId: grade.subjectId,
+          subjectName: grade.subject.name,
+          subjectCode: grade.subject.code,
+          assessmentBreakdown: (grade.gradeScores || []).map((item) => ({
+            title: item.component?.name || item.component?.code || 'Assessment',
+            type: item.component?.code || '',
+            maxScore: item.maxScore,
+            score: item.score ?? null,
+            status: grade.status,
+          })),
+          caScore: grade.caScore,
+          midScore: grade.midScore,
+          finalScore: grade.finalScore,
+          totalScore: grade.totalScore,
+          gradeLetter: grade.gradeLetter,
+          gradePoint: grade.gradePoint,
+          status: grade.status,
+        }));
+      if (details.length > 0) return details;
+    }
+
+    const grades = await this.prisma.grade.findMany({
+      where: {
+        schoolId: reportCard.schoolId,
+        studentId: reportCard.studentId,
+        academicYear: { in: academicYearKeys },
+        term: reportCard.term,
+        OR: [{ reportCardId: reportCard.id }, { reportCardId: null }],
+      },
+      include: { subject: { select: { id: true, name: true, code: true } } },
+      orderBy: [{ subject: { name: 'asc' } }],
+    });
+
+    const gradeDetails = grades.map((grade) => ({
+      subjectId: grade.subjectId,
+      subjectName: grade.subject.name,
+      subjectCode: grade.subject.code,
+      assessmentBreakdown: [],
+      totalScore: grade.marks,
+      gradeLetter: grade.grade,
+      gradePoint: grade.gradePoint,
+    }));
+    if (gradeDetails.length > 0) return gradeDetails;
+
+    if (academicYearRecord?.id && termRecord) {
+      const assessmentScores = await this.prisma.studentAssessmentScore.findMany({
+        where: {
+          studentId: reportCard.studentId,
+          assessmentSubject: {
+            assessment: {
+              schoolId: reportCard.schoolId,
+              academicYearId: academicYearRecord?.id,
+              termId: termRecord.id,
+            },
+          },
+        },
+        include: {
+          assessmentSubject: {
+            include: {
+              subject: { select: { id: true, name: true, code: true } },
+              assessment: { select: { id: true, title: true, type: true, startDate: true, endDate: true } },
+            },
+          },
+        },
+        orderBy: [{ assessmentSubject: { subject: { name: 'asc' } } }],
+      });
+
+      const scoresBySubject = new Map<string, typeof assessmentScores>();
+      for (const score of assessmentScores) {
+        const subjectId = score.assessmentSubject.subjectId;
+        const bucket = scoresBySubject.get(subjectId) ?? [];
+        bucket.push(score);
+        scoresBySubject.set(subjectId, bucket);
+      }
+
+      const assessmentDetails: Array<Record<string, any>> = [];
+      for (const [subjectId, scores] of scoresBySubject.entries()) {
+        const first = scores[0];
+        const totalScore = scores.reduce((sum, item) => sum + (item.score ?? 0), 0);
+        const { letter, point } = await this.getGradeLetter(reportCard.schoolId, totalScore);
+        assessmentDetails.push({
+          subjectId,
+          subjectName: first.assessmentSubject.subject.name,
+          subjectCode: first.assessmentSubject.subject.code,
+          assessmentBreakdown: scores.map((item) => ({
+            assessmentSubjectId: item.assessmentSubjectId,
+            assessmentId: item.assessmentSubject.assessment.id,
+            title: item.assessmentSubject.assessment.title,
+            type: item.assessmentSubject.assessment.type,
+            maxScore: item.assessmentSubject.maxScore,
+            score: item.score ?? null,
+            isAbsent: item.isAbsent,
+            status: item.status,
+            remarks: item.remarks,
+            startDate: item.assessmentSubject.assessment.startDate,
+            endDate: item.assessmentSubject.assessment.endDate,
+          })),
+          totalScore,
+          gradeLetter: letter,
+          gradePoint: point,
+          status: scores.every((item) => item.status === 'SUBMITTED') ? 'SUBMITTED' : 'DRAFT',
+        });
+      }
+      if (assessmentDetails.length > 0) return assessmentDetails;
+    }
+
+    return [];
   }
 
   private average(values: Array<number | null | undefined>): number | null {
@@ -715,8 +894,6 @@ export class ReportCardService {
       where: {
         schoolId,
         studentId,
-        classId,
-        sectionId,
         academicYear: academicYearName,
         term: termName,
       },
@@ -727,6 +904,8 @@ export class ReportCardService {
       reportCard = await this.prisma.reportCard.update({
         where: { id: existingReportCard.id },
         data: {
+          classId,
+          sectionId,
           totalMarks,
           percentage,
           overallGrade,
@@ -1137,17 +1316,14 @@ export class ReportCardService {
         classCards
           .filter((card) => expectedStudentIds.has(card.studentId))
           .filter((card) => {
-            const details = this.parseGradeDetails(card.gradeDetails);
             return (
-              details.length > 0 &&
               card.percentage !== null &&
-              card.totalMarks !== null &&
-              card.attendancePercentage !== null
+              card.totalMarks !== null
             );
           })
           .map((card) => card.studentId),
       );
-      const incompleteEntries = Math.max(expectedEntries - completeStudentIds.size, 0);
+      const incompleteEntries = Math.max(generatedEntries - completeStudentIds.size, 0);
       const hasIncompleteCards = incompleteEntries > 0;
       const rankingEntries = new Set(
         classCards
@@ -1186,7 +1362,11 @@ export class ReportCardService {
       );
       if (expectedEntries === 0) {
         status = 'no_students';
-      } else if (allExpectedPublished) {
+      } else if (
+        allExpectedPublished &&
+        missingEntries === 0 &&
+        !hasIncompleteCards
+      ) {
         status = 'published';
       } else if (
         allExpectedGenerated &&
@@ -1560,25 +1740,38 @@ export class ReportCardService {
     if (!reportCard) {
       throw new NotFoundException('Report card not found');
     }
+    const gradeDetails = await this.resolveReportCardGradeDetails(reportCard);
 
     return {
       ...reportCard,
-      gradeDetails: reportCard.gradeDetails
-        ? JSON.parse(reportCard.gradeDetails)
-        : [],
+      gradeDetails,
     };
   }
 
   async getCertificateTemplate(schoolId: string) {
-    const school = await this.prisma.school.findUnique({
-      where: { id: schoolId },
-      select: { name: true, phone: true, address: true, logoUrl: true },
-    });
-
-    const stored = await this.prisma.schoolSetting.findFirst({
-      where: { schoolId, key: SCHOOL_SETTING_KEYS.CERTIFICATE_TEMPLATE },
-      select: { value: true },
-    });
+    const now = new Date();
+    const [school, stored, curriculumSetting, activeAcademicYear, assessmentWeights] = await Promise.all([
+      this.prisma.school.findUnique({
+        where: { id: schoolId },
+        select: { name: true, phone: true, address: true, logoUrl: true },
+      }),
+      this.prisma.schoolSetting.findFirst({
+        where: { schoolId, key: SCHOOL_SETTING_KEYS.CERTIFICATE_SETTINGS },
+        select: { value: true },
+      }),
+      this.prisma.schoolSetting.findFirst({
+        where: { schoolId, key: SCHOOL_SETTING_KEYS.CURRICULUM_TYPE },
+        select: { value: true },
+      }),
+      this.prisma.academicYear.findFirst({
+        where: { schoolId, isActive: true },
+        include: { terms: { orderBy: { order: 'asc' } } },
+      }),
+      this.prisma.assessmentWeight.findMany({
+        where: { schoolId, isActive: true },
+        orderBy: { percentage: 'desc' },
+      }),
+    ]);
 
     let template: any = {};
     if (stored?.value) {
@@ -1588,34 +1781,57 @@ export class ReportCardService {
         template = {};
       }
     }
+    const currentPeriod =
+      activeAcademicYear?.terms.find((term) => term.startDate <= now && term.endDate >= now) ||
+      activeAcademicYear?.terms[0] ||
+      null;
 
     return {
       schoolId,
+      curriculumType: String(curriculumSetting?.value || 'SEMESTER').toUpperCase(),
+      currentPeriodName: currentPeriod?.name || '',
+      activeAcademicYearName: activeAcademicYear?.name || '',
+      assessmentColumns: assessmentWeights.map((weight) => ({
+        code: weight.type,
+        name: weight.type
+          .toLowerCase()
+          .split('_')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' '),
+        percentage: weight.percentage,
+      })),
       title: template.title || 'Student Result Certificate',
-      themeColor: template.themeColor || '#1f2937',
-      templateBackgroundUrl: template.templateBackgroundUrl || '',
+      themeColor: template.themeColor || '#1B4F72',
       principalName: template.principalName || '',
       schoolName: template.schoolName || school?.name || '',
       schoolPhone: template.schoolPhone || school?.phone || '',
       schoolAddress: template.schoolAddress || school?.address || '',
-      schoolLogoUrl: template.schoolLogoUrl || school?.logoUrl || '',
+      schoolLogoUrl: school?.logoUrl || '',
+      showRank: template.showRank !== false,
+      showAttendance: template.showAttendance === true,
+      showGPA: template.showGPA === true,
+      useCustomBackground: template.useCustomBackground === true,
+      customBackgroundUrl: template.customBackgroundUrl || '',
     };
   }
 
   async saveCertificateTemplate(schoolId: string, value: Record<string, any>) {
     const normalized = {
       title: String(value.title || 'Student Result Certificate').trim(),
-      themeColor: String(value.themeColor || '#1f2937').trim(),
-      templateBackgroundUrl: String(value.templateBackgroundUrl || '').trim(),
+      themeColor: this.normalizeHexColor(value.themeColor, '#1B4F72'),
       principalName: String(value.principalName || '').trim(),
       schoolName: String(value.schoolName || '').trim(),
       schoolPhone: String(value.schoolPhone || '').trim(),
       schoolAddress: String(value.schoolAddress || '').trim(),
-      schoolLogoUrl: String(value.schoolLogoUrl || '').trim(),
+      showRank: value.showRank !== false,
+      showAttendance: value.showAttendance === true,
+      showGPA: value.showGPA === true,
+      useCustomBackground: value.useCustomBackground === true,
+      customBackgroundUrl: String(value.customBackgroundUrl || '').trim(),
     };
 
     const existing = await this.prisma.schoolSetting.findFirst({
-      where: { schoolId, key: SCHOOL_SETTING_KEYS.CERTIFICATE_TEMPLATE },
+      where: { schoolId, key: SCHOOL_SETTING_KEYS.CERTIFICATE_SETTINGS },
       select: { id: true },
     });
 
@@ -1628,7 +1844,7 @@ export class ReportCardService {
       await this.prisma.schoolSetting.create({
         data: {
           schoolId,
-          key: SCHOOL_SETTING_KEYS.CERTIFICATE_TEMPLATE,
+          key: SCHOOL_SETTING_KEYS.CERTIFICATE_SETTINGS,
           value: JSON.stringify(normalized),
         },
       });
@@ -1637,12 +1853,35 @@ export class ReportCardService {
     return this.getCertificateTemplate(schoolId);
   }
 
+  async uploadCertificateWatermark(schoolId: string, file: Express.Multer.File): Promise<string> {
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.mimetype)) {
+      throw new BadRequestException('Watermark must be a PNG, JPG, or WEBP image');
+    }
+    const extension =
+      file.mimetype === 'image/png' ? '.png' :
+      file.mimetype === 'image/webp' ? '.webp' :
+      '.jpg';
+    const relativeDir = path.join('uploads', 'certificate-watermarks');
+    const publicDir = path.join(process.cwd(), 'public', relativeDir);
+    const fileName = `${schoolId}-${Date.now()}${extension}`;
+    await fs.promises.mkdir(publicDir, { recursive: true });
+    await fs.promises.writeFile(path.join(publicDir, fileName), file.buffer);
+    return `/${relativeDir.split(path.sep).join('/')}/${fileName}`;
+  }
+
   async getCertificatePayload(reportCardId: string, schoolId: string) {
     const template = await this.getCertificateTemplate(schoolId);
     const reportCard = await this.prisma.reportCard.findFirst({
       where: { id: reportCardId, schoolId },
       include: {
-        student: { select: { id: true, name: true, avatarUrl: true } },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+            studentProfile: { select: { studentCode: true, studentId: true } },
+          },
+        },
         class: { select: { id: true, name: true, section: true, grade: true } },
       },
     });
@@ -1650,6 +1889,7 @@ export class ReportCardService {
     if (!reportCard) {
       throw new NotFoundException('Report card not found');
     }
+    const gradeDetails = await this.resolveReportCardGradeDetails(reportCard);
 
     return {
       template,
@@ -1657,304 +1897,307 @@ export class ReportCardService {
         id: reportCard.id,
         term: reportCard.term,
         academicYear: reportCard.academicYear,
+        rank: reportCard.rank,
         rankInClass: reportCard.rankInClass,
         totalMarks: reportCard.totalMarks,
         percentage: reportCard.percentage,
         overallGrade: reportCard.overallGrade,
+        attendancePercentage: reportCard.attendancePercentage,
         student: reportCard.student,
         class: reportCard.class,
-        gradeDetails: this.parseGradeDetails(reportCard.gradeDetails),
+        gradeDetails,
       },
     };
   }
 
-  async uploadCertificateTemplate(
-    schoolId: string,
-    file: Express.Multer.File,
-  ): Promise<string> {
-    const backendPublicDir = path.join(
-      process.cwd(),
-      'public',
-      'uploads',
-      'certificate-templates',
-    );
-    const frontendPublicDir = path.join(
-      process.cwd(),
-      '..',
-      'frontend',
-      'public',
-      'uploads',
-      'certificate-templates',
-    );
-
-    if (!fs.existsSync(backendPublicDir)) {
-      fs.mkdirSync(backendPublicDir, { recursive: true });
-    }
-    if (!fs.existsSync(frontendPublicDir)) {
-      fs.mkdirSync(frontendPublicDir, { recursive: true });
-    }
-
-    const fileName = `${schoolId}-${Date.now()}${path.extname(file.originalname)}`;
-    const backendFilePath = path.join(backendPublicDir, fileName);
-    const frontendFilePath = path.join(frontendPublicDir, fileName);
-
-    fs.writeFileSync(backendFilePath, file.buffer);
-    fs.copyFileSync(backendFilePath, frontendFilePath);
-
-    return `/uploads/certificate-templates/${fileName}`;
-  }
-
-  private resolvePublicAssetPath(urlPath: string): string {
-    const clean = String(urlPath || '').trim().replace(/^\/+/, '');
-    return path.join(process.cwd(), '..', 'frontend', 'public', clean);
-  }
-
   private async getCertificateReadiness(schoolId: string) {
-    const activeTemplate = await this.templatesService.getActiveTemplate(schoolId, 'CERTIFICATE');
-    if (!activeTemplate?.backgroundUrl) {
-      return {
-        certificateReady: false,
-        certificateIssue: 'No active certificate template',
-      };
-    }
-
-    const templatePath = this.resolvePublicAssetPath(activeTemplate.backgroundUrl);
-    if (!fs.existsSync(templatePath)) {
-      return {
-        certificateReady: false,
-        certificateIssue: 'Certificate template file is missing',
-      };
-    }
-
     return {
       certificateReady: true,
       certificateIssue: null,
     };
   }
 
-  async generateCertificatePdf(schoolId: string, reportCardId: string): Promise<Buffer> {
-    const activeTemplate = await this.templatesService.getActiveTemplate(schoolId, 'CERTIFICATE');
-    if (!activeTemplate?.backgroundUrl) {
-      throw new BadRequestException('Activate a certificate template first');
-    }
-    const templatePath = this.resolvePublicAssetPath(activeTemplate.backgroundUrl);
-    if (!fs.existsSync(templatePath)) {
-      throw new NotFoundException('Certificate template file not found');
-    }
+  private normalizeHexColor(value: any, fallback: string) {
+    const raw = String(value || '').trim();
+    return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
+  }
 
+  private hexToRgbColor(value: string) {
+    const raw = this.normalizeHexColor(value, '#1B4F72').replace('#', '');
+    return rgb(
+      parseInt(raw.slice(0, 2), 16) / 255,
+      parseInt(raw.slice(2, 4), 16) / 255,
+      parseInt(raw.slice(4, 6), 16) / 255,
+    );
+  }
+
+  private resolveBackendPublicAssetPath(urlPath: string): string | null {
+    const raw = String(urlPath || '').trim();
+    if (!raw) return null;
+    if (path.isAbsolute(raw) && !raw.includes('..') && fs.existsSync(raw)) return raw;
+    const clean = raw.replace(/^\/+/, '');
+    if (!clean || clean.includes('..')) return null;
+    const candidates = [
+      path.join(process.cwd(), 'public', clean),
+      path.join(process.cwd(), 'backend', 'public', clean),
+      path.join(process.cwd(), 'frontend', 'public', clean),
+      path.resolve(__dirname, '..', '..', 'public', clean),
+      path.resolve(__dirname, '..', '..', '..', 'frontend', 'public', clean),
+      path.join(process.cwd(), '..', 'frontend', 'public', clean),
+    ];
+    return candidates.find((candidate) => fs.existsSync(candidate)) || null;
+  }
+
+  async generateCertificatePdf(schoolId: string, reportCardId: string): Promise<Buffer> {
     const payload = await this.getCertificatePayload(reportCardId, schoolId);
-    const templateBytes = fs.readFileSync(templatePath);
-    const pdfDoc = await PDFDocument.load(templateBytes);
-    const page = pdfDoc.getPage(0);
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595, 842]);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const { width, height } = page.getSize();
-    const fieldMap: any[] = (() => {
+    const theme = this.hexToRgbColor(payload.template.themeColor);
+    const darkText = rgb(0.08, 0.1, 0.14);
+    const mutedText = rgb(0.38, 0.42, 0.48);
+    const lightBorder = rgb(0.74, 0.84, 0.93);
+    const surface = rgb(0.96, 0.98, 1);
+    const margin = 32;
+    const contentW = width - margin * 2;
+
+    const pdfText = (text: any) =>
+      String(text ?? '')
+        .normalize('NFKD')
+        .replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u00FF]/g, '')
+        .trim();
+    const drawText = (text: string, x: number, y: number, size = 10, textFont = font, color = darkText) => {
+      page.drawText(pdfText(text), { x, y, size, font: textFont, color });
+    };
+    const truncate = (text: any, maxWidth: number, size: number, textFont = font) => {
+      const raw = pdfText(text);
+      if (textFont.widthOfTextAtSize(raw, size) <= maxWidth) return raw;
+      let value = raw;
+      while (value.length > 1 && textFont.widthOfTextAtSize(`${value}...`, size) > maxWidth) {
+        value = value.slice(0, -1);
+      }
+      return `${value}...`;
+    };
+    const drawCenteredText = (text: string, centerX: number, y: number, size = 10, textFont = font, color = darkText) => {
+      const value = pdfText(text);
+      page.drawText(value, {
+        x: centerX - textFont.widthOfTextAtSize(value, size) / 2,
+        y,
+        size,
+        font: textFont,
+        color,
+      });
+    };
+    const readImageBytes = async (url: string | undefined): Promise<Buffer | null> => {
+      const clean = String(url || '').trim();
+      if (!clean) return null;
+      if (clean.startsWith('data:image/')) {
+        const encoded = clean.split(',')[1];
+        return encoded ? Buffer.from(encoded, 'base64') : null;
+      }
+      const assetPath = this.resolveBackendPublicAssetPath(clean);
+      if (!assetPath || !fs.existsSync(assetPath)) return null;
+      return fs.readFileSync(assetPath);
+    };
+    const embedImage = async (url: string | undefined) => {
+      const bytes = await readImageBytes(url);
+      if (!bytes) return null;
       try {
-        return activeTemplate.fieldMapJson ? JSON.parse(activeTemplate.fieldMapJson) : [];
+        const lower = String(url || '').toLowerCase();
+        if (lower.endsWith('.png') || lower.includes('image/png')) return await pdfDoc.embedPng(bytes);
+        if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.includes('image/jpeg') || lower.includes('image/jpg')) return await pdfDoc.embedJpg(bytes);
+        return await pdfDoc.embedPng(await sharp(bytes).png().toBuffer());
       } catch {
-        return [];
-      }
-    })();
-
-    const valueFor = (key: string) => {
-      const studentName = payload.reportCard.student?.name || '';
-      const className = payload.reportCard.class?.name || '';
-      const year = payload.reportCard.academicYear || '';
-      const term = payload.reportCard.term || '';
-      const totalMarks = payload.reportCard.totalMarks ?? '-';
-      const percentage = payload.reportCard.percentage ?? '-';
-      const grade = payload.reportCard.overallGrade ?? '-';
-      const rank = payload.reportCard.rankInClass ?? '-';
-      const schoolName = payload.template.schoolName || '';
-      switch (key) {
-        case 'student_name': return studentName;
-        case 'class':
-        case 'grade': return className;
-        case 'section': return payload.reportCard.class?.section || '';
-        case 'academic_year': return year;
-        case 'issue_date': return new Date().toISOString().slice(0, 10);
-        case 'cert_id': return payload.reportCard.id || '';
-        case 'school_name': return schoolName;
-        case 'term': return term;
-        case 'total_marks': return String(totalMarks);
-        case 'percentage': return String(percentage);
-        case 'grade': return String(grade);
-        case 'ranking':
-        case 'rank': return String(rank);
-        case 'school_address': return payload.template.schoolAddress || '';
-        case 'school_phone': return payload.template.schoolPhone || '';
-        case 'school_email': return '';
-        case 'title': return payload.template.title || 'Student Result Certificate';
-        case 'principal_name': return payload.template.principalName || '';
-        default: return '';
+        return null;
       }
     };
-
-    const templateConfig = fieldMap.reduce<Record<string, string>>((acc, field) => {
-      if (field?.field_key && field.value !== undefined) {
-        acc[String(field.field_key)] = String(field.value);
-      }
-      return acc;
-    }, {});
-    const renderTemplateText = (input: string) =>
-      String(input || '').replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_match, key) => valueFor(key));
-    const drawWrappedText = (
-      text: string,
-      x: number,
-      y: number,
-      maxWidth: number,
-      size: number,
-      textFont = font,
-      lineHeight = size * 1.35,
-    ) => {
-      const words = renderTemplateText(text).split(/\s+/).filter(Boolean);
-      let line = '';
-      let cursorY = y;
-      for (const word of words) {
-        const next = line ? `${line} ${word}` : word;
-        if (textFont.widthOfTextAtSize(next, size) > maxWidth && line) {
-          page.drawText(line, { x, y: cursorY, size, font: textFont, color: rgb(0, 0, 0) });
-          cursorY -= lineHeight;
-          line = word;
-        } else {
-          line = next;
-        }
-      }
-      if (line) {
-        page.drawText(line, { x, y: cursorY, size, font: textFont, color: rgb(0, 0, 0) });
+    const drawRemoteImage = async (url: string | undefined, x: number, y: number, w: number, h: number, opacity = 1) => {
+      const image = await embedImage(url);
+      if (!image) return;
+      try {
+        page.drawImage(image, { x, y, width: w, height: h });
+        if (opacity < 1) page.drawRectangle({ x, y, width: w, height: h, opacity: 1 - opacity, color: rgb(1, 1, 1) });
+      } catch {
+        return;
       }
     };
-
-    const drawAlignedText = (
-      text: string,
-      x: number,
-      y: number,
-      boxWidth: number,
-      size: number,
-      align: 'left' | 'center' | 'right',
-      textFont = font,
-    ) => {
-      const rendered = renderTemplateText(text);
-      if (!rendered) return;
-      const textWidth = textFont.widthOfTextAtSize(rendered, size);
-      const resolvedX =
-        align === 'center' ? x + (boxWidth - textWidth) / 2 : align === 'right' ? x + boxWidth - textWidth : x;
-      page.drawText(rendered, { x: resolvedX, y, size, font: textFont, color: rgb(0, 0, 0) });
+    const drawWatermark = async () => {
+      if (!payload.template.useCustomBackground || !payload.template.customBackgroundUrl) return;
+      const image = await embedImage(payload.template.customBackgroundUrl);
+      if (!image) return;
+      const watermarkW = width * 0.58;
+      const watermarkH = watermarkW * (image.height / image.width);
+      page.drawImage(image, {
+        x: (width - watermarkW) / 2,
+        y: (height - watermarkH) / 2,
+        width: watermarkW,
+        height: watermarkH,
+        opacity: 0.1,
+      });
+    };
+    const gradeClassColor = (letter: string) => {
+      const first = String(letter || '').charAt(0).toUpperCase();
+      if (first === 'A') return { bg: rgb(0.92, 0.97, 0.87), fg: rgb(0.23, 0.43, 0.07) };
+      if (first === 'B') return { bg: rgb(0.9, 0.95, 0.99), fg: rgb(0.09, 0.37, 0.65) };
+      if (first === 'C') return { bg: rgb(0.98, 0.93, 0.86), fg: rgb(0.52, 0.31, 0.04) };
+      if (first === 'D') return { bg: rgb(0.99, 0.92, 0.92), fg: rgb(0.64, 0.18, 0.18) };
+      return { bg: rgb(0.96, 0.78, 0.78), fg: rgb(0.48, 0, 0) };
     };
 
-    const hasContentConfig = [
-      'headerLeftText',
-      'headerCenterText',
-      'headerRightText',
-      'bodyText',
-      'footerLeftText',
-      'footerCenterText',
-      'footerRightText',
-    ].some((key) => templateConfig[key]);
+    page.drawRectangle({ x: 0, y: 0, width, height, color: rgb(1, 1, 1) });
+    await drawWatermark();
+    page.drawRectangle({ x: 0.5, y: 0.5, width: width - 1, height: height - 1, borderColor: rgb(0.86, 0.88, 0.9), borderWidth: 0.5 });
 
-    if (hasContentConfig) {
-      const marginX = width * 0.06;
-      const innerWidth = width - marginX * 2;
-      const headerTopY = height * 0.92;
-      const bodyTopY = height * (1 - (Number(templateConfig.headerHeight || 18) + 8) / 100);
-      const footerY = height * 0.08;
-      const colWidth = innerWidth / 3;
-      drawAlignedText(templateConfig.headerLeftText || '', marginX, headerTopY, colWidth, 9, 'left', font);
-      drawAlignedText(templateConfig.headerCenterText || '', marginX + colWidth, headerTopY, colWidth, 14, 'center', bold);
-      drawAlignedText(templateConfig.headerRightText || '', marginX + colWidth * 2, headerTopY, colWidth, 9, 'right', font);
-      drawWrappedText(
-        templateConfig.bodyText || '',
-        width * ((100 - Number(templateConfig.bodyWidth || 82)) / 200),
-        bodyTopY,
-        width * (Number(templateConfig.bodyWidth || 82) / 100),
-        12,
-        font,
-        17,
-      );
-      drawAlignedText(templateConfig.footerLeftText || '', marginX, footerY, colWidth, 9, 'left', font);
-      drawAlignedText(templateConfig.footerCenterText || '', marginX + colWidth, footerY, colWidth, 9, 'center', font);
-      drawAlignedText(templateConfig.footerRightText || '', marginX + colWidth * 2, footerY, colWidth, 9, 'right', font);
+    const headerY = height - 86;
+    page.drawEllipse({ x: margin + 28, y: headerY + 8, xScale: 28, yScale: 28, borderColor: theme, borderWidth: 1.5 });
+    await drawRemoteImage(payload.template.schoolLogoUrl, margin + 8, headerY - 12, 40, 40);
+    drawCenteredText(payload.template.schoolName || 'School Name', width / 2, headerY + 18, 16, bold, theme);
+    drawCenteredText(
+      [payload.template.schoolAddress, payload.template.schoolPhone].filter(Boolean).join('  •  '),
+      width / 2,
+      headerY + 2,
+      10,
+      font,
+      mutedText,
+    );
+    drawText('Year', width - margin - 112, headerY + 24, 9, font, mutedText);
+    drawText(String(payload.reportCard.academicYear || '-'), width - margin - 58, headerY + 24, 9, bold, theme);
+    drawText('Period', width - margin - 112, headerY + 8, 9, font, mutedText);
+    drawText(String(payload.reportCard.term || '-'), width - margin - 58, headerY + 8, 9, bold, theme);
+    drawText('Date', width - margin - 112, headerY - 8, 9, font, mutedText);
+    drawText(new Date().toISOString().slice(0, 10), width - margin - 58, headerY - 8, 9, bold, theme);
+
+    const titleY = headerY - 48;
+    page.drawRectangle({ x: 0, y: titleY, width, height: 28, color: theme });
+    drawCenteredText(payload.template.title || 'Student Report Card', width / 2, titleY + 9, 13, bold, rgb(1, 1, 1));
+
+    const bodyTop = titleY - 24;
+    const classLabel = [payload.reportCard.class?.name, payload.reportCard.class?.section].filter(Boolean).join(' ');
+    const studentCode =
+      payload.reportCard.student?.studentProfile?.studentCode ||
+      payload.reportCard.student?.studentProfile?.studentId ||
+      payload.reportCard.student?.id ||
+      '-';
+    const infoCells = [
+      ['Full name', payload.reportCard.student?.name || '-'],
+      ['Student ID', studentCode],
+      ['Class', classLabel || '-'],
+      ['Academic Year / Period', `${payload.reportCard.academicYear || '-'} / ${payload.reportCard.term || '-'}`],
+    ];
+    const cellW = contentW / 2;
+    const cellH = 38;
+    infoCells.forEach(([label, value], index) => {
+      const col = index % 2;
+      const row = Math.floor(index / 2);
+      const x = margin + col * cellW;
+      const y = bodyTop - (row + 1) * cellH;
+      page.drawRectangle({ x, y, width: cellW, height: cellH, borderColor: lightBorder, borderWidth: 0.5 });
+      drawText(label.toUpperCase(), x + 12, y + 22, 8, font, mutedText);
+      drawText(truncate(value, cellW - 24, 11, bold), x + 12, y + 8, 11, bold, darkText);
+    });
+
+    const grades = payload.reportCard.gradeDetails || [];
+    const assessmentColumns = Array.from(new Map(
+      grades
+        .flatMap((grade: any) => Array.isArray(grade.assessmentBreakdown) ? grade.assessmentBreakdown : [])
+        .map((item: any) => [String(item.type || item.title || 'Assessment').toUpperCase(), {
+          key: String(item.type || item.title || 'Assessment').toUpperCase(),
+          label: String(item.title || item.type || 'Assessment'),
+          maxScore: item.maxScore,
+        }]),
+    ).values()).slice(0, 5);
+
+    const tableX = margin;
+    const tableTop = bodyTop - cellH * 2 - 22;
+    const tableW = contentW;
+    const rowH = 22;
+    const noW = 26;
+    const totalW = 54;
+    const gradeW = 54;
+    const assessmentW = assessmentColumns.length ? Math.min(58, Math.max(44, (tableW - noW - 190 - totalW - gradeW) / assessmentColumns.length)) : 0;
+    const subjectW = tableW - noW - totalW - gradeW - assessmentW * assessmentColumns.length;
+    page.drawRectangle({ x: tableX, y: tableTop, width: tableW, height: rowH, color: theme });
+    let cursorX = tableX;
+    drawCenteredText('#', cursorX + noW / 2, tableTop + 7, 9, bold, rgb(1, 1, 1)); cursorX += noW;
+    drawText('Subject', cursorX + 8, tableTop + 7, 9, bold, rgb(1, 1, 1)); cursorX += subjectW;
+    assessmentColumns.forEach((column) => {
+      drawCenteredText(truncate(column.label, assessmentW - 4, 8, bold), cursorX + assessmentW / 2, tableTop + 7, 8, bold, rgb(1, 1, 1));
+      cursorX += assessmentW;
+    });
+    drawCenteredText('Total', cursorX + totalW / 2, tableTop + 7, 9, bold, rgb(1, 1, 1)); cursorX += totalW;
+    drawCenteredText('Grade', cursorX + gradeW / 2, tableTop + 7, 9, bold, rgb(1, 1, 1));
+    let rowY = tableTop - rowH;
+    for (const [index, grade] of grades.slice(0, 14).entries()) {
+      page.drawRectangle({
+        x: tableX,
+        y: rowY,
+        width: tableW,
+        height: rowH,
+        color: index % 2 === 0 ? rgb(1, 1, 1) : surface,
+        borderColor: lightBorder,
+        borderWidth: 0.5,
+      });
+      cursorX = tableX;
+      drawCenteredText(String(index + 1), cursorX + noW / 2, rowY + 7, 8.5, font, darkText); cursorX += noW;
+      drawText(truncate(grade.subjectName || '', subjectW - 12, 9, font), cursorX + 8, rowY + 7, 9, font, darkText); cursorX += subjectW;
+      assessmentColumns.forEach((column) => {
+        const match = (grade.assessmentBreakdown || []).find((item: any) =>
+          String(item.type || item.title || 'Assessment').toUpperCase() === column.key,
+        );
+        drawCenteredText(match?.score ?? '-', cursorX + assessmentW / 2, rowY + 7, 8.5, font, darkText);
+        cursorX += assessmentW;
+      });
+      drawCenteredText(String(grade.totalScore ?? '-'), cursorX + totalW / 2, rowY + 7, 9, bold, darkText); cursorX += totalW;
+      const gradeText = String(grade.gradeLetter || '-');
+      const colors = gradeClassColor(gradeText);
+      page.drawRectangle({ x: cursorX + 12, y: rowY + 4, width: gradeW - 24, height: 14, color: colors.bg });
+      drawCenteredText(gradeText, cursorX + gradeW / 2, rowY + 7, 8.5, bold, colors.fg);
+      rowY -= rowH;
     }
 
-    const drawGradesTable = (x: number, yTop: number, w: number, h: number) => {
-      const startY = yTop;
-      const bottomY = yTop - h;
-      let rowY = startY;
-      const col1 = x;
-      const col2 = x + w * 0.66;
-      const col3 = x + w * 0.84;
-      page.drawText('Subject', { x: col1, y: rowY, size: 10, font: bold });
-      page.drawText('Total', { x: col2, y: rowY, size: 10, font: bold });
-      page.drawText('Grade', { x: col3, y: rowY, size: 10, font: bold });
-      rowY -= 14;
-      for (const g of (payload.reportCard.gradeDetails || []).slice(0, 24)) {
-        if (rowY < bottomY + 10) break;
-        page.drawText(String(g.subjectName || ''), { x: col1, y: rowY, size: 9, font });
-        page.drawText(String(g.totalScore ?? ''), { x: col2, y: rowY, size: 9, font });
-        page.drawText(String(g.gradeLetter || ''), { x: col3, y: rowY, size: 9, font });
-        rowY -= 12;
-      }
-    };
+    const footerTop = 108;
+    const summaryY = footerTop + 82;
+    page.drawRectangle({ x: tableX, y: summaryY, width: tableW, height: rowH, color: rgb(0.92, 0.96, 0.99), borderColor: lightBorder, borderWidth: 0.5 });
+    drawText('Average', tableX + noW + 8, summaryY + 7, 9, bold, mutedText);
+    drawCenteredText(String(payload.reportCard.percentage ?? '-'), tableX + tableW - gradeW - totalW / 2, summaryY + 7, 9, bold, theme);
+    drawCenteredText(String(payload.reportCard.overallGrade || '-'), tableX + tableW - gradeW / 2, summaryY + 7, 9, bold, theme);
 
-    if (Array.isArray(fieldMap) && fieldMap.length > 0) {
-      for (const f of fieldMap) {
-        const x = width * (Number(f.x_percent ?? 0) / 100);
-        const y = height * (1 - Number(f.y_percent ?? 0) / 100);
-        const w = width * (Number(f.width_percent ?? 0) / 100 || 0.16);
-        const h = height * (Number(f.height_percent ?? 0) / 100 || 0.14);
-        const size = Number(f.font_size ?? 10);
-        const raw = String(f.font_color || '#000000').replace('#', '');
-        const r = parseInt(raw.slice(0, 2) || '00', 16) / 255;
-        const g = parseInt(raw.slice(2, 4) || '00', 16) / 255;
-        const b = parseInt(raw.slice(4, 6) || '00', 16) / 255;
-        const key = String(f.field_key || '');
+    const bottomY = footerTop + 18;
+    const boxW = (contentW - 12) / 2;
+    page.drawRectangle({ x: margin, y: bottomY, width: boxW, height: 52, borderColor: lightBorder, borderWidth: 0.5 });
+    drawText('SUMMARY', margin + 12, bottomY + 35, 8, font, theme);
+    const summaryItems = [
+      ['Average', `${payload.reportCard.percentage ?? '-'}%`],
+      payload.template.showRank ? ['Rank', `${payload.reportCard.rank ?? payload.reportCard.rankInClass ?? '-'}`] : null,
+      ['Grade', payload.reportCard.overallGrade || '-'],
+      payload.template.showAttendance ? ['Attendance', `${payload.reportCard.attendancePercentage ?? '-'}%`] : null,
+      payload.template.showGPA ? ['GPA', '-'] : null,
+    ].filter(Boolean) as string[][];
+    summaryItems.forEach(([label, value], index) => {
+      const x = margin + 12 + (index % 3) * 92;
+      const y = bottomY + 20 - Math.floor(index / 3) * 14;
+      drawText(`${label}:`, x, y, 8, bold, mutedText);
+      drawText(value, x + 46, y, 8.5, bold, theme);
+    });
 
-        if (key === 'marks_table') {
-          drawGradesTable(x, y, w, h);
-          continue;
-        }
+    page.drawRectangle({ x: margin + boxW + 12, y: bottomY, width: boxW, height: 52, borderColor: lightBorder, borderWidth: 0.5 });
+    drawText('REMARKS', margin + boxW + 24, bottomY + 35, 8, font, theme);
+    drawText('Teacher remark: entered from report card record.', margin + boxW + 24, bottomY + 21, 8.5, font, darkText);
+    drawText('Principal remark: entered from report card record.', margin + boxW + 24, bottomY + 8, 8.5, font, darkText);
 
-        if (key === 'school_logo' && payload.template.schoolLogoUrl) {
-          try {
-            const logoPath = this.resolvePublicAssetPath(payload.template.schoolLogoUrl);
-            if (fs.existsSync(logoPath)) {
-              const logoBytes = fs.readFileSync(logoPath);
-              const isPng = payload.template.schoolLogoUrl.toLowerCase().endsWith('.png');
-              const img = isPng ? await pdfDoc.embedPng(logoBytes) : await pdfDoc.embedJpg(logoBytes);
-              page.drawImage(img, { x, y: y - h, width: w, height: h });
-            }
-          } catch {}
-          continue;
-        }
-
-        const text = String(valueFor(key));
-        if (!text) continue;
-        page.drawText(text, {
-          x,
-          y,
-          size,
-          font: f.bold ? bold : font,
-          color: rgb(r, g, b),
-        });
-      }
-    } else {
-      page.drawText(payload.template.title || 'Student Result Certificate', {
-        x: width * 0.07, y: height * 0.9, size: 16, font: bold, color: rgb(0, 0, 0),
-      });
-      page.drawText(payload.template.schoolName || '', { x: width * 0.07, y: height * 0.865, size: 11, font });
-      page.drawText(`${payload.template.schoolAddress || ''} ${payload.template.schoolPhone || ''}`.trim(), {
-        x: width * 0.07, y: height * 0.845, size: 9, font,
-      });
-
-      page.drawText(`Student: ${payload.reportCard.student?.name || ''}`, { x: width * 0.07, y: height * 0.78, size: 12, font: bold });
-      page.drawText(`Class: ${payload.reportCard.class?.name || ''}`, { x: width * 0.07, y: height * 0.755, size: 10, font });
-      page.drawText(`Academic Year: ${payload.reportCard.academicYear || ''}`, { x: width * 0.07, y: height * 0.735, size: 10, font });
-      page.drawText(`Term: ${payload.reportCard.term || ''}`, { x: width * 0.07, y: height * 0.715, size: 10, font });
-      page.drawText(`Total Marks: ${payload.reportCard.totalMarks ?? '-'}`, { x: width * 0.07, y: height * 0.695, size: 10, font });
-      page.drawText(`Rank: ${payload.reportCard.rankInClass ?? '-'}`, { x: width * 0.07, y: height * 0.675, size: 10, font });
-      drawGradesTable(width * 0.07, height * 0.62, width * 0.78, height * 0.5);
-    }
+    const sigY = 36;
+    page.drawLine({ start: { x: margin + 8, y: sigY + 28 }, end: { x: margin + 170, y: sigY + 28 }, thickness: 0.6, color: theme });
+    page.drawLine({ start: { x: width / 2 - 80, y: sigY + 28 }, end: { x: width / 2 + 80, y: sigY + 28 }, thickness: 0.6, color: theme });
+    page.drawLine({ start: { x: width - margin - 170, y: sigY + 28 }, end: { x: width - margin - 8, y: sigY + 28 }, thickness: 0.6, color: theme });
+    drawCenteredText('Class Teacher', margin + 89, sigY + 13, 9, bold, theme);
+    drawCenteredText(payload.template.principalName || 'Principal', width / 2, sigY + 13, 9, bold, theme);
+    drawCenteredText('School Stamp', width - margin - 89, sigY + 13, 9, bold, theme);
+    drawCenteredText('Signature', margin + 89, sigY, 8, font, mutedText);
+    drawCenteredText('Principal Signature', width / 2, sigY, 8, font, mutedText);
+    drawCenteredText('Official Seal', width - margin - 89, sigY, 8, font, mutedText);
+    drawCenteredText(`RC-${payload.reportCard.id}`, width / 2, 12, 7.5, font, rgb(0.65, 0.65, 0.65));
 
     return Buffer.from(await pdfDoc.save());
   }
@@ -1963,17 +2206,33 @@ export class ReportCardService {
     const ids = (reportCardIds || []).filter(Boolean);
     if (!ids.length) throw new BadRequestException('No report card IDs provided');
     const chunks: Buffer[] = [];
-    const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.on('data', (d) => chunks.push(d));
-    await Promise.all(ids.map(async (id) => {
-      const pdf = await this.generateCertificatePdf(schoolId, id);
-      archive.append(pdf, { name: `certificate-${id}.pdf` });
-    }));
-    await archive.finalize();
-    return await new Promise<Buffer>((resolve, reject) => {
-      archive.on('end', () => resolve(Buffer.concat(chunks)));
+    const archive = new ZipArchive({ zlib: { level: 9 } });
+    const done = new Promise<Buffer>((resolve, reject) => {
+      archive.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+      archive.on('warning', (err) => {
+        if ((err as any).code === 'ENOENT') return;
+        reject(err);
+      });
       archive.on('error', reject);
+      archive.on('end', () => resolve(Buffer.concat(chunks)));
     });
+    const failures: string[] = [];
+    for (const id of ids) {
+      try {
+        const pdf = await this.generateCertificatePdf(schoolId, id);
+        archive.append(pdf, { name: `report-card-${id}.pdf` });
+      } catch (error: any) {
+        failures.push(`${id}: ${error?.message || 'Failed to generate PDF'}`);
+      }
+    }
+    if (failures.length === ids.length) {
+      throw new BadRequestException('No report card PDFs could be generated');
+    }
+    if (failures.length) {
+      archive.append(failures.join('\n'), { name: 'download-errors.txt' });
+    }
+    await archive.finalize();
+    return done;
   }
 
   /**
@@ -2094,12 +2353,9 @@ export class ReportCardService {
     }
 
     const isCompleteReportCard = (card: (typeof reportCards)[number]) => {
-      const details = this.parseGradeDetails(card.gradeDetails);
       return (
-        details.length > 0 &&
         card.percentage !== null &&
-        card.totalMarks !== null &&
-        card.attendancePercentage !== null
+        card.totalMarks !== null
       );
     };
 

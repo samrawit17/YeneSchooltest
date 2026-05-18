@@ -165,6 +165,8 @@ export const credentialsAPI = {
       name: string;
       email?: string;
       phone?: string;
+      motherName?: string;
+      motherPhone?: string;
       parentEmail?: string;
       gender?: string;
       generateCredentials?: boolean;

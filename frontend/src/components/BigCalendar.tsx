@@ -156,11 +156,18 @@ const BigCalendar = ({
   };
 
   // Event styling for light/dark mode
-  const getEventStyle = () => {
+  const getEventStyle = (event: { resource?: CalendarDisplayEvent }) => {
     const isDark = document.documentElement.classList.contains('dark');
+    const eventType = event.resource?.eventType;
+    const attendanceColors: Record<string, string> = {
+      ATTENDANCE_PRESENT: "#16a34a",
+      ATTENDANCE_ABSENT: "#dc2626",
+      ATTENDANCE_LATE: "#ca8a04",
+      ATTENDANCE_EXCUSED: "#2563eb",
+    };
     return {
       style: {
-        backgroundColor: "var(--brand-color, #e35336)",
+        backgroundColor: attendanceColors[eventType || ""] || "var(--brand-color, #e35336)",
         borderRadius: screenSize === 'xs' ? "2px" : "4px",
         color: "white",
         border: "none",
