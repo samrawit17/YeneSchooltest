@@ -120,6 +120,12 @@ const ATTENDANCE_STATUS_PRIORITY: Record<string, number> = {
   PRESENT: 1,
 };
 
+const getSelectedYearName = (
+  selectedYear: string,
+  academicYears: Array<{ id: string; name: string }>,
+) =>
+  academicYears.find((year) => year.id === selectedYear)?.name || selectedYear;
+
 const formatStatusLabel = (status: string) =>
   status.charAt(0) + status.slice(1).toLowerCase();
 

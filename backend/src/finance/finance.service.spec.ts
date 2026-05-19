@@ -228,7 +228,7 @@ describe('FinanceService critical payment flows', () => {
     });
   });
 
-  it('rejects duplicate payment for the same selected annual-fee term', async () => {
+  it('allows recording the full remaining annual fee even when a term is selected', async () => {
     const tx: any = {
       studentFee: {
         findUnique: jest.fn().mockResolvedValue({
@@ -239,7 +239,70 @@ describe('FinanceService critical payment flows', () => {
           termId: null,
           finalAmount: 9000,
           status: PaymentStatus.PARTIAL,
-          payments: [{ termId: 'term-3', amountPaid: 3000 }],
+          payments: [{ termId: 'term-3', amountPaid: 4000 }],
+        }),
+        update: jest.fn(),
+      },
+      term: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'term-3' }),
+        count: jest.fn().mockResolvedValue(3),
+      },
+      schoolSetting: {
+        findFirst: jest.fn(),
+      },
+      payment: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          id: 'payment-2',
+          receiptNumber: 'RCPT-2',
+        }),
+      },
+      receipt: {
+        create: jest.fn(),
+      },
+      financeAuditLog: {
+        create: jest.fn(),
+      },
+    };
+    const { service } = createService(tx);
+
+    await service.recordPayment(
+      { id: 'finance-user-1' },
+      {
+        schoolId: 'school-1',
+        studentFeeId: 'fee-1',
+        studentId: 'student-user-1',
+        termId: 'term-3',
+        amountPaid: 5000,
+        paymentMethod: 'BANK_TRANSFER',
+      },
+    );
+
+    expect(tx.payment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        termId: 'term-3',
+        studentFeeId: 'fee-1',
+        amountPaid: 5000,
+      }),
+    });
+    expect(tx.studentFee.update).toHaveBeenCalledWith({
+      where: { id: 'fee-1' },
+      data: { status: PaymentStatus.PAID },
+    });
+  });
+
+  it('rejects annual-fee payments that exceed the remaining annual balance', async () => {
+    const tx: any = {
+      studentFee: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'fee-1',
+          schoolId: 'school-1',
+          studentId: 'student-user-1',
+          academicYearId: 'year-1',
+          termId: null,
+          finalAmount: 9000,
+          status: PaymentStatus.PARTIAL,
+          payments: [{ termId: 'term-1', amountPaid: 4000 }],
         }),
       },
       term: {
@@ -260,11 +323,11 @@ describe('FinanceService critical payment flows', () => {
           studentFeeId: 'fee-1',
           studentId: 'student-user-1',
           termId: 'term-3',
-          amountPaid: 3000,
+          amountPaid: 6000,
           paymentMethod: 'BANK_TRANSFER',
         },
       ),
-    ).rejects.toThrow('This term or semester is already fully paid');
+    ).rejects.toThrow('Amount exceeds the remaining annual fee balance. Remaining: 5000');
   });
 
   it('school-scopes student fee summary lookup, academic year, and term', async () => {

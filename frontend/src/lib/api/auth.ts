@@ -4,6 +4,8 @@ export const authAPI = {
   login: (loginIdentifier: string, password: string) =>
     api.post('/auth/login', { loginIdentifier, password }),
 
+  logout: () => api.post('/auth/logout'),
+
   registerAdmin: (data: { email: string; password: string; name: string; schoolId: string }) =>
     api.post('/auth/register/admin', data),
 

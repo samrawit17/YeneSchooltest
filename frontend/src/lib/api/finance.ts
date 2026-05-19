@@ -73,8 +73,15 @@ export const financeAPI = {
   }) => api.get('/finance/reports/daily', { params }),
   getMonthlyReport: (schoolId: string, month: number, year: number) =>
     api.get('/finance/reports/monthly', { params: { schoolId, month, year } }),
-  getOutstandingBalances: (schoolId: string, academicYearId: string, termId?: string) =>
-    api.get('/finance/reports/outstanding', { params: { schoolId, academicYearId, termId } }),
+  getOutstandingBalances: (
+    schoolId: string,
+    academicYearId: string,
+    termId?: string,
+    calendarType?: 'ETHIOPIAN' | 'GREGORIAN',
+  ) =>
+    api.get('/finance/reports/outstanding', {
+      params: { schoolId, academicYearId, termId, calendarType },
+    }),
   getStudentPaymentHistory: (studentId: string, schoolId: string) =>
     api.get(`/finance/reports/student/${studentId}/history`, { params: { schoolId } }),
   getStudentFees: (studentId: string, schoolId: string, academicYearId?: string, termId?: string) =>

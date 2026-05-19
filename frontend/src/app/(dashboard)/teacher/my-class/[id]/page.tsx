@@ -10,10 +10,7 @@ import {
   Search,
   ArrowLeft,
   Loader2,
-  Mail,
   Phone,
-  GraduationCap,
-  Eye,
 } from "lucide-react";
 
 import {
@@ -51,6 +48,7 @@ interface Student {
   avatarUrl?: string;
   studentCode?: string;
   rollNumber?: string;
+  parentPhone?: string | null;
   section?: {
     id: string;
     name: string;
@@ -280,14 +278,14 @@ const ClassStudentsPage = () => {
                       <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3">Gender</TableHead>
                       <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3 hidden md:table-cell">Section</TableHead>
                       <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3 hidden lg:table-cell">Contact</TableHead>
-                      <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredStudents.map((student) => (
                       <TableRow
                         key={student.id}
-                        className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                        className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/list/students/${student.id}`)}
                       >
                         <TableCell className="px-4 py-3">
                           <span className="text-sm font-semibold text-black dark:text-blue-400 min-w-[50px] inline-block">
@@ -333,28 +331,13 @@ const ClassStudentsPage = () => {
                         </TableCell>
                         <TableCell className="px-4 py-3 hidden lg:table-cell">
                           <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-                            {student.phone && (
+                            {student.parentPhone && (
                               <span className="flex items-center gap-1.5">
-                                <Phone className="w-3.5 h-3.5" /> {student.phone}
+                                <Phone className="w-3.5 h-3.5" /> {student.parentPhone}
                               </span>
                             )}
-                            {student.email && (
-                              <span className="flex items-center gap-1.5 truncate max-w-[180px]">
-                                <Mail className="w-3.5 h-3.5 shrink-0" /> {student.email}
-                              </span>
-                            )}
-                            {!student.phone && !student.email && "-"}
+                            {!student.parentPhone && "-"}
                           </div>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/list/students/${student.id}`)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Eye className="w-4 h-4 text-gray-400" />
-                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

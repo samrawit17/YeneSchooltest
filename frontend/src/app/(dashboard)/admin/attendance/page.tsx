@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { useTranslations } from "@/hooks/useTranslations";
 import { attendanceAPI, classesAPI, gradingAPI } from "@/lib/api";
+import { formatDateByCalendarType } from "@/lib/calendar-utils";
 import { toast } from "sonner";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
 import DynamicChart from "@/components/charts/DynamicChart";
@@ -62,7 +63,17 @@ import TableSearch from "@/components/TableSearch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // Missing Classes component
-function MissingClasses({ date, grade, section }: { date: string; grade: string; section: string }) {
+function MissingClasses({
+  date,
+  grade,
+  section,
+  disableNotifyReason,
+}: {
+  date: string;
+  grade: string;
+  section: string;
+  disableNotifyReason?: string;
+}) {
   const { t } = useTranslations<any>("attendance");
   const [data, setData] = useState<Array<{ id: string; name: string; grade: number; section: string }>>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -94,8 +105,24 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
   const handleNotifyAllTeachers = async () => {
     try {
       setNotifying(true);
-      await attendanceAPI.notifyMissingAttendance({ date });
-      toast.success(t.notificationsSentDetailed);
+      const response = await attendanceAPI.notifyMissingAttendance({
+        date,
+        grade: grade && grade !== "all" ? extractGradeValue(grade) : undefined,
+        section: section && section !== "all" ? section : undefined,
+      });
+      const sentCount = Array.isArray(response.data?.notifications)
+        ? response.data.notifications.length
+        : 0;
+      if (sentCount > 0) {
+        toast.success(
+          response.data?.message || t.notificationsSentDetailed,
+        );
+      } else {
+        toast.info(
+          response.data?.message ||
+            "No teacher notifications were sent for the selected date and filters.",
+        );
+      }
     } catch (e) {
       toast.error(t.notificationsFailed);
     } finally {
@@ -149,14 +176,20 @@ function MissingClasses({ date, grade, section }: { date: string; grade: string;
       <div className="flex justify-between mb-2 gap-2">
         <Button 
           onClick={handleNotifyAllTeachers} 
-          disabled={notifying}
+          disabled={notifying || Boolean(disableNotifyReason)}
           size="sm"
           className="bg-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.85)] text-white"
+          title={disableNotifyReason}
         >
           {notifying ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Bell className="w-4 h-4 mr-1" />}
           {t.notifyAll}
         </Button>
       </div>
+      {disableNotifyReason ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+          {disableNotifyReason}
+        </div>
+      ) : null}
       <ScrollArea className="h-[300px] pr-2">
         {data.map((c) => (
         <div key={c.id} className="flex items-center justify-between p-3 bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)] rounded-lg">
@@ -391,6 +424,21 @@ export default function AttendanceManagementPage() {
     user?.role?.toUpperCase() === 'SUPER_ADMIN';
   const { currentAcademicYear, currentTerm, getAllAcademicYears, getTermsForYear, formattedYearLabel, displayTermName, formatDate: formatSchoolDate } = useAcademicYear();
 
+  const calendarType = user?.calendarType || "ETHIOPIAN";
+  const selectedPeriodData = periods.find((period) => period.id === selectedPeriod);
+  const visibleStartDate =
+    viewMode === "period" && selectedPeriodData?.startDate
+      ? selectedPeriodData.startDate
+      : selectedDate;
+  const visibleEndDate =
+    viewMode === "period" && selectedPeriodData?.endDate
+      ? selectedPeriodData.endDate
+      : selectedDate;
+  const visibleDateLabel =
+    viewMode === "period" && selectedPeriodData
+      ? `${selectedPeriodData.name} • ${formatDateByCalendarType(visibleStartDate, calendarType)} - ${formatDateByCalendarType(visibleEndDate, calendarType)}`
+      : formatDateByCalendarType(selectedDate, calendarType);
+
   const fetchDashboard = useCallback(async (isRefresh = false) => {
     if (!isAuthenticated || !isAdmin) return;
     
@@ -400,13 +448,10 @@ export default function AttendanceManagementPage() {
       setError(null);
       
       const gradeParam = selectedGrade !== "all" ? extractGradeValue(selectedGrade) : undefined;
-      let dateParam = selectedDate;
-      if (viewMode === 'period' && selectedPeriod && selectedPeriod !== 'all') {
-        const period = periods.find(p => p.id === selectedPeriod);
-        if (period?.startDate) dateParam = period.startDate;
-      }
       const response = await attendanceAPI.getAdminDashboard({ 
-        date: dateParam,
+        date: viewMode === "date" ? selectedDate : undefined,
+        startDate: viewMode === "period" ? visibleStartDate : undefined,
+        endDate: viewMode === "period" ? visibleEndDate : undefined,
         grade: gradeParam,
         section: selectedSection !== "all" ? selectedSection : undefined,
         range: timeRange,
@@ -436,7 +481,7 @@ export default function AttendanceManagementPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isAuthenticated, isAdmin, selectedDate, selectedGrade, selectedSection, timeRange, selectedPeriod, periods, viewMode]);
+  }, [isAuthenticated, isAdmin, selectedDate, selectedGrade, selectedSection, timeRange, viewMode, visibleStartDate, visibleEndDate]);
 
   // Fetch academic years and periods
   useEffect(() => {
@@ -537,25 +582,14 @@ export default function AttendanceManagementPage() {
     const fetchSessions = async () => {
       if (!isAuthenticated || !isAdmin) return;
       
-      let startDate = selectedDate;
-      let endDate = selectedDate;
-      
-      if (viewMode === 'period' && selectedPeriod && periods.length > 0) {
-        const period = periods.find(p => p.id === selectedPeriod);
-        if (period) {
-          startDate = period.startDate;
-          endDate = period.endDate;
-        }
-      }
-      
       const gradeParam = selectedGrade !== "all" ? extractGradeValue(selectedGrade) : undefined;
       
       try {
         setSessionsLoading(true);
         setSessionsError(null);
         const response = await attendanceAPI.getAllSessions({
-          startDate,
-          endDate,
+          startDate: visibleStartDate,
+          endDate: visibleEndDate,
           grade: gradeParam,
           section: selectedSection !== "all" ? selectedSection : undefined,
         });
@@ -570,7 +604,7 @@ export default function AttendanceManagementPage() {
       }
     };
     fetchSessions();
-  }, [selectedDate, selectedPeriod, selectedGrade, selectedSection, isAuthenticated, isAdmin, periods, viewMode]);
+  }, [selectedGrade, selectedSection, isAuthenticated, isAdmin, visibleStartDate, visibleEndDate]);
 
   // Lazy load charts
   useEffect(() => {
@@ -661,9 +695,8 @@ export default function AttendanceManagementPage() {
   const attendanceChartData = weeklyStatsData.length > 0 ? {
     type: "bar" as const,
     title: t.weeklyTrend,
-    labels: weeklyStatsData.map((d: any) => {
-      const date = new Date(d.date);
-      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      labels: weeklyStatsData.map((d: any) => {
+      return formatDateByCalendarType(d.date, calendarType);
     }),
     datasets: [{
       label: t.present,
@@ -713,10 +746,6 @@ export default function AttendanceManagementPage() {
       borderColor: 'var(--brand-color, #e35336)',
     }],
   } : null;
-
-  const handleExport = () => {
-    toast.success(t.exportSuccess);
-  };
 
   if (isLoading || loading) {
     return (
@@ -1097,7 +1126,16 @@ export default function AttendanceManagementPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4">
-                <MissingClasses date={selectedDate} grade={selectedGrade} section={selectedSection} />
+                  <MissingClasses
+                    date={selectedDate}
+                    grade={selectedGrade}
+                    section={selectedSection}
+                    disableNotifyReason={
+                      viewMode === "period"
+                        ? "Switch to Date view to notify teachers for a specific attendance day."
+                        : undefined
+                    }
+                  />
               </CardContent>
             </Card>
 
@@ -1146,7 +1184,7 @@ export default function AttendanceManagementPage() {
             <CardHeader className="border-b border-gray-200 dark:border-slate-700 pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
-                  {t.attendanceSessions} - {new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  {t.attendanceSessions} - {visibleDateLabel}
                 </CardTitle>
                 <div className="relative w-64">
                   <TableSearch

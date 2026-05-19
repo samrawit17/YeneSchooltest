@@ -1,100 +1,106 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { createJSONStorage } from 'zustand/middleware'
+import { create } from 'zustand';
 
-type Theme = 'light' | 'dark' | 'system'
+type Theme = 'light' | 'dark' | 'system';
 
 interface ThemeState {
-  theme: Theme
-  setTheme: (theme: Theme) => void
-  resolvedTheme: 'light' | 'dark'
-  initializeTheme: () => void
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  resolvedTheme: 'light' | 'dark';
+  initializeTheme: () => void;
 }
+
+const isClient = typeof window !== 'undefined';
+const DEFAULT_THEME: Theme = 'system';
+const GUEST_THEME_KEY = 'theme-storage';
 
 const getSystemTheme = (): 'light' | 'dark' => {
-  if (typeof window === 'undefined') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
+  if (!isClient) return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
 
-const isClient = typeof window !== 'undefined'
+const parseTheme = (raw: string | null): Theme | null => {
+  if (!raw) return null;
 
-export const useThemeStore = create<ThemeState>()(
-  persist(
-    (set, get) => ({
-      theme: 'system',
-      resolvedTheme: 'light',
-      
-      setTheme: (theme) => {
-        set({ theme })
-        const resolved = theme === 'system' ? getSystemTheme() : theme
-        set({ resolvedTheme: resolved })
-        
-        if (isClient) {
-          const root = window.document.documentElement
-          root.classList.remove('light', 'dark')
-          root.classList.add(resolved)
-          
-          if (theme === 'system') {
-            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-            const handleChange = () => {
-              set({ resolvedTheme: getSystemTheme() })
-              const root = window.document.documentElement
-              root.classList.remove('light', 'dark')
-              root.classList.add(getSystemTheme())
-            }
-            mediaQuery.addEventListener('change', handleChange)
-            return () => mediaQuery.removeEventListener('change', handleChange)
-          }
-        }
-      },
-      
-      initializeTheme: () => {
-        if (!isClient) return
-        let storedTheme: Theme | null = null
-
-        try {
-          const persisted = localStorage.getItem('theme-storage')
-          if (persisted) {
-            const parsed = JSON.parse(persisted)
-            const persistedTheme = parsed?.state?.theme
-            if (persistedTheme && ['light', 'dark', 'system'].includes(persistedTheme)) {
-              storedTheme = persistedTheme as Theme
-            }
-          }
-        } catch {
-          storedTheme = null
-        }
-
-        // Legacy fallback if an older plain `theme` key exists
-        if (!storedTheme) {
-          const legacyTheme = localStorage.getItem('theme') as Theme | null
-          if (legacyTheme && ['light', 'dark', 'system'].includes(legacyTheme)) {
-            storedTheme = legacyTheme
-          }
-        }
-
-        if (storedTheme) {
-          set({ theme: storedTheme })
-          const resolved = storedTheme === 'system' ? getSystemTheme() : storedTheme
-          set({ resolvedTheme: resolved })
-          
-          const root = window.document.documentElement
-          root.classList.remove('light', 'dark')
-          root.classList.add(resolved)
-        } else {
-          set({ theme: 'system' })
-          const resolved = getSystemTheme()
-          set({ resolvedTheme: resolved })
-          
-          const root = window.document.documentElement
-          root.classList.remove('light', 'dark')
-          root.classList.add(resolved)
-        }
-      }
-    }),
-    {
-      name: 'theme-storage',
-      storage: createJSONStorage(() => (isClient ? localStorage : { getItem: () => null, setItem: () => {}, removeItem: () => {} })),
+  try {
+    const parsed = JSON.parse(raw) as { theme?: Theme; state?: { theme?: Theme } };
+    const theme = parsed.theme ?? parsed.state?.theme;
+    if (theme && ['light', 'dark', 'system'].includes(theme)) {
+      return theme;
     }
-  )
-)
+  } catch {
+    return null;
+  }
+
+  if (['light', 'dark', 'system'].includes(raw)) {
+    return raw as Theme;
+  }
+
+  return null;
+};
+
+const getCurrentUserId = () => {
+  if (!isClient) return null;
+
+  const sources = [localStorage, sessionStorage];
+  for (const storage of sources) {
+    const rawUser = storage.getItem('user');
+    if (!rawUser) continue;
+
+    try {
+      const user = JSON.parse(rawUser) as { id?: string };
+      if (user.id) return user.id;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+};
+
+const getScopedThemeKey = () => {
+  const userId = getCurrentUserId();
+  return userId ? `theme-storage:${userId}` : GUEST_THEME_KEY;
+};
+
+const applyResolvedTheme = (resolvedTheme: 'light' | 'dark') => {
+  if (!isClient) return;
+
+  const root = window.document.documentElement;
+  root.classList.remove('light', 'dark');
+  root.classList.add(resolvedTheme);
+};
+
+const readStoredTheme = (): Theme => {
+  if (!isClient) return DEFAULT_THEME;
+
+  const scopedTheme = parseTheme(localStorage.getItem(getScopedThemeKey()));
+  if (scopedTheme) return scopedTheme;
+
+  const guestTheme = parseTheme(localStorage.getItem(GUEST_THEME_KEY));
+  if (guestTheme) return guestTheme;
+
+  return DEFAULT_THEME;
+};
+
+export const useThemeStore = create<ThemeState>((set) => ({
+  theme: DEFAULT_THEME,
+  resolvedTheme: 'light',
+
+  setTheme: (theme) => {
+    const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
+    set({ theme, resolvedTheme });
+
+    if (isClient) {
+      localStorage.setItem(getScopedThemeKey(), JSON.stringify({ theme }));
+    }
+
+    applyResolvedTheme(resolvedTheme);
+  },
+
+  initializeTheme: () => {
+    const theme = readStoredTheme();
+    const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
+    set({ theme, resolvedTheme });
+    applyResolvedTheme(resolvedTheme);
+  },
+}));

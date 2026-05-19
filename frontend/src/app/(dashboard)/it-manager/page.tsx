@@ -3,5 +3,5 @@
 import AdminPage from "../admin/page";
 
 export default function ITManagerPage() {
-  return <AdminPage dashboardRole="IT_MANAGER" />;
+  return <AdminPage />;
 }

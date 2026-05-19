@@ -115,36 +115,6 @@ export class TimetableSlotController {
     return result;
   }
 
-  @Get(':id')
-  @Permissions('timetable:read')
-  async findOne(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
-    const schoolId = req.user.schoolId;
-    if (!schoolId) return { success: false, message: 'School ID is required' };
-    return this.timetableSlotService.findOne(id, schoolId);
-  }
-
-  @Patch(':id')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
-  @Permissions('timetable:manage')
-  async update(
-    @Request() req: AuthenticatedRequest,
-    @Param('id') id: string,
-    @Body() body: UpdateTimetableSlotDto,
-  ) {
-    const schoolId = req.user.schoolId;
-    if (!schoolId) return { success: false, message: 'School ID is required' };
-    return this.timetableSlotService.update(id, schoolId, body);
-  }
-
-  @Delete(':id')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
-  @Permissions('timetable:manage')
-  async delete(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
-    const schoolId = req.user.schoolId;
-    if (!schoolId) return { success: false, message: 'School ID is required' };
-    return this.timetableSlotService.delete(id, schoolId);
-  }
-
   @Post('bulk')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('timetable:manage')
@@ -159,6 +129,35 @@ export class TimetableSlotController {
     }
 
     return this.timetableSlotService.bulkCreate(schoolId, body.slots);
+  }
+
+  @Post('auto-generate')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
+  @Permissions('timetable:manage')
+  async autoGenerate(
+    @Request() req: AuthenticatedRequest,
+    @Body()
+    body: {
+      classId: string;
+      sectionId: string;
+      academicYearId?: string;
+      apply?: boolean;
+      periodRequirements: Array<{
+        classSubjectId: string;
+        periodsPerWeek: number;
+      }>;
+    },
+  ) {
+    const schoolId = req.user.schoolId;
+
+    if (!schoolId) {
+      return { success: false, message: 'School ID is required' };
+    }
+
+    return this.timetableSlotService.autoGenerateSectionTimetable(
+      schoolId,
+      body,
+    );
   }
 
   @Delete('class/:classId/section/:sectionId')
@@ -211,5 +210,35 @@ export class TimetableSlotController {
       sectionId,
       academicYearId,
     );
+  }
+
+  @Get(':id')
+  @Permissions('timetable:read')
+  async findOne(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.timetableSlotService.findOne(id, schoolId);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
+  @Permissions('timetable:manage')
+  async update(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: UpdateTimetableSlotDto,
+  ) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.timetableSlotService.update(id, schoolId, body);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
+  @Permissions('timetable:manage')
+  async delete(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.timetableSlotService.delete(id, schoolId);
   }
 }

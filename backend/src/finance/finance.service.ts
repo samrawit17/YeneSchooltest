@@ -17,6 +17,11 @@ import {
   CalculateInstallmentFeesDto,
   GenerateInstallmentFeesDto,
 } from './dto/finance.dto';
+import {
+  CalendarType,
+  ETHIOPIAN_MONTH_NAMES,
+  toEthiopianDate,
+} from '../common/date.util';
 
 @Injectable()
 export class FinanceService {
@@ -321,8 +326,14 @@ export class FinanceService {
   private getInstallmentPeriodLabel(
     feeCollectionMode: string,
     index: number,
+    academicYearStartDate?: Date | null,
     term?: { name?: string | null } | null,
+    calendarType?: CalendarType | string | null,
   ): string {
+    const resolvedCalendarType =
+      String(calendarType || '').toUpperCase() === 'GREGORIAN'
+        ? 'GREGORIAN'
+        : 'ETHIOPIAN';
     const normalizedMode = String(feeCollectionMode || '').toUpperCase();
     if (
       term?.name &&
@@ -343,6 +354,21 @@ export class FinanceService {
       YEAR: 'Full Year',
       YEARLY: 'Full Year',
     };
+
+    if (
+      ['MONTH', 'MONTHLY'].includes(normalizedMode) &&
+      academicYearStartDate &&
+      !Number.isNaN(academicYearStartDate.getTime())
+    ) {
+      const targetDate = new Date(academicYearStartDate);
+      targetDate.setMonth(targetDate.getMonth() + index);
+      if (resolvedCalendarType === 'GREGORIAN') {
+        return targetDate.toLocaleDateString('en-US', { month: 'long' });
+      }
+      const ethiopianDate = toEthiopianDate(targetDate);
+      return ETHIOPIAN_MONTH_NAMES[ethiopianDate.month - 1] || `Month ${index + 1}`;
+    }
+
     const label = modeLabels[normalizedMode] || 'Installment';
     return normalizedMode === 'YEAR' || normalizedMode === 'YEARLY'
       ? label
@@ -352,6 +378,22 @@ export class FinanceService {
   private getFeeStructureInstallmentIndex(feeType?: string | null) {
     const match = String(feeType || '').match(/_INSTALLMENT_(\d+)$/i);
     return match ? Number(match[1]) : null;
+  }
+
+  private normalizeFeeBreakdownType(feeType?: string | null) {
+    return String(feeType || '')
+      .trim()
+      .toUpperCase()
+      .replace(/_INSTALLMENT_\d+$/i, '')
+      .replace(/_ANNUAL$/i, '');
+  }
+
+  private formatFeeTypeLabel(feeType?: string | null) {
+    return this.normalizeFeeBreakdownType(feeType)
+      .split('_')
+      .filter(Boolean)
+      .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+      .join(' ');
   }
 
   private getInstallmentRangeForTerm(
@@ -698,6 +740,7 @@ export class FinanceService {
         const periodName = this.getInstallmentPeriodLabel(
           feeCollectionMode,
           i,
+          undefined,
           terms[i],
         );
         const installmentTermId =
@@ -1264,6 +1307,7 @@ export class FinanceService {
       }
 
       const alreadyPaid = sf.payments.reduce((s, p) => s + p.amountPaid, 0);
+      const isAnnualFeePayment = !sf.termId && Boolean(paymentTermId);
       const alreadyPaidForSelectedPeriod =
         paymentTermId
           ? sf.payments
@@ -1271,7 +1315,7 @@ export class FinanceService {
               .reduce((s, payment) => s + payment.amountPaid, 0)
           : alreadyPaid;
       const expectedForSelectedPeriod =
-        !sf.termId && paymentTermId
+        isAnnualFeePayment
           ? Math.round(
               (sf.finalAmount /
                 Math.max(
@@ -1287,15 +1331,23 @@ export class FinanceService {
           : sf.finalAmount;
       const outstanding = Math.max(
         0,
-        expectedForSelectedPeriod - alreadyPaidForSelectedPeriod,
+        isAnnualFeePayment
+          ? sf.finalAmount - alreadyPaid
+          : expectedForSelectedPeriod - alreadyPaidForSelectedPeriod,
       );
       if (dto.amountPaid <= 0) throw new Error('Invalid amount');
       if (outstanding <= 0) {
-        throw new Error('This term or semester is already fully paid');
+        throw new Error(
+          isAnnualFeePayment
+            ? 'This annual fee is already fully paid'
+            : 'This term or semester is already fully paid',
+        );
       }
       if (dto.amountPaid > outstanding)
         throw new Error(
-          `Amount exceeds outstanding balance for the selected term or semester. Remaining: ${outstanding}`,
+          isAnnualFeePayment
+            ? `Amount exceeds the remaining annual fee balance. Remaining: ${outstanding}`
+            : `Amount exceeds outstanding balance for the selected term or semester. Remaining: ${outstanding}`,
         );
 
       const payment = await this.createPaymentWithFallbackReceipt(tx, {
@@ -1618,7 +1670,9 @@ export class FinanceService {
     };
 
     payments.forEach((payment) => {
-      const feeType = payment.studentFee?.feeStructure?.feeType;
+      const feeType = this.normalizeFeeBreakdownType(
+        payment.studentFee?.feeStructure?.feeType,
+      );
       switch (feeType) {
         case 'TUITION':
           feeBreakdown.tuition += payment.amountPaid;
@@ -1690,7 +1744,12 @@ export class FinanceService {
     schoolId: string,
     academicYearId: string,
     termId?: string,
+    calendarType?: CalendarType | string | null,
   ) {
+    const resolvedCalendarType =
+      String(calendarType || '').toUpperCase() === 'GREGORIAN'
+        ? 'GREGORIAN'
+        : 'ETHIOPIAN';
     const academicYear = await this.assertAcademicYearInSchool(
       schoolId,
       academicYearId,
@@ -1802,7 +1861,9 @@ export class FinanceService {
           ? this.getInstallmentPeriodLabel(
               curriculumType,
               installmentIndex - 1,
+              academicYearWithDates?.startDate,
               sf.term || sf.feeStructure.term,
+              resolvedCalendarType,
             )
           :
         sf.term?.name ||
@@ -1840,8 +1901,9 @@ export class FinanceService {
         studentName: sf.student?.name,
         grade: studentClass?.grade || null,
         section: studentClass?.section || null,
-        feeType: sf.feeStructure.feeType,
+        feeType: this.formatFeeTypeLabel(sf.feeStructure.feeType),
         scopeLabel,
+        installmentIndex,
         isYearWide,
         total: displayTotal,
         paid: displayPaid,
@@ -2027,7 +2089,7 @@ export class FinanceService {
 
     const academicYear = await this.prisma.academicYear.findFirst({
       where: { id: academicYearId, schoolId },
-      select: { id: true },
+      select: { id: true, startDate: true },
     });
     if (!academicYear) {
       throw new Error('Academic year not found');
@@ -2089,6 +2151,7 @@ export class FinanceService {
           ? this.getInstallmentPeriodLabel(
               curriculumType,
               installmentIndex - 1,
+              academicYear?.startDate || null,
               sf.term || sf.feeStructure.term,
             )
           : sf.term?.name || sf.feeStructure.term?.name || null;
@@ -2136,6 +2199,7 @@ export class FinanceService {
           ? this.getInstallmentPeriodLabel(
               curriculumType,
               installmentIndex - 1,
+              academicYear?.startDate || null,
               sf.term || sf.feeStructure.term,
             )
           : sf.term?.name || sf.feeStructure.term?.name || null;

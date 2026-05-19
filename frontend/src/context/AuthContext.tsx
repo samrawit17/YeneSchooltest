@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
-import { authAPI } from '@/lib/api';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authAPI, userAPI } from '@/lib/api';
 import { toast } from 'sonner';
 import { useThemeStore } from '@/lib/themeStore';
 import { useLanguageStore } from '@/lib/languageStore';
@@ -40,18 +40,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const clearStoredAuth = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  sessionStorage.removeItem('token');
-  sessionStorage.removeItem('user');
-};
-
-const getAuthStorage = () => {
-  if (localStorage.getItem('token') || localStorage.getItem('user')) return localStorage;
-  return sessionStorage;
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -64,25 +52,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      
      const checkAuth = async () => {
        try {
-         const persistentToken = localStorage.getItem('token');
-         const persistentUser = localStorage.getItem('user');
-         const sessionToken = sessionStorage.getItem('token');
-         const sessionUser = sessionStorage.getItem('user');
-         const storedToken = persistentToken || sessionToken;
-         const storedUser = persistentUser || sessionUser;
-
-         if (storedToken && storedUser) {
-           setToken(storedToken);
-           try {
-             const parsedUser = JSON.parse(storedUser);
-             setUser(parsedUser);
-           } catch (error) {
-             console.error('Failed to parse user data from localStorage:', error);
-             clearStoredAuth();
-           }
+         const response = await userAPI.getProfile();
+         const profile = response.data;
+         if (profile) {
+           setUser(profile);
+           setToken('cookie-session');
          }
-       } catch (error) {
-         console.warn('localStorage not available:', error);
+       } catch (error: any) {
+         if (error?.response?.status !== 401) {
+           console.error('Failed to restore authenticated session:', error);
+         }
+         setUser(null);
+         setToken(null);
        } finally {
          setIsLoading(false);
        }
@@ -99,20 +80,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      return null;
    }
 
-   const login = async (loginIdentifier: string, password: string, rememberMe = false): Promise<User> => {
+   const login = async (loginIdentifier: string, password: string, _rememberMe = false): Promise<User> => {
      try {
        const response = await authAPI.login(loginIdentifier, password);
        const { access_token, user: userData } = response.data;
-
-       clearStoredAuth();
-       const storage = rememberMe ? localStorage : sessionStorage;
-       storage.setItem('token', access_token);
-       storage.setItem('user', JSON.stringify(userData));
        // Save user's theme preference to Zustand store
        const userTheme = (userData.theme || 'SYSTEM').toLowerCase() as 'light' | 'dark' | 'system';
        useThemeStore.getState().setTheme(userTheme);
+       useLanguageStore.getState().initializeLanguage();
 
-       setToken(access_token);
+       setToken(access_token || 'cookie-session');
        setUser(userData);
 
        return userData;
@@ -124,9 +101,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    };
 
    const logout = () => {
-     clearStoredAuth();
+     authAPI.logout().catch(() => undefined);
      // Reset theme to system default via Zustand store
      useThemeStore.getState().setTheme('system');
+     useLanguageStore.getState().initializeLanguage();
      setToken(null);
      setUser(null);
      const language = useLanguageStore.getState().language;
@@ -136,7 +114,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
-    getAuthStorage().setItem('user', JSON.stringify(updatedUser));
   };
 
   return (
@@ -145,7 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         token,
         isLoading,
-        isAuthenticated: !!token && !!user,
+        isAuthenticated: !!user,
         login,
         logout,
         updateUser,

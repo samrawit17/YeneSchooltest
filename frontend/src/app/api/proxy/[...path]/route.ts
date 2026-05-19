@@ -28,11 +28,14 @@ async function handler(
       cache: 'no-store',
     });
   } catch (error) {
+    console.error('Backend proxy request failed', {
+      path: targetPath,
+      method,
+      message: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       {
         message: 'Backend proxy request failed',
-        targetUrl,
-        error: error instanceof Error ? error.message : String(error),
       },
       { status: 502 },
     );

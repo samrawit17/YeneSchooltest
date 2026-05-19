@@ -7,6 +7,10 @@ export class UpdateTimetableSlotDto {
 
   @IsOptional()
   @IsString()
+  sectionId?: string;
+
+  @IsOptional()
+  @IsString()
   subjectId?: string;
 
   @IsOptional()

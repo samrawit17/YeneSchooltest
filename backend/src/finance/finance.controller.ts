@@ -248,12 +248,14 @@ export class FinanceController {
     @Query('schoolId') schoolId: string,
     @Query('academicYearId') academicYearId: string,
     @Query('termId') termId?: string,
+    @Query('calendarType') calendarType?: 'ETHIOPIAN' | 'GREGORIAN',
     @Request() req?: any,
   ) {
     const result = await this.financeService.outstandingBalancesReport(
       this.resolveSchoolId(req?.user, schoolId),
       academicYearId,
       termId,
+      calendarType,
     );
     return { success: true, ...result };
   }

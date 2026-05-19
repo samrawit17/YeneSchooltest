@@ -153,6 +153,9 @@ interface NavigationMessages {
     search?: Record<string, string>;
 }
 
+const FINANCE_ALLOWED_RESULT_TYPES = new Set<string>(["student", "nav"]);
+const FINANCE_ALLOWED_ENTITY_KEYS = new Set<SearchableEntity>(["students"]);
+
 const SEARCH_LABEL_KEYS: Record<string, string> = {
     Assignments: "assignments",
     "Bulk Upload": "bulkUpload",
@@ -339,6 +342,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     // Group results by type
     const groupedResults = useMemo(() => {
         const acc: Record<string, any[]> = {};
+        const normalizedRole = user?.role?.toLowerCase() || "";
         
         // Add navigation results first
         if (navigationResults.length > 0) {
@@ -347,10 +351,11 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
 
         if (Array.isArray(results)) {
             results.filter((result) => {
+                if (normalizedRole === "finance" && !FINANCE_ALLOWED_RESULT_TYPES.has(result.type)) return false;
                 if (result.href === "/parent/grades" && !parentGradesEnabled) return false;
                 if (result.href === "/list/announcements" && !announcementsEnabled) return false;
                 if (result.type === "announcement" && !announcementsEnabled) return false;
-                if (result.type === "grade" && user?.role?.toLowerCase() === "parent" && !parentGradesEnabled) return false;
+                if (result.type === "grade" && normalizedRole === "parent" && !parentGradesEnabled) return false;
                 return true;
             }).forEach((result) => {
                 if (!acc[result.type]) {
@@ -378,7 +383,12 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         { key: 'grades', icon: <BarChart3 className="h-3 w-3" />, label: searchText('grades', 'Grades'), visible: user?.role?.toLowerCase() !== "parent" || parentGradesEnabled },
         { key: 'announcements', icon: <Megaphone className="h-3 w-3" />, label: navLabel('Announcements'), visible: announcementsEnabled },
         { key: 'events', icon: <Calendar className="h-3 w-3" />, label: navLabel('Calendar') },
-    ].filter(entity => entity.visible !== false && permissions.includes(entity.key));
+    ].filter((entity) => {
+        if (entity.visible === false) return false;
+        if (!permissions.includes(entity.key)) return false;
+        if (roleKey === "finance" && !FINANCE_ALLOWED_ENTITY_KEYS.has(entity.key as SearchableEntity)) return false;
+        return true;
+    });
 
     return (
         <div ref={wrapperRef} className="relative z-[9998] w-full mx-auto flex items-center md:h-10 lg:h-10 font-sans">

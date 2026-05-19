@@ -146,7 +146,7 @@ export default function EditUserPage() {
                   {user?.role === 'STUDENT' && <GraduationCap className="w-6 h-6 text-blue-600" />}
                   {user?.role === 'TEACHER' && <Briefcase className="w-6 h-6 text-blue-600" />}
                   {user?.role === 'PARENT' && <Users className="w-6 h-6 text-blue-600" />}
-                  {((user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') || user?.role === 'IT_MANAGER') && <FileText className="w-6 h-6 text-blue-600" />}
+                  {(user?.role === 'ADMIN' || user?.role === 'IT_MANAGER') && <FileText className="w-6 h-6 text-blue-600" />}
                   {user?.role === 'REGISTRAR' && <FileText className="w-6 h-6 text-blue-600" />}
                   {user?.role === 'FINANCE' && <FileText className="w-6 h-6 text-blue-600" />}
                 </div>

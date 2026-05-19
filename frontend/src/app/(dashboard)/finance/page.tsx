@@ -15,13 +15,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Pagination from '@/components/Pagination';
 import { FormattedDate } from '@/components/ui/FormattedDate';
 import { financeAPI, academicYearsAPI, studentsAPI } from '@/lib/api';
+import {
+  convertToEthiopian,
+  formatDateByCalendarType,
+  formatDateTimeByCalendarType,
+} from '@/lib/calendar-utils';
 import { 
   DollarSign, 
   CreditCard, 
-  BarChart3, 
   Plus, 
   Search, 
-  Download,
   Calendar,
   Receipt,
   Users,
@@ -39,6 +42,8 @@ import {
   MinusCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from '@/hooks/useTranslations';
+import type { FinanceMessages } from '@/messages/registry';
 
 // Types
 interface AcademicYear {
@@ -53,6 +58,7 @@ interface Term {
   id: string;
   name: string;
   academicYearId: string;
+  order?: number;
   startDate?: string;
   endDate?: string;
 }
@@ -91,8 +97,10 @@ interface StudentSearchResult {
   studentCode?: string;
   className?: string;
   sectionName?: string;
+  role?: string;
   user?: {
     name?: string;
+    role?: string;
   };
 }
 
@@ -135,6 +143,7 @@ interface OutstandingFee {
   section?: string | null;
   feeType: string;
   scopeLabel?: string | null;
+  installmentIndex?: number | null;
   isYearWide?: boolean;
   total: number;
   paid: number;
@@ -170,10 +179,29 @@ const compressGradeNumbers = (grades: number[]) => {
 
 type ChartView = 'daily' | 'weekly' | 'monthly';
 
+const isStudentSearchResult = (candidate: StudentSearchResult) => {
+  const normalizedRole = String(
+    candidate.role ||
+      candidate.user?.role ||
+      '',
+  ).toUpperCase();
+
+  if (normalizedRole && normalizedRole !== 'STUDENT') {
+    return false;
+  }
+
+  return Boolean(
+    candidate.studentCode ||
+      candidate.className ||
+      candidate.sectionName,
+  );
+};
+
 export default function FinanceDashboardPage() {
   // State
   const { user } = useAuth();
   const { formatDate: formatSchoolDate } = useAcademicYear();
+  const { t } = useTranslations<FinanceMessages>('finance');
   const [loading, setLoading] = useState(true);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
@@ -271,66 +299,6 @@ export default function FinanceDashboardPage() {
           : '',
     }));
     setFeeStructureOpen(true);
-  };
-
-  // Export CSV
-  const handleExportCSV = () => {
-    const periodLabel =
-      selectedTerm && selectedTerm !== 'all'
-        ? terms.find((term) => term.id === selectedTerm)?.name || 'Selected period'
-        : 'All periods';
-    const headers = ['Student', 'Grade', 'Period', 'Total Fee', 'Paid', 'Balance', 'Status'];
-    const rows = outstandingFees.map(fee => [
-      fee.studentName || '',
-      fee.grade ? `${fee.grade}${fee.section ? ' - ' + fee.section : ''}` : '',
-      periodLabel,
-      (fee.total || 0).toString(),
-      (fee.paid || 0).toString(),
-      (fee.remaining || 0).toString(),
-      fee.status || ''
-    ]);
-    const transactionHeaders = [
-      'Receipt',
-      'Student',
-      'Class',
-      'Section',
-      'Term/Semester',
-      'Fee',
-      'Method',
-      'Amount',
-      'Date',
-    ];
-    const transactionRows = transactions.map((tx) => [
-      tx.receiptNumber || '',
-      tx.studentName || '',
-      tx.className || tx.grade || '',
-      tx.section || '',
-      tx.termName || 'Unassigned',
-      tx.feeType || '',
-      tx.paymentMethod || '',
-      (tx.amountPaid || 0).toString(),
-      tx.paymentDate || '',
-    ]);
-
-    const csvContent = [
-      `Finance Summary (${periodLabel})`,
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')),
-      '',
-      'Payment Transactions',
-      transactionHeaders.join(','),
-      ...transactionRows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `finance_summary_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   // Print Summary
@@ -508,7 +476,7 @@ export default function FinanceDashboardPage() {
         setSelectedYear('');
         setTerms([]);
         setSelectedTerm('');
-        toast.error('Failed to load academic years');
+      toast.error('Failed to load dashboard data');
       } finally {
         setLoading(false);
       }
@@ -584,7 +552,7 @@ export default function FinanceDashboardPage() {
       // Fetch all data in parallel
       const schoolId = user?.schoolId;
       if (!schoolId) {
-        toast.error('School ID not found. Please log in again.');
+        toast.error(t.schoolIdNotFound);
         setLoading(false);
         return;
       }
@@ -664,7 +632,7 @@ export default function FinanceDashboardPage() {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      toast.error(t.failedLoadYears);
     } finally {
       setLoading(false);
     }
@@ -689,19 +657,29 @@ export default function FinanceDashboardPage() {
     return `Brr ${amount.toLocaleString()}`;
   };
 
+  const activeCalendarType = user?.calendarType || 'ETHIOPIAN';
+
+  const getCalendarDateSlug = (date: Date) => {
+    if (activeCalendarType === 'ETHIOPIAN') {
+      const eth = convertToEthiopian(date);
+      return `ec-${eth.year}-${String(eth.month).padStart(2, '0')}-${String(eth.day).padStart(2, '0')}`;
+    }
+
+    return `gc-${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
   // Format date
   const formatDate = (dateString: string) => {
-    return formatSchoolDate(dateString);
+    const parsed = new Date(dateString);
+    if (Number.isNaN(parsed.getTime())) return 'N/A';
+    return formatDateByCalendarType(parsed, activeCalendarType);
   };
 
   // Format date time
   const formatDateTime = (dateString: string) => {
     const parsed = new Date(dateString);
     if (Number.isNaN(parsed.getTime())) return 'N/A';
-    return `${formatSchoolDate(parsed)} ${parsed.toLocaleTimeString('en-ET', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })}`;
+    return formatDateTimeByCalendarType(parsed, activeCalendarType);
   };
 
   // Get status badge
@@ -804,6 +782,9 @@ export default function FinanceDashboardPage() {
         selectedFee?.termName ||
         null
       : selectedFee?.termName || null;
+  const paymentFeeOptions = (selectedStudentData?.fees || []).filter(
+    (fee) => fee.balance > 0,
+  );
   const formatFeeStructureName = (feeType?: string | null) => {
     const raw = String(feeType || '').trim();
     if (!raw) return 'Fee';
@@ -826,7 +807,9 @@ export default function FinanceDashboardPage() {
 
     const monthDate = new Date(startDate);
     monthDate.setMonth(startDate.getMonth() + installmentNumber - 1);
-    return formatSchoolDate(monthDate).replace(/\s+\d{1,2},/, '');
+    return activeCalendarType === 'ETHIOPIAN'
+      ? convertToEthiopian(monthDate).monthName
+      : monthDate.toLocaleDateString('en-US', { month: 'long' });
   };
 
   const getInstallmentPeriodLabel = (installmentNumber: number) => {
@@ -855,6 +838,90 @@ export default function FinanceDashboardPage() {
     return terms[installmentNumber - 1]?.name || `Installment ${installmentNumber}`;
   };
 
+  const getInstallmentIndexFromFee = (fee: StudentFeeItem) => {
+    const match = String(fee.name || '').match(/_INSTALLMENT_(\d+)$/i);
+    return match ? Number(match[1]) : null;
+  };
+
+  const getSelectedTermInstallmentRange = (termId?: string) => {
+    if (!termId || !feeCollectionMode) return null;
+
+    const installmentCount = feeCollectionMode.installmentCount || terms.length || 1;
+    if (installmentCount <= terms.length || installmentCount <= 1) return null;
+
+    const term = terms.find((item) => item.id === termId);
+    const academicYear = academicYears.find((year) => year.id === selectedYear);
+    const academicYearStart = academicYear?.startDate ? new Date(academicYear.startDate) : null;
+    const termStart = term?.startDate ? new Date(term.startDate) : null;
+    const termEnd = term?.endDate ? new Date(term.endDate) : null;
+
+    if (
+      academicYearStart &&
+      termStart &&
+      !Number.isNaN(academicYearStart.getTime()) &&
+      !Number.isNaN(termStart.getTime())
+    ) {
+      const monthDiff = (date: Date) =>
+        (date.getFullYear() - academicYearStart.getFullYear()) * 12 +
+        (date.getMonth() - academicYearStart.getMonth());
+
+      const start = Math.max(1, Math.min(installmentCount, monthDiff(termStart) + 1));
+      const end =
+        termEnd && !Number.isNaN(termEnd.getTime())
+          ? Math.max(start, Math.min(installmentCount, monthDiff(termEnd) + 1))
+          : start;
+
+      return { start, end };
+    }
+
+    if (term?.order && terms.length > 0) {
+      return {
+        start: Math.floor(((term.order - 1) * installmentCount) / terms.length) + 1,
+        end: Math.floor((term.order * installmentCount) / terms.length),
+      };
+    }
+
+    return null;
+  };
+
+  const choosePreferredPaymentFee = (fees: StudentFeeItem[], termId?: string) => {
+    const unpaidFees = fees.filter((fee) => fee.balance > 0);
+    if (unpaidFees.length === 0) return fees[0];
+
+    if (termId) {
+      const directTermFee = unpaidFees
+        .filter((fee) => fee.termId === termId)
+        .sort((a, b) => b.balance - a.balance)[0];
+      if (directTermFee) return directTermFee;
+
+      const installmentRange = getSelectedTermInstallmentRange(termId);
+      if (installmentRange) {
+        const rangedInstallmentFee = unpaidFees
+          .filter((fee) => {
+            const installmentIndex = getInstallmentIndexFromFee(fee);
+            return (
+              installmentIndex !== null &&
+              installmentIndex >= installmentRange.start &&
+              installmentIndex <= installmentRange.end
+            );
+          })
+          .sort((a, b) => {
+            const aIndex = getInstallmentIndexFromFee(a) || 0;
+            const bIndex = getInstallmentIndexFromFee(b) || 0;
+            return aIndex - bIndex;
+          })[0];
+        if (rangedInstallmentFee) return rangedInstallmentFee;
+      }
+    }
+
+    const yearWideFee = unpaidFees
+      .filter((fee) => fee.isYearWide)
+      .sort((a, b) => b.balance - a.balance)[0];
+    if (yearWideFee) return yearWideFee;
+
+    return unpaidFees.sort((a, b) => b.balance - a.balance)[0];
+  };
+
   const formatInstallmentLabel = (fee: {
     feeType?: string | null;
     termName?: string | null;
@@ -868,7 +935,12 @@ export default function FinanceDashboardPage() {
     return fee.description || null;
   };
 
-  const formatOutstandingScopeLabel = (scopeLabel?: string | null) => {
+  const formatOutstandingScopeLabel = (fee: OutstandingFee) => {
+    if (fee.installmentIndex != null) {
+      return getInstallmentMonthName(fee.installmentIndex);
+    }
+
+    const scopeLabel = fee.scopeLabel;
     const label = scopeLabel || '';
     const monthMatch = label.match(/^Month\s+(\d+)$/i);
     if (monthMatch) return getInstallmentMonthName(Number(monthMatch[1]));
@@ -934,11 +1006,11 @@ export default function FinanceDashboardPage() {
   // Handle Record Payment
   const handleRecordPayment = async () => {
     if (!paymentForm.studentId || !paymentForm.amountPaid) {
-      toast.error('Student and amount are required');
+      toast.error(t.studentAmountRequired);
       return;
     }
     if (!selectedPaymentTermId) {
-      toast.error('Select the term or semester this payment is for');
+      toast.error(t.selectTermError);
       return;
     }
     
@@ -958,7 +1030,7 @@ export default function FinanceDashboardPage() {
         transactionReference: paymentForm.transactionReference,
         notes: paymentForm.notes,
       });
-      toast.success('Payment recorded successfully');
+      toast.success(t.paymentRecorded);
       setRecordPaymentOpen(false);
       setPaymentForm({
         studentId: '',
@@ -974,7 +1046,7 @@ export default function FinanceDashboardPage() {
       loadDashboardData();
     } catch (error: any) {
       console.error('Record payment error:', error);
-      toast.error(error.response?.data?.message || 'Failed to record payment');
+      toast.error(error.response?.data?.message || t.failedRecordPayment);
     } finally {
       setIsRecordingPayment(false);
     }
@@ -982,7 +1054,7 @@ export default function FinanceDashboardPage() {
 
   const handleSendPeriodReminders = async () => {
     if (!user?.schoolId || !selectedTerm || selectedTerm === 'all') {
-      toast.error('Select one term or semester before sending reminders');
+      toast.error(t.selectTermReminder);
       return;
     }
 
@@ -992,10 +1064,9 @@ export default function FinanceDashboardPage() {
         schoolId: user.schoolId,
         termId: selectedTerm,
       });
-      const sent = response.data?.sent ?? 0;
-      toast.success(`Fee reminders sent to ${sent} parent${sent === 1 ? '' : 's'}`);
+      toast.success('Reminder is sent to all parents');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to send fee reminders');
+      toast.error(error.response?.data?.message || t.failedReminders);
     } finally {
       setIsSendingReminders(false);
     }
@@ -1003,27 +1074,28 @@ export default function FinanceDashboardPage() {
 
   const handleReversePayment = async (tx: Transaction) => {
     if (!user?.schoolId) return;
+    const schoolId = user.schoolId;
 
-    toast.warning('Reverse payment?', {
-      description: `Reverse payment ${tx.receiptNumber} for ${formatCurrency(tx.amountPaid)}? This will remove the receipt and recalculate the fee balance.`,
+    toast.warning(t.reverseConfirm, {
+      description: t.reverseDesc.replace('{receipt}', tx.receiptNumber).replace('{amount}', formatCurrency(tx.amountPaid)),
       duration: 10000,
       cancel: {
-        label: 'Cancel',
+        label: t.cancel,
         onClick: () => undefined,
       },
       action: {
-        label: 'Reverse',
+        label: t.reversed,
         onClick: async () => {
           setReversingPaymentId(tx.id);
           try {
             await financeAPI.reversePayment(tx.id, {
-              schoolId: user.schoolId,
+              schoolId,
               reason: 'Reversed from finance dashboard',
             });
-            toast.success('Payment reversed and balance recalculated');
+            toast.success(t.paymentReversed);
             loadDashboardData();
           } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to reverse payment');
+            toast.error(error.response?.data?.message || t.failedReverse);
           } finally {
             setReversingPaymentId(null);
           }
@@ -1046,9 +1118,9 @@ export default function FinanceDashboardPage() {
         paymentForm.studentId,
         user.schoolId,
         selectedYear,
-        termId,
       );
       const fees = Array.isArray(feeRes?.data?.feeItems) ? feeRes.data.feeItems : [];
+      const nextFee = choosePreferredPaymentFee(fees, termId);
       setSelectedStudentFees((current) =>
         current.map((entry) =>
           entry.student.userId === paymentForm.studentId ||
@@ -1057,7 +1129,6 @@ export default function FinanceDashboardPage() {
             : entry,
         ),
       );
-      const nextFee = fees.find((fee: StudentFeeItem) => fee.status !== 'PAID') || fees[0];
       setSelectedFeeId(nextFee?.id || '');
       setPaymentForm((current) => ({
         ...current,
@@ -1066,7 +1137,7 @@ export default function FinanceDashboardPage() {
       }));
     } catch (error) {
       console.error('Failed to refresh selected student fees:', error);
-      toast.error('Failed to load fees for the selected term or semester');
+      toast.error(t.failedLoadFees);
     }
   };
 
@@ -1087,9 +1158,10 @@ export default function FinanceDashboardPage() {
         limit: '20'
       });
       console.log('Student search response:', response);
-      const students: StudentSearchResult[] = response.data?.data || response.data?.rows || [];
+      const rawStudents: StudentSearchResult[] = response.data?.data || response.data?.rows || [];
+      const students = rawStudents.filter(isStudentSearchResult);
       console.log('Found students:', students);
-setStudentResults(students);
+      setStudentResults(students);
       
       // Get their fees inline
       const feesWithStudents: StudentFeeLookup[] = [];
@@ -1100,7 +1172,6 @@ setStudentResults(students);
             sid,
             user.schoolId,
             selectedYear,
-            selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined,
           );
           const fees = Array.isArray(feeRes?.data?.feeItems) ? feeRes.data.feeItems : [];
           feesWithStudents.push({ student: s, fees });
@@ -1141,21 +1212,21 @@ setStudentResults(students);
     console.log('Using yearId:', yearId);
     
     if (!user?.schoolId) {
-      toast.error('Session error. Please refresh');
+      toast.error(t.feeStructuresError);
       return;
     }
     if (!yearId) {
-      toast.error('No academic year available');
+      toast.error(t.noAcademicYear);
       return;
     }
     
     if (!feeStructureForm.feeType || feeStructureForm.feeType.trim() === '') {
-      toast.error('Please select a fee type');
+      toast.error(t.selectFeeType);
       return;
     }
     
     if (!feeStructureForm.amount || feeStructureForm.amount <= 0) {
-      toast.error('Please enter a valid amount');
+      toast.error(t.validAmount);
       return;
     }
 
@@ -1163,7 +1234,7 @@ setStudentResults(students);
     if (feeStructureForm.gradeMode === 'single') {
       const parsedGrade = parseInt(feeStructureForm.grade, 10);
       if (!parsedGrade || parsedGrade < 1 || parsedGrade > 12) {
-        toast.error('Please select a valid grade');
+        toast.error(t.validGrade);
         return;
       }
       targetGrades = [parsedGrade];
@@ -1171,7 +1242,7 @@ setStudentResults(students);
       const fromGrade = parseInt(feeStructureForm.gradeFrom, 10);
       const toGrade = parseInt(feeStructureForm.gradeTo, 10);
       if (!fromGrade || !toGrade || fromGrade < 1 || toGrade > 12 || fromGrade > toGrade) {
-        toast.error('Please select a valid grade range');
+        toast.error(t.validGradeRange);
         return;
       }
       targetGrades = Array.from({ length: toGrade - fromGrade + 1 }, (_, index) => fromGrade + index);
@@ -1179,7 +1250,7 @@ setStudentResults(students);
 
     const schoolId = user?.schoolId;
     if (!schoolId) {
-      toast.error('School ID not found. Please log in again.');
+      toast.error(t.schoolIdNotFound);
       return;
     }
 
@@ -1210,8 +1281,8 @@ setIsCreatingFeeStructure(true);
 
         toast.success(
           targetGrades.length > 1
-            ? `Installments created for Grades ${targetGrades[0]}-${targetGrades[targetGrades.length - 1]}`
-            : `Installments created across ${feeCollectionMode?.installmentCount || terms.length || 1} period(s)`,
+            ? t.installmentsCreated.replace('{from}', targetGrades[0].toString()).replace('{to}', targetGrades[targetGrades.length - 1].toString())
+            : t.installmentsCreatedSingle.replace('{count}', (feeCollectionMode?.installmentCount || terms.length || 1).toString()),
         );
         setFeeStructureOpen(false);
         setFeeStructureForm({
@@ -1253,8 +1324,8 @@ setIsCreatingFeeStructure(true);
 
       toast.success(
         targetGrades.length > 1
-          ? `Fee structures created for Grades ${targetGrades[0]}-${targetGrades[targetGrades.length - 1]}`
-          : 'Fee structure created successfully',
+          ? t.feeStructuresCreated.replace('{from}', targetGrades[0].toString()).replace('{to}', targetGrades[targetGrades.length - 1].toString())
+          : t.feeStructureCreated,
       );
       setFeeStructureOpen(false);
       setFeeStructureForm({
@@ -1271,7 +1342,7 @@ setIsCreatingFeeStructure(true);
       loadDashboardData();
     } catch (error: any) {
       console.error('Create fee structure error:', error);
-      toast.error(error.response?.data?.message || 'Failed to create fee structure');
+      toast.error(error.response?.data?.message || t.failedCreateStructure);
     } finally {
       setIsCreatingFeeStructure(false);
     }
@@ -1286,15 +1357,15 @@ setIsCreatingFeeStructure(true);
       <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Finance Dashboard</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Monitor school fee collections and financial overview</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t.subtitle}</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
             {/* Academic Year Selector */}
             <Select value={selectedYear} onValueChange={setSelectedYear}>
               <SelectTrigger className="w-[130px] bg-white dark:bg-slate-700 text-xs">
-                <SelectValue placeholder="Academic Year" />
+                <SelectValue placeholder={t.academicYear} />
               </SelectTrigger>
               <SelectContent>
                 {academicYears.map(year => (
@@ -1306,10 +1377,10 @@ setIsCreatingFeeStructure(true);
             {/* Term Selector */}
             <Select value={selectedTerm} onValueChange={setSelectedTerm}>
               <SelectTrigger className="w-[100px] bg-white dark:bg-slate-700 text-xs">
-                <SelectValue placeholder={curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'} />
+                <SelectValue placeholder={curriculumType === 'SEMESTER' ? t.semester : curriculumType === 'QUARTER' ? t.quarter : t.term} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All {curriculumType === 'SEMESTER' ? 'Semesters' : curriculumType === 'QUARTER' ? 'Quarters' : 'Terms'}</SelectItem>
+                <SelectItem value="all">{curriculumType === 'SEMESTER' ? t.allSemesters : curriculumType === 'QUARTER' ? t.allQuarters : t.allTerms}</SelectItem>
                 {terms.map(term => (
                   <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
                 ))}
@@ -1324,7 +1395,7 @@ setIsCreatingFeeStructure(true);
               onClick={() => setRecordPaymentOpen(true)}
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
-              Record Payment
+              {t.recordPayment}
             </Button>
             <Button 
               size="sm"
@@ -1333,7 +1404,7 @@ setIsCreatingFeeStructure(true);
               onClick={openFeeStructureDialog}
             >
               <FileText className="w-3.5 h-3.5 mr-1" />
-              Fee Structure
+              {t.feeStructure}
             </Button>
             <Button
               size="sm"
@@ -1343,11 +1414,7 @@ setIsCreatingFeeStructure(true);
               onClick={handleSendPeriodReminders}
             >
               <AlertCircle className="w-3.5 h-3.5 mr-1" />
-              {isSendingReminders ? 'Sending...' : 'Send Reminders'}
-            </Button>
-            <Button size="sm" variant="outline" className="whitespace-nowrap text-xs h-8" onClick={handleExportCSV}>
-              <Download className="w-3.5 h-3.5 mr-1" />
-              Export
+              {isSendingReminders ? t.sending : t.sendReminders}
             </Button>
           </div>
         </div>
@@ -1362,7 +1429,7 @@ setIsCreatingFeeStructure(true);
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Revenue</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.totalRevenue}</p>
                   <p className="text-xl font-bold text-slate-900 dark:text-white mt-1">
                     {formatCurrency(stats.totalRevenue)}
                   </p>
@@ -1379,7 +1446,7 @@ setIsCreatingFeeStructure(true);
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Collected Today</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.collectedToday}</p>
                   <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">
                     {formatCurrency(stats.collectedToday)}
                   </p>
@@ -1396,7 +1463,7 @@ setIsCreatingFeeStructure(true);
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Outstanding Balance</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.outstandingBalance}</p>
                   <p className="text-xl font-bold text-red-600 dark:text-red-400 mt-1">
                     {formatCurrency(stats.outstandingBalance)}
                   </p>
@@ -1413,7 +1480,7 @@ setIsCreatingFeeStructure(true);
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Fully Paid</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.fullyPaid}</p>
                   <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">
                     {stats.totalStudentsFullyPaid}
                   </p>
@@ -1430,7 +1497,7 @@ setIsCreatingFeeStructure(true);
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Partial Payment</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.partialPayment}</p>
                   <p className="text-xl font-bold text-orange-600 dark:text-orange-400 mt-1">
                     {stats.studentsPartialPayment}
                   </p>
@@ -1447,7 +1514,7 @@ setIsCreatingFeeStructure(true);
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Unpaid</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.unpaid}</p>
                   <p className="text-xl font-bold text-red-600 dark:text-red-400 mt-1">
                     {stats.unpaidStudentsCount}
                   </p>
@@ -1464,7 +1531,7 @@ setIsCreatingFeeStructure(true);
         <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700 mb-6 max-h-96 overflow-y-auto">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Fee Structures</CardTitle>
+              <CardTitle className="text-base font-semibold">{t.feeStructuresTitle}</CardTitle>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={async () => {
                   if (!user?.schoolId) {
@@ -1478,28 +1545,9 @@ setIsCreatingFeeStructure(true);
                   } catch (e: any) {
                     toast.error(e.response?.data?.message || e.message || 'Failed to clear fee structures');
                   }
-                }}>
-                  Clear
-                </Button>
-                <Button size="sm" variant="outline" onClick={async () => {
-                  if (!selectedYear || !user?.schoolId) {
-                    toast.error('Select academic year first');
-                    return;
-                  }
-                  try {
-                    const result = await financeAPI.generateInstallmentFees({
-                      schoolId: user.schoolId,
-                      academicYearId: selectedYear,
-                      feeType: 'TUITION',
-                    });
-                    toast.success(result.data?.message || 'Tuition installments reconciled');
-                    loadDashboardData();
-                  } catch (e: any) {
-                    toast.error(e.response?.data?.message || e.message || 'Failed to reconcile installments');
-                  }
-                }}>
-                  Reconcile Tuition Installments
-                </Button>
+                  }}>
+                    {t.clear}
+                  </Button>
                 <Button size="sm" variant="outline" onClick={async () => {
                   if (!selectedYear || !user?.schoolId) {
                     toast.error('Select academic year first');
@@ -1512,14 +1560,14 @@ setIsCreatingFeeStructure(true);
                       academicYearId: selectedYear,
                     });
                     console.log('Generate result:', result);
-                    toast.success(result.data?.created ? `Created ${result.data.created} fees!` : 'No fees created');
+                    toast.success(result.data?.created ? `${t.feesCreated} ${result.data.created}` : t.noFeesCreated);
                     loadDashboardData();
                   } catch (e: any) {
                     console.error('Generate error:', e);
-                    toast.error(e.response?.data?.message || e.message || 'Failed to generate fees');
+                    toast.error(e.response?.data?.message || e.message || t.failedGenerateFees);
                   }
                 }}>
-                  Generate Student Fees
+                  {t.generateStudentFees}
                 </Button>
               </div>
             </div>
@@ -1527,15 +1575,15 @@ setIsCreatingFeeStructure(true);
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-8 text-slate-400">
-                <p className="text-sm">Loading...</p>
+                <p className="text-sm">{t.loading}</p>
               </div>
             ) : displayFeeStructures.length > 0 ? (
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[40%] text-left">Fee Type</TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-left">Grade</TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-right">Amount</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[40%] text-left">{t.feeType}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-left">{t.grade}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-right">{t.amount}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1558,25 +1606,25 @@ setIsCreatingFeeStructure(true);
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-slate-400">
                 <Receipt className="w-8 h-8 mb-2" />
-                <p className="text-sm">No fee structures found</p>
-                <p className="text-xs mt-1">Click "Add Fee Structure" to create one</p>
+                <p className="text-sm">{t.noFeeStructures}</p>
+                <p className="text-xs mt-1">{t.addFeeStructureHint}</p>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 gap-6 mb-6">
           {/* Revenue Trend Chart */}
-          <Card className="lg:col-span-2 bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
+          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Revenue Trend</CardTitle>
+                <CardTitle className="text-base font-semibold">{t.revenueTrend}</CardTitle>
                 <Tabs value={chartView} onValueChange={(v) => setChartView(v as ChartView)}>
                   <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
-                    <TabsTrigger value="daily" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">Daily</TabsTrigger>
-                    <TabsTrigger value="weekly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">Weekly</TabsTrigger>
-                    <TabsTrigger value="monthly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">Monthly</TabsTrigger>
+                    <TabsTrigger value="daily" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">{t.daily}</TabsTrigger>
+                    <TabsTrigger value="weekly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">{t.weekly}</TabsTrigger>
+                    <TabsTrigger value="monthly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">{t.monthly}</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -1602,51 +1650,13 @@ setIsCreatingFeeStructure(true);
                   ))
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-slate-400">
-                    No data available
+                    {t.noData}
                   </div>
                 )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Fee Breakdown */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">Collection Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { label: 'Tuition', value: feeBreakdown.tuition, color: 'bg-blue-500' },
-                  { label: 'Registration', value: feeBreakdown.registration, color: 'bg-green-500' },
-                  { label: 'Exam Fee', value: feeBreakdown.examFee, color: 'bg-purple-500' },
-                  { label: 'Library', value: feeBreakdown.library, color: 'bg-yellow-500' },
-                  { label: 'Other', value: feeBreakdown.other, color: 'bg-slate-500' },
-                ].map((item, index) => {
-                  const total = feeBreakdown.tuition + feeBreakdown.registration + 
-                    feeBreakdown.examFee + feeBreakdown.library + feeBreakdown.other;
-                  const percentage = total > 0 ? (item.value / total) * 100 : 0;
-                  
-                  return (
-                    <div key={index}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm text-slate-600 dark:text-slate-300">{item.label}</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white">
-                          {formatCurrency(item.value)}
-                        </span>
-                      </div>
-                      <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full ${item.color} rounded-full transition-all`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Tables Section */}
@@ -1655,11 +1665,11 @@ setIsCreatingFeeStructure(true);
           <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
             <CardHeader className="pb-2 border-b dark:border-slate-700">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold dark:text-white">Recent Transactions</CardTitle>
+                <CardTitle className="text-base font-semibold dark:text-white">{t.recentTransactions}</CardTitle>
                 <div className="relative w-[600px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input 
-                    placeholder="Search..."
+                    placeholder={t.search}
                     className="pl-9 h-8 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
                     value={transactionsSearch}
                     onChange={(e) => setTransactionsSearch(e.target.value)}
@@ -1671,16 +1681,16 @@ setIsCreatingFeeStructure(true);
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Receipt #</TableHead>
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Student</TableHead>
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Class</TableHead>
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Section</TableHead>
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Term/Semester</TableHead>
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Fee</TableHead>
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Method</TableHead>
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Amount</TableHead>
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Date</TableHead>
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 text-right">Action</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.receipt}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.student}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.class}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.section}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.termSemester}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.fee}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.method}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.amount}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.date}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 text-right">{t.action}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1704,15 +1714,15 @@ setIsCreatingFeeStructure(true);
                             disabled={reversingPaymentId === tx.id}
                             onClick={() => handleReversePayment(tx)}
                           >
-                            {reversingPaymentId === tx.id ? 'Reversing...' : 'Reverse'}
+                            {reversingPaymentId === tx.id ? t.reversing : t.reverse}
                           </Button>
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center text-slate-500 py-8 dark:text-gray-400">
-                        No transactions found
+                        <TableCell colSpan={10} className="text-center text-slate-500 py-8 dark:text-gray-400">
+                        {t.noTransactions}
                       </TableCell>
                     </TableRow>
                   )}
@@ -1740,14 +1750,14 @@ setIsCreatingFeeStructure(true);
             <CardHeader className="pb-2 border-b dark:border-slate-700">
               <div className="flex flex-col gap-3">
                 <div className="min-w-0">
-                  <CardTitle className="text-base font-semibold dark:text-white">Outstanding Fees</CardTitle>
+                  <CardTitle className="text-base font-semibold dark:text-white">{t.outstandingFees}</CardTitle>
                   <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
                     {outstandingFeesNote}
                   </p>
                 </div>
                 <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
                   <Input
-                    placeholder="Search student..."
+                    placeholder={t.searchStudent}
                     value={outstandingSearch}
                     onChange={(e) => setOutstandingSearch(e.target.value)}
                     className="h-8 w-full min-w-0 flex-1 text-xs"
@@ -1764,7 +1774,7 @@ setIsCreatingFeeStructure(true);
                             : 'border-transparent bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                         }`}
                       >
-                        {status === 'all' ? 'All' : status === 'PAID' ? 'Paid' : status === 'PARTIAL' ? 'Partial' : 'Unpaid'}
+                        {status === 'all' ? t.allTerms.split(' ')[0] : status === 'PAID' ? t.paid : status === 'PARTIAL' ? t.partial : t.unpaid}
                       </button>
                     ))}
                     </div>
@@ -1777,13 +1787,13 @@ setIsCreatingFeeStructure(true);
                 <Table className="w-full">
                   <TableHeader>
                     <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[25%] text-left">Student</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-left">Grade</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-left">Fee Period</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">Total</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">Paid</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">Balance</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-center">Status</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[25%] text-left">{t.student}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-left">{t.grade}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-left">{t.feePeriod}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">{t.total}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">{t.paid}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">{t.balance}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-center">{t.status}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1793,9 +1803,9 @@ setIsCreatingFeeStructure(true);
                             <TableCell className="text-xs font-medium dark:text-white py-3 px-4 w-[25%] text-left">{fee.studentName}</TableCell>
                             <TableCell className="text-xs dark:text-gray-300 py-3 px-4 w-[15%] text-left">{fee.grade ? `${fee.grade}${fee.section ? ` - ${fee.section}` : ''}` : '-'}</TableCell>
                             <TableCell className="py-3 px-4 w-[15%] text-left">
-                              <div className="text-xs dark:text-gray-300">{formatOutstandingScopeLabel(fee.scopeLabel)}</div>
+                              <div className="text-xs dark:text-gray-300">{formatOutstandingScopeLabel(fee)}</div>
                               {fee.isYearWide && (
-                                <div className="text-[10px] text-slate-500 dark:text-gray-400">Derived from annual fee</div>
+                                <div className="text-[10px] text-slate-500 dark:text-gray-400">{t.derivedFromAnnual}</div>
                               )}
                             </TableCell>
                             <TableCell className="text-xs dark:text-white py-3 px-4 w-[15%] text-right">{formatCurrency(fee.total || 0)}</TableCell>
@@ -1865,9 +1875,10 @@ setIsCreatingFeeStructure(true);
                             entry.student.userId === selectedStudentId ||
                             entry.student.id === selectedStudentId,
                         );
-                        const nextFee =
-                          studentFeeData?.fees.find((fee) => fee.status !== 'PAID') ||
-                          studentFeeData?.fees[0];
+                        const nextFee = choosePreferredPaymentFee(
+                          studentFeeData?.fees || [],
+                          selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined,
+                        );
 	                        setPaymentForm({
 	                          ...paymentForm,
 	                          studentId: selectedStudentId,
@@ -1913,6 +1924,42 @@ setIsCreatingFeeStructure(true);
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {paymentFeeOptions.length > 0 && (
+              <div className="space-y-2">
+                <Label>Fee Item</Label>
+                <Select
+                  value={selectedFeeId}
+                  onValueChange={(value) => {
+                    setSelectedFeeId(value);
+                    const fee = selectedStudentData?.fees.find((item) => item.id === value);
+                    if (!fee) return;
+                    setPaymentForm((current) => ({
+                      ...current,
+                      amountPaid: fee.balance || 0,
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select fee item" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentFeeOptions.map((fee) => (
+                      <SelectItem key={fee.id} value={fee.id}>
+                        {formatFeeStructureName(fee.name)} • {fee.termName || 'Whole Academic Year'} • {formatCurrency(fee.balance)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedFee && (
+                  <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    Recording against {formatFeeStructureName(selectedFee.name)} for {selectedFee.termName || 'Whole Academic Year'}.
+                    Remaining balance: {formatCurrency(selectedFee.balance)}.
+                    {selectedFee.isYearWide ? ' This is the annual fee record.' : ''}
+                  </div>
+                )}
               </div>
             )}
 

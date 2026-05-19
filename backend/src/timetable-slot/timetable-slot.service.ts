@@ -3,7 +3,9 @@ import {
   ConflictException,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTimetableSlotDto } from './dto/create-timetable-slot.dto';
 import { UpdateTimetableSlotDto } from './dto/update-timetable-slot.dto';
@@ -11,6 +13,27 @@ import { UpdateTimetableSlotDto } from './dto/update-timetable-slot.dto';
 @Injectable()
 export class TimetableSlotService {
   constructor(private prisma: PrismaService) {}
+
+  private readonly teachingWeekDays = [1, 2, 3, 4, 5];
+  private readonly maxPeriodsPerDay = 7;
+
+  private buildAutoGenerateSlotKey(dayOfWeek: number, startTime: string) {
+    return `${dayOfWeek}:${startTime}`;
+  }
+
+  private scoreAutoGenerateCandidate(params: {
+    dayOfWeek: number;
+    subjectDailyUsage: number;
+    teacherDailyUsage: number;
+    slotIndex: number;
+  }) {
+    return (
+      params.subjectDailyUsage * 1000 +
+      params.teacherDailyUsage * 100 +
+      params.dayOfWeek * 10 +
+      params.slotIndex
+    );
+  }
 
   private buildAcademicYearFilter(academicYearId?: string) {
     if (!academicYearId) {
@@ -149,11 +172,14 @@ export class TimetableSlotService {
     endTime: string,
     teacherId: string | undefined,
     classId: string,
+    sectionId: string,
+    room?: string,
     excludeSlotId?: string,
+    prismaClient: Prisma.TransactionClient | PrismaService = this.prisma,
   ): Promise<void> {
     // Check for teacher conflicts only if teacherId is provided
     if (teacherId) {
-      const teacherConflicts = await this.prisma.timetableSlot.findMany({
+      const teacherConflicts = await prismaClient.timetableSlot.findMany({
         where: {
           schoolId,
           teacherId,
@@ -191,10 +217,11 @@ export class TimetableSlotService {
     }
 
     // Check for class conflicts
-    const classConflicts = await this.prisma.timetableSlot.findMany({
+    const classConflicts = await prismaClient.timetableSlot.findMany({
       where: {
         schoolId,
         classId,
+        sectionId,
         dayOfWeek,
         id: excludeSlotId ? { not: excludeSlotId } : undefined,
         OR: [
@@ -223,8 +250,139 @@ export class TimetableSlotService {
     if (classConflicts.length > 0) {
       const conflict = classConflicts[0];
       throw new ConflictException(
-        `Class is already scheduled for ${conflict.startTime} - ${conflict.endTime} on this day`,
+        `Section is already scheduled for ${conflict.startTime} - ${conflict.endTime} on this day`,
       );
+    }
+
+    if (room) {
+      const roomConflicts = await prismaClient.timetableSlot.findMany({
+        where: {
+          schoolId,
+          room,
+          dayOfWeek,
+          id: excludeSlotId ? { not: excludeSlotId } : undefined,
+          OR: [
+            {
+              AND: [
+                { startTime: { lte: startTime } },
+                { endTime: { gt: startTime } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { lt: endTime } },
+                { endTime: { gte: endTime } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { gte: startTime } },
+                { endTime: { lte: endTime } },
+              ],
+            },
+          ],
+        },
+      });
+
+      if (roomConflicts.length > 0) {
+        const conflict = roomConflicts[0];
+        throw new ConflictException(
+          `Room ${room} is already scheduled for ${conflict.startTime} - ${conflict.endTime} on this day`,
+        );
+      }
+    }
+  }
+
+  private validatePeriodCapacity(periodTimes: Array<{ id?: string }>) {
+    if (periodTimes.length === 0) {
+      throw new BadRequestException(
+        'Create period times before auto-generating a timetable',
+      );
+    }
+
+    if (periodTimes.length > this.maxPeriodsPerDay) {
+      throw new BadRequestException(
+        `Ethiopian schools support a maximum of ${this.maxPeriodsPerDay} periods per day`,
+      );
+    }
+  }
+
+  private validateAutoGenerationLoads(
+    normalizedRequirements: Array<{
+      classSubjectId: string;
+      periodsPerWeek: number;
+    }>,
+    periodTimesPerDay: number,
+  ) {
+    const weeklyCapacity = this.teachingWeekDays.length * periodTimesPerDay;
+    const excessiveRequirement = normalizedRequirements.find(
+      (item) => item.periodsPerWeek > weeklyCapacity,
+    );
+
+    if (excessiveRequirement) {
+      throw new BadRequestException(
+        `A subject cannot exceed ${weeklyCapacity} periods per week for the configured school week`,
+      );
+    }
+
+    const totalRequestedPeriods = normalizedRequirements.reduce(
+      (sum, item) => sum + item.periodsPerWeek,
+      0,
+    );
+
+    if (totalRequestedPeriods > weeklyCapacity) {
+      throw new BadRequestException(
+        `The requested weekly load exceeds the section capacity of ${weeklyCapacity} periods`,
+      );
+    }
+  }
+
+  private validateBatchConflicts(slots: CreateTimetableSlotDto[]) {
+    for (let index = 0; index < slots.length; index += 1) {
+      const current = slots[index];
+
+      for (let compareIndex = index + 1; compareIndex < slots.length; compareIndex += 1) {
+        const next = slots[compareIndex];
+        const sameDay = current.dayOfWeek === next.dayOfWeek;
+        if (!sameDay) continue;
+
+        const overlaps = this.timesOverlap(
+          current.startTime,
+          current.endTime,
+          next.startTime,
+          next.endTime,
+        );
+        if (!overlaps) continue;
+
+        if (
+          current.classId === next.classId &&
+          current.sectionId === next.sectionId
+        ) {
+          throw new ConflictException(
+            `Section ${current.sectionId} has overlapping timetable slots in this batch`,
+          );
+        }
+
+        if (
+          current.teacherId &&
+          next.teacherId &&
+          current.teacherId === next.teacherId
+        ) {
+          throw new ConflictException(
+            'A teacher has overlapping timetable slots in this batch',
+          );
+        }
+
+        if (
+          current.room &&
+          next.room &&
+          current.room === next.room
+        ) {
+          throw new ConflictException(
+            `Room ${current.room} has overlapping timetable slots in this batch`,
+          );
+        }
+      }
     }
   }
 
@@ -237,6 +395,8 @@ export class TimetableSlotService {
       data.endTime,
       data.teacherId,
       data.classId,
+      data.sectionId,
+      data.room,
     );
 
     return this.prisma.timetableSlot.create({
@@ -392,6 +552,8 @@ export class TimetableSlotService {
       endTime,
       teacherId ?? undefined,
       classId,
+      data.sectionId ?? existing.sectionId,
+      data.room ?? existing.room ?? undefined,
       id,
     );
 
@@ -399,6 +561,7 @@ export class TimetableSlotService {
       where: { id },
       data: {
         classId: data.classId,
+        sectionId: data.sectionId,
         subjectId: data.subjectId,
         teacherId: data.teacherId,
         dayOfWeek: data.dayOfWeek,
@@ -430,15 +593,12 @@ export class TimetableSlotService {
    * This allows creating the full weekly schedule at once
    */
   async bulkCreate(schoolId: string, slots: CreateTimetableSlotDto[]) {
-    const results = {
-      success: true,
-      created: [] as any[],
-      errors: [] as { slot: any; error: string }[],
-    };
+    this.validateBatchConflicts(slots);
 
-    for (const slotData of slots) {
-      try {
-        // Validate no conflicts
+    const created = await this.prisma.$transaction(async (tx) => {
+      const inserted: any[] = [];
+
+      for (const slotData of slots) {
         await this.validateNoConflict(
           schoolId,
           slotData.dayOfWeek,
@@ -446,9 +606,13 @@ export class TimetableSlotService {
           slotData.endTime,
           slotData.teacherId,
           slotData.classId,
+          slotData.sectionId,
+          slotData.room,
+          undefined,
+          tx,
         );
 
-        const slot = await this.prisma.timetableSlot.create({
+        const slot = await tx.timetableSlot.create({
           data: {
             schoolId,
             classId: slotData.classId,
@@ -470,20 +634,17 @@ export class TimetableSlotService {
           },
         });
 
-        results.created.push(slot);
-      } catch (error: any) {
-        results.errors.push({
-          slot: slotData,
-          error: error.message || 'Unknown error',
-        });
+        inserted.push(slot);
       }
-    }
 
-    if (results.errors.length > 0) {
-      results.success = false;
-    }
+      return inserted;
+    });
 
-    return results;
+    return {
+      success: true,
+      created,
+      errors: [],
+    };
   }
 
   /**
@@ -541,24 +702,353 @@ export class TimetableSlotService {
 
     // Organize by day
     const days = [
-      'Sunday',
       'Monday',
       'Tuesday',
       'Wednesday',
       'Thursday',
       'Friday',
       'Saturday',
+      'Sunday',
     ];
     const grid: Record<string, any[]> = {};
 
-    for (let i = 0; i < 7; i++) {
-      grid[i] = slots.filter((s) => s.dayOfWeek === i);
+    for (let i = 1; i <= 7; i += 1) {
+      grid[days[i - 1]] = slots.filter((s) => s.dayOfWeek === i);
     }
 
     return {
       days,
       grid,
       slots,
+    };
+  }
+
+  async autoGenerateSectionTimetable(
+    schoolId: string,
+    payload: {
+      classId: string;
+      sectionId: string;
+      academicYearId?: string;
+      apply?: boolean;
+      periodRequirements: Array<{
+        classSubjectId: string;
+        periodsPerWeek: number;
+      }>;
+    },
+  ) {
+    const { classId, sectionId, academicYearId, apply = false, periodRequirements } = payload;
+
+    if (!classId || !sectionId) {
+      throw new BadRequestException('Class and section are required');
+    }
+
+    if (!Array.isArray(periodRequirements) || periodRequirements.length === 0) {
+      throw new BadRequestException('At least one period requirement is required');
+    }
+
+    const normalizedRequirements = periodRequirements
+      .map((item) => ({
+        classSubjectId: item.classSubjectId,
+        periodsPerWeek: Number(item.periodsPerWeek) || 0,
+      }))
+      .filter((item) => item.classSubjectId && item.periodsPerWeek > 0);
+
+    if (normalizedRequirements.length === 0) {
+      throw new BadRequestException('No valid period requirements were provided');
+    }
+
+    const [periodTimes, classSubjects, existingSlots] = await Promise.all([
+      this.prisma.periodTime.findMany({
+        where: { schoolId },
+        orderBy: { periodNumber: 'asc' },
+      }),
+      this.prisma.classSubject.findMany({
+        where: {
+          classId,
+          sectionId,
+          ...(academicYearId ? { academicYear: academicYearId } : {}),
+        },
+        include: {
+          class: { select: { id: true, name: true, grade: true } },
+          section: { select: { id: true, name: true } },
+          subject: { select: { id: true, name: true, code: true } },
+          teacher: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      this.prisma.timetableSlot.findMany({
+        where: {
+          schoolId,
+          ...(academicYearId ? { academicYearId } : {}),
+        },
+        select: {
+          classId: true,
+          sectionId: true,
+          teacherId: true,
+          subjectId: true,
+          room: true,
+          dayOfWeek: true,
+          startTime: true,
+        },
+      }),
+    ]);
+
+    this.validatePeriodCapacity(periodTimes);
+    this.validateAutoGenerationLoads(normalizedRequirements, periodTimes.length);
+
+    const classSubjectMap = new Map(classSubjects.map((item) => [item.id, item]));
+
+    const unresolvedRequirements = normalizedRequirements
+      .filter((item) => !classSubjectMap.has(item.classSubjectId))
+      .map((item) => ({
+        classSubjectId: item.classSubjectId,
+        subjectName: 'Unknown subject',
+        teacherName: null,
+        reason: 'Assignment not found for the selected class and section',
+      }));
+
+    const requirements = normalizedRequirements
+      .map((item) => {
+        const classSubject = classSubjectMap.get(item.classSubjectId);
+        if (!classSubject) return null;
+        return { ...item, classSubject };
+      })
+      .filter(
+        (
+          item,
+        ): item is {
+          classSubjectId: string;
+          periodsPerWeek: number;
+          classSubject: (typeof classSubjects)[number];
+        } => Boolean(item),
+      );
+
+    const candidateSlots = this.teachingWeekDays.flatMap((dayOfWeek) =>
+      periodTimes.map((period, slotIndex) => ({
+        dayOfWeek,
+        startTime: period.startTime,
+        endTime: period.endTime,
+        periodNumber: period.periodNumber,
+        slotIndex,
+      })),
+    );
+
+    const sectionSlotKeys = new Set<string>();
+    const teacherSlotKeys = new Set<string>();
+
+    for (const slot of existingSlots) {
+      const slotKey = this.buildAutoGenerateSlotKey(slot.dayOfWeek, slot.startTime);
+      const isTargetSection =
+        slot.classId === classId && slot.sectionId === sectionId;
+
+      if (isTargetSection && apply) {
+        continue;
+      }
+
+      sectionSlotKeys.add(slotKey);
+
+      if (slot.teacherId) {
+        teacherSlotKeys.add(`${slot.teacherId}:${slotKey}`);
+      }
+    }
+
+    const subjectUsageByDay = new Map<string, number>();
+    const teacherUsageByDay = new Map<string, number>();
+    const teacherSubjectUsageByDay = new Map<string, number>();
+
+    for (const slot of existingSlots) {
+      const isTargetSection =
+        slot.classId === classId && slot.sectionId === sectionId;
+
+      if ((isTargetSection && apply) || !slot.teacherId || !slot.subjectId) {
+        continue;
+      }
+
+      const teacherSubjectDailyKey = `${slot.teacherId}:${slot.subjectId}:${slot.dayOfWeek}`;
+      teacherSubjectUsageByDay.set(
+        teacherSubjectDailyKey,
+        (teacherSubjectUsageByDay.get(teacherSubjectDailyKey) || 0) + 1,
+      );
+    }
+
+    const demands = requirements
+      .flatMap((requirement) =>
+        Array.from({ length: requirement.periodsPerWeek }, () => ({
+          classSubjectId: requirement.classSubjectId,
+          subjectId: requirement.classSubject.subjectId,
+          subjectName: requirement.classSubject.subject?.name || 'Unknown subject',
+          teacherId: requirement.classSubject.teacherId || null,
+          teacherName: requirement.classSubject.teacher?.name || null,
+          periodsPerWeek: requirement.periodsPerWeek,
+        })),
+      )
+      .sort((left, right) => {
+        const leftTeacherPenalty = left.teacherId ? 0 : 1;
+        const rightTeacherPenalty = right.teacherId ? 0 : 1;
+        if (leftTeacherPenalty !== rightTeacherPenalty) {
+          return leftTeacherPenalty - rightTeacherPenalty;
+        }
+        return right.periodsPerWeek - left.periodsPerWeek;
+      });
+
+    const generatedSlots: Array<{
+      classSubjectId: string;
+      subjectId: string;
+      subjectName: string;
+      teacherId?: string;
+      teacherName?: string | null;
+      dayOfWeek: number;
+      startTime: string;
+      endTime: string;
+      periodNumber: number;
+      room?: string | null;
+    }> = [];
+
+    const unscheduled: Array<{
+      classSubjectId: string;
+      subjectName: string;
+      teacherName: string | null;
+      reason: string;
+    }> = [...unresolvedRequirements];
+
+    for (const demand of demands) {
+      if (!demand.teacherId) {
+        unscheduled.push({
+          classSubjectId: demand.classSubjectId,
+          subjectName: demand.subjectName,
+          teacherName: null,
+          reason: 'No teacher assigned to this class subject',
+        });
+        continue;
+      }
+
+      const chosenCandidate = candidateSlots
+        .filter((candidate) => {
+          const slotKey = this.buildAutoGenerateSlotKey(
+            candidate.dayOfWeek,
+            candidate.startTime,
+          );
+          const teacherSubjectDailyKey = `${demand.teacherId}:${demand.subjectId}:${candidate.dayOfWeek}`;
+          return (
+            !sectionSlotKeys.has(slotKey) &&
+            !teacherSlotKeys.has(`${demand.teacherId}:${slotKey}`) &&
+            (teacherSubjectUsageByDay.get(teacherSubjectDailyKey) || 0) === 0
+          );
+        })
+        .map((candidate) => {
+          const subjectDailyKey = `${demand.subjectId}:${candidate.dayOfWeek}`;
+          const teacherDailyKey = `${demand.teacherId}:${candidate.dayOfWeek}`;
+          return {
+            ...candidate,
+            score: this.scoreAutoGenerateCandidate({
+              dayOfWeek: candidate.dayOfWeek,
+              subjectDailyUsage: subjectUsageByDay.get(subjectDailyKey) || 0,
+              teacherDailyUsage: teacherUsageByDay.get(teacherDailyKey) || 0,
+              slotIndex: candidate.slotIndex,
+            }),
+          };
+        })
+        .sort((left, right) => left.score - right.score)[0];
+
+      if (!chosenCandidate) {
+        unscheduled.push({
+          classSubjectId: demand.classSubjectId,
+          subjectName: demand.subjectName,
+          teacherName: demand.teacherName,
+          reason: 'No conflict-free period is available for this teacher and section',
+        });
+        continue;
+      }
+
+      const slotKey = this.buildAutoGenerateSlotKey(
+        chosenCandidate.dayOfWeek,
+        chosenCandidate.startTime,
+      );
+
+      sectionSlotKeys.add(slotKey);
+      teacherSlotKeys.add(`${demand.teacherId}:${slotKey}`);
+
+      const subjectDailyKey = `${demand.subjectId}:${chosenCandidate.dayOfWeek}`;
+      const teacherDailyKey = `${demand.teacherId}:${chosenCandidate.dayOfWeek}`;
+      const teacherSubjectDailyKey = `${demand.teacherId}:${demand.subjectId}:${chosenCandidate.dayOfWeek}`;
+      subjectUsageByDay.set(
+        subjectDailyKey,
+        (subjectUsageByDay.get(subjectDailyKey) || 0) + 1,
+      );
+      teacherUsageByDay.set(
+        teacherDailyKey,
+        (teacherUsageByDay.get(teacherDailyKey) || 0) + 1,
+      );
+      teacherSubjectUsageByDay.set(
+        teacherSubjectDailyKey,
+        (teacherSubjectUsageByDay.get(teacherSubjectDailyKey) || 0) + 1,
+      );
+
+      generatedSlots.push({
+        classSubjectId: demand.classSubjectId,
+        subjectId: demand.subjectId,
+        subjectName: demand.subjectName,
+        teacherId: demand.teacherId,
+        teacherName: demand.teacherName,
+        dayOfWeek: chosenCandidate.dayOfWeek,
+        startTime: chosenCandidate.startTime,
+        endTime: chosenCandidate.endTime,
+        periodNumber: chosenCandidate.periodNumber,
+        room: null,
+      });
+    }
+
+    const summary = {
+      requestedPeriods: normalizedRequirements.reduce(
+        (total, item) => total + item.periodsPerWeek,
+        0,
+      ),
+      generatedPeriods: generatedSlots.length,
+      unscheduledPeriods: unscheduled.length,
+    };
+
+    let applied = false;
+
+    if (apply && unscheduled.length === 0) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.timetableSlot.deleteMany({
+          where: {
+            schoolId,
+            classId,
+            sectionId,
+            ...(academicYearId ? { academicYearId } : {}),
+          },
+        });
+
+        if (generatedSlots.length > 0) {
+          await tx.timetableSlot.createMany({
+            data: generatedSlots.map((slot) => ({
+              schoolId,
+              classId,
+              sectionId,
+              subjectId: slot.subjectId,
+              teacherId: slot.teacherId,
+              dayOfWeek: slot.dayOfWeek,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+              room: slot.room || undefined,
+              academicYearId,
+            })),
+          });
+        }
+      });
+
+      applied = true;
+    }
+
+    return {
+      success: unscheduled.length === 0,
+      applied,
+      classId,
+      sectionId,
+      academicYearId: academicYearId || null,
+      generatedSlots,
+      unscheduled,
+      summary,
     };
   }
 }

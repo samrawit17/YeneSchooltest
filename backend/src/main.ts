@@ -3,6 +3,21 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import cookieParser from 'cookie-parser';
+
+function describeDatabaseTarget(databaseUrl?: string) {
+  if (!databaseUrl) {
+    return 'DATABASE_URL is not set';
+  }
+
+  try {
+    const parsed = new URL(databaseUrl);
+    const dbName = parsed.pathname.replace(/^\//, '') || '<unknown>';
+    return `${parsed.hostname}:${parsed.port || '5432'}/${dbName}`;
+  } catch {
+    return 'DATABASE_URL is set but could not be parsed';
+  }
+}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -17,6 +32,7 @@ async function bootstrap() {
   });
 
   app.set('trust proxy', process.env.TRUST_PROXY ?? 1);
+  app.use(cookieParser());
   app.useStaticAssets(join(process.cwd(), 'public'));
 
   // Enable validation
@@ -32,6 +48,12 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 5000;
   await app.listen(port);
-  // Logging removed for production
+  console.log(`[startup] Backend listening on port ${port}`);
+  console.log(
+    `[startup] Database target: ${describeDatabaseTarget(process.env.DATABASE_POOL_URL || process.env.DATABASE_URL)}`,
+  );
+  console.log(
+    '[startup] Expected Docker database for local development: localhost:5433/lemarisms',
+  );
 }
 bootstrap();

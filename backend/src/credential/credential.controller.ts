@@ -70,6 +70,24 @@ export class CredentialController {
     private readonly prismaService: PrismaService,
   ) {}
 
+  private resolveSchoolScope(
+    reqUser: { role?: Role; schoolId?: string },
+    requestedSchoolId?: string,
+  ) {
+    if (reqUser?.role === Role.SUPER_ADMIN) {
+      if (!requestedSchoolId) {
+        throw new BadRequestException('schoolId is required');
+      }
+      return requestedSchoolId;
+    }
+
+    if (!reqUser?.schoolId) {
+      throw new BadRequestException('School context is required');
+    }
+
+    return reqUser.schoolId;
+  }
+
   private async createStaffUserRecord(
     client: PrismaService | Prisma.TransactionClient,
     data: {
@@ -132,6 +150,7 @@ export class CredentialController {
   @Get('preview/student/:schoolId')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.REGISTRAR)
   async previewStudentId(
+    @Request() req: any,
     @Param('schoolId') schoolId: string,
     @Query('academicYear') academicYear: string,
   ) {
@@ -139,18 +158,20 @@ export class CredentialController {
       throw new BadRequestException('Academic year is required');
     }
 
+    const effectiveSchoolId = this.resolveSchoolScope(req.user, schoolId);
+
     // Get current counter state
     const counter = await this.prismaService.schoolYearCounter.findUnique({
       where: {
         schoolId_academicYear: {
-          schoolId,
+          schoolId: effectiveSchoolId,
           academicYear,
         },
       },
     });
 
     const school = await this.prismaService.school.findUnique({
-      where: { id: schoolId },
+      where: { id: effectiveSchoolId },
       select: { code: true, name: true },
     });
 
@@ -182,10 +203,12 @@ export class CredentialController {
   @Get('preview/staff/:schoolId')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   async previewStaffId(
+    @Request() req: any,
     @Param('schoolId') schoolId: string,
     @Query('role') role: Role,
     @Query('academicYear') academicYear?: string,
   ) {
+    const effectiveSchoolId = this.resolveSchoolScope(req.user, schoolId);
     const year = academicYear
       ? this.extractYearFromAcademicYear(academicYear)
       : new Date().getFullYear().toString();
@@ -193,14 +216,14 @@ export class CredentialController {
     const counter = await this.prismaService.schoolYearCounter.findUnique({
       where: {
         schoolId_academicYear: {
-          schoolId,
+          schoolId: effectiveSchoolId,
           academicYear: `${year}-${parseInt(year) + 1}`,
         },
       },
     });
 
     const school = await this.prismaService.school.findUnique({
-      where: { id: schoolId },
+      where: { id: effectiveSchoolId },
       select: { code: true, name: true },
     });
 

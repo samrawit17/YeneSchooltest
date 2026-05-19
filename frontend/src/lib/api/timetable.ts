@@ -13,13 +13,25 @@ export const adminTimetableAPI = {
   getAcademicYears: () => api.get('/academic-years'),
 
   getClassSubjects: (params?: { classId?: string; sectionId?: string; academicYearId?: string }) =>
-    api.get('/class-subjects', { params }),
+    params?.classId
+      ? api.get(`/class-subjects/by-class/${params.classId}`, {
+          params: { sectionId: params.sectionId },
+        })
+      : api.get('/class-subjects', { params }),
 
   getGrid: (classId: string, params?: { sectionId?: string }) =>
     api.get(`/timetable-slots/grid/class/${classId}`, { params }),
+
+  getAllSlots: (params?: {
+    dayOfWeek?: number;
+    classId?: string;
+    teacherId?: string;
+    academicYearId?: string;
+  }) => api.get('/timetable-slots', { params }),
 
   clearSectionSlots: (classId: string, sectionId: string) =>
     api.delete(`/timetable-slots/class/${classId}/section/${sectionId}`),
 
   bulkCreateSlots: (slots: any[]) => api.post("/timetable-slots/bulk", { slots }),
+
 };

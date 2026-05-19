@@ -124,7 +124,10 @@ const EventListPage = () => {
         {initialLoad ? (
           <CalendarSkeleton />
         ) : (
-          <BigCalendar events={eventsData || []} />
+          <BigCalendar events={(eventsData || []).map((event) => ({
+            ...event,
+            endDate: event.endDate || undefined,
+          }))} />
         )}
       </div>
 

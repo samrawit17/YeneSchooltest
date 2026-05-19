@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type AppLanguage = 'am' | 'ar' | 'en' | 'om' | 'so';
 
@@ -10,6 +9,48 @@ interface LanguageState {
 }
 
 const isClient = typeof window !== 'undefined';
+const DEFAULT_LANGUAGE: AppLanguage = 'en';
+const GUEST_LANGUAGE_KEY = 'language-storage';
+
+const parseLanguage = (raw: string | null): AppLanguage | null => {
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as { language?: AppLanguage; state?: { language?: AppLanguage } };
+    const language = parsed.language ?? parsed.state?.language;
+    if (language && ['am', 'ar', 'en', 'om', 'so'].includes(language)) {
+      return language;
+    }
+  } catch (error) {
+    console.warn('Failed to parse language preference:', error);
+  }
+
+  return null;
+};
+
+const getCurrentUserId = () => {
+  if (!isClient) return null;
+
+  const sources = [localStorage, sessionStorage];
+  for (const storage of sources) {
+    const rawUser = storage.getItem('user');
+    if (!rawUser) continue;
+
+    try {
+      const user = JSON.parse(rawUser) as { id?: string };
+      if (user.id) return user.id;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+};
+
+const getScopedLanguageKey = () => {
+  const userId = getCurrentUserId();
+  return userId ? `language-storage:${userId}` : GUEST_LANGUAGE_KEY;
+};
 
 const applyDocumentLanguage = (language: AppLanguage) => {
   if (!isClient) return;
@@ -18,41 +59,32 @@ const applyDocumentLanguage = (language: AppLanguage) => {
   document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
 };
 
-export const useLanguageStore = create<LanguageState>()(
-  persist(
-    (set) => ({
-      language: 'en',
-      setLanguage: (language) => {
-        set({ language });
-        applyDocumentLanguage(language);
-      },
-      initializeLanguage: () => {
-        if (!isClient) return;
+const readStoredLanguage = (): AppLanguage => {
+  if (!isClient) return DEFAULT_LANGUAGE;
 
-        const stored = localStorage.getItem('language-storage');
+  const scopedLanguage = parseLanguage(localStorage.getItem(getScopedLanguageKey()));
+  if (scopedLanguage) return scopedLanguage;
 
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored) as { state?: { language?: AppLanguage } };
-            const language = parsed.state?.language ?? 'en';
-            set({ language });
-            applyDocumentLanguage(language);
-            return;
-          } catch (error) {
-            console.warn('Failed to parse language preference:', error);
-          }
-        }
+  const guestLanguage = parseLanguage(localStorage.getItem(GUEST_LANGUAGE_KEY));
+  if (guestLanguage) return guestLanguage;
 
-        applyDocumentLanguage('en');
-      },
-    }),
-    {
-      name: 'language-storage',
-      storage: createJSONStorage(() =>
-        isClient
-          ? localStorage
-          : { getItem: () => null, setItem: () => {}, removeItem: () => {} }
-      ),
+  return DEFAULT_LANGUAGE;
+};
+
+export const useLanguageStore = create<LanguageState>((set) => ({
+  language: DEFAULT_LANGUAGE,
+  setLanguage: (language) => {
+    set({ language });
+
+    if (isClient) {
+      localStorage.setItem(getScopedLanguageKey(), JSON.stringify({ language }));
     }
-  )
-);
+
+    applyDocumentLanguage(language);
+  },
+  initializeLanguage: () => {
+    const language = readStoredLanguage();
+    set({ language });
+    applyDocumentLanguage(language);
+  },
+}));

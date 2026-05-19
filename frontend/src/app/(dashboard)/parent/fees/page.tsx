@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CreditCard, AlertCircle, CheckCircle, Receipt, Calendar, Clock, Wallet, ChevronDown, ChevronUp, DollarSign } from "lucide-react";
 import { parentsAPI } from "@/lib/api/people";
 import { financeAPI } from "@/lib/api/finance";
@@ -172,17 +172,22 @@ const getPeriodCount = (curriculumType: string): number => {
   return counts[curriculumType] || 3;
 };
 
-const getGroupPeriodBalance = (breakdown: FeeGroup[], periodTitle: string) =>
-  breakdown.reduce((sum, group) => {
-    const period = group.periods.find((item) => item.termName === periodTitle);
-    return sum + (period?.balance || 0);
-  }, 0);
-
-const getFirstUnpaidPeriodTitle = (breakdown: FeeGroup[], periodTitles: string[]) =>
-  periodTitles.find((title) => getGroupPeriodBalance(breakdown, title) > 0) || null;
-
 const cleanFeeTypeName = (feeType: string) => {
   return feeType.replace(/_INSTALLMENT_\d+$/i, "").replace(/_ANNUAL$/, "").replace(/_/g, " ");
+};
+
+const getChildPeriodTitles = (
+  child: Child | null,
+  fallbackCurriculumType: string,
+  academicYear: AcademicYear | undefined,
+  formatDate: (date: Date | string) => string,
+) => {
+  const billingMode = normalizeCurriculumType(
+    child?.curriculumType || fallbackCurriculumType || "TERM",
+  );
+  return child?.periodLabels?.length
+    ? child.periodLabels
+    : getInstallmentPeriodTitles(billingMode, academicYear, formatDate);
 };
 
 const getInstallmentNumber = (feeType?: string | null) => {
@@ -190,10 +195,84 @@ const getInstallmentNumber = (feeType?: string | null) => {
   return match ? Number(match[1]) : null;
 };
 
+const getMonthPeriodFromPaymentDate = (
+  paidAt: string,
+  periodTitles: string[],
+  formatDate: (date: Date | string) => string,
+) => {
+  const monthLabel = formatDate(paidAt).replace(/\s+\d{1,2},/, "");
+  return periodTitles.find((title) => title === monthLabel) || null;
+};
+
+const getPaymentPeriodKey = (
+  payment: { termName?: string | null; paidAt?: string; paymentDate?: string },
+  periodTitles: string[],
+  formatDate: (date: Date | string) => string,
+) => {
+  const paidAt = payment.paidAt || payment.paymentDate;
+  const monthBasedPeriod = paidAt
+    ? getMonthPeriodFromPaymentDate(paidAt, periodTitles, formatDate)
+    : null;
+
+  if (monthBasedPeriod && (!payment.termName || !periodTitles.includes(payment.termName))) {
+    return monthBasedPeriod;
+  }
+
+  return payment.termName || monthBasedPeriod || "";
+};
+
+const getPaidAmountForSelectedPeriod = (
+  payments: PaymentHistoryItem[],
+  feeType: string,
+  selectedPeriod: string,
+  periodTitles: string[],
+  formatDate: (date: Date | string) => string,
+) =>
+  payments
+    .filter((payment) => cleanFeeTypeName(payment.feeItemName || "") === cleanFeeTypeName(feeType))
+    .filter(
+      (payment) =>
+        getPaymentPeriodKey(
+          { termName: payment.termName, paidAt: payment.paidAt },
+          periodTitles,
+          formatDate,
+        ) === selectedPeriod,
+    )
+    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
+
+const getCurrentPeriodTitle = (
+  billingMode: string,
+  periodTitles: string[],
+  formatDate: (date: Date | string) => string,
+  currentTermName?: string | null,
+) => {
+  if (periodTitles.length === 0) return null;
+
+  if (billingMode === "MONTHLY") {
+    const monthLabel = formatDate(new Date()).replace(/\s+\d{1,2},/, "");
+    return (
+      periodTitles.find((title) => title === monthLabel) ||
+      periodTitles.find((title) => title.toLowerCase() === monthLabel.toLowerCase()) ||
+      periodTitles[0]
+    );
+  }
+
+  if (currentTermName) {
+    return (
+      periodTitles.find((title) => title === currentTermName) ||
+      periodTitles.find((title) => title.toLowerCase().includes(currentTermName.toLowerCase())) ||
+      periodTitles[0]
+    );
+  }
+
+  return periodTitles[0];
+};
+
 const buildPeriodPaymentHistory = (
   payments: PaymentHistoryItem[],
   breakdown: FeeGroup[],
   periodTitles: string[],
+  formatDate: (date: Date | string) => string,
   preferredPeriod?: string,
 ): PeriodPaymentHistoryItem[] => {
   const yearWidePaymentsByFee = new Map<string, PaymentHistoryItem[]>();
@@ -209,10 +288,20 @@ const buildPeriodPaymentHistory = (
       return;
     }
 
+    const monthBasedPeriod = getMonthPeriodFromPaymentDate(
+      payment.paidAt,
+      periodTitles,
+      formatDate,
+    );
+    const displayPeriod =
+      monthBasedPeriod && (!payment.termName || !periodTitles.includes(payment.termName))
+        ? monthBasedPeriod
+        : payment.termName || monthBasedPeriod || "Current Period";
+
     rows.push({
       ...payment,
       displayAmount: payment.amount,
-      displayPeriod: payment.termName || "Current Period",
+      displayPeriod,
     });
   });
 
@@ -403,10 +492,14 @@ const ParentFeesPage = () => {
 
               if (shouldSplitAcrossPeriods) {
                 const periodPayments = new Map<string, number>();
+                const normalizedFeeName = cleanFeeTypeName(fee.name);
                 paymentItems
-                  .filter((payment: any) => payment.isYearWide && payment.feeItemName === fee.name)
+                  .filter(
+                    (payment: any) =>
+                      cleanFeeTypeName(payment.feeItemName || "") === normalizedFeeName,
+                  )
                   .forEach((payment: any) => {
-                    const key = payment.termName || "";
+                    const key = getPaymentPeriodKey(payment, childPeriodTitles, formatDate);
                     if (!key) return;
                     periodPayments.set(key, (periodPayments.get(key) || 0) + (payment.amount || 0));
                   });
@@ -512,78 +605,80 @@ const ParentFeesPage = () => {
     fetchData();
   }, [getAllAcademicYears, currentAcademicYear, currentTerm, curriculumType, selectedYear, formatDate]);
 
-  const getCurrentMonthlyPeriodTitle = useCallback((periodTitles: string[]) => {
-    const now = new Date();
-    const currentMonthTitle = formatDate(now).replace(/\s+\d{1,2},/, "");
-    return (
-      periodTitles.find((title) => title === currentMonthTitle) ||
-      periodTitles.find((title) => title.toLowerCase().includes(currentMonthTitle.toLowerCase())) ||
-      null
-    );
-  }, [formatDate]);
-
-  const getPreferredBillingPeriod = useCallback((child: Child | null) => {
-    if (!child?.fees) return null;
-
-    const billingMode = normalizeCurriculumType(child.curriculumType || curriculumType || "TERM");
-    const periodTitles = child.periodLabels?.length
-      ? child.periodLabels
-      : getInstallmentPeriodTitles(
-          billingMode,
-          selectedAcademicYear,
-          formatDate,
-        );
-
-    if (periodTitles.length === 0) return null;
-
-    const currentPeriod =
-      billingMode === "MONTHLY"
-        ? getCurrentMonthlyPeriodTitle(periodTitles)
-        : billingMode === "QUARTERLY"
-          ? currentTerm?.name && periodTitles.includes(currentTerm.name)
-            ? currentTerm.name
-            : periodTitles.find((title) =>
-                currentTerm?.name
-                  ? title.toLowerCase().includes(currentTerm.name.toLowerCase())
-                  : false,
-              ) || null
-          : currentTerm?.name && periodTitles.includes(currentTerm.name)
-            ? currentTerm.name
-            : null;
-
-    if (
-      currentPeriod &&
-      getGroupPeriodBalance(child.fees.breakdown, currentPeriod) > 0
-    ) {
-      return currentPeriod;
-    }
-
-    return (
-      getFirstUnpaidPeriodTitle(child.fees.breakdown, periodTitles) ||
-      currentPeriod ||
-      periodTitles[0]
-    );
-  }, [
-    curriculumType,
-    currentTerm,
-    formatDate,
-    getCurrentMonthlyPeriodTitle,
-    selectedAcademicYear,
-  ]);
-
-  // Default to the billing period the parent is expected to pay now.
   useEffect(() => {
     if (periodTouched) {
       return;
     }
 
-    const selectedChild = children.find((child) => child.id === selectedChildId) || children[0] || null;
-    const preferredPeriod = getPreferredBillingPeriod(selectedChild);
-
-    if (preferredPeriod && selectedPeriod !== preferredPeriod) {
-      setSelectedPeriod(preferredPeriod);
+    const currentChild = children.find((child) => child.id === selectedChildId) || children[0] || null;
+    if (!currentChild) {
+      return;
     }
-  }, [children, selectedChildId, getPreferredBillingPeriod, periodTouched, selectedPeriod, selectedYear]);
+
+    const billingMode = normalizeCurriculumType(currentChild.curriculumType || curriculumType || "TERM");
+    const periodTitles = getChildPeriodTitles(
+      currentChild,
+      curriculumType || "TERM",
+      selectedAcademicYear,
+      formatDate,
+    );
+    const currentPeriod = getCurrentPeriodTitle(
+      billingMode,
+      periodTitles,
+      formatDate,
+      currentTerm?.name,
+    );
+
+    if (currentPeriod && selectedPeriod !== currentPeriod) {
+      setSelectedPeriod(currentPeriod);
+    }
+  }, [
+    children,
+    selectedChildId,
+    selectedAcademicYear,
+    curriculumType,
+    currentTerm?.name,
+    formatDate,
+    periodTouched,
+    selectedPeriod,
+  ]);
+
+  useEffect(() => {
+    const currentChild = children.find((child) => child.id === selectedChildId) || children[0] || null;
+    if (!currentChild || selectedPeriod === "all") {
+      return;
+    }
+
+    const availablePeriods = getChildPeriodTitles(
+      currentChild,
+      curriculumType || "TERM",
+      selectedAcademicYear,
+      formatDate,
+    );
+
+    if (availablePeriods.includes(selectedPeriod)) {
+      return;
+    }
+
+    const billingMode = normalizeCurriculumType(currentChild.curriculumType || curriculumType || "TERM");
+    const currentPeriod = getCurrentPeriodTitle(
+      billingMode,
+      availablePeriods,
+      formatDate,
+      currentTerm?.name,
+    );
+
+    setSelectedPeriod(currentPeriod || "all");
+    setPeriodTouched(false);
+  }, [
+    children,
+    selectedChildId,
+    selectedPeriod,
+    selectedAcademicYear,
+    curriculumType,
+    currentTerm?.name,
+    formatDate,
+  ]);
 
   const formatCurrency = (amount: number) => {
     return `ETB ${amount.toLocaleString()}`;
@@ -716,7 +811,13 @@ const ParentFeesPage = () => {
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Select value={selectedChildId} onValueChange={setSelectedChildId}>
+            <Select
+              value={selectedChildId}
+              onValueChange={(value) => {
+                setSelectedChildId(value);
+                setPeriodTouched(false);
+              }}
+            >
               <SelectTrigger className="h-9 w-full bg-white text-sm dark:bg-slate-800 sm:w-64">
                 <SelectValue placeholder={t.selectChild} />
               </SelectTrigger>
@@ -769,15 +870,62 @@ const ParentFeesPage = () => {
                   return group;
                 }
 
-                const selectedPeriods = group.periods
+                let selectedPeriods = group.periods
                   .filter((period) => period.termName === selectedPeriod)
                   .map((period) => {
+                    const paidFromHistory = getPaidAmountForSelectedPeriod(
+                      fees.payments || [],
+                      group.feeType,
+                      selectedPeriod,
+                      periodTitles,
+                      formatDate,
+                    );
+
+                    if (paidFromHistory > (period.paid || 0)) {
+                      const paid = Math.max(0, Math.min(period.finalAmount || 0, paidFromHistory));
+                      const balance = Math.max(0, (period.finalAmount || 0) - paid);
+
+                      return {
+                        ...period,
+                        paid,
+                        balance,
+                        status: balance <= 0 ? "PAID" : paid > 0 ? "PARTIAL" : "PENDING",
+                      };
+                    }
+
                     if (!period.isYearWide) {
                       return period;
                     }
 
                     return period;
                   });
+
+                if (selectedPeriods.length === 0) {
+                  const paidForSelectedPeriod = getPaidAmountForSelectedPeriod(
+                    fees.payments || [],
+                    group.feeType,
+                    selectedPeriod,
+                    periodTitles,
+                    formatDate,
+                  );
+                  const broadPeriod = group.periods[0];
+
+                  if (broadPeriod?.isYearWide && paidForSelectedPeriod > 0) {
+                    const totalAmount = broadPeriod.finalAmount || group.totalAmount || 0;
+                    const paid = Math.max(0, Math.min(totalAmount, paidForSelectedPeriod));
+                    const balance = Math.max(0, totalAmount - paid);
+
+                    selectedPeriods = [
+                      {
+                        ...broadPeriod,
+                        termName: selectedPeriod,
+                        paid,
+                        balance,
+                        status: balance <= 0 ? "PAID" : paid > 0 ? "PARTIAL" : "PENDING",
+                      },
+                    ];
+                  }
+                }
 
                 const totalAmount = selectedPeriods.reduce((sum, period) => sum + period.finalAmount, 0);
                 const paidAmount = selectedPeriods.reduce((sum, period) => sum + period.paid, 0);
@@ -815,6 +963,7 @@ const ParentFeesPage = () => {
                 fees.payments || [],
                 fees.breakdown,
                 periodTitles,
+                formatDate,
                 selectedPeriod === "all" ? undefined : selectedPeriod,
               );
               const visiblePaymentHistory = selectedPeriod === "all"
@@ -829,7 +978,13 @@ const ParentFeesPage = () => {
                       <p className="text-sm text-slate-500">Grade {child.className} &middot; Section {child.section}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Select value={selectedYear} onValueChange={setSelectedYear}>
+                        <Select
+                          value={selectedYear}
+                          onValueChange={(value) => {
+                            setSelectedYear(value);
+                            setPeriodTouched(false);
+                          }}
+                        >
                           <SelectTrigger className="h-8 text-xs w-32">
                             <SelectValue placeholder={t.year} />
                           </SelectTrigger>

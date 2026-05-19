@@ -2781,6 +2781,105 @@ export class AttendanceService {
   /**
    * Get admin dashboard attendance data
    */
+  private async getMissingAttendanceEntries(
+    user: any,
+    date: string,
+    grade?: string,
+    section?: string,
+  ) {
+    const { start: targetDateStart, end: targetDateEnd } =
+      this.getLocalDayRange(date);
+    const hasGradeFilter = Boolean(grade && grade !== 'all');
+    const hasSectionFilter = Boolean(section && section !== 'all');
+
+    const classes = await this.prisma.class.findMany({
+      where: {
+        schoolId: user.schoolId,
+        ...(hasGradeFilter ? { grade: parseInt(grade!, 10) } : {}),
+        academicYear: {
+          isActive: true,
+        },
+      },
+      include: {
+        homeroomTeacher: true,
+        sections: {
+          include: {
+            homeroomTeacher: true,
+          },
+        },
+      },
+    });
+
+    const targetSessions = await this.prisma.attendanceSession.findMany({
+      where: {
+        schoolId: user.schoolId,
+        date: {
+          gte: targetDateStart,
+          lte: targetDateEnd,
+        },
+      },
+      include: {
+        timetableSlot: {
+          include: {
+            class: true,
+          },
+        },
+      },
+    });
+
+    const missingAttendance: Array<{
+      classId: string;
+      className: string;
+      grade: number | null;
+      sectionName: string;
+      teacherId: string | null;
+      teacherName?: string;
+    }> = [];
+
+    for (const cls of classes) {
+      const hasSubmittedSession = targetSessions.some(
+        (session) =>
+          (session.classId === cls.id ||
+            session.timetableSlot?.classId === cls.id) &&
+          session.status === 'SUBMITTED',
+      );
+
+      if (hasSubmittedSession) {
+        continue;
+      }
+
+      const classSections =
+        cls.sections.length > 0
+          ? cls.sections
+          : [
+              {
+                name: cls.section || 'A',
+                homeroomTeacherId: null,
+                homeroomTeacher: null,
+              },
+            ];
+
+      for (const sec of classSections) {
+        const sectionName = sec.name || cls.section || 'A';
+        if (hasSectionFilter && sectionName !== section) {
+          continue;
+        }
+
+        missingAttendance.push({
+          classId: cls.id,
+          className: cls.name,
+          grade: cls.grade,
+          sectionName,
+          teacherId: sec.homeroomTeacherId || cls.homeroomTeacherId || null,
+          teacherName:
+            sec.homeroomTeacher?.name || cls.homeroomTeacher?.name || undefined,
+        });
+      }
+    }
+
+    return missingAttendance;
+  }
+
   /**
    * Get classes with no attendance recorded for a given date
    */
@@ -2794,97 +2893,12 @@ export class AttendanceService {
       throw new ForbiddenException('Only admins can access this endpoint');
     }
 
-    const { start: targetDateStart, end: targetDateEnd } =
-      this.getLocalDayRange(date);
-
-    // Build where clause for class filter
-    const classWhere: any = {
-      schoolId: user.schoolId,
-      academicYear: {
-        isActive: true,
-      },
-    };
-
-    if (grade) {
-      classWhere.grade = parseInt(grade);
-    }
-    if (section) {
-      classWhere.OR = [
-        { section },
-        {
-          sections: {
-            some: { name: section },
-          },
-        },
-      ];
-    }
-
-    // Get ALL active classes for the school
-    const allClasses = await this.prisma.class.findMany({
-      where: classWhere,
-      include: {
-        sections: true,
-        homeroomTeacher: true,
-      },
-    });
-
-    // Get attendance sessions for the target date
-    const targetSessions = await this.prisma.attendanceSession.findMany({
-      where: {
-        schoolId: user.schoolId,
-        date: {
-          gte: targetDateStart,
-          lte: targetDateEnd,
-        },
-      },
-      include: {
-        timetableSlot: {
-          include: {
-            class: true,
-          },
-        },
-      },
-    });
-
-    // Find classes with no SUBMITTED attendance for today
-    const missingAttendance: any[] = [];
-
-    for (const cls of allClasses) {
-      // Check if there's a SUBMITTED session for this class today
-      // Check both regular sessions (via timetableSlot) and homeroom sessions (via classId)
-      const hasSubmittedSession = targetSessions.some(
-        (session) =>
-          (session.classId === cls.id ||
-            session.timetableSlot?.classId === cls.id) &&
-          session.status === 'SUBMITTED',
-      );
-
-      if (!hasSubmittedSession) {
-        // Show ALL classes without attendance, not just homeroom classes
-        const sections =
-          cls.sections.length > 0
-            ? cls.sections
-            : [{ name: cls.section || 'A' }];
-
-        for (const sec of sections) {
-          if (section && sec.name !== section) {
-            continue;
-          }
-
-          missingAttendance.push({
-            classId: cls.id,
-            className: cls.name,
-            grade: cls.grade,
-            sectionName: sec.name,
-            subjectName: cls.homeroomTeacherId ? 'Homeroom' : 'N/A',
-            time: 'N/A',
-            startTime: null,
-            endTime: null,
-            hasHomeroomTeacher: !!cls.homeroomTeacherId,
-          });
-        }
-      }
-    }
+    const missingAttendance = await this.getMissingAttendanceEntries(
+      user,
+      date,
+      grade,
+      section,
+    );
 
     return missingAttendance.map((item) => ({
       id: item.classId,
@@ -2897,58 +2911,23 @@ export class AttendanceService {
   /**
    * Notify homeroom teachers about missing attendance
    */
-  async notifyMissingAttendance(user: any, date: string) {
+  async notifyMissingAttendance(
+    user: any,
+    date: string,
+    grade?: string,
+    section?: string,
+  ) {
     if (!this.isAdmin(user)) {
       throw new ForbiddenException('Only admins can access this endpoint');
     }
 
-    const { start: targetDateStart, end: targetDateEnd } =
-      this.getLocalDayRange(date);
-    const targetDateStr = this.getDateString(targetDateStart);
-
-    // Match the same class/session logic used by getMissingClasses, but only
-    // notify classes that actually have a homeroom teacher assigned.
-    const classes = await this.prisma.class.findMany({
-      where: {
-        schoolId: user.schoolId,
-        homeroomTeacherId: { not: null },
-        academicYear: {
-          isActive: true,
-        },
-      },
-      include: {
-        homeroomTeacher: true,
-      },
-    });
-
-    const targetSessions = await this.prisma.attendanceSession.findMany({
-      where: {
-        schoolId: user.schoolId,
-        date: {
-          gte: targetDateStart,
-          lte: targetDateEnd,
-        },
-      },
-      include: {
-        timetableSlot: {
-          include: {
-            class: true,
-          },
-        },
-      },
-    });
-
-    // Find classes with no submitted attendance. A submitted session can be
-    // attached directly to classId or indirectly through timetableSlot.classId.
-    const missingClasses = classes.filter((cls) => {
-      const hasSubmittedSession = targetSessions.some(
-        (session) =>
-          (session.classId === cls.id ||
-            session.timetableSlot?.classId === cls.id) &&
-          session.status === 'SUBMITTED',
-      );
-      return !hasSubmittedSession;
-    });
+    const targetDateStr = this.getDateString(this.getLocalDayRange(date).start);
+    const missingEntries = await this.getMissingAttendanceEntries(
+      user,
+      date,
+      grade,
+      section,
+    );
 
     // Send notifications to homeroom teachers
     const notifications: Array<{
@@ -2958,26 +2937,28 @@ export class AttendanceService {
       grade: number;
       section: string;
     }> = [];
-    for (const cls of missingClasses) {
-      if (cls.homeroomTeacherId && cls.grade !== null) {
-        const created =
-          await this.notificationService.notifyHomeroomMissingAttendance(
+    for (const entry of missingEntries) {
+      if (!entry.teacherId || entry.grade === null) {
+        continue;
+      }
+
+      const created =
+        await this.notificationService.notifyHomeroomMissingAttendance(
           user.schoolId,
-          cls.homeroomTeacherId,
-          cls.name,
-          cls.grade,
-          cls.section,
+          entry.teacherId,
+          entry.className,
+          entry.grade,
+          entry.sectionName,
           targetDateStr,
         );
-        if (created) {
-          notifications.push({
-            teacherId: cls.homeroomTeacherId,
-            teacherName: cls.homeroomTeacher?.name,
-            className: cls.name,
-            grade: cls.grade,
-            section: cls.section,
-          });
-        }
+      if (created) {
+        notifications.push({
+          teacherId: entry.teacherId,
+          teacherName: entry.teacherName,
+          className: entry.className,
+          grade: entry.grade,
+          section: entry.sectionName,
+        });
       }
     }
 
@@ -2990,20 +2971,25 @@ export class AttendanceService {
   async getAdminDashboard(
     user: any,
     date?: string,
+    startDate?: string,
+    endDate?: string,
     grade?: string,
     section?: string,
     range?: string,
   ) {
-    const targetDateStr = date || this.getDateString(new Date());
+    const hasExplicitRange = Boolean(startDate && endDate);
+    const targetDateStr = date || startDate || this.getDateString(new Date());
     const targetDate = this.parseDateOnlyAsLocalDay(targetDateStr);
-    const { start: targetDateStart, end: targetDateEnd } =
-      this.getLocalDayRange(targetDateStr);
-
-    // Determine the range (weekly or monthly)
-    const dateRange = range === 'monthly' ? 30 : 7;
+    const { start: targetDateStart, end: targetDateEnd } = hasExplicitRange
+      ? {
+          start: this.getLocalDayRange(startDate!).start,
+          end: this.getLocalDayRange(endDate!).end,
+        }
+      : this.getLocalDayRange(targetDateStr);
 
     // Check if the target date is today (to apply time-based filtering)
-    const isToday = targetDateStr === this.getDateString(new Date());
+    const isToday =
+      !hasExplicitRange && targetDateStr === this.getDateString(new Date());
 
     // Build filter for grade and section (only apply when explicitly provided)
     const hasGradeFilter = grade && grade !== 'all';
@@ -3202,10 +3188,10 @@ export class AttendanceService {
         'Unknown',
     }));
 
-    const statsStart = new Date(targetDate);
-    if (range === 'monthly') {
+    const statsStart = new Date(hasExplicitRange ? targetDateStart : targetDate);
+    if (!hasExplicitRange && range === 'monthly') {
       statsStart.setDate(statsStart.getDate() - 30);
-    } else {
+    } else if (!hasExplicitRange) {
       statsStart.setDate(statsStart.getDate() - statsStart.getDay()); // Start of week (Sunday)
     }
 
@@ -3243,7 +3229,17 @@ export class AttendanceService {
       presentCount: number;
       totalStudentsMarked: number;
     }[] = [];
-    const numDays = range === 'monthly' ? 30 : 7;
+    const numDays = hasExplicitRange
+      ? Math.max(
+          1,
+          Math.floor(
+            (targetDateEnd.getTime() - targetDateStart.getTime()) /
+              (1000 * 60 * 60 * 24),
+          ) + 1,
+        )
+      : range === 'monthly'
+        ? 30
+        : 7;
     for (let i = 0; i < numDays; i++) {
       const day = new Date(statsStart);
       day.setDate(day.getDate() + i);
@@ -3401,10 +3397,14 @@ export class AttendanceService {
         where: {
           schoolId: schoolId,
           academicYearId: activeAcademicYear.id,
-          homeroomTeacherId: { not: null },
         },
         include: {
           homeroomTeacher: true,
+          sections: {
+            include: {
+              homeroomTeacher: true,
+            },
+          },
         },
       });
 
@@ -3423,8 +3423,6 @@ export class AttendanceService {
       }> = [];
 
       for (const cls of homeroomClasses) {
-        if (!cls.homeroomTeacherId) continue;
-
         // Check if attendance was submitted for this class today
         const existingSession = await this.prisma.attendanceSession.findFirst({
           where: {
@@ -3440,64 +3438,82 @@ export class AttendanceService {
 
         // If no submitted session exists, notify the homeroom teacher (only once per class/day)
         if (!existingSession) {
-          missingClassesForAdmins.push({
-            id: cls.id,
-            name: cls.name,
-            section: cls.section || 'A',
-          });
+          const classSections =
+            cls.sections.length > 0
+              ? cls.sections
+              : [
+                  {
+                    name: cls.section || 'A',
+                    homeroomTeacherId: null,
+                    homeroomTeacher: null,
+                  },
+                ];
 
-          try {
-            // Check if notification was already sent today for this class
-            // Use a more robust query that searches in metadata JSON
-            const existingReminder = await this.prisma.notification.findFirst({
-              where: {
-                schoolId,
-                userId: cls.homeroomTeacherId,
-                type: 'ATTENDANCE_SESSION_OPENED',
-                title: 'Attendance Cutoff Reached',
-                createdAt: {
-                  gte: todayStart,
-                  lt: todayEnd,
+          for (const sec of classSections) {
+            const sectionName = sec.name || cls.section || 'A';
+            const recipientTeacherId = sec.homeroomTeacherId || cls.homeroomTeacherId;
+            const recipientTeacherName =
+              sec.homeroomTeacher?.name || cls.homeroomTeacher?.name;
+
+            if (!recipientTeacherId) continue;
+
+            missingClassesForAdmins.push({
+              id: cls.id,
+              name: cls.name,
+              section: sectionName,
+            });
+
+            try {
+              const existingReminder = await this.prisma.notification.findFirst({
+                where: {
+                  schoolId,
+                  userId: recipientTeacherId,
+                  type: 'ATTENDANCE_SESSION_OPENED',
+                  title: 'Attendance Cutoff Reached',
+                  createdAt: {
+                    gte: todayStart,
+                    lt: todayEnd,
+                  },
                 },
-              },
-            });
+              });
 
-            // Additional check: if notification exists, verify it's for this specific class
-            if (existingReminder) {
-              const metadata =
-                typeof existingReminder.metadata === 'string'
-                  ? JSON.parse(existingReminder.metadata)
-                  : existingReminder.metadata;
-              if (metadata?.classId === cls.id) {
-                continue;
+              if (existingReminder) {
+                const metadata =
+                  typeof existingReminder.metadata === 'string'
+                    ? JSON.parse(existingReminder.metadata)
+                    : existingReminder.metadata;
+                if (metadata?.classId === cls.id && metadata?.section === sectionName) {
+                  continue;
+                }
               }
-            }
 
-            await this.notificationService.createNotification({
-              schoolId: schoolId,
-              userId: cls.homeroomTeacherId,
-              title: 'Attendance Cutoff Reached',
-              message: `The attendance cutoff time (${cutoff.formatted}) has passed. Please submit attendance for ${cls.name} (Section ${cls.section || 'A'}) immediately.`,
-              type: 'ATTENDANCE_SESSION_OPENED' as any,
-              actionUrl: '/teacher/attendance',
-              metadata: {
-                classId: cls.id,
-                date: todayDateStr,
-                isHomeroom: true,
+              await this.notificationService.createNotification({
                 schoolId: schoolId,
-                cutoffTime: cutoff.formatted,
-              },
-            });
+                userId: recipientTeacherId,
+                title: 'Attendance Cutoff Reached',
+                message: `The attendance cutoff time (${cutoff.formatted}) has passed. Please submit attendance for ${cls.name} (Section ${sectionName}) immediately.`,
+                type: 'ATTENDANCE_SESSION_OPENED' as any,
+                actionUrl: '/teacher/attendance',
+                metadata: {
+                  classId: cls.id,
+                  section: sectionName,
+                  date: todayDateStr,
+                  isHomeroom: true,
+                  schoolId: schoolId,
+                  cutoffTime: cutoff.formatted,
+                },
+              });
 
-            notificationCount++;
-            console.log(
-              `[Attendance] Sent cutoff notification to teacher ${cls.homeroomTeacher?.name || cls.homeroomTeacherId} for class ${cls.name}`,
-            );
-          } catch (error) {
-            console.error(
-              `[Attendance] Failed to send notification for class ${cls.name}:`,
-              error,
-            );
+              notificationCount++;
+              console.log(
+                `[Attendance] Sent cutoff notification to teacher ${recipientTeacherName || recipientTeacherId} for class ${cls.name} section ${sectionName}`,
+              );
+            } catch (error) {
+              console.error(
+                `[Attendance] Failed to send notification for class ${cls.name} section ${sectionName}:`,
+                error,
+              );
+            }
           }
         }
       }

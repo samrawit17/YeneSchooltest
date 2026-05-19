@@ -8,20 +8,8 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 60000,
+  withCredentials: true,
 });
-
-api.interceptors.request.use(
-  (config) => {
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('token') || sessionStorage.getItem('token')
-      : null;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
 
 api.interceptors.response.use(
   (response) => response,
@@ -33,10 +21,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       const currentPath = window.location.pathname;
       if (currentPath !== '/sign-in' && !currentPath.startsWith('/sign-in')) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('user');
         window.location.href = '/sign-in';
       }
     }

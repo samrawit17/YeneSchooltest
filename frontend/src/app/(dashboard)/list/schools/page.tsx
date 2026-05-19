@@ -224,7 +224,7 @@ const SchoolsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Registered Users</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{schoolsData?.length * 50 || 0}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{(schoolsData?.length ?? 0) * 50}</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-800 dark:to-purple-700 rounded-lg flex items-center justify-center">
                 <Users className="w-6 h-6 text-purple-600 dark:text-purple-400" />
