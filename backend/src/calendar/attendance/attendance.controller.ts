@@ -259,9 +259,19 @@ export class AttendanceController {
    */
   @Post('missing/notify')
   @Permissions('attendance:update')
-  notifyMissing(@Request() req: any, @Query('date') date?: string) {
+  notifyMissing(
+    @Request() req: any,
+    @Query('date') date?: string,
+    @Query('grade') grade?: string,
+    @Query('section') section?: string,
+  ) {
     const targetDate = date || new Date().toISOString().split('T')[0];
-    return this.attendanceService.notifyMissingAttendance(req.user, targetDate);
+    return this.attendanceService.notifyMissingAttendance(
+      req.user,
+      targetDate,
+      grade,
+      section,
+    );
   }
 
   /**
@@ -334,6 +344,8 @@ export class AttendanceController {
   getAdminDashboard(
     @Request() req: any,
     @Query('date') date?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
     @Query('grade') grade?: string,
     @Query('section') section?: string,
     @Query('range') range?: string,
@@ -341,6 +353,8 @@ export class AttendanceController {
     return this.attendanceService.getAdminDashboard(
       req.user,
       date,
+      startDate,
+      endDate,
       grade,
       section,
       range,

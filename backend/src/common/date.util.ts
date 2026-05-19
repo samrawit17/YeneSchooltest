@@ -20,7 +20,7 @@ export interface AcademicYearContext {
   endDate: Date | string;
 }
 
-const ETHIOPIAN_MONTH_NAMES = [
+export const ETHIOPIAN_MONTH_NAMES = [
   'Meskerem',
   'Tikemet',
   'Hidar',

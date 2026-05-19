@@ -342,8 +342,6 @@ export default function FinanceListPage() {
 
   // Handle record payment
   const handleRecordPayment = async () => {
-    console.log('Recording payment...', selectedFee, paymentFormData);
-    
     if (!selectedFee || !paymentFormData.amountPaid) {
       toast.error('Please enter payment amount');
       return;
@@ -361,25 +359,12 @@ export default function FinanceListPage() {
     }
 
     const schoolId = user?.schoolId;
-    console.log('School ID:', schoolId);
-    
     if (!schoolId) {
       toast.error('School ID not found. Please log in again.');
       return;
     }
 
     try {
-      console.log('Calling API with:', {
-        schoolId,
-        studentFeeId: selectedFee.id,
-        studentId: selectedFee.studentId,
-        amountPaid: amount,
-        paymentMethod: paymentFormData.paymentMethod,
-        transactionReference: paymentFormData.transactionReference || undefined,
-        paymentDate: paymentFormData.paymentDate,
-        notes: paymentFormData.notes || undefined,
-      });
-      
       await financeAPI.recordPayment({
         schoolId,
         studentFeeId: selectedFee.id,

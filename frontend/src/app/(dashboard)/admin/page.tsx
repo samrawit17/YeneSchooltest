@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { dashboardAPI } from "@/lib/api/admin";
@@ -105,10 +105,6 @@ interface DashboardResponse {
   };
 }
 
-interface AdminPageProps {
-  dashboardRole?: "ADMIN" | "IT_MANAGER";
-}
-
 interface AdminDashboardMessages {
   title: {
     admin: string;
@@ -171,9 +167,11 @@ const iconColorMap: Record<string, { bg: string; icon: string }> = {
   finance: { bg: "bg-rose-100 dark:bg-rose-900/50", icon: "text-rose-600 dark:text-rose-400" },
 };
 
-const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
+const AdminDashboardView = () => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const dashboardRole = pathname?.includes("/it-manager") ? "IT_MANAGER" : "ADMIN";
   const { formattedYearLabel, displayTermName, currentTerm, formatDate: formatSchoolDate } = useAcademicYear();
   const { t } = useTranslations<AdminDashboardMessages>("adminDashboard");
   const [loading, setLoading] = useState(true);
@@ -626,4 +624,6 @@ const AdminPage = ({ dashboardRole = "ADMIN" }: AdminPageProps) => {
   );
 };
 
-export default AdminPage;
+export default function AdminPage() {
+  return <AdminDashboardView />;
+}

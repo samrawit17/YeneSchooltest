@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import * as webpush from 'web-push';
 import { randomUUID } from 'crypto';
 import { notificationMessages, NotificationLanguage } from './notification-messages';
+import { formatSchoolDate, type CalendarType } from '../common/date.util';
 
 type PushSubscriptionPayload = {
   endpoint: string;
@@ -134,6 +135,33 @@ export class NotificationService {
       // Ignore errors, default to English
     }
     return 'en';
+  }
+
+  private parseDateOnlyAsLocalDay(date: string): Date {
+    const [year, month, day] = String(date).split('-').map(Number);
+    if (!year || !month || !day) {
+      return new Date(date);
+    }
+
+    return new Date(year, month - 1, day);
+  }
+
+  private async getSchoolCalendarType(schoolId: string): Promise<CalendarType> {
+    if (!schoolId) return 'ETHIOPIAN';
+
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: {
+        schoolId_key: {
+          schoolId,
+          key: 'calendar_type',
+        },
+      },
+      select: {
+        value: true,
+      },
+    });
+
+    return setting?.value === 'GREGORIAN' ? 'GREGORIAN' : 'ETHIOPIAN';
   }
 
   private translate(key: string, language: NotificationLanguage, ...args: string[]): { title: string; message: string } {
@@ -1630,7 +1658,19 @@ export class NotificationService {
     date: string,
   ) {
     const lang = await this.getUserLanguage(teacherId);
-    const t = this.translate('missingAttendanceReminder', lang, className, String(grade), section, date);
+    const calendarType = await this.getSchoolCalendarType(schoolId);
+    const displayDate = formatSchoolDate(
+      this.parseDateOnlyAsLocalDay(date),
+      { calendarType },
+    );
+    const t = this.translate(
+      'missingAttendanceReminder',
+      lang,
+      className,
+      String(grade),
+      section,
+      displayDate,
+    );
     return this.createNotification({
       schoolId,
       userId: teacherId,
@@ -1638,7 +1678,7 @@ export class NotificationService {
       message: t.message,
       type: NotificationType.ATTENDANCE_SESSION_OPENED,
       actionUrl: '/teacher/attendance',
-      metadata: { className, grade, section, date },
+      metadata: { className, grade, section, date, displayDate, calendarType },
       bypassPreferences: true,
     });
   }

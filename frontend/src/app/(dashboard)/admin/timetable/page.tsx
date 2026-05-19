@@ -28,6 +28,9 @@ import {
   ArrowRight,
   Download,
   Printer,
+  Sparkles,
+  Wand2,
+  BarChart3,
 } from "lucide-react";
 
 
@@ -65,6 +68,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
@@ -86,6 +90,7 @@ import {
 
 import { schoolSettingsAPI } from "@/lib/api";
 import { adminTimetableAPI } from "@/lib/api/timetable";
+import { periodTimeAPI, type PeriodTime } from "@/lib/api/siren";
 import {
   getEthiopianSchedule,
   getTeachingSlots,
@@ -150,6 +155,44 @@ interface ScheduleEntry {
   room: string;
 }
 
+interface GeneratedSlotPreview {
+  classSubjectId: string;
+  subjectId: string;
+  subjectName: string;
+  teacherId?: string;
+  teacherName?: string | null;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  periodNumber: number;
+}
+
+interface AutoGenerationResult {
+  success: boolean;
+  applied: boolean;
+  generatedSlots: GeneratedSlotPreview[];
+  unscheduled: Array<{
+    classSubjectId: string;
+    subjectName: string;
+    teacherName?: string | null;
+    reason: string;
+  }>;
+  summary: {
+    requestedPeriods: number;
+    generatedPeriods: number;
+    unscheduledPeriods: number;
+  };
+}
+
+interface AutoGenerationDemand {
+  classSubjectId: string;
+  subjectId: string;
+  subjectName: string;
+  teacherId: string;
+  teacherName: string | null;
+  periodsPerWeek: number;
+}
+
 // Subject color palette for visual distinction
 const SUBJECT_COLORS = [
   { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-300", hover: "hover:bg-rose-100 dark:hover:bg-rose-900/40", accent: "bg-rose-500" },
@@ -163,6 +206,107 @@ const SUBJECT_COLORS = [
   { bg: "bg-violet-50 dark:bg-violet-950/30", border: "border-violet-200 dark:border-violet-800", text: "text-violet-700 dark:text-violet-300", hover: "hover:bg-violet-100 dark:hover:bg-violet-900/40", accent: "bg-violet-500" },
   { bg: "bg-fuchsia-50 dark:bg-fuchsia-950/30", border: "border-fuchsia-200 dark:border-fuchsia-800", text: "text-fuchsia-700 dark:text-fuchsia-300", hover: "hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/40", accent: "bg-fuchsia-500" },
 ];
+
+const buildAutoSlotKey = (dayOfWeek: number, startTime: string) => `${dayOfWeek}:${startTime}`;
+const MAX_PERIODS_PER_DAY = 7;
+
+const shuffleAutoItems = <T,>(items: T[]) => {
+  const next = [...items];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  }
+  return next;
+};
+
+const TimetablePageSkeleton = () => (
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 md:p-8 space-y-6">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-4 w-80 max-w-full" />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Skeleton className="h-9 w-28 rounded-lg" />
+        <Skeleton className="h-9 w-24 rounded-lg" />
+        <Skeleton className="h-9 w-32 rounded-lg" />
+      </div>
+    </div>
+
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="grid gap-3 md:grid-cols-3">
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <Skeleton className="h-10 w-full rounded-lg" />
+      </div>
+    </div>
+
+    <div className="grid grid-cols-1 gap-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-24 rounded-lg" />
+            <Skeleton className="h-9 w-28 rounded-lg" />
+          </div>
+        </div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+            </div>
+            <Skeleton className="h-72 w-full rounded-xl" />
+          </div>
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+            </div>
+            <Skeleton className="h-56 w-full rounded-xl" />
+            <Skeleton className="h-40 w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-44" />
+            <Skeleton className="h-4 w-64 max-w-full" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-9 w-28 rounded-lg" />
+            <Skeleton className="h-9 w-24 rounded-lg" />
+            <Skeleton className="h-9 w-24 rounded-lg" />
+          </div>
+        </div>
+        <div className="mt-6 space-y-4">
+          <div className="grid grid-cols-[120px_repeat(5,minmax(120px,1fr))] gap-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={`header-${index}`} className="h-12 w-full rounded-xl" />
+            ))}
+          </div>
+          {Array.from({ length: 6 }).map((_, rowIndex) => (
+            <div key={`row-${rowIndex}`} className="grid grid-cols-[120px_repeat(5,minmax(120px,1fr))] gap-3">
+              {Array.from({ length: 6 }).map((_, cellIndex) => (
+                <Skeleton
+                  key={`cell-${rowIndex}-${cellIndex}`}
+                  className={cellIndex === 0 ? "h-20 w-full rounded-xl" : "h-20 w-full rounded-2xl"}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const AdminTimetablePage = () => {
   const { t } = useTranslations<any>("timetable");
@@ -191,13 +335,27 @@ const AdminTimetablePage = () => {
   const [searchSubject, setSearchSubject] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
   const [unsavedChanges, setUnsavedChanges] = useState(false);
+  const [periodCount, setPeriodCount] = useState(0);
+  const [periodTimes, setPeriodTimes] = useState<PeriodTime[]>([]);
+  const [periodLoads, setPeriodLoads] = useState<Record<string, string>>({});
+  const [autoPreview, setAutoPreview] = useState<AutoGenerationResult | null>(null);
+  const [autoGenerating, setAutoGenerating] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [fetchingData, setFetchingData] = useState(true);
 
   const { startTime: schoolStartTime, endTime: schoolEndTime } = getSchoolTimeBounds(schoolSettings);
-  const slotRanges = getSlotRanges(schoolStartTime, schoolEndTime);
+  const fallbackSlotRanges = getSlotRanges(schoolStartTime, schoolEndTime);
+  const slotRanges = useMemo(
+    () =>
+      periodTimes.length > 0
+        ? [...periodTimes]
+            .sort((left, right) => left.periodNumber - right.periodNumber)
+            .map((period) => ({ start: period.startTime, end: period.endTime }))
+        : fallbackSlotRanges,
+    [fallbackSlotRanges, periodTimes],
+  );
 
   // Subject color mapping
   const subjectColorMap = useMemo(() => {
@@ -231,6 +389,13 @@ const AdminTimetablePage = () => {
         currentAcademicYear ? adminTimetableAPI.getAcademicYears() : Promise.resolve({ data: [] }),
         user?.schoolId ? schoolSettingsAPI.getAll(user.schoolId) : Promise.resolve({ data: {} }),
       ]);
+
+      if (user?.schoolId) {
+        const periodsRes = await periodTimeAPI.list(user.schoolId);
+        const fetchedPeriods = Array.isArray(periodsRes.data) ? periodsRes.data : [];
+        setPeriodTimes(fetchedPeriods);
+        setPeriodCount(fetchedPeriods.length);
+      }
 
       setSubjects(subjectsRes.data || []);
       setAcademicYears(academicYearsRes.data || []);
@@ -353,6 +518,8 @@ const AdminTimetablePage = () => {
         (cs: ClassSubject) => cs.classId === selectedClassId && cs.sectionId === selectedSectionId
       );
       setClassSubjects(filtered);
+      setPeriodLoads(Object.fromEntries(filtered.map((item: ClassSubject) => [item.id, "1"])));
+      setAutoPreview(null);
 
       const slotsRes = await adminTimetableAPI.getGrid(selectedClassId, {
         sectionId: selectedSectionId
@@ -402,9 +569,28 @@ const AdminTimetablePage = () => {
     setUnsavedChanges(true);
   };
 
+  const previewSchedule = useMemo(() => {
+    if (!autoPreview || autoPreview.applied) {
+      return null;
+    }
+
+    const nextSchedule: Record<string, ScheduleEntry> = {};
+    autoPreview.generatedSlots.forEach((slot) => {
+      nextSchedule[getSlotKey(slot.dayOfWeek, slot.startTime)] = {
+        subjectId: slot.subjectId,
+        teacherId: slot.teacherId || "",
+        room: "",
+      };
+    });
+    return nextSchedule;
+  }, [autoPreview]);
+
+  const displayedSchedule = previewSchedule || schedule;
+  const isPreviewingInGrid = !!previewSchedule;
+
   const getSlot = (day: number, time: string): ScheduleEntry => {
     const key = getSlotKey(day, time);
-    return schedule[key] || { subjectId: '', teacherId: '', room: '' };
+    return displayedSchedule[key] || { subjectId: '', teacherId: '', room: '' };
   };
 
   const getTeacherForSubject = (subjectId: string) => {
@@ -419,6 +605,263 @@ const AdminTimetablePage = () => {
   const getTeacherName = (teacherId: string) => {
     return classSubjects.find(cs => cs.teacherId === teacherId)?.teacher?.name || '';
   };
+
+  const periodRequirements = useMemo(
+    () =>
+      classSubjects
+        .map((item) => ({
+          classSubjectId: item.id,
+          periodsPerWeek: Number(periodLoads[item.id] || 0),
+        }))
+        .filter((item) => item.periodsPerWeek > 0),
+    [classSubjects, periodLoads],
+  );
+
+  const totalRequestedPeriods = useMemo(
+    () => periodRequirements.reduce((sum, item) => sum + item.periodsPerWeek, 0),
+    [periodRequirements],
+  );
+
+  const runAutoGenerate = useCallback(async (apply: boolean) => {
+    if (!selectedClassId || !selectedSectionId || !user?.schoolId) {
+      toast.error("Select class and section first");
+      return;
+    }
+
+    if (periodRequirements.length === 0) {
+      toast.error("Enter at least one period load");
+      return;
+    }
+
+    setAutoGenerating(true);
+    try {
+      const [periodsRes, slotsRes] = await Promise.all([
+        periodTimeAPI.list(user.schoolId),
+        adminTimetableAPI.getAllSlots({ academicYearId: selectedYear || undefined }),
+      ]);
+
+      const periodTimes = Array.isArray(periodsRes.data) ? periodsRes.data : [];
+      const existingSlots = Array.isArray(slotsRes.data) ? slotsRes.data : [];
+
+      if (periodTimes.length === 0) {
+        toast.error("Create period times before auto-generating a timetable");
+        return;
+      }
+
+      if (periodTimes.length > MAX_PERIODS_PER_DAY) {
+        toast.error(`Ethiopian schools support a maximum of ${MAX_PERIODS_PER_DAY} periods per day`);
+        return;
+      }
+
+      const weeklyCapacity = SCHOOL_WEEK_DAYS.length * periodTimes.length;
+      const excessiveRequirement = periodRequirements.find(
+        (item) => item.periodsPerWeek > weeklyCapacity,
+      );
+
+      if (excessiveRequirement) {
+        toast.error(`A subject cannot exceed ${weeklyCapacity} periods per week for the configured school week`);
+        return;
+      }
+
+      if (totalRequestedPeriods > weeklyCapacity) {
+        toast.error(`The requested weekly load exceeds the section capacity of ${weeklyCapacity} periods`);
+        return;
+      }
+
+      const classSubjectMap = new Map(classSubjects.map((item) => [item.id, item]));
+      const candidateSlots = shuffleAutoItems(
+        SCHOOL_WEEK_DAYS.flatMap((day) =>
+          periodTimes.map((period: any, slotIndex: number) => ({
+            dayOfWeek: day.value,
+            startTime: period.startTime,
+            endTime: period.endTime,
+            periodNumber: period.periodNumber,
+            slotIndex,
+          })),
+        ),
+      ).map((candidate, candidateIndex) => ({
+        ...candidate,
+        randomOrder: candidateIndex,
+      }));
+
+      const sectionSlotKeys = new Set<string>();
+      const teacherSlotKeys = new Set<string>();
+      const teacherSubjectUsageByDay = new Map<string, number>();
+
+      for (const slot of existingSlots) {
+        const isTargetSection =
+          slot.classId === selectedClassId && slot.sectionId === selectedSectionId;
+        if (isTargetSection && apply) continue;
+
+        const slotKey = buildAutoSlotKey(slot.dayOfWeek, slot.startTime);
+        sectionSlotKeys.add(slotKey);
+
+        if (slot.teacherId) {
+          teacherSlotKeys.add(`${slot.teacherId}:${slotKey}`);
+        }
+
+        if (slot.teacherId && slot.subjectId) {
+          const teacherSubjectDailyKey = `${slot.teacherId}:${slot.subjectId}:${slot.dayOfWeek}`;
+          teacherSubjectUsageByDay.set(
+            teacherSubjectDailyKey,
+            (teacherSubjectUsageByDay.get(teacherSubjectDailyKey) || 0) + 1,
+          );
+        }
+      }
+
+      const subjectUsageByDay = new Map<string, number>();
+      const teacherUsageByDay = new Map<string, number>();
+      const classDayUsage = new Map<number, number>();
+      const generatedSlots: GeneratedSlotPreview[] = [];
+      const unscheduled: AutoGenerationResult["unscheduled"] = [];
+
+      const demands = shuffleAutoItems(
+        periodRequirements
+        .flatMap((requirement) => {
+          const classSubject = classSubjectMap.get(requirement.classSubjectId);
+          if (!classSubject) {
+            unscheduled.push({
+              classSubjectId: requirement.classSubjectId,
+              subjectName: "Unknown subject",
+              teacherName: null,
+              reason: "Assignment not found for the selected class and section",
+            });
+            return [];
+          }
+
+          return Array.from({ length: requirement.periodsPerWeek }, () => ({
+            classSubjectId: requirement.classSubjectId,
+            subjectId: classSubject.subjectId,
+            subjectName: classSubject.subject?.name || "Unknown subject",
+            teacherId: classSubject.teacherId || "",
+            teacherName: classSubject.teacher?.name || null,
+            periodsPerWeek: requirement.periodsPerWeek,
+          }));
+        })
+        .sort((left, right) => {
+          const leftPenalty = left.teacherId ? 0 : 1;
+          const rightPenalty = right.teacherId ? 0 : 1;
+          if (leftPenalty !== rightPenalty) return leftPenalty - rightPenalty;
+          return right.periodsPerWeek - left.periodsPerWeek;
+        }),
+      ) as AutoGenerationDemand[];
+
+      for (const demand of demands) {
+        if (!demand.teacherId) {
+          unscheduled.push({
+            classSubjectId: demand.classSubjectId,
+            subjectName: demand.subjectName,
+            teacherName: null,
+            reason: "No teacher assigned to this class subject",
+          });
+          continue;
+        }
+
+        const chosen = candidateSlots
+          .filter((candidate) => {
+            const slotKey = buildAutoSlotKey(candidate.dayOfWeek, candidate.startTime);
+            const teacherSubjectDailyKey = `${demand.teacherId}:${demand.subjectId}:${candidate.dayOfWeek}`;
+            return (
+              !sectionSlotKeys.has(slotKey) &&
+              !teacherSlotKeys.has(`${demand.teacherId}:${slotKey}`) &&
+              (teacherSubjectUsageByDay.get(teacherSubjectDailyKey) || 0) === 0
+            );
+          })
+          .map((candidate) => {
+            const subjectDailyKey = `${demand.subjectId}:${candidate.dayOfWeek}`;
+            const teacherDailyKey = `${demand.teacherId}:${candidate.dayOfWeek}`;
+            const classDayCount = classDayUsage.get(candidate.dayOfWeek) || 0;
+            return {
+              ...candidate,
+              score:
+                (subjectUsageByDay.get(subjectDailyKey) || 0) * 1000 +
+                (teacherUsageByDay.get(teacherDailyKey) || 0) * 100 +
+                classDayCount * 160 +
+                candidate.randomOrder,
+            };
+          })
+          .sort((a, b) => a.score - b.score)[0];
+
+        if (!chosen) {
+          unscheduled.push({
+            classSubjectId: demand.classSubjectId,
+            subjectName: demand.subjectName,
+            teacherName: demand.teacherName,
+            reason: "No conflict-free period is available for this teacher and section",
+          });
+          continue;
+        }
+
+        const slotKey = buildAutoSlotKey(chosen.dayOfWeek, chosen.startTime);
+        sectionSlotKeys.add(slotKey);
+        teacherSlotKeys.add(`${demand.teacherId}:${slotKey}`);
+        const subjectDailyKey = `${demand.subjectId}:${chosen.dayOfWeek}`;
+        const teacherDailyKey = `${demand.teacherId}:${chosen.dayOfWeek}`;
+        const teacherSubjectDailyKey = `${demand.teacherId}:${demand.subjectId}:${chosen.dayOfWeek}`;
+        subjectUsageByDay.set(subjectDailyKey, (subjectUsageByDay.get(subjectDailyKey) || 0) + 1);
+        teacherUsageByDay.set(teacherDailyKey, (teacherUsageByDay.get(teacherDailyKey) || 0) + 1);
+        teacherSubjectUsageByDay.set(
+          teacherSubjectDailyKey,
+          (teacherSubjectUsageByDay.get(teacherSubjectDailyKey) || 0) + 1,
+        );
+        classDayUsage.set(chosen.dayOfWeek, (classDayUsage.get(chosen.dayOfWeek) || 0) + 1);
+
+        generatedSlots.push({
+          classSubjectId: demand.classSubjectId,
+          subjectId: demand.subjectId,
+          subjectName: demand.subjectName,
+          teacherId: demand.teacherId,
+          teacherName: demand.teacherName,
+          dayOfWeek: chosen.dayOfWeek,
+          startTime: chosen.startTime,
+          endTime: chosen.endTime,
+          periodNumber: chosen.periodNumber,
+        });
+      }
+
+      const result: AutoGenerationResult = {
+        success: unscheduled.length === 0,
+        applied: false,
+        generatedSlots,
+        unscheduled,
+        summary: {
+          requestedPeriods: totalRequestedPeriods,
+          generatedPeriods: generatedSlots.length,
+          unscheduledPeriods: unscheduled.length,
+        },
+      };
+
+      setAutoPreview(result);
+
+      if (apply) {
+        if (unscheduled.length > 0) {
+          toast.error("Generation preview contains conflicts. Nothing was saved.");
+          return;
+        }
+
+        const generatedSchedule: Record<string, ScheduleEntry> = {};
+        generatedSlots.forEach((slot) => {
+          generatedSchedule[getSlotKey(slot.dayOfWeek, slot.startTime)] = {
+            subjectId: slot.subjectId,
+            teacherId: slot.teacherId || "",
+            room: "",
+          };
+        });
+        setSchedule(generatedSchedule);
+        setUnsavedChanges(true);
+        result.applied = true;
+        setAutoPreview({ ...result });
+        toast.success("Generated timetable loaded into the editor. Save to publish it.");
+      } else {
+        toast.success("Preview generated");
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.response?.data?.message || "Failed to auto-generate timetable");
+    } finally {
+      setAutoGenerating(false);
+    }
+  }, [classSubjects, periodRequirements, selectedClassId, selectedSectionId, selectedYear, totalRequestedPeriods, user?.schoolId]);
 
   const handleSubjectChange = (day: number, time: string, subjectId: string) => {
     const teacherId = getTeacherForSubject(subjectId);
@@ -546,17 +989,7 @@ const AdminTimetablePage = () => {
   };
 
   if (isLoading || fetchingData) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <Loader2 className="w-12 h-12 animate-spin text-[#e35336]" />
-            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-[#e35336]/20 animate-ping" />
-          </div>
-          <p className="text-gray-500 dark:text-gray-400 font-medium">{t.loading}</p>
-        </div>
-      </div>
-    );
+    return <TimetablePageSkeleton />;
   }
 
   if (!isAuthenticated) {
@@ -651,6 +1084,7 @@ const AdminTimetablePage = () => {
               )}
               {t.saveSchedule}
             </Button>
+
           </div>
         </div>
 
@@ -659,9 +1093,210 @@ const AdminTimetablePage = () => {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 gap-6">
 
-          {/* Main Timetable */}
-          <div>
-          </div>
+          <Card className="border-0 shadow-sm bg-white dark:bg-slate-800 overflow-hidden">
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-[var(--brand-color,#e35336)]/5 to-transparent dark:from-[var(--brand-color,#e35336)]/10" />
+              <CardHeader className="relative border-b bg-gray-50/50 dark:bg-slate-800/50">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-color,#e35336)]/10 dark:bg-[var(--brand-color,#e35336)]/20">
+                      <Sparkles className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg dark:text-white">
+                        Auto Generate Timetable
+                      </CardTitle>
+                      <CardDescription className="mt-1 text-sm">
+                        Define subject loads, preview the generated schedule, and apply it to the grid.
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => runAutoGenerate(false)}
+                      disabled={autoGenerating || !selectedClassId || !selectedSectionId || !selectedYear}
+                      className="gap-2"
+                    >
+                      {autoGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      Preview
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => runAutoGenerate(true)}
+                      disabled={autoGenerating || !selectedClassId || !selectedSectionId || !selectedYear}
+                      className="gap-2 bg-[var(--brand-color,#e35336)] hover:opacity-90 text-white"
+                    >
+                      {autoGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                      Use In Grid
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+            </div>
+            <CardContent className="grid gap-6 p-4 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-800 p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                        <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Available per week</div>
+                    </div>
+                    <div className="mt-2 text-2xl font-bold text-blue-700 dark:text-blue-400">{periodCount * SCHOOL_WEEK_DAYS.length}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800 p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                        <BarChart3 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Requested</div>
+                    </div>
+                    <div className="mt-2 text-2xl font-bold text-amber-700 dark:text-amber-400">{totalRequestedPeriods}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-800 p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+                        <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Subjects</div>
+                    </div>
+                    <div className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-400">{classSubjects.length}</div>
+                  </div>
+                </div>
+
+                {classSubjects.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-8 text-center">
+                    <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No subjects configured</p>
+                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Select an academic year, class, and section to define subject loads.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="bg-slate-50 dark:bg-slate-800/80 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Subject Loads</span>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Subject</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Teacher</TableHead>
+                          <TableHead className="w-40 text-xs font-semibold text-slate-500 dark:text-slate-400">Periods Needed</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {classSubjects.map((item) => (
+                          <TableRow key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                            <TableCell>
+                              <div className="font-medium text-slate-900 dark:text-white">{item.subject?.name || "Unknown subject"}</div>
+                              <div className="text-xs text-slate-400">{item.subject?.code || item.subjectId}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                                    {item.teacher?.name?.charAt(0) || "?"}
+                                  </span>
+                                </div>
+                                <span className="text-sm text-slate-600 dark:text-slate-300">{item.teacher?.name || "No teacher"}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={periodCount > 0 ? periodCount * SCHOOL_WEEK_DAYS.length : 50}
+                                value={periodLoads[item.id] || ""}
+                                onChange={(event) =>
+                                  setPeriodLoads((current) => ({
+                                    ...current,
+                                    [item.id]: event.target.value,
+                                  }))
+                                }
+                                className="w-24 h-8 text-center"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {!autoPreview ? (
+                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-8 text-center h-full">
+                    <Sparkles className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No preview generated</p>
+                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Click Preview to see the generated schedule.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-slate-800 p-4">
+                        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Requested</div>
+                        <div className="mt-1 text-2xl font-bold text-violet-700 dark:text-violet-400">{autoPreview.summary.requestedPeriods}</div>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-800 p-4">
+                        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Generated</div>
+                        <div className="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-400">{autoPreview.summary.generatedPeriods}</div>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-slate-800 p-4">
+                        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Unscheduled</div>
+                        <div className="mt-1 text-2xl font-bold text-red-700 dark:text-red-400">{autoPreview.summary.unscheduledPeriods}</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-[var(--brand-color,#e35336)]" />
+                        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Generated Slots</h3>
+                      </div>
+                      {autoPreview.generatedSlots.length === 0 ? (
+                        <p className="text-sm text-slate-400">No generated slots.</p>
+                      ) : (
+                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                          {autoPreview.generatedSlots.map((slot, index) => (
+                            <div key={`${slot.classSubjectId}-${index}`} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 p-3 text-sm hover:border-[var(--brand-color,#e35336)]/30 transition-colors">
+                              <div className="font-medium text-slate-900 dark:text-white">{slot.subjectName}</div>
+                              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                {slot.teacherName || "Unknown teacher"} · {SCHOOL_WEEK_DAYS.find((day) => day.value === slot.dayOfWeek)?.shortName || slot.dayOfWeek} · Period {slot.periodNumber} · {slot.startTime} - {slot.endTime}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Unscheduled</h3>
+                      </div>
+                      {autoPreview.unscheduled.length === 0 ? (
+                        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <p className="text-sm text-emerald-700 dark:text-emerald-400">All subjects scheduled successfully.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {autoPreview.unscheduled.map((item, index) => (
+                            <div key={`${item.classSubjectId}-${index}`} className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm">
+                              <div className="font-medium text-amber-900 dark:text-amber-200">{item.subjectName}</div>
+                              <div className="mt-1 text-xs text-amber-700 dark:text-amber-400">{item.teacherName || "No teacher"} · {item.reason}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Main Timetable */}
           <div 
@@ -675,6 +1310,11 @@ const AdminTimetablePage = () => {
                       <Clock className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
                       {t.weeklySchedule}
                     </CardTitle>
+                    {isPreviewingInGrid && (
+                      <CardDescription className="mt-1">
+                        Showing the generated preview in the grid. Use `Use In Grid` to load it into the editor.
+                      </CardDescription>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -720,7 +1360,7 @@ const AdminTimetablePage = () => {
                                 <div className="flex flex-col items-center gap-1">
                                   <span>{t.weekdays[day.shortName]}</span>
                                   <span className="text-[10px] font-normal text-gray-400">
-                                    {t.slots.replace("{count}", String(Object.entries(schedule).filter(([k]) => k.startsWith(`${day.value}-`) && schedule[k].subjectId).length))}
+                                    {t.slots.replace("{count}", String(Object.entries(displayedSchedule).filter(([k, entry]) => k.startsWith(`${day.value}-`) && entry.subjectId).length))}
                                   </span>
                                 </div>
                               </TableHead>
@@ -767,7 +1407,7 @@ const AdminTimetablePage = () => {
                                           )}
                                         >
                                           {/* Remove button */}
-                                          {isHovered && (
+                                          {isHovered && !isPreviewingInGrid && (
                                             <button
                                               className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--brand-color,#e35336)] text-white rounded-full flex items-center justify-center shadow-md hover:opacity-90 transition-colors z-30"
                                               onClick={(e) => {
@@ -794,7 +1434,7 @@ const AdminTimetablePage = () => {
                                               </div>
                                             )}
 
-                                            {showRoomNumbers && (
+                                            {showRoomNumbers && !isPreviewingInGrid && (
                                               <div className="flex items-center gap-1">
                                                 <MapPin className="w-3 h-3 text-gray-400 shrink-0" />
                                                 <Input
@@ -814,37 +1454,43 @@ const AdminTimetablePage = () => {
                                             isHovered && "border-[var(--brand-color,#e35336)]/50 bg-[var(--brand-color,#e35336)]/5"
                                           )}
                                         >
-                                          <Select
-                                            value=""
-                                            onValueChange={(v) => handleSubjectChange(day.value, timeRange.start, v)}
-                                          >
-                                            <SelectTrigger className="h-full min-h-[60px] border-0 bg-transparent hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-xs text-gray-400">
-                                              <SelectValue placeholder={t.addSubject} />
-                                            </SelectTrigger>
-                                            <SelectContent className="max-h-[300px]">
-                                              <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">{t.selectSubject}</div>
-                                              {subjects.map((s) => {
-                                                const hasTeacher = !!getTeacherForSubject(s.id);
-                                                return (
-                                                  <SelectItem 
-                                                    key={s.id} 
-                                                    value={s.id}
-                                                    disabled={!hasTeacher}
-                                                    className="text-sm"
-                                                  >
-                                                    <div className="flex items-center justify-between w-full gap-4">
-                                                      <span>{s.name}</span>
-                                                      {!hasTeacher && (
-                                                        <Badge variant="outline" className="text-[10px] text-gray-400">
-                                                          {t.noTeacher}
-                                                        </Badge>
-                                                      )}
-                                                    </div>
-                                                  </SelectItem>
-                                                );
-                                              })}
-                                            </SelectContent>
-                                          </Select>
+                                          {isPreviewingInGrid ? (
+                                            <div className="flex h-full min-h-[60px] items-center justify-center text-center text-xs text-gray-400">
+                                              Preview empty slot
+                                            </div>
+                                          ) : (
+                                            <Select
+                                              value=""
+                                              onValueChange={(v) => handleSubjectChange(day.value, timeRange.start, v)}
+                                            >
+                                              <SelectTrigger className="h-full min-h-[60px] border-0 bg-transparent hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-xs text-gray-400">
+                                                <SelectValue placeholder={t.addSubject} />
+                                              </SelectTrigger>
+                                              <SelectContent className="max-h-[300px]">
+                                                <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">{t.selectSubject}</div>
+                                                {subjects.map((s) => {
+                                                  const hasTeacher = !!getTeacherForSubject(s.id);
+                                                  return (
+                                                    <SelectItem 
+                                                      key={s.id} 
+                                                      value={s.id}
+                                                      disabled={!hasTeacher}
+                                                      className="text-sm"
+                                                    >
+                                                      <div className="flex items-center justify-between w-full gap-4">
+                                                        <span>{s.name}</span>
+                                                        {!hasTeacher && (
+                                                          <Badge variant="outline" className="text-[10px] text-gray-400">
+                                                            {t.noTeacher}
+                                                          </Badge>
+                                                        )}
+                                                      </div>
+                                                    </SelectItem>
+                                                  );
+                                                })}
+                                              </SelectContent>
+                                            </Select>
+                                          )}
                                         </div>
                                       )}
                                     

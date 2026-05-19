@@ -1,31 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Lexend_Deca, Noto_Naskh_Arabic, Noto_Sans_Ethiopic } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ToastProvider } from "@/components/ToastProvider";
 import { BreadcrumbProvider } from "@/context/BreadcrumbContext";
 import { AcademicYearProvider } from "@/context/AcademicYearContext";
 import PushNotificationManager from "@/components/PushNotificationManager";
-
-const lexendDeca = Lexend_Deca({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-sans",
-});
-
-const notoSansEthiopic = Noto_Sans_Ethiopic({
-  subsets: ["ethiopic"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-ethiopic",
-});
-
-const notoNaskhArabic = Noto_Naskh_Arabic({
-  subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-arabic",
-});
 
 // Force dynamic rendering to avoid static generation issues with useSearchParams
 export const dynamic = 'force-dynamic';
@@ -46,16 +25,37 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${lexendDeca.variable} ${notoSansEthiopic.variable} ${notoNaskhArabic.variable} ${lexendDeca.className}`}>
+      <body
+        style={
+          {
+            "--font-sans": '"Lexend Deca", "Segoe UI", system-ui, sans-serif',
+            "--font-ethiopic":
+              '"Noto Sans Ethiopic", "Abyssinica SIL", "Nyala", "Ebrima", sans-serif',
+            "--font-arabic":
+              '"Noto Naskh Arabic", "Amiri", "Geeza Pro", "Segoe UI", sans-serif',
+          } as React.CSSProperties
+        }
+      >
         <script dangerouslySetInnerHTML={{
           __html: `
             (function() {
               try {
-                var key = 'theme-storage';
-                var stored = localStorage.getItem(key);
+                var parseUserId = function(rawUser) {
+                  if (!rawUser) return null;
+                  try {
+                    var parsedUser = JSON.parse(rawUser);
+                    return parsedUser && parsedUser.id ? parsedUser.id : null;
+                  } catch (e) {
+                    return null;
+                  }
+                };
+
+                var userId = parseUserId(localStorage.getItem('user')) || parseUserId(sessionStorage.getItem('user'));
+                var key = userId ? 'theme-storage:' + userId : 'theme-storage';
+                var stored = localStorage.getItem(key) || localStorage.getItem('theme-storage');
                 if (stored) {
                   var parsed = JSON.parse(stored);
-                  var t = parsed.state.theme;
+                  var t = parsed.theme || (parsed.state && parsed.state.theme);
                   if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                     document.documentElement.classList.add('dark');
                   }

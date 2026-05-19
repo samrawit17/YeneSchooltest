@@ -224,7 +224,7 @@ export default function AdminEnrollmentPage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Enrollment Management</h1>
             <p className="text-gray-500">Manage student enrollment requests</p>
           </div>
-          <Button onClick={loadData} variant="outline">
+          <Button onClick={() => void loadData()} variant="outline">
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>

@@ -95,10 +95,10 @@ export const attendanceAPI = {
     api.get('/attendance/summary', { params }),
   getMissing: (params: { date: string; grade?: string; section?: string }) =>
     api.get('/attendance/missing', { params }),
-  notifyMissingAttendance: (params: { date: string }) =>
+  notifyMissingAttendance: (params: { date: string; grade?: string; section?: string }) =>
     api.post('/attendance/missing/notify', {}, { params }),
   checkReminders: () => api.post('/attendance/check-reminders'),
-  getAdminDashboard: (params?: { date?: string; grade?: string; section?: string; range?: string }) =>
+  getAdminDashboard: (params?: { date?: string; startDate?: string; endDate?: string; grade?: string; section?: string; range?: string }) =>
     api.get('/attendance/dashboard/admin', { params }),
   getAttendanceSummary: (params?: {
     academicYearId?: string;

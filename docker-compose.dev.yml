@@ -105,10 +105,14 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
+      HOSTNAME: 0.0.0.0
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
       NEXT_PUBLIC_API_URL: http://localhost:5000
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
       - ./frontend:/app
+      - /app/node_modules
       - /app/.next
     ports:
       - "3000:3000"
@@ -120,8 +124,11 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 45s
-    command: npm run dev
+      start_period: 90s
+    command:
+      - sh
+      - -lc
+      - npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && npm install --no-save @next/swc-linux-x64-gnu@14.2.5 --no-audit --loglevel=error && npm run dev -- --hostname 0.0.0.0
     networks:
       - sms_network
 

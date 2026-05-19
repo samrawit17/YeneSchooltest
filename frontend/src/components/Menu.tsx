@@ -431,6 +431,12 @@ const menuItems: MenuSection[] = [
         subscriptionFeature: "SCHOOL_CALENDAR",
       },
       {
+        icon: <DollarSign className="w-5 h-5" />,
+        label: "Finance Reports",
+        href: "/finance/reports",
+        visible: ["finance", "admin", "it_manager"],
+      },
+      {
         icon: <Megaphone className="w-5 h-5" />,
         label: "Announcements",
         href: "/list/announcements",
@@ -861,6 +867,20 @@ const Menu = ({
             // Only match exact path for root routes, or paths with trailing slash
             const isExactMatch = pathname === actualHref || isSchoolSettingsRoute;
             const isChildMatch = pathname?.startsWith(actualHref + "/");
+            const hasActiveMoreSpecificSibling = menuItems.some((section) =>
+              section.items.some((candidate) => {
+                const candidateHref =
+                  candidate.href === "dashboard"
+                    ? getDashboardPath(user?.role)
+                    : candidate.href;
+
+                return (
+                  candidateHref !== actualHref &&
+                  candidateHref.startsWith(actualHref + "/") &&
+                  pathname === candidateHref
+                );
+              }),
+            );
 
             // Special case: /parent should not match /parent/children, /parent/fees, etc.
             // Also /admin/assessments should not match /admin/exams/reports, /admin/exams/seating
@@ -871,7 +891,9 @@ const Menu = ({
               actualHref === "/registrar" || 
               actualHref === "/superadmin" ||
               actualHref === "/admin/assessments";
-            const isActive = isExactMatch || (isChildMatch && !isRootRoute);
+            const isActive =
+              isExactMatch ||
+              (isChildMatch && !isRootRoute && !hasActiveMoreSpecificSibling);
 
             // Don't highlight parent if child has same href (to avoid highlighting parent when child is clicked)
             const hasSameHrefChild = item.children?.some(child => child.href === actualHref);

@@ -3,18 +3,24 @@
 # ===========================================
 
 # Dependencies stage
-FROM node:20-alpine AS deps
+FROM node:20-slim AS deps
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts
+RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && \
+    npm install --no-save @next/swc-linux-x64-gnu@14.2.5 --no-audit --loglevel=error
 
 # Development stage
 FROM node:20-slim AS development
 
 WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+
+ENV NEXT_TELEMETRY_DISABLED=1
 
 EXPOSE 3000
 
@@ -45,14 +51,9 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs nodejs
 
-COPY package*.json ./
-
-RUN npm install --legacy-peer-deps --omit=dev --no-audit --loglevel=error --ignore-scripts
-
 COPY --from=builder /app/.next/standalone ./.next/standalone
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next/static ./.next/standalone/.next/static
+COPY --from=builder /app/public ./.next/standalone/public
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/next.config.mjs ./
 

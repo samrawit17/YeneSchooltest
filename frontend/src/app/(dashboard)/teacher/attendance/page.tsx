@@ -332,7 +332,7 @@ export default function TeacherAttendancePage() {
               name: student.user?.name || student.name || 'Unknown',
               gender: student.gender || 'MALE',
               avatarUrl: student.avatarUrl,
-              status: 'UNMARKED' as AttendanceStatus,
+              status: 'PRESENT' as AttendanceStatus,
               remark: '',
               lastUpdated: new Date().toISOString()
             }));
@@ -367,7 +367,7 @@ export default function TeacherAttendancePage() {
               name: `${student.firstName} ${student.lastName || ''}`.trim() || 'Unknown',
               gender: 'MALE',
               avatarUrl: student.photo,
-              status: 'UNMARKED' as AttendanceStatus,
+              status: 'PRESENT' as AttendanceStatus,
               remark: '',
               lastUpdated: new Date(student.updatedAt || student.cachedAt).toISOString()
             })));

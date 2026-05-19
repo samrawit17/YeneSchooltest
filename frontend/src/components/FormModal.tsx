@@ -20,6 +20,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { communicationsAPI } from "@/lib/api/communications";
 import { announcementsAPI, eventsAPI } from "@/lib/api/content";
+import { queryKeys } from "@/lib/query-keys";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -360,7 +361,13 @@ const FormModal = ({
     },
     onSuccess: () => {
       toast.success(`${table} deleted successfully`);
-      queryClient.invalidateQueries({ queryKey: (table as string) === 'communication' ? queryKeys.communications.all : queryKeys[table as keyof typeof queryKeys]?.all ?? [table + 's'] });
+      const queryKey =
+        table === "announcement"
+          ? queryKeys.announcements.all
+          : table === "event"
+              ? queryKeys.events.all
+              : [table + "s"];
+      queryClient.invalidateQueries({ queryKey });
       setOpen(false);
     },
     onError: (error: any) => {
@@ -516,10 +523,7 @@ const FormModal = ({
   // If title is provided, render as modal directly
   if (title) {
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => {
-      if (!nextOpen && onClose) onClose();
-      setOpen(nextOpen);
-    }}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         className="max-w-2xl p-0 gap-0 overflow-hidden font-sans"
         style={{ fontFamily: "var(--font-sans), sans-serif" }}

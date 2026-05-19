@@ -162,6 +162,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const currentRole = String(user?.role || '').toUpperCase();
   const isRegistrar = currentRole === 'REGISTRAR';
   const isTeacher = currentRole === 'TEACHER';
+  const isFinance = currentRole === 'FINANCE';
   const canEditStudent = ['ADMIN', 'REGISTRAR', 'IT_MANAGER', 'SUPER_ADMIN'].includes(currentRole);
   const canUploadPhoto = ['ADMIN', 'REGISTRAR', 'IT_MANAGER', 'SUPER_ADMIN'].includes(currentRole);
 
@@ -259,7 +260,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
       const response = await attendanceAPI.getStudentAttendance(userId);
       return response.data;
     },
-    enabled: !!studentId,
+    enabled: !!studentId && !isFinance,
   });
 
   // Fetch fee data
@@ -562,7 +563,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
             <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-5">
               <SummaryItem icon={GraduationCap} label={t.summary.class} value={`${className}${section !== t.nA ? ` - ${section}` : ""}`} />
               <SummaryItem icon={User} label={t.summary.homeroom} value={homeroomTeacher} />
-              <SummaryItem icon={Activity} label={t.summary.attendance} value={`${attendanceRate}%`} />
+              <SummaryItem icon={Activity} label={t.summary.attendance} value={isFinance ? t.nA : `${attendanceRate}%`} />
                <SummaryItem icon={CreditCard} label={t.summary.feeStatus} value={translateFeeStatus(feeStatus)} />
               <SummaryItem icon={Clock} label={t.summary.lastLogin} value={formatDate(lastLogin)} />
             </div>
@@ -621,27 +622,33 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                 <CardTitle className="text-base">{t.attendance.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800">
-                  <div className="grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr] bg-slate-50 px-3 py-2 text-xs font-semibold uppercase text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
-                    <span>{t.attendance.day}</span>
-                    <span>{t.attendance.date}</span>
-                    <span>{t.attendance.status}</span>
-                    <span>{t.attendance.note}</span>
+                {isFinance ? (
+                  <div className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    Attendance details are not available to finance accounts.
                   </div>
-                  {[todayAttendanceRow].map((record: any, index: number) => (
-                    <div
-                      key={`${toDateKey(record.date)}-${index}`}
-                      className="grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr] gap-2 border-t border-slate-100 px-3 py-2 text-sm dark:border-slate-800"
-                    >
-                      <span className="truncate font-medium text-slate-800 dark:text-slate-100">{formatWeekday(record.date)}</span>
-                      <span className="truncate text-slate-500 dark:text-slate-400">{formatShortDate(record.date)}</span>
-                      <span className={`truncate font-semibold ${getAttendanceStatusClass(record.status || "")}`}>
-                        {record.status}
-                      </span>
-                      <span className="truncate text-slate-500 dark:text-slate-400">{record.remarks}</span>
+                ) : (
+                  <div className="overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800">
+                    <div className="grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr] bg-slate-50 px-3 py-2 text-xs font-semibold uppercase text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
+                      <span>{t.attendance.day}</span>
+                      <span>{t.attendance.date}</span>
+                      <span>{t.attendance.status}</span>
+                      <span>{t.attendance.note}</span>
                     </div>
-                  ))}
-                </div>
+                    {[todayAttendanceRow].map((record: any, index: number) => (
+                      <div
+                        key={`${toDateKey(record.date)}-${index}`}
+                        className="grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr] gap-2 border-t border-slate-100 px-3 py-2 text-sm dark:border-slate-800"
+                      >
+                        <span className="truncate font-medium text-slate-800 dark:text-slate-100">{formatWeekday(record.date)}</span>
+                        <span className="truncate text-slate-500 dark:text-slate-400">{formatShortDate(record.date)}</span>
+                        <span className={`truncate font-semibold ${getAttendanceStatusClass(record.status || "")}`}>
+                          {record.status}
+                        </span>
+                        <span className="truncate text-slate-500 dark:text-slate-400">{record.remarks}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

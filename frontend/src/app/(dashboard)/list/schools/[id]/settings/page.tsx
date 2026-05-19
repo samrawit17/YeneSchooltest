@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import api, { API_URL } from '@/lib/api/core';
+import api from '@/lib/api/core';
 import { schoolSettingsAPI, schoolsAPI, academicYearsAPI } from '@/lib/api';
 import { subscriptionAPI } from '@/lib/api/subscription';
 import { resolveAssetUrl } from '@/lib/asset-url';

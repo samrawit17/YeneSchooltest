@@ -231,7 +231,7 @@ export default function ParentTimetablePage() {
           title={t.weeklyProgram}
           subtitle={
             translatedClassName
-              ? `${translatedClassName}${selectedChild.section ? ` • ${t.section} ${selectedChild.section}` : ""}`
+              ? `${translatedClassName}${selectedChild?.section ? ` • ${t.section} ${selectedChild.section}` : ""}`
               : t.selectChildSubtitle
           }
           emptyTitle={t.noProgram}

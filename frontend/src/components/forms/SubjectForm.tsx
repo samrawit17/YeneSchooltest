@@ -47,8 +47,6 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
           code: formData.code || undefined,
           isActive: formData.isActive,
           description: formData.description || undefined,
-          grade: formData.grade || undefined,
-          credits: formData.credits ? parseFloat(formData.credits) : undefined,
         });
       } else {
         return subjectsAPI.update(data.id, {

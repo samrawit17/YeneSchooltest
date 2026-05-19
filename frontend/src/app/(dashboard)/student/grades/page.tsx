@@ -139,7 +139,7 @@ export default function StudentGradesPage() {
       // Extract unique terms for filter
       const uniqueTerms = Array.from(
         new Set(rows.map((g: SubjectGrade) => JSON.stringify(g.term)))
-      ).map(t => JSON.parse(t));
+      ).map((termJson) => JSON.parse(termJson as string));
       setTerms(uniqueTerms);
     } catch (error) {
       console.error("Error fetching grades:", error);

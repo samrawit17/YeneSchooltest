@@ -233,6 +233,14 @@ const ProfilePage = () => {
     enabled: !!user?.id,
   });
   const normalizedRole = (user?.role || "").toUpperCase() as AppUserRole;
+  const persistThemePreference = (nextTheme: "LIGHT" | "DARK" | "SYSTEM", clientTheme: "light" | "dark" | "system") => {
+    setTheme(clientTheme);
+    if (user) {
+      updateUser({ ...user, theme: nextTheme });
+    }
+    userAPI.updateTheme(nextTheme).catch(console.error);
+  };
+
   const visibleNotificationTypes = useMemo(() => {
     const items: Array<{
       key: NotificationPreferenceKey;
@@ -1260,8 +1268,7 @@ const ProfilePage = () => {
                        size="sm"
                        className="flex-1 sm:flex-none text-xs md:text-sm"
  onClick={() => {
-                          setTheme("light");
-                          userAPI.updateTheme("LIGHT").catch(console.error);
+                          persistThemePreference("LIGHT", "light");
                         }}
                      >{t.preferences.light}</Button>
                      <Button 
@@ -1269,8 +1276,7 @@ const ProfilePage = () => {
                        size="sm"
                        className="flex-1 sm:flex-none text-xs md:text-sm"
  onClick={() => {
-                          setTheme("dark");
-                          userAPI.updateTheme("DARK").catch(console.error);
+                          persistThemePreference("DARK", "dark");
                         }}
                      >{t.preferences.dark}</Button>
                      <Button 
@@ -1278,8 +1284,7 @@ const ProfilePage = () => {
                        size="sm"
                        className="flex-1 sm:flex-none text-xs md:text-sm"
  onClick={() => {
-                          setTheme("system");
-                          userAPI.updateTheme("SYSTEM").catch(console.error);
+                          persistThemePreference("SYSTEM", "system");
                         }}
                      >{t.preferences.system}</Button>
                    </div>

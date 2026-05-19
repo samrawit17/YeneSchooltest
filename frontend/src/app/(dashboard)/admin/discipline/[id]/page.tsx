@@ -222,7 +222,7 @@ export default function IncidentDetailPage() {
           </CardContent>
         </Card>
 
-        {user?.role === "admin" && (
+        {user?.role === "ADMIN" && (
           <Card className="dark:bg-slate-900 dark:border-slate-800">
             <CardHeader>
               <CardTitle>Update Incident</CardTitle>

@@ -318,10 +318,6 @@ const MyClassesPage = () => {
                       <span className="font-medium">{cls.studentCount}</span>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Schedule</span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{cls.schedule}</span>
-                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500">Room</span>
                     <div className="flex items-center gap-1">

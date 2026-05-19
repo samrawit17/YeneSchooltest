@@ -195,6 +195,10 @@ export class ReportQueryDto {
   @IsOptional()
   @IsString()
   academicYearId?: string;
+
+  @IsOptional()
+  @IsEnum(['ETHIOPIAN', 'GREGORIAN'])
+  calendarType?: 'ETHIOPIAN' | 'GREGORIAN';
 }
 
 // Fee Collection Mode types - matches school setting fee_structure_mode

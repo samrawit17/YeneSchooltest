@@ -6,6 +6,7 @@ export const studentsAPI = {
   getAll: (params?: {
     schoolId?: string;
     academicYearId?: string;
+    classId?: string;
     status?: string;
     grade?: string;
     section?: string;

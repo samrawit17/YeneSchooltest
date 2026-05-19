@@ -57,6 +57,12 @@ NEXT_PUBLIC_API_URL="http://localhost:5000"
 docker-compose up -d
 ```
 
+For development with hot reload:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
 ## Scripts
 
 | Command | Description |

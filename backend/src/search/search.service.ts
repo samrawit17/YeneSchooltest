@@ -92,7 +92,7 @@ const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
   [Role.TEACHER]: ['students', 'classes', 'sections', 'subjects', 'exams', 'lessons', 'grades'],
   [Role.STUDENT]: ['classes', 'subjects', 'exams', 'lessons', 'announcements', 'events', 'grades'],
   [Role.PARENT]: ['announcements', 'events', 'exams'],
-  [Role.FINANCE]: ['students', 'parents'],
+  [Role.FINANCE]: ['students'],
 };
 
 @Injectable()

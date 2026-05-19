@@ -5,6 +5,25 @@ log() {
   echo "[entrypoint] $1"
 }
 
+describe_database_target() {
+  node <<'EOF'
+const databaseUrl = process.env.DATABASE_POOL_URL || process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  console.log('DATABASE_URL is not set');
+  process.exit(0);
+}
+
+try {
+  const parsed = new URL(databaseUrl);
+  const dbName = parsed.pathname.replace(/^\//, '') || '<unknown>';
+  console.log(`${parsed.hostname}:${parsed.port || 5432}/${dbName}`);
+} catch {
+  console.log('DATABASE_URL is set but could not be parsed');
+}
+EOF
+}
+
 wait_for_postgres() {
   if [[ -z "${DATABASE_URL:-}" ]]; then
     log "DATABASE_URL is not set; skipping database readiness check."
@@ -85,6 +104,8 @@ bootstrap_database() {
 }
 
 wait_for_postgres
+log "Database target: $(describe_database_target)"
+log "Expected Docker database for this stack: postgres:5432/lemarisms"
 bootstrap_database
 
 log "Starting application..."

@@ -5,6 +5,9 @@
 # Development stage
 FROM node:20-slim AS development
 
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Install dependencies for Prisma
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl3 \
@@ -43,6 +46,9 @@ CMD ["npm", "run", "start:dev"]
 # Production build stage
 FROM node:20-slim AS builder
 
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Install dependencies for Prisma
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl3 \
@@ -71,6 +77,9 @@ RUN npm run build
 
 # Production runtime
 FROM node:20-slim AS production
+
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ENV DATABASE_URL=${DATABASE_URL}
 
 # Install dependencies for Prisma
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -1,8 +1,6 @@
 "use client";
 
 import { Toaster } from 'sonner';
-import { CheckCircle, XCircle, AlertCircle, Info } from 'lucide-react';
-
 export function ToastProvider() {
   return (
     <div>
@@ -20,12 +18,6 @@ export function ToastProvider() {
             padding: '16px',
             boxShadow: '0 10px 40px rgba(15, 23, 42, 0.18)',
             border: '1px solid hsl(var(--border))',
-          },
-          icons: {
-            success: <CheckCircle className="w-5 h-5 text-primary" />,
-            error: <XCircle className="w-5 h-5 text-primary" />,
-            info: <Info className="w-5 h-5 text-primary" />,
-            warning: <AlertCircle className="w-5 h-5 text-primary" />,
           },
         }}
         className="sonner-toaster"
