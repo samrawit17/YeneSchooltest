@@ -1,58 +1,12 @@
-# ===========================================
-# DEVELOPMENT BUILD
-# ===========================================
-
-# Development stage
-FROM node:20-slim AS development
-
-ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
-ENV DATABASE_URL=${DATABASE_URL}
-
-# Install dependencies for Prisma
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libssl3 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install all dependencies (including dev)
-RUN npm install --legacy-peer-deps --prefer-offline --no-audit --loglevel=error
-
-# Copy source code
-COPY . .
-
-# Generate Prisma client
-RUN npx prisma generate
-
-# Copy entrypoint script
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
-
-# Expose ports
-EXPOSE 5000 9229
-
-# Use entrypoint instead of direct CMD
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:dev"]
-
-# ===========================================
-# PRODUCTION BUILD
-# ===========================================
-
 # Production build stage
 FROM node:20-slim AS builder
 
 ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 ENV DATABASE_URL=${DATABASE_URL}
-
-# Install dependencies for Prisma
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libssl3 \
-    && rm -rf /var/lib/apt/lists/*
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
 
@@ -60,7 +14,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies
-RUN npm ci --legacy-peer-deps --prefer-offline --no-audit --loglevel=error
+RUN npm ci --legacy-peer-deps --prefer-offline --no-audit --loglevel=error --ignore-scripts
 
 # Copy source code
 COPY . .
@@ -80,12 +34,10 @@ FROM node:20-slim AS production
 
 ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 ENV DATABASE_URL=${DATABASE_URL}
-
-# Install dependencies for Prisma
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libssl3 \
-    adduser \
-    && rm -rf /var/lib/apt/lists/*
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
 
@@ -97,7 +49,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --legacy-peer-deps --omit=dev
+RUN npm ci --legacy-peer-deps --omit=dev --no-audit --loglevel=error --ignore-scripts
 
 # Copy Prisma schema and generated client
 COPY prisma ./prisma/
@@ -113,6 +65,7 @@ COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 COPY *.json ./
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
+COPY prisma.config.ts ./
 
 RUN chmod +x /app/docker-entrypoint.sh
 
@@ -128,4 +81,35 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:5000/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"]
+
+# ===========================================
+# DEVELOPMENT BUILD
+# ===========================================
+
+FROM node:20-slim AS development
+
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ENV DATABASE_URL=${DATABASE_URL}
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ENV NPM_CONFIG_FETCH_TIMEOUT=300000
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install --legacy-peer-deps --prefer-offline --no-audit --loglevel=error
+
+COPY . .
+
+RUN npx prisma generate
+
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+EXPOSE 5000 9229
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["npm", "run", "start:dev"]

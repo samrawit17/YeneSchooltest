@@ -59,7 +59,7 @@ services:
       DATABASE_POOL_IDLE_TIMEOUT_MS: ${DATABASE_POOL_IDLE_TIMEOUT_MS:-30000}
       DATABASE_SEED_POOL_MAX: ${DATABASE_SEED_POOL_MAX:-2}
       REDIS_URL: redis://:${REDIS_PASSWORD:-lemari_redis_password}@redis:6379/0
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me}
       WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
       WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-akmPXo7n_zVhuXGjPB_GsS_G_mkzqc-WC9OF2d8mzLg}
       WEB_PUSH_CONTACT_EMAIL: ${WEB_PUSH_CONTACT_EMAIL:-mailto:admin@lemarisms.local}
@@ -95,6 +95,8 @@ services:
       HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       backend:
         condition: service_healthy
