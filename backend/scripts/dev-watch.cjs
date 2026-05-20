@@ -40,6 +40,12 @@ function clearIncrementalState() {
   }
 }
 
+function clearStaleEntryPoint() {
+  if (fs.existsSync(distMain)) {
+    fs.rmSync(distMain, { force: true });
+  }
+}
+
 function runBuild(args, onExit) {
   const build = spawnProcess(npxCmd, args);
   build.on('exit', onExit);
@@ -84,9 +90,8 @@ prismaGenerate.on('exit', (code) => {
     return;
   }
 
-  if (!fs.existsSync(distMain)) {
-    clearIncrementalState();
-  }
+  clearIncrementalState();
+  clearStaleEntryPoint();
 
   runBuild(['tsc', '-p', 'tsconfig.build.json'], (buildCode) => {
     if (buildCode !== 0) {
