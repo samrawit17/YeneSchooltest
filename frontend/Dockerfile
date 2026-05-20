@@ -1,4 +1,38 @@
-# Builder stage
+# ===========================================
+# DEVELOPMENT BUILD
+# ===========================================
+
+FROM node:20-slim AS deps
+
+WORKDIR /app
+
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ENV NPM_CONFIG_FETCH_TIMEOUT=300000
+
+COPY package*.json ./
+
+RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && \
+    npm install --no-save @next/swc-linux-x64-gnu@14.2.5 --no-audit --loglevel=error
+
+FROM node:20-slim AS development
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package*.json ./
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
+
+# ===========================================
+# PRODUCTION BUILD
+# ===========================================
+
 FROM node:20-slim AS builder
 
 WORKDIR /app
@@ -57,34 +91,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:3000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["npm", "run", "start", "--", "-H", "0.0.0.0", "-p", "3000"]
-
-# ===========================================
-# DEVELOPMENT BUILD
-# ===========================================
-
-FROM node:20-slim AS deps
-
-WORKDIR /app
-
-ENV NPM_CONFIG_FETCH_RETRIES=5
-ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
-ENV NPM_CONFIG_FETCH_TIMEOUT=300000
-
-COPY package*.json ./
-
-RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && \
-    npm install --no-save @next/swc-linux-x64-gnu@14.2.5 --no-audit --loglevel=error
-
-FROM node:20-slim AS development
-
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY package*.json ./
-
-ENV NEXT_TELEMETRY_DISABLED=1
-
-EXPOSE 3000
-
-CMD ["npm", "run", "dev"]

@@ -28,6 +28,8 @@ const prisma = new PrismaClient({ adapter: new PrismaPg(pool) } as any);
 
 const SUPERADMIN_EMAIL = 'lemari1121@gmail.com';
 const SUPERADMIN_PASSWORD = process.env.SEED_SUPERADMIN_PASSWORD || '12345678';
+const DEMO_ADMIN_EMAIL = process.env.SEED_DEMO_ADMIN_EMAIL || 'hh11@gmail.com';
+const DEMO_ADMIN_PASSWORD = process.env.SEED_DEMO_ADMIN_PASSWORD || 'admin123';
 
 function permissionMeta(name: string) {
   const [module, ...actionParts] = name.split(':');
@@ -116,8 +118,64 @@ async function main() {
   });
 
   console.log('Seeded superadmin:', user);
+
+  const demoSchool = await prisma.school.upsert({
+    where: { email: 'demo-school@lemarisms.local' },
+    update: {
+      name: 'Demo School',
+      isActive: true,
+      timezone: 'Africa/Addis_Ababa',
+    },
+    create: {
+      name: 'Demo School',
+      email: 'demo-school@lemarisms.local',
+      phone: '+251900000000',
+      address: 'Addis Ababa',
+      timezone: 'Africa/Addis_Ababa',
+      isActive: true,
+      code: 'DEMO',
+      enrollmentKey: 'demo-school',
+    },
+    select: { id: true, name: true, email: true },
+  });
+
+  const demoAdminPassword = await bcrypt.hash(DEMO_ADMIN_PASSWORD, 12);
+  const demoAdmin = await prisma.user.upsert({
+    where: { email: DEMO_ADMIN_EMAIL },
+    update: {
+      username: DEMO_ADMIN_EMAIL,
+      name: 'Demo School Admin',
+      role: Role.ADMIN,
+      schoolId: demoSchool.id,
+      password: demoAdminPassword,
+      isActive: true,
+      mustChangePassword: false,
+    },
+    create: {
+      email: DEMO_ADMIN_EMAIL,
+      username: DEMO_ADMIN_EMAIL,
+      name: 'Demo School Admin',
+      role: Role.ADMIN,
+      schoolId: demoSchool.id,
+      password: demoAdminPassword,
+      isActive: true,
+      mustChangePassword: false,
+    },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      role: true,
+      isActive: true,
+      schoolId: true,
+    },
+  });
+
+  console.log('Seeded demo school:', demoSchool);
+  console.log('Seeded demo admin:', demoAdmin);
   console.log(`Seeded permissions: ${permissionNames.length}`);
   console.log(`Temporary password: ${SUPERADMIN_PASSWORD}`);
+  console.log(`Demo admin password: ${DEMO_ADMIN_PASSWORD}`);
 }
 
 main()
