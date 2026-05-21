@@ -9,11 +9,12 @@ import { schoolSettingsAPI, platformSettingsAPI, schoolsAPI } from "@/lib/api";
 import { communicationsAPI } from "@/lib/api/communications";
 import { announcementsAPI, eventsAPI } from "@/lib/api/content";
 import { subscriptionAPI } from "@/lib/api/subscription";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { queryKeys } from "@/lib/query-keys";
 import { useTranslations } from "@/hooks/useTranslations";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -500,6 +501,58 @@ const menuItems: MenuSection[] = [
 
 ];
 
+// Static constants — hoisted outside component to avoid recreation
+const TIER_LEVELS: Record<string, number> = {
+  CORE: 1,
+  STANDARD: 2,
+  ULTIMATE: 3,
+};
+
+const FEATURE_TIER_MAP: Record<string, string> = {
+  SCHOOL_PROFILE: 'CORE',
+  USER_MANAGEMENT: 'CORE',
+  ACADEMIC_STRUCTURE: 'CORE',
+  ATTENDANCE_TRACKING: 'CORE',
+  ANNOUNCEMENTS: 'CORE',
+  SCHOOL_CALENDAR: 'CORE',
+  BASIC_REPORTS: 'CORE',
+  NOTIFICATIONS: 'CORE',
+  GRADE_MANAGEMENT: 'STANDARD',
+  TIMETABLE_MANAGEMENT: 'STANDARD',
+  LESSON_MANAGEMENT: 'STANDARD',
+  EXAM_MANAGEMENT: 'STANDARD',
+  FINANCE_MANAGEMENT: 'STANDARD',
+  PARENT_PORTAL: 'STANDARD',
+  MESSAGING: 'STANDARD',
+  COMMUNICATION_BOOK: 'STANDARD',
+  DOCUMENT_MANAGEMENT: 'STANDARD',
+  ENROLLMENT_MANAGEMENT: 'STANDARD',
+  CREDENTIAL_MANAGEMENT: 'STANDARD',
+  DISCIPLINE_MANAGEMENT: 'STANDARD',
+  REPORT_CARDS: 'STANDARD',
+  EXAM_SEATING: 'ULTIMATE',
+  STUDENT_PROMOTION: 'ULTIMATE',
+  STUDENT_RANKINGS: 'ULTIMATE',
+  STUDENT_ID_CARDS: 'ULTIMATE',
+  CERTIFICATE_TEMPLATES: 'ULTIMATE',
+  TEMPLATE_MANAGER: 'ULTIMATE',
+  ADVANCED_ANALYTICS: 'ULTIMATE',
+  CUSTOM_BRANDING: 'ULTIMATE',
+  BULK_OPERATIONS: 'ULTIMATE',
+  PRIORITY_SUPPORT: 'ULTIMATE',
+  ADVANCED_REPORTING: 'ULTIMATE',
+  DATA_EXPORT: 'ULTIMATE',
+  SIREN_ALERT: 'ULTIMATE',
+};
+
+const getFeaturesByTierFromConfig = (tier: string): string[] => {
+  const tierOrder = ['CORE', 'STANDARD', 'ULTIMATE'];
+  const tierIndex = tierOrder.indexOf(tier);
+  return Object.entries(FEATURE_TIER_MAP)
+    .filter(([_, featureTier]) => tierOrder.indexOf(featureTier) <= tierIndex)
+    .map(([key]) => key);
+};
+
 const textRevealClass = (collapsed: boolean, expandedWidth = "max-w-[220px]") =>
   `overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] duration-200 ease-out ${
     collapsed ? "max-w-0 opacity-0 pointer-events-none" : `${expandedWidth} opacity-100`
@@ -516,21 +569,34 @@ const Menu = ({
 }) => {
   const { user } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const { t: navigationText, language } = useTranslations<NavigationMessages>("navigation");
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
-  const getNavigationLabel = (label: string) => navigationText.labels?.[label] ?? label;
+  const getNavigationLabel = useCallback((label: string) => navigationText.labels?.[label] ?? label, [navigationText.labels]);
   const textDirection = language === "ar" ? "rtl" : "ltr";
 
-  // Toggle submenu
-  const toggleSubmenu = (label: string) => {
+  // Stabilized toggle — prevents child re-renders from inline function recreation
+  const toggleSubmenu = useCallback((label: string) => {
     setOpenSubmenus(prev => ({ ...prev, [label]: !prev[label] }));
-  };
+  }, []);
+
+  // Stabilized click handler
+  const handleItemClick = useCallback(() => {
+    onItemClick?.();
+  }, [onItemClick]);
+
+  // Stabilized prefetch handler
+  const handlePrefetch = useCallback((href: string) => {
+    if (href && href !== "dashboard") {
+      router.prefetch(href);
+    }
+  }, [router]);
 
   // Check if submenu should be open based on active child
-  const isSubmenuActive = (children?: MenuItem[]) => {
+  const isSubmenuActive = useCallback((children?: MenuItem[]) => {
     if (!children || children.length === 0) return false;
     return children.some((child) => pathname === child.href);
-  };
+  }, [pathname]);
 
   // Memoize role key to prevent recalculation
   // Normalize to handle both "super_admin" and "super-admin"
@@ -572,7 +638,7 @@ const Menu = ({
       }
     },
     enabled: !!schoolId && userRoleKey !== 'super_admin',
-    staleTime: 0, // Always fetch fresh data
+    staleTime: 5 * 60 * 1000, // 5 minutes — curriculum type rarely changes
   });
 
 
@@ -692,116 +758,52 @@ const Menu = ({
     staleTime: 60000,
   });
 
-  const getFeaturesByTierFromConfig = (tier: string): string[] => {
-    const tierOrder = ['CORE', 'STANDARD', 'ULTIMATE'];
-    const tierIndex = tierOrder.indexOf(tier);
-    const FEATURE_TIER_MAP: Record<string, string> = {
-      SCHOOL_PROFILE: 'CORE',
-      USER_MANAGEMENT: 'CORE',
-      ACADEMIC_STRUCTURE: 'CORE',
-      ATTENDANCE_TRACKING: 'CORE',
-      ANNOUNCEMENTS: 'CORE',
-      SCHOOL_CALENDAR: 'CORE',
-      BASIC_REPORTS: 'CORE',
-      NOTIFICATIONS: 'CORE',
-      GRADE_MANAGEMENT: 'STANDARD',
-      TIMETABLE_MANAGEMENT: 'STANDARD',
-      LESSON_MANAGEMENT: 'STANDARD',
-      EXAM_MANAGEMENT: 'STANDARD',
-      FINANCE_MANAGEMENT: 'STANDARD',
-      PARENT_PORTAL: 'STANDARD',
-      MESSAGING: 'STANDARD',
-      COMMUNICATION_BOOK: 'STANDARD',
-      DOCUMENT_MANAGEMENT: 'STANDARD',
-      ENROLLMENT_MANAGEMENT: 'STANDARD',
-      CREDENTIAL_MANAGEMENT: 'STANDARD',
-      DISCIPLINE_MANAGEMENT: 'STANDARD',
-      REPORT_CARDS: 'STANDARD',
-      EXAM_SEATING: 'ULTIMATE',
-      STUDENT_PROMOTION: 'ULTIMATE',
-      STUDENT_RANKINGS: 'ULTIMATE',
-      STUDENT_ID_CARDS: 'ULTIMATE',
-      CERTIFICATE_TEMPLATES: 'ULTIMATE',
-      TEMPLATE_MANAGER: 'ULTIMATE',
-      ADVANCED_ANALYTICS: 'ULTIMATE',
-      CUSTOM_BRANDING: 'ULTIMATE',
-      BULK_OPERATIONS: 'ULTIMATE',
-      PRIORITY_SUPPORT: 'ULTIMATE',
-      ADVANCED_REPORTING: 'ULTIMATE',
-      DATA_EXPORT: 'ULTIMATE',
-      SIREN_ALERT: 'ULTIMATE',
-    };
-    return Object.entries(FEATURE_TIER_MAP)
-      .filter(([_, featureTier]) => tierOrder.indexOf(featureTier) <= tierIndex)
-      .map(([key]) => key);
-  };
-
   // Determine if any critical data is loading
   const isLoading = isSchoolLoading || isSettingsLoading || isAcademicYearLoading || isPlatformSettingsLoading || isPlanLoading;
 
   // Helper function to check if a feature is enabled
-  const isFeatureEnabled = (featureFlag: string | undefined): boolean => {
-    if (!featureFlag) return true; // No feature flag means always visible
-    // Check if the feature flag is explicitly set to false
+  const isFeatureEnabled = useCallback((featureFlag: string | undefined): boolean => {
+    if (!featureFlag) return true;
     const flagValue = platformSettings?.[featureFlag];
-    // If flag is not set (undefined), default to enabled
     if (flagValue === undefined || flagValue === null) return true;
-    // Handle string "false"/"true" and boolean false
     if (typeof flagValue === 'string') {
       return flagValue.toLowerCase() !== 'false';
     }
-    // For boolean values, return true unless explicitly false
     return flagValue !== false;
-  };
+  }, [platformSettings]);
 
-  const isSchoolSettingEnabled = (settingKey: string | undefined): boolean => {
+  const isSchoolSettingEnabled = useCallback((settingKey: string | undefined): boolean => {
     if (!settingKey) return true;
-
     const settingValue = settingsData?.data?.[settingKey];
     if (settingValue === undefined || settingValue === null) return true;
     if (typeof settingValue === 'string') {
       return settingValue.toLowerCase() !== 'false';
     }
-
     return settingValue !== false;
-  };
+  }, [settingsData]);
 
-  const TIER_LEVELS: Record<string, number> = {
-    CORE: 1,
-    STANDARD: 2,
-    ULTIMATE: 3,
-  };
-
-  // Helper function to check subscription-based access
-  const hasSubscriptionAccess = (
+  const hasSubscriptionAccess = useCallback((
     subscriptionFeature?: string,
     subscriptionTier?: 'CORE' | 'STANDARD' | 'ULTIMATE'
   ): boolean => {
-    // Super admins bypass subscription checks
     if (userRoleKey === 'super_admin') return true;
-    
-    // If no subscription requirements, allow access
     if (!subscriptionFeature && !subscriptionTier) return true;
-    
-    // If no plan, deny access
     if (!schoolPlan) return false;
 
     const schoolTierLevel = TIER_LEVELS[schoolPlan.tier] || 0;
 
-    // Check tier requirement
     if (subscriptionTier) {
       const requiredLevel = TIER_LEVELS[subscriptionTier] || 0;
       if (schoolTierLevel < requiredLevel) return false;
     }
 
-    // Check feature requirement
     if (subscriptionFeature) {
       const hasFeature = schoolPlan.features?.includes(subscriptionFeature);
       if (!hasFeature) return false;
     }
 
     return true;
-  };
+  }, [userRoleKey, schoolPlan]);
 
   // Render skeleton loading state
   if (isLoading) {
@@ -951,17 +953,29 @@ const Menu = ({
 
                 return (
                   <div key={`${item.label}-${item.href}`} className="flex justify-center">
-                    {hasSameHrefChild ? (
-                      <div className={collapsedItemClasses} title={displayLabel}>
+                    {hasVisibleChildren ? (
+                      <button
+                        type="button"
+                        className={collapsedItemClasses}
+                        title={displayLabel}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleSubmenu(item.label);
+                        }}
+                        aria-expanded={isOpen}
+                        aria-label={`${displayLabel} submenu`}
+                      >
                         <span className="flex h-5 w-5 items-center justify-center">
                           {item.icon}
                         </span>
-                      </div>
+                      </button>
                     ) : (
                       <Link
                         href={actualHref}
                         prefetch
-                        onClick={() => onItemClick?.()}
+                        onMouseEnter={() => handlePrefetch(actualHref)}
+                        onClick={handleItemClick}
                         className={collapsedItemClasses}
                         title={displayLabel}
                       >
@@ -986,22 +1000,31 @@ const Menu = ({
                         : "text-slate-800 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                       } min-h-12 w-full px-3.5 py-3`}
                   >
-                    {hasSameHrefChild ? (
-                      <div
-                        className="flex flex-1 items-center gap-3 cursor-default"
+                    {hasVisibleChildren ? (
+                      <button
+                        type="button"
+                        className="flex flex-1 items-center gap-3"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleSubmenu(item.label);
+                        }}
+                        aria-expanded={isOpen}
+                        aria-label={`${displayLabel} submenu`}
                       >
                         <div className="relative text-slate-900 dark:text-white">
                           {item.icon}
                         </div>
-                        <span className={`text-sm ${isActive || submenuActive ? "font-medium" : ""}`} dir={textDirection}>
+                        <span className={`text-sm ${isOpen ? "font-medium" : ""}`} dir={textDirection}>
                           {displayLabel}
                         </span>
-                      </div>
+                      </button>
                     ) : (
                       <Link
                         href={actualHref}
                         prefetch
-                        onClick={() => onItemClick?.()}
+                        onMouseEnter={() => handlePrefetch(actualHref)}
+                        onClick={handleItemClick}
                         className="flex flex-1 items-center gap-3"
                       >
                         <div className="relative text-slate-900 dark:text-white">
@@ -1050,7 +1073,8 @@ const Menu = ({
                             key={`${child.label}-${childHref}`}
                             href={childHref}
                             prefetch
-                            onClick={() => onItemClick?.()}
+                            onMouseEnter={() => handlePrefetch(childHref)}
+                            onClick={handleItemClick}
                             className={`flex min-h-10 items-center gap-3 rounded-lg px-4 py-2 transition-colors ${
                               isChildActive
                                 ? useBrandNavigation
