@@ -8,6 +8,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
 import { userAPI } from "@/lib/api/auth";
+import { schoolSettingsAPI } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Lock, Eye, EyeOff, KeyRound, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -97,6 +100,52 @@ const calculatePasswordStrength = (password: string): PasswordStrength => {
   return { score, label, color, checks };
 };
 
+const isValidHexColor = (value?: string | null): value is string =>
+  !!value && /^#([0-9A-Fa-f]{6})$/.test(value);
+
+const hexToRgb = (hex: string) => ({
+  r: parseInt(hex.slice(1, 3), 16),
+  g: parseInt(hex.slice(3, 5), 16),
+  b: parseInt(hex.slice(5, 7), 16),
+});
+
+const applyBrandColor = (color?: string | null) => {
+  if (typeof document === "undefined") return;
+
+  const hex = isValidHexColor(color) ? color : "#e35336";
+  const { r, g, b } = hexToRgb(hex);
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case red:
+        h = ((green - blue) / d + (green < blue ? 6 : 0)) / 6;
+        break;
+      case green:
+        h = ((blue - red) / d + 2) / 6;
+        break;
+      case blue:
+        h = ((red - green) / d + 4) / 6;
+        break;
+    }
+  }
+
+  const root = document.documentElement;
+  root.style.setProperty("--brand-color", hex);
+  root.style.setProperty("--brand-color-rgb", `${r}, ${g}, ${b}`);
+  root.style.setProperty("--primary", `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`);
+  root.style.setProperty("--ring", `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`);
+};
+
 const ChangePasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -117,6 +166,21 @@ const ChangePasswordPage = () => {
   
   const { user, updateUser } = useAuth();
   const router = useRouter();
+
+  const { data: brandColor } = useQuery({
+    queryKey: queryKeys.school.setting("theme_color", user?.schoolId),
+    queryFn: async () => {
+      if (!user?.schoolId) return "#e35336";
+      try {
+        const response = await schoolSettingsAPI.get(user.schoolId, "theme_color");
+        return response.data?.value || "#e35336";
+      } catch {
+        return "#e35336";
+      }
+    },
+    enabled: !!user?.schoolId,
+    staleTime: 60000,
+  });
 
   const form = useForm<ChangePasswordFormData>({
     resolver: zodResolver(changePasswordSchema),
@@ -148,6 +212,10 @@ const ChangePasswordPage = () => {
       });
     }
   }, [newPassword]);
+
+  useEffect(() => {
+    applyBrandColor(brandColor);
+  }, [brandColor]);
 
   // Redirect if user doesn't need to change password
   useEffect(() => {

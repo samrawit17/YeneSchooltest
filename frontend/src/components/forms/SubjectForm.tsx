@@ -160,6 +160,9 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
               >
                 <option value="">Select grade range</option>
                 <option value="1-5">Grades 1-5</option>
+                <option value="5-10">Grades 5-10</option>
+                <option value="5-12">Grades 5-12</option>
+                <option value="9-12">Grades 9-12</option>
                 <option value="1-8">Grades 1-8</option>
                 <option value="1-10">Grades 1-10</option>
                 <option value="1-12">Grades 1-12</option>

@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
        const response = await authAPI.login(loginIdentifier, password);
        const { access_token, user: userData } = response.data;
        // Save user's theme preference to Zustand store
-       const userTheme = (userData.theme || 'SYSTEM').toLowerCase() as 'light' | 'dark' | 'system';
+       const userTheme = (userData.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
        useThemeStore.getState().setTheme(userTheme);
        useLanguageStore.getState().initializeLanguage();
 
@@ -102,8 +102,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
    const logout = () => {
      authAPI.logout().catch(() => undefined);
-     // Reset theme to system default via Zustand store
-     useThemeStore.getState().setTheme('system');
+     // Reset theme to the app default via Zustand store
+     useThemeStore.getState().setTheme('light');
      useLanguageStore.getState().initializeLanguage();
      setToken(null);
      setUser(null);

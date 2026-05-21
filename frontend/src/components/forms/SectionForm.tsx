@@ -71,6 +71,9 @@ const SectionForm = ({ type, data, onSuccess, onCancel }: SectionFormProps) => {
         type === "create" ? "Section created successfully" : "Section updated successfully"
       );
       queryClient.invalidateQueries({ queryKey: queryKeys.sections.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.classSections.academicSections });
+      queryClient.invalidateQueries({ queryKey: ["academic-sections-search"] });
+      queryClient.invalidateQueries({ queryKey: ["academic-classes"] });
       if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
