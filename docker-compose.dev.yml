@@ -71,8 +71,10 @@ services:
       TRUST_PROXY: 1
     volumes:
       - ./backend:/app
+      - /app/node_modules
+      - /app/.next
     ports:
-      - "5000:5000"
+      - "5001:5000"
       - "9229:9229"
     dns:
       - 1.1.1.1
@@ -108,7 +110,7 @@ services:
       HOSTNAME: 0.0.0.0
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
-      NEXT_PUBLIC_API_URL: http://localhost:5000
+      NEXT_PUBLIC_API_URL: http://localhost:5001
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
       - ./frontend:/app
@@ -128,7 +130,7 @@ services:
     command:
       - sh
       - -lc
-      - npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && npm install --no-save @next/swc-linux-x64-gnu@14.2.5 --no-audit --loglevel=error && npm run dev -- --hostname 0.0.0.0
+      - npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && npm install --no-save @next/swc-linux-arm64-gnu@14.2.5 --no-audit --loglevel=error && npm run dev -- --hostname 0.0.0.0
     networks:
       - sms_network
 

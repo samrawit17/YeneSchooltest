@@ -13,8 +13,7 @@ ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 COPY package*.json ./
 
-RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && \
-    npm install --no-save @next/swc-linux-x64-gnu@14.2.5 --no-audit --loglevel=error
+RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts
 
 FROM node:20-slim AS development
 

@@ -951,12 +951,23 @@ const Menu = ({
 
                 return (
                   <div key={`${item.label}-${item.href}`} className="flex justify-center">
-                    {hasSameHrefChild ? (
-                      <div className={collapsedItemClasses} title={displayLabel}>
+                    {hasVisibleChildren ? (
+                      <button
+                        type="button"
+                        className={collapsedItemClasses}
+                        title={displayLabel}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleSubmenu(item.label);
+                        }}
+                        aria-expanded={isOpen}
+                        aria-label={`${displayLabel} submenu`}
+                      >
                         <span className="flex h-5 w-5 items-center justify-center">
                           {item.icon}
                         </span>
-                      </div>
+                      </button>
                     ) : (
                       <Link
                         href={actualHref}
@@ -986,17 +997,25 @@ const Menu = ({
                         : "text-slate-800 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                       } min-h-12 w-full px-3.5 py-3`}
                   >
-                    {hasSameHrefChild ? (
-                      <div
-                        className="flex flex-1 items-center gap-3 cursor-default"
+                    {hasVisibleChildren ? (
+                      <button
+                        type="button"
+                        className="flex flex-1 items-center gap-3"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleSubmenu(item.label);
+                        }}
+                        aria-expanded={isOpen}
+                        aria-label={`${displayLabel} submenu`}
                       >
                         <div className="relative text-slate-900 dark:text-white">
                           {item.icon}
                         </div>
-                        <span className={`text-sm ${isActive || submenuActive ? "font-medium" : ""}`} dir={textDirection}>
+                        <span className={`text-sm ${isOpen ? "font-medium" : ""}`} dir={textDirection}>
                           {displayLabel}
                         </span>
-                      </div>
+                      </button>
                     ) : (
                       <Link
                         href={actualHref}
