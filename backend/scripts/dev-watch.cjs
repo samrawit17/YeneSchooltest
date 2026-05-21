@@ -10,6 +10,8 @@ const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
 let compiler = null;
 let runtime = null;
+let distWatcher = null;
+let restartTimer = null;
 let shuttingDown = false;
 
 function spawnProcess(command, args) {
@@ -22,6 +24,14 @@ function spawnProcess(command, args) {
 
 function cleanupAndExit(code = 0) {
   shuttingDown = true;
+
+  if (restartTimer) {
+    clearTimeout(restartTimer);
+  }
+
+  if (distWatcher) {
+    distWatcher.close();
+  }
 
   if (runtime && !runtime.killed) {
     runtime.kill('SIGTERM');
@@ -40,29 +50,52 @@ function clearIncrementalState() {
   }
 }
 
-function clearStaleEntryPoint() {
-  if (fs.existsSync(distMain)) {
-    fs.rmSync(distMain, { force: true });
-  }
-}
-
 function runBuild(args, onExit) {
   const build = spawnProcess(npxCmd, args);
   build.on('exit', onExit);
 }
 
 function startRuntimeWhenReady() {
-  if (runtime || !fs.existsSync(distMain)) {
+  if (!fs.existsSync(distMain)) {
     return;
   }
 
-  runtime = spawnProcess(process.execPath, ['--watch', distMain]);
+  if (runtime && !runtime.killed) {
+    runtime.kill('SIGTERM');
+  }
+
+  runtime = spawnProcess(process.execPath, [distMain]);
   runtime.on('exit', (code) => {
     if (shuttingDown) {
       process.exit(code ?? 0);
       return;
     }
     runtime = null;
+  });
+}
+
+function scheduleRuntimeRestart() {
+  if (restartTimer) {
+    clearTimeout(restartTimer);
+  }
+
+  restartTimer = setTimeout(() => {
+    restartTimer = null;
+    startRuntimeWhenReady();
+  }, 250);
+}
+
+function watchDistMain() {
+  const distDir = path.dirname(distMain);
+
+  if (distWatcher || !fs.existsSync(distDir)) {
+    return;
+  }
+
+  distWatcher = fs.watch(distDir, (eventType, filename) => {
+    if (filename === 'main.js') {
+      scheduleRuntimeRestart();
+    }
   });
 }
 
@@ -90,8 +123,9 @@ prismaGenerate.on('exit', (code) => {
     return;
   }
 
-  clearIncrementalState();
-  clearStaleEntryPoint();
+  if (!fs.existsSync(distMain)) {
+    clearIncrementalState();
+  }
 
   runBuild(['tsc', '-p', 'tsconfig.build.json'], (buildCode) => {
     if (buildCode !== 0) {
@@ -109,6 +143,7 @@ prismaGenerate.on('exit', (code) => {
             return;
           }
 
+          watchDistMain();
           startRuntimeWhenReady();
           startCompiler();
         },
@@ -116,6 +151,7 @@ prismaGenerate.on('exit', (code) => {
       return;
     }
 
+    watchDistMain();
     startRuntimeWhenReady();
     startCompiler();
   });

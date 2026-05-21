@@ -47,6 +47,11 @@ export interface BulkUploadResult {
     record: BulkUserRecord;
     error: string;
   }>;
+  skippedCount?: number;
+  skippedRecords?: Array<{
+    record: BulkUserRecord;
+    reason: string;
+  }>;
   credentials: GeneratedCredential[];
 }
 
@@ -101,6 +106,17 @@ export class BulkUploadService {
         { sensitivity: 'base' },
       ),
     );
+  }
+
+  private normalizeLookupValue(value?: string | null) {
+    return String(value || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  }
+
+  private normalizePhone(value?: string | null) {
+    return String(value || '').replace(/[^\d+]/g, '').trim();
   }
 
   private normalizeStudentAndParentNames(
@@ -617,6 +633,8 @@ export class BulkUploadService {
   ): Promise<BulkUploadResult> {
     const credentials: GeneratedCredential[] = [];
     const failedRecords: Array<{ record: BulkUserRecord; error: string }> = [];
+    const skippedRecords: Array<{ record: BulkUserRecord; reason: string }> =
+      [];
     let successfulCount = 0;
     let skippedCount = 0;
 
@@ -673,6 +691,59 @@ export class BulkUploadService {
       : undefined;
     const gradeLevelIds = new Set(gradeLevels.map((level) => level.id));
 
+    const existingStudents = await this.prismaService.studentProfile.findMany({
+      where: { schoolId },
+      select: {
+        studentCode: true,
+        studentId: true,
+        phone: true,
+        user: { select: { name: true, phone: true } },
+        parents: {
+          select: {
+            parent: {
+              select: {
+                phone: true,
+                user: { select: { phone: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    const existingStudentCodes = new Set<string>();
+    const existingNamePhones = new Set<string>();
+    const existingNameParentPhones = new Set<string>();
+
+    for (const student of existingStudents) {
+      const studentName = this.normalizeLookupValue(student.user?.name);
+      for (const code of [student.studentCode, student.studentId]) {
+        const normalizedCode = this.normalizeLookupValue(code);
+        if (normalizedCode) existingStudentCodes.add(normalizedCode);
+      }
+
+      for (const phone of [student.phone, student.user?.phone]) {
+        const normalizedPhone = this.normalizePhone(phone);
+        if (studentName && normalizedPhone) {
+          existingNamePhones.add(`${studentName}|${normalizedPhone}`);
+        }
+      }
+
+      for (const relation of student.parents || []) {
+        const normalizedParentPhone = this.normalizePhone(
+          relation.parent?.phone || relation.parent?.user?.phone,
+        );
+        if (studentName && normalizedParentPhone) {
+          existingNameParentPhones.add(
+            `${studentName}|${normalizedParentPhone}`,
+          );
+        }
+      }
+    }
+
+    const uploadedStudentCodes = new Set<string>();
+    const uploadedNamePhones = new Set<string>();
+    const uploadedNameParentPhones = new Set<string>();
+
     // Group records by grade
     const gradeGroups: Record<string, BulkUserRecord[]> = {};
     const gradeInfoMap = new Map<
@@ -693,6 +764,54 @@ export class BulkUploadService {
         });
         continue;
       }
+      const normalizedName = this.normalizeLookupValue(
+        this.getNormalizedStudentName(record),
+      );
+      const normalizedPhone = this.normalizePhone(record.phone);
+      const normalizedParentPhone = this.normalizePhone(record.parent_phone);
+      const normalizedStudentCode = this.normalizeLookupValue(
+        record.student_code || record.student_id,
+      );
+      const namePhoneKey =
+        normalizedName && normalizedPhone
+          ? `${normalizedName}|${normalizedPhone}`
+          : '';
+      const nameParentPhoneKey =
+        normalizedName && normalizedParentPhone
+          ? `${normalizedName}|${normalizedParentPhone}`
+          : '';
+
+      let duplicateReason = '';
+      if (
+        normalizedStudentCode &&
+        (uploadedStudentCodes.has(normalizedStudentCode) ||
+          existingStudentCodes.has(normalizedStudentCode))
+      ) {
+        duplicateReason = `Row ${i + 1}: Duplicate student code`;
+      } else if (
+        namePhoneKey &&
+        (uploadedNamePhones.has(namePhoneKey) ||
+          existingNamePhones.has(namePhoneKey))
+      ) {
+        duplicateReason = `Row ${i + 1}: Duplicate student name and phone`;
+      } else if (
+        nameParentPhoneKey &&
+        (uploadedNameParentPhones.has(nameParentPhoneKey) ||
+          existingNameParentPhones.has(nameParentPhoneKey))
+      ) {
+        duplicateReason = `Row ${i + 1}: Duplicate student name and parent phone`;
+      }
+
+      if (duplicateReason) {
+        skippedCount++;
+        skippedRecords.push({ record, reason: duplicateReason });
+        continue;
+      }
+
+      if (normalizedStudentCode) uploadedStudentCodes.add(normalizedStudentCode);
+      if (namePhoneKey) uploadedNamePhones.add(namePhoneKey);
+      if (nameParentPhoneKey) uploadedNameParentPhones.add(nameParentPhoneKey);
+
       const rawGrade = record.current_class || 'Unassigned';
       const gradeInfo = this.resolveGradeInfo(
         rawGrade,
@@ -790,6 +909,7 @@ export class BulkUploadService {
                 name: (record.full_name || 'Student').trim(),
                 role: Role.STUDENT,
                 schoolId,
+                phone: record.phone?.trim() || null,
                 mustChangePassword: true,
               },
             });
@@ -802,6 +922,7 @@ export class BulkUploadService {
                 studentId: username,
                 academicYear: yearId,
                 enrollmentStatus: 'APPROVED',
+                phone: record.phone?.trim() || undefined,
                 gender: record.gender ? record.gender.toUpperCase() : undefined,
                 motherName: record.mother_name || undefined,
                 motherPhone: record.mother_phone || undefined,
@@ -1085,6 +1206,8 @@ export class BulkUploadService {
       successfulCount,
       failedCount: failedRecords.length,
       failedRecords,
+      skippedCount,
+      skippedRecords,
       credentials,
     };
   }

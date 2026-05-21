@@ -59,10 +59,6 @@ export default function RootLayout({
                   if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                     document.documentElement.classList.add('dark');
                   }
-                } else {
-                  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.documentElement.classList.add('dark');
-                  }
                 }
 
                 var brandSettingsRaw = localStorage.getItem('sms-brand-settings');

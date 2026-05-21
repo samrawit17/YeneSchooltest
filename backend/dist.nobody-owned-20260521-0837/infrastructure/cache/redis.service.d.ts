@@ -1,0 +1,31 @@
+import { OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+export declare class RedisService implements OnModuleDestroy {
+    private readonly configService;
+    private readonly logger;
+    private readonly redisUrl?;
+    private warnedAuthNotRequired;
+    private socket?;
+    private buffer;
+    private connectPromise?;
+    private pendingCommands;
+    private isReady;
+    constructor(configService: ConfigService);
+    onModuleDestroy(): Promise<void>;
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string, ttlSeconds: number): Promise<void>;
+    del(...keys: string[]): Promise<void>;
+    incr(key: string): Promise<number | null>;
+    expire(key: string, ttlSeconds: number): Promise<void>;
+    ttl(key: string): Promise<number | null>;
+    private execute;
+    private connect;
+    private createConnection;
+    private bindSocketEvents;
+    private disconnect;
+    private sendCommand;
+    private encodeCommand;
+    private flushResponses;
+    private isAuthNotRequiredError;
+    private parseResp;
+}
