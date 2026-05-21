@@ -43,9 +43,16 @@ export interface BulkUploadResult {
   totalRecords: number;
   successfulCount: number;
   failedCount: number;
+  skippedCount?: number;
   failedRecords: Array<{
     record: BulkUserRecord;
     error: string;
+  }>;
+  skippedRecords?: Array<{
+    record: BulkUserRecord;
+    reason: string;
+    existingStudentId?: string;
+    existingStudentCode?: string | null;
   }>;
   credentials: GeneratedCredential[];
 }
@@ -76,24 +83,24 @@ export class BulkUploadService {
     last_name?: string;
   }) {
     const joined =
-      [
-        record.first_name,
-        record.middle_name,
-        record.last_name,
-      ]
+      [record.first_name, record.middle_name, record.last_name]
         .filter(Boolean)
         .join(' ')
-        .trim() || record.full_name || '';
+        .trim() ||
+      record.full_name ||
+      '';
 
     return joined.replace(/\s+/g, ' ').trim();
   }
 
-  private sortRecordsAlphabetically<T extends {
-    full_name?: string;
-    first_name?: string;
-    middle_name?: string;
-    last_name?: string;
-  }>(records: T[]) {
+  private sortRecordsAlphabetically<
+    T extends {
+      full_name?: string;
+      first_name?: string;
+      middle_name?: string;
+      last_name?: string;
+    },
+  >(records: T[]) {
     return [...records].sort((left, right) =>
       this.getNormalizedStudentName(left).localeCompare(
         this.getNormalizedStudentName(right),
@@ -101,6 +108,23 @@ export class BulkUploadService {
         { sensitivity: 'base' },
       ),
     );
+  }
+
+  private normalizeLookupValue(value?: string | null) {
+    const normalized = String(value || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    return normalized || null;
+  }
+
+  private normalizePhone(value?: string | null) {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (!digits) return null;
+    if (digits.startsWith('251') && digits.length === 12) {
+      return `0${digits.slice(3)}`;
+    }
+    return digits;
   }
 
   private normalizeStudentAndParentNames(
@@ -393,8 +417,7 @@ export class BulkUploadService {
           last_name: values[lastIdx] || undefined,
           email: values[emailIdx] || undefined,
           phone: values[phoneIdx] || undefined,
-          mother_name:
-            motherNameIdx !== -1 ? values[motherNameIdx] : undefined,
+          mother_name: motherNameIdx !== -1 ? values[motherNameIdx] : undefined,
           mother_phone:
             motherPhoneIdx !== -1 ? values[motherPhoneIdx] : undefined,
           role: roleIdx !== -1 ? values[roleIdx] || 'student' : 'student',
@@ -407,7 +430,10 @@ export class BulkUploadService {
           parent_phone:
             parentPhoneIdx !== -1 ? values[parentPhoneIdx] : undefined,
           student_email: studEmailIdx !== -1 ? values[studEmailIdx] : undefined,
-          relation: relationIdx !== -1 ? this.normalizeRelation(values[relationIdx]) : undefined,
+          relation:
+            relationIdx !== -1
+              ? this.normalizeRelation(values[relationIdx])
+              : undefined,
         });
       }
 
@@ -423,8 +449,10 @@ export class BulkUploadService {
   private normalizeRelation(relation: string | undefined): string {
     if (!relation) return 'Guardian';
     const normalized = relation.trim().toLowerCase();
-    if (normalized === 'father' || normalized === 'dad' || normalized === 'f') return 'Father';
-    if (normalized === 'mother' || normalized === 'mom' || normalized === 'm') return 'Mother';
+    if (normalized === 'father' || normalized === 'dad' || normalized === 'f')
+      return 'Father';
+    if (normalized === 'mother' || normalized === 'mom' || normalized === 'm')
+      return 'Mother';
     if (normalized === 'guardian' || normalized === 'g') return 'Guardian';
     if (normalized === 'parent' || normalized === 'p') return 'Parent';
     return relation.trim();
@@ -458,15 +486,22 @@ export class BulkUploadService {
     // For staff imports, validate role is provided
     if (
       record.role &&
-      !['student', 'teacher', 'admin', 'finance', 'registrar', 'parent'].includes(
-        record.role.toLowerCase(),
-      )
+      ![
+        'student',
+        'teacher',
+        'admin',
+        'finance',
+        'registrar',
+        'parent',
+      ].includes(record.role.toLowerCase())
     ) {
       return `Row ${index + 1}: Invalid role '${record.role}'. Valid roles: student, teacher, admin, finance, registrar, parent`;
     }
 
     // For student imports, validate student-specific fields are present if it's explicitly a student role or has student fields
-    const isStudent = record.role?.toLowerCase() === 'student' || (!record.full_name && record.first_name);
+    const isStudent =
+      record.role?.toLowerCase() === 'student' ||
+      (!record.full_name && record.first_name);
     if (isStudent && !record.current_class) {
       return `Row ${index + 1}: Missing required field 'current_class' for student import`;
     }
@@ -617,12 +652,22 @@ export class BulkUploadService {
   ): Promise<BulkUploadResult> {
     const credentials: GeneratedCredential[] = [];
     const failedRecords: Array<{ record: BulkUserRecord; error: string }> = [];
+    const skippedRecords: NonNullable<BulkUploadResult['skippedRecords']> = [];
     let successfulCount = 0;
     let skippedCount = 0;
 
     const schoolSettings = await this.prismaService.schoolSettings.findUnique({
       where: { schoolId },
     });
+    const requestedAcademicYear = academicYear
+      ? await this.prismaService.academicYear.findFirst({
+          where: {
+            schoolId,
+            OR: [{ id: academicYear }, { name: academicYear }],
+          },
+        })
+      : null;
+
     let fallbackAcademicYear = schoolSettings?.defaultAcademicYearId
       ? await this.prismaService.academicYear.findUnique({
           where: { id: schoolSettings.defaultAcademicYearId },
@@ -642,10 +687,19 @@ export class BulkUploadService {
         orderBy: { startDate: 'desc' },
       });
     }
-    const yearId = academicYear || fallbackAcademicYear?.id;
-    const yearName = fallbackAcademicYear?.name; // Use name for StudentClass.academicYear
-    if (!yearId) throw new Error('No academic year found for this school');
-    if (!yearName) throw new Error('No academic year name found');
+    const selectedAcademicYear = requestedAcademicYear || fallbackAcademicYear;
+    if (academicYear && !requestedAcademicYear) {
+      throw new BadRequestException(
+        'Selected academic year was not found for this school',
+      );
+    }
+
+    const yearId = selectedAcademicYear?.id;
+    const yearName = selectedAcademicYear?.name; // Use name for StudentClass.academicYear
+    if (!yearId) {
+      throw new BadRequestException('No academic year found for this school');
+    }
+    if (!yearName) throw new BadRequestException('No academic year name found');
 
     // Fetch section capacity from school settings (default to 30)
     const capacitySetting = await this.prismaService.schoolSetting.findUnique({
@@ -672,6 +726,7 @@ export class BulkUploadService {
       ? new Set(gradeLevels.map((level) => level.level))
       : undefined;
     const gradeLevelIds = new Set(gradeLevels.map((level) => level.id));
+    const seenImportKeys = new Map<string, number>();
 
     // Group records by grade
     const gradeGroups: Record<string, BulkUserRecord[]> = {};
@@ -693,6 +748,111 @@ export class BulkUploadService {
         });
         continue;
       }
+      const studentNameKey = this.normalizeLookupValue(
+        this.getNormalizedStudentName(record),
+      );
+      const studentCodeKey = this.normalizeLookupValue(record.student_code);
+      const phoneKey = this.normalizePhone(record.phone);
+      const parentPhoneKey = this.normalizePhone(record.parent_phone);
+      const duplicateKeys = [
+        studentCodeKey ? `code:${studentCodeKey}` : null,
+        studentNameKey && phoneKey ? `name-phone:${studentNameKey}:${phoneKey}` : null,
+        studentNameKey && parentPhoneKey
+          ? `name-parent:${studentNameKey}:${parentPhoneKey}`
+          : null,
+      ].filter(Boolean) as string[];
+      const duplicateImportRow = duplicateKeys
+        .map((key) => seenImportKeys.get(key))
+        .find((rowNumber) => rowNumber !== undefined);
+      if (duplicateImportRow) {
+        skippedRecords.push({
+          record,
+          reason: `Duplicate row in this file. It matches row ${duplicateImportRow}.`,
+        });
+        skippedCount++;
+        continue;
+      }
+      duplicateKeys.forEach((key) => seenImportKeys.set(key, i + 1));
+
+      const existingStudent = await this.prismaService.studentProfile.findFirst({
+        where: {
+          schoolId,
+          OR: [
+            ...(studentCodeKey
+              ? [
+                  {
+                    studentCode: {
+                      equals: record.student_code!.trim(),
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                  {
+                    studentId: {
+                      equals: record.student_code!.trim(),
+                      mode: 'insensitive' as const,
+                    },
+                  },
+                ]
+              : []),
+            ...(phoneKey
+              ? [
+                  {
+                    OR: [
+                      {
+                        phone: {
+                          equals: record.phone!.trim(),
+                          mode: 'insensitive' as const,
+                        },
+                      },
+                      { user: { phone: record.phone!.trim() } },
+                    ],
+                    user: {
+                      name: {
+                        equals: this.getNormalizedStudentName(record),
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                  },
+                ]
+              : []),
+            ...(parentPhoneKey && studentNameKey
+              ? [
+                  {
+                    user: {
+                      name: {
+                        equals: this.getNormalizedStudentName(record),
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                    parents: {
+                      some: {
+                        parent: {
+                          OR: [
+                            { phone: record.parent_phone!.trim() },
+                            { user: { phone: record.parent_phone!.trim() } },
+                          ],
+                        },
+                      },
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+        select: { id: true, studentCode: true },
+      });
+
+      if (existingStudent) {
+        skippedRecords.push({
+          record,
+          reason: `Student already exists${existingStudent.studentCode ? ` with code ${existingStudent.studentCode}` : ''}.`,
+          existingStudentId: existingStudent.id,
+          existingStudentCode: existingStudent.studentCode,
+        });
+        skippedCount++;
+        continue;
+      }
+
       const rawGrade = record.current_class || 'Unassigned';
       const gradeInfo = this.resolveGradeInfo(
         rawGrade,
@@ -790,6 +950,7 @@ export class BulkUploadService {
                 name: (record.full_name || 'Student').trim(),
                 role: Role.STUDENT,
                 schoolId,
+                phone: record.phone?.trim() || null,
                 mustChangePassword: true,
               },
             });
@@ -803,6 +964,7 @@ export class BulkUploadService {
                 academicYear: yearId,
                 enrollmentStatus: 'APPROVED',
                 gender: record.gender ? record.gender.toUpperCase() : undefined,
+                phone: record.phone?.trim() || undefined,
                 motherName: record.mother_name || undefined,
                 motherPhone: record.mother_phone || undefined,
               },
@@ -1068,10 +1230,13 @@ export class BulkUploadService {
     }
 
     for (const gradeName of processedGradeNames) {
-      await this.rebalanceGradeSections(schoolId, yearName, gradeName);
+      await this.rebalanceGradeSections(schoolId, gradeName, yearId);
     }
 
-    await this.credentialService.assignRollNumbersByAlphabet(schoolId, yearName);
+    await this.credentialService.assignRollNumbersByAlphabet(
+      schoolId,
+      yearName,
+    );
 
     return {
       status:
@@ -1084,7 +1249,9 @@ export class BulkUploadService {
       totalRecords: records.length,
       successfulCount,
       failedCount: failedRecords.length,
+      skippedCount,
       failedRecords,
+      skippedRecords,
       credentials,
     };
   }
@@ -1334,7 +1501,10 @@ export class BulkUploadService {
       }
     });
 
-    await this.credentialService.assignRollNumbersByAlphabet(schoolId, yearName);
+    await this.credentialService.assignRollNumbersByAlphabet(
+      schoolId,
+      yearName,
+    );
 
     return {
       status: 'success',

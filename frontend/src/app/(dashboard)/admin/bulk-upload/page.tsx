@@ -85,6 +85,7 @@ function getUploadSummary(result: BulkUploadResult | null) {
     totalRecords: result.totalRecords || 0,
     successfulCount: result.successfulCount || 0,
     failedCount: result.failedCount || 0,
+    skippedCount: result.skippedCount || 0,
   };
 }
 
@@ -708,7 +709,7 @@ export default function BulkUploadPage() {
                 </Button>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-5">
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
                   <p className="text-xs font-medium text-slate-500">{t.stats.total}</p>
                   <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{uploadSummary.totalRecords}</p>
@@ -720,6 +721,10 @@ export default function BulkUploadPage() {
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
                   <p className="text-xs font-medium text-red-500">{t.stats.failed}</p>
                   <p className="mt-1 text-2xl font-bold text-red-500">{uploadSummary.failedCount}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-xs font-medium text-amber-600">Skipped</p>
+                  <p className="mt-1 text-2xl font-bold text-amber-600">{uploadSummary.skippedCount || 0}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
                   <p className="text-xs font-medium text-slate-500">{t.stats.successRate}</p>
@@ -786,6 +791,22 @@ export default function BulkUploadPage() {
                           {item.record?.full_name || item.record?.email || `Row ${index + 1}`}
                         </p>
                         <p className="text-sm text-red-600 dark:text-red-400">{item.error}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {uploadResult.skippedRecords?.length ? (
+                <div className="rounded-xl border border-amber-200 bg-white p-5 dark:border-amber-800 dark:bg-slate-800">
+                  <p className="mb-3 text-sm font-semibold text-amber-700 dark:text-amber-400">Skipped duplicate rows ({uploadResult.skippedRecords.length})</p>
+                  <div className="space-y-2">
+                    {uploadResult.skippedRecords.map((item: any, index: number) => (
+                      <div key={index} className="rounded-lg border border-amber-100 bg-amber-50/50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/20">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          {item.record?.full_name || item.record?.student_code || `Row ${index + 1}`}
+                        </p>
+                        <p className="text-sm text-amber-700 dark:text-amber-400">{item.reason}</p>
                       </div>
                     ))}
                   </div>
