@@ -102,6 +102,13 @@ const ClassForm = ({ type, data, onSuccess, onCancel }: ClassFormProps) => {
         type === "create" ? "Class created successfully" : "Class updated successfully"
       );
       queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.classSections.academicClasses(data?.academicYearId || formData.academicYearId),
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.classSections.academicSections });
+      queryClient.invalidateQueries({ queryKey: ["academic-classes"] });
+      queryClient.invalidateQueries({ queryKey: ["academic-classes-search"] });
+      queryClient.invalidateQueries({ queryKey: ["academic-sections-search"] });
       if (onSuccess) onSuccess();
     },
     onError: (error: any) => {

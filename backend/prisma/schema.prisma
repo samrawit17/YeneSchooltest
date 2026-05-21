@@ -195,7 +195,7 @@ model User {
   isActive                    Boolean                    @default(true)
   phone                       String?
   avatarUrl                   String?
-  theme                       ThemePreference            @default(SYSTEM)
+  theme                       ThemePreference            @default(LIGHT)
   lastLoginAt                 DateTime?
   schoolId                    String?
   createdAt                   DateTime                   @default(now())

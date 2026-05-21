@@ -10,7 +10,7 @@ interface ThemeState {
 }
 
 const isClient = typeof window !== 'undefined';
-const DEFAULT_THEME: Theme = 'system';
+const DEFAULT_THEME: Theme = 'light';
 const GUEST_THEME_KEY = 'theme-storage';
 
 const getSystemTheme = (): 'light' | 'dark' => {

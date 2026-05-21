@@ -1,0 +1,5 @@
+ALTER TABLE "User" ALTER COLUMN "theme" SET DEFAULT 'LIGHT';
+
+UPDATE "User"
+SET "theme" = 'LIGHT'
+WHERE "theme" = 'SYSTEM';

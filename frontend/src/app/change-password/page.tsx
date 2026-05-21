@@ -7,7 +7,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/context/AuthContext";
+import { schoolSettingsAPI } from "@/lib/api";
 import { userAPI } from "@/lib/api/auth";
+import { queryKeys } from "@/lib/query-keys";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Lock, Eye, EyeOff, KeyRound, ShieldCheck, AlertCircle, CheckCircle2 } from "lucide-react";
 
@@ -97,6 +100,24 @@ const calculatePasswordStrength = (password: string): PasswordStrength => {
   return { score, label, color, checks };
 };
 
+const isValidHexColor = (value?: string | null) =>
+  typeof value === "string" && /^#([0-9A-Fa-f]{6})$/.test(value);
+
+const hexToRgb = (hex: string) => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+
+  return `${r}, ${g}, ${b}`;
+};
+
+const applyBrandColor = (color?: string | null) => {
+  if (!isValidHexColor(color)) return;
+
+  document.documentElement.style.setProperty("--brand-color", color);
+  document.documentElement.style.setProperty("--brand-color-rgb", hexToRgb(color));
+};
+
 const ChangePasswordPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -118,6 +139,18 @@ const ChangePasswordPage = () => {
   const { user, updateUser } = useAuth();
   const router = useRouter();
 
+  const { data: brandColor } = useQuery({
+    queryKey: queryKeys.school.setting("theme_color", user?.schoolId),
+    queryFn: async () => {
+      if (!user?.schoolId) return null;
+      const response = await schoolSettingsAPI.get(user.schoolId, "theme_color");
+      const value = response.data?.value;
+      return isValidHexColor(value) ? value : null;
+    },
+    enabled: !!user?.schoolId,
+    staleTime: 60_000,
+  });
+
   const form = useForm<ChangePasswordFormData>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: {
@@ -129,6 +162,10 @@ const ChangePasswordPage = () => {
 
   // Watch password for strength calculation
   const newPassword = form.watch("newPassword");
+
+  useEffect(() => {
+    applyBrandColor(brandColor);
+  }, [brandColor]);
 
   useEffect(() => {
     if (newPassword) {
