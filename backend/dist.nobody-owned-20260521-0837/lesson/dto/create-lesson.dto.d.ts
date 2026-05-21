@@ -1,0 +1,33 @@
+import { LessonStatus } from '@prisma/client';
+import { ContentType } from '@prisma/client';
+export declare class CreateLessonDto {
+    type: ContentType;
+    title: string;
+    description?: string;
+    instructions?: string;
+    objective?: string;
+    lessonContent?: string;
+    grade: number;
+    section: string;
+    stream?: string;
+    academicYearId: string;
+    semesterId?: string;
+    subjectId: string;
+    teacherId?: string;
+    lessonDate: string;
+    periodNumber: number;
+    dueDate?: string;
+    totalPoints?: number;
+    maxMarks?: number;
+    attachments?: string;
+    unitNumber?: number;
+    topicName?: string;
+    topicId?: string;
+    competency?: string;
+    syllabusMappingId?: string;
+    classId?: number;
+    sectionId?: number;
+    status?: LessonStatus;
+    isExamPrep?: boolean;
+    isLocked?: boolean;
+}

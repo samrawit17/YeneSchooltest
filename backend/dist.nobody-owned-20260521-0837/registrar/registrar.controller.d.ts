@@ -1,0 +1,327 @@
+import { RegistrarService } from './registrar.service';
+export declare class RegistrarController {
+    private readonly registrarService;
+    constructor(registrarService: RegistrarService);
+    createStudent(body: {
+        email: string;
+        name: string;
+        academicYear: string;
+        gradeId: string;
+        gender?: string;
+        address?: string;
+        phone?: string;
+        emergencyContact?: {
+            name: string;
+            phone: string;
+            relationship: string;
+        };
+        guardianName?: string;
+        guardianPhone?: string;
+        guardianEmail?: string;
+        documents?: any[];
+    }, req: any): Promise<{
+        user: {
+            id: string;
+            schoolId: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            username: string | null;
+            email: string | null;
+            phone: string | null;
+            isActive: boolean;
+            password: string;
+            role: import("@prisma/client").$Enums.Role;
+            avatarUrl: string | null;
+            theme: import("@prisma/client").$Enums.ThemePreference;
+            lastLoginAt: Date | null;
+            mustChangePassword: boolean;
+        };
+        studentProfile: {
+            academicYear: string | null;
+            section: string | null;
+            id: string;
+            schoolId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            phone: string | null;
+            address: string | null;
+            documents: string | null;
+            userId: string;
+            studentId: string;
+            studentCode: string;
+            enrollmentStatus: import("@prisma/client").$Enums.EnrollmentStatus;
+            className: string | null;
+            rollNumber: string | null;
+            gender: string | null;
+            motherName: string | null;
+            motherPhone: string | null;
+            emergencyContact: string | null;
+            medicalInfo: string | null;
+            nationality: string | null;
+        };
+        enrollment: {
+            academicYear: string;
+            grade: number | null;
+            id: string;
+            schoolId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            documents: string | null;
+            studentId: string;
+            gradeId: string | null;
+            status: import("@prisma/client").$Enums.EnrollmentStatus;
+            metadata: string | null;
+            rejectionReason: string | null;
+        };
+        studentCode: string;
+        username: string;
+        temporaryPassword: string;
+    }>;
+    getStudents(req: any, status?: string, grade?: string): Promise<{
+        enrollment: {
+            academicYear: string;
+            grade: number | null;
+            id: string;
+            schoolId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            documents: string | null;
+            studentId: string;
+            gradeId: string | null;
+            status: import("@prisma/client").$Enums.EnrollmentStatus;
+            metadata: string | null;
+            rejectionReason: string | null;
+        } | undefined;
+        user: {
+            id: string;
+            name: string;
+            email: string | null;
+            isActive: boolean;
+        };
+        academicYear: string | null;
+        section: string | null;
+        id: string;
+        schoolId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        phone: string | null;
+        address: string | null;
+        documents: string | null;
+        userId: string;
+        studentId: string;
+        studentCode: string;
+        enrollmentStatus: import("@prisma/client").$Enums.EnrollmentStatus;
+        className: string | null;
+        rollNumber: string | null;
+        gender: string | null;
+        motherName: string | null;
+        motherPhone: string | null;
+        emergencyContact: string | null;
+        medicalInfo: string | null;
+        nationality: string | null;
+    }[]>;
+    getStudentById(studentId: string, req: any): Promise<{
+        enrollment: {
+            academicYear: string;
+            grade: number | null;
+            id: string;
+            schoolId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            documents: string | null;
+            studentId: string;
+            gradeId: string | null;
+            status: import("@prisma/client").$Enums.EnrollmentStatus;
+            metadata: string | null;
+            rejectionReason: string | null;
+        } | null;
+        user: {
+            id: string;
+            name: string;
+            email: string | null;
+            isActive: boolean;
+        };
+        academicYear: string | null;
+        section: string | null;
+        id: string;
+        schoolId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        phone: string | null;
+        address: string | null;
+        documents: string | null;
+        userId: string;
+        studentId: string;
+        studentCode: string;
+        enrollmentStatus: import("@prisma/client").$Enums.EnrollmentStatus;
+        className: string | null;
+        rollNumber: string | null;
+        gender: string | null;
+        motherName: string | null;
+        motherPhone: string | null;
+        emergencyContact: string | null;
+        medicalInfo: string | null;
+        nationality: string | null;
+    }>;
+    updateStudent(studentId: string, body: {
+        name?: string;
+        gender?: string;
+        address?: string;
+        phone?: string;
+        emergencyContact?: {
+            name: string;
+            phone: string;
+            relationship: string;
+        };
+        guardianName?: string;
+        guardianPhone?: string;
+        guardianEmail?: string;
+        documents?: any[];
+    }, req: any): Promise<{
+        academicYear: string | null;
+        section: string | null;
+        id: string;
+        schoolId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        phone: string | null;
+        address: string | null;
+        documents: string | null;
+        userId: string;
+        studentId: string;
+        studentCode: string;
+        enrollmentStatus: import("@prisma/client").$Enums.EnrollmentStatus;
+        className: string | null;
+        rollNumber: string | null;
+        gender: string | null;
+        motherName: string | null;
+        motherPhone: string | null;
+        emergencyContact: string | null;
+        medicalInfo: string | null;
+        nationality: string | null;
+    }>;
+    getPendingEnrollments(req: any): Promise<{
+        studentProfile: {
+            academicYear: string | null;
+            section: string | null;
+            id: string;
+            schoolId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            phone: string | null;
+            address: string | null;
+            documents: string | null;
+            userId: string;
+            studentId: string;
+            studentCode: string;
+            enrollmentStatus: import("@prisma/client").$Enums.EnrollmentStatus;
+            className: string | null;
+            rollNumber: string | null;
+            gender: string | null;
+            motherName: string | null;
+            motherPhone: string | null;
+            emergencyContact: string | null;
+            medicalInfo: string | null;
+            nationality: string | null;
+        } | undefined;
+        student: {
+            id: string;
+            name: string;
+            email: string | null;
+        };
+        academicYear: string;
+        grade: number | null;
+        id: string;
+        schoolId: string;
+        createdAt: Date;
+        updatedAt: Date;
+        documents: string | null;
+        studentId: string;
+        gradeId: string | null;
+        status: import("@prisma/client").$Enums.EnrollmentStatus;
+        metadata: string | null;
+        rejectionReason: string | null;
+    }[]>;
+    getEnrollments(req: any, status?: string, page?: string): Promise<{
+        data: {
+            user: {
+                id: string;
+                name: string;
+                email: string | null;
+                phone: string | null;
+            };
+            studentProfile: {
+                academicYear: string | null;
+                section: string | null;
+                id: string;
+                schoolId: string;
+                createdAt: Date;
+                updatedAt: Date;
+                phone: string | null;
+                address: string | null;
+                documents: string | null;
+                userId: string;
+                studentId: string;
+                studentCode: string;
+                enrollmentStatus: import("@prisma/client").$Enums.EnrollmentStatus;
+                className: string | null;
+                rollNumber: string | null;
+                gender: string | null;
+                motherName: string | null;
+                motherPhone: string | null;
+                emergencyContact: string | null;
+                medicalInfo: string | null;
+                nationality: string | null;
+            } | undefined;
+            student: {
+                id: string;
+                name: string;
+                email: string | null;
+                phone: string | null;
+            };
+            academicYear: string;
+            grade: number | null;
+            id: string;
+            schoolId: string;
+            createdAt: Date;
+            updatedAt: Date;
+            documents: string | null;
+            studentId: string;
+            gradeId: string | null;
+            status: import("@prisma/client").$Enums.EnrollmentStatus;
+            metadata: string | null;
+            rejectionReason: string | null;
+        }[];
+        total: number;
+        page: number;
+        totalPages: number;
+    }>;
+    approveEnrollment(enrollmentId: string, body: {
+        className: string;
+        section: string;
+        rollNumber: string;
+    }, req: any): Promise<{
+        message: string;
+    }>;
+    approveEnrollmentAuto(enrollmentId: string, req: any): Promise<import("../auto-assignment/auto-assignment.service").AutoAssignmentResult>;
+    rejectEnrollment(enrollmentId: string, rejectionReason: string, req: any): Promise<{
+        message: string;
+    }>;
+    assignClass(studentId: string, body: {
+        className: string;
+        section: string;
+        rollNumber: string;
+    }, req: any): Promise<{
+        message: string;
+        studentId: string;
+        className: string;
+        section: string;
+        rollNumber: string;
+    }>;
+    uploadDocuments(studentId: string, documents: any[], req: any): Promise<{
+        message: string;
+        studentId: string;
+        documentCount: number;
+    }>;
+}

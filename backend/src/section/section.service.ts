@@ -37,7 +37,11 @@ export class SectionService {
           },
         },
       },
-      orderBy: { name: 'asc' },
+      orderBy: [
+        { class: { grade: 'asc' } },
+        { class: { name: 'asc' } },
+        { name: 'asc' },
+      ],
     });
   }
 
@@ -71,7 +75,11 @@ export class SectionService {
           },
         },
       },
-      orderBy: { name: 'asc' },
+      orderBy: [
+        { class: { grade: 'asc' } },
+        { class: { name: 'asc' } },
+        { name: 'asc' },
+      ],
       take: 50,
     });
   }

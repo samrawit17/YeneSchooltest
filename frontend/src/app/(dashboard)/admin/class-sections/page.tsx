@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -99,6 +99,31 @@ type SubjectData = {
   description?: string;
   grade?: number;
 };
+
+const naturalSorter = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: "base",
+});
+
+function getGradeSortValue(section: SectionData) {
+  const explicitGrade = section.class?.grade;
+  if (typeof explicitGrade === "number" && Number.isFinite(explicitGrade)) {
+    return explicitGrade;
+  }
+
+  const match = section.class?.name?.match(/\d+/);
+  return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+}
+
+function sortSectionsByGradeAndName(left: SectionData, right: SectionData) {
+  const gradeDelta = getGradeSortValue(left) - getGradeSortValue(right);
+  if (gradeDelta !== 0) return gradeDelta;
+
+  const classDelta = naturalSorter.compare(left.class?.name || "", right.class?.name || "");
+  if (classDelta !== 0) return classDelta;
+
+  return naturalSorter.compare(left.name || "", right.name || "");
+}
 
 function EntityActions({
   entityLabel,
@@ -431,6 +456,11 @@ export default function AcademicStructurePage() {
         );
       });
 
+  const sortedFilteredSections = useMemo(
+    () => [...filteredSections].sort(sortSectionsByGradeAndName),
+    [filteredSections],
+  );
+
   const filteredSubjects = subjects.filter((s) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -601,7 +631,7 @@ export default function AcademicStructurePage() {
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)]" />
                 </div>
-              ) : filteredSections.length === 0 ? (
+              ) : sortedFilteredSections.length === 0 ? (
                 <div className="text-center py-12">
                   <Layers className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
                   <p className="text-gray-500 font-medium">No sections found</p>
@@ -620,7 +650,7 @@ export default function AcademicStructurePage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredSections.map((sec) => (
+                      {sortedFilteredSections.map((sec) => (
                         <TableRow
                           key={sec.id}
                           className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
