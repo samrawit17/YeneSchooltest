@@ -914,12 +914,22 @@ export class FinanceService {
     };
     if (dto.termId) feeStructuresWhere.termId = dto.termId;
 
-    const feeStructures = await this.prisma.feeStructure.findMany({
+    const foundFeeStructures = await this.prisma.feeStructure.findMany({
       where: feeStructuresWhere,
     });
+    const generatedFeeStructures = foundFeeStructures.filter((feeStructure) =>
+      feeStructure.feeType.includes('_INSTALLMENT_'),
+    );
+    const feeStructures =
+      generatedFeeStructures.length > 0 ? generatedFeeStructures : foundFeeStructures;
     if (feeStructures.length === 0) return { created: 0 };
 
-    // Get all approved students for this school (get userId since that's what StudentFee expects)
+    // Get due day from settings
+    const dueDaySetting = await this.prisma.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId: dto.schoolId, key: 'fee_payment_due_day' } },
+    });
+    const dueDay = parseInt(dueDaySetting?.value || '5', 10);
+
     const students = await this.prisma.studentProfile.findMany({
       where: { schoolId: dto.schoolId, enrollmentStatus: 'APPROVED' },
       select: { userId: true },
@@ -927,40 +937,43 @@ export class FinanceService {
     const studentIds = students.map((s) => s.userId).filter(Boolean);
     if (studentIds.length === 0) return { created: 0 };
 
-    let created = 0;
-    let skipped = 0;
-    await this.prisma.$transaction(async (tx) => {
-      for (const fs of feeStructures) {
-        for (const studentId of studentIds) {
-          // Check if fee already exists for this student and fee structure
-          const exists = await tx.studentFee.findFirst({
-            where: { studentId, feeStructureId: fs.id },
-            select: { id: true },
-          });
-          if (exists) {
-            skipped++;
-            continue;
-          }
+    const termIds = Array.from(
+      new Set(feeStructures.map((fs) => fs.termId).filter((id): id is string => Boolean(id))),
+    );
+    const termStartById = new Map<string, Date>();
+    if (termIds.length > 0) {
+      const feeTerms = await this.prisma.term.findMany({
+        where: { id: { in: termIds } },
+        select: { id: true, startDate: true },
+      });
+      feeTerms.forEach((term) => {
+        if (term.startDate) termStartById.set(term.id, new Date(term.startDate));
+      });
+    }
 
-          await tx.studentFee.create({
-            data: {
-              schoolId: dto.schoolId,
-              studentId,
-              feeStructureId: fs.id,
-              academicYearId: dto.academicYearId,
-              termId: fs.termId || undefined,
-              totalAmount: fs.amount,
-              discount: 0,
-              finalAmount: fs.amount,
-              status: PaymentStatus.PENDING,
-            },
-          });
-          created++;
-        }
-      }
+    const data = feeStructures.flatMap((fs) => {
+      const dueDate = new Date(termStartById.get(fs.termId || '') || new Date());
+      dueDate.setDate(dueDay);
+      return studentIds.map((studentId) => ({
+        schoolId: dto.schoolId,
+        studentId,
+        feeStructureId: fs.id,
+        academicYearId: dto.academicYearId,
+        termId: fs.termId || undefined,
+        totalAmount: fs.amount,
+        discount: 0,
+        finalAmount: fs.amount,
+        status: PaymentStatus.PENDING,
+        dueDate,
+      }));
     });
-    console.log('Generated student fees:', created, 'skipped:', skipped);
-    return { created };
+
+    const result = await this.prisma.studentFee.createMany({
+      data,
+      skipDuplicates: true,
+    });
+    console.log('Generated student fees:', result.count);
+    return { created: result.count };
   }
 
   async getStudentFees(query: StudentFeesQueryDto) {
@@ -1968,6 +1981,11 @@ export class FinanceService {
     };
     if (termId) where.termId = termId;
 
+    const penaltySetting = await this.prisma.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: 'fee_daily_penalty_amount' } },
+    });
+    const dailyPenalty = parseFloat(penaltySetting?.value || '0');
+
     const fees = await this.prisma.studentFee.findMany({
       where,
       include: {
@@ -1986,6 +2004,8 @@ export class FinanceService {
               (1000 * 60 * 60 * 24),
           )
         : 0;
+      const penaltyAccumulated = Math.max(0, daysOverdue) * dailyPenalty;
+
       return {
         studentId: sf.studentId,
         studentName: sf.student?.name,
@@ -1995,6 +2015,7 @@ export class FinanceService {
         paid,
         remaining: Math.max(0, sf.finalAmount - paid),
         daysOverdue: Math.max(0, daysOverdue),
+        penaltyAccumulated,
         dueDate: sf.dueDate?.toISOString() || null,
       };
     });

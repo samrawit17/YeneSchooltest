@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { financeAPI, academicYearsAPI, classesAPI, schoolSettingsAPI } from '@/lib/api';
+import { convertToEthiopian, formatDateByCalendarType, formatDateTimeByCalendarType } from '@/lib/calendar-utils';
+import { getGradeRangeFromSystem } from '@/lib/grade-system';
 import { useAuth } from '@/context/AuthContext';
 import Pagination from '@/components/Pagination';
 import TableSearch from '@/components/TableSearch';
@@ -35,6 +37,8 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 // Types
 interface FeeStructure {
@@ -109,6 +113,16 @@ const FEE_TYPES = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+const ALL_FEE_TYPES_VALUE = 'ALL_CATEGORIES';
+
+const GRADE_RANGES = [
+  { value: '1-12', label: 'Grades 1-12', from: 1, to: 12 },
+  { value: '1-10', label: 'Grades 1-10', from: 1, to: 10 },
+  { value: '1-8', label: 'Grades 1-8', from: 1, to: 8 },
+  { value: '1-5', label: 'Grades 1-5', from: 1, to: 5 },
+  { value: '9-12', label: 'Grades 9-12', from: 9, to: 12 },
+];
+
 export default function FinanceListPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('fee-structures');
@@ -123,6 +137,11 @@ export default function FinanceListPage() {
   const [curriculumType, setCurriculumType] = useState<string>('TERM');
   const [feeCollectionMode, setFeeCollectionMode] = useState<string>('TERM');
   const [installmentCount, setInstallmentCount] = useState<number>(3);
+  const activeCalendarType = user?.calendarType || 'ETHIOPIAN';
+  const [allowedGradeRange, setAllowedGradeRange] = useState(() => getGradeRangeFromSystem('1-12'));
+  const availableGradeRanges = GRADE_RANGES.filter(
+    (range) => range.from >= allowedGradeRange.min && range.to <= allowedGradeRange.max,
+  );
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -147,13 +166,17 @@ export default function FinanceListPage() {
   // Form data
   const [formData, setFormData] = useState({
     feeType: '',
-    grade: 'all',
+    grade: '1-12',
     amount: '',
     termId: '',
     semester: '',
     description: '',
     isActive: true,
   });
+
+  const generatedFeeStructures = feeStructures.filter((structure) =>
+    structure.feeType.includes('_INSTALLMENT_'),
+  );
 
   // Load academic years
   useEffect(() => {
@@ -210,6 +233,26 @@ export default function FinanceListPage() {
     setSelectedTerm('all');
   }, [selectedYear, user?.schoolId]);
 
+  useEffect(() => {
+    const loadGradeRange = async () => {
+      if (!user?.schoolId) return;
+      try {
+        const response = await schoolSettingsAPI.getAll(user.schoolId);
+        const range = getGradeRangeFromSystem(response.data?.grade_system || '1-12');
+        setAllowedGradeRange(range);
+        setFormData((current) => {
+          const selectedRange = GRADE_RANGES.find((item) => item.value === current.grade);
+          if (selectedRange && selectedRange.from >= range.min && selectedRange.to <= range.max) return current;
+          const fallback = GRADE_RANGES.find((item) => item.from >= range.min && item.to <= range.max);
+          return { ...current, grade: fallback?.value || '' };
+        });
+      } catch (error) {
+        setAllowedGradeRange(getGradeRangeFromSystem('1-12'));
+      }
+    };
+    loadGradeRange();
+  }, [user?.schoolId]);
+
   // Load data based on active tab
   useEffect(() => {
     if (!selectedYear) return;
@@ -228,7 +271,7 @@ export default function FinanceListPage() {
         }
         const termId = selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined;
         const response = await financeAPI.listFeeStructures(schoolId, selectedYear, termId);
-        setFeeStructures(response.data?.data || []);
+        setFeeStructures((response.data?.data || []).filter((structure: FeeStructure) => structure.isActive));
       } else if (activeTab === 'student-fees') {
         const schoolId = user?.schoolId;
         if (!schoolId) {
@@ -284,38 +327,56 @@ export default function FinanceListPage() {
       toast.error('Please select an academic year');
       return;
     }
-    if (!formData.feeType || !formData.amount) {
+    if (!formData.feeType || !formData.grade || !formData.amount) {
       toast.error('Please fill in all required fields');
       return;
     }
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    const selectedRange = GRADE_RANGES.find((range) => range.value === formData.grade);
+    if (!selectedRange) {
+      toast.error('Please select a grade range');
+      return;
+    }
+    const feeTypesToCreate = formData.feeType === ALL_FEE_TYPES_VALUE
+      ? FEE_TYPES.map((feeType) => feeType.value)
+      : [formData.feeType];
+    const gradesToCreate = Array.from(
+      { length: selectedRange.to - selectedRange.from + 1 },
+      (_, index) => selectedRange.from + index,
+    );
     try {
-      await financeAPI.createFeeStructure({
-        schoolId: schoolId,
-        feeType: formData.feeType,
-        academicYearId: selectedYear,
-        termId: formData.termId && formData.termId !== 'all' ? formData.termId : undefined,
-        grade: formData.grade && formData.grade !== 'all' ? parseInt(formData.grade) : undefined,
-        amount: parseFloat(formData.amount),
-        semester: formData.semester ? parseInt(formData.semester) : undefined,
-        description: formData.description || undefined,
-      });
-      toast.success('Fee structure created successfully');
+      await Promise.all(
+        feeTypesToCreate.flatMap((feeType) =>
+          gradesToCreate.map((grade) =>
+            financeAPI.createFeeStructure({
+              schoolId: schoolId,
+              feeType,
+              academicYearId: selectedYear,
+              termId: formData.termId && formData.termId !== 'all' ? formData.termId : undefined,
+              grade,
+              amount,
+              semester: formData.semester ? parseInt(formData.semester) : undefined,
+              description: formData.description || undefined,
+            }),
+          ),
+        ),
+      );
+      toast.success(
+        `Created ${feeTypesToCreate.length * gradesToCreate.length} fee structure${feeTypesToCreate.length * gradesToCreate.length === 1 ? '' : 's'}`,
+      );
       setFeeStructureDialogOpen(false);
-      setFormData({ feeType: '', grade: 'all', amount: '', termId: '', semester: '', description: '', isActive: true });
+      setFormData({ feeType: '', grade: availableGradeRanges[0]?.value || '', amount: '', termId: '', semester: '', description: '', isActive: true });
       loadData();
     } catch (error) {
       toast.error('Failed to create fee structure');
     }
   };
 
-  // Delete fee structure
-  const handleDeleteFeeStructure = async (id: string) => {
-    const schoolId = user?.schoolId;
-    if (!schoolId) {
-      toast.error('School ID not found. Please log in again.');
-      return;
-    }
-    if (!confirm('Are you sure you want to delete this fee structure?')) return;
+  const deleteFeeStructure = async (id: string, schoolId: string) => {
     try {
       await financeAPI.deleteFeeStructure(id, schoolId);
       toast.success('Fee structure deleted successfully');
@@ -323,6 +384,27 @@ export default function FinanceListPage() {
     } catch (error) {
       toast.error('Failed to delete fee structure');
     }
+  };
+
+  // Delete fee structure
+  const handleDeleteFeeStructure = (id: string) => {
+    const schoolId = user?.schoolId;
+    if (!schoolId) {
+      toast.error('School ID not found. Please log in again.');
+      return;
+    }
+    toast.warning('Delete this fee structure?', {
+      description: 'This will remove the selected fee installment.',
+      action: {
+        label: 'Delete',
+        onClick: () => deleteFeeStructure(id, schoolId),
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {},
+      },
+      duration: 10000,
+    });
   };
 
   // View student fee details
@@ -423,17 +505,128 @@ export default function FinanceListPage() {
       return;
     }
     try {
-      const response = await financeAPI.generateInstallmentFees({
-        schoolId: user.schoolId,
-        academicYearId: selectedYear,
-        feeType: 'TUITION',
-      });
-      if (response.data?.success) {
-        toast.success(response.data.message || 'Installments generated successfully');
-        loadData();
+      const gradeSpecificBaseStructures = feeStructures.filter((structure) =>
+        structure.isActive &&
+        structure.feeType === 'TUITION' &&
+        !structure.feeType.includes('_INSTALLMENT_') &&
+        structure.grade !== null &&
+        structure.grade !== undefined,
+      );
+      const grades = Array.from(
+        new Set(gradeSpecificBaseStructures.map((structure) => structure.grade).filter((grade): grade is number => typeof grade === 'number')),
+      ).sort((a, b) => a - b);
+
+      if (grades.length === 0) {
+        toast.error('Create a grade-specific fee structure before auto-generating.');
+        return;
       }
+
+      const activeTuitionInstallments = feeStructures.filter((structure) =>
+        structure.isActive &&
+        structure.feeType.startsWith('TUITION_INSTALLMENT_'),
+      );
+
+      await Promise.all(
+        activeTuitionInstallments.map((structure) =>
+          financeAPI.updateFeeStructure(structure.id, user.schoolId, { isActive: false }),
+        ),
+      );
+
+      const responses = await Promise.all(
+        gradeSpecificBaseStructures.flatMap((baseStructure) => {
+          const selectedTerms = baseStructure.termId
+            ? terms.filter((term) => term.id === baseStructure.termId)
+            : terms;
+          const periods = selectedTerms.length > 0 ? selectedTerms : [{ id: undefined, name: 'Whole Academic Year', order: 1 }];
+          const baseAmount = Number(baseStructure.amount || 0);
+          const baseInstallmentAmount = Math.floor((baseAmount / periods.length) * 100) / 100;
+          const remainder = Math.round((baseAmount - baseInstallmentAmount * periods.length) * 100) / 100;
+
+          return periods.map((period, index) => {
+            const amount = index === periods.length - 1
+              ? Math.round((baseInstallmentAmount + remainder) * 100) / 100
+              : baseInstallmentAmount;
+
+            return financeAPI.createFeeStructure({
+              schoolId: user.schoolId,
+              academicYearId: selectedYear,
+              termId: period.id,
+              feeType: `TUITION_INSTALLMENT_${period.order || index + 1}`,
+              amount,
+              grade: baseStructure.grade || undefined,
+              description: `TUITION installment for ${period.name}`,
+            });
+          });
+        }),
+      );
+      const created = responses.length;
+      toast.success(
+        created > 0
+          ? `Generated ${created} period-specific fee structures`
+          : `Fee structures reconciled for ${grades.length} grades`,
+      );
+      loadData();
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to generate installments');
+    }
+  };
+
+  const clearFeeStructures = async (schoolId: string) => {
+    try {
+      await financeAPI.clearFeeStructures(schoolId, selectedYear);
+      toast.success('Fee structures cleared');
+      loadData();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to clear fee structures');
+    }
+  };
+
+  const handleClearFeeStructures = () => {
+    const schoolId = user?.schoolId;
+    if (!schoolId) {
+      toast.error('School ID not found. Please log in again.');
+      return;
+    }
+    if (!selectedYear) {
+      toast.error('Please select an academic year');
+      return;
+    }
+    toast.warning('Clear all fee structures?', {
+      description: 'This will delete all generated fee structures for the selected academic year.',
+      action: {
+        label: 'Clear',
+        onClick: () => clearFeeStructures(schoolId),
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {},
+      },
+      duration: 10000,
+    });
+  };
+
+  const handleGenerateStudentFees = async () => {
+    const schoolId = user?.schoolId;
+    if (!schoolId) {
+      toast.error('School ID not found. Please log in again.');
+      return;
+    }
+    if (!selectedYear) {
+      toast.error('Please select an academic year');
+      return;
+    }
+    try {
+      const response = await financeAPI.generateStudentFees({
+        schoolId,
+        academicYearId: selectedYear,
+        termId: selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined,
+        grade: selectedGrade && selectedGrade !== 'all' ? parseInt(selectedGrade) : undefined,
+      });
+      const created = Number(response.data?.created || 0);
+      toast.success(created > 0 ? `Created ${created} student fees` : 'No new student fees to create');
+      loadData();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to generate student fees');
     }
   };
 
@@ -460,8 +653,55 @@ export default function FinanceListPage() {
     return labels[mode] || 'Billing Period';
   };
 
+  const getInstallmentMonthName = (installmentNumber: number) => {
+    const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
+    const startDate = (selectedAcademicYear as any)?.startDate ? new Date((selectedAcademicYear as any).startDate) : null;
+
+    if (!startDate || isNaN(startDate.getTime())) {
+      return `Month ${installmentNumber}`;
+    }
+
+    const monthDate = new Date(startDate);
+    monthDate.setMonth(startDate.getMonth() + installmentNumber - 1);
+    
+    return activeCalendarType === 'ETHIOPIAN'
+      ? convertToEthiopian(monthDate).monthName
+      : monthDate.toLocaleDateString('en-US', { month: 'long' });
+  };
+
+  const getTermMonthRangeLabel = (termId: string) => {
+    const term = terms.find((t) => t.id === termId);
+    if (!term || !term.startDate || !term.endDate) return null;
+
+    const selectedAcademicYear = academicYears.find((y) => y.id === selectedYear);
+    const ayStart = (selectedAcademicYear as any)?.startDate ? new Date((selectedAcademicYear as any).startDate) : null;
+    if (!ayStart) return term.name;
+
+    const tStart = new Date(term.startDate);
+    const tEnd = new Date(term.endDate);
+
+    const monthDiff = (d: Date) =>
+      (d.getFullYear() - ayStart.getFullYear()) * 12 + (d.getMonth() - ayStart.getMonth());
+
+    const startIdx = monthDiff(tStart) + 1;
+    const endIdx = monthDiff(tEnd) + 1;
+
+    if (startIdx === endIdx) return getInstallmentMonthName(startIdx);
+    return `${getInstallmentMonthName(startIdx)} - ${getInstallmentMonthName(endIdx)}`;
+  };
+
   const getFeeStructurePeriod = (fs: FeeStructure) => {
+    if (fs.termId) {
+      const rangeLabel = getTermMonthRangeLabel(fs.termId);
+      if (rangeLabel) return rangeLabel;
+    }
     if (fs.term?.name) return fs.term.name;
+    if (feeCollectionMode === 'MONTHLY') {
+      const installmentMatch = fs.feeType.match(/_INSTALLMENT_(\d+)$/i);
+      if (installmentMatch?.[1]) {
+        return getInstallmentMonthName(Number(installmentMatch[1]));
+      }
+    }
     const installmentMatch = fs.description?.match(/\bfor\s+(.+)$/i);
     if (installmentMatch?.[1]) return installmentMatch[1];
     if (fs.semester) return `Semester ${fs.semester}`;
@@ -469,25 +709,34 @@ export default function FinanceListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      {/* Header */}
+      <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4 bg-white dark:bg-slate-800 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link href="/finance">
+              <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
+                <ArrowLeft className="w-5 h-5 text-slate-500" />
+              </Button>
+            </Link>
             <div>
-              <h1 className="text-2xl font-bold text-[#e35336]">Finance Management</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Manage fee structures, student fees, and payments</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge className="bg-blue-100 text-blue-700 px-3 py-1">
-                <DollarSign className="w-3 h-3 mr-1" />
-                {getModeLabel(feeCollectionMode)}
-              </Badge>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Finance Management</h1>
+              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                {feeCollectionMode} BILLING MODE
+              </p>
             </div>
           </div>
+          
+          <div className="flex items-center gap-2">
+             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                <DollarSign className="w-3 h-3 mr-1" />
+                Active Year: {academicYears.find(y => y.id === selectedYear)?.name || '...'}
+             </Badge>
+          </div>
         </div>
+      </div>
 
-        {/* Filters */}
+      <div className="p-4 md:p-6 space-y-6">
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-3 sm:p-4 mb-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
             <Select value={selectedYear} onValueChange={setSelectedYear}>
@@ -579,12 +828,20 @@ export default function FinanceListPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleClearFeeStructures}
+                      className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Clear
+                    </Button>
                     <Button variant="outline" onClick={handleGenerateInstallments} className="border-green-600 text-green-700 hover:bg-green-50">
                       <Plus className="w-4 h-4 mr-2" />
                       Auto-Generate / Reconcile {installmentCount}x
                     </Button>
                     <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
-                      setFormData({ feeType: 'TUITION', grade: 'all', amount: '', termId: '', semester: '', description: '', isActive: true });
+                      setFormData({ feeType: 'TUITION', grade: availableGradeRanges[0]?.value || '', amount: '', termId: '', semester: '', description: '', isActive: true });
                       setFeeStructureDialogOpen(true);
                     }}>
                       <Plus className="w-4 h-4 mr-2" />
@@ -607,8 +864,8 @@ export default function FinanceListPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {feeStructures.length > 0 ? (
-                      feeStructures.map(fs => (
+                    {generatedFeeStructures.length > 0 ? (
+                      generatedFeeStructures.map(fs => (
                         <TableRow key={fs.id}>
                           <TableCell className="font-medium">{fs.feeType}</TableCell>
                           <TableCell>{fs.grade ? `Grade ${fs.grade}` : 'All Grades'}</TableCell>
@@ -632,7 +889,7 @@ export default function FinanceListPage() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8 text-slate-500">
-                          No fee structures found
+                          No generated fee structures found. Add the base fee structure, then run Auto-Generate.
                         </TableCell>
                       </TableRow>
                     )}
@@ -647,10 +904,16 @@ export default function FinanceListPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Student Fees</CardTitle>
-                <Button variant="outline">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={handleGenerateStudentFees}>
+                    <Users className="w-4 h-4 mr-2" />
+                    Generate Student Fees
+                  </Button>
+                  <Button variant="outline">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -793,6 +1056,7 @@ export default function FinanceListPage() {
                     <SelectValue placeholder="Select fee type" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={ALL_FEE_TYPES_VALUE}>All Categories</SelectItem>
                     {FEE_TYPES.map(ft => (
                       <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
                     ))}
@@ -800,15 +1064,14 @@ export default function FinanceListPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Grade</Label>
+                <Label>Grade Range</Label>
                 <Select value={formData.grade} onValueChange={(v) => setFormData({...formData, grade: v})}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select grade" />
+                    <SelectValue placeholder="Select grade range" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Grades</SelectItem>
-                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
-                      <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
+                    {availableGradeRanges.map(range => (
+                      <SelectItem key={range.value} value={range.value}>{range.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

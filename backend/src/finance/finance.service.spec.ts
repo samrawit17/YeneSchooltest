@@ -379,7 +379,7 @@ describe('FinanceService critical payment flows', () => {
     });
     expect(prisma.academicYear.findFirst).toHaveBeenCalledWith({
       where: { id: 'year-1', schoolId: 'school-1' },
-      select: { id: true },
+      select: { id: true, startDate: true },
     });
     expect(prisma.term.findFirst).toHaveBeenCalledWith({
       where: { id: 'term-1', academicYear: { schoolId: 'school-1' } },

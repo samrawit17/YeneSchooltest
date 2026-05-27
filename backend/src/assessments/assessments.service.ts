@@ -925,6 +925,17 @@ if (
     return this.attachFallbackTeachersToAssessments(assessments);
   }
 
+  async clearAssessments(schoolId: string) {
+    const result = await this.prisma.assessment.deleteMany({
+      where: { schoolId },
+    });
+
+    return {
+      success: true,
+      deleted: result.count,
+    };
+  }
+
   async getTeacherAssessments(
     teacherId: string,
     schoolId: string,

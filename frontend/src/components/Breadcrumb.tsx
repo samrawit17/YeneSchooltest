@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
-import { ChevronRight, Home, LayoutDashboard } from "lucide-react";
+import { ChevronRight, ChevronLeft, Home, LayoutDashboard } from "lucide-react";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -565,11 +565,19 @@ export function Breadcrumb({
   items,
   className = "",
   showHomeIcon = true,
-  separator = <ChevronRight className="w-4 h-4 text-gray-400" />
+  separator
 }: BreadcrumbProps) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { t } = useTranslations<BreadcrumbMessages>("breadcrumb");
+  const { t, language } = useTranslations<BreadcrumbMessages>("breadcrumb");
+
+  const activeSeparator = separator ?? (
+    language === "ar" ? (
+      <ChevronLeft className="w-4 h-4 text-gray-400" />
+    ) : (
+      <ChevronRight className="w-4 h-4 text-gray-400" />
+    )
+  );
   // Get context items if available (may not exist if provider not mounted)
   let contextItems: BreadcrumbItem[] | null = null;
   try {
@@ -621,7 +629,7 @@ export function Breadcrumb({
               {/* Separator - only between items */}
               {!isFirst && (
                 <span className="mx-0.5 sm:mx-1.5 text-gray-400" aria-hidden="true">
-                  {separator}
+                  {activeSeparator}
                 </span>
               )}
 

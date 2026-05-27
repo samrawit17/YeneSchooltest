@@ -1,0 +1,10 @@
+export declare enum Role {
+    SUPER_ADMIN = "SUPER_ADMIN",
+    ADMIN = "ADMIN",
+    IT_MANAGER = "IT_MANAGER",
+    REGISTRAR = "REGISTRAR",
+    TEACHER = "TEACHER",
+    STUDENT = "STUDENT",
+    PARENT = "PARENT",
+    FINANCE = "FINANCE"
+}

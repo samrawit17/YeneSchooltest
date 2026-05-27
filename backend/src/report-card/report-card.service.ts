@@ -55,8 +55,10 @@ interface PromotionParams {
 
 interface BulkPromotionParams {
   schoolId: string;
-  fromClassId: string;
+  fromClassId?: string;
+  fromGrade?: number;
   toClassId?: string | null;
+  toGrade?: number | null;
   fromAcademicYear: string;
   toAcademicYear: string;
   studentIds: string[];
@@ -66,14 +68,15 @@ interface BulkPromotionParams {
 }
 
 interface PromotionCriteria {
-  minAverageGrade: number;
-  minAttendance: number;
+  minAverageGrade?: number;
+  minAttendance?: number;
   allowFailedSubjects: number;
 }
 
 interface PromotionReadinessParams {
   schoolId: string;
-  fromClassId: string;
+  fromClassId?: string;
+  fromGrade?: number;
   fromAcademicYear: string;
   studentIds?: string[];
   promoteAll?: boolean;
@@ -498,6 +501,88 @@ export class ReportCardService {
     `;
   }
 
+  private async assertAcademicYearEnded(schoolId: string, academicYearName: string) {
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { schoolId, name: academicYearName },
+      select: { name: true, endDate: true },
+    });
+
+    if (!academicYear) {
+      throw new NotFoundException('Academic year not found');
+    }
+
+    const endOfAcademicYear = new Date(academicYear.endDate);
+    endOfAcademicYear.setHours(23, 59, 59, 999);
+
+    if (new Date() <= endOfAcademicYear) {
+      throw new BadRequestException(
+        `Promotion is locked until academic year ${academicYear.name} ends`,
+      );
+    }
+  }
+
+  private getSectionNameByIndex(index: number) {
+    let n = index;
+    let name = '';
+    do {
+      name = String.fromCharCode(65 + (n % 26)) + name;
+      n = Math.floor(n / 26) - 1;
+    } while (n >= 0);
+    return name;
+  }
+
+  private async getDefaultSectionCapacity(schoolId: string) {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: 'DEFAULT_SECTION_CAPACITY' } },
+      select: { value: true },
+    });
+    const parsed = parseInt(String(setting?.value || ''), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+  }
+
+  private async getSchoolGradeRange(schoolId: string) {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: 'grade_system' } },
+      select: { value: true },
+    });
+    const ranges: Record<string, { min: number; max: number }> = {
+      '1-8': { min: 1, max: 8 },
+      '1-10': { min: 1, max: 10 },
+      '1-12': { min: 1, max: 12 },
+      'K-8': { min: 1, max: 8 },
+      'K-12': { min: 1, max: 12 },
+      'KG-12': { min: 1, max: 12 },
+      KG_TO_12: { min: 1, max: 12 },
+      'PRE-K-12': { min: 1, max: 12 },
+      '9-12': { min: 9, max: 12 },
+    };
+    return ranges[String(setting?.value || '1-12').toUpperCase()] || ranges['1-12'];
+  }
+
+  private normalizePromotionStream(value?: string | null) {
+    const stream = String(value || '').trim().toUpperCase();
+    return ['NATURAL', 'SOCIAL'].includes(stream) ? stream : null;
+  }
+
+  private async getExistingPromotionRecord(input: {
+    schoolId: string;
+    studentId: string;
+    fromAcademicYear: string;
+    toAcademicYear: string;
+  }) {
+    const rows = await this.prisma.$queryRaw<Array<{ id: string; status: string }>>`
+      SELECT "id", "status"
+      FROM "PromotionRecord"
+      WHERE "schoolId" = ${input.schoolId}
+        AND "studentId" = ${input.studentId}
+        AND "fromAcademicYear" = ${input.fromAcademicYear}
+        AND "toAcademicYear" = ${input.toAcademicYear}
+      ORDER BY "createdAt" DESC
+      LIMIT 1
+    `;
+    return rows[0] || null;
+  }
+
   private getEffectiveSubjectTotalScore(grade: {
     caScore?: number | null;
     midScore?: number | null;
@@ -528,6 +613,10 @@ export class ReportCardService {
       promoteAll = false,
       criteria,
     } = params;
+
+    if (!fromClassId) {
+      throw new BadRequestException('Source class is required');
+    }
 
     const classInfo = await this.prisma.class.findUnique({
       where: { id: fromClassId },
@@ -820,12 +909,16 @@ export class ReportCardService {
       throw new NotFoundException('Student not found');
     }
 
+    // Fetch all terms for the academic year to build a cumulative view
+    const allTerms = await this.prisma.term.findMany({
+      where: { academicYearId },
+      orderBy: { order: 'asc' },
+    });
+
     const subjectGrades = await this.prisma.subjectGrade.findMany({
       where: {
         studentId,
-        classId,
         academicYear: academicYearId,
-        termId,
       },
       include: {
         subject: {
@@ -848,40 +941,68 @@ export class ReportCardService {
 
     const attendance = await this.calculateAttendance(studentId, termId);
 
+    // Group grades by subject to allow term-by-term comparison
+    const gradesBySubject = new Map<string, any>();
+    const gradeDetails: any[] = [];
     let totalMarks = 0;
     let subjectCount = 0;
-    const gradeDetails: Record<string, any>[] = [];
-
+    
     for (const sg of subjectGrades) {
-      const effectiveTotalScore = this.getEffectiveSubjectTotalScore(sg);
-      if (effectiveTotalScore !== null && effectiveTotalScore !== undefined) {
-        const { letter, point } = await this.getGradeLetter(
-          schoolId,
-          effectiveTotalScore,
-        );
-        gradeDetails.push({
+      const subjectId = sg.subjectId;
+      if (!gradesBySubject.has(subjectId)) {
+        gradesBySubject.set(subjectId, {
           subjectId: sg.subjectId,
           subjectName: sg.subject.name,
           subjectCode: sg.subject.code,
-          assessmentBreakdown: (sg.gradeScores || []).map((item) => ({
-            assessmentSubjectId: item.id,
+          terms: {},
+          yearlyTotal: 0,
+          yearlyCount: 0,
+        });
+      }
+      
+      const subData = gradesBySubject.get(subjectId);
+      const effectiveTotalScore = this.getEffectiveSubjectTotalScore(sg);
+      
+      if (effectiveTotalScore !== null) {
+        const { letter, point } = await this.getGradeLetter(schoolId, effectiveTotalScore);
+        
+        subData.terms[sg.termId] = {
+          score: effectiveTotalScore,
+          grade: letter,
+          point: point,
+          status: sg.status,
+          remark: sg.remark,
+          // Only include assessment breakdown if it's the CURRENT term we are generating for
+          assessmentBreakdown: sg.termId === termId ? (sg.gradeScores || []).map((item) => ({
             title: item.component?.name || item.component?.code || 'Assessment',
             type: item.component?.code || '',
             maxScore: item.maxScore,
             score: item.score ?? null,
-            status: sg.status,
-          })),
-          caScore: sg.caScore,
-          midScore: sg.midScore,
-          finalScore: sg.finalScore,
-          totalScore: effectiveTotalScore,
-          gradeLetter: letter,
-          gradePoint: point,
-          status: sg.status,
-        });
-        totalMarks += effectiveTotalScore;
+          })) : [],
+        };
+        
+        subData.yearlyTotal += effectiveTotalScore;
+        subData.yearlyCount += 1;
+      }
+    }
+
+    // Finalize gradeDetails with cumulative stats
+    for (const sub of gradesBySubject.values()) {
+      const yearlyAverage = sub.yearlyCount > 0 ? sub.yearlyTotal / sub.yearlyCount : 0;
+      const { letter, point } = await this.getGradeLetter(schoolId, yearlyAverage);
+      
+      sub.yearlyAverage = Math.round(yearlyAverage * 100) / 100;
+      sub.yearlyGrade = letter;
+      sub.yearlyPoint = point;
+
+      // Tracking the current term totals for the main report card summary
+      const currentTermData = sub.terms[termId];
+      if (currentTermData) {
+        totalMarks += currentTermData.score;
         subjectCount++;
       }
+      
+      gradeDetails.push(sub);
     }
 
     const percentage = subjectCount > 0 ? totalMarks / subjectCount : 0;
@@ -1606,12 +1727,6 @@ export class ReportCardService {
         to: this.formatNullablePercent(report.summary.to.passRate),
         change: '-',
       },
-      {
-        metric: 'Students with published report cards',
-        from: report.summary.from.students,
-        to: report.summary.to.students,
-        change: report.summary.to.students - report.summary.from.students,
-      },
     ]);
 
     const classes = workbook.addWorksheet('Classes');
@@ -1800,7 +1915,7 @@ export class ReportCardService {
           .join(' '),
         percentage: weight.percentage,
       })),
-      title: template.title || 'Student Result Certificate',
+      title: template.title || 'Official Student Result Certificate',
       themeColor: template.themeColor || '#1B4F72',
       principalName: template.principalName || '',
       schoolName: template.schoolName || school?.name || '',
@@ -1817,7 +1932,7 @@ export class ReportCardService {
 
   async saveCertificateTemplate(schoolId: string, value: Record<string, any>) {
     const normalized = {
-      title: String(value.title || 'Student Result Certificate').trim(),
+      title: String(value.title || 'Official Student Result Certificate').trim(),
       themeColor: this.normalizeHexColor(value.themeColor, '#1B4F72'),
       principalName: String(value.principalName || '').trim(),
       schoolName: String(value.schoolName || '').trim(),
@@ -1890,6 +2005,13 @@ export class ReportCardService {
       throw new NotFoundException('Report card not found');
     }
     const gradeDetails = await this.resolveReportCardGradeDetails(reportCard);
+    const academicYearRecord = await this.prisma.academicYear.findFirst({
+      where: {
+        schoolId,
+        OR: [{ id: reportCard.academicYear }, { name: reportCard.academicYear }],
+      },
+      select: { id: true, name: true },
+    });
 
     return {
       template,
@@ -1897,12 +2019,15 @@ export class ReportCardService {
         id: reportCard.id,
         term: reportCard.term,
         academicYear: reportCard.academicYear,
+        academicYearId: academicYearRecord?.id || reportCard.academicYear,
         rank: reportCard.rank,
         rankInClass: reportCard.rankInClass,
         totalMarks: reportCard.totalMarks,
         percentage: reportCard.percentage,
         overallGrade: reportCard.overallGrade,
         attendancePercentage: reportCard.attendancePercentage,
+        teacherRemarks: reportCard.teacherRemarks,
+        principalRemarks: reportCard.principalRemarks,
         student: reportCard.student,
         class: reportCard.class,
         gradeDetails,
@@ -2051,8 +2176,7 @@ export class ReportCardService {
     page.drawRectangle({ x: 0.5, y: 0.5, width: width - 1, height: height - 1, borderColor: rgb(0.86, 0.88, 0.9), borderWidth: 0.5 });
 
     const headerY = height - 86;
-    page.drawEllipse({ x: margin + 28, y: headerY + 8, xScale: 28, yScale: 28, borderColor: theme, borderWidth: 1.5 });
-    await drawRemoteImage(payload.template.schoolLogoUrl, margin + 8, headerY - 12, 40, 40);
+    await drawRemoteImage(payload.template.schoolLogoUrl, margin, headerY - 24, 68, 68);
     drawCenteredText(payload.template.schoolName || 'School Name', width / 2, headerY + 18, 16, bold, theme);
     drawCenteredText(
       [payload.template.schoolAddress, payload.template.schoolPhone].filter(Boolean).join('  •  '),
@@ -2062,12 +2186,12 @@ export class ReportCardService {
       font,
       mutedText,
     );
-    drawText('Year', width - margin - 112, headerY + 24, 9, font, mutedText);
-    drawText(String(payload.reportCard.academicYear || '-'), width - margin - 58, headerY + 24, 9, bold, theme);
-    drawText('Period', width - margin - 112, headerY + 8, 9, font, mutedText);
-    drawText(String(payload.reportCard.term || '-'), width - margin - 58, headerY + 8, 9, bold, theme);
-    drawText('Date', width - margin - 112, headerY - 8, 9, font, mutedText);
-    drawText(new Date().toISOString().slice(0, 10), width - margin - 58, headerY - 8, 9, bold, theme);
+    drawText('Year', width - margin - 122, headerY + 15, 8.5, font, mutedText);
+    drawText(String(payload.reportCard.academicYear || '-'), width - margin - 66, headerY + 15, 8.5, bold, theme);
+    drawText('Period', width - margin - 122, headerY, 8.5, font, mutedText);
+    drawText(String(payload.reportCard.term || '-'), width - margin - 66, headerY, 8.5, bold, theme);
+    drawText('Issued', width - margin - 122, headerY - 15, 8.5, font, mutedText);
+    drawText(new Date().toISOString().slice(0, 10), width - margin - 66, headerY - 15, 8.5, bold, theme);
 
     const titleY = headerY - 48;
     page.drawRectangle({ x: 0, y: titleY, width, height: 28, color: theme });
@@ -2085,6 +2209,7 @@ export class ReportCardService {
       ['Student ID', studentCode],
       ['Class', classLabel || '-'],
       ['Academic Year / Period', `${payload.reportCard.academicYear || '-'} / ${payload.reportCard.term || '-'}`],
+      ['Issue Date', new Date().toISOString().slice(0, 10)],
     ];
     const cellW = contentW / 2;
     const cellH = 38;
@@ -2098,38 +2223,46 @@ export class ReportCardService {
       drawText(truncate(value, cellW - 24, 11, bold), x + 12, y + 8, 11, bold, darkText);
     });
 
-    const grades = payload.reportCard.gradeDetails || [];
-    const assessmentColumns = Array.from(new Map(
-      grades
-        .flatMap((grade: any) => Array.isArray(grade.assessmentBreakdown) ? grade.assessmentBreakdown : [])
-        .map((item: any) => [String(item.type || item.title || 'Assessment').toUpperCase(), {
-          key: String(item.type || item.title || 'Assessment').toUpperCase(),
-          label: String(item.title || item.type || 'Assessment'),
-          maxScore: item.maxScore,
-        }]),
-    ).values()).slice(0, 5);
+    // Get all terms in the year to create dynamic columns
+    const academicYearId = payload.reportCard.academicYearId || payload.reportCard.academicYear;
+    const allTerms = await this.prisma.term.findMany({
+      where: { academicYearId },
+      orderBy: { order: 'asc' },
+    });
+
+    const termColumns = allTerms.map((t: any) => ({
+      id: t.id,
+      label: t.name,
+    }));
 
     const tableX = margin;
-    const tableTop = bodyTop - cellH * 2 - 22;
+    const tableTop = bodyTop - cellH * 3 - 22;
     const tableW = contentW;
-    const rowH = 22;
+    const rowH = 20;
     const noW = 26;
     const totalW = 54;
     const gradeW = 54;
-    const assessmentW = assessmentColumns.length ? Math.min(58, Math.max(44, (tableW - noW - 190 - totalW - gradeW) / assessmentColumns.length)) : 0;
-    const subjectW = tableW - noW - totalW - gradeW - assessmentW * assessmentColumns.length;
+    
+    // Each term column width
+    const termW = termColumns.length ? Math.min(50, Math.max(38, (tableW - noW - 140 - totalW - gradeW) / termColumns.length)) : 0;
+    const subjectW = tableW - noW - totalW - gradeW - termW * termColumns.length;
+    
     page.drawRectangle({ x: tableX, y: tableTop, width: tableW, height: rowH, color: theme });
     let cursorX = tableX;
     drawCenteredText('#', cursorX + noW / 2, tableTop + 7, 9, bold, rgb(1, 1, 1)); cursorX += noW;
     drawText('Subject', cursorX + 8, tableTop + 7, 9, bold, rgb(1, 1, 1)); cursorX += subjectW;
-    assessmentColumns.forEach((column) => {
-      drawCenteredText(truncate(column.label, assessmentW - 4, 8, bold), cursorX + assessmentW / 2, tableTop + 7, 8, bold, rgb(1, 1, 1));
-      cursorX += assessmentW;
+    
+    termColumns.forEach((term) => {
+      drawCenteredText(truncate(term.label, termW - 4, 8, bold), cursorX + termW / 2, tableTop + 7, 8, bold, rgb(1, 1, 1));
+      cursorX += termW;
     });
-    drawCenteredText('Total', cursorX + totalW / 2, tableTop + 7, 9, bold, rgb(1, 1, 1)); cursorX += totalW;
-    drawCenteredText('Grade', cursorX + gradeW / 2, tableTop + 7, 9, bold, rgb(1, 1, 1));
+    
+    drawCenteredText('Y. Avg', cursorX + totalW / 2, tableTop + 7, 9, bold, rgb(1, 1, 1)); cursorX += totalW;
+    drawCenteredText('Y. Grade', cursorX + gradeW / 2, tableTop + 7, 9, bold, rgb(1, 1, 1));
+    
     let rowY = tableTop - rowH;
-    for (const [index, grade] of grades.slice(0, 14).entries()) {
+    const grades = payload.reportCard.gradeDetails || [];
+    for (const [index, grade] of grades.slice(0, 16).entries()) {
       page.drawRectangle({
         x: tableX,
         y: rowY,
@@ -2142,15 +2275,15 @@ export class ReportCardService {
       cursorX = tableX;
       drawCenteredText(String(index + 1), cursorX + noW / 2, rowY + 7, 8.5, font, darkText); cursorX += noW;
       drawText(truncate(grade.subjectName || '', subjectW - 12, 9, font), cursorX + 8, rowY + 7, 9, font, darkText); cursorX += subjectW;
-      assessmentColumns.forEach((column) => {
-        const match = (grade.assessmentBreakdown || []).find((item: any) =>
-          String(item.type || item.title || 'Assessment').toUpperCase() === column.key,
-        );
-        drawCenteredText(match?.score ?? '-', cursorX + assessmentW / 2, rowY + 7, 8.5, font, darkText);
-        cursorX += assessmentW;
+      
+      termColumns.forEach((term) => {
+        const termData = grade.terms?.[term.id];
+        drawCenteredText(termData?.score !== undefined ? String(termData.score) : '-', cursorX + termW / 2, rowY + 7, 8.5, font, darkText);
+        cursorX += termW;
       });
-      drawCenteredText(String(grade.totalScore ?? '-'), cursorX + totalW / 2, rowY + 7, 9, bold, darkText); cursorX += totalW;
-      const gradeText = String(grade.gradeLetter || '-');
+      
+      drawCenteredText(String(grade.yearlyAverage ?? '-'), cursorX + totalW / 2, rowY + 7, 9, bold, darkText); cursorX += totalW;
+      const gradeText = String(grade.yearlyGrade || '-');
       const colors = gradeClassColor(gradeText);
       page.drawRectangle({ x: cursorX + 12, y: rowY + 4, width: gradeW - 24, height: 14, color: colors.bg });
       drawCenteredText(gradeText, cursorX + gradeW / 2, rowY + 7, 8.5, bold, colors.fg);
@@ -2183,18 +2316,31 @@ export class ReportCardService {
     });
 
     page.drawRectangle({ x: margin + boxW + 12, y: bottomY, width: boxW, height: 52, borderColor: lightBorder, borderWidth: 0.5 });
+    const teacherRem = payload.reportCard.teacherRemarks || 'No remark provided by teacher.';
+    const principalRem = payload.reportCard.principalRemarks || 'No remark provided by principal.';
+    
     drawText('REMARKS', margin + boxW + 24, bottomY + 35, 8, font, theme);
-    drawText('Teacher remark: entered from report card record.', margin + boxW + 24, bottomY + 21, 8.5, font, darkText);
-    drawText('Principal remark: entered from report card record.', margin + boxW + 24, bottomY + 8, 8.5, font, darkText);
+    drawText(truncate(`Teacher: ${teacherRem}`, boxW - 32, 8, font), margin + boxW + 24, bottomY + 21, 8, font, darkText);
+    drawText(truncate(`Principal: ${principalRem}`, boxW - 32, 8, font), margin + boxW + 24, bottomY + 8, 8, font, darkText);
+
+    page.drawRectangle({ x: margin, y: 86, width: contentW, height: 16, color: surface, borderColor: lightBorder, borderWidth: 0.5 });
+    drawCenteredText(
+      'This certificate is valid only with the principal signature and official school stamp.',
+      width / 2,
+      91,
+      7.5,
+      font,
+      mutedText,
+    );
 
     const sigY = 36;
     page.drawLine({ start: { x: margin + 8, y: sigY + 28 }, end: { x: margin + 170, y: sigY + 28 }, thickness: 0.6, color: theme });
     page.drawLine({ start: { x: width / 2 - 80, y: sigY + 28 }, end: { x: width / 2 + 80, y: sigY + 28 }, thickness: 0.6, color: theme });
     page.drawLine({ start: { x: width - margin - 170, y: sigY + 28 }, end: { x: width - margin - 8, y: sigY + 28 }, thickness: 0.6, color: theme });
-    drawCenteredText('Class Teacher', margin + 89, sigY + 13, 9, bold, theme);
+    drawCenteredText('Prepared By', margin + 89, sigY + 13, 9, bold, theme);
     drawCenteredText(payload.template.principalName || 'Principal', width / 2, sigY + 13, 9, bold, theme);
     drawCenteredText('School Stamp', width - margin - 89, sigY + 13, 9, bold, theme);
-    drawCenteredText('Signature', margin + 89, sigY, 8, font, mutedText);
+    drawCenteredText('Registrar / Class Teacher', margin + 89, sigY, 8, font, mutedText);
     drawCenteredText('Principal Signature', width / 2, sigY, 8, font, mutedText);
     drawCenteredText('Official Seal', width - margin - 89, sigY, 8, font, mutedText);
     drawCenteredText(`RC-${payload.reportCard.id}`, width / 2, 12, 7.5, font, rgb(0.65, 0.65, 0.65));
@@ -2524,6 +2670,7 @@ export class ReportCardService {
     data: {
       teacherRemarks?: string;
       principalRemarks?: string;
+      internalRemarks?: string;
       coCurricular?: string;
       behavior?: string;
     },
@@ -2540,6 +2687,7 @@ export class ReportCardService {
       data: {
         teacherRemarks: data.teacherRemarks,
         principalRemarks: data.principalRemarks,
+        internalRemarks: data.internalRemarks,
         coCurricular: data.coCurricular,
         behavior: data.behavior,
       },
@@ -2671,7 +2819,7 @@ export class ReportCardService {
       const reasons: string[] = [];
 
       if (
-        criteria?.minAverageGrade &&
+        criteria?.minAverageGrade !== undefined &&
         averageGrade < criteria.minAverageGrade
       ) {
         status = 'RETAINED';
@@ -2680,14 +2828,10 @@ export class ReportCardService {
         );
       }
 
-      if (criteria?.minAttendance && attendance < criteria.minAttendance) {
-        status = 'RETAINED';
-        reasons.push(
-          `Attendance ${attendance.toFixed(1)}% below minimum ${criteria.minAttendance}%`,
-        );
-      }
-
-      if (criteria?.minAttendance && attendance < criteria.minAttendance) {
+      if (
+        criteria?.minAttendance !== undefined &&
+        attendance < criteria.minAttendance
+      ) {
         status = 'RETAINED';
         reasons.push(
           `Attendance ${attendance.toFixed(1)}% below minimum ${criteria.minAttendance}%`,
@@ -2714,6 +2858,124 @@ export class ReportCardService {
       className: classInfo.name,
       academicYear: classInfo.academicYear.name,
       totalStudents: sortedStudents.length,
+      candidates,
+    };
+  }
+
+  async getPromotionCandidatesByGrade(
+    schoolId: string,
+    grade: number,
+    academicYear: string,
+    criteria?: PromotionCriteria,
+  ) {
+    const enrollments = await this.prisma.studentClass.findMany({
+      where: {
+        schoolId,
+        academicYear,
+        class: { grade },
+      },
+      include: {
+        class: { select: { id: true, name: true, grade: true } },
+        section: { select: { id: true, name: true } },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+            studentProfile: { select: { rollNumber: true } },
+          },
+        },
+      },
+    });
+
+    const sortedEnrollments = enrollments.slice().sort((a, b) => {
+      const sectionCompare = (a.section?.name || '').localeCompare(b.section?.name || '', undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      if (sectionCompare !== 0) return sectionCompare;
+      const aRoll = Number.parseInt(a.student.studentProfile?.rollNumber || '', 10);
+      const bRoll = Number.parseInt(b.student.studentProfile?.rollNumber || '', 10);
+      const aRank = Number.isNaN(aRoll) ? Number.POSITIVE_INFINITY : aRoll;
+      const bRank = Number.isNaN(bRoll) ? Number.POSITIVE_INFINITY : bRoll;
+      if (aRank !== bRank) return aRank - bRank;
+      return a.student.name.localeCompare(b.student.name, undefined, { sensitivity: 'base' });
+    });
+
+    const candidates: Array<{
+      student: any;
+      status: string;
+      reason?: string;
+      reasons?: string[];
+      averageGrade: number;
+      attendance: number;
+      overallGrade?: string | null;
+      reportCardId?: string;
+    }> = [];
+
+    for (const enrollment of sortedEnrollments) {
+      const latestReportCard = await this.prisma.reportCard.findFirst({
+        where: {
+          schoolId,
+          studentId: enrollment.studentId,
+          academicYear,
+          status: ReportCardStatus.PUBLISHED,
+          class: { grade },
+        },
+        orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }],
+      });
+
+      if (!latestReportCard) {
+        candidates.push({
+          student: {
+            id: enrollment.student.id,
+            name: enrollment.student.name,
+            avatarUrl: enrollment.student.avatarUrl,
+            rollNumber: enrollment.student.studentProfile?.rollNumber ?? null,
+          },
+          status: 'NO_DATA',
+          reason: 'No report card generated',
+          reasons: ['No published report card'],
+          averageGrade: 0,
+          attendance: 0,
+        });
+        continue;
+      }
+
+      const averageGrade = latestReportCard.percentage || 0;
+      const attendance = latestReportCard.attendancePercentage || 0;
+      let status = 'PROMOTED';
+      const reasons: string[] = [];
+
+      if (criteria?.minAverageGrade && averageGrade < criteria.minAverageGrade) {
+        status = 'RETAINED';
+        reasons.push(`Average grade ${averageGrade.toFixed(1)} below minimum ${criteria.minAverageGrade}`);
+      }
+      if (criteria?.minAttendance && attendance < criteria.minAttendance) {
+        status = 'RETAINED';
+        reasons.push(`Attendance ${attendance.toFixed(1)}% below minimum ${criteria.minAttendance}%`);
+      }
+
+      candidates.push({
+        student: {
+          id: enrollment.student.id,
+          name: enrollment.student.name,
+          avatarUrl: enrollment.student.avatarUrl,
+          rollNumber: enrollment.student.studentProfile?.rollNumber ?? null,
+        },
+        status,
+        reasons,
+        averageGrade,
+        attendance,
+        overallGrade: latestReportCard.overallGrade,
+        reportCardId: latestReportCard.id,
+      });
+    }
+
+    return {
+      className: `Grade ${grade}`,
+      academicYear,
+      totalStudents: sortedEnrollments.length,
       candidates,
     };
   }
@@ -2773,6 +3035,23 @@ export class ReportCardService {
     };
   }
 
+  async getNextGradeOptions(schoolId: string, grade: number, toAcademicYear?: string) {
+    const range = await this.getSchoolGradeRange(schoolId);
+    if (grade < range.min || grade > range.max) {
+      throw new BadRequestException(`Grade ${grade} is not available in this school's grade system`);
+    }
+    if (grade >= range.max) {
+      return { currentGrade: grade, nextGrades: [], isLastGrade: true, graduationEnabled: true };
+    }
+
+    return {
+      currentGrade: grade,
+      nextGrades: [{ grade: grade + 1, name: `Grade ${grade + 1}` }],
+      isLastGrade: false,
+      graduationEnabled: false,
+    };
+  }
+
   /**
    * Promote single student
    */
@@ -2786,6 +3065,8 @@ export class ReportCardService {
       toAcademicYear,
       status,
     } = params;
+
+    await this.assertAcademicYearEnded(schoolId, fromAcademicYear);
 
     const latestReportCard = await this.prisma.reportCard.findFirst({
       where: {
@@ -2974,7 +3255,9 @@ export class ReportCardService {
     const {
       schoolId,
       fromClassId,
+      fromGrade,
       toClassId,
+      toGrade,
       fromAcademicYear,
       toAcademicYear,
       studentIds,
@@ -2983,6 +3266,26 @@ export class ReportCardService {
       minAttendance,
     } = params;
 
+    await this.assertAcademicYearEnded(schoolId, fromAcademicYear);
+
+    if (fromGrade) {
+      return this.bulkPromoteGradeStudents({
+        schoolId,
+        fromGrade,
+        toGrade,
+        fromAcademicYear,
+        toAcademicYear,
+        studentIds,
+        promoteAll,
+        minAverageGrade,
+        minAttendance,
+      });
+    }
+
+    if (!fromClassId) {
+      throw new BadRequestException('Source class is required');
+    }
+
     await this.ensurePromotionReadiness({
       schoolId,
       fromClassId,
@@ -2990,8 +3293,8 @@ export class ReportCardService {
       studentIds,
       promoteAll,
       criteria: {
-        minAverageGrade: minAverageGrade || 50,
-        minAttendance: minAttendance || 75,
+        ...(minAverageGrade !== undefined ? { minAverageGrade } : {}),
+        ...(minAttendance !== undefined ? { minAttendance } : {}),
         allowFailedSubjects: 2,
       },
     });
@@ -3035,8 +3338,8 @@ export class ReportCardService {
       fromClassId,
       fromAcademicYear,
       {
-        minAverageGrade: minAverageGrade || 50,
-        minAttendance: minAttendance || 75,
+        ...(minAverageGrade !== undefined ? { minAverageGrade } : {}),
+        ...(minAttendance !== undefined ? { minAttendance } : {}),
         allowFailedSubjects: 2,
       },
     );
@@ -3076,6 +3379,246 @@ export class ReportCardService {
       }
     }
 
+    return results;
+  }
+
+  private async bulkPromoteGradeStudents(params: {
+    schoolId: string;
+    fromGrade: number;
+    toGrade?: number | null;
+    fromAcademicYear: string;
+    toAcademicYear: string;
+    studentIds: string[];
+    promoteAll: boolean;
+    minAverageGrade?: number;
+    minAttendance?: number;
+  }) {
+    const {
+      schoolId,
+      fromGrade,
+      toGrade,
+      fromAcademicYear,
+      toAcademicYear,
+      studentIds,
+      promoteAll,
+      minAverageGrade,
+      minAttendance,
+    } = params;
+
+    const isGraduation = !toGrade;
+    const gradeRange = await this.getSchoolGradeRange(schoolId);
+    if (fromGrade < gradeRange.min || fromGrade > gradeRange.max) {
+      throw new BadRequestException(`Grade ${fromGrade} is not available in this school's grade system`);
+    }
+    if (!isGraduation && (toGrade! < gradeRange.min || toGrade! > gradeRange.max)) {
+      throw new BadRequestException(`Grade ${toGrade} is not available in this school's grade system`);
+    }
+    if (fromGrade >= gradeRange.max && !isGraduation) {
+      throw new BadRequestException(`Grade ${fromGrade} is the final grade for this school and must graduate`);
+    }
+    if (!isGraduation && toGrade !== fromGrade + 1) {
+      throw new BadRequestException('Destination grade must be the next grade level');
+    }
+    const criteria = {
+      minAverageGrade: minAverageGrade || 50,
+      minAttendance: minAttendance || 75,
+      allowFailedSubjects: 2,
+    };
+    const candidateResponse = await this.getPromotionCandidatesByGrade(schoolId, fromGrade, fromAcademicYear, criteria);
+    const candidateMap = new Map(candidateResponse.candidates.map((candidate) => [candidate.student.id, candidate]));
+
+    const sourceEnrollments = await this.prisma.studentClass.findMany({
+      where: {
+        schoolId,
+        academicYear: fromAcademicYear,
+        class: { grade: fromGrade },
+        ...(promoteAll ? {} : { studentId: { in: studentIds } }),
+      },
+      include: {
+        class: true,
+        student: { select: { id: true, name: true, studentProfile: true } },
+      },
+    });
+
+    const results = { promoted: 0, retained: 0, failed: 0, errors: [] as string[] };
+    const eligible = sourceEnrollments.filter((enrollment) => {
+      const candidate = candidateMap.get(enrollment.studentId);
+      const selected = promoteAll || studentIds.includes(enrollment.studentId);
+      return selected && candidate?.status === 'PROMOTED';
+    });
+
+    if (isGraduation) {
+      for (const enrollment of sourceEnrollments) {
+        const candidate = candidateMap.get(enrollment.studentId);
+        const selected = promoteAll || studentIds.includes(enrollment.studentId);
+        if (!selected || candidate?.status !== 'PROMOTED') {
+          results.retained++;
+          continue;
+        }
+        const existingRecord = await this.getExistingPromotionRecord({
+          schoolId,
+          studentId: enrollment.studentId,
+          fromAcademicYear,
+          toAcademicYear,
+        });
+        if (existingRecord?.status === 'GRADUATED') {
+          results.promoted++;
+          continue;
+        }
+        const latestReportCard = await this.prisma.reportCard.findFirst({
+          where: {
+            schoolId,
+            studentId: enrollment.studentId,
+            academicYear: fromAcademicYear,
+            status: ReportCardStatus.PUBLISHED,
+            class: { grade: fromGrade },
+          },
+          orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }],
+        });
+        await this.recordPromotionHistory({
+          schoolId,
+          studentId: enrollment.studentId,
+          fromClassId: enrollment.classId,
+          toClassId: null,
+          fromAcademicYear,
+          toAcademicYear,
+          status: 'GRADUATED',
+          reportCardId: latestReportCard?.id,
+          averageGrade: latestReportCard?.percentage ?? null,
+          attendance: latestReportCard?.attendancePercentage ?? null,
+        });
+        results.promoted++;
+      }
+      return results;
+    }
+
+    const targetAcademicYear = await this.prisma.academicYear.findFirst({
+      where: { schoolId, name: toAcademicYear },
+      select: { id: true, name: true },
+    });
+    if (!targetAcademicYear) throw new NotFoundException('Target academic year not found');
+
+    const gradeLevel = await this.prisma.gradeLevel.findFirst({
+      where: { schoolId, level: toGrade },
+      select: { id: true, name: true },
+    });
+    const targetClassName = gradeLevel?.name || `Grade ${toGrade}`;
+    const sectionCapacity = await this.getDefaultSectionCapacity(schoolId);
+    const orderedEligible = eligible.slice().sort((a, b) =>
+      a.student.name.localeCompare(b.student.name, undefined, { sensitivity: 'base' }),
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      let targetClass = await tx.class.findFirst({
+        where: {
+          schoolId,
+          academicYearId: targetAcademicYear.id,
+          grade: toGrade,
+        },
+        orderBy: { section: 'asc' },
+      });
+      if (!targetClass) {
+        targetClass = await tx.class.create({
+          data: {
+            schoolId,
+            academicYearId: targetAcademicYear.id,
+            name: targetClassName,
+            section: '',
+            grade: toGrade,
+            gradeId: gradeLevel?.id,
+          },
+        });
+      }
+
+      const sectionCounters = new Map<string, number>();
+      for (const enrollment of orderedEligible) {
+        const targetStream = [11, 12].includes(toGrade!)
+          ? this.normalizePromotionStream(enrollment.student.studentProfile?.stream)
+          : null;
+        if ([11, 12].includes(toGrade!) && !targetStream) {
+          throw new BadRequestException(`${enrollment.student.name} is missing stream for Grade ${toGrade}`);
+        }
+        const groupKey = targetStream || 'GENERAL';
+        const groupIndex = sectionCounters.get(groupKey) || 0;
+        sectionCounters.set(groupKey, groupIndex + 1);
+        const sectionName = this.getSectionNameByIndex(Math.floor(groupIndex / sectionCapacity));
+        let section = await tx.section.findFirst({
+          where: { classId: targetClass.id, name: sectionName, ...(targetStream ? { stream: targetStream } : {}) },
+        });
+        if (!section) {
+          section = await tx.section.create({
+            data: { classId: targetClass.id, name: sectionName, stream: targetStream, capacity: sectionCapacity },
+          });
+        } else if (section.capacity !== sectionCapacity || section.stream !== targetStream) {
+          section = await tx.section.update({ where: { id: section.id }, data: { capacity: sectionCapacity, stream: targetStream } });
+        }
+
+        const existingTarget = await tx.studentClass.findFirst({
+          where: { studentId: enrollment.studentId, academicYear: toAcademicYear },
+        });
+        if (existingTarget) {
+          await tx.studentClass.update({
+            where: { id: existingTarget.id },
+            data: { classId: targetClass.id, sectionId: section.id },
+          });
+        } else {
+          await tx.studentClass.create({
+            data: {
+              studentId: enrollment.studentId,
+              classId: targetClass.id,
+              sectionId: section.id,
+              schoolId,
+              academicYear: toAcademicYear,
+            },
+          });
+        }
+
+        const rollNumber = String((groupIndex % sectionCapacity) + 1);
+        const profile = enrollment.student.studentProfile;
+        if (profile) {
+          await tx.studentProfile.update({
+            where: { id: profile.id },
+            data: {
+              academicYear: toAcademicYear,
+              className: targetClassName,
+              section: sectionName,
+              stream: targetStream,
+              rollNumber,
+            },
+          });
+        }
+
+        const latestReportCard = await tx.reportCard.findFirst({
+          where: {
+            schoolId,
+            studentId: enrollment.studentId,
+            academicYear: fromAcademicYear,
+            status: ReportCardStatus.PUBLISHED,
+            class: { grade: fromGrade },
+          },
+          orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }],
+        });
+        const existingRecord = await tx.$queryRaw<Array<{ id: string }>>`
+          SELECT "id" FROM "PromotionRecord"
+          WHERE "schoolId" = ${schoolId}
+            AND "studentId" = ${enrollment.studentId}
+            AND "fromAcademicYear" = ${fromAcademicYear}
+            AND "toAcademicYear" = ${toAcademicYear}
+          LIMIT 1
+        `;
+        if (existingRecord.length === 0) {
+          await tx.$executeRaw`
+            INSERT INTO "PromotionRecord"
+              ("id", "schoolId", "studentId", "fromClassId", "toClassId", "fromAcademicYear", "toAcademicYear", "status", "reportCardId", "averageGrade", "attendance", "promotedAt", "createdAt", "updatedAt")
+            VALUES
+              (gen_random_uuid()::text, ${schoolId}, ${enrollment.studentId}, ${enrollment.classId}, ${targetClass.id}, ${fromAcademicYear}, ${toAcademicYear}, ${'PROMOTED'}, ${latestReportCard?.id ?? null}, ${latestReportCard?.percentage ?? null}, ${latestReportCard?.attendancePercentage ?? null}, NOW(), NOW(), NOW())
+          `;
+        }
+      }
+    });
+
+    results.promoted = orderedEligible.length;
+    results.retained = sourceEnrollments.length - orderedEligible.length;
     return results;
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
@@ -12,7 +12,12 @@ import { toast } from "sonner";
 import { useThemeStore } from "@/lib/themeStore";
 import { AppLanguage, useLanguageStore } from "@/lib/languageStore";
 import { useTranslations } from "@/hooks/useTranslations";
-import { Eye, EyeOff, Languages, Lock, LogIn, Moon, School, Sun, User } from "lucide-react";
+import { Eye, EyeOff, Languages, Lock, LogIn, Moon, School, Sun, User, Megaphone } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { announcementsAPI, type Announcement } from "@/lib/api/content";
+import { enrollmentAPI } from "@/lib/api/enrollment";
+import { resolveAssetUrl } from "@/lib/asset-url";
+import { findSchoolByUrlSlug, getHostSchoolSlug, type PublicSchoolSummary } from "@/lib/school-resolver";
 
 // Shadcn/ui Components
 import { Button } from "@/components/ui/button";
@@ -71,6 +76,82 @@ const LoginPage = () => {
   const setLanguage = useLanguageStore((state) => state.setLanguage);
   const { t } = useTranslations<any>("login");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedSchoolId = searchParams.get("schoolId");
+  const requestedSchoolSlug = searchParams.get("school") || searchParams.get("slug") || getHostSchoolSlug();
+  const [resolvedLoginSchoolId, setResolvedLoginSchoolId] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const [schoolName, setSchoolName] = useState<string | null>(null);
+  const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
+  const [schoolAccentColor, setSchoolAccentColor] = useState<string | null>(null);
+  const displaySchoolName =
+    schoolName ||
+    announcements[currentSlide]?.school?.name ||
+    announcements[0]?.school?.name ||
+    t.brand;
+  const displaySchoolLogoUrl = resolveAssetUrl(schoolLogoUrl);
+  const brandColor = /^#[0-9a-fA-F]{6}$/.test((schoolAccentColor || "").trim())
+    ? schoolAccentColor!.trim()
+    : "#e35336";
+  const schoolEnrollHref = resolvedLoginSchoolId
+    ? `/enroll?schoolId=${encodeURIComponent(resolvedLoginSchoolId)}`
+    : requestedSchoolSlug
+      ? `/enroll?school=${encodeURIComponent(requestedSchoolSlug)}`
+      : "/enroll";
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const schoolsRes = await enrollmentAPI.getSchools();
+        const schools: PublicSchoolSummary[] = schoolsRes.data?.data || [];
+        const selectedSchool =
+          (requestedSchoolId
+            ? schools.find((school) => school.id === requestedSchoolId)
+            : undefined) ||
+          findSchoolByUrlSlug(schools, requestedSchoolSlug) ||
+          (schools.length === 1 ? schools[0] : undefined);
+
+        const announcementResponse = selectedSchool
+          ? await announcementsAPI.getPublic(selectedSchool.id)
+          : { data: [] };
+
+        if (selectedSchool) {
+          setResolvedLoginSchoolId(selectedSchool.id);
+          setSchoolName(selectedSchool.name);
+          setSchoolLogoUrl(selectedSchool.logoUrl || null);
+          setSchoolAccentColor(selectedSchool.accentColor || null);
+        } else {
+          setResolvedLoginSchoolId(null);
+          setSchoolName(null);
+          setSchoolLogoUrl(null);
+          setSchoolAccentColor(null);
+        }
+        const data = Array.isArray(announcementResponse.data) ? announcementResponse.data : [];
+        setAnnouncements(data);
+      } catch {
+        setAnnouncements([]);
+      } finally {
+        setAnnouncementsLoading(false);
+      }
+    };
+    fetchData();
+  }, [requestedSchoolSlug, requestedSchoolId]);
+
+  useEffect(() => {
+    if (currentSlide >= announcements.length) {
+      setCurrentSlide(0);
+    }
+  }, [announcements.length, currentSlide]);
+
+  useEffect(() => {
+    if (announcements.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % announcements.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [announcements.length]);
 
   const loginSchema = z.object({
     loginIdentifier: z.string().min(1, { message: t.validationIdentifier }),
@@ -110,7 +191,12 @@ const LoginPage = () => {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      const user = await login(data.loginIdentifier, data.password, !!data.rememberMe);
+      const user = await login(
+        data.loginIdentifier,
+        data.password,
+        !!data.rememberMe,
+        resolvedLoginSchoolId,
+      );
       
       toast.success(t.welcomeToast.replace("{name}", user.name));
       
@@ -144,8 +230,11 @@ const LoginPage = () => {
   };
 
   return (
-    <div className={`flex h-screen w-full overflow-hidden ${resolvedTheme === 'dark' ? 'dark' : ''}`}>
-      {/* Left Side - Full Size School Image */}
+    <div
+      className={`flex h-screen w-full overflow-hidden ${resolvedTheme === 'dark' ? 'dark' : ''}`}
+      style={{ "--brand-color": brandColor } as React.CSSProperties}
+    >
+      {/* Left Side - Full Size School Image with Announcement Slideshow */}
       <div className="hidden lg:block lg:w-1/2 relative">
         <Image
           src="https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2086&auto=format&fit=crop"
@@ -154,26 +243,90 @@ const LoginPage = () => {
           className="object-cover"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/25 to-transparent" />
-        <div className="absolute bottom-12 left-12 text-white max-w-md">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-white/20 backdrop-blur-sm p-2 rounded-xl">
-              <School className="w-8 h-8" />
-            </div>
-            <h1 className="text-3xl font-light tracking-tight">{t.brand}</h1>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+
+        <div className="absolute left-0 right-0 top-10 px-10 text-center text-white">
+          <div className="flex w-full items-center justify-center gap-4">
+            {displaySchoolLogoUrl && (
+              <img
+                src={displaySchoolLogoUrl}
+                alt={`${displaySchoolName} logo`}
+                className="h-28 w-28 shrink-0 rounded-lg bg-transparent object-contain md:h-32 md:w-32"
+              />
+            )}
+            <h1 className="min-w-0 truncate text-2xl font-bold tracking-wide md:text-3xl">
+              {displaySchoolName}
+            </h1>
           </div>
-          <p className="text-4xl font-bold leading-tight mb-4">
-            {t.heroTitle}
-          </p>
-          <p className="text-lg text-white/80">
-            {t.heroSubtitle}
-          </p>
+        </div>
+        
+        <div className="absolute bottom-12 left-12 right-12 text-white max-w-lg">
+          {announcementsLoading ? (
+            <div className="space-y-4">
+              <div className="h-3 w-24 bg-white/20 rounded animate-pulse" />
+              <div className="h-8 w-full bg-white/20 rounded animate-pulse" />
+              <div className="h-4 w-3/4 bg-white/10 rounded animate-pulse" />
+            </div>
+          ) : announcements.length > 0 ? (
+            <>
+              <div className="flex items-center gap-2 mb-4">
+                <Megaphone className="w-5 h-5 text-orange-300" />
+                <span className="text-sm font-medium text-orange-200 uppercase tracking-wider">Announcements</span>
+              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentSlide}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+
+                  <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-3">
+                    {announcements[currentSlide].title}
+                  </h2>
+                  <p className="text-base text-white/80 line-clamp-3">
+                    {announcements[currentSlide].content}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+
+              {announcements.length > 1 && (
+                <div className="flex items-center gap-2 mt-6">
+                  {announcements.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentSlide(i)}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        i === currentSlide ? 'w-8 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/60'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-xl">
+                  <School className="w-8 h-8" />
+                </div>
+                <h1 className="text-3xl font-light tracking-tight">{t.brand}</h1>
+              </div>
+              <p className="text-4xl font-bold leading-tight mb-4">
+                {t.heroTitle}
+              </p>
+              <p className="text-lg text-white/80">
+                {t.heroSubtitle}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
       {/* Right Side - Minimal Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-900 relative">
-        {/* Theme Toggle Button */}
+        {/* Top Right Controls */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
             <SelectTrigger
@@ -352,12 +505,18 @@ const LoginPage = () => {
               className="h-auto p-0 font-medium text-[var(--brand-color,#e35336)] hover:opacity-80"
               asChild
             >
-              <Link href="/enroll">{t.enrollNow}</Link>
+              <Link href={schoolEnrollHref}>{t.enrollNow}</Link>
             </Button>
           </p>
 
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+            <Link href="/" className="font-medium text-[var(--brand-color,#e35336)] hover:opacity-80">
+              &larr; Back to Home
+            </Link>
+          </p>
+
           {/* Footer */}
-          <div className="text-center text-xs text-gray-400 dark:text-gray-500 pt-8">
+          <div className="text-center text-xs text-gray-400 dark:text-gray-500 pt-6">
             <p>{t.footer}</p>
           </div>
         </div>

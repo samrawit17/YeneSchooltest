@@ -606,6 +606,101 @@ const AdminTimetablePage = () => {
     return classSubjects.find(cs => cs.teacherId === teacherId)?.teacher?.name || '';
   };
 
+  const exportTimetablePdf = () => {
+    if (!selectedClassId || !selectedSectionId) {
+      toast.error("Select class and section first");
+      return;
+    }
+
+    const selectedSectionName = sections.find((section) => section.id === selectedSectionId)?.name || selectedSection || "-";
+    const gradeLabel = selectedClass?.name || (selectedGrade ? `Grade ${selectedGrade}` : "Grade");
+    const escapeHtml = (value: string) =>
+      String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const rows = slotRanges.map((timeRange, index) => {
+      const cells = SCHOOL_WEEK_DAYS.map((day) => {
+        const slot = getSlot(day.value, timeRange.start);
+        const subject = slot.subjectId ? getSubjectName(slot.subjectId) : "";
+        const teacher = slot.teacherId ? getTeacherName(slot.teacherId) : "";
+        const room = slot.room ? `Room: ${slot.room}` : "";
+        const details = [teacher, room].filter(Boolean).join("<br />");
+        return `
+          <td>
+            ${subject ? `<div class="subject">${escapeHtml(subject)}</div>` : `<div class="empty">-</div>`}
+            ${details ? `<div class="details">${details}</div>` : ""}
+          </td>
+        `;
+      }).join("");
+
+      return `
+        <tr>
+          <th class="period">
+            <div>Period ${index + 1}</div>
+            <span>${escapeHtml(timeRange.start)} - ${escapeHtml(timeRange.end)}</span>
+          </th>
+          ${cells}
+        </tr>
+      `;
+    }).join("");
+
+    const printable = window.open("", "_blank", "width=1200,height=800");
+    if (!printable) {
+      toast.error("Allow popups to export the timetable PDF");
+      return;
+    }
+
+    printable.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${escapeHtml(gradeLabel)} Section ${escapeHtml(selectedSectionName)} Weekly Schedule</title>
+          <style>
+            @page { size: A4 landscape; margin: 12mm; }
+            * { box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; color: #111827; margin: 0; }
+            .header { text-align: center; margin-bottom: 14px; }
+            .header h1 { font-size: 22px; margin: 0 0 6px; }
+            .header .meta { font-size: 14px; font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            th, td { border: 1px solid #111827; padding: 8px; vertical-align: middle; text-align: center; }
+            thead th { background: #e5e7eb; font-size: 13px; }
+            .period { width: 100px; background: #f3f4f6; font-size: 12px; }
+            .period span { display: block; margin-top: 4px; font-size: 10px; font-weight: 400; color: #4b5563; }
+            .subject { font-size: 13px; font-weight: 700; }
+            .details { margin-top: 4px; font-size: 10px; line-height: 1.35; color: #374151; }
+            .empty { color: #9ca3af; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Weekly Schedule</h1>
+            <div class="meta">${escapeHtml(gradeLabel)} &nbsp; | &nbsp; Section ${escapeHtml(selectedSectionName)}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th class="period">Period</th>
+                ${SCHOOL_WEEK_DAYS.map((day) => `<th>${escapeHtml(day.name)}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <script>
+            window.onload = () => {
+              window.focus();
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printable.document.close();
+  };
+
   const periodRequirements = useMemo(
     () =>
       classSubjects
@@ -998,7 +1093,7 @@ const AdminTimetablePage = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 md:p-8 space-y-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-2 md:p-4 space-y-3">
 
         {/* Header */}
         <div 
@@ -1008,10 +1103,10 @@ const AdminTimetablePage = () => {
             <div className="flex items-center gap-3">
 
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
                   {t.title}
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                <p className="text-gray-500 dark:text-gray-400 text-xs">
                   {t.description}
                 </p>
               </div>
@@ -1037,11 +1132,11 @@ const AdminTimetablePage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => window.print()}>
+                <DropdownMenuItem onClick={exportTimetablePdf}>
                   <Printer className="w-4 h-4 mr-2" />
                   {t.printSchedule}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => window.print()}>
+                <DropdownMenuItem onClick={exportTimetablePdf}>
                   <Download className="w-4 h-4 mr-2" />
                   {t.exportPDF}
                 </DropdownMenuItem>
@@ -1103,11 +1198,11 @@ const AdminTimetablePage = () => {
                       <Sparkles className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg dark:text-white">
-                        Auto Generate Timetable
+                      <CardTitle className="text-base dark:text-white">
+                        Auto Generate
                       </CardTitle>
-                      <CardDescription className="mt-1 text-sm">
-                        Define subject loads, preview the generated schedule, and apply it to the grid.
+                      <CardDescription className="text-xs">
+                        Set subject loads, preview, then apply to grid.
                       </CardDescription>
                     </div>
                   </div>
@@ -1135,35 +1230,35 @@ const AdminTimetablePage = () => {
                 </div>
               </CardHeader>
             </div>
-            <CardContent className="grid gap-6 p-4 lg:grid-cols-[1.15fr_0.85fr]">
-              <div className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-800 p-4">
+            <CardContent className="grid gap-3 p-3 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="space-y-3">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-800 p-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">
-                        <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                        <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Available per week</div>
+                      <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Available / week</div>
                     </div>
-                    <div className="mt-2 text-2xl font-bold text-blue-700 dark:text-blue-400">{periodCount * SCHOOL_WEEK_DAYS.length}</div>
+                    <div className="mt-1 text-xl font-bold text-blue-700 dark:text-blue-400">{periodCount * SCHOOL_WEEK_DAYS.length}</div>
                   </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800 p-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
-                        <BarChart3 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
+                        <BarChart3 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                       </div>
-                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Requested</div>
+                      <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Requested</div>
                     </div>
-                    <div className="mt-2 text-2xl font-bold text-amber-700 dark:text-amber-400">{totalRequestedPeriods}</div>
+                    <div className="mt-1 text-xl font-bold text-amber-700 dark:text-amber-400">{totalRequestedPeriods}</div>
                   </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-800 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-800 p-3">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
-                        <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
+                        <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Subjects</div>
+                      <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Subjects</div>
                     </div>
-                    <div className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-400">{classSubjects.length}</div>
+                    <div className="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-400">{classSubjects.length}</div>
                   </div>
                 </div>
 
@@ -1226,7 +1321,7 @@ const AdminTimetablePage = () => {
                 )}
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {!autoPreview ? (
                   <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-8 text-center h-full">
                     <Sparkles className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
@@ -1235,18 +1330,18 @@ const AdminTimetablePage = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-slate-800 p-4">
-                        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Requested</div>
-                        <div className="mt-1 text-2xl font-bold text-violet-700 dark:text-violet-400">{autoPreview.summary.requestedPeriods}</div>
+                    <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-slate-800 p-2.5">
+                        <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Requested</div>
+                        <div className="text-lg font-bold text-violet-700 dark:text-violet-400">{autoPreview.summary.requestedPeriods}</div>
                       </div>
-                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-800 p-4">
-                        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Generated</div>
-                        <div className="mt-1 text-2xl font-bold text-emerald-700 dark:text-emerald-400">{autoPreview.summary.generatedPeriods}</div>
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-800 p-2.5">
+                        <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Generated</div>
+                        <div className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{autoPreview.summary.generatedPeriods}</div>
                       </div>
-                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-slate-800 p-4">
-                        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Unscheduled</div>
-                        <div className="mt-1 text-2xl font-bold text-red-700 dark:text-red-400">{autoPreview.summary.unscheduledPeriods}</div>
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-slate-800 p-2.5">
+                        <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Unscheduled</div>
+                        <div className="text-lg font-bold text-red-700 dark:text-red-400">{autoPreview.summary.unscheduledPeriods}</div>
                       </div>
                     </div>
 

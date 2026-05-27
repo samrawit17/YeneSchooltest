@@ -16,6 +16,7 @@ export interface EnrollmentRequest {
   lastName: string;
   dateOfBirth: string;
   gender: string;
+  faydaNumber?: string;
   nationality?: string;
   email?: string;
   phone?: string;
@@ -29,6 +30,7 @@ export interface EnrollmentRequest {
   parentEmail?: string;
   parentRelation: string;
   requestedGrade: number;
+  requestedStream?: string;
   requestedSection?: string;
   allocatedClassId?: string;
   allocatedSectionId?: string;
@@ -81,6 +83,7 @@ export interface PublicEnrollmentSchool {
   id: string;
   name: string;
   code: string | null;
+  publicUrlSlug?: string | null;
   logoUrl?: string | null;
   accentColor?: string | null;
 }
@@ -105,6 +108,11 @@ export const enrollmentAPI = {
       skipAuthErrorRedirect: true,
     }),
   getSchools: () => api.get("/enrollment/schools", { skipAuthErrorRedirect: true }),
+  getSchoolById: (id: string) => api.get(`/enrollment/school/${id}`, { skipAuthErrorRedirect: true }),
+  getSchoolByUrlSlug: (slug: string) =>
+    api.get(`/enrollment/school-url/${encodeURIComponent(slug)}`, {
+      skipAuthErrorRedirect: true,
+    }),
   getStatus: (schoolId: string) => api.get("/enrollment/status", { params: { schoolId } }),
   submitRequest: (data: {
     schoolId: string;
@@ -114,6 +122,7 @@ export const enrollmentAPI = {
     lastName: string;
     dateOfBirth: string;
     gender: string;
+    faydaNumber: string;
     nationality?: string;
     email?: string;
     phone?: string;
@@ -127,6 +136,7 @@ export const enrollmentAPI = {
     parentEmail?: string;
     parentRelation: string;
     requestedGrade: number;
+    requestedStream?: string;
     documents?: Record<string, boolean>;
   }) => api.post("/enrollment/request", data),
   checkCapacity: (schoolId: string, grade: number) =>

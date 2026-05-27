@@ -1,0 +1,31 @@
+subject,question,option_a,option_b,option_c,option_d,correct_option
+Mathematics,"What is the value of 15 + 27?",32,42,52,62,B
+Mathematics,"Which fraction is equal to 0.5?","1/4","1/2","2/3","3/4",B
+Mathematics,"A rectangle has length 8 cm and width 5 cm. What is its area?","13 cm2","26 cm2","40 cm2","80 cm2",C
+Mathematics,"What is 25 percent of 200?",25,40,50,75,C
+Mathematics,"Solve for x: x + 9 = 21",10,11,12,13,C
+English,"Choose the correctly spelled word.",Recieve,Receive,Receeve,Receve,B
+English,"Which word is a verb in the sentence: The students read books.",students,read,books,the,B
+English,"Choose the correct sentence.","She go to school.","She goes to school.","She going to school.","She gone to school.",B
+English,"What is the opposite of difficult?",hard,easy,heavy,slow,B
+English,"Choose the best answer: He has lived here ___ 2020.",for,since,at,on,B
+Science,"Which organ pumps blood through the body?",Lung,Heart,Liver,Kidney,B
+Science,"Which state of matter has a fixed shape and fixed volume?",Gas,Liquid,Solid,Steam,C
+Science,"Plants make their food through which process?",Digestion,Respiration,Photosynthesis,Evaporation,C
+Science,"Which planet is known as the Red Planet?",Earth,Mars,Jupiter,Venus,B
+Science,"What is the basic unit of life?",Atom,Cell,Tissue,Organ,B
+Social Studies,"What is the capital city of Ethiopia?",Dire Dawa,Bahir Dar,Addis Ababa,Hawassa,C
+Social Studies,"Which river is strongly associated with Ethiopia and flows to Sudan and Egypt?",Awash,Blue Nile,Omo,Baro,B
+Social Studies,"A map key is used to explain what?",Symbols on a map,Weather only,Population only,Distance only,A
+Social Studies,"Which direction is opposite of north?",East,West,South,Northwest,C
+Social Studies,"What is one purpose of rules in a community?",To create confusion,To guide behavior,To stop learning,To remove safety,B
+Biology,"Which part of the cell controls most cell activities?",Cell wall,Nucleus,Cytoplasm,Vacuole,B
+Biology,"The process by which green plants release oxygen is called",Photosynthesis,Condensation,Erosion,Magnetism,A
+Biology,"Which blood cells help fight infection?",Red blood cells,White blood cells,Platelets,Plasma,B
+Chemistry,"Which of the following is a chemical symbol for oxygen?",Ox,O,O2 only,Og,B
+Chemistry,"A substance with pH less than 7 is generally",Neutral,Basic,Acidic,Metallic,C
+Physics,"Speed is calculated by dividing distance by",Mass,Time,Volume,Temperature,B
+Physics,"Which force pulls objects toward Earth?",Friction,Gravity,Magnetism,Tension,B
+Physics,"The SI unit of electric current is",Volt,Ampere,Ohm,Watt,B
+Geography,"Which landform is higher than the surrounding land and usually has steep sides?",Plain,Valley,Mountain,Plateau,C
+Geography,"Climate describes weather conditions over",One minute,One day,A long period,One hour,C

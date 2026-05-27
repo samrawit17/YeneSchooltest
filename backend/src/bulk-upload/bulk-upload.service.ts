@@ -16,10 +16,12 @@ export interface BulkUserRecord {
   // Student-specific fields
   current_class?: string;
   next_class?: string;
+  stream?: string;
   gender?: string;
   section?: string;
   roll_number?: string;
   student_code?: string;
+  fayda_number?: string;
   // Parent-specific fields
   parent_name?: string;
   parent_phone?: string;
@@ -93,6 +95,20 @@ export class BulkUploadService {
     return joined.replace(/\s+/g, ' ').trim();
   }
 
+  private normalizeStudentStream(stream?: string | null, grade?: number | null) {
+    if (!grade || ![11, 12].includes(grade)) {
+      return null;
+    }
+    const normalized = String(stream || '').trim().toUpperCase();
+    if (!normalized) {
+      return null;
+    }
+    if (!['SOCIAL', 'NATURAL'].includes(normalized)) {
+      throw new BadRequestException('Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
+    }
+    return normalized;
+  }
+
   private sortRecordsAlphabetically<T extends {
     full_name?: string;
     first_name?: string;
@@ -117,6 +133,10 @@ export class BulkUploadService {
 
   private normalizePhone(value?: string | null) {
     return String(value || '').replace(/[^\d+]/g, '').trim();
+  }
+
+  private normalizeFaydaNumber(value?: string | null) {
+    return String(value || '').replace(/\D/g, '').trim();
   }
 
   private normalizeStudentAndParentNames(
@@ -352,6 +372,17 @@ export class BulkUploadService {
         'mothers_phone',
       ]);
       const rollNumberIdx = findIdx(['roll_number', 'rollno', 'roll']);
+      const streamIdx = findIdx(['stream', 'student_stream', 'track']);
+      const faydaNumberIdx = findIdx([
+        'fan',
+        'fayda_number',
+        'fayda',
+        'fayda_id',
+        'faydaid',
+        'national_id',
+        'nationalid',
+        'national_id_number',
+      ]);
 
       const records: BulkUserRecord[] = [];
       for (let i = 1; i < lines.length; i++) {
@@ -417,8 +448,11 @@ export class BulkUploadService {
           current_class: currentClass,
           gender: genderIdx !== -1 ? values[genderIdx] : undefined,
           section: sectionIdx !== -1 ? values[sectionIdx] : undefined,
+          stream: streamIdx !== -1 ? values[streamIdx] : undefined,
           roll_number: rollNumberIdx !== -1 ? values[rollNumberIdx] : undefined,
           student_code: studIdIdx !== -1 ? values[studIdIdx] : undefined,
+          fayda_number:
+            faydaNumberIdx !== -1 ? values[faydaNumberIdx] : undefined,
           parent_name: normalizedNames.parentName,
           parent_phone:
             parentPhoneIdx !== -1 ? values[parentPhoneIdx] : undefined,
@@ -485,6 +519,15 @@ export class BulkUploadService {
     const isStudent = record.role?.toLowerCase() === 'student' || (!record.full_name && record.first_name);
     if (isStudent && !record.current_class) {
       return `Row ${index + 1}: Missing required field 'current_class' for student import`;
+    }
+    if (isStudent) {
+      const faydaNumber = this.normalizeFaydaNumber(record.fayda_number);
+      if (!faydaNumber) {
+        return `Row ${index + 1}: Missing required field 'fayda_number' for student import`;
+      }
+      if (!/^\d{12}$/.test(faydaNumber)) {
+        return `Row ${index + 1}: Fayda number must be 12 digits`;
+      }
     }
 
     return null;
@@ -696,6 +739,7 @@ export class BulkUploadService {
       select: {
         studentCode: true,
         studentId: true,
+        faydaNumber: true,
         phone: true,
         user: { select: { name: true, phone: true } },
         parents: {
@@ -711,6 +755,7 @@ export class BulkUploadService {
       },
     });
     const existingStudentCodes = new Set<string>();
+    const existingFaydaNumbers = new Set<string>();
     const existingNamePhones = new Set<string>();
     const existingNameParentPhones = new Set<string>();
 
@@ -719,6 +764,12 @@ export class BulkUploadService {
       for (const code of [student.studentCode, student.studentId]) {
         const normalizedCode = this.normalizeLookupValue(code);
         if (normalizedCode) existingStudentCodes.add(normalizedCode);
+      }
+      const normalizedFaydaNumber = this.normalizeFaydaNumber(
+        student.faydaNumber,
+      );
+      if (normalizedFaydaNumber) {
+        existingFaydaNumbers.add(normalizedFaydaNumber);
       }
 
       for (const phone of [student.phone, student.user?.phone]) {
@@ -741,6 +792,7 @@ export class BulkUploadService {
     }
 
     const uploadedStudentCodes = new Set<string>();
+    const uploadedFaydaNumbers = new Set<string>();
     const uploadedNamePhones = new Set<string>();
     const uploadedNameParentPhones = new Set<string>();
 
@@ -772,6 +824,9 @@ export class BulkUploadService {
       const normalizedStudentCode = this.normalizeLookupValue(
         record.student_code || record.student_id,
       );
+      const normalizedFaydaNumber = this.normalizeFaydaNumber(
+        record.fayda_number,
+      );
       const namePhoneKey =
         normalizedName && normalizedPhone
           ? `${normalizedName}|${normalizedPhone}`
@@ -788,6 +843,12 @@ export class BulkUploadService {
           existingStudentCodes.has(normalizedStudentCode))
       ) {
         duplicateReason = `Row ${i + 1}: Duplicate student code`;
+      } else if (
+        normalizedFaydaNumber &&
+        (uploadedFaydaNumbers.has(normalizedFaydaNumber) ||
+          existingFaydaNumbers.has(normalizedFaydaNumber))
+      ) {
+        duplicateReason = `Row ${i + 1}: Duplicate Fayda number`;
       } else if (
         namePhoneKey &&
         (uploadedNamePhones.has(namePhoneKey) ||
@@ -809,6 +870,7 @@ export class BulkUploadService {
       }
 
       if (normalizedStudentCode) uploadedStudentCodes.add(normalizedStudentCode);
+      if (normalizedFaydaNumber) uploadedFaydaNumbers.add(normalizedFaydaNumber);
       if (namePhoneKey) uploadedNamePhones.add(namePhoneKey);
       if (nameParentPhoneKey) uploadedNameParentPhones.add(nameParentPhoneKey);
 
@@ -829,7 +891,19 @@ export class BulkUploadService {
         });
         continue;
       }
-      const gradeKey = gradeInfo.name || rawGrade;
+      let streamKey = '';
+      if (gradeInfo.level === 11 || gradeInfo.level === 12) {
+        const normalizedStream = this.normalizeStudentStream(record.stream, gradeInfo.level);
+        if (!normalizedStream) {
+          failedRecords.push({
+            record,
+            error: `Row ${i + 1}: Grade ${gradeInfo.level} students must have stream SOCIAL or NATURAL`,
+          });
+          continue;
+        }
+        streamKey = `::${normalizedStream}`;
+      }
+      const gradeKey = `${gradeInfo.name || rawGrade}${streamKey}`;
       if (!gradeGroups[gradeKey]) gradeGroups[gradeKey] = [];
       gradeGroups[gradeKey].push(record);
       gradeInfoMap.set(gradeKey, gradeInfo);
@@ -840,6 +914,9 @@ export class BulkUploadService {
     // Process each grade group
     for (const [gradeName, group] of Object.entries(gradeGroups)) {
       const gradeInfo = gradeInfoMap.get(gradeName);
+      const [baseGradeName, streamPart] = gradeName.split('::');
+      const normalizedStream = streamPart || null;
+      const classNameForGroup = baseGradeName;
       // Keep section assignment deterministic and alphabetical.
       const orderedStudents = this.sortRecordsAlphabetically(group);
 
@@ -853,16 +930,22 @@ export class BulkUploadService {
           let sectionName: string | null = null;
 
           if (preferredSection) {
-            const studentCount = await this.prismaService.studentClass.count({
+            const sectionRecord = await this.prismaService.section.findFirst({
               where: {
-                schoolId,
-                academicYear: yearName,
-                class: { name: gradeName },
-                section: { name: preferredSection },
+                class: { schoolId, name: classNameForGroup },
+                name: preferredSection,
+              },
+              include: {
+                _count: { select: { studentClasses: true } },
               },
             });
 
-            if (studentCount < sectionCapacity) {
+            const sectionStream = sectionRecord?.stream || null;
+            if (
+              (!sectionRecord ||
+                (!sectionStream || sectionStream === normalizedStream) &&
+                  sectionRecord._count.studentClasses < sectionCapacity)
+            ) {
               sectionName = preferredSection;
             }
           }
@@ -871,16 +954,22 @@ export class BulkUploadService {
             let sectionIndex = 0;
             while (sectionName === null) {
               const candidate = String.fromCharCode(65 + sectionIndex);
-              const studentCount = await this.prismaService.studentClass.count({
+              const sectionRecord = await this.prismaService.section.findFirst({
                 where: {
-                  schoolId,
-                  academicYear: yearName,
-                  class: { name: gradeName },
-                  section: { name: candidate },
+                  class: { schoolId, name: classNameForGroup },
+                  name: candidate,
+                },
+                include: {
+                  _count: { select: { studentClasses: true } },
                 },
               });
 
-              if (studentCount < sectionCapacity) {
+              const sectionStream = sectionRecord?.stream || null;
+              if (
+                !sectionRecord ||
+                ((!sectionStream || sectionStream === normalizedStream) &&
+                  sectionRecord._count.studentClasses < sectionCapacity)
+              ) {
                 sectionName = candidate;
               } else {
                 sectionIndex++;
@@ -920,6 +1009,7 @@ export class BulkUploadService {
                 schoolId,
                 studentCode: username,
                 studentId: username,
+                faydaNumber: this.normalizeFaydaNumber(record.fayda_number),
                 academicYear: yearId,
                 enrollmentStatus: 'APPROVED',
                 phone: record.phone?.trim() || undefined,
@@ -929,12 +1019,12 @@ export class BulkUploadService {
               },
             });
 
-            if (gradeName !== 'Unassigned') {
+            if (baseGradeName !== 'Unassigned') {
               // First try to find a class with the specific section
               let cls = await tx.class.findFirst({
                 where: {
                   schoolId,
-                  name: gradeName,
+                  name: classNameForGroup,
                   academicYearId: yearId,
                   section: sectionName,
                 },
@@ -946,7 +1036,7 @@ export class BulkUploadService {
                 const emptySectionClass = await tx.class.findFirst({
                   where: {
                     schoolId,
-                    name: gradeName,
+                    name: classNameForGroup,
                     academicYearId: yearId,
                     section: '',
                   },
@@ -963,7 +1053,7 @@ export class BulkUploadService {
                   data: {
                     schoolId,
                     academicYearId: yearId,
-                    name: gradeName,
+                    name: classNameForGroup,
                     section: sectionName,
                     grade: gradeInfo?.level ?? undefined,
                     gradeId: gradeInfo?.id ?? undefined,
@@ -1028,8 +1118,14 @@ export class BulkUploadService {
                   data: {
                     classId: cls.id,
                     name: sectionName,
+                    stream: normalizedStream,
                     capacity: sectionCapacity,
                   },
+                });
+              else if (!sec.stream && normalizedStream)
+                sec = await tx.section.update({
+                  where: { id: sec.id },
+                  data: { stream: normalizedStream },
                 });
 
               const studentName =
@@ -1060,7 +1156,12 @@ export class BulkUploadService {
               });
               await tx.studentProfile.update({
                 where: { id: profile.id },
-                data: { className: cls.name, section: sec.name, rollNumber },
+                data: {
+                  className: cls.name,
+                  stream: this.normalizeStudentStream(record.stream, cls.grade),
+                  section: sec.name,
+                  rollNumber,
+                },
               });
             }
 

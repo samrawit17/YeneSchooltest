@@ -6,13 +6,15 @@ import { useRouter, useParams } from "next/navigation";
 import { studentsAPI, classesAPI, sectionsAPI, registrarAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
 import { queryKeys } from "@/lib/query-keys";
-import { Loader2, ArrowLeft, Save, User, BookOpen, Users, FileText, AlertTriangle } from "lucide-react";
+import { Loader2, ArrowLeft, Save, User, BookOpen, Users, FileText, AlertTriangle, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { toast } from "sonner";
+import StudentDocumentViewer, { StudentDocumentRecord } from "@/components/students/StudentDocumentViewer";
 
 // Shadcn/ui Components
 import { Button } from "@/components/ui/button";
+import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -52,6 +54,7 @@ interface Student {
   enrollmentYear?: string;
   enrollmentStatus?: string;
   className?: string;
+  stream?: string | null;
   classId?: string;
   section?: string;
   sectionId?: string;
@@ -60,7 +63,7 @@ interface Student {
     type: string;
     name: string;
     url: string;
-  }>;
+  }> | string;
   parents?: Parent[];
   user?: {
     id: string;
@@ -70,6 +73,60 @@ interface Student {
     avatarUrl?: string;
   } | Record<string, any>;
 }
+
+const normalizeStudentDocuments = (raw: Student["documents"]) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw !== "string") return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const baseRequiredStudentDocuments = [
+  { type: "birth_certificate", title: "Birth Certificate" },
+  { type: "parent_id", title: "Parent ID" },
+  { type: "previous_transcript", title: "Previous School Transcript" },
+  { type: "transfer_letter", title: "Transfer Letter" },
+  { type: "passport_photo", title: "Passport Photo" },
+  { type: "medical_record", title: "Medical Record" },
+];
+
+const extractGradeNumber = (value?: string | number | null) => {
+  if (typeof value === "number") return value;
+  const match = String(value || "").match(/\d+/);
+  return match ? Number(match[0]) : null;
+};
+
+const getRequiredStudentDocuments = (className?: string | number | null) => {
+  const grade = extractGradeNumber(className);
+  const nationalDocuments =
+    grade === 7
+      ? [{ type: "grade_6_national_certificate", title: "Grade 6 National Certificate" }]
+      : grade === 9
+        ? [{ type: "grade_8_national_certificate", title: "Grade 8 National Certificate" }]
+        : [];
+
+  return [...baseRequiredStudentDocuments, ...nationalDocuments];
+};
+
+const parseDateValue = (value?: string | null) => {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
+
+const toDateInputValue = (date?: Date) => {
+  if (!date) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 interface ClassOption {
   id: string;
@@ -110,6 +167,7 @@ export default function EditStudentPage() {
     classId: "",
     sectionId: "",
     className: "",
+    stream: "",
     section: "",
     
     // Parent info
@@ -126,6 +184,8 @@ export default function EditStudentPage() {
   const [userId, setUserId] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState("personal");
+  const [viewingDocument, setViewingDocument] = useState<StudentDocumentRecord | null>(null);
+  const [documentUploads, setDocumentUploads] = useState<Record<string, { file: File | null; note: string }>>({});
   const { setItems: setBreadcrumb } = useBreadcrumb();
 
   // Fetch student data
@@ -175,6 +235,8 @@ export default function EditStudentPage() {
 
   const selectedClass = classesData?.find(c => c.id === formData.classId);
   const selectedSection = sectionsData?.find(s => s.id === formData.sectionId);
+  const selectedGrade = selectedClass?.grade ?? extractGradeNumber(formData.className);
+  const supportsStream = selectedGrade === 11 || selectedGrade === 12;
 
   const { data: selectedSectionStudents } = useQuery<any>({
     queryKey: queryKeys.classSections.students(formData.classId, formData.sectionId, "", 1),
@@ -256,6 +318,7 @@ export default function EditStudentPage() {
         sectionId: foundSectionId,
         // Also store className and section for reference
         className: classNameFromDb,
+        stream: student.stream || "",
         section: sectionFromDb,
         parentName: parent?.name || "",
         parentPhone: parent?.phone || "",
@@ -331,7 +394,7 @@ export default function EditStudentPage() {
 
   // Assign class mutation
   const assignClassMutation = useMutation({
-    mutationFn: (data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string }) => {
+    mutationFn: (data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string; stream?: string | null }) => {
       const idToUse = userId || studentId;
       return registrarAPI.assignClass(idToUse, data);
     },
@@ -359,6 +422,32 @@ export default function EditStudentPage() {
     },
   });
 
+  const uploadDocumentFile = async (document: { type: string; title: string }) => {
+    const pendingUpload = documentUploads[document.type];
+    if (!pendingUpload?.file) {
+      toast.error(`Choose a file for ${document.title}`);
+      return;
+    }
+
+    try {
+      const idToUse = userId || (student?.user as Record<string, any>)?.id || studentId;
+      await studentsAPI.uploadDocumentFile(idToUse, {
+        file: pendingUpload.file,
+        title: document.title,
+        type: document.type,
+        description: pendingUpload.note.trim() || undefined,
+      });
+      toast.success(`${document.title} uploaded`);
+      setDocumentUploads((current) => ({
+        ...current,
+        [document.type]: { file: null, note: "" },
+      }));
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId) });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.message || "Failed to upload document");
+    }
+  };
+
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -371,6 +460,7 @@ export default function EditStudentPage() {
       motherPhone: formData.motherPhone,
       gender: formData.gender,
       address: formData.address,
+      dateOfBirth: formData.dateOfBirth || undefined,
     };
 
     // Update user name if changed
@@ -399,6 +489,10 @@ export default function EditStudentPage() {
       toast.error("Selected section is already at capacity");
       return;
     }
+    if (supportsStream && !formData.stream) {
+      toast.error("Please select Social or Natural stream for Grade 11/12");
+      return;
+    }
 
     // Get the selected class name from the class options
     const className = selectedClass ? `Grade ${selectedClass.grade}` : formData.classId;
@@ -414,6 +508,7 @@ export default function EditStudentPage() {
       rollNumber: formData.rollNumber,
       classId: formData.classId,
       sectionId: formData.sectionId,
+      stream: supportsStream ? formData.stream : null,
     });
   };
 
@@ -472,6 +567,13 @@ export default function EditStudentPage() {
       </div>
     );
   }
+
+  const studentDocuments = normalizeStudentDocuments(student.documents);
+  const documentTypes = new Set(studentDocuments.map((doc: any) => String(doc.type || doc.title || doc.name || "").toLowerCase()));
+  const documentsByType = new Map(
+    studentDocuments.map((doc: any) => [String(doc.type || doc.title || doc.name || "").toLowerCase(), doc]),
+  );
+  const requiredDocuments = getRequiredStudentDocuments(formData.className || student.className);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 dark:bg-slate-950 md:p-6" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
@@ -597,11 +699,10 @@ export default function EditStudentPage() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                  <Input
-                    id="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                  <CalendarDatePicker
+                    value={parseDateValue(formData.dateOfBirth)}
+                    onChange={(date) => handleInputChange("dateOfBirth", toDateInputValue(date))}
+                    placeholder="Select date of birth"
                   />
                 </div>
                 
@@ -681,6 +782,10 @@ export default function EditStudentPage() {
                     onValueChange={(value) => {
                       handleInputChange("classId", value);
                       handleInputChange("sectionId", ""); // Reset section
+                      const nextClass = classesData?.find((cls) => cls.id === value);
+                      if (![11, 12].includes(Number(nextClass?.grade))) {
+                        handleInputChange("stream", "");
+                      }
                     }}
                     disabled={!canEditPlacement}
                   >
@@ -716,6 +821,25 @@ export default function EditStudentPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {supportsStream && (
+                  <div className="space-y-2">
+                    <Label htmlFor="stream">Stream</Label>
+                    <Select
+                      value={formData.stream}
+                      onValueChange={(value) => handleInputChange("stream", value)}
+                      disabled={!canEditPlacement}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select stream" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SOCIAL">Social</SelectItem>
+                        <SelectItem value="NATURAL">Natural</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500">Only Grade 11 and Grade 12 students use a stream.</p>
+                  </div>
+                )}
                 
                 <div className="space-y-2">
                   <Label htmlFor="rollNumber">Roll Number</Label>
@@ -886,21 +1010,106 @@ export default function EditStudentPage() {
               <CardDescription>Student documents and certificates</CardDescription>
             </CardHeader>
             <CardContent>
-              {student.documents && student.documents.length > 0 ? (
+              <div className="mb-5 space-y-3">
+                {requiredDocuments.map((document) => {
+                  const submitted = documentTypes.has(document.type.toLowerCase()) || documentTypes.has(document.title.toLowerCase());
+                  const submittedDocument = documentsByType.get(document.type.toLowerCase()) || documentsByType.get(document.title.toLowerCase()) || null;
+                  const pendingUpload = documentUploads[document.type] || { file: null, note: "" };
+                  return (
+                    <div
+                      key={document.type}
+                      className="rounded-lg border p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="font-medium">{document.title}</p>
+                            <p className="text-sm text-gray-500">
+                              {submitted ? "Submitted" : "Required document"}
+                            </p>
+                          </div>
+                        </div>
+                        {submitted ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setViewingDocument(submittedDocument || { ...document, status: "SUBMITTED", submitted: true })}
+                          >
+                            View
+                          </Button>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                            Missing
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-4 rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
+                        <p className="mb-3 text-sm font-medium">Optional file upload</p>
+                        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                          <div className="space-y-2">
+                            <Label htmlFor={`${document.type}-file`}>File</Label>
+                            <Input
+                              id={`${document.type}-file`}
+                              type="file"
+                              accept="application/pdf,image/png,image/jpeg,image/jpg,image/webp"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0] || null;
+                                setDocumentUploads((current) => ({
+                                  ...current,
+                                  [document.type]: { ...pendingUpload, file },
+                                }));
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`${document.type}-note`}>Note</Label>
+                            <Input
+                              id={`${document.type}-note`}
+                              value={pendingUpload.note}
+                              onChange={(event) => {
+                                setDocumentUploads((current) => ({
+                                  ...current,
+                                  [document.type]: { ...pendingUpload, note: event.target.value },
+                                }));
+                              }}
+                              placeholder="Optional note"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <Button
+                              type="button"
+                              className="w-full gap-2"
+                              disabled={!pendingUpload.file}
+                              onClick={() => uploadDocumentFile(document)}
+                            >
+                              <Upload className="h-4 w-4" />
+                              Upload
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {studentDocuments.length > 0 ? (
                 <div className="space-y-3">
-                  {student.documents.map((doc) => (
+                  {studentDocuments.map((doc, index) => (
                     <div 
-                      key={doc.id} 
+                      key={doc.id || `${doc.type || doc.title || doc.name}-${index}`} 
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                     >
                       <div className="flex items-center gap-3">
                         <FileText className="h-5 w-5 text-blue-600" />
                         <div>
-                          <p className="font-medium">{doc.name}</p>
-                          <p className="text-sm text-gray-500">{doc.type}</p>
+                          <p className="font-medium">{doc.name || doc.title || "Document"}</p>
+                          <p className="text-sm text-gray-500">{doc.type || doc.status || "Submitted"}</p>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => setViewingDocument(doc)}>
                         View
                       </Button>
                     </div>
@@ -910,15 +1119,19 @@ export default function EditStudentPage() {
                 <div className="text-center py-8 text-gray-500">
                   <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                   <p>No documents uploaded yet</p>
-                  <Button variant="outline" className="mt-4">
-                    Upload Document
-                  </Button>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+      <StudentDocumentViewer
+        document={viewingDocument}
+        open={Boolean(viewingDocument)}
+        onOpenChange={(open) => {
+          if (!open) setViewingDocument(null);
+        }}
+      />
     </div>
   );
 }

@@ -4,9 +4,9 @@ type Theme = 'light' | 'dark' | 'system';
 
 interface ThemeState {
   theme: Theme;
-  setTheme: (theme: Theme) => void;
+  setTheme: (theme: Theme, userId?: string | null) => void;
   resolvedTheme: 'light' | 'dark';
-  initializeTheme: () => void;
+  initializeTheme: (userId?: string | null) => void;
 }
 
 const isClient = typeof window !== 'undefined';
@@ -57,8 +57,8 @@ const getCurrentUserId = () => {
   return null;
 };
 
-const getScopedThemeKey = () => {
-  const userId = getCurrentUserId();
+const getScopedThemeKey = (explicitUserId?: string | null) => {
+  const userId = explicitUserId ?? getCurrentUserId();
   return userId ? `theme-storage:${userId}` : GUEST_THEME_KEY;
 };
 
@@ -70,14 +70,17 @@ const applyResolvedTheme = (resolvedTheme: 'light' | 'dark') => {
   root.classList.add(resolvedTheme);
 };
 
-const readStoredTheme = (): Theme => {
+const readStoredTheme = (userId?: string | null): Theme => {
   if (!isClient) return DEFAULT_THEME;
 
-  const scopedTheme = parseTheme(localStorage.getItem(getScopedThemeKey()));
+  const effectiveUserId = userId ?? getCurrentUserId();
+  const scopedTheme = parseTheme(localStorage.getItem(getScopedThemeKey(effectiveUserId)));
   if (scopedTheme) return scopedTheme;
 
-  const guestTheme = parseTheme(localStorage.getItem(GUEST_THEME_KEY));
-  if (guestTheme) return guestTheme;
+  if (!effectiveUserId) {
+    const guestTheme = parseTheme(localStorage.getItem(GUEST_THEME_KEY));
+    if (guestTheme) return guestTheme;
+  }
 
   return DEFAULT_THEME;
 };
@@ -86,19 +89,19 @@ export const useThemeStore = create<ThemeState>((set) => ({
   theme: DEFAULT_THEME,
   resolvedTheme: 'light',
 
-  setTheme: (theme) => {
+  setTheme: (theme, userId) => {
     const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
     set({ theme, resolvedTheme });
 
     if (isClient) {
-      localStorage.setItem(getScopedThemeKey(), JSON.stringify({ theme }));
+      localStorage.setItem(getScopedThemeKey(userId), JSON.stringify({ theme }));
     }
 
     applyResolvedTheme(resolvedTheme);
   },
 
-  initializeTheme: () => {
-    const theme = readStoredTheme();
+  initializeTheme: (userId) => {
+    const theme = readStoredTheme(userId);
     const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
     set({ theme, resolvedTheme });
     applyResolvedTheme(resolvedTheme);

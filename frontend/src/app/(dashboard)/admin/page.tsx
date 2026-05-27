@@ -39,14 +39,12 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import { useTranslations } from "@/hooks/useTranslations";
 
 interface DashboardStats {
@@ -94,6 +92,21 @@ interface ChartData {
   }[];
 }
 
+interface TeacherLeaderboardEntry {
+  rank: number;
+  teacherId: string;
+  teacherName: string;
+  teacherEmail: string | null;
+  overallScore: number;
+  gradingScore: number;
+  attendanceScore: number;
+  lessonPlanScore: number;
+  gradingSubmitted: number;
+  gradingOnTime: number;
+  attendanceSubmitted: number;
+  lessonPlans: number;
+}
+
 interface DashboardResponse {
   stats: DashboardStats;
   alerts: DashboardAlert[];
@@ -102,6 +115,7 @@ interface DashboardResponse {
   metadata: {
     schoolId?: string;
     generatedAt: string;
+    teacherLeaderboard?: TeacherLeaderboardEntry[];
   };
 }
 

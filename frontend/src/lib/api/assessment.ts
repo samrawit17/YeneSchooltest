@@ -27,6 +27,7 @@ export const assessmentsAPI = {
     }>;
   }) => api.post('/assessments', data),
   addSubjects: (id: string, data: any) => api.post(`/assessments/${id}/subjects`, data),
+  clear: () => api.delete('/assessments/clear', { skipAuthErrorRedirect: true } as any),
   lock: (id: string) => api.post(`/assessments/${id}/lock`),
   getTeacherAssessments: (params?: { academicYearId?: string; termId?: string; type?: string }) =>
     api.get('/assessments/teacher/me', { params }),

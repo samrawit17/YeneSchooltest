@@ -33,7 +33,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (loginIdentifier: string, password: string, rememberMe?: boolean) => Promise<User>;
+  login: (loginIdentifier: string, password: string, rememberMe?: boolean, schoolId?: string | null) => Promise<User>;
   logout: () => void;
   updateUser: (user: User) => void;
 }
@@ -52,14 +52,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      
      const checkAuth = async () => {
        try {
-         const response = await userAPI.getProfile();
+         const response = await userAPI.getProfile({ skipAuthErrorRedirect: true });
          const profile = response.data;
          if (profile) {
            setUser(profile);
            setToken('cookie-session');
+           const userTheme = (profile.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
+           useThemeStore.getState().setTheme(userTheme, profile.id);
          }
        } catch (error: any) {
-         if (error?.response?.status !== 401) {
+         const isCanceledRequest =
+           error?.code === 'ERR_CANCELED' ||
+           error?.name === 'CanceledError' ||
+           error?.message === 'Request aborted';
+         if (error?.response?.status !== 401 && !isCanceledRequest) {
            console.error('Failed to restore authenticated session:', error);
          }
          setUser(null);
@@ -71,7 +77,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
      checkAuth();
      
-     // Initialize theme from Zustand store (which handles persistence)
+     // Initialize guest theme while auth restoration runs. Authenticated users are
+     // re-applied with their own scoped key/server preference after profile load.
      useThemeStore.getState().initializeTheme();
    }, []);
 
@@ -80,17 +87,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      return null;
    }
 
-   const login = async (loginIdentifier: string, password: string, _rememberMe = false): Promise<User> => {
+   const login = async (
+     loginIdentifier: string,
+     password: string,
+     _rememberMe = false,
+     schoolId?: string | null,
+   ): Promise<User> => {
      try {
-       const response = await authAPI.login(loginIdentifier, password);
+       const response = await authAPI.login(loginIdentifier, password, schoolId);
        const { access_token, user: userData } = response.data;
-       // Save user's theme preference to Zustand store
-       const userTheme = (userData.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
-       useThemeStore.getState().setTheme(userTheme);
-       useLanguageStore.getState().initializeLanguage();
-
        setToken(access_token || 'cookie-session');
        setUser(userData);
+
+       // Apply the authenticated user's own preference, not the guest key.
+       const userTheme = (userData.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
+       useThemeStore.getState().setTheme(userTheme, userData.id);
+       useLanguageStore.getState().initializeLanguage();
 
        return userData;
      } catch (error: any) {

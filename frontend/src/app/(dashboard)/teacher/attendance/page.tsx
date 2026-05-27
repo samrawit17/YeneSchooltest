@@ -968,9 +968,9 @@ export default function TeacherAttendancePage() {
                 disabled={isLoadingClasses}
               >
                 <SelectTrigger className="w-full border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white sm:w-[180px]">
-                  <SelectValue placeholder={isLoadingClasses ? "Loading..." : "Class"} />
+                  <SelectValue placeholder={isLoadingClasses ? "Loading..." : "Class"} className="truncate" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-[#1E293B] dark:border-[#334155]">
+                <SelectContent className="dark:bg-[#1E293B] dark:border-[#334155] max-h-[300px] overflow-y-auto">
                   {classOptions.map(cls => (
                     <SelectItem key={cls.key} value={cls.key} className="dark:text-white dark:focus:bg-[#334155]">
                       {cls.name} - Section {cls.sectionName} {cls.type === 'homeroom' ? '(Homeroom)' : ''}

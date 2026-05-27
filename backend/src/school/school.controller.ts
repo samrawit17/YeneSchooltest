@@ -23,7 +23,10 @@ import {
 } from './school.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  AllowSuperAdminMixedRole,
+  Roles,
+} from '../auth/decorators/roles.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Role } from '../auth/types/role.enum';
 
@@ -92,7 +95,8 @@ export class SchoolController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.IT_MANAGER)
   async updateSchool(
     @Param('id') id: string,
@@ -103,6 +107,7 @@ export class SchoolController {
       address?: string;
       phone?: string;
       code?: string;
+      publicUrlSlug?: string;
       logo?: string;
       logoUrl?: string;
     },
@@ -123,6 +128,7 @@ export class SchoolController {
         address: body.address,
         phone: body.phone,
         code: body.code,
+        publicUrlSlug: body.publicUrlSlug,
         logoUrl: body.logoUrl ?? body.logo,
       };
       const school = await this.schoolService.updateSchool(id, updateDto);
@@ -137,6 +143,7 @@ export class SchoolController {
 
   @Post(':id/logo')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.IT_MANAGER)
   @UseInterceptors(FileInterceptor('file'))
   async uploadLogo(

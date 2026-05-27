@@ -13,6 +13,7 @@ export interface CreateStudentDto {
   name: string;
   academicYear: string;
   gradeId: string;
+  stream?: string | null;
   gender?: string;
   address?: string;
   phone?: string;
@@ -37,6 +38,7 @@ export interface CreateStudentDto {
 export interface UpdateStudentDto {
   name?: string;
   gender?: string;
+  stream?: string | null;
   address?: string;
   phone?: string;
   motherName?: string;
@@ -69,6 +71,7 @@ export interface AssignClassDto {
   rollNumber: string;
   classId?: string;
   sectionId?: string;
+  stream?: string | null;
 }
 
 @Injectable()
@@ -78,6 +81,28 @@ export class RegistrarService {
     private autoAssignmentService: AutoAssignmentService,
     private credentialService: CredentialService,
   ) {}
+
+  private normalizeStudentStream(stream?: string | null, grade?: number | null) {
+    if (!grade || ![11, 12].includes(grade)) {
+      return null;
+    }
+
+    const normalized = String(stream || '').trim().toUpperCase();
+    if (!normalized) {
+      return null;
+    }
+
+    if (!['SOCIAL', 'NATURAL'].includes(normalized)) {
+      throw new BadRequestException('Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
+    }
+
+    return normalized;
+  }
+
+  private extractGradeFromClassName(className?: string | null) {
+    const match = String(className || '').match(/\d+/);
+    return match ? Number(match[0]) : null;
+  }
 
   async createStudent(
     createStudentDto: CreateStudentDto,
@@ -89,6 +114,7 @@ export class RegistrarService {
       name,
       academicYear,
       gradeId,
+      stream,
       gender,
       address,
       phone,
@@ -150,6 +176,7 @@ export class RegistrarService {
         studentId: studentCode,
         enrollmentStatus: EnrollmentStatus.PENDING,
         academicYear,
+        stream: this.normalizeStudentStream(stream, null),
         gender,
         address,
         phone,
@@ -270,6 +297,7 @@ export class RegistrarService {
     const {
       name,
       gender,
+      stream,
       address,
       phone,
       motherName,
@@ -292,6 +320,12 @@ export class RegistrarService {
       where: { userId: studentId },
       data: {
         ...(gender && { gender }),
+        ...(stream !== undefined && {
+          stream: this.normalizeStudentStream(
+            stream,
+            this.extractGradeFromClassName(student.className),
+          ),
+        }),
         ...(address && { address }),
         ...(phone && { phone }),
         ...(motherName !== undefined && { motherName }),
@@ -506,9 +540,10 @@ export class RegistrarService {
       throw new NotFoundException('Student not found');
     }
 
-    const { className, section, rollNumber, classId, sectionId } = assignData;
+    const { className, section, rollNumber, classId, sectionId, stream } = assignData;
 
     let academicYear = student.academicYear;
+    let targetGrade = this.extractGradeFromClassName(className);
 
     if (classId && sectionId) {
       const targetSection = await this.prismaService.section.findFirst({
@@ -561,12 +596,14 @@ export class RegistrarService {
           schoolId,
         },
       });
+      targetGrade = targetSection.class.grade;
     }
 
     await this.prismaService.studentProfile.update({
       where: { userId: studentId },
       data: {
         className,
+        stream: this.normalizeStudentStream(stream, targetGrade),
         section,
         rollNumber,
         academicYear,
@@ -577,6 +614,7 @@ export class RegistrarService {
       message: 'Class assigned successfully',
       studentId,
       className,
+      stream: this.normalizeStudentStream(stream, targetGrade),
       section,
       rollNumber,
     };
@@ -638,9 +676,6 @@ export class RegistrarService {
   }
 
   private generateTempPassword(): string {
-    return (
-      Math.random().toString(36).slice(-8) +
-      Math.random().toString(36).slice(-8)
-    );
+    return this.credentialService.generateTemporaryPassword(16);
   }
 }

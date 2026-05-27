@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatStudentDisplayCode } from "@/lib/student-code";
 
 type Student = {
   id: string;
@@ -35,7 +36,9 @@ type Student = {
   gender: string | null;
   avatarUrl: string | null;
   studentCode: string | null;
+  academicYear?: string | null;
   rollNumber: string | null;
+  stream?: string | null;
   section: {
     id: string;
     name: string;
@@ -109,6 +112,7 @@ export default function ClassDetailPage() {
     placeholderData: keepPreviousData,
   });
   const classInfo = statsData?.data?.class;
+  const showStreamColumn = Number(classInfo?.grade) >= 11;
   const students: Student[] = useMemo(() => {
     const rows: Student[] = studentsData?.data?.students || [];
     return [...rows].sort((a, b) => {
@@ -265,6 +269,9 @@ export default function ClassDetailPage() {
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Roll No.</TableHead>
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Student</TableHead>
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Code</TableHead>
+                      {showStreamColumn && (
+                        <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Stream</TableHead>
+                      )}
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Section</TableHead>
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Gender</TableHead>
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Parent</TableHead>
@@ -294,8 +301,24 @@ export default function ClassDetailPage() {
                           </div>
                         </TableCell>
                         <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                          {student.studentCode || "N/A"}
+                          <div className="font-mono font-medium">
+                            {formatStudentDisplayCode(student.studentCode, student.academicYear)}
+                          </div>
+                          {student.studentCode ? (
+                            <div className="text-xs text-gray-400">Login: {student.studentCode}</div>
+                          ) : null}
                         </TableCell>
+                        {showStreamColumn && (
+                          <TableCell className="px-4 py-3">
+                            {student.stream ? (
+                              <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                                {student.stream === "NATURAL" ? "Natural" : student.stream === "SOCIAL" ? "Social" : student.stream}
+                              </Badge>
+                            ) : (
+                              <span className="text-sm text-gray-500 dark:text-gray-400">N/A</span>
+                            )}
+                          </TableCell>
+                        )}
                         <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                           {student.section?.name || "N/A"}
                         </TableCell>

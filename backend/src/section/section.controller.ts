@@ -77,6 +77,7 @@ export class SectionController {
     if (!schoolId) return { success: false, message: 'School ID is required' };
     return this.sectionService.update(id, schoolId, {
       name: body.name,
+      stream: body.stream,
       capacity: body.capacity,
       roomNumber: body.roomNumber,
       homeroomTeacherId: body.homeroomTeacherId,

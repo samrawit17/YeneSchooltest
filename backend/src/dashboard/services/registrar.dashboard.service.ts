@@ -91,6 +91,12 @@ export class RegistrarDashboardService {
         rejectedEnrollments,
         activeStudents,
         inactiveStudents,
+        enrollmentRequestsPending,
+        enrollmentRequestsApproved,
+        grade8Candidates,
+        grade12Candidates,
+        studentsWithDocuments,
+        studentsWithoutDocuments,
       ] = await Promise.all([
         this.prisma.user.count({ where: { role: 'STUDENT', schoolId } }),
         this.prisma.enrollment.count({
@@ -107,6 +113,38 @@ export class RegistrarDashboardService {
         }),
         this.prisma.user.count({
           where: { role: 'STUDENT', schoolId, isActive: false },
+        }),
+        this.prisma.enrollmentRequest.count({
+          where: { schoolId, status: 'PENDING' },
+        }),
+        this.prisma.enrollmentRequest.count({
+          where: { schoolId, status: 'APPROVED' },
+        }),
+        this.prisma.studentClass.count({
+          where: {
+            schoolId,
+            academicYear: academicYear?.name,
+            class: { grade: 8 },
+          },
+        }),
+        this.prisma.studentClass.count({
+          where: {
+            schoolId,
+            academicYear: academicYear?.name,
+            class: { grade: 12 },
+          },
+        }),
+        this.prisma.studentProfile.count({
+          where: {
+            schoolId,
+            documents: { not: null },
+          },
+        }),
+        this.prisma.studentProfile.count({
+          where: {
+            schoolId,
+            OR: [{ documents: null }, { documents: '' }],
+          },
         }),
       ]);
 
@@ -162,22 +200,83 @@ export class RegistrarDashboardService {
 
       // Get students per class
       const studentsPerClass = await this.prisma.class.findMany({
-        where: { schoolId },
+        where: {
+          schoolId,
+          ...(academicYear ? { academicYearId: academicYear.id } : {}),
+        },
         include: {
           sections: {
             include: {
-              _count: { select: { attendances: true } },
+              homeroomTeacher: { select: { id: true, name: true } },
+              _count: { select: { studentClasses: true } },
             },
           },
         },
-        take: 10,
+        orderBy: [{ grade: 'asc' }, { name: 'asc' }],
       });
 
       const classStudentData = studentsPerClass.map((c) => ({
-        name: c.name,
+        name: c.section ? `${c.name}${c.section}` : c.name,
         sections: c.sections.length,
-        students: c.sections.reduce((sum, s) => sum + s._count.attendances, 0),
+        students: c.sections.reduce(
+          (sum, s) => sum + s._count.studentClasses,
+          0,
+        ),
+        capacity: c.sections.reduce((sum, s) => sum + (s.capacity || 0), 0),
       }));
+
+      const sectionCapacityData = studentsPerClass.flatMap((c) =>
+        c.sections.map((section) => {
+          const enrolled = section._count.studentClasses;
+          const capacity = section.capacity || 0;
+          const occupancy =
+            capacity > 0 ? Math.round((enrolled / capacity) * 100) : 0;
+          return {
+            className: c.name,
+            sectionName: section.name,
+            label: `${c.name}-${section.name}`,
+            enrolled,
+            capacity,
+            available: Math.max(capacity - enrolled, 0),
+            occupancy,
+            homeroomTeacher: section.homeroomTeacher?.name || null,
+            needsHomeroomTeacher: !section.homeroomTeacherId,
+          };
+        }),
+      );
+
+      const nearCapacitySections = sectionCapacityData.filter(
+        (section) => section.capacity > 0 && section.occupancy >= 90,
+      );
+      const fullSections = sectionCapacityData.filter(
+        (section) => section.capacity > 0 && section.enrolled >= section.capacity,
+      );
+      const sectionsWithoutHomeroom = sectionCapacityData.filter(
+        (section) => section.needsHomeroomTeacher,
+      );
+
+      const attendanceWindowStart = new Date(today);
+      attendanceWindowStart.setDate(attendanceWindowStart.getDate() - 30);
+      const attendanceRiskRows = await this.prisma.attendance.groupBy({
+        by: ['studentId'],
+        where: {
+          schoolId,
+          date: { gte: attendanceWindowStart, lte: todayEnd },
+          status: { in: ['ABSENT', 'LATE', 'HALF_DAY'] },
+        },
+        _count: { id: true },
+      });
+      const dropoutRiskStudents = attendanceRiskRows.filter(
+        (row) => row._count.id >= 5,
+      ).length;
+
+      const missingAttendanceSessions = await this.prisma.attendanceSession.count({
+        where: {
+          schoolId,
+          date: { gte: attendanceWindowStart, lte: todayEnd },
+          status: 'NOT_SUBMITTED',
+        },
+      });
 
       // Get enrollment status distribution
       const enrollmentStatusData = [
@@ -211,8 +310,56 @@ export class RegistrarDashboardService {
           message: `${pendingEnrollments} enrollment(s) pending approval`,
           type: 'warning',
           priority: 'high',
-          actionUrl: '/enrollments?status=pending',
+          actionUrl: '/admin/enrollment',
           actionLabel: 'Review',
+        });
+      }
+
+      if (enrollmentRequestsPending > 0) {
+        alerts.push({
+          message: `${enrollmentRequestsPending} online enrollment request(s) waiting for registrar review`,
+          type: 'warning',
+          priority: 'high',
+          actionUrl: '/admin/enrollment',
+          actionLabel: 'Review requests',
+        });
+      }
+
+      if (fullSections.length > 0) {
+        alerts.push({
+          message: `${fullSections.length} section(s) are at or above capacity`,
+          type: 'error',
+          priority: 'high',
+          actionUrl: '/admin/class-sections',
+          actionLabel: 'Manage capacity',
+        });
+      } else if (nearCapacitySections.length > 0) {
+        alerts.push({
+          message: `${nearCapacitySections.length} section(s) are near MoE capacity limits`,
+          type: 'warning',
+          priority: 'medium',
+          actionUrl: '/admin/class-sections',
+          actionLabel: 'Review capacity',
+        });
+      }
+
+      if (dropoutRiskStudents > 0) {
+        alerts.push({
+          message: `${dropoutRiskStudents} student(s) have repeated absence or lateness in the last 30 days`,
+          type: 'warning',
+          priority: 'high',
+          actionUrl: '/admin/attendance',
+          actionLabel: 'Review attendance',
+        });
+      }
+
+      if (sectionsWithoutHomeroom.length > 0) {
+        alerts.push({
+          message: `${sectionsWithoutHomeroom.length} section(s) do not have a homeroom teacher assigned`,
+          type: 'info',
+          priority: 'medium',
+          actionUrl: '/admin/class-sections',
+          actionLabel: 'Assign homeroom',
         });
       }
 
@@ -241,28 +388,42 @@ export class RegistrarDashboardService {
         {
           label: 'Approve Enrollments',
           icon: 'enrollment',
-          url: '/enrollments/pending',
+          url: '/admin/enrollment',
           permission: 'student:approve_enrollment',
-          disabled: pendingEnrollments === 0,
+          disabled: pendingEnrollments + enrollmentRequestsPending === 0,
         },
         {
-          label: 'Add Student',
+          label: 'Register Student',
           icon: 'student',
-          url: '/students/new',
+          url: '/admin/enrollment',
           permission: 'student:create',
           disabled: false,
         },
         {
-          label: 'Create Class',
+          label: 'Class & Sections',
           icon: 'class',
-          url: '/classes/new',
+          url: '/admin/class-sections',
           permission: 'class:create',
           disabled: false,
         },
         {
-          label: 'Export Reports',
+          label: 'Report Cards',
           icon: 'report',
-          url: '/reports/export',
+          url: '/admin/report-cards',
+          permission: 'student:read',
+          disabled: false,
+        },
+        {
+          label: 'Promotion Decisions',
+          icon: 'promotion',
+          url: '/admin/promotion',
+          permission: 'student:read',
+          disabled: false,
+        },
+        {
+          label: 'Credentials',
+          icon: 'credential',
+          url: '/admin/credentials',
           permission: 'student:read',
           disabled: false,
         },
@@ -296,8 +457,13 @@ export class RegistrarDashboardService {
           datasets: [
             {
               label: 'Students',
-              data: classStudentData.map((c) => c.students),
+              data: classStudentData.slice(0, 12).map((c) => c.students),
               backgroundColor: '#3b82f6',
+            },
+            {
+              label: 'Capacity',
+              data: classStudentData.slice(0, 12).map((c) => c.capacity),
+              backgroundColor: '#d1d5db',
             },
           ],
         },
@@ -316,11 +482,11 @@ export class RegistrarDashboardService {
         classSections: {
           type: 'bar' as const,
           title: 'Classes and Sections',
-          labels: classStudentData.map((c) => c.name),
+          labels: sectionCapacityData.slice(0, 12).map((c) => c.label),
           datasets: [
             {
-              label: 'Sections',
-              data: classStudentData.map((c) => c.sections),
+              label: 'Occupancy %',
+              data: sectionCapacityData.slice(0, 12).map((c) => c.occupancy),
               backgroundColor: '#8b5cf6',
             },
           ],
@@ -361,11 +527,34 @@ export class RegistrarDashboardService {
         totalSections,
         activeStudents,
         inactiveStudents,
+        pendingApplications: pendingEnrollments + enrollmentRequestsPending,
+        enrollmentRequestsPending,
+        enrollmentRequestsApproved,
+        grade8Candidates,
+        grade12Candidates,
+        nationalExamCandidates: grade8Candidates + grade12Candidates,
+        studentsWithDocuments,
+        studentsWithoutDocuments,
+        dropoutRiskStudents,
+        missingAttendanceSessions,
+        nearCapacitySections: nearCapacitySections.length,
+        fullSections: fullSections.length,
+        sectionsWithoutHomeroom: sectionsWithoutHomeroom.length,
+        classOccupancy:
+          sectionCapacityData.length > 0
+            ? `${Math.round(
+                sectionCapacityData.reduce(
+                  (sum, section) => sum + section.occupancy,
+                  0,
+                ) / sectionCapacityData.length,
+              )}%`
+            : '0%',
         enrollmentRate:
           totalStudents > 0
             ? Math.round((activeStudents / totalStudents) * 100)
             : 0,
         academicYear: academicYear?.name,
+        capacityOverview: sectionCapacityData,
       };
 
       // Get current term/period

@@ -32,6 +32,7 @@ export const schoolsAPI = {
       address?: string;
       phone?: string;
       code?: string;
+      publicUrlSlug?: string;
       logoUrl?: string;
     }
   ) => api.put(`/schools/${id}`, data),

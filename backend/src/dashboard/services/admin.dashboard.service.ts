@@ -8,6 +8,138 @@ export class AdminDashboardService {
 
   constructor(private prisma: PrismaService) {}
 
+  private percent(value: number, target: number) {
+    if (target <= 0) return 0;
+    return Math.min(100, Math.round((value / target) * 100));
+  }
+
+  async getTeacherLeaderboard(schoolId: string) {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(start.getDate() - 30);
+    start.setHours(0, 0, 0, 0);
+
+    const [teachers, assessmentScores, attendanceCounts, lessonCounts] =
+      await Promise.all([
+        this.prisma.user.findMany({
+          where: { schoolId, role: 'TEACHER', isActive: true },
+          select: { id: true, name: true, email: true },
+          orderBy: { name: 'asc' },
+        }),
+        this.prisma.studentAssessmentScore.findMany({
+          where: {
+            enteredAt: { gte: start },
+            status: 'SUBMITTED',
+            assessmentSubject: {
+              assessment: { schoolId },
+            },
+          },
+          select: {
+            enteredAt: true,
+            enteredBy: true,
+            assessmentSubject: {
+              select: {
+                teacherId: true,
+                assessment: { select: { endDate: true } },
+              },
+            },
+          },
+        }),
+        this.prisma.attendanceSession.groupBy({
+          by: ['takenById'],
+          where: {
+            schoolId,
+            date: { gte: start },
+            status: 'SUBMITTED',
+          },
+          _count: { id: true },
+        }),
+        this.prisma.content.groupBy({
+          by: ['teacherId'],
+          where: {
+            schoolId,
+            type: 'LESSON',
+            teacherId: { not: null },
+            createdAt: { gte: start },
+            status: { in: ['PUBLISHED', 'COVERED'] },
+          },
+          _count: { id: true },
+        }),
+      ]);
+
+    const gradingByTeacher = new Map<
+      string,
+      { submitted: number; onTime: number }
+    >();
+    assessmentScores.forEach((score) => {
+      const teacherId = score.assessmentSubject.teacherId || score.enteredBy;
+      const current = gradingByTeacher.get(teacherId) || {
+        submitted: 0,
+        onTime: 0,
+      };
+      current.submitted += 1;
+      if (score.enteredAt <= score.assessmentSubject.assessment.endDate) {
+        current.onTime += 1;
+      }
+      gradingByTeacher.set(teacherId, current);
+    });
+    const attendanceByTeacher = new Map(
+      attendanceCounts.map((row) => [row.takenById, row._count.id]),
+    );
+    const lessonsByTeacher = new Map(
+      lessonCounts
+        .filter((row) => row.teacherId)
+        .map((row) => [row.teacherId!, row._count.id]),
+    );
+
+    return teachers
+      .map((teacher) => {
+        const grading = gradingByTeacher.get(teacher.id) || {
+          submitted: 0,
+          onTime: 0,
+        };
+        const gradingSubmitted = grading.submitted;
+        const attendanceSubmitted = attendanceByTeacher.get(teacher.id) || 0;
+        const lessonPlans = lessonsByTeacher.get(teacher.id) || 0;
+        const gradingScore =
+          gradingSubmitted > 0
+            ? Math.round((grading.onTime / gradingSubmitted) * 100)
+            : 0;
+        const attendanceScore = this.percent(attendanceSubmitted, 20);
+        const lessonPlanScore = this.percent(lessonPlans, 8);
+        const overallScore = Math.round(
+          gradingScore * 0.4 + attendanceScore * 0.35 + lessonPlanScore * 0.25,
+        );
+
+        return {
+          teacherId: teacher.id,
+          teacherName: teacher.name,
+          teacherEmail: teacher.email,
+          overallScore,
+          gradingScore,
+          attendanceScore,
+          lessonPlanScore,
+          gradingSubmitted,
+          gradingOnTime: grading.onTime,
+          attendanceSubmitted,
+          lessonPlans,
+        };
+      })
+      .sort((a, b) => {
+        if (b.overallScore !== a.overallScore) {
+          return b.overallScore - a.overallScore;
+        }
+        return (
+          b.gradingSubmitted +
+          b.attendanceSubmitted +
+          b.lessonPlans -
+          (a.gradingSubmitted + a.attendanceSubmitted + a.lessonPlans)
+        );
+      })
+      .slice(0, 10)
+      .map((teacher, index) => ({ ...teacher, rank: index + 1 }));
+  }
+
   private getEmptyDashboard(
     schoolId?: string,
     permissions: string[] = [],
@@ -405,6 +537,8 @@ export class AdminDashboardService {
         where: { schoolId },
       });
 
+      const teacherLeaderboard = await this.getTeacherLeaderboard(schoolId);
+
       // Build charts data
       const charts: { [key: string]: any } = {
         attendance: {
@@ -516,6 +650,7 @@ export class AdminDashboardService {
         charts,
         metadata: {
           schoolId,
+          teacherLeaderboard,
           generatedAt: new Date(),
         },
       };

@@ -1,10 +1,23 @@
 import type { Metadata, Viewport } from "next";
+import { Lexend_Deca, Cairo } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ToastProvider } from "@/components/ToastProvider";
 import { BreadcrumbProvider } from "@/context/BreadcrumbContext";
 import { AcademicYearProvider } from "@/context/AcademicYearContext";
 import PushNotificationManager from "@/components/PushNotificationManager";
+
+const lexend = Lexend_Deca({
+  subsets: ["latin"],
+  variable: "--font-lexend",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+});
+
+const cairo = Cairo({
+  subsets: ["arabic"],
+  variable: "--font-cairo",
+  weight: ["200", "300", "400", "500", "600", "700", "800", "900"],
+});
 
 // Force dynamic rendering to avoid static generation issues with useSearchParams
 export const dynamic = 'force-dynamic';
@@ -24,15 +37,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${lexend.variable} ${cairo.variable}`}>
       <body
+        className={lexend.className}
         style={
           {
-            "--font-sans": '"Lexend Deca", "Segoe UI", system-ui, sans-serif',
+            "--font-sans": 'var(--font-lexend), "Lexend Deca", "Segoe UI", system-ui, sans-serif',
             "--font-ethiopic":
               '"Noto Sans Ethiopic", "Abyssinica SIL", "Nyala", "Ebrima", sans-serif',
             "--font-arabic":
-              '"Noto Naskh Arabic", "Amiri", "Geeza Pro", "Segoe UI", sans-serif',
+              'var(--font-cairo), "Cairo", "Noto Naskh Arabic", "Amiri", sans-serif',
           } as React.CSSProperties
         }
       >
@@ -52,7 +66,7 @@ export default function RootLayout({
 
                 var userId = parseUserId(localStorage.getItem('user')) || parseUserId(sessionStorage.getItem('user'));
                 var key = userId ? 'theme-storage:' + userId : 'theme-storage';
-                var stored = localStorage.getItem(key) || localStorage.getItem('theme-storage');
+                var stored = userId ? localStorage.getItem(key) : localStorage.getItem('theme-storage');
                 if (stored) {
                   var parsed = JSON.parse(stored);
                   var t = parsed.theme || (parsed.state && parsed.state.theme);

@@ -46,8 +46,15 @@ export const financeAPI = {
     page?: number;
     limit?: number;
   }) => api.get('/finance/student-fees', { params }),
-  getCurriculumInfo: (schoolId: string, academicYearId: string) =>
-    api.get('/finance/curriculum-info', { params: { schoolId, academicYearId } }),
+  getCurriculumInfo: (
+    schoolId: string,
+    academicYearId: string,
+    options?: { skipAuthErrorRedirect?: boolean },
+  ) =>
+    api.get('/finance/curriculum-info', {
+      params: { schoolId, academicYearId },
+      ...(options?.skipAuthErrorRedirect ? { skipAuthErrorRedirect: true } : {}),
+    }),
   recordPayment: (data: {
     schoolId: string;
     studentFeeId: string;

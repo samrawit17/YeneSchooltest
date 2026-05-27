@@ -5,6 +5,7 @@ export interface Announcement {
   title: string;
   content: string;
   visibleTo: string[] | null;
+  isPublic?: boolean;
   startDate: string;
   endDate: string | null;
   priority: "HIGH" | "MEDIUM" | "LOW";
@@ -19,6 +20,7 @@ export interface CreateAnnouncementDto {
   title: string;
   content: string;
   visibleTo?: string[];
+  isPublic?: boolean;
   startDate: string;
   endDate?: string;
   priority?: "HIGH" | "MEDIUM" | "LOW";
@@ -29,6 +31,7 @@ export interface UpdateAnnouncementDto {
   title?: string;
   content?: string;
   visibleTo?: string[];
+  isPublic?: boolean;
   startDate?: string;
   endDate?: string;
   priority?: "HIGH" | "MEDIUM" | "LOW";
@@ -46,6 +49,11 @@ export const announcementsAPI = {
       ...(options?.skipAuthErrorRedirect
         ? { skipAuthErrorRedirect: true }
         : {}),
+    }),
+  getPublic: (schoolId?: string) =>
+    api.get<Announcement[]>("/announcements/public", {
+      params: schoolId ? { schoolId } : undefined,
+      skipAuthErrorRedirect: true,
     }),
   getActiveCount: (params?: { role?: string }) =>
     api.get<{ count: number }>("/announcements/active-count", { params }),

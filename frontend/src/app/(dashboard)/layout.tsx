@@ -84,7 +84,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { t } = useTranslations<any>("layout");
+  const { t, language } = useTranslations<any>("layout");
   const { isAuthenticated, isLoading, user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -255,7 +255,14 @@ export default function DashboardLayout({
 
     // Only redirect if we're sure the user is not authenticated
     if (!isAuthenticated && !user) {
-      router.replace("/sign-in");
+      const postLogoutRedirect =
+        typeof window !== "undefined"
+          ? window.sessionStorage.getItem("postLogoutRedirect")
+          : null;
+      if (postLogoutRedirect) {
+        window.sessionStorage.removeItem("postLogoutRedirect");
+      }
+      router.replace(postLogoutRedirect || "/sign-in");
     }
 
     // Redirect to change-password if user must change password
@@ -328,17 +335,19 @@ export default function DashboardLayout({
     );
   }
 
+  const textDirection = language === "ar" ? "rtl" : "ltr";
+
   return (
-    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0F172A]" dir={textDirection}>
       {/* Desktop Sidebar */}
       <div className="relative hidden shrink-0 md:block md:w-16">
         <aside
           onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseLeave={() => setIsSidebarHovered(false)}
-          className={`dashboard-sidebar-flyout absolute inset-y-0 left-0 z-[60] flex h-full flex-col shadow-sm dark:bg-[#111827] dark:border-[#334155] transition-[width] duration-200 ease-out will-change-transform ${
+          className={`dashboard-sidebar-flyout absolute inset-y-0 ${language === "ar" ? "right-0" : "left-0"} z-[60] flex h-full flex-col shadow-sm dark:bg-[#111827] dark:border-[#334155] transition-[width] duration-200 ease-out will-change-transform ${
             brandNavigationEnabled
-              ? 'bg-[rgba(var(--brand-color-rgb),0.18)] border-r border-[rgba(var(--brand-color-rgb),0.22)]'
-              : 'bg-[#F1F5F9] border-r border-gray-200'
+              ? `bg-[rgba(var(--brand-color-rgb),0.18)] ${language === "ar" ? "border-l" : "border-r"} border-[rgba(var(--brand-color-rgb),0.22)]`
+              : `bg-[#F1F5F9] ${language === "ar" ? "border-l" : "border-r"} border-gray-200`
           } ${isSidebarHovered ? 'w-64' : 'w-16'} group/sidebar`}
         >
         {/* Logo */}
@@ -358,10 +367,10 @@ export default function DashboardLayout({
                 <img
                   src={schoolLogoSrc}
                   alt={school.name || "School Logo"}
-                  className="h-11 w-11 shrink-0 rounded-full object-cover"
+                  className="h-11 w-11 shrink-0 rounded-lg bg-transparent object-contain p-1 shadow-sm"
                 />
               ) : (
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e35336]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-color,#e35336)] shadow-sm">
                   <span className="text-xl font-bold text-white">
                     {school?.name?.charAt(0) || "S"}
                   </span>
@@ -375,7 +384,7 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation Menu */}
-        <div className={`flex flex-1 overflow-y-auto py-4 ${isSidebarHovered ? 'pl-4' : 'px-3'}`}>
+        <div className={`flex flex-1 overflow-y-auto py-4 ${isSidebarHovered ? (language === 'ar' ? 'pr-4' : 'pl-4') : 'px-3'}`}>
           <div className={isSidebarHovered ? 'w-56' : 'w-10'}>
           <Menu
             collapsed={!isSidebarHovered}

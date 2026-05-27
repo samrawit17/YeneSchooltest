@@ -246,6 +246,20 @@ function uid() {
   return Math.random().toString(36).slice(2);
 }
 
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseLocalDate(value?: string) {
+  if (!value) return undefined;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
+}
+
 // ─── Sub-Components ───────────────────────────────────────────────────────────
 
 function SubjectRow({
@@ -553,6 +567,7 @@ export default function AssessmentManagementPage() {
   // Lock confirm
   const [lockTarget, setLockTarget] = useState<string | null>(null);
   const [locking, setLocking] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -739,8 +754,12 @@ export default function AssessmentManagementPage() {
   }, [formData.academicYearId, user?.schoolId]);
 
   const selectedAssignments = useMemo(() => {
+    const gradeByClassId = new Map(
+      classes.map((item) => [item.id, item.grade] as const),
+    );
+
     return classSubjectAssignments.filter((assignment) => {
-      const grade = assignment.class?.grade;
+      const grade = assignment.class?.grade ?? gradeByClassId.get(assignment.classId);
       return (
         grade !== null &&
         grade !== undefined &&
@@ -748,7 +767,44 @@ export default function AssessmentManagementPage() {
         selectedSubjectIds.includes(assignment.subjectId)
       );
     });
-  }, [classSubjectAssignments, selectedGrades, selectedSubjectIds]);
+  }, [classSubjectAssignments, classes, selectedGrades, selectedSubjectIds]);
+
+  const scopeStatus = useMemo(() => {
+    if (selectedGrades.length === 0 || selectedSubjectIds.length === 0) {
+      return {
+        tone: "neutral",
+        message: t.newAssessmentModal.selectScopeHint,
+      };
+    }
+
+    if (classSubjectAssignments.length === 0) {
+      return {
+        tone: "warning",
+        message:
+          "No class-subject assignments exist for this academic year. Assign subjects to classes first, then return here.",
+      };
+    }
+
+    if (selectedAssignments.length === 0) {
+      return {
+        tone: "warning",
+        message:
+          "The selected grades and subjects do not overlap with any class-subject assignments. Choose assigned grades/subjects or create the missing class-subject assignments.",
+      };
+    }
+
+    return {
+      tone: "success",
+      message: `${selectedAssignments.length} ${t.newAssessmentModal.assignmentsIncluded}`,
+    };
+  }, [
+    classSubjectAssignments.length,
+    selectedAssignments.length,
+    selectedGrades.length,
+    selectedSubjectIds.length,
+    t.newAssessmentModal.assignmentsIncluded,
+    t.newAssessmentModal.selectScopeHint,
+  ]);
 
   const assignmentsWithoutTeacher = useMemo(
     () => selectedAssignments.filter((assignment) => !assignment.teacherId),
@@ -773,11 +829,11 @@ export default function AssessmentManagementPage() {
     Boolean(formData.academicYearId) &&
     Boolean(formData.startDate) &&
     Boolean(formData.endDate) &&
-    new Date(formData.endDate) >= new Date(formData.startDate);
+    Number(parseLocalDate(formData.endDate)) >= Number(parseLocalDate(formData.startDate));
 
   const applyAssessmentTemplate = (type: string, grade?: number) => {
     const now = new Date();
-    const startDate = now.toISOString().split("T")[0];
+    const startDate = formatLocalDate(now);
     const endDate = new Date(now);
     endDate.setDate(endDate.getDate() + 7);
 
@@ -786,7 +842,7 @@ export default function AssessmentManagementPage() {
       type,
       title: `${getTypeMeta(type).label}${grade ? ` for Grade ${grade}` : ""}`,
       startDate: prev.startDate || startDate,
-      endDate: prev.endDate || endDate.toISOString().split("T")[0],
+      endDate: prev.endDate || formatLocalDate(endDate),
       addToCalendar: shouldDefaultToCalendar(type),
     }));
     setSelectedGrades(grade ? [String(grade)] : gradeOptions.map(String));
@@ -800,7 +856,7 @@ export default function AssessmentManagementPage() {
     if (!formData.type) return toast.error(t.toasts.typeRequired);
     if (!formData.academicYearId) return toast.error(t.toasts.academicYearRequired);
     if (!formData.startDate || !formData.endDate) return toast.error(t.toasts.datesRequired);
-    if (new Date(formData.endDate) < new Date(formData.startDate))
+    if (Number(parseLocalDate(formData.endDate)) < Number(parseLocalDate(formData.startDate)))
       return toast.error(t.toasts.endDateBeforeStart);
 
     if (selectedGrades.length === 0) return toast.error(t.toasts.gradeRequired);
@@ -944,6 +1000,35 @@ export default function AssessmentManagementPage() {
     }
   };
 
+  const handleClearAssessments = async () => {
+    setClearing(true);
+    try {
+      const res = await assessmentsAPI.clear();
+      const deleted = Number(res.data?.deleted ?? 0);
+      toast.success(deleted > 0 ? `Deleted ${deleted} assessment${deleted === 1 ? "" : "s"}` : "No assessments to delete");
+      loadAssessments();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to clear assessments");
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const confirmClearAssessments = () => {
+    toast.warning("Clear all assessments?", {
+      description: "This will delete every assessment and its assessment entries for this school.",
+      action: {
+        label: "Clear",
+        onClick: handleClearAssessments,
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+      duration: 10000,
+    });
+  };
+
   // ── Filtered list
   const filtered = assessments.filter((a) => {
     if (filterType !== "ALL" && a.type !== filterType) return false;
@@ -994,6 +1079,15 @@ export default function AssessmentManagementPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={confirmClearAssessments}
+            disabled={assessments.length === 0 || clearing}
+            className="self-start border-red-200 bg-white text-red-700 shadow-sm hover:bg-red-50 hover:text-red-800 md:self-auto dark:border-red-900 dark:bg-slate-800 dark:text-red-300 dark:hover:bg-red-950/30"
+          >
+            {clearing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+            Clear All
+          </Button>
           <Button
             variant="outline"
             onClick={() => setWeightsOpen(true)}
@@ -1371,19 +1465,20 @@ export default function AssessmentManagementPage() {
                     {t.newAssessmentModal.startDate} <span className="text-red-400">*</span>
                   </Label>
                   <CalendarDatePicker
-                    value={formData.startDate ? new Date(formData.startDate) : undefined}
-                    onChange={(value) =>
+                    value={parseLocalDate(formData.startDate)}
+                    onChange={(value) => {
+                      const selectedDate = value ? formatLocalDate(value) : "";
                       setFormData((p) => ({
                         ...p,
-                        startDate: value ? value.toISOString().split("T")[0] : "",
+                        startDate: selectedDate,
                         endDate:
                           p.endDate &&
-                          value &&
-                          p.endDate < value.toISOString().split("T")[0]
-                            ? value.toISOString().split("T")[0]
+                          selectedDate &&
+                          Number(parseLocalDate(p.endDate)) < Number(parseLocalDate(selectedDate))
+                            ? selectedDate
                             : p.endDate,
-                      }))
-                    }
+                      }));
+                    }}
                     placeholder={t.newAssessmentModal.selectStartDate}
                     className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100"
                   />
@@ -1393,11 +1488,11 @@ export default function AssessmentManagementPage() {
                     {t.newAssessmentModal.endDate} <span className="text-red-400">*</span>
                   </Label>
                   <CalendarDatePicker
-                    value={formData.endDate ? new Date(formData.endDate) : undefined}
+                    value={parseLocalDate(formData.endDate)}
                     onChange={(value) =>
                       setFormData((p) => ({
                         ...p,
-                        endDate: value ? value.toISOString().split("T")[0] : "",
+                        endDate: value ? formatLocalDate(value) : "",
                       }))
                     }
                     placeholder={t.newAssessmentModal.selectEndDate}
@@ -1541,11 +1636,25 @@ export default function AssessmentManagementPage() {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-xl border border-dashed border-gray-200 p-4 dark:border-slate-700">
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {selectedGrades.length === 0 || selectedSubjectIds.length === 0
-                    ? t.newAssessmentModal.selectScopeHint
-                    : `${selectedAssignments.length} ${t.newAssessmentModal.assignmentsIncluded}`}
+              <div
+                className={`mt-4 rounded-xl border border-dashed p-4 ${
+                  scopeStatus.tone === "warning"
+                    ? "border-amber-200 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-900/20"
+                    : scopeStatus.tone === "success"
+                      ? "border-emerald-200 bg-emerald-50/70 dark:border-emerald-800 dark:bg-emerald-900/20"
+                      : "border-gray-200 dark:border-slate-700"
+                }`}
+              >
+                <p
+                  className={`text-sm ${
+                    scopeStatus.tone === "warning"
+                      ? "text-amber-800 dark:text-amber-300"
+                      : scopeStatus.tone === "success"
+                        ? "text-emerald-800 dark:text-emerald-300"
+                        : "text-gray-600 dark:text-gray-300"
+                  }`}
+                >
+                  {scopeStatus.message}
                 </p>
                 {assignmentsWithoutTeacher.length > 0 && (
                   <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
@@ -1636,7 +1745,7 @@ export default function AssessmentManagementPage() {
                     return;
                   }
                   if (createStep === "scope" && selectedAssignments.length === 0) {
-                    toast.error("Select grades and subjects with class-subject assignments");
+                    toast.error(scopeStatus.message);
                     return;
                   }
                   setCreateStep(createStep === "basic" ? "scope" : "review");
@@ -1706,6 +1815,7 @@ export default function AssessmentManagementPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }

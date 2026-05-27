@@ -11,7 +11,7 @@ import archiver from 'archiver';
 import sharp from 'sharp';
 import { PrismaService } from '../prisma/prisma.service';
 import { CredentialService } from '../credential/credential.service';
-import { Role, EnrollmentStatus } from '@prisma/client';
+import { Prisma, Role, EnrollmentStatus } from '@prisma/client';
 import { ClassService } from '../class/class.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
@@ -23,6 +23,7 @@ export interface CreateStudentDto {
   academicYear: string;
   grade: number; // Grade number (1-12)
   className?: string; // Class name (e.g., "Grade 5")
+  stream?: string | null;
   section?: string; // Section (e.g., "A")
   rollNumber?: string; // Roll number
   gender?: string;
@@ -49,6 +50,7 @@ export interface CreateStudentDto {
 export interface UpdateStudentDto {
   name?: string;
   gender?: string;
+  stream?: string | null;
   address?: string;
   phone?: string;
   motherName?: string;
@@ -81,6 +83,7 @@ export interface AssignClassDto {
   rollNumber: string;
   classId?: string;
   sectionId?: string;
+  stream?: string | null;
 }
 
 export interface StudentsByClassResult {
@@ -117,6 +120,28 @@ export class StudentService {
     private classService: ClassService, // Fixed param order
     private cacheService: CacheService,
   ) {}
+
+  private normalizeStudentStream(stream?: string | null, grade?: number | null) {
+    if (!grade || ![11, 12].includes(grade)) {
+      return null;
+    }
+
+    const normalized = String(stream || '').trim().toUpperCase();
+    if (!normalized) {
+      return null;
+    }
+
+    if (!['SOCIAL', 'NATURAL'].includes(normalized)) {
+      throw new BadRequestException('Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
+    }
+
+    return normalized;
+  }
+
+  private extractGradeFromClassName(className?: string | null) {
+    const match = String(className || '').match(/\d+/);
+    return match ? Number(match[0]) : null;
+  }
 
   private getStudentListNamespace(schoolId: string) {
     return `students:school:${schoolId}`;
@@ -210,6 +235,7 @@ export class StudentService {
       academicYear,
       grade,
       className,
+      stream,
       section,
       rollNumber,
       gender,
@@ -273,6 +299,7 @@ export class StudentService {
         enrollmentStatus: EnrollmentStatus.APPROVED, // Admin-created students are automatically approved
         academicYear,
         className,
+        stream: this.normalizeStudentStream(stream, grade),
         section,
         rollNumber,
         gender,
@@ -1216,6 +1243,7 @@ export class StudentService {
     const {
       name,
       gender,
+      stream,
       address,
       phone,
       motherName,
@@ -1244,6 +1272,7 @@ export class StudentService {
       where: { userId: studentId },
       data: {
         ...(gender && { gender }),
+        ...(stream !== undefined && { stream: this.normalizeStudentStream(stream, this.extractGradeFromClassName(student.className)) }),
         ...(address && { address }),
         ...(phone && { phone }),
         ...(motherName !== undefined && { motherName }),
@@ -1261,7 +1290,7 @@ export class StudentService {
     return updated;
   }
 
-  async deleteStudent(studentId: string, schoolId: string) {
+  async deleteStudent(studentId: string, schoolId: string, deletedById?: string) {
     const student = await this.prismaService.studentProfile.findFirst({
       where: {
         userId: studentId,
@@ -1273,26 +1302,77 @@ export class StudentService {
       throw new NotFoundException('Student not found');
     }
 
-    // Delete enrollment records
-    await this.prismaService.enrollment.deleteMany({
-      where: {
-        studentId,
-        schoolId,
-      },
-    });
-
-    // Delete student profile
-    await this.prismaService.studentProfile.delete({
-      where: { userId: studentId },
-    });
-
-    // Delete user account
-    await this.prismaService.user.delete({
-      where: { id: studentId },
-    });
+    const archivedAt = new Date();
+    await this.prismaService.$transaction([
+      this.prismaService.$executeRaw(
+        Prisma.sql`
+          UPDATE "Enrollment"
+          SET "deletedAt" = ${archivedAt}, "deletedById" = ${deletedById || null}
+          WHERE "studentId" = ${studentId}
+            AND "schoolId" = ${schoolId}
+            AND "deletedAt" IS NULL
+        `,
+      ),
+      this.prismaService.$executeRaw(
+        Prisma.sql`
+          UPDATE "StudentProfile"
+          SET "deletedAt" = ${archivedAt}, "deletedById" = ${deletedById || null}
+          WHERE "userId" = ${studentId}
+            AND "schoolId" = ${schoolId}
+            AND "deletedAt" IS NULL
+        `,
+      ),
+      this.prismaService.$executeRaw(
+        Prisma.sql`
+          UPDATE "ReportCard"
+          SET "deletedAt" = ${archivedAt}, "deletedById" = ${deletedById || null}
+          WHERE "studentId" = ${studentId}
+            AND "schoolId" = ${schoolId}
+            AND "deletedAt" IS NULL
+        `,
+      ),
+      this.prismaService.$executeRaw(
+        Prisma.sql`
+          UPDATE "Grade"
+          SET "deletedAt" = ${archivedAt}, "deletedById" = ${deletedById || null}
+          WHERE "studentId" = ${studentId}
+            AND "schoolId" = ${schoolId}
+            AND "deletedAt" IS NULL
+        `,
+      ),
+      this.prismaService.$executeRaw(
+        Prisma.sql`
+          UPDATE "StudentFee"
+          SET "deletedAt" = ${archivedAt}, "deletedById" = ${deletedById || null}
+          WHERE "studentId" = ${studentId}
+            AND "schoolId" = ${schoolId}
+            AND "deletedAt" IS NULL
+        `,
+      ),
+      this.prismaService.$executeRaw(
+        Prisma.sql`
+          UPDATE "Payment"
+          SET "deletedAt" = ${archivedAt}, "deletedById" = ${deletedById || null}
+          WHERE "studentId" = ${studentId}
+            AND "schoolId" = ${schoolId}
+            AND "deletedAt" IS NULL
+        `,
+      ),
+      this.prismaService.$executeRaw(
+        Prisma.sql`
+          UPDATE "User"
+          SET "deletedAt" = ${archivedAt},
+              "deletedById" = ${deletedById || null},
+              "isActive" = false,
+              "updatedAt" = ${archivedAt}
+          WHERE "id" = ${studentId}
+            AND "deletedAt" IS NULL
+        `,
+      ),
+    ]);
 
     await this.invalidateStudentCaches(schoolId, [studentId]);
-    return { message: 'Student deleted successfully' };
+    return { message: 'Student archived successfully' };
   }
 
   async getPendingEnrollments(schoolId: string) {
@@ -1436,9 +1516,10 @@ export class StudentService {
       throw new NotFoundException('Student not found');
     }
 
-    const { className, section, rollNumber, classId, sectionId } = assignData;
+    const { className, section, rollNumber, classId, sectionId, stream } = assignData;
 
     let academicYear = student.academicYear;
+    let targetGrade = this.extractGradeFromClassName(className);
 
     if (classId && sectionId) {
       const targetSection = await this.prismaService.section.findFirst({
@@ -1491,6 +1572,7 @@ export class StudentService {
           schoolId,
         },
       });
+      targetGrade = targetSection.class.grade;
     }
 
     // Update student profile with class assignment
@@ -1498,6 +1580,7 @@ export class StudentService {
       where: { userId: studentId },
       data: {
         className,
+        stream: this.normalizeStudentStream(stream, targetGrade),
         section,
         rollNumber,
         academicYear,
@@ -1509,6 +1592,7 @@ export class StudentService {
       message: 'Class assigned successfully',
       studentId,
       className,
+      stream: this.normalizeStudentStream(stream, targetGrade),
       section,
       rollNumber,
     };
@@ -1553,6 +1637,109 @@ export class StudentService {
       studentId,
       documentCount: updatedDocs.length,
     };
+  }
+
+  async deleteDocument(studentId: string, schoolId: string, documentKey: string) {
+    const student = await this.prismaService.studentProfile.findFirst({
+      where: {
+        OR: [{ userId: studentId }, { id: studentId }],
+        schoolId,
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const existingDocs = student.documents ? JSON.parse(student.documents) : [];
+    const normalizedKey = decodeURIComponent(documentKey || '').toLowerCase();
+    const updatedDocs = existingDocs.filter((doc: any) => {
+      const candidates = [
+        doc.id,
+        doc.type,
+        doc.title,
+        doc.name,
+      ]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase());
+      return !candidates.includes(normalizedKey);
+    });
+
+    if (updatedDocs.length === existingDocs.length) {
+      throw new NotFoundException('Document not found');
+    }
+
+    await this.prismaService.studentProfile.update({
+      where: { id: student.id },
+      data: {
+        documents: JSON.stringify(updatedDocs),
+      },
+    });
+
+    await this.invalidateStudentCaches(schoolId, [student.userId]);
+    return {
+      message: 'Document deleted successfully',
+      studentId: student.userId,
+      documentCount: updatedDocs.length,
+    };
+  }
+
+  async uploadDocumentFile(
+    studentId: string,
+    schoolId: string,
+    file: Express.Multer.File,
+    data: { title?: string; type?: string; description?: string },
+  ) {
+    if (!file) {
+      throw new BadRequestException('Document file is required');
+    }
+
+    const allowedTypes = [
+      'application/pdf',
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'image/webp',
+    ];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Document must be a PDF, PNG, JPG, or WEBP file');
+    }
+
+    const extension = path.extname(file.originalname || '') || (
+      file.mimetype === 'application/pdf'
+        ? '.pdf'
+        : file.mimetype === 'image/png'
+          ? '.png'
+          : file.mimetype === 'image/webp'
+            ? '.webp'
+            : '.jpg'
+    );
+    const safeType = String(data.type || data.title || 'document')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_|_$/g, '') || 'document';
+    const relativeDir = path.join('uploads', 'student-documents', schoolId, studentId);
+    const publicDir = path.join(process.cwd(), 'public', relativeDir);
+    const fileName = `${safeType}-${Date.now()}${extension}`;
+    await fs.promises.mkdir(publicDir, { recursive: true });
+    await fs.promises.writeFile(path.join(publicDir, fileName), file.buffer);
+
+    const fileUrl = `/${relativeDir.split(path.sep).join('/')}/${fileName}`;
+    const document = {
+      id: `${safeType}-${Date.now()}`,
+      type: safeType,
+      title: data.title || data.type || file.originalname || 'Document',
+      name: data.title || file.originalname || 'Document',
+      category: 'student_registration',
+      status: 'SUBMITTED',
+      submitted: true,
+      description: data.description || undefined,
+      fileUrl,
+      mimeType: file.mimetype,
+      size: file.size,
+    };
+
+    return this.uploadDocuments(studentId, schoolId, [document]);
   }
 
   /**
@@ -1903,9 +2090,6 @@ export class StudentService {
   }
 
   private generateTempPassword(): string {
-    return (
-      Math.random().toString(36).slice(-8) +
-      Math.random().toString(36).slice(-8)
-    );
+    return this.credentialService.generateTemporaryPassword(16);
   }
 }

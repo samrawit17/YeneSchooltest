@@ -12,6 +12,7 @@ import { eventsAPI } from "@/lib/api/content";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { formatTimeByCalendarType } from "@/lib/calendar-utils";
 import { useTranslations } from "@/hooks/useTranslations";
+import { localizeNotificationText } from "@/lib/notification-display";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -122,7 +123,7 @@ const Navbar = ({
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { t: navigationText } = useTranslations<NavigationMessages>("navigation");
+  const { t: navigationText, language } = useTranslations<NavigationMessages>("navigation");
   const { t: layoutText } = useTranslations<any>("layout");
   const { formattedYearLabel, displayTermName, formatDate: formatSchoolDate, schoolCalendarType } = useAcademicYear();
   const navLabel = (label: string) => navigationText.labels?.[label] ?? label;
@@ -179,6 +180,7 @@ const Navbar = ({
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
+  const schoolLogoSrc = resolveAssetUrl(school?.logoUrl);
 
   // Use React Query for notifications - cached across navigations but user-specific
   const { data: notificationsData, isLoading: notificationsLoading } = useQuery({
@@ -534,11 +536,20 @@ const Navbar = ({
   };
 
   const handleLogout = () => {
+    const redirectTo =
+      normalizedRole !== "SUPER_ADMIN" && school?.publicUrlSlug
+        ? `/sign-in?slug=${encodeURIComponent(school.publicUrlSlug)}`
+        : normalizedRole !== "SUPER_ADMIN" && user?.schoolId
+          ? `/sign-in?schoolId=${encodeURIComponent(user.schoolId)}`
+        : "/sign-in";
+
     logout();
-    router.push("/sign-in");
+    sessionStorage.setItem("postLogoutRedirect", redirectTo);
+    router.push(redirectTo);
   };
 
   const normalizedRole = user?.role?.toUpperCase() || "";
+  const isSuperAdmin = normalizedRole === "SUPER_ADMIN";
   const isParent = normalizedRole === "PARENT";
   const isTeacher = normalizedRole === "TEACHER";
   const dashboardPath = getDashboardPath(user?.role);
@@ -578,8 +589,18 @@ const Navbar = ({
                     ? "border-b border-[rgba(var(--brand-color-rgb),0.14)] bg-white/70"
                     : "border-b border-gray-200 bg-white/95"
                 }`}>
-                  <SheetTitle className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                    <School className="h-5 w-5 sm:h-6 sm:w-6 text-[var(--brand-color,#e35336)] flex-shrink-0" />
+                  <SheetTitle className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex min-w-0 items-center gap-2 pr-8">
+                    {schoolLogoSrc ? (
+                      <img
+                        src={schoolLogoSrc}
+                        alt={school?.name || "School Logo"}
+                        className="h-8 w-8 shrink-0 rounded-md bg-white object-contain p-1 shadow-sm ring-1 ring-black/5 dark:bg-white"
+                      />
+                    ) : (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] text-sm font-bold text-white shadow-sm">
+                        {school?.name?.charAt(0) || <School className="h-4 w-4" />}
+                      </span>
+                    )}
                     {schoolLoading ? (
                       <Skeleton className="h-5 sm:h-6 w-24" />
                     ) : (
@@ -753,7 +774,9 @@ const Navbar = ({
                           {navLabel("No notifications")}
                         </div>
                       ) : (
-                        bellNotifications.map((notification: any) => (
+                        bellNotifications.map((notification: any) => {
+                          const localized = localizeNotificationText(notification, language);
+                          return (
                           <div
                             key={notification.id}
                             className={`p-2 sm:p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${!isNotificationRead(notification) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
@@ -771,15 +794,15 @@ const Navbar = ({
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
                                   <p className={`text-xs sm:text-sm ${!isNotificationRead(notification) ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
-                                    {notification.title}
+                                    {localized.title}
                                   </p>
                                   {!isNotificationRead(notification) && (
                                     <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                                   )}
                                 </div>
-                                {notification.message && (
+                                {localized.message && (
                                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                                    {notification.message}
+                                    {localized.message}
                                   </p>
                                 )}
 
@@ -789,7 +812,8 @@ const Navbar = ({
                               </div>
                             </div>
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </ScrollArea>
                     <DropdownMenuSeparator />
@@ -806,7 +830,7 @@ const Navbar = ({
                 </DropdownMenu>
 
                 {/* Communications Dropdown - Only show if feature is enabled */}
-                {isCommunicationEnabled && (
+                {isCommunicationEnabled && !isSuperAdmin && (
                   <DropdownMenu
                     open={communicationsOpen}
                     onOpenChange={(open) => {

@@ -7,6 +7,8 @@ import { parentsAPI } from "@/lib/api/people";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { formatUserDisplayCode } from "@/lib/student-code";
 import {
   Activity,
   Calendar,
@@ -60,6 +62,8 @@ const SingleParentPage = ({ params }: PageProps) => {
   const [linkChildOpen, setLinkChildOpen] = useState(false);
   const { user } = useAuth();
   const { setItems } = useBreadcrumb();
+  const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
+  const displayYear = currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel;
   const currentRole = String(user?.role || '').toUpperCase();
 
   const { data: parent, isLoading, error, refetch } = useQuery({
@@ -126,6 +130,7 @@ const SingleParentPage = ({ params }: PageProps) => {
   const avatarUrl = userData.img || userData.avatarUrl;
   const isActive = userData.isActive ?? true;
   const username = userData.username || userData.email || parent.email || "N/A";
+  const displayUsername = formatUserDisplayCode(username, displayYear);
   const phone = userData.phone || parent.phone || "N/A";
   const address = parent.address || userData.address || "N/A";
   const lastLogin = userData.lastLoginAt || userData.lastLogin;
@@ -158,7 +163,8 @@ const SingleParentPage = ({ params }: PageProps) => {
                     </Badge>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{username}</span>
+                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{displayUsername}</span>
+                    {username !== displayUsername ? <span>Login: {username}</span> : null}
                     <span>{phone}</span>
                     <span>{children.length} linked child{children.length === 1 ? "" : "ren"}</span>
                   </div>
@@ -199,7 +205,7 @@ const SingleParentPage = ({ params }: PageProps) => {
                 <CardTitle className="text-base">Parent Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <InfoRow icon={User} label="Username" value={username} />
+                <InfoRow icon={User} label="Username" value={displayUsername} />
                 <InfoRow icon={Phone} label="Phone" value={phone} />
                 <InfoRow icon={MapPin} label="Address" value={address} />
                 <InfoRow icon={GraduationCap} label="Occupation" value={parent.occupation || "N/A"} />

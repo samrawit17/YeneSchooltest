@@ -42,6 +42,24 @@ export class EnrollmentRequestController {
     return { success: true, data: schools };
   }
 
+  @Get('school/:id')
+  async getPublicSchoolById(@Param('id') id: string) {
+    const school = await this.enrollmentService.getPublicSchoolById(id);
+    if (!school) {
+      return { success: false, message: 'School not found' };
+    }
+    return { success: true, data: school };
+  }
+
+  @Get('school-url/:slug')
+  async getPublicSchoolByUrlSlug(@Param('slug') slug: string) {
+    const school = await this.enrollmentService.getPublicSchoolByUrlSlug(slug);
+    if (!school) {
+      return { success: false, message: 'School not found' };
+    }
+    return { success: true, data: school };
+  }
+
   /**
    * Create a new enrollment request
    * POST /enrollment/request

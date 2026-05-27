@@ -14,7 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Pagination from '@/components/Pagination';
 import { FormattedDate } from '@/components/ui/FormattedDate';
-import { financeAPI, academicYearsAPI, studentsAPI } from '@/lib/api';
+import { CalendarDatePicker } from '@/components/ui/CalendarDatePicker';
+import { financeAPI, academicYearsAPI, studentsAPI, schoolSettingsAPI } from '@/lib/api';
+import { getGradeNumbersFromSystem } from '@/lib/grade-system';
 import {
   convertToEthiopian,
   formatDateByCalendarType,
@@ -39,9 +41,30 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  MinusCircle
+  MinusCircle,
+  ArrowRight,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Activity,
+  Settings
 } from 'lucide-react';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+  PieChart,
+  Pie
+} from 'recharts';
 import { toast } from 'sonner';
+import Link from 'next/link';
+import FinanceSetupWizard from '@/components/finance/FinanceSetupWizard';
 import { useTranslations } from '@/hooks/useTranslations';
 import type { FinanceMessages } from '@/messages/registry';
 
@@ -151,8 +174,6 @@ interface OutstandingFee {
   status: 'PAID' | 'PARTIAL' | 'PENDING' | 'UNPAID';
 }
 
-const GRADE_OPTIONS = [1,2,3,4,5,6,7,8,9,10,11,12] as const;
-
 const compressGradeNumbers = (grades: number[]) => {
   const sortedUnique = Array.from(new Set(grades)).sort((a, b) => a - b);
   if (sortedUnique.length === 0) return 'All Grades';
@@ -208,6 +229,8 @@ export default function FinanceDashboardPage() {
   const [curriculumType, setCurriculumType] = useState<string>('TERM');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedTerm, setSelectedTerm] = useState<string>('');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
   const [chartView, setChartView] = useState<ChartView>('daily');
   
   // Dashboard data
@@ -230,6 +253,7 @@ export default function FinanceDashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [outstandingFees, setOutstandingFees] = useState<OutstandingFee[]>([]);
   const [feeStructures, setFeeStructures] = useState<any[]>([]);
+  const [billingPolicy, setBillingPolicy] = useState<{ dueDay: number; penalty: number }>({ dueDay: 5, penalty: 0 });
   
   // Pagination & Search
   const [transactionsPage, setTransactionsPage] = useState(1);
@@ -245,6 +269,7 @@ export default function FinanceDashboardPage() {
   // Dialogs
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [feeStructureOpen, setFeeStructureOpen] = useState(false);
+  const [setupWizardOpen, setSetupWizardOpen] = useState(false);
   
   // Record Payment Form State
   const [paymentForm, setPaymentForm] = useState({
@@ -265,6 +290,7 @@ export default function FinanceDashboardPage() {
   const [isSearchingStudents, setIsSearchingStudents] = useState(false);
   const [isSendingReminders, setIsSendingReminders] = useState(false);
   const [reversingPaymentId, setReversingPaymentId] = useState<string | null>(null);
+  const [gradeOptions, setGradeOptions] = useState<number[]>(() => getGradeNumbersFromSystem('1-12'));
   
   // Fee Structure Form State
   const [feeStructureForm, setFeeStructureForm] = useState({
@@ -484,15 +510,43 @@ export default function FinanceDashboardPage() {
     loadSetupData();
   }, [user?.schoolId]);
 
+  useEffect(() => {
+    const loadGradeOptions = async () => {
+      if (!user?.schoolId) return;
+      try {
+        const response = await schoolSettingsAPI.getAll(user.schoolId);
+        setGradeOptions(getGradeNumbersFromSystem(response.data?.grade_system || '1-12'));
+      } catch (error) {
+        setGradeOptions(getGradeNumbersFromSystem('1-12'));
+      }
+    };
+    loadGradeOptions();
+  }, [user?.schoolId]);
+
   // Load curriculum info when academic year changes
   useEffect(() => {
     const loadCurriculumInfo = async () => {
       if (!selectedYear || !user?.schoolId) return;
       try {
-        const [response, collectionModeResponse] = await Promise.all([
+        const [response, collectionModeResponse, settingsResponse] = await Promise.all([
           financeAPI.getCurriculumInfo(user.schoolId, selectedYear),
           financeAPI.getFeeCollectionMode(user.schoolId).catch(() => null),
+          // Fetch settings directly
+          Promise.all([
+            academicYearsAPI.getSchoolSetting(user.schoolId, 'fee_payment_due_day'),
+            academicYearsAPI.getSchoolSetting(user.schoolId, 'fee_daily_penalty_amount'),
+          ]).catch(() => []),
         ]);
+        
+        if (settingsResponse) {
+          const dueDaySetting = (settingsResponse as any)[0]?.data?.value;
+          const penaltySetting = (settingsResponse as any)[1]?.data?.value;
+          setBillingPolicy({
+            dueDay: parseInt(dueDaySetting || '5'),
+            penalty: parseFloat(penaltySetting || '0')
+          });
+        }
+
         if (collectionModeResponse?.data?.data) {
           setFeeCollectionMode(collectionModeResponse.data.data);
         }
@@ -526,6 +580,20 @@ export default function FinanceDashboardPage() {
     loadCurriculumInfo();
   }, [selectedYear, user?.schoolId]);
 
+  // Handle auto-updating dates when term changes
+  useEffect(() => {
+    if (selectedTerm && selectedTerm !== 'all') {
+      const term = terms.find(t => t.id === selectedTerm);
+      if (term?.startDate && term?.endDate) {
+        setFromDate(new Date(term.startDate));
+        setToDate(new Date(term.endDate));
+      }
+    } else if (selectedTerm === 'all') {
+       setFromDate(undefined);
+       setToDate(undefined);
+    }
+  }, [selectedTerm, terms]);
+
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
     if (!selectedYear) return;
@@ -535,19 +603,9 @@ export default function FinanceDashboardPage() {
     
     setLoading(true);
     try {
-      // Get date range
-      const today = new Date();
-      let fromDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-      let toDate: string = today.toISOString().split('T')[0];
-      
-      // If a specific term is selected, use its date range instead
-      if (selectedTerm && selectedTerm !== 'all') {
-        const selectedTermData = terms.find(t => t.id === selectedTerm);
-        if (selectedTermData?.startDate && selectedTermData?.endDate) {
-          fromDate = new Date(selectedTermData.startDate).toISOString().split('T')[0];
-          toDate = new Date(selectedTermData.endDate).toISOString().split('T')[0];
-        }
-      }
+      // Get date range from state or defaults
+      const from = fromDate ? fromDate.toISOString().split('T')[0] : (selectedTerm === 'all' ? undefined : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
+      const to = toDate ? toDate.toISOString().split('T')[0] : (selectedTerm === 'all' ? undefined : new Date().toISOString().split('T')[0]);
 
       // Fetch all data in parallel
       const schoolId = user?.schoolId;
@@ -563,10 +621,10 @@ export default function FinanceDashboardPage() {
       const [dailyReport, outstandingResponse, feeStructuresResponse] = await Promise.all([
         financeAPI.getDailyReport({ 
           schoolId: schoolId, 
-          from: fromDate, 
-          to: toDate,
+          academicYearId: selectedYear,
           termId: termFilter,
-          academicYearId: selectedYear
+          from: from,
+          to: to
         }),
         financeAPI.getOutstandingBalances(schoolId, selectedYear, termFilter),
         financeAPI.listFeeStructures(schoolId, selectedYear, termFilter).catch(e => {
@@ -650,7 +708,7 @@ export default function FinanceDashboardPage() {
       console.log('Loading dashboard data...');
       loadDashboardData();
     }
-  }, [selectedYear, selectedTerm, terms, user?.schoolId, loadDashboardData]);
+  }, [selectedYear, selectedTerm, terms, user?.schoolId, loadDashboardData, fromDate, toDate]);
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -668,11 +726,18 @@ export default function FinanceDashboardPage() {
     return `gc-${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
-  // Format date
   const formatDate = (dateString: string) => {
     const parsed = new Date(dateString);
     if (Number.isNaN(parsed.getTime())) return 'N/A';
     return formatDateByCalendarType(parsed, activeCalendarType);
+  };
+
+  const getBillingPeriodLabel = (mode?: string) => {
+    const normalized = String(mode || '').toUpperCase();
+    if (normalized === 'MONTHLY' || normalized === 'MONTH') return t.billingMonth || 'Billing Month';
+    if (normalized === 'QUARTERLY' || normalized === 'QUARTER') return t.billingQuarter || 'Billing Quarter';
+    if (normalized === 'SEMESTER' || normalized === 'SEMESTERLY') return t.billingSemester || 'Billing Semester';
+    return t.billingTerm || 'Billing Term';
   };
 
   // Format date time
@@ -884,6 +949,27 @@ export default function FinanceDashboardPage() {
     return null;
   };
 
+  const getTermMonthRangeLabel = (termId: string) => {
+    const term = terms.find((t) => t.id === termId);
+    if (!term || !term.startDate || !term.endDate) return null;
+
+    const academicYear = academicYears.find((y) => y.id === selectedYear);
+    const ayStart = academicYear?.startDate ? new Date(academicYear.startDate) : null;
+    if (!ayStart) return term.name;
+
+    const tStart = new Date(term.startDate);
+    const tEnd = new Date(term.endDate);
+
+    const monthDiff = (d: Date) =>
+      (d.getFullYear() - ayStart.getFullYear()) * 12 + (d.getMonth() - ayStart.getMonth());
+
+    const startIdx = monthDiff(tStart) + 1;
+    const endIdx = monthDiff(tEnd) + 1;
+
+    if (startIdx === endIdx) return getInstallmentMonthName(startIdx);
+    return `${getInstallmentMonthName(startIdx)} - ${getInstallmentMonthName(endIdx)}`;
+  };
+
   const choosePreferredPaymentFee = (fees: StudentFeeItem[], termId?: string) => {
     const unpaidFees = fees.filter((fee) => fee.balance > 0);
     if (unpaidFees.length === 0) return fees[0];
@@ -929,6 +1015,12 @@ export default function FinanceDashboardPage() {
   }) => {
     const match = String(fee.feeType || '').match(/_INSTALLMENT_(\d+)$/i);
     if (match) return getInstallmentPeriodLabel(Number(match[1]));
+
+    const mode = feeCollectionMode?.mode;
+    if ((mode === 'MONTHLY' || mode === 'MONTH') && fee.termId) {
+      const rangeLabel = getTermMonthRangeLabel(fee.termId);
+      if (rangeLabel) return rangeLabel;
+    }
 
     if (fee.termName) return fee.termName;
 
@@ -1233,7 +1325,7 @@ export default function FinanceDashboardPage() {
     let targetGrades: number[] = [];
     if (feeStructureForm.gradeMode === 'single') {
       const parsedGrade = parseInt(feeStructureForm.grade, 10);
-      if (!parsedGrade || parsedGrade < 1 || parsedGrade > 12) {
+      if (!gradeOptions.includes(parsedGrade)) {
         toast.error(t.validGrade);
         return;
       }
@@ -1241,7 +1333,7 @@ export default function FinanceDashboardPage() {
     } else if (feeStructureForm.gradeMode === 'range') {
       const fromGrade = parseInt(feeStructureForm.gradeFrom, 10);
       const toGrade = parseInt(feeStructureForm.gradeTo, 10);
-      if (!fromGrade || !toGrade || fromGrade < 1 || toGrade > 12 || fromGrade > toGrade) {
+      if (!gradeOptions.includes(fromGrade) || !gradeOptions.includes(toGrade) || fromGrade > toGrade) {
         toast.error(t.validGradeRange);
         return;
       }
@@ -1386,141 +1478,285 @@ setIsCreatingFeeStructure(true);
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-1">
+              <CalendarDatePicker 
+                value={fromDate} 
+                onChange={setFromDate} 
+                className="w-[140px] h-8 text-[10px]" 
+                placeholder="From Date"
+              />
+              <span className="text-slate-400 text-xs">-</span>
+              <CalendarDatePicker 
+                value={toDate} 
+                onChange={setToDate} 
+                className="w-[140px] h-8 text-[10px]" 
+                placeholder="To Date"
+              />
+            </div>
 
-            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600" />
+            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1" />
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                className="whitespace-nowrap text-xs h-8 ml-2"
+                disabled={isSendingReminders || !selectedTerm || selectedTerm === 'all'}
+                onClick={handleSendPeriodReminders}
+              >
+                <Clock className="w-3.5 h-3.5 mr-1" />
+                Reminders
+              </Button>
+            </div>
+
+            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1" />
 
             <Button 
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap text-xs h-8"
+              className="bg-[var(--brand-color,#e35336)] hover:opacity-90 whitespace-nowrap text-xs h-8 shadow-sm"
               onClick={() => setRecordPaymentOpen(true)}
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
               {t.recordPayment}
             </Button>
-            <Button 
-              size="sm"
-              variant="outline"
-              className="whitespace-nowrap text-xs h-8"
-              onClick={openFeeStructureDialog}
-            >
-              <FileText className="w-3.5 h-3.5 mr-1" />
-              {t.feeStructure}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="whitespace-nowrap text-xs h-8"
-              disabled={isSendingReminders || !selectedTerm || selectedTerm === 'all'}
-              onClick={handleSendPeriodReminders}
-            >
-              <AlertCircle className="w-3.5 h-3.5 mr-1" />
-              {isSendingReminders ? t.sending : t.sendReminders}
-            </Button>
           </div>
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-4 md:p-6 space-y-6">
+        {/* Billing Health Check Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-2 bg-emerald-50 rounded-full text-emerald-600">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Billing Status</p>
+                <p className="text-sm font-semibold">All systems operational</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-blue-500 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-2 bg-blue-50 rounded-full text-blue-600">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Active Term</p>
+                <p className="text-sm font-semibold">{terms.find(t => t.id === selectedTerm)?.name || 'No active term'}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-amber-500 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-2 bg-amber-50 rounded-full text-amber-600">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Pending Actions</p>
+                <p className="text-sm font-semibold">{outstandingFees.filter(f => f.status === 'UNPAID').length} Unpaid Invoices</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-purple-500 shadow-sm md:col-span-3">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+               <div className="flex items-center gap-4">
+                <div className="p-2 bg-purple-50 rounded-full text-purple-600">
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Billing Policy</p>
+                  <div className="flex items-center gap-4 mt-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">Due Day:</span>
+                      <span className="text-sm font-semibold text-slate-700">{billingPolicy.dueDay}th of month</span>
+                    </div>
+                    <div className="h-3 w-px bg-slate-200" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">Daily Penalty:</span>
+                      <span className="text-sm font-semibold text-slate-700">{formatCurrency(billingPolicy.penalty)}</span>
+                    </div>
+                  </div>
+                </div>
+               </div>
+               <div className="text-[10px] text-slate-400 italic">
+                 Managed via School Settings
+               </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-          {/* Total Revenue */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.totalRevenue}</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-                    {formatCurrency(stats.totalRevenue)}
-                  </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+            <CardContent className="p-5">
+              <div className="relative z-10">
+                <p className="text-blue-100 text-xs font-medium uppercase tracking-wider">{t.totalRevenue}</p>
+                <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.totalRevenue)}</h3>
+                <div className="flex items-center mt-4 text-blue-100 text-xs">
+                  <Activity className="w-3.5 h-3.5 mr-1" />
+                  <span>Overall Collection</span>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <DollarSign className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+            <CardContent className="p-5">
+              <div className="relative z-10">
+                <p className="text-emerald-100 text-xs font-medium uppercase tracking-wider">{t.collectedToday}</p>
+                <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.collectedToday)}</h3>
+                <div className="flex items-center mt-4 text-emerald-100 text-xs">
+                  <TrendingUp className="w-3.5 h-3.5 mr-1" />
+                  <span>Daily Velocity</span>
                 </div>
+              </div>
+              <TrendingUp className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-rose-500 to-rose-600 text-white">
+            <CardContent className="p-5">
+              <div className="relative z-10">
+                <p className="text-rose-100 text-xs font-medium uppercase tracking-wider">{t.outstandingBalance}</p>
+                <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.outstandingBalance)}</h3>
+                <div className="flex items-center mt-4 text-rose-100 text-xs">
+                  <AlertCircle className="w-3.5 h-3.5 mr-1" />
+                  <span>Outstanding Dues</span>
+                </div>
+              </div>
+              <Receipt className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-slate-700 to-slate-800 text-white">
+            <CardContent className="p-5">
+              <div className="relative z-10">
+                <p className="text-slate-300 text-xs font-medium uppercase tracking-wider">Efficiency Rate</p>
+                <h3 className="text-2xl font-bold mt-1">
+                  {Math.round((stats.totalRevenue / (stats.totalRevenue + stats.outstandingBalance || 1)) * 100)}%
+                </h3>
+                <div className="flex items-center mt-4 text-slate-300 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                  <span>Target Fulfillment</span>
+                </div>
+              </div>
+              <BarChart3 className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Analytics Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-bold">Revenue Trend</CardTitle>
+                <p className="text-xs text-slate-500 mt-1">Daily collection performance for the selected period</p>
+              </div>
+              <Select value={chartView} onValueChange={(v: any) => setChartView(v)}>
+                <SelectTrigger className="w-32 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartRevenueData}>
+                    <defs>
+                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      fontSize={10} 
+                      tickFormatter={(d) => formatDate(d)} 
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      fontSize={10} 
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(val) => `Brr ${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      formatter={(val: number) => [formatCurrency(val), 'Revenue']}
+                      labelFormatter={(label) => formatDate(label)}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="amount" 
+                      stroke="#3b82f6" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#colorAmount)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
 
-          {/* Collected Today */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.collectedToday}</p>
-                  <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">
-                    {formatCurrency(stats.collectedToday)}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
-                </div>
+          <Card className="shadow-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold">Fee Composition</CardTitle>
+              <p className="text-xs text-slate-500 mt-1">Revenue breakdown by fee type</p>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={[
+                      { name: 'Tuition', value: feeBreakdown.tuition },
+                      { name: 'Reg', value: feeBreakdown.registration },
+                      { name: 'Exam', value: feeBreakdown.examFee },
+                      { name: 'Other', value: feeBreakdown.other + feeBreakdown.library }
+                    ]}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                    <YAxis fontSize={10} axisLine={false} tickLine={false} hide />
+                    <Tooltip 
+                      cursor={{fill: '#f1f5f9'}}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
+                      {[0,1,2,3].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Outstanding Balance */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.outstandingBalance}</p>
-                  <p className="text-xl font-bold text-red-600 dark:text-red-400 mt-1">
-                    {formatCurrency(stats.outstandingBalance)}
-                  </p>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                  <span className="text-[10px] font-medium text-slate-600">Tuition</span>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <span className="text-[10px] font-medium text-slate-600">Registration</span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Fully Paid */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.fullyPaid}</p>
-                  <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">
-                    {stats.totalStudentsFullyPaid}
-                  </p>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <span className="text-[10px] font-medium text-slate-600">Exam Fees</span>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Partial Payment */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.partialPayment}</p>
-                  <p className="text-xl font-bold text-orange-600 dark:text-orange-400 mt-1">
-                    {stats.studentsPartialPayment}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
-                  <MinusCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Unpaid */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.unpaid}</p>
-                  <p className="text-xl font-bold text-red-600 dark:text-red-400 mt-1">
-                    {stats.unpaidStudentsCount}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-                  <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                  <span className="text-[10px] font-medium text-slate-600">Other</span>
                 </div>
               </div>
             </CardContent>
@@ -1558,6 +1794,7 @@ setIsCreatingFeeStructure(true);
                     const result = await financeAPI.generateStudentFees({
                       schoolId: user.schoolId,
                       academicYearId: selectedYear,
+                      termId: selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined,
                     });
                     console.log('Generate result:', result);
                     toast.success(result.data?.created ? `${t.feesCreated} ${result.data.created}` : t.noFeesCreated);
@@ -1581,24 +1818,23 @@ setIsCreatingFeeStructure(true);
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[40%] text-left">{t.feeType}</TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-left">{t.grade}</TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-right">{t.amount}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-left">{t.feeType}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{t.grade}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{getBillingPeriodLabel(feeCollectionMode?.mode)}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[20%] text-right">{t.amount}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {displayFeeStructures.map((fee) => (
                     <TableRow key={fee.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <TableCell className="text-sm font-medium text-slate-900 dark:text-white py-3 px-4 w-[40%] text-left">
+                      <TableCell className="text-sm font-medium text-slate-900 dark:text-white py-3 px-4 w-[30%] text-left">
                         <div>{formatFeeStructureName(fee.feeType)}</div>
-                        {formatInstallmentLabel(fee) && (
-                          <div className="text-xs font-normal text-slate-500 dark:text-gray-400">
-                            {formatInstallmentLabel(fee)}
-                          </div>
-                        )}
                       </TableCell>
-                      <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[30%] text-left">{fee.gradeLabel}</TableCell>
-                      <TableCell className="text-sm text-slate-700 dark:text-slate-300 py-3 px-4 w-[30%] text-right">{formatCurrency(fee.amount)}</TableCell>
+                      <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{fee.gradeLabel}</TableCell>
+                      <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">
+                        {formatInstallmentLabel(fee) || '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-700 dark:text-slate-300 py-3 px-4 w-[20%] text-right">{formatCurrency(fee.amount)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1612,52 +1848,6 @@ setIsCreatingFeeStructure(true);
             )}
           </CardContent>
         </Card>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 gap-6 mb-6">
-          {/* Revenue Trend Chart */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">{t.revenueTrend}</CardTitle>
-                <Tabs value={chartView} onValueChange={(v) => setChartView(v as ChartView)}>
-                  <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
-                    <TabsTrigger value="daily" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">{t.daily}</TabsTrigger>
-                    <TabsTrigger value="weekly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">{t.weekly}</TabsTrigger>
-                    <TabsTrigger value="monthly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">{t.monthly}</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px] flex items-end gap-2">
-                {chartRevenueData.length > 0 ? (
-                  chartRevenueData.map((item, index) => (
-                    <div key={index} className="flex-1 flex flex-col items-center">
-                      <div 
-                        className="w-full bg-blue-500 dark:bg-blue-600 rounded-t transition-all hover:bg-blue-600 dark:hover:bg-blue-500"
-                        style={{ 
-                          height: `${(item.amount / chartMaxValue) * 200}px`,
-                          minHeight: item.amount > 0 ? '4px' : '0'
-                        }}
-                        title={`${formatDate(item.date)}: ${formatCurrency(item.amount)}`}
-                      />
-                      <FormattedDate
-                        date={item.date}
-                        className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 truncate w-full text-center"
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-slate-400">
-                    {t.noData}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-        </div>
 
         {/* Tables Section */}
         <div className="space-y-6">
@@ -2143,7 +2333,7 @@ setIsCreatingFeeStructure(true);
                     <SelectValue placeholder="Select grade" />
                   </SelectTrigger>
                   <SelectContent>
-                    {GRADE_OPTIONS.map(g => (
+                    {gradeOptions.map(g => (
                       <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
                     ))}
                   </SelectContent>
@@ -2162,7 +2352,7 @@ setIsCreatingFeeStructure(true);
                       <SelectValue placeholder="From" />
                     </SelectTrigger>
                     <SelectContent>
-                      {GRADE_OPTIONS.map(g => (
+                      {gradeOptions.map(g => (
                         <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
                       ))}
                     </SelectContent>
@@ -2178,7 +2368,7 @@ setIsCreatingFeeStructure(true);
                       <SelectValue placeholder="To" />
                     </SelectTrigger>
                     <SelectContent>
-                      {GRADE_OPTIONS.map(g => (
+                      {gradeOptions.map(g => (
                         <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
                       ))}
                     </SelectContent>

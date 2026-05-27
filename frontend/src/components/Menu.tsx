@@ -12,6 +12,7 @@ import { subscriptionAPI } from "@/lib/api/subscription";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { queryKeys } from "@/lib/query-keys";
 import { useTranslations } from "@/hooks/useTranslations";
+import { isPrimaryMiddleGradeSystem } from "@/lib/grade-system";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ import {
   BookOpen,
   School,
   BookText,
+  ClipboardCheck,
   ClipboardList,
   FileText,
   Trophy,
@@ -45,6 +47,7 @@ import {
   Shield,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   MenuIcon,
   X,
   TrendingUp,
@@ -55,6 +58,7 @@ import {
   Key,
   ShieldCheck,
   HelpCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 
 // Helper function to get dashboard path based on role
@@ -84,6 +88,7 @@ interface MenuItem {
   schoolSettingFlag?: string;
   subscriptionFeature?: string;
   subscriptionTier?: 'CORE' | 'STANDARD' | 'ULTIMATE';
+  hideForPrimaryMiddle?: boolean;
   children?: MenuItem[];
 }
 
@@ -107,6 +112,12 @@ const menuItems: MenuSection[] = [
         label: "Dashboard",
         href: "dashboard",
         visible: ["admin", "it_manager", "teacher", "student", "parent", "registrar", "finance", "super_admin"],
+      },
+      {
+        icon: <Trophy className="w-5 h-5" />,
+        label: "Teacher Leaderboard",
+        href: "/admin/teacher-leaderboard",
+        visible: ["admin"],
       },
       {
         icon: <BookOpen className="w-5 h-5" />,
@@ -143,6 +154,40 @@ const menuItems: MenuSection[] = [
         visible: ["teacher"],
         subscriptionFeature: "GRADE_MANAGEMENT",
       },
+      {
+        icon: <BookOpen className="w-5 h-5" />,
+        label: "Online Exams",
+        href: "/teacher/online-exams",
+        visible: ["teacher"],
+        featureFlag: "FEATURE_FLAG_EXAMS",
+        subscriptionFeature: "EXAM_MANAGEMENT",
+        children: [
+          {
+            icon: <ClipboardList className="w-4 h-4" />,
+            label: "Manage Exams",
+            href: "/teacher/online-exams/manage",
+            visible: ["teacher"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "EXAM_MANAGEMENT",
+          },
+          {
+            icon: <ClipboardCheck className="w-4 h-4" />,
+            label: "Submitted Exams",
+            href: "/teacher/online-exams/submissions",
+            visible: ["teacher"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "EXAM_MANAGEMENT",
+          },
+          {
+            icon: <BookOpen className="w-4 h-4" />,
+            label: "Create Exams",
+            href: "/teacher/online-exams#create-exams",
+            visible: ["teacher"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "EXAM_MANAGEMENT",
+          },
+        ],
+      },
 
       {
         icon: <BookText className="w-5 h-5" />,
@@ -166,6 +211,14 @@ const menuItems: MenuSection[] = [
         visible: ["student"],
         subscriptionFeature: "GRADE_MANAGEMENT",
       },
+      {
+        icon: <BookOpen className="w-5 h-5" />,
+        label: "My Exams",
+        href: "/student/practice-exams",
+        visible: ["student"],
+        featureFlag: "FEATURE_FLAG_EXAMS",
+        subscriptionFeature: "EXAM_MANAGEMENT",
+      },
 
       {
         icon: <ClipboardList className="w-5 h-5" />,
@@ -184,14 +237,6 @@ const menuItems: MenuSection[] = [
             subscriptionFeature: "EXAM_MANAGEMENT",
           },
           {
-            icon: <Users className="w-4 h-4" />,
-            label: "Exam Seating",
-            href: "/admin/exams/seating",
-            visible: ["admin", "it_manager"],
-            featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "EXAM_SEATING",
-          },
-          {
             icon: <Trophy className="w-4 h-4" />,
             label: "Entry Progress",
             href: "/admin/exams/entry-progress",
@@ -208,26 +253,22 @@ const menuItems: MenuSection[] = [
             subscriptionFeature: "EXAM_MANAGEMENT",
           },
           {
+            icon: <TrendingUp className="w-4 h-4" />,
+            label: "Student Rankings",
+            href: "/admin/exams/rankings",
+            visible: ["admin", "registrar", "it_manager"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "STUDENT_RANKINGS",
+            hideForPrimaryMiddle: true,
+          },
+          {
             icon: <FileText className="w-4 h-4" />,
             label: "Report Cards",
             href: "/admin/report-cards",
             visible: ["admin", "registrar", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
             subscriptionFeature: "REPORT_CARDS",
-          },
-          {
-            icon: <FileText className="w-4 h-4" />,
-            label: "Performance Brief",
-            href: "/admin/reports/parent-presentation",
-            visible: ["admin", "registrar", "it_manager"],
-            featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "REPORT_CARDS",
-          },
-          {
-            icon: <Shield className="w-4 h-4" />,
-            label: "Student Data Health",
-            href: "/admin/reports/data-consistency",
-            visible: ["admin", "registrar", "it_manager"],
+            hideForPrimaryMiddle: true,
           },
           {
             icon: <FileText className="w-4 h-4" />,
@@ -236,6 +277,47 @@ const menuItems: MenuSection[] = [
             visible: ["admin", "it_manager"],
             featureFlag: "FEATURE_FLAG_EXAMS",
             subscriptionFeature: "CERTIFICATE_TEMPLATES",
+            hideForPrimaryMiddle: true,
+          },
+        ],
+      },
+      {
+        icon: <FileText className="w-5 h-5" />,
+        label: "Performance Brief",
+        href: "/admin/reports/parent-presentation",
+        visible: ["admin", "registrar", "it_manager"],
+        featureFlag: "FEATURE_FLAG_EXAMS",
+        subscriptionFeature: "REPORT_CARDS",
+      },
+      {
+        icon: <Shield className="w-5 h-5" />,
+        label: "Student Data Health",
+        href: "/admin/reports/data-consistency",
+        visible: ["admin", "registrar", "it_manager"],
+      },
+      {
+        icon: <BookOpen className="w-5 h-5" />,
+        label: "Online Examination",
+        href: "/admin/practice-exams",
+        visible: ["admin", "it_manager"],
+        featureFlag: "FEATURE_FLAG_EXAMS",
+        subscriptionFeature: "EXAM_MANAGEMENT",
+        children: [
+          {
+            icon: <ClipboardList className="w-4 h-4" />,
+            label: "Manage Exams",
+            href: "/admin/practice-exams/manage",
+            visible: ["admin", "it_manager"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "EXAM_MANAGEMENT",
+          },
+          {
+            icon: <BookOpen className="w-4 h-4" />,
+            label: "Create Exams",
+            href: "/admin/practice-exams#create-exams",
+            visible: ["admin", "it_manager"],
+            featureFlag: "FEATURE_FLAG_EXAMS",
+            subscriptionFeature: "EXAM_MANAGEMENT",
           },
         ],
       },
@@ -282,14 +364,6 @@ const menuItems: MenuSection[] = [
             subscriptionFeature: "STUDENT_PROMOTION",
           },
           {
-            icon: <TrendingUp className="w-4 h-4" />,
-            label: "Student Rankings",
-            href: "/admin/exams/rankings",
-            visible: ["admin", "registrar", "it_manager"],
-            featureFlag: "FEATURE_FLAG_EXAMS",
-            subscriptionFeature: "STUDENT_RANKINGS",
-          },
-          {
             icon: <CreditCard className="w-4 h-4" />,
             label: "ID Cards",
             href: "/admin/id-cards",
@@ -317,21 +391,21 @@ const menuItems: MenuSection[] = [
         icon: <UserCircle className="w-5 h-5" />,
         label: "People",
         href: "/list/staff",
-        visible: ["admin", "it_manager"],
+        visible: ["admin", "it_manager", "registrar"],
         subscriptionFeature: "USER_MANAGEMENT",
         children: [
           {
             icon: <Users className="w-4 h-4" />,
             label: "Staff",
             href: "/list/staff",
-            visible: ["admin", "it_manager"],
+            visible: ["admin", "it_manager", "registrar"],
             subscriptionFeature: "USER_MANAGEMENT",
           },
           {
             icon: <Users className="w-4 h-4" />,
             label: "Parents",
             href: "/list/parents",
-            visible: ["admin", "it_manager"],
+            visible: ["admin", "it_manager", "registrar"],
             subscriptionFeature: "USER_MANAGEMENT",
           },
         ],
@@ -432,10 +506,16 @@ const menuItems: MenuSection[] = [
         subscriptionFeature: "SCHOOL_CALENDAR",
       },
       {
-        icon: <DollarSign className="w-5 h-5" />,
+        icon: <Settings className="w-5 h-5" />,
+        label: "Finance Management",
+        href: "/list/finance",
+        visible: ["finance"],
+      },
+      {
+        icon: <FileText className="w-5 h-5" />,
         label: "Finance Reports",
         href: "/finance/reports",
-        visible: ["finance", "admin", "it_manager"],
+        visible: ["finance"],
       },
       {
         icon: <Megaphone className="w-5 h-5" />,
@@ -451,6 +531,29 @@ const menuItems: MenuSection[] = [
         href: "/admin/credentials",
         visible: ["admin", "registrar", "it_manager"],
         subscriptionFeature: "CREDENTIAL_MANAGEMENT",
+      },
+      {
+        icon: <FileText className="w-5 h-5" />,
+        label: "School Leaving",
+        href: "/registrar/school-leaving",
+        visible: ["registrar"],
+        subscriptionFeature: "USER_MANAGEMENT",
+      },
+      {
+        icon: <Award className="w-5 h-5" />,
+        label: "National Exams",
+        href: "/registrar/national-exams",
+        visible: ["registrar"],
+        subscriptionFeature: "EXAM_MANAGEMENT",
+      },
+      {
+        icon: <Users className="w-5 h-5" />,
+        label: "Exam Seating",
+        href: "/admin/exams/seating",
+        visible: ["registrar"],
+        featureFlag: "FEATURE_FLAG_EXAMS",
+        subscriptionFeature: "EXAM_SEATING",
+        hideForPrimaryMiddle: true,
       },
       {
         icon: <Building2 className="w-5 h-5" />,
@@ -471,6 +574,12 @@ const menuItems: MenuSection[] = [
         visible: ["super_admin"],
       },
       {
+        icon: <FileSpreadsheet className="w-5 h-5" />,
+        label: "Backups",
+        href: "/superadmin/backups",
+        visible: ["super_admin"],
+      },
+      {
         icon: <Settings className="w-5 h-5" />,
         label: "Platform Settings",
         href: "/platform-settings",
@@ -480,7 +589,7 @@ const menuItems: MenuSection[] = [
         icon: <ShieldCheck className="w-5 h-5" />,
         label: "Users Management",
         href: "/admin/bulk-upload",
-        visible: ["admin", "it_manager"],
+        visible: ["admin", "it_manager", "registrar"],
         subscriptionFeature: "BULK_OPERATIONS",
       },
       {
@@ -595,7 +704,7 @@ const Menu = ({
   // Check if submenu should be open based on active child
   const isSubmenuActive = useCallback((children?: MenuItem[]) => {
     if (!children || children.length === 0) return false;
-    return children.some((child) => pathname === child.href);
+    return children.some((child) => pathname === child.href.split("#")[0]);
   }, [pathname]);
 
   // Memoize role key to prevent recalculation
@@ -710,6 +819,7 @@ const Menu = ({
     currentAcademicYear, 
     curriculumType, 
     periodLabel,
+    displayTermName,
     formattedYearLabel,
     isLoading: isAcademicYearLoading 
   } = useAcademicYear();
@@ -782,6 +892,10 @@ const Menu = ({
     return settingValue !== false;
   }, [settingsData]);
 
+  const isPrimaryMiddleSchool = isPrimaryMiddleGradeSystem(settingsData?.data?.grade_system);
+  const isGradeSystemVisible = useCallback((item: MenuItem) =>
+    !(isPrimaryMiddleSchool && item.hideForPrimaryMiddle), [isPrimaryMiddleSchool]);
+
   const hasSubscriptionAccess = useCallback((
     subscriptionFeature?: string,
     subscriptionTier?: 'CORE' | 'STANDARD' | 'ULTIMATE'
@@ -832,7 +946,7 @@ const Menu = ({
   }
 
   return (
-    <div className="mt-6 overflow-x-hidden" dir="ltr">
+    <div className="mt-6 overflow-x-hidden" dir={textDirection}>
       {menuItems.map((section) => (
         <div className="mb-6 flex flex-col gap-2" key={section.title}>
           {section.items.map((item) => {
@@ -854,7 +968,12 @@ const Menu = ({
             const isSchoolSettingVisible = isSchoolSettingEnabled(item.schoolSettingFlag);
 
             // Item is visible if role, feature flag, school setting, and subscription checks pass
-            const isVisible = isRoleVisible && isFeatureVisible && isSchoolSettingVisible && hasSubscription;
+            const isVisible =
+              isRoleVisible &&
+              isFeatureVisible &&
+              isSchoolSettingVisible &&
+              hasSubscription &&
+              isGradeSystemVisible(item);
 
             // Get the actual href - use role-based dashboard path if this is the dashboard item
             const actualHref = item.href === "dashboard"
@@ -864,6 +983,9 @@ const Menu = ({
             const isSchoolSettingsRoute =
               actualHref === "/settings/school" &&
               !!pathname?.match(/^\/list\/schools\/[^/]+\/settings$/);
+
+            const hasChildren = item.children && item.children.length > 0;
+            const isParentWithChildren = !!hasChildren;
 
             // More specific active state matching
             // Only match exact path for root routes, or paths with trailing slash
@@ -894,8 +1016,9 @@ const Menu = ({
               actualHref === "/superadmin" ||
               actualHref === "/admin/assessments";
             const isActive =
-              isExactMatch ||
-              (isChildMatch && !isRootRoute && !hasActiveMoreSpecificSibling);
+              !isParentWithChildren &&
+              (isExactMatch ||
+                (isChildMatch && !isRootRoute && !hasActiveMoreSpecificSibling));
 
             // Don't highlight parent if child has same href (to avoid highlighting parent when child is clicked)
             const hasSameHrefChild = item.children?.some(child => child.href === actualHref);
@@ -904,10 +1027,13 @@ const Menu = ({
             // Check if this is a terms/quarters menu item (dynamic label based on curriculum type)
             const isTermsItem = item.label === "Semester";
             const isPerformanceBriefItem = item.label === "Performance Brief";
+            const currentPeriodSummaryLabel = displayTermName
+              ? `${displayTermName} Summary`
+              : `${periodLabel} Summary`;
             const displayLabel = isTermsItem
               ? periodLabel
               : isPerformanceBriefItem
-                ? `${periodLabel} ${getNavigationLabel("Performance Brief")}`
+                ? currentPeriodSummaryLabel
                 : getNavigationLabel(item.label);
 
             // Check if this is a communication menu item
@@ -918,7 +1044,6 @@ const Menu = ({
             const showEventBadge = isEventItem && eventsCount > 0;
 
             const showBadge = showCommBadge || showEventBadge;
-            const hasChildren = item.children && item.children.length > 0;
             const submenuActive = isSubmenuActive(item.children);
             const isOpen = openSubmenus[item.label] || submenuActive;
 
@@ -933,7 +1058,11 @@ const Menu = ({
                     child.subscriptionFeature,
                     child.subscriptionTier
                   );
-                  return childRoleVisible && childFeatureVisible && childSchoolSettingVisible && childSubscription;
+                  return childRoleVisible &&
+                    childFeatureVisible &&
+                    childSchoolSettingVisible &&
+                    childSubscription &&
+                    isGradeSystemVisible(child);
                 }) || []
               : [];
 
@@ -1035,7 +1164,7 @@ const Menu = ({
                         </span>
                       </Link>
                     )}
-                    <div className="ml-auto flex h-5 w-6 shrink-0 items-center justify-center">
+                    <div className={`${language === "ar" ? "mr-auto" : "ml-auto"} flex h-5 w-6 shrink-0 items-center justify-center`}>
                       {showBadge ? (
                         <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
                           {showCommBadge ? (openCommunicationsCount > 99 ? '99+' : openCommunicationsCount) :
@@ -1052,6 +1181,8 @@ const Menu = ({
                         >
                           {isOpen ? (
                             <ChevronDown className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                          ) : language === "ar" ? (
+                            <ChevronLeft className="w-4 h-4 text-slate-500 dark:text-gray-400" />
                           ) : (
                             <ChevronRight className="w-4 h-4 text-slate-500 dark:text-gray-400" />
                           )}
@@ -1064,10 +1195,14 @@ const Menu = ({
 
                   {/* Related children */}
                   {hasVisibleChildren && !collapsed && isOpen && (
-                    <div className={`ml-4 pl-2 border-l dark:border-gray-700 space-y-1 ${useBrandNavigation ? "border-white/55" : "border-gray-200"}`}>
+                    <div className={`${language === "ar" ? "mr-4 pr-2 border-r" : "ml-4 pl-2 border-l"} dark:border-gray-700 space-y-1 ${useBrandNavigation ? "border-white/55" : "border-gray-200"}`}>
                       {visibleChildren.map((child) => {
                         const childHref = child.href;
-                        const isChildActive = pathname === childHref;
+                        const childPath = childHref.split("#")[0];
+                        const isChildActive = pathname === childPath;
+                        const childDisplayLabel = child.label === "Performance Brief"
+                          ? currentPeriodSummaryLabel
+                          : getNavigationLabel(child.label);
                         return (
                           <Link
                             key={`${child.label}-${childHref}`}
@@ -1088,8 +1223,8 @@ const Menu = ({
                             <div className="flex h-5 w-5 shrink-0 items-center justify-center text-slate-900 dark:text-white">
                               {child.icon}
                             </div>
-                            <span className="flex-1 text-sm whitespace-normal" dir={textDirection}>{getNavigationLabel(child.label)}</span>
-                            <div className="ml-auto flex h-5 w-4 shrink-0 items-center justify-center">
+                            <span className="flex-1 text-sm whitespace-normal" dir={textDirection}>{childDisplayLabel}</span>
+                            <div className={`${language === "ar" ? "mr-auto" : "ml-auto"} flex h-5 w-4 shrink-0 items-center justify-center`}>
                               {isChildActive && (
                                 <div className={`h-1 w-1 rounded-full ${useBrandNavigation ? "bg-[var(--brand-color,#e35336)]" : "bg-slate-500 dark:bg-slate-300"}`} />
                               )}

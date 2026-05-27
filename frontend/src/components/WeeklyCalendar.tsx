@@ -20,7 +20,7 @@ interface NavigationMessages {
   };
 }
 
-export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarProps) {
+export default function WeeklyCalendar({ events = [], onEventClick }: WeeklyCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { calendarType } = useCalendar();
   const { t: navigationText, language, locale } = useTranslations<NavigationMessages>('navigation');
@@ -77,7 +77,7 @@ export default function WeeklyCalendar({ events, onEventClick }: WeeklyCalendarP
   // Get events for a specific date
   const getEventsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return events.filter((event) => {
+    return (events || []).filter((event) => {
       const eventDate = new Date(event.startDate).toISOString().split('T')[0];
       return eventDate === dateStr;
     });

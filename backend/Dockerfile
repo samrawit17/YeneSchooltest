@@ -10,6 +10,8 @@ ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
 
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
+
 # Copy package files
 COPY package*.json ./
 
@@ -41,6 +43,8 @@ ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
 
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs nodejs
@@ -57,6 +61,7 @@ RUN npx prisma generate
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
@@ -97,6 +102,8 @@ ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
 ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
+
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 

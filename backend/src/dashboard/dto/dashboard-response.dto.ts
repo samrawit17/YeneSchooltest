@@ -44,6 +44,20 @@ export class UniversalDashboardResponseDto {
     schoolId?: string;
     academicYear?: string;
     term?: string;
+    teacherLeaderboard?: Array<{
+      rank: number;
+      teacherId: string;
+      teacherName: string;
+      teacherEmail: string | null;
+      overallScore: number;
+      gradingScore: number;
+      attendanceScore: number;
+      lessonPlanScore: number;
+      gradingSubmitted: number;
+      gradingOnTime: number;
+      attendanceSubmitted: number;
+      lessonPlans: number;
+    }>;
     generatedAt: Date;
     curriculum?: {
       curriculumType: string;

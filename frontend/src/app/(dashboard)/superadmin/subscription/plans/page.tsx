@@ -104,9 +104,14 @@ const SubscriptionPlansPage = () => {
         router.push('/dashboard');
         return;
       }
-      fetchSchools();
     }
   }, [isAuthenticated, authLoading, user, router]);
+
+  useEffect(() => {
+    if (activeTab === 'schools' && schools.length === 0 && !loadingSchools) {
+      fetchSchools();
+    }
+  }, [activeTab]);
 
   const fetchSchools = async () => {
     try {

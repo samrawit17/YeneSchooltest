@@ -7,6 +7,7 @@ import { useTranslations } from "@/hooks/useTranslations";
 import { studentsAPI, attendanceAPI, financeAPI, academicYearsAPI } from "@/lib/api";
 import { communicationsAPI } from "@/lib/api/communications";
 import { queryKeys } from "@/lib/query-keys";
+import { formatStudentDisplayCode } from "@/lib/student-code";
 import {
   Activity,
   Award,
@@ -16,17 +17,21 @@ import {
   Clock,
   CreditCard,
   Edit2,
+  FileText,
   GraduationCap,
   Loader2,
   MapPin,
   MessageSquare,
+  MoreHorizontal,
   Phone,
   Shield,
+  Trash2,
   User,
   Users,
 } from "lucide-react";
 import UserAvatarUpload from "@/components/UserAvatarUpload";
 import NewMessageModal from "@/components/communications/NewMessageModal";
+import StudentDocumentViewer, { StudentDocumentRecord } from "@/components/students/StudentDocumentViewer";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
@@ -45,6 +50,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -101,6 +112,57 @@ const normalizeFeeStatus = (balance: number, paid: number, due: number) => {
   if (balance <= 0) return "Paid";
   if (paid > 0) return "Partial";
   return "Unpaid";
+};
+
+const requiredStudentDocuments = [
+  { type: "birth_certificate", title: "Birth Certificate" },
+  { type: "parent_id", title: "Parent ID" },
+  { type: "previous_transcript", title: "Previous School Transcript" },
+  { type: "transfer_letter", title: "Transfer Letter" },
+  { type: "passport_photo", title: "Passport Photo" },
+  { type: "medical_record", title: "Medical Record" },
+];
+
+const extractGradeNumber = (value?: string | number | null) => {
+  if (typeof value === "number") return value;
+  const match = String(value || "").match(/\d+/);
+  return match ? Number(match[0]) : null;
+};
+
+const getRequiredStudentDocuments = (className?: string | number | null) => {
+  const grade = extractGradeNumber(className);
+  const nationalDocuments =
+    grade === 7
+      ? [{ type: "grade_6_national_certificate", title: "Grade 6 National Certificate" }]
+      : grade === 9
+        ? [{ type: "grade_8_national_certificate", title: "Grade 8 National Certificate" }]
+        : [];
+
+  return [...requiredStudentDocuments, ...nationalDocuments];
+};
+
+const parseStudentDocuments = (raw: any): any[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw !== "string") return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const parseJsonObject = (raw: any): Record<string, any> | null => {
+  if (!raw) return null;
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+  if (typeof raw !== "string") return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 };
 
 const getPeriodStatusClass = (status: string) => {
@@ -165,6 +227,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const isFinance = currentRole === 'FINANCE';
   const canEditStudent = ['ADMIN', 'REGISTRAR', 'IT_MANAGER', 'SUPER_ADMIN'].includes(currentRole);
   const canUploadPhoto = ['ADMIN', 'REGISTRAR', 'IT_MANAGER', 'SUPER_ADMIN'].includes(currentRole);
+  const canManageDocuments = ['ADMIN', 'REGISTRAR'].includes(currentRole);
 
   const { data: activeAcademicYear } = useQuery({
     queryKey: queryKeys.academicYears.active(user?.schoolId),
@@ -178,10 +241,14 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const { data: curriculumInfo } = useQuery({
     queryKey: ["student-finance-curriculum", user?.schoolId, activeAcademicYear?.id],
     queryFn: async () => {
-      const response = await financeAPI.getCurriculumInfo(user?.schoolId || "", activeAcademicYear?.id || "");
+      const response = await financeAPI.getCurriculumInfo(
+        user?.schoolId || "",
+        activeAcademicYear?.id || "",
+        { skipAuthErrorRedirect: true },
+      );
       return response.data;
     },
-    enabled: !!user?.schoolId && !!activeAcademicYear?.id && !isTeacher,
+    enabled: !!user?.schoolId && !!activeAcademicYear?.id && !isTeacher && !isRegistrar,
   });
 
   const currentTermId = (() => {
@@ -233,6 +300,9 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [customDocumentTitle, setCustomDocumentTitle] = useState("");
+  const [customDocumentNote, setCustomDocumentNote] = useState("");
+  const [viewingDocument, setViewingDocument] = useState<StudentDocumentRecord | null>(null);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -307,6 +377,61 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
       setIsEditing(false);
     },
   });
+
+  const documentMutation = useMutation({
+    mutationFn: (documents: any[]) => studentsAPI.uploadDocuments(studentUserId, documents),
+    onSuccess: (_data, documents) => {
+      const status = documents?.[0]?.status;
+      toast.success(status === "NOT_REQUIRED" ? "Document marked not required" : "Document submitted");
+      setCustomDocumentTitle("");
+      setCustomDocumentNote("");
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId) });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to submit document");
+    },
+  });
+
+  const deleteDocumentMutation = useMutation({
+    mutationFn: (documentKey: string) => studentsAPI.deleteDocument(studentUserId, documentKey),
+    onSuccess: () => {
+      toast.success("Document deleted");
+      setViewingDocument(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(studentId) });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to delete document");
+    },
+  });
+
+  const getDocumentKey = (document: any) => String(document?.id || document?.type || document?.title || document?.name || "");
+
+  const handleDeleteDocument = (document: any) => {
+    const documentKey = getDocumentKey(document);
+    if (!documentKey) {
+      toast.error("Cannot identify this document");
+      return;
+    }
+    deleteDocumentMutation.mutate(documentKey);
+  };
+
+  const handleMarkDocumentNotRequired = (document: { type: string; title: string }) => {
+    if (!studentUserId) {
+      toast.error("Student account not found");
+      return;
+    }
+    documentMutation.mutate([
+      {
+        type: document.type,
+        title: document.title,
+        category: "student_registration",
+        status: "NOT_REQUIRED",
+        submitted: false,
+        notRequired: true,
+        description: "Marked not required by admin",
+      },
+    ]);
+  };
 
   const handleEditClick = () => {
     router.push(`/list/students/${studentId}/edit`);
@@ -471,19 +596,44 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const studentName = userData.name || t.unknownStudent;
   const avatarUrl = userData.img || userData.avatarUrl;
   const username = userData.username || student.studentCode || t.nA;
+  const studentCode = student.studentCode || student.studentId || t.nA;
+  const displayStudentCode = formatStudentDisplayCode(studentCode, student.academicYear);
+  const faydaNumber = student.faydaNumber || t.nA;
   const phone = student.phone || userData.phone || t.nA;
   const motherName = student.motherName || t.nA;
   const motherPhone = student.motherPhone || t.nA;
   const address = student.address || userData.address || t.nA;
   const gender = student.gender || t.nA;
+  const nationality = student.nationality || t.nA;
   const dateOfBirth = student.dateOfBirth || student.birthday;
+  const emergencyContact = parseJsonObject(student.emergencyContact);
+  const emergencyContactLabel = emergencyContact
+    ? [emergencyContact.name, emergencyContact.phone, emergencyContact.relationship || emergencyContact.relation].filter(Boolean).join(" - ")
+    : t.nA;
+  const medicalInfo = parseJsonObject(student.medicalInfo);
+  const medicalInfoLabel = medicalInfo
+    ? Object.entries(medicalInfo)
+        .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== "")
+        .map(([key, value]) => `${key.replace(/_/g, " ")}: ${value}`)
+        .join(", ")
+    : student.medicalInfo || t.nA;
   const className = student.className || student.class?.name || t.nA;
+  const gradeNumber = extractGradeNumber(className);
+  const stream = [11, 12].includes(Number(gradeNumber)) && student.stream
+    ? String(student.stream).toLowerCase().replace(/^\w/, (char) => char.toUpperCase())
+    : t.nA;
   const section = student.section || student.sectionName || t.nA;
   const homeroomTeacher = student.classTeacher || student.class?.homeroomTeacher?.name || t.nA;
   const enrollmentStatus = student.enrollmentStatus || t.nA;
   const lastLogin = student.lastLogin || userData.lastLoginAt || userData.lastLogin;
   const isActive = userData.isActive ?? true;
   const parents = student.parents || [];
+  const documents = parseStudentDocuments(student.documents);
+  const documentTypes = new Set(documents.map((doc: any) => String(doc.type || doc.title || doc.name || "").toLowerCase()));
+  const documentsByType = new Map(
+    documents.map((doc: any) => [String(doc.type || doc.title || doc.name || "").toLowerCase(), doc]),
+  );
+  const requiredDocuments = getRequiredStudentDocuments(className);
   const attendanceRate = Number(calculatedAttendanceRate || student.attendanceRate || 0);
   const feeStatus = hasGeneratedFees
     ? normalizeFeeStatus(totalOutstanding, totalPaidAmount, totalFeeAmount)
@@ -504,6 +654,23 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
     } finally {
       setIsSendingMessage(false);
     }
+  };
+
+  const handleSubmitDocument = (document: { type: string; title: string }, note?: string) => {
+    if (!studentUserId) {
+      toast.error("Student account not found");
+      return;
+    }
+    documentMutation.mutate([
+      {
+        type: document.type,
+        title: document.title,
+        category: "student_registration",
+        status: "SUBMITTED",
+        submitted: true,
+        description: note?.trim() || "Submitted physically",
+      },
+    ]);
   };
 
   return (
@@ -530,7 +697,8 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                     <Badge variant="outline">{enrollmentStatus}</Badge>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{username}</span>
+                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{displayStudentCode}</span>
+                    {username !== displayStudentCode ? <span>Login: {username}</span> : null}
                     <span>{className}{section !== t.nA ? ` - ${section}` : ""}</span>
                     <span>{t.roll.replace("{number}", student.rollNumber || t.nA)}</span>
                   </div>
@@ -578,12 +746,17 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
               </CardHeader>
               <CardContent className="space-y-3">
                 <InfoRow icon={Shield} label={t.info.username} value={username} />
+                <InfoRow icon={Shield} label="Student Code" value={displayStudentCode} />
+                <InfoRow icon={Shield} label="Fayda Number (FAN)" value={faydaNumber} />
                 <InfoRow icon={Phone} label={t.info.phone} value={phone} />
                 <InfoRow icon={User} label="Mother's Name" value={motherName} />
                 <InfoRow icon={Phone} label="Mother's Phone" value={motherPhone} />
                 <InfoRow icon={User} label={t.info.gender} value={gender} />
+                <InfoRow icon={User} label="Nationality" value={nationality} />
                 <InfoRow icon={Calendar} label={t.info.dateOfBirth} value={formatDate(dateOfBirth)} />
                 <InfoRow icon={MapPin} label={t.info.address} value={address} />
+                <InfoRow icon={Phone} label="Emergency Contact" value={emergencyContactLabel} />
+                <InfoRow icon={Shield} label="Medical Info" value={medicalInfoLabel} />
                 <InfoRow icon={Calendar} label={t.info.enrollment} value={student.enrollmentYear || student.admissionDate || t.nA} />
               </CardContent>
             </Card>
@@ -614,6 +787,91 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                 )}
               </CardContent>
             </Card>
+
+            {canManageDocuments ? (
+              <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <FileText className="h-4 w-4 text-slate-500" />
+                    Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-2">
+                    {requiredDocuments.map((document) => {
+                      const submittedDocument = documentsByType.get(document.type.toLowerCase()) || documentsByType.get(document.title.toLowerCase()) || null;
+                      const notRequired = String(submittedDocument?.status || "").toUpperCase() === "NOT_REQUIRED" || submittedDocument?.notRequired === true;
+                      const submitted = !!submittedDocument && !notRequired;
+                      if (notRequired) return null;
+                      return (
+                        <div key={document.type} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{document.title}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {notRequired ? "Not required" : submitted ? "Submitted" : "Waiting for physical document"}
+                            </p>
+                          </div>
+                          <DocumentActionsMenu
+                            isBusy={documentMutation.isPending || deleteDocumentMutation.isPending}
+                            onView={submitted ? () => setViewingDocument(submittedDocument || { ...document, status: "SUBMITTED", submitted: true }) : undefined}
+                            onMark={!submitted && !notRequired ? () => handleSubmitDocument(document) : undefined}
+                            onNotRequired={!submitted && !notRequired ? () => handleMarkDocumentNotRequired(document) : undefined}
+                            onDelete={submitted ? () => handleDeleteDocument(submittedDocument || document) : undefined}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+                    <p className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Add custom document</p>
+                    <div className="space-y-2">
+                      <Input
+                        value={customDocumentTitle}
+                        onChange={(event) => setCustomDocumentTitle(event.target.value)}
+                        placeholder="Document name"
+                      />
+                      <Input
+                        value={customDocumentNote}
+                        onChange={(event) => setCustomDocumentNote(event.target.value)}
+                        placeholder="Note, e.g. original seen"
+                      />
+                      <Button
+                        size="sm"
+                        disabled={documentMutation.isPending || !customDocumentTitle.trim()}
+                        onClick={() => handleSubmitDocument({
+                          type: customDocumentTitle.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""),
+                          title: customDocumentTitle.trim(),
+                        }, customDocumentNote)}
+                      >
+                        {documentMutation.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="mr-1.5 h-3.5 w-3.5" />}
+                        Mark Submitted
+                      </Button>
+                    </div>
+                  </div>
+                  {documents.length > 0 ? (
+                    <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+                      <p className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Submitted documents</p>
+                      <div className="space-y-2">
+                        {documents.filter((document: any) => String(document?.status || "").toUpperCase() !== "NOT_REQUIRED" && document?.notRequired !== true).map((document: any, index: number) => (
+                          <div key={`${getDocumentKey(document)}-${index}`} className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800/70">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{document.title || document.name || document.type || "Document"}</p>
+                              <p className="truncate text-xs text-slate-500">{document.note || document.description || document.status || "Submitted"}</p>
+                            </div>
+                            <DocumentActionsMenu
+                              isBusy={deleteDocumentMutation.isPending}
+                              onView={() => setViewingDocument(document)}
+                              onDelete={() => handleDeleteDocument(document)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
@@ -683,6 +941,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
               </CardHeader>
               <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <InfoRow icon={BookOpen} label={t.academic.year} value={activeAcademicYear?.name || student.enrollmentYear || t.nA} />
+                <InfoRow icon={BookOpen} label="Stream" value={stream} />
                 <InfoRow icon={Award} label={t.academic.classTeacher} value={homeroomTeacher} />
                 <InfoRow icon={CheckCircle} label={t.academic.status} value={enrollmentStatus} />
               </CardContent>
@@ -700,6 +959,14 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
         preselectedStudentName={userData.name || studentName}
         isParent={user?.role === "PARENT"}
         isTeacher={user?.role === "TEACHER"}
+      />
+
+      <StudentDocumentViewer
+        document={viewingDocument}
+        open={Boolean(viewingDocument)}
+        onOpenChange={(open) => {
+          if (!open) setViewingDocument(null);
+        }}
       />
 
       {/* Edit Student Dialog */}
@@ -887,6 +1154,56 @@ function MiniRow({ label, value }: { label: string; value: string }) {
       <span className="min-w-0 truncate text-slate-500 dark:text-slate-400">{label}</span>
       <span className="shrink-0 font-semibold text-slate-800 dark:text-slate-200">{value}</span>
     </div>
+  );
+}
+
+function DocumentActionsMenu({
+  isBusy,
+  onView,
+  onMark,
+  onNotRequired,
+  onDelete,
+}: {
+  isBusy?: boolean;
+  onView?: () => void;
+  onMark?: () => void;
+  onNotRequired?: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="icon" variant="outline" className="h-8 w-8 shrink-0" disabled={isBusy}>
+          {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        {onView ? (
+          <DropdownMenuItem onClick={onView}>
+            <FileText className="h-4 w-4" />
+            View
+          </DropdownMenuItem>
+        ) : null}
+        {onMark ? (
+          <DropdownMenuItem onClick={onMark}>
+            <CheckCircle className="h-4 w-4" />
+            Mark submitted
+          </DropdownMenuItem>
+        ) : null}
+        {onNotRequired ? (
+          <DropdownMenuItem onClick={onNotRequired} className="text-red-700 focus:text-red-700 dark:text-red-300 dark:focus:text-red-300">
+            <Trash2 className="h-4 w-4" />
+            Hide as not required
+          </DropdownMenuItem>
+        ) : null}
+        {onDelete ? (
+          <DropdownMenuItem onClick={onDelete} className="text-red-700 focus:text-red-700 dark:text-red-300 dark:focus:text-red-300">
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

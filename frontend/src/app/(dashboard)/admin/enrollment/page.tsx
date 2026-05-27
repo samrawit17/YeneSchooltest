@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { academicYearsAPI } from '@/lib/api';
+import { formatUserDisplayCode } from '@/lib/student-code';
 import {
   enrollmentAPI,
   EnrollmentRequest,
@@ -73,6 +74,10 @@ export default function AdminEnrollmentPage() {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedGrade, setSelectedGrade] = useState('all');
+  const selectedYearLabel =
+    academicYears.find((year) => year.id === selectedYear)?.ethiopianYear ||
+    academicYears.find((year) => year.id === selectedYear)?.name ||
+    selectedYear;
   const [searchTerm, setSearchTerm] = useState('');
 
   // Dialogs
@@ -408,6 +413,7 @@ export default function AdminEnrollmentPage() {
                   <div><span className="text-gray-500">Name:</span> {selectedRequest.firstName} {selectedRequest.middleName} {selectedRequest.lastName}</div>
                   <div><span className="text-gray-500">DOB:</span> {formatDate(selectedRequest.dateOfBirth)}</div>
                   <div><span className="text-gray-500">Gender:</span> {selectedRequest.gender}</div>
+                  <div><span className="text-gray-500">Fayda Number (FAN):</span> {selectedRequest.faydaNumber || '-'}</div>
                   <div><span className="text-gray-500">Nationality:</span> {selectedRequest.nationality || '-'}</div>
                   <div><span className="text-gray-500">Phone:</span> {selectedRequest.phone || '-'}</div>
                   <div><span className="text-gray-500">Email:</span> {selectedRequest.email || '-'}</div>
@@ -530,8 +536,8 @@ export default function AdminEnrollmentPage() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-900 mb-2">Student Credentials</h4>
                 <div className="space-y-2 text-sm">
-                  <div><span className="text-gray-500">Username:</span> <strong>{credentials.student.username}</strong></div>
-                  <div><span className="text-gray-500">Student Code:</span> <strong>{credentials.student.studentCode}</strong></div>
+                  <div><span className="text-gray-500">Username:</span> <strong>{formatUserDisplayCode(credentials.student.username, selectedYearLabel)}</strong> <span className="text-gray-500">Login: {credentials.student.username}</span></div>
+                  <div><span className="text-gray-500">Student Code:</span> <strong>{formatUserDisplayCode(credentials.student.studentCode, selectedYearLabel)}</strong></div>
                   <div><span className="text-gray-500">Class:</span> <strong>{credentials.student.class}</strong></div>
                   <div><span className="text-gray-500">Section:</span> <strong>{credentials.student.section}</strong></div>
                   <div><span className="text-gray-500">Roll Number:</span> <strong>{credentials.student.rollNumber}</strong></div>
@@ -542,7 +548,7 @@ export default function AdminEnrollmentPage() {
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <h4 className="font-semibold text-purple-900 mb-2">Parent Credentials</h4>
                 <div className="space-y-2 text-sm">
-                  <div><span className="text-gray-500">Username:</span> <strong>{credentials.parent.username}</strong></div>
+                  <div><span className="text-gray-500">Username:</span> <strong>{formatUserDisplayCode(credentials.parent.username, selectedYearLabel)}</strong> <span className="text-gray-500">Login: {credentials.parent.username}</span></div>
                   <div><span className="text-gray-500">Phone:</span> <strong>{credentials.parent.phone}</strong></div>
                   <div className="text-sm text-purple-700">
                     Note: Parent account already exists. They can login with their existing credentials.

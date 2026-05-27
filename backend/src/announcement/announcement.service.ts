@@ -49,6 +49,26 @@ export class AnnouncementService {
     }
   }
 
+  private startOfDay(date: Date) {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  }
+
+  private addDays(date: Date, days: number) {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  private formatPublicDate(date: Date) {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(date);
+  }
+
   private async createNotificationForAnnouncement(
     schoolId: string,
     title: string,
@@ -118,9 +138,11 @@ export class AnnouncementService {
         title: data.title,
         content: data.content,
         visibleTo,
+        isPublic: data.isPublic ?? false,
         startDate: new Date(data.startDate),
         endDate: data.endDate ? new Date(data.endDate) : null,
         priority: data.priority || 'MEDIUM',
+        location: data.location || null,
         createdById: userId,
         schoolId,
       },
@@ -289,11 +311,13 @@ export class AnnouncementService {
         ...(data.title && { title: data.title }),
         ...(data.content && { content: data.content }),
         ...(visibleTo !== undefined && { visibleTo }),
+        ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
         ...(data.startDate && { startDate: new Date(data.startDate) }),
         ...(data.endDate !== undefined && {
           endDate: data.endDate ? new Date(data.endDate) : null,
         }),
         ...(data.priority && { priority: data.priority }),
+        ...(data.location !== undefined && { location: data.location || null }),
       },
       include: {
         createdBy: {
@@ -330,5 +354,104 @@ export class AnnouncementService {
   async getActiveCount(schoolId: string, userRole?: string): Promise<number> {
     const announcements = await this.findAll(schoolId, userRole);
     return announcements.length;
+  }
+
+  async findPublic(schoolId?: string) {
+    const now = new Date();
+    const where: any = {
+      isPublic: true,
+      startDate: { lte: now },
+      OR: [
+        { endDate: null },
+        { endDate: { gte: now } },
+      ],
+    };
+    if (schoolId) {
+      where.schoolId = schoolId;
+    }
+    const announcements = await this.prisma.announcement.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        priority: true,
+        startDate: true,
+        endDate: true,
+        createdAt: true,
+        school: {
+          select: { name: true },
+        },
+      },
+      orderBy: [
+        { priority: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      take: 10,
+    });
+
+    const todayStart = this.startOfDay(now);
+    const afterTomorrowStart = this.addDays(todayStart, 2);
+
+    const upcomingPaymentFees = await this.prisma.studentFee.findMany({
+      where: {
+        deletedAt: null,
+        ...(schoolId ? { schoolId } : {}),
+        status: { in: ['PENDING', 'PARTIAL'] },
+        dueDate: {
+          gte: todayStart,
+          lt: afterTomorrowStart,
+        },
+        school: { isActive: true },
+      },
+      select: {
+        id: true,
+        schoolId: true,
+        dueDate: true,
+        school: { select: { name: true } },
+      },
+      orderBy: [{ dueDate: 'asc' }, { schoolId: 'asc' }],
+      take: 200,
+    });
+
+    const paymentReminderBySchoolAndDate = new Map<
+      string,
+      (typeof announcements)[number]
+    >();
+
+    for (const fee of upcomingPaymentFees) {
+      if (!fee.dueDate) continue;
+
+      const dueDate = this.startOfDay(fee.dueDate);
+      const daysUntilDue = Math.round(
+        (dueDate.getTime() - todayStart.getTime()) / 86_400_000,
+      );
+      const key = `${fee.schoolId}:${dueDate.toISOString()}`;
+      if (paymentReminderBySchoolAndDate.has(key)) continue;
+
+      const isDueToday = daysUntilDue <= 0;
+      const schoolName = fee.school.name;
+      const formattedDueDate = this.formatPublicDate(dueDate);
+
+      paymentReminderBySchoolAndDate.set(key, {
+        id: `payment-deadline:${key}`,
+        title: isDueToday
+          ? `${schoolName} payment deadline is today`
+          : `${schoolName} payment deadline tomorrow`,
+        content: isDueToday
+          ? `Monthly school fee payments are due today, ${formattedDueDate}. Please complete payment through the school finance office or parent portal.`
+          : `Monthly school fee payments are due on ${formattedDueDate}. Please complete payment before the deadline to keep your account current.`,
+        priority: isDueToday ? 'HIGH' : 'MEDIUM',
+        startDate: todayStart,
+        endDate: this.addDays(dueDate, 1),
+        createdAt: now,
+        school: { name: schoolName },
+      });
+    }
+
+    return [
+      ...paymentReminderBySchoolAndDate.values(),
+      ...announcements,
+    ].slice(0, 10);
   }
 }

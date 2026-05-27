@@ -38,20 +38,7 @@ export type SearchableEntity =
 
 // Role-based search permissions configuration
 const SEARCH_PERMISSIONS: Record<Role, SearchableEntity[]> = {
-  [Role.SUPER_ADMIN]: [
-    'students',
-    'teachers',
-    'parents',
-    'staff',
-    'exams',
-    'lessons',
-    'announcements',
-    'events',
-    'classes',
-    'sections',
-    'subjects',
-    'grades',
-  ],
+  [Role.SUPER_ADMIN]: [],
   [Role.ADMIN]: [
     'students',
     'teachers',
@@ -135,6 +122,9 @@ export class SearchService {
   ): Promise<{ data: SearchResult[]; permissions: SearchableEntity[] }> {
     const lowerQuery = query.toLowerCase();
     const permissions = this.getSearchPermissions(userRole);
+    if (userRole === Role.SUPER_ADMIN || !schoolId) {
+      return { data: [], permissions: [] };
+    }
 
     const searchPromises: Promise<SearchResult[]>[] = [];
 
@@ -207,8 +197,7 @@ export class SearchService {
       whereClause.schoolId = schoolId;
     }
 
-    // Only super_admin can search across all schools
-    if (userRole !== Role.SUPER_ADMIN && !schoolId) {
+    if (!schoolId) {
       return [];
     }
 
@@ -257,9 +246,8 @@ export class SearchService {
           showInSearch = permissions.includes('staff');
       }
 
-      // Only show users from own school unless super admin
       if (!showInSearch) continue;
-      if (userRole !== Role.SUPER_ADMIN && !isOwnSchool) continue;
+      if (!isOwnSchool) continue;
 
       results.push({
         type,
@@ -665,7 +653,7 @@ export class SearchService {
   ): SearchableEntity[] {
     const permissions = this.getSearchPermissions(userRole);
 
-    if (userRole !== Role.SUPER_ADMIN && !schoolId) {
+    if (userRole === Role.SUPER_ADMIN || !schoolId) {
       return [];
     }
 

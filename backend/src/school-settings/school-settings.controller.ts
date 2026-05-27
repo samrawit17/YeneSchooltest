@@ -14,7 +14,10 @@ import {
 import { SchoolSettingsService } from './school-settings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  AllowSuperAdminMixedRole,
+  Roles,
+} from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 
 @Controller('schools/:schoolId/settings')
@@ -23,6 +26,7 @@ export class SchoolSettingsController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(
     Role.SUPER_ADMIN,
     Role.ADMIN,
@@ -47,6 +51,7 @@ export class SchoolSettingsController {
 
   @Get(':key')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(
     Role.SUPER_ADMIN,
     Role.ADMIN,

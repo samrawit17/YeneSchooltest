@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { assessmentsAPI, schoolSettingsAPI, termsAPI } from "@/lib/api";
 import { examSeatingAPI } from "@/lib/api/operations";
+import { getGradeNumbersFromSystem, getGradeRangeFromSystem } from "@/lib/grade-system";
 import { toast } from "sonner";
 import {
   Users,
@@ -135,8 +136,6 @@ interface SeatingOverview {
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
-
-const GRADE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 // Base exam categories from the Ethiopian MoE curriculum
 const EXAM_CATEGORIES = [
@@ -461,7 +460,7 @@ export default function ExamSeatingPage() {
   useEffect(() => {
     if (
       isAuthenticated &&
-      (user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN") &&
+      user?.role === "REGISTRAR" &&
       currentAcademicYear?.id
     ) {
       loadInitialData();
@@ -523,18 +522,10 @@ export default function ExamSeatingPage() {
   }, [selectedExamType]);
 
   /* -------------------- Helpers -------------------- */
-  const getGradeRangeFromSystem = (system: string) => {
-    const gradeSystems: Record<string, { min: number; max: number }> = {
-      "1-8": { min: 1, max: 8 },
-      "1-10": { min: 1, max: 10 },
-      "1-12": { min: 1, max: 12 },
-      "K-8": { min: 1, max: 8 },
-      "K-12": { min: 1, max: 12 },
-      "PRE-K-12": { min: 1, max: 12 },
-      "9-12": { min: 9, max: 12 },
-    };
-    return gradeSystems[system] || { min: 1, max: 12 };
-  };
+  const availableGradeOptions = useMemo(
+    () => getGradeNumbersFromSystem(schoolSettings.grade_system || "1-12"),
+    [schoolSettings.grade_system],
+  );
 
   const resetFormToDefaults = useCallback(() => {
     const range = getGradeRangeFromSystem(schoolSettings.grade_system || "1-12");
@@ -972,7 +963,7 @@ export default function ExamSeatingPage() {
     );
   }
 
-  const hasPermission = user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN";
+  const hasPermission = user?.role === "REGISTRAR";
   if (!isAuthenticated || !hasPermission) {
     return <AccessDenied />;
   }
@@ -1080,7 +1071,7 @@ export default function ExamSeatingPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {GRADE_OPTIONS.map((g) => (
+                          {availableGradeOptions.map((g) => (
                             <SelectItem key={g} value={String(g)} disabled={g > toGrade}>
                               Grade {g}
                             </SelectItem>
@@ -1099,7 +1090,7 @@ export default function ExamSeatingPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {GRADE_OPTIONS.map((g) => (
+                          {availableGradeOptions.map((g) => (
                             <SelectItem key={g} value={String(g)} disabled={g < fromGrade}>
                               Grade {g}
                             </SelectItem>

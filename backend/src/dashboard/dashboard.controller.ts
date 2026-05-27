@@ -202,6 +202,32 @@ export class DashboardController {
     );
   }
 
+  @Get('admin/teacher-leaderboard')
+  @Permissions('dashboard:view')
+  async getTeacherLeaderboard(@Req() req: AuthenticatedRequest) {
+    return this.getCachedDashboard(
+      'school',
+      req.user,
+      `teacher-leaderboard:${req.user.role}`,
+      async () => ({
+        stats: {},
+        alerts: [],
+        quickActions: [],
+        charts: {},
+        metadata: {
+          schoolId: req.user.schoolId,
+          teacherLeaderboard:
+            req.user.schoolId && req.user.role === 'ADMIN'
+              ? await this.adminDashboardService.getTeacherLeaderboard(
+                  req.user.schoolId,
+                )
+              : [],
+          generatedAt: new Date(),
+        },
+      }),
+    );
+  }
+
   @Get('it-manager')
   @Permissions('dashboard:view')
   async getItManagerDashboard(

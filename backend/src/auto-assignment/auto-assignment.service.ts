@@ -40,6 +40,9 @@ interface StudentData {
 interface ClassSectionInfo {
   classId: string;
   sectionId: string;
+  className: string;
+  sectionName: string;
+  stream: string | null;
 }
 
 @Injectable()
@@ -47,6 +50,28 @@ export class AutoAssignmentService {
   private readonly logger = new Logger(AutoAssignmentService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private normalizeStudentStream(stream?: string | null) {
+    const normalized = String(stream || '').trim().toUpperCase();
+    if (!normalized) {
+      return null;
+    }
+    if (!['SOCIAL', 'NATURAL'].includes(normalized)) {
+      throw new Error('Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
+    }
+    return normalized;
+  }
+
+  private async getDefaultSectionCapacity(tx: any, schoolId: string) {
+    const capacitySetting = await tx.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: 'DEFAULT_SECTION_CAPACITY' } },
+    });
+    const parsed =
+      typeof capacitySetting?.value === 'number'
+        ? capacitySetting.value
+        : parseInt(String(capacitySetting?.value || ''), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+  }
 
   /**
    * Auto-assign a single student based on enrollment
@@ -219,6 +244,7 @@ export class AutoAssignmentService {
               studentProfile: true,
             },
           },
+          gradeLevel: true,
         },
       });
 
@@ -276,6 +302,9 @@ export class AutoAssignmentService {
         schoolId,
         academicYearRecord.id,
         enrollment.gradeId,
+        enrollment.grade ?? enrollment.gradeLevel?.level ?? null,
+        enrollment.gradeLevel?.name ?? null,
+        enrollment.student.studentProfile?.stream ?? null,
       );
 
       // Step 4: Generate unique roll number
@@ -304,8 +333,9 @@ export class AutoAssignmentService {
           data: {
             enrollmentStatus: EnrollmentStatus.APPROVED,
             academicYear: enrollment.academicYear,
-            className: classSectionInfo.classId,
-            section: classSectionInfo.sectionId,
+            className: classSectionInfo.className,
+            stream: classSectionInfo.stream,
+            section: classSectionInfo.sectionName,
             rollNumber,
           },
         });
@@ -336,10 +366,20 @@ export class AutoAssignmentService {
     schoolId: string,
     academicYearId: string,
     gradeId: string | null,
+    grade: number | null,
+    gradeLabel: string | null,
+    requestedStream?: string | null,
   ): Promise<ClassSectionInfo> {
     if (!gradeId) {
       throw new Error('gradeId is required for auto-assignment');
     }
+    const isSeniorStreamGrade = grade === 11 || grade === 12;
+    const stream = isSeniorStreamGrade ? this.normalizeStudentStream(requestedStream) : null;
+    if (isSeniorStreamGrade && !stream) {
+      throw new Error('Grade 11 and 12 students must have a stream before auto-assignment');
+    }
+    const gradeName = gradeLabel || (grade ? `Grade ${grade}` : `Grade ${gradeId}`);
+    const className = gradeName;
 
     // Step 1: Find or create the Class (grade level)
     let classRecord = await tx.class.findFirst({
@@ -347,6 +387,7 @@ export class AutoAssignmentService {
         schoolId,
         gradeId,
         academicYearId,
+        name: className,
       },
     });
 
@@ -357,7 +398,8 @@ export class AutoAssignmentService {
           schoolId,
           gradeId,
           academicYearId,
-          name: `Grade ${gradeId}`,
+          name: className,
+          grade: grade ?? undefined,
           section: 'A', // Default section
         },
       });
@@ -376,28 +418,42 @@ export class AutoAssignmentService {
       },
     });
 
-    let selectedSection = sections.find(
-      (s: any) => s._count.studentClasses < s.capacity,
-    );
+    let selectedSection = sections.find((s: any) => {
+      const sectionStream = this.normalizeStudentStream(s.stream);
+      return (
+        (!isSeniorStreamGrade || !sectionStream || sectionStream === stream) &&
+        s._count.studentClasses < s.capacity
+      );
+    });
 
     // If no section has capacity, create a new one
     if (!selectedSection) {
+      const defaultCapacity = await this.getDefaultSectionCapacity(tx, schoolId);
       const nextSectionLetter = this.getNextSectionLetter(sections.length);
       selectedSection = await tx.section.create({
         data: {
           classId: classRecord.id,
           name: nextSectionLetter,
-          capacity: 30, // Default capacity
+          stream,
+          capacity: defaultCapacity,
         },
       });
       this.logger.log(
         `Created new section ${nextSectionLetter} for class ${classRecord.id}`,
       );
+    } else if (isSeniorStreamGrade && !selectedSection.stream) {
+      selectedSection = await tx.section.update({
+        where: { id: selectedSection.id },
+        data: { stream },
+      });
     }
 
     return {
       classId: classRecord.id,
       sectionId: selectedSection.id,
+      className: classRecord.name,
+      sectionName: selectedSection.name,
+      stream,
     };
   }
 

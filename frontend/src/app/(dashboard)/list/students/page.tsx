@@ -7,6 +7,7 @@ import Link from "next/link";
 import { studentsAPI } from "@/lib/api";
 import { bulkUploadAPI } from "@/lib/api/bulk-upload";
 import { queryKeys } from "@/lib/query-keys";
+import { formatStudentDisplayCode } from "@/lib/student-code";
 import { toast } from "sonner";
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
@@ -454,7 +455,12 @@ const StudentsListPage = () => {
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                        {student.studentCode || "-"}
+                        <div className="font-mono font-medium">
+                          {formatStudentDisplayCode(student.studentCode, student.academicYear)}
+                        </div>
+                        {student.studentCode ? (
+                          <div className="text-xs text-gray-400">Login: {student.studentCode}</div>
+                        ) : null}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                         {student.grade ? `${t.table.grade} ${student.grade}` : "-"}

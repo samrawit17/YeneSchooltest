@@ -359,8 +359,10 @@ export class ClassService {
               studentProfile: {
                 select: {
                   studentCode: true,
+                  academicYear: true,
                   rollNumber: true,
                   gender: true,
+                  stream: true,
                   parents: {
                     take: 1,
                     select: {
@@ -406,7 +408,9 @@ export class ClassService {
         gender: sc.student.studentProfile?.gender,
         avatarUrl: sc.student.avatarUrl,
         studentCode: sc.student.studentProfile?.studentCode,
+        academicYear: sc.student.studentProfile?.academicYear,
         rollNumber: sc.student.studentProfile?.rollNumber,
+        stream: sc.student.studentProfile?.stream || null,
         parentName:
           sc.student.studentProfile?.parents?.[0]?.parent?.user?.name || null,
         parentPhone:
@@ -487,7 +491,9 @@ export class ClassService {
         gender: sp.gender,
         avatarUrl: sp.user.avatarUrl,
         studentCode: sp.studentCode,
+        academicYear: sp.academicYear,
         rollNumber: sp.rollNumber,
+        stream: sp.stream || null,
         parentName: sp.parents?.[0]?.parent?.user?.name || null,
         parentPhone: sp.parents?.[0]?.parent?.user?.phone || null,
         section: {

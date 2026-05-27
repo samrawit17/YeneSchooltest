@@ -44,11 +44,15 @@ import { SirenModule } from './siren/siren.module';
 import { PeriodTimeModule } from './period-time/period-time.module';
 import { TemplatesModule } from './templates/templates.module';
 import { DataQualityModule } from './data-quality/data-quality.module';
+import { PracticeExamsModule } from './practice-exams/practice-exams.module';
+import { BackupModule } from './backup/backup.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    AuditModule,
     InfrastructureModule,
     PrismaModule,
     AuthModule,
@@ -90,6 +94,8 @@ import { DataQualityModule } from './data-quality/data-quality.module';
     PeriodTimeModule,
     TemplatesModule,
     DataQualityModule,
+    PracticeExamsModule,
+    BackupModule,
   ],
   controllers: [AppController],
   providers: [AppService],

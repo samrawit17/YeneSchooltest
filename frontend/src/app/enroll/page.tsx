@@ -39,6 +39,7 @@ interface School {
   id: string;
   name: string;
   code: string;
+  publicUrlSlug?: string | null;
   logoUrl?: string | null;
   accentColor?: string | null;
 }
@@ -100,7 +101,7 @@ export default function EnrollmentPage() {
   const [submitted, setSubmitted] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState('');
   const [enrollmentStatus, setEnrollmentStatus] = useState<{ isOpen: boolean; message: string } | null>(null);
-  const { schoolId: preselectedSchoolId, enrollmentKey } = useEnrollmentContext();
+  const { schoolId: preselectedSchoolId, enrollmentKey, schoolSlug } = useEnrollmentContext();
 
   const [formData, setFormData] = useState({
     schoolId: '',
@@ -109,6 +110,7 @@ export default function EnrollmentPage() {
     lastName: '',
     dateOfBirth: '',
     gender: '',
+    faydaNumber: '',
     nationality: '',
     email: '',
     phone: '',
@@ -122,6 +124,7 @@ export default function EnrollmentPage() {
     parentEmail: '',
     parentRelation: '',
     requestedGrade: 1,
+    requestedStream: '',
   });
 
   const stepIndex = STEPS.indexOf(currentStep);
@@ -138,6 +141,21 @@ export default function EnrollmentPage() {
     const resolveSchool = async () => {
       if (preselectedSchoolId) {
         setFormData((prev) => ({ ...prev, schoolId: preselectedSchoolId }));
+        return;
+      }
+
+      if (schoolSlug) {
+        try {
+          const response = await enrollmentAPI.getSchoolByUrlSlug(schoolSlug);
+          const resolvedSchoolId = response.data?.data?.id;
+          if (resolvedSchoolId) {
+            setFormData((prev) => ({ ...prev, schoolId: resolvedSchoolId }));
+          } else {
+            toast.error(response.data?.message || 'Failed to resolve school');
+          }
+        } catch {
+          toast.error('Failed to resolve school');
+        }
         return;
       }
 
@@ -159,7 +177,7 @@ export default function EnrollmentPage() {
     };
 
     resolveSchool();
-  }, [enrollmentKey, preselectedSchoolId]);
+  }, [enrollmentKey, preselectedSchoolId, schoolSlug]);
 
   useEffect(() => {
     const loadSchools = async () => {
@@ -167,7 +185,7 @@ export default function EnrollmentPage() {
         const response = await enrollmentAPI.getSchools();
         const loaded = response.data?.data || [];
         setSchools(loaded);
-        if (!preselectedSchoolId && !enrollmentKey && loaded.length === 1) {
+        if (!preselectedSchoolId && !enrollmentKey && !schoolSlug && loaded.length === 1) {
           setFormData((prev) => ({ ...prev, schoolId: loaded[0].id }));
         }
       } catch {
@@ -175,7 +193,7 @@ export default function EnrollmentPage() {
       }
     };
     loadSchools();
-  }, [enrollmentKey, preselectedSchoolId]);
+  }, [enrollmentKey, preselectedSchoolId, schoolSlug]);
 
   useEffect(() => {
     if (!formData.schoolId) return;
@@ -203,7 +221,17 @@ export default function EnrollmentPage() {
   }, [formData.schoolId, schools]);
 
   const updateFormData = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      if (field === 'requestedGrade') {
+        const grade = Number(value);
+        return {
+          ...prev,
+          requestedGrade: grade,
+          requestedStream: [11, 12].includes(grade) ? prev.requestedStream : '',
+        };
+      }
+      return { ...prev, [field]: value };
+    });
   };
 
   const canProceed = () => {
@@ -211,9 +239,13 @@ export default function EnrollmentPage() {
 
     switch (currentStep) {
       case 'school':
-        return Boolean(formData.schoolId && formData.requestedGrade);
+        return Boolean(
+          formData.schoolId &&
+          formData.requestedGrade &&
+          (![11, 12].includes(formData.requestedGrade) || formData.requestedStream)
+        );
       case 'student':
-        return formData.firstName && formData.lastName && formData.dateOfBirth && formData.gender && formData.phone;
+        return formData.firstName && formData.lastName && formData.dateOfBirth && formData.gender && /^\d{12}$/.test(formData.faydaNumber.replace(/\D/g, '')) && formData.phone;
       case 'guardian':
         return formData.parentFirstName && formData.parentLastName && formData.parentPhone && formData.parentRelation;
       case 'review':
@@ -258,6 +290,7 @@ export default function EnrollmentPage() {
         lastName: formData.lastName,
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender.toUpperCase(),
+        faydaNumber: formData.faydaNumber.replace(/\D/g, ''),
         nationality: formData.nationality || undefined,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
@@ -271,6 +304,7 @@ export default function EnrollmentPage() {
         parentEmail: formData.parentEmail || undefined,
         parentRelation: formData.parentRelation,
         requestedGrade: formData.requestedGrade,
+        requestedStream: formData.requestedStream || undefined,
       });
 
       setSubmitted(true);
@@ -460,7 +494,7 @@ export default function EnrollmentPage() {
                         <Building2 className="w-10 h-10 text-amber-500 mx-auto mb-3" />
                         <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-2">No School Selected</h3>
                         <p className="text-sm text-amber-700 dark:text-amber-300">
-                          Open this page from the selected school&apos;s home page, or make sure exactly one public school is available so it can be selected automatically.
+                          Open this page from the selected school&apos;s website, or make sure exactly one public school is available so it can be selected automatically.
                         </p>
                       </div>
                     ) : (
@@ -539,6 +573,23 @@ export default function EnrollmentPage() {
                               </Select>
                               <p className="text-xs text-slate-400 dark:text-slate-500">Sections are assigned based on availability</p>
                             </div>
+                            {[11, 12].includes(formData.requestedGrade) && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Stream *</Label>
+                                <Select
+                                  value={formData.requestedStream}
+                                  onValueChange={(v) => updateFormData('requestedStream', v)}
+                                >
+                                  <SelectTrigger className="h-11 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800">
+                                    <SelectValue placeholder="Select stream" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="SOCIAL">Social Science</SelectItem>
+                                    <SelectItem value="NATURAL">Natural Science</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                           </>
                         )}
                       </>
@@ -603,6 +654,19 @@ export default function EnrollmentPage() {
                         </Select>
                       </Field>
                     </div>
+
+                    <Field>
+                      <Label>Fayda Number (FAN) *</Label>
+                      <Input
+                        value={formData.faydaNumber}
+                        onChange={(e) => updateFormData('faydaNumber', e.target.value)}
+                        placeholder="123456789012"
+                        inputMode="numeric"
+                        maxLength={16}
+                        className="h-11"
+                      />
+                      <p className="text-xs text-slate-400 dark:text-slate-500">FAN is required. FCN is not required.</p>
+                    </Field>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field>
@@ -777,6 +841,9 @@ export default function EnrollmentPage() {
                         <ReviewRow label="School" value={selectedSchoolData?.name} />
                         <ReviewRow label="Academic Year" value={selectedSchoolData?.academicYearName} />
                         <ReviewRow label="Grade" value={`Grade ${formData.requestedGrade}`} />
+                        {[11, 12].includes(formData.requestedGrade) && (
+                          <ReviewRow label="Stream" value={formData.requestedStream === 'NATURAL' ? 'Natural Science' : formData.requestedStream === 'SOCIAL' ? 'Social Science' : '-'} />
+                        )}
                       </ReviewSection>
 
                       <ReviewSection
@@ -789,6 +856,7 @@ export default function EnrollmentPage() {
                         />
                         <ReviewRow label="Date of Birth" value={formData.dateOfBirth} />
                         <ReviewRow label="Gender" value={formData.gender} />
+                        <ReviewRow label="Fayda Number (FAN)" value={formData.faydaNumber.replace(/\D/g, '')} />
                         {formData.phone && <ReviewRow label="Phone" value={formData.phone} />}
                         {formData.email && <ReviewRow label="Email" value={formData.email} />}
                         {formData.nationality && <ReviewRow label="Nationality" value={formData.nationality} />}
@@ -897,10 +965,11 @@ function ReviewRow({ label, value }: { label: string; value?: string }) {
   );
 }
 
-function useEnrollmentContext(): { schoolId: string | null; enrollmentKey: string | null } {
-  const [context, setContext] = useState<{ schoolId: string | null; enrollmentKey: string | null }>({
+function useEnrollmentContext(): { schoolId: string | null; enrollmentKey: string | null; schoolSlug: string | null } {
+  const [context, setContext] = useState<{ schoolId: string | null; enrollmentKey: string | null; schoolSlug: string | null }>({
     schoolId: null,
     enrollmentKey: null,
+    schoolSlug: null,
   });
 
   useEffect(() => {
@@ -908,6 +977,7 @@ function useEnrollmentContext(): { schoolId: string | null; enrollmentKey: strin
     setContext({
       schoolId: params.get('schoolId') || null,
       enrollmentKey: params.get('key') || null,
+      schoolSlug: params.get('school') || params.get('slug') || null,
     });
   }, []);
   return context;

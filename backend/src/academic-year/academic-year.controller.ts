@@ -20,7 +20,10 @@ import type {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  AllowSuperAdminMixedRole,
+  Roles,
+} from '../auth/decorators/roles.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Role } from '../auth/types/role.enum';
 
@@ -49,6 +52,7 @@ export class AcademicYearController {
   }
 
   @Get()
+  @AllowSuperAdminMixedRole()
   @Roles(
     Role.ADMIN,
     Role.IT_MANAGER,
@@ -57,6 +61,7 @@ export class AcademicYearController {
     Role.TEACHER,
     Role.STUDENT,
     Role.PARENT,
+    Role.SUPER_ADMIN,
   )
   async getAcademicYears(
     @Query('schoolId') schoolId: string,
@@ -67,6 +72,7 @@ export class AcademicYearController {
   }
 
   @Get('active')
+  @AllowSuperAdminMixedRole()
   @Roles(
     Role.ADMIN,
     Role.IT_MANAGER,
@@ -132,6 +138,7 @@ export class AcademicYearController {
    * Get the current term for a school
    */
   @Get('terms/current')
+  @AllowSuperAdminMixedRole()
   @Roles(
     Role.ADMIN,
     Role.IT_MANAGER,

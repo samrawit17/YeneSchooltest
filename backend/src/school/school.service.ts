@@ -20,6 +20,7 @@ export interface UpdateSchoolDto {
   phone?: string;
   code?: string;
   logoUrl?: string;
+  publicUrlSlug?: string;
 }
 
 @Injectable()
@@ -35,12 +36,14 @@ export class SchoolService {
 
     const { name, email, address, phone } = createSchoolDto;
     const enrollmentKey = generateEnrollmentKey(name);
+    const publicUrlSlug = await this.generateUniquePublicUrlSlug(name);
 
     const school = await this.prismaService.school.create({
       data: {
         name,
         email,
         enrollmentKey,
+        publicUrlSlug,
         ...(address && { address }),
         ...(phone && { phone }),
       },
@@ -111,7 +114,20 @@ export class SchoolService {
     });
   }
 
+  async getSchoolByPublicUrlSlug(publicUrlSlug: string) {
+    return this.prismaService.school.findUnique({
+      where: { publicUrlSlug },
+    });
+  }
+
   async updateSchool(id: string, data: UpdateSchoolDto) {
+    if (data.publicUrlSlug) {
+      data.publicUrlSlug = await this.normalizeUniquePublicUrlSlug(
+        data.publicUrlSlug,
+        id,
+      );
+    }
+
     return this.prismaService.school.update({
       where: { id },
       data,
@@ -134,28 +150,17 @@ export class SchoolService {
       'uploads',
       'schools',
     );
-    const frontendPublicDir = path.join(
-      process.cwd(),
-      '..',
-      'frontend',
-      'public',
-      'uploads',
-      'schools',
-    );
 
+    // Ensure backend directory exists
     if (!fs.existsSync(backendPublicDir)) {
       fs.mkdirSync(backendPublicDir, { recursive: true });
-    }
-    if (!fs.existsSync(frontendPublicDir)) {
-      fs.mkdirSync(frontendPublicDir, { recursive: true });
     }
 
     const fileName = `${schoolId}-${Date.now()}${path.extname(file.originalname)}`;
     const backendFilePath = path.join(backendPublicDir, fileName);
-    const frontendFilePath = path.join(frontendPublicDir, fileName);
 
+    // Save to backend
     fs.writeFileSync(backendFilePath, file.buffer);
-    fs.copyFileSync(backendFilePath, frontendFilePath);
 
     const logoUrl = `/uploads/schools/${fileName}`;
 
@@ -165,5 +170,54 @@ export class SchoolService {
     });
 
     return logoUrl;
+  }
+
+  private slugify(value: string): string {
+    return (
+      value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .replace(/-+/g, '-') || 'school'
+    );
+  }
+
+  private async generateUniquePublicUrlSlug(name: string): Promise<string> {
+    const baseSlug = this.slugify(name);
+    let slug = baseSlug;
+    let suffix = 2;
+
+    while (
+      await this.prismaService.school.findUnique({
+        where: { publicUrlSlug: slug },
+        select: { id: true },
+      })
+    ) {
+      slug = `${baseSlug}-${suffix}`;
+      suffix += 1;
+    }
+
+    return slug;
+  }
+
+  private async normalizeUniquePublicUrlSlug(
+    value: string,
+    schoolId: string,
+  ): Promise<string> {
+    const slug = this.slugify(value);
+    const existing = await this.prismaService.school.findUnique({
+      where: { publicUrlSlug: slug },
+      select: { id: true },
+    });
+
+    if (existing && existing.id !== schoolId) {
+      throw new HttpException(
+        'This school URL is already in use',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return slug;
   }
 }

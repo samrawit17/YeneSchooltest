@@ -8,47 +8,27 @@ body {
 }
 
 html[lang="am"] body,
-html[lang="am"] h1,
-html[lang="am"] h2,
-html[lang="am"] h3,
-html[lang="am"] h4,
-html[lang="am"] h5,
-html[lang="am"] h6,
-html[lang="am"] p,
-html[lang="am"] span,
-html[lang="am"] div,
-html[lang="am"] li,
-html[lang="am"] td,
-html[lang="am"] th,
-html[lang="am"] label,
 html[lang="am"] input,
 html[lang="am"] button,
 html[lang="am"] select,
 html[lang="am"] textarea {
   font-family: var(--font-ethiopic), var(--font-sans), system-ui, sans-serif;
+}
+
+html[lang="am"] body {
   font-weight: 500;
   font-size-adjust: 0.52;
 }
 
 html[lang="ar"] body,
-html[lang="ar"] h1,
-html[lang="ar"] h2,
-html[lang="ar"] h3,
-html[lang="ar"] h4,
-html[lang="ar"] h5,
-html[lang="ar"] h6,
-html[lang="ar"] p,
-html[lang="ar"] span,
-html[lang="ar"] div,
-html[lang="ar"] li,
-html[lang="ar"] td,
-html[lang="ar"] th,
-html[lang="ar"] label,
 html[lang="ar"] input,
 html[lang="ar"] button,
 html[lang="ar"] select,
 html[lang="ar"] textarea {
   font-family: var(--font-arabic), var(--font-sans), system-ui, sans-serif;
+}
+
+html[lang="ar"] body {
   font-weight: 500;
   font-size-adjust: 0.54;
 }

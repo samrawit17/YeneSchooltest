@@ -25,6 +25,8 @@ import {
   BookOpen,
   MessageSquare,
   RefreshCw,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -427,6 +429,7 @@ export default function SchoolSettingsPage() {
   const [schoolInfo, setSchoolInfo] = useState<{
     name: string;
     code: string | null;
+    publicUrlSlug: string;
     email: string;
     address: string | null;
     logoUrl: string | null;
@@ -434,6 +437,9 @@ export default function SchoolSettingsPage() {
   const [schoolCode, setSchoolCode] = useState('');
   const [savingSchoolCode, setSavingSchoolCode] = useState(false);
   const [isEditingCode, setIsEditingCode] = useState(false);
+  const [publicUrlSlug, setPublicUrlSlug] = useState('');
+  const [savingPublicUrlSlug, setSavingPublicUrlSlug] = useState(false);
+  const [isEditingPublicUrlSlug, setIsEditingPublicUrlSlug] = useState(false);
   const [schoolLogo, setSchoolLogo] = useState('');
   const schoolLogoSrc = resolveAssetUrl(schoolLogo);
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
@@ -482,6 +488,8 @@ export default function SchoolSettingsPage() {
 
   // Get current calendar type from settings
   const calendarType = draftSettings['calendar_type'] || 'ETHIOPIAN';
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+  const isSettingsReadOnly = isSuperAdmin;
 
   // Filter academic years based on calendar type
   const filteredAcademicYears = academicYears.filter(
@@ -506,6 +514,12 @@ export default function SchoolSettingsPage() {
   );
 
   const fetchAcademicYears = useCallback(async () => {
+    if (isSettingsReadOnly) {
+      setAcademicYears([]);
+      setLoadingAcademicYears(false);
+      return;
+    }
+
     try {
       setLoadingAcademicYears(true);
       const response = await academicYearsAPI.getAll({ schoolId });
@@ -515,9 +529,17 @@ export default function SchoolSettingsPage() {
     } finally {
       setLoadingAcademicYears(false);
     }
-  }, [schoolId]);
+  }, [isSettingsReadOnly, schoolId]);
 
   const fetchSettings = useCallback(async () => {
+    if (isSettingsReadOnly) {
+      setSettings({});
+      setDraftSettings({});
+      setNumberDrafts({});
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await schoolSettingsAPI.getAll(schoolId);
@@ -542,7 +564,7 @@ export default function SchoolSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [schoolId, messageText]);
+  }, [isSettingsReadOnly, schoolId, messageText]);
 
   const fetchSchoolInfo = useCallback(async () => {
     try {
@@ -553,6 +575,7 @@ export default function SchoolSettingsPage() {
         setIsEditingCode(true);
       }
       setSchoolCode(response.data.code || '');
+      setPublicUrlSlug(response.data.publicUrlSlug || '');
     } catch (err: any) {
       console.error('Failed to load school info:', err);
     }
@@ -651,7 +674,52 @@ export default function SchoolSettingsPage() {
     }
   };
 
+  const normalizePublicUrlSlug = (value: string) =>
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-+/g, '-');
+
+  const handlePublicUrlSlugSave = async () => {
+    const normalizedSlug = normalizePublicUrlSlug(publicUrlSlug);
+    if (!normalizedSlug) {
+      toast.error('Public URL is required');
+      return;
+    }
+
+    try {
+      setSavingPublicUrlSlug(true);
+      await schoolsAPI.update(schoolId, { publicUrlSlug: normalizedSlug });
+      const schoolResponse = await schoolsAPI.getById(schoolId);
+      setSchoolInfo(schoolResponse.data);
+      setPublicUrlSlug(schoolResponse.data.publicUrlSlug || normalizedSlug);
+      setIsEditingPublicUrlSlug(false);
+      toast.success('Public school URL updated successfully');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to update public school URL';
+      toast.error(errorMessage);
+    } finally {
+      setSavingPublicUrlSlug(false);
+    }
+  };
+
+  const handleCopyPublicUrl = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error('Failed to copy link');
+    }
+  };
+
   const handleSettingChange = async (key: string, value: any, setting: SettingItem) => {
+    if (isSettingsReadOnly) {
+      toast.error('Super Admin can manage school identity and public URLs here. School academic settings are managed by the school owner.');
+      return;
+    }
+
     if (isSettingLocked(key)) {
       toast.error(`${settingText(setting.label)} ${messageText('lockedAfterSet', 'is locked after it is set once')}`);
       return;
@@ -862,10 +930,15 @@ export default function SchoolSettingsPage() {
   };
 
   const hasUnsavedChanges = SETTINGS_CONFIG.some(
-    (setting) => hasSettingChanged(setting) && !isSettingLocked(setting.key),
+    (setting) => !isSettingsReadOnly && hasSettingChanged(setting) && !isSettingLocked(setting.key),
   );
 
   const handleSaveAllChanges = async () => {
+    if (isSettingsReadOnly) {
+      toast.error('Super Admin can manage school identity and public URLs here. School academic settings are managed by the school owner.');
+      return;
+    }
+
     const changedSettings = SETTINGS_CONFIG.filter(
       (setting) => hasSettingChanged(setting) && !isSettingLocked(setting.key),
     );
@@ -923,6 +996,7 @@ export default function SchoolSettingsPage() {
       settings[setting.key] !== null &&
       settings[setting.key] !== '';
     const isLocked = isSettingLocked(setting.key);
+    const isControlDisabled = isSaving || isLocked || isSettingsReadOnly;
 
     // Render upgrade badge for hidden features
     if (!isSettingVisible(setting)) {
@@ -941,7 +1015,7 @@ export default function SchoolSettingsPage() {
           <Switch
             checked={value === true || value === 'true'}
             onCheckedChange={(checked) => updateDraftSetting(setting.key, checked)}
-            disabled={isSaving || isLocked}
+            disabled={isControlDisabled}
           />
           {isLocked && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
           {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
@@ -959,7 +1033,7 @@ export default function SchoolSettingsPage() {
           <Select
             value={String(value || '')}
             onValueChange={(val) => updateDraftSetting(setting.key, val === '__select__' ? '' : val)}
-            disabled={isSaving || isLocked}
+            disabled={isControlDisabled}
           >
             <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white">
               <SelectValue placeholder={actionText('selectOption', 'Select an option...')} />
@@ -1011,10 +1085,10 @@ export default function SchoolSettingsPage() {
                   void saveNumberSetting(setting);
                 }
               }}
-              disabled={isSaving || isLocked}
+              disabled={isControlDisabled}
               className={isPenaltyAmount ? "w-32" : "w-24"}
             />
-            {hasSettingChanged(setting) && !isLocked && (
+            {hasSettingChanged(setting) && !isLocked && !isSettingsReadOnly && (
               <Button
                 type="button"
                 size="sm"
@@ -1047,7 +1121,7 @@ export default function SchoolSettingsPage() {
               value={value || setting.systemDefault || '08:00'}
               onChange={(time) => updateDraftSetting(setting.key, time)}
               onCommit={(time) => handleSettingChange(setting.key, time, setting)}
-              disabled={isSaving || isLocked}
+              disabled={isControlDisabled}
               calendarType={normalizeCalendarType(calendarType)}
               allowedEthiopianPeriods={setting.key === 'SCHOOL_END_TIME' ? ['afternoon', 'evening'] : ['morning', 'afternoon']}
               defaultEthiopianPeriod={setting.key === 'SCHOOL_END_TIME' ? 'afternoon' : 'morning'}
@@ -1058,7 +1132,7 @@ export default function SchoolSettingsPage() {
               type="time"
               value={value || setting.systemDefault || '08:00'}
               onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
-              disabled={isSaving || isLocked}
+              disabled={isControlDisabled}
               className="w-32"
             />
           )}
@@ -1076,7 +1150,7 @@ export default function SchoolSettingsPage() {
               type="color"
               value={value || setting.systemDefault || '#e35336'}
               onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
-              disabled={isSaving || isLocked}
+              disabled={isControlDisabled}
               className="w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer disabled:opacity-50"
             />
           </div>
@@ -1087,10 +1161,10 @@ export default function SchoolSettingsPage() {
               const val = e.target.value;
               updateDraftSetting(setting.key, val);
             }}
-            disabled={isSaving || isLocked}
+            disabled={isControlDisabled}
             className="w-24 sm:w-28 font-mono text-sm"
           />
-          {setting.key === 'theme_color' && hasCustomValue && !isLocked && (
+          {setting.key === 'theme_color' && hasCustomValue && !isLocked && !isSettingsReadOnly && (
             <Button
               type="button"
               variant="outline"
@@ -1130,6 +1204,21 @@ export default function SchoolSettingsPage() {
       </div>
     );
   }
+
+  const effectivePublicUrlSlug = schoolInfo?.publicUrlSlug || publicUrlSlug;
+  const schoolLoginUrl =
+    typeof window !== 'undefined' && effectivePublicUrlSlug
+      ? `${window.location.origin}/schools/${encodeURIComponent(effectivePublicUrlSlug)}/login`
+      : '';
+  const publicLinks = schoolLoginUrl
+    ? [
+        { label: 'School Login', url: schoolLoginUrl },
+        {
+          label: 'Enrollment',
+          url: `${window.location.origin}/enroll?school=${encodeURIComponent(effectivePublicUrlSlug)}`,
+        },
+      ]
+    : [];
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden p-3 sm:p-4 md:p-6">
@@ -1192,56 +1281,156 @@ export default function SchoolSettingsPage() {
                   <h1 className="truncate text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
                     {schoolInfo.name}
                   </h1>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.labels?.code ?? 'Code'}:</span>
-                    {isEditingCode ? (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Input
-                          value={schoolCode}
-                          onChange={(e) => setSchoolCode(e.target.value)}
-                          placeholder={t.labels?.schoolCode ?? 'School Code'}
-                          className="h-7 w-28 font-mono text-xs"
-                          disabled={savingSchoolCode}
-                          autoFocus
-                        />
-                        <Button
-                          size="sm"
-                          onClick={handleSchoolCodeSave}
-                          disabled={savingSchoolCode || !schoolCode}
-                          className="h-7 px-2 text-xs"
+                  {!isSuperAdmin && (
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.labels?.code ?? 'Code'}:</span>
+                      {isEditingCode ? (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Input
+                            value={schoolCode}
+                            onChange={(e) => setSchoolCode(e.target.value)}
+                            placeholder={t.labels?.schoolCode ?? 'School Code'}
+                            className="h-7 w-28 font-mono text-xs"
+                            disabled={savingSchoolCode}
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            onClick={handleSchoolCodeSave}
+                            disabled={savingSchoolCode || !schoolCode}
+                            className="h-7 px-2 text-xs"
+                          >
+                            {savingSchoolCode ? <Loader2 className="h-3 w-3 animate-spin" /> : actionText('save', 'Save')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setIsEditingCode(false);
+                              setSchoolCode(schoolInfo.code || '');
+                            }}
+                            disabled={savingSchoolCode}
+                            className="h-7 px-2 text-xs"
+                          >
+                            {actionText('cancel', 'Cancel')}
+                          </Button>
+                        </div>
+                      ) : schoolInfo.code ? (
+                        <span
+                          className="cursor-pointer rounded bg-slate-100 px-2 py-0.5 font-mono text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                          onClick={() => setIsEditingCode(true)}
+                          title={messageText('clickToEdit', 'Click to edit')}
                         >
-                          {savingSchoolCode ? <Loader2 className="h-3 w-3 animate-spin" /> : actionText('save', 'Save')}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setIsEditingCode(false);
-                            setSchoolCode(schoolInfo.code || '');
-                          }}
-                          disabled={savingSchoolCode}
-                          className="h-7 px-2 text-xs"
+                          {schoolInfo.code}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setIsEditingCode(true)}
+                          className="text-xs font-medium text-amber-600 hover:underline"
                         >
-                          {actionText('cancel', 'Cancel')}
-                        </Button>
+                          {actionText('addSchoolCode', 'Add school code')}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {isSuperAdmin && (
+                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Public School URL
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            Use these links when connecting this school&apos;s dedicated website to the management system.
+                          </p>
+                        </div>
+                        {isEditingPublicUrlSlug ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Input
+                              value={publicUrlSlug}
+                              onChange={(e) => setPublicUrlSlug(e.target.value)}
+                              placeholder="green-new-generation"
+                              className="h-8 w-56 font-mono text-xs"
+                              disabled={savingPublicUrlSlug}
+                            />
+                            <Button
+                              size="sm"
+                              onClick={handlePublicUrlSlugSave}
+                              disabled={savingPublicUrlSlug || !publicUrlSlug.trim()}
+                              className="h-8 px-2 text-xs"
+                            >
+                              {savingPublicUrlSlug ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setIsEditingPublicUrlSlug(false);
+                                setPublicUrlSlug(schoolInfo.publicUrlSlug || '');
+                              }}
+                              disabled={savingPublicUrlSlug}
+                              className="h-8 px-2 text-xs"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setIsEditingPublicUrlSlug(true)}
+                            className="h-8 shrink-0 px-2 text-xs"
+                          >
+                            Edit URL
+                          </Button>
+                        )}
                       </div>
-                    ) : schoolInfo.code ? (
-                      <span
-                        className="cursor-pointer rounded bg-slate-100 px-2 py-0.5 font-mono text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                        onClick={() => setIsEditingCode(true)}
-                        title={messageText('clickToEdit', 'Click to edit')}
-                      >
-                        {schoolInfo.code}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setIsEditingCode(true)}
-                        className="text-xs font-medium text-amber-600 hover:underline"
-                      >
-                        {actionText('addSchoolCode', 'Add school code')}
-                      </button>
-                    )}
-                  </div>
+
+                      {effectivePublicUrlSlug && (
+                        <div className="mt-3 grid gap-2 lg:grid-cols-3">
+                          {publicLinks.map((link) => (
+                            <div
+                              key={link.label}
+                              className="min-w-0 rounded-md border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800"
+                            >
+                              <div className="mb-1 flex items-center justify-between gap-2">
+                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                                  {link.label}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => handleCopyPublicUrl(link.label, link.url)}
+                                    title={`Copy ${link.label}`}
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    asChild
+                                    title={`Open ${link.label}`}
+                                  >
+                                    <a href={link.url} target="_blank" rel="noreferrer">
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                  </Button>
+                                </div>
+                              </div>
+                              <p className="truncate font-mono text-xs text-slate-500 dark:text-slate-400">
+                                {link.url}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               {schoolPlan && (
@@ -1255,37 +1444,38 @@ export default function SchoolSettingsPage() {
       )}
 
       {/* Settings Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 max-w-full">
-        <div className="mb-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <h2 className="min-w-0 text-lg font-semibold text-slate-900 dark:text-white">{t.title}</h2>
-          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
-            <Button
-              type="button"
-              onClick={handleSaveAllChanges}
-              disabled={!hasUnsavedChanges || savingAll}
-              className="w-full sm:w-auto"
-            >
-              {savingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {actionText('saveChanges', 'Save Changes')}
-            </Button>
-            <div className="-mx-4 max-w-[100vw] overflow-x-auto overflow-y-hidden px-4 pb-2 md:mx-0 md:max-w-full md:px-0 lg:w-auto">
-              <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
-                {visibleCategories.slice(0, 6).map((category) => {
-                  const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
-                  const Icon = config?.icon || SettingsIcon;
-                  return (
-                    <TabsTrigger key={category} value={category} className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
-                      <Icon className="h-3 w-3 shrink-0 md:h-4 md:w-4" />
-                      <span>{categoryText(category)}</span>
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
+      {!isSettingsReadOnly && (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 max-w-full">
+          <div className="mb-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <h2 className="min-w-0 text-lg font-semibold text-slate-900 dark:text-white">{t.title}</h2>
+            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+              <Button
+                type="button"
+                onClick={handleSaveAllChanges}
+                disabled={!hasUnsavedChanges || savingAll}
+                className="w-full sm:w-auto"
+              >
+                {savingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {actionText('saveChanges', 'Save Changes')}
+              </Button>
+              <div className="-mx-4 max-w-[100vw] overflow-x-auto overflow-y-hidden px-4 pb-2 md:mx-0 md:max-w-full md:px-0 lg:w-auto">
+                <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
+                  {visibleCategories.slice(0, 6).map((category) => {
+                    const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
+                    const Icon = config?.icon || SettingsIcon;
+                    return (
+                      <TabsTrigger key={category} value={category} className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
+                        <Icon className="h-3 w-3 shrink-0 md:h-4 md:w-4" />
+                        <span>{categoryText(category)}</span>
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+              </div>
             </div>
           </div>
-        </div>
 
-        {visibleCategories.map((category) => {
+          {visibleCategories.map((category) => {
           const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
           const Icon = config?.icon || SettingsIcon;
           const settings = (groupedSettings[category] || []).filter(isSettingVisible);
@@ -1346,11 +1536,12 @@ export default function SchoolSettingsPage() {
               </Card>
             </TabsContent>
           );
-        })}
-      </Tabs>
+          })}
+        </Tabs>
+      )}
 
       {/* All Settings View (if more than 6 categories) */}
-      {visibleCategories.length > 6 && (
+      {!isSettingsReadOnly && visibleCategories.length > 6 && (
         <Card className="mt-4 max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <CardHeader className="min-w-0">
             <CardTitle className="text-slate-900 dark:text-white">{t.allSettings}</CardTitle>

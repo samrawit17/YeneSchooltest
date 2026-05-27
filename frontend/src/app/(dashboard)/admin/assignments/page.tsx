@@ -525,7 +525,7 @@ const TeacherAssignmentPage = () => {
 
       {/* BULK ASSIGN MODAL */}
       <Dialog open={showBulkModal} onOpenChange={setShowBulkModal}>
-        <DialogContent className="max-w-2xl bg-white dark:bg-slate-800">
+        <DialogContent className="max-w-6xl bg-white dark:bg-slate-800">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 dark:text-white">
               <Grid className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
@@ -537,7 +537,7 @@ const TeacherAssignmentPage = () => {
           <div className="grid grid-cols-2 gap-6 py-4">
             <div className="space-y-3">
               <h4 className="font-semibold text-sm text-slate-900 dark:text-white border-b pb-2">{t.selectSections}</h4>
-              <ScrollArea className="h-[300px] rounded-md border p-2 dark:border-slate-600">
+              <ScrollArea className="h-[250px] rounded-md border p-2 dark:border-slate-600">
                 {filteredSections.map((s: any) => (
                   <div 
                     key={s.id} 
@@ -563,7 +563,7 @@ const TeacherAssignmentPage = () => {
 
             <div className="space-y-3">
               <h4 className="font-semibold text-sm text-slate-900 dark:text-white border-b pb-2">{t.selectSubjects}</h4>
-              <ScrollArea className="h-[300px] rounded-md border p-2 dark:border-slate-600">
+              <ScrollArea className="h-[250px] rounded-md border p-2 dark:border-slate-600">
                 {matrixSubjects.map((sub: any) => (
                   <div 
                     key={sub.id} 
@@ -602,7 +602,7 @@ const TeacherAssignmentPage = () => {
             </Select>
           </div>
 
-          <DialogFooter className="mt-6 bg-slate-50 dark:bg-slate-700 -mx-6 -mb-6 p-6 rounded-b-lg border-t dark:border-slate-600">
+          <div className="flex justify-end gap-3 pt-4 border-t dark:border-slate-600">
             <Button variant="ghost" onClick={() => setShowBulkModal(false)} disabled={saving}>{t.cancel}</Button>
             <Button 
               onClick={handleBulkAssign} 
@@ -612,7 +612,7 @@ const TeacherAssignmentPage = () => {
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link className="h-4 w-4 mr-2" />}
               {t.applyBulk}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

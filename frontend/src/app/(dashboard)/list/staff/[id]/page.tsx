@@ -7,6 +7,8 @@ import { authAPI, teachersAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { formatUserDisplayCode } from "@/lib/student-code";
 import { Activity, BookOpen, BriefcaseBusiness, Calendar, CheckCircle, Clock, Edit2, GraduationCap, Loader2, Mail, MessageSquare, Phone, Shield, User, Users } from "lucide-react";
 import UserAvatarUpload from "@/components/UserAvatarUpload";
 import { resolveAssetUrl } from "@/lib/asset-url";
@@ -43,6 +45,8 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
   const queryClient = useQueryClient();
   const { setItems } = useBreadcrumb();
   const { user: currentUser } = useAuth();
+  const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
+  const displayYear = currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel;
   const currentRole = String(currentUser?.role || "").toUpperCase();
   const canManageStaff = ["ADMIN", "REGISTRAR", "IT_MANAGER", "SUPER_ADMIN"].includes(currentRole);
 
@@ -101,6 +105,7 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
   const staffName = staff.name || "Unknown Staff";
   const roleLabel = formatRole(staff.role);
   const username = staff.username || profile.employeeId || staff.email || "N/A";
+  const displayUsername = formatUserDisplayCode(username, displayYear);
   const isActive = staff.isActive ?? true;
   const canUploadPhoto =
     currentUser?.id === staff.id ||
@@ -127,7 +132,8 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
                     <Badge variant="outline">{roleLabel}</Badge>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{username}</span>
+                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{displayUsername}</span>
+                    {username !== displayUsername ? <span>Login: {username}</span> : null}
                     <span>{staff.email || "No email"}</span>
                     <span>{profile.designation || roleLabel}</span>
                   </div>
@@ -150,7 +156,7 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 xl:grid-cols-5">
-              <SummaryItem icon={Shield} label="Username" value={username} />
+              <SummaryItem icon={Shield} label="Username" value={displayUsername} />
               <SummaryItem icon={User} label="Role" value={roleLabel} />
               <SummaryItem icon={CheckCircle} label="Status" value={isActive ? "Active" : "Inactive"} />
               <SummaryItem icon={Clock} label="Last login" value={formatDate(staff.lastLoginAt)} />
@@ -164,7 +170,7 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
             <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <CardHeader><CardTitle className="text-base">Staff Information</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <InfoRow icon={Shield} label="Username" value={username} />
+                <InfoRow icon={Shield} label="Username" value={displayUsername} />
                 <InfoRow icon={Mail} label="Email" value={staff.email || "N/A"} />
                 <InfoRow icon={Phone} label="Phone" value={staff.phone || "N/A"} />
                 <InfoRow icon={BriefcaseBusiness} label="Designation" value={profile.designation || roleLabel} />

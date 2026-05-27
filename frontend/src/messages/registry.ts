@@ -31,6 +31,7 @@ export type MessageModule =
   | "timetable"
   | "assignments"
   | "login"
+  | "forgotPassword"
   | "students"
   | "notifications"
   | "parentFees"
@@ -78,7 +79,7 @@ const loginMessages = {
     brand: "ኢዱፖርታል",
     heroTitle: "ትምህርት ከቴክኖሎጂ ጋር የሚገናኝበት",
     heroSubtitle: "ለዘመናዊ የትምህርት ቤት አስተዳደር ቀላል አቀራረብ",
-    welcome: "እንኳን ተመለሱ",
+    welcome: "እንኳን ደህና ተመለሱ",
     subtitle: "ለመግባት መረጃዎን ያስገቡ",
     loginIdentifier: "ኢሜይል ወይም የተጠቃሚ ስም",
     loginIdentifierPlaceholder: "ኢሜይልዎን ወይም የተጠቃሚ ስምዎን ያስገቡ",
@@ -94,7 +95,7 @@ const loginMessages = {
     footer: "© 2026 ኢዱፖርታል። መብቱ በሙሉ የተጠበቀ ነው።",
     validationIdentifier: "ኢሜይልዎን ወይም የተጠቃሚ ስምዎን ያስገቡ",
     validationPassword: "የይለፍ ቃል ያስፈልጋል",
-    welcomeToast: "እንኳን ተመለሱ፣ {name}!",
+    welcomeToast: "እንኳን ደህና ተመለሱ፣ {name}!",
     changePasswordToast: "ለመቀጠል ጊዜያዊ የይለፍ ቃልዎን ይቀይሩ።",
     invalidCredentials: "መግቢያ መረጃው ትክክል አይደለም። እንደገና ይሞክሩ።",
   },
@@ -169,6 +170,64 @@ const loginMessages = {
     welcomeToast: "Soo dhawoow mar kale, {name}!",
     changePasswordToast: "Fadlan beddel erayga sirta ah ee ku-meelgaarka ah si aad u sii wadato.",
     invalidCredentials: "Aqoonsiga gelitaanka sax ma aha. Mar kale isku day.",
+  },
+} as const;
+
+const forgotPasswordMessages = {
+  en: {
+    title: "Forgot password?",
+    description: "Enter your code (e.g. PR-003, TH-002) and an admin will be notified to reset your password.",
+    code: "Code",
+    placeholder: "e.g. PR-003, TH-002",
+    requestReset: "Request Password Reset",
+    backToSignIn: "Back to sign in",
+    sending: "Sending...",
+    submittedTitle: "Request Submitted",
+    submittedDescription: "If an account with that code exists, an admin will review your request and reset your password. Please contact your school admin.",
+  },
+  am: {
+    title: "የይለፍ ቃልዎን ረስተዋል?",
+    description: "ኮድዎን ያስገቡ (ለምሳሌ PR-003, TH-002) እና አስተዳዳሪ የይለፍ ቃልዎን እንዲቀይር ማሳወቂያ ይላካል።",
+    code: "ኮድ",
+    placeholder: "ለምሳሌ PR-003, TH-002",
+    requestReset: "የይለፍ ቃል ዳግም ማስጀመሪያ ይጠይቁ",
+    backToSignIn: "ወደ መግቢያ ተመለስ",
+    sending: "በመላክ ላይ...",
+    submittedTitle: "ጥያቄው ቀርቧል",
+    submittedDescription: "ከዚያ ኮድ ጋር የተገናኘ መለያ ካለ፣ አስተዳዳሪው ጥያቄዎን ይገመግማል እና የይለፍ ቃልዎን ይቀይራል። እባክዎ የትምህርት ቤት አስተዳዳሪን ያነጋግሩ።",
+  },
+  ar: {
+    title: "هل نسيت كلمة المرور؟",
+    description: "أدخل الكود الخاص بك (مثلاً PR-003, TH-002) وسيتم إخطار المسؤول لإعادة تعيين كلمة المرور الخاصة بك.",
+    code: "الكود",
+    placeholder: "مثلاً PR-003, TH-002",
+    requestReset: "طلب إعادة تعيين كلمة المرور",
+    backToSignIn: "العودة إلى تسجيل الدخول",
+    sending: "جارٍ الإرسال...",
+    submittedTitle: "تم تقديم الطلب",
+    submittedDescription: "إذا كان هناك حساب بهذا الكود، فسيقوم المسؤول بمراجعة طلبك وإعادة تعيين كلمة المرور الخاصة بك. يرجى الاتصال بمسؤول المدرسة.",
+  },
+  om: {
+    title: "Jecha icciitii irraanfattee?",
+    description: "Koodii keessan galchaa (fkn. PR-003, TH-002) sana booda bulchiinsi akka jecha icciitii keessan deebisee sirreessuuf beeksifama.",
+    code: "Koodii",
+    placeholder: "fkn. PR-003, TH-002",
+    requestReset: "Jecha icciitii deebisee sirreessuuf gaafadhu",
+    backToSignIn: "Gara seensaatti deebi'i",
+    sending: "Ergaa jira...",
+    submittedTitle: "Gaaffiin dhiyaateera",
+    submittedDescription: "Manni barumsaa koodii sanaan yoo jiraate, bulchiinsi gaaffii kee ilaalee jecha icciitii kee sirreessa. Maaloo bulchiinsa mana barumsaa kee quunnami.",
+  },
+  so: {
+    title: "Ma illowday erayga sirta ah?",
+    description: "Geli koodkaaga (tusaale PR-003, TH-002) markaas maamulka ayaa lagu wargelin doonaa si ay dib kuugu dejiyaan erayga sirta ah.",
+    code: "Koodka",
+    placeholder: "tusaale PR-003, TH-002",
+    requestReset: "Codso dib u dejinta erayga sirta ah",
+    backToSignIn: "Ku laabo gelitaanka",
+    sending: "Waa la dirayaa...",
+    submittedTitle: "Codsiga waa la gudbiyay",
+    submittedDescription: "Haddii uu jiro koontada koodkaas leh, maamulka ayaa dib u eegi doona codsigaaga oo dib u dejin doona eraygaaga sirta ah. Fadlan la xiriir maamulka dugsigaaga.",
   },
 } as const;
 
@@ -339,7 +398,7 @@ const peopleListMessages = {
     },
     placeholders: { staffSearch: "በስም ወይም ኢሜይል ፈልግ...", parentSearch: "በስም፣ ኢሜይል ወይም ስልክ ፈልግ...", studentSearch: "በተማሪ ስም፣ ኢሜይል ወይም መታወቂያ ፈልግ...", fullName: "ሙሉ ስም ያስገቡ", email: "ኢሜይል ያስገቡ", phone: "ስልክ ያስገቡ" },
     filters: { allRoles: "ሁሉም ሚናዎች", allStatus: "ሁሉም ሁኔታ", allParents: "ሁሉም ወላጆች", withChildren: "ልጆች ያላቸው", withoutChildren: "ልጆች የሌላቸው" },
-    roles: { ADMIN: "አስተዳዳሪ", TEACHER: "መምህር", IT_MANAGER: "የIT ኃላፊ", REGISTRAR: "ሬጅስትራር", FINANCE: "ፋይናንስ" },
+    roles: { ADMIN: "አስተዳዳሪ", TEACHER: "መምህር", IT_MANAGER: "የIT ኃላፊ", REGISTRAR: "ሬጅስትራር", FINANCE: "የፋይናንስ ኃላፊ" },
     status: { active: "ንቁ", inactive: "ንቁ አይደለም", pending: "በመጠባበቅ ላይ", rejected: "ውድቅ" },
     table: { staff: "ሠራተኛ", role: "ሚና", usernameStaffId: "የተጠቃሚ ስም / የሠራተኛ መታወቂያ", phone: "ስልክ", status: "ሁኔታ", actions: "እርምጃዎች", photo: "ፎቶ", parentName: "የወላጅ ስም", children: "ልጆች", grade: "ክፍል", section: "ሴክሽን", studentName: "የተማሪ ስም", studentId: "የተማሪ መታወቂያ", parent: "ወላጅ", parentPhone: "የወላጅ ስልክ" },
     empty: { noStaff: "ሠራተኛ አልተገኘም", noStaffSearch: "\"{query}\" የሚዛመድ ሠራተኛ የለም።", noStaffRole: "በተመረጠው ሚና ሠራተኛ የለም።", noStaffRecords: "የሠራተኛ መዝገብ የለም።", noParents: "ወላጅ አልተገኘም", adjustFilters: "ማጣሪያዎችን ወይም ፍለጋውን ያስተካክሉ", addFirstParent: "የመጀመሪያውን ወላጅ በመጨመር ይጀምሩ", noChildrenLinked: "የተገናኙ ልጆች የሉም", noStudents: "ተማሪ አልተገኘም", noStudentsSearch: "\"{query}\" የሚዛመድ ተማሪ የለም።" },
@@ -353,7 +412,7 @@ const peopleListMessages = {
     subtitles: { staff: "عرض وإدارة جميع موظفي المدرسة. استخدم البحث أو التصفية حسب الدور.", parents: "عرض وإدارة أولياء الأمور المرتبطين بالطلاب.", students: "عرض وإدارة سجلات الطلاب مع البحث والتصفية حسب الصف والحالة." },
     placeholders: { staffSearch: "ابحث بالاسم أو البريد...", parentSearch: "ابحث بالاسم أو البريد أو الهاتف...", studentSearch: "ابحث باسم الطالب أو البريد أو الرقم...", fullName: "أدخل الاسم الكامل", email: "أدخل البريد الإلكتروني", phone: "أدخل رقم الهاتف" },
     filters: { allRoles: "كل الأدوار", allStatus: "كل الحالات", allParents: "كل أولياء الأمور", withChildren: "لديهم أطفال", withoutChildren: "بدون أطفال" },
-    roles: { ADMIN: "مدير", TEACHER: "معلم", IT_MANAGER: "مدير تقنية", REGISTRAR: "مسجل", FINANCE: "مالية" },
+    roles: { ADMIN: "مدير", TEACHER: "معلم", IT_MANAGER: "مدير تقنية", REGISTRAR: "مسجل", FINANCE: "مسؤول مالية" },
     status: { active: "نشط", inactive: "غير نشط", pending: "قيد الانتظار", rejected: "مرفوض" },
     table: { staff: "الموظف", role: "الدور", usernameStaffId: "اسم المستخدم / رقم الموظف", phone: "الهاتف", status: "الحالة", actions: "الإجراءات", photo: "الصورة", parentName: "اسم ولي الأمر", children: "الأطفال", grade: "الصف", section: "الشعبة", studentName: "اسم الطالب", studentId: "رقم الطالب", parent: "ولي الأمر", parentPhone: "هاتف ولي الأمر" },
     empty: { noStaff: "لم يتم العثور على موظفين", noStaffSearch: "لا يوجد موظف يطابق \"{query}\".", noStaffRole: "لا يوجد موظفون بهذا الدور.", noStaffRecords: "لا توجد سجلات موظفين.", noParents: "لم يتم العثور على أولياء أمور", adjustFilters: "حاول تعديل الفلاتر أو البحث", addFirstParent: "ابدأ بإضافة أول ولي أمر", noChildrenLinked: "لا يوجد أطفال مرتبطون", noStudents: "لم يتم العثور على طلاب", noStudentsSearch: "لا يوجد طلاب يطابقون \"{query}\"." },
@@ -367,13 +426,13 @@ const peopleListMessages = {
     subtitles: { staff: "Hojjettoota mana barumsaa ilaaliifi bulchi. Barbaacha ykn gahee fayyadami.", parents: "Maatii barattootaan walqabatan ilaaliifi bulchi.", students: "Galmee barattootaa ilaaliifi bulchi. Kutaa fi haala irratti calali." },
     placeholders: { staffSearch: "Maqaa ykn emailiin barbaadi...", parentSearch: "Maqaa, email ykn bilbilaan barbaadi...", studentSearch: "Maqaa barataa, email ykn ID barbaadi...", fullName: "Maqaa guutuu galchi", email: "Email galchi", phone: "Lakkoofsa bilbilaa galchi" },
     filters: { allRoles: "Gahee Hunda", allStatus: "Haala Hunda", allParents: "Maatii Hunda", withChildren: "Ijoollee qaban", withoutChildren: "Ijoollee hin qabne" },
-    roles: { ADMIN: "Bulchaa", TEACHER: "Barsiisaa", IT_MANAGER: "Bulchaa IT", REGISTRAR: "Galmeessaa", FINANCE: "Faayinaansii" },
+    roles: { ADMIN: "Bulchaa", TEACHER: "Barsiisaa", IT_MANAGER: "Bulchaa IT", REGISTRAR: "Galmeessaa", FINANCE: "Ogeessa Faayinaansii" },
     status: { active: "Hojii irra", inactive: "Hojii irra miti", pending: "Eegamaa", rejected: "Didame" },
     table: { staff: "Hojjetaa", role: "Gahee", usernameStaffId: "Maqaa fayyadamaa / ID hojjetaa", phone: "Bilbila", status: "Haala", actions: "Tarkaanfii", photo: "Suuraa", parentName: "Maqaa maatii", children: "Ijoollee", grade: "Kutaa", section: "Ramaddii", studentName: "Maqaa barataa", studentId: "ID barataa", parent: "Maatii", parentPhone: "Bilbila maatii" },
     empty: { noStaff: "Hojjetaan hin argamne", noStaffSearch: "\"{query}\" wajjin hojjetaan walfakkaatu hin jiru.", noStaffRole: "Gahee filatame kanaan hojjetaan hin jiru.", noStaffRecords: "Galmeen hojjettootaa hin jiru.", noParents: "Maatiin hin argamne", adjustFilters: "Calallii ykn barbaacha sirreessi", addFirstParent: "Maatii jalqabaa dabaluun eegali", noChildrenLinked: "Ijoolleen walqabatan hin jiran", noStudents: "Barataan hin argamne", noStudentsSearch: "\"{query}\" wajjin barataan walfakkaatu hin jiru." },
     actions: { view: "Ilaali", bulkImport: "Baay'inaan galchi", addStudent: "Barataa dabali", addNewStudent: "Barataa haaraa dabali", createStudent: "Barataa uumi", cancel: "Dhiisi", addNewParent: "Maatii haaraa dabali", editParent: "Maatii gulaali", linkChild: "Mucaa maatii wajjin walqabsiisi" },
     pagination: { staff: "{start}-{end} keessaa {total} hojjettoota agarsiisaa jira", staffSearch: "{start}-{end} keessaa {total} hojjettoota \"{query}\"", parents: "{start}-{end} keessaa {total} maatii agarsiisaa jira", students: "{start}-{end} keessaa {total} barattoota agarsiisaa jira", studentsSearch: "{start}-{end} keessaa {total} barattoota \"{query}\"" },
-    modal: { description: "Akkaawuntii barataa haaraa uumi. Maqaan fayyadamaa fi jechi darbii yeroo ofumaan ni uumama.", fullName: "Maqaa guutuu *", email: "Email *", phone: "Bilbila", gender: "Saala", male: "Dhiira", female: "Dubara", other: "Kan biraa", created: "Barataan milkaa'inaan uumame!", credentials: "Ragaa seensaa:", name: "Maqaa:", emailLabel: "Email:", username: "Maqaa fayyadamaa:" },
+    modal: { description: "Akkaawuntii barataa haaraa uumi. Maqaan fayyadamaa fi jechi darbii yeroo ofumaan ni uumama.", fullName: "Maqaa guutuu *", email: "Email *", phone: "Bilbila", gender: "Saala", male: "Dhiira", female: "Dubartii", other: "Kan biraa", created: "Barataan milkaa'inaan uumame!", credentials: "Ragaa seensaa:", name: "Maqaa:", emailLabel: "Email:", username: "Maqaa fayyadamaa:" },
     messages: { loadStaffFailed: "Hojjettoota fe'uun hin danda'amne. Booda yaali.", fetchParentsFailed: "Maatii server irraa fiduun hin danda'amne", deleteParentConfirm: "Maatii kana haquu barbaaddaa?", parentDeleted: "Maatiin haqame", deleteParentFailed: "Maatii haquun hin danda'amne", studentDeleted: "Barataan haqame", deleteStudentFailed: "Barataa haquun hin danda'amne", studentRequired: "Maqaa fi email barbaachisa", studentCreated: "Barataan milkaa'inaan uumame!", createStudentFailed: "Barataa uumuun hin danda'amne" },
   },
   so: {
@@ -381,7 +440,7 @@ const peopleListMessages = {
     subtitles: { staff: "Eeg oo maamul dhammaan shaqaalaha dugsiga. Isticmaal raadinta ama doorka si aad u shaandhayso.", parents: "Eeg oo maamul waalidiinta ku xiran ardayda.", students: "Eeg oo maamul diiwaannada ardayda. Ku raadi ama ku shaandhee fasal iyo xaalad." },
     placeholders: { staffSearch: "Ku raadi magac ama email...", parentSearch: "Ku raadi magac, email, ama telefoon...", studentSearch: "Ku raadi magaca ardayga, email, ama aqoonsi...", fullName: "Geli magaca buuxa", email: "Geli emailka", phone: "Geli lambarka telefoonka" },
     filters: { allRoles: "Dhammaan Doorarka", allStatus: "Dhammaan Xaaladaha", allParents: "Dhammaan Waalidiinta", withChildren: "Carruur leh", withoutChildren: "Carruur lahayn" },
-    roles: { ADMIN: "Maamule", TEACHER: "Macallin", IT_MANAGER: "Maamulaha IT", REGISTRAR: "Diiwaangeliye", FINANCE: "Maaliyad" },
+    roles: { ADMIN: "Maamule", TEACHER: "Macallin", IT_MANAGER: "Maamulaha IT", REGISTRAR: "Diiwaangeliye", FINANCE: "Xisaabiye" },
     status: { active: "Firfircoon", inactive: "Aan firfircoonayn", pending: "Sugaya", rejected: "La diiday" },
     table: { staff: "Shaqaale", role: "Door", usernameStaffId: "Magac isticmaale / Aqoonsi shaqaale", phone: "Telefoon", status: "Xaalad", actions: "Falal", photo: "Sawir", parentName: "Magaca waalidka", children: "Carruur", grade: "Fasal", section: "Qayb", studentName: "Magaca ardayga", studentId: "Aqoonsiga ardayga", parent: "Waalid", parentPhone: "Telefoonka waalidka" },
     empty: { noStaff: "Shaqaale lama helin", noStaffSearch: "Shaqaale u dhigma \"{query}\" lama helin.", noStaffRole: "Shaqaale leh doorkan lama helin.", noStaffRecords: "Diiwaan shaqaale ma jiro.", noParents: "Waalid lama helin", adjustFilters: "Hagaaji shaandhaynta ama raadinta", addFirstParent: "Ku bilow ku darista waalidka koowaad", noChildrenLinked: "Carruur ku xiran ma jiraan", noStudents: "Arday lama helin", noStudentsSearch: "Arday u dhigma \"{query}\" lama helin." },
@@ -533,9 +592,9 @@ const filterMessages = {
 const layoutMessages = {
   en: { portal: "{school} Portal", defaultPortal: "SMS Portal", era: "E.C.", product: "Lemari SMS" },
   am: { portal: "{school} ፖርታል", defaultPortal: "SMS ፖርታል", era: "ዓ.ም.", product: "ለማሪ SMS" },
-  ar: { portal: "بوابة {school}", defaultPortal: "بوابة SMS", era: "تقويم إثيوبي", product: "ليماري SMS" },
-  om: { portal: "Poortaalii {school}", defaultPortal: "Poortaalii SMS", era: "W.I.", product: "Lemari SMS" },
-  so: { portal: "Bogga {school}", defaultPortal: "Bogga SMS", era: "T.I.", product: "Lemari SMS" },
+  ar: { portal: "بوابة {school}", defaultPortal: "بوابة SMS", era: "ت.إ.", product: "ليماري SMS" },
+  om: { portal: "Poortaalii {school}", defaultPortal: "Poortaalii SMS", era: "A.L.I.", product: "Lemari SMS" },
+  so: { portal: "Poortal-ka {school}", defaultPortal: "Poortal-ka SMS", era: "T.I.", product: "Lemari SMS" },
 } as const;
 
 const formatTranslation = (template: string, values: Record<string, string | number>) =>
@@ -822,7 +881,7 @@ const roleDashboardMessages = {
   am: {
     common: { failedLoad: "ዳሽቦርድ መጫን አልተቻለም", teacher: "መምህር", student: "ተማሪ", unavailable: "አይገኝም", grade: "ክፍል", section: "ሴክሽን", viewAll: "ሁሉንም ይመልከቱ", noAnnouncements: "ማስታወቂያ የለም" },
     teacher: { goodMorning: "እንደምን አደሩ", goodAfternoon: "እንደምን ዋሉ", goodEvening: "እንደምን አመሹ", subtitle: "ክፍሎችዎን፣ ትምህርቶችዎንና የማስተማር ስራዎችን ያስተዳድሩ", todaysClasses: "የዛሬ ክፍሎች", class: "ክፍል", classes: "ክፍሎች", scheduled: "ተይዘዋል", lessons: "ትምህርቶች", recentlyCreated: "በቅርቡ የተፈጠሩ", attendance: "መገኘት", take: "ውሰድ", markAttendance: "የዛሬን መገኘት ምልክት አድርግ", announcements: "ማስታወቂያዎች", recentUpdates: "አዳዲስ ዝመናዎች", takeAttendance: "መገኘት ውሰድ", enterMarks: "ውጤት አስገባ", messages: "መልዕክቶች", todaysSchedule: "የዛሬ ሰሌዳ", viewTimetable: "የጊዜ ሰሌዳ ይመልከቱ", noClassesToday: "ዛሬ የተያዘ ክፍል የለም", recentLessons: "የቅርብ ትምህርቶች", latestLessons: "በቅርቡ የፈጠሯቸው ትምህርቶች", noLessons: "እስካሁን ትምህርት የለም", createLesson: "ትምህርት ፍጠር", latestAdminUpdates: "ከአስተዳደር የቅርብ ዝመናዎች", view: "ይመልከቱ", lessonAttendance: "መገኘት", published: "ታትሟል", draft: "ረቂቅ" },
-    student: { title: "የተማሪ ዳሽቦርድ", welcome: "እንኳን ተመለሱ፣ {name} · የትምህርት እድገትዎን ይከታተሉ", congratulations: "እንኳን ደስ አለዎት፣ {name}!", ranked: "በ{term} ውስጥ #{rank} ደረጃ ያዙ።", latestResult: "የቅርብ የታተመ ውጤት", overallResult: "አጠቃላይ ውጤት", publishedResult: "የታተመ ውጤት", continue: "ቀጥል", viewResults: "ውጤቶችን ይመልከቱ", attendance: "መገኘት", thisTerm: "በዚህ ዘመን", gpa: "GPA", noGrades: "ውጤት የለም", avgScore: "አማካይ ውጤት", subjectsPassed: "{passed}/{total} ትምህርቶች አልፈዋል", exams: "ፈተናዎች", upcoming: "የሚመጡ", attendanceTrend: "የመገኘት አዝማሚያ", subjectPerformance: "የትምህርት አፈጻጸም", currentTerm: "የአሁኑ ዘመን", noAttendanceData: "የመገኘት መረጃ የለም", noSubjectData: "የትምህርት አፈጻጸም መረጃ የለም", score: "ውጤት", average: "አማካይ", recentGrades: "የቅርብ ውጤቶች", latestScores: "የቅርብ የትምህርት ውጤቶች", subjects: "ትምህርቶች", noGradesYet: "እስካሁን ውጤት የለም", viewAllGrades: "ሁሉንም ውጤቶች ይመልከቱ", quickActions: "ፈጣን እርምጃዎች", upcomingEvents: "የሚመጡ ክስተቶች", noUpcomingEvents: "የሚመጣ ክስተት የለም", viewCalendar: "ቀን መቁጠሪያ ይመልከቱ", excellent: "እጅግ ጥሩ", veryGood: "በጣም ጥሩ", good: "ጥሩ", pass: "አልፏል", needsImprovement: "መሻሻል ያስፈልጋል" },
+    student: { title: "የተማሪ ዳሽቦርድ", welcome: "እንኳን ደህና ተመለሱ፣ {name} · የትምህርት እድገትዎን ይከታተሉ", congratulations: "እንኳን ደስ አለዎት፣ {name}!", ranked: "በ{term} ውስጥ #{rank} ደረጃ ያዙ።", latestResult: "የቅርብ የታተመ ውጤት", overallResult: "አጠቃላይ ውጤት", publishedResult: "የታተመ ውጤት", continue: "ቀጥል", viewResults: "ውጤቶችን ይመልከቱ", attendance: "መገኘት", thisTerm: "በዚህ ዘመን", gpa: "GPA", noGrades: "ውጤት የለም", avgScore: "አማካይ ውጤት", subjectsPassed: "{passed}/{total} ትምህርቶች አልፈዋል", exams: "ፈተናዎች", upcoming: "የሚመጡ", attendanceTrend: "የመገኘት አዝማሚያ", subjectPerformance: "የትምህርት አፈጻጸም", currentTerm: "የአሁኑ ዘመን", noAttendanceData: "የመገኘት መረጃ የለም", noSubjectData: "የትምህርት አፈጻጸም መረጃ የለም", score: "ውጤት", average: "አማካይ", recentGrades: "የቅርብ ውጤቶች", latestScores: "የቅርብ የትምህርት ውጤቶች", subjects: "ትምህርቶች", noGradesYet: "እስካሁን ውጤት የለም", viewAllGrades: "ሁሉንም ውጤቶች ይመልከቱ", quickActions: "ፈጣን እርምጃዎች", upcomingEvents: "የሚመጡ ክስተቶች", noUpcomingEvents: "የሚመጣ ክስተት የለም", viewCalendar: "ቀን መቁጠሪያ ይመልከቱ", excellent: "እጅግ ጥሩ", veryGood: "በጣም ጥሩ", good: "ጥሩ", pass: "አልፏል", needsImprovement: "መሻሻል ያስፈልጋል" },
   },
   ar: {
     common: { failedLoad: "فشل تحميل بيانات لوحة التحكم", teacher: "معلم", student: "طالب", unavailable: "غير متاح", grade: "الصف", section: "الشعبة", viewAll: "عرض الكل", noAnnouncements: "لا توجد إعلانات" },
@@ -1525,7 +1584,7 @@ const adminDashboardMessages = {
       itManager: "የIT ማናጀር ዳሽቦርድ",
     },
     intro: {
-      welcomeBack: "እንኳን ተመለሱ",
+      welcomeBack: "እንኳን ደህና ተመለሱ",
       admin: "ዛሬ በትምህርት ቤትዎ የሚካሄደው ይህ ነው።",
       itManager: "የትምህርት ቤትዎ ስርዓቶችና ኦፕሬሽኖች የአሁኑ ሁኔታ ይህ ነው።",
       lastUpdated: "መጨረሻ የተዘመነው",
@@ -5936,6 +5995,9 @@ const getLegacyModule = (language: AppLanguage, module: MessageModule) => {
   }
   if (module === "login") {
     return loginMessages[language as keyof typeof loginMessages] ?? loginMessages.en;
+  }
+  if (module === "forgotPassword") {
+    return forgotPasswordMessages[language as keyof typeof forgotPasswordMessages] ?? forgotPasswordMessages.en;
   }
   if (module === "exams") {
     return examsMessages[language as keyof typeof examsMessages] ?? examsMessages.en;

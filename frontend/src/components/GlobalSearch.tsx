@@ -62,6 +62,7 @@ type QuickLink = {
 };
 
 const ROLE_QUICK_LINKS: Record<string, QuickLink[]> = {
+    super_admin: [],
     admin: [
         { label: "Dashboard", href: "/admin", icon: <School className="h-4 w-4" /> },
         { label: "Students", href: "/list/students", icon: <GraduationCap className="h-4 w-4" /> },
@@ -185,6 +186,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     const wrapperRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
+    const isSuperAdmin = user?.role === "SUPER_ADMIN";
     const { enabled: parentGradesEnabled } = useSchoolFeatureSetting("PARENT_VIEW_GRADES");
     const { enabled: announcementsEnabled } = useSchoolFeatureSetting("ANNOUNCEMENTS_ENABLED");
     const { t: navigationText } = useTranslations<NavigationMessages>("navigation");
@@ -207,7 +209,6 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     // Get role key for quick links
     const roleKey = useMemo(() => {
         const role = user?.role?.toLowerCase() || 'admin';
-        if (role === 'super_admin') return 'admin';
         return role;
     }, [user?.role]);
 
@@ -228,6 +229,10 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     // Fetch permissions on mount
     useEffect(() => {
         const fetchPermissions = async () => {
+            if (isSuperAdmin) {
+                setPermissions([]);
+                return;
+            }
             try {
                 const response = await searchAPI.globalSearch('');
                 const data = response.data as SearchResponse;
@@ -239,7 +244,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
             }
         };
         fetchPermissions();
-    }, []);
+    }, [isSuperAdmin]);
 
     // Handle click outside to close dropdown
     useEffect(() => {
@@ -277,6 +282,10 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     // Search when query changes
     useEffect(() => {
         const search = async () => {
+            if (isSuperAdmin) {
+                setResults([]);
+                return;
+            }
             if (!query.trim()) {
                 setResults([]);
                 return;
@@ -300,7 +309,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
 
         const debounce = setTimeout(search, 300);
         return () => clearTimeout(debounce);
-    }, [query]);
+    }, [query, isSuperAdmin]);
 
     const handleSelect = (result: SearchResult) => {
         if (query.trim()) {
@@ -319,6 +328,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
 
     // Get allowed navigation links based on role and query
     const navigationResults = useMemo(() => {
+        if (isSuperAdmin) return [];
         if (!query.trim()) return [];
         const lowerQuery = query.toLowerCase();
         const links = (ROLE_QUICK_LINKS[user?.role?.toLowerCase() || ""] || [])
@@ -337,7 +347,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                 href: link.href,
                 icon: link.icon
             }));
-    }, [query, user?.role, isSchoolSettingVisible, navLabel, searchText]);
+    }, [query, user?.role, isSchoolSettingVisible, navLabel, searchText, isSuperAdmin]);
 
     // Group results by type
     const groupedResults = useMemo(() => {
@@ -384,11 +394,29 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         { key: 'announcements', icon: <Megaphone className="h-3 w-3" />, label: navLabel('Announcements'), visible: announcementsEnabled },
         { key: 'events', icon: <Calendar className="h-3 w-3" />, label: navLabel('Calendar') },
     ].filter((entity) => {
+        if (isSuperAdmin) return false;
         if (entity.visible === false) return false;
         if (!permissions.includes(entity.key)) return false;
         if (roleKey === "finance" && !FINANCE_ALLOWED_ENTITY_KEYS.has(entity.key as SearchableEntity)) return false;
         return true;
     });
+
+    if (isSuperAdmin) {
+        return (
+            <div ref={wrapperRef} className="relative z-[9998] w-full mx-auto flex items-center md:h-10 lg:h-10 font-sans">
+                <div className="flex items-center w-full h-9 sm:h-10 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#111827] overflow-hidden shadow-sm">
+                    <div className="pl-4 pr-2 text-gray-500 flex-shrink-0">
+                        <Search className="h-4 w-4" />
+                    </div>
+                    <input
+                        disabled
+                        placeholder={searchText("searchPlaceholder", "Search")}
+                        className="flex-1 h-full bg-transparent border-0 px-4 sm:px-2 outline-none text-sm placeholder:text-gray-500 disabled:cursor-not-allowed"
+                    />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div ref={wrapperRef} className="relative z-[9998] w-full mx-auto flex items-center md:h-10 lg:h-10 font-sans">

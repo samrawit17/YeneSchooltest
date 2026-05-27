@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
-import { authAPI, notificationsAPI, userAPI, timetableSlotsAPI } from "@/lib/api";
+import { authAPI, notificationsAPI, schoolsAPI, userAPI, timetableSlotsAPI } from "@/lib/api";
 import type { NotificationPreferences } from "@/lib/api/notifications";
 import { queryKeys } from "@/lib/query-keys";
 import { resolveAssetUrl } from "@/lib/asset-url";
@@ -200,6 +200,19 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
 
 type NotificationSettingsKey = keyof typeof DEFAULT_NOTIFICATION_SETTINGS;
 
+const extractGradeNumber = (value?: string | number | null) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const match = String(value || "").match(/\d+/);
+  return match ? Number(match[0]) : null;
+};
+
+const formatStream = (stream?: string | null) => {
+  const normalized = String(stream || "").trim().toUpperCase();
+  if (normalized === "NATURAL") return "Natural";
+  if (normalized === "SOCIAL") return "Social";
+  return stream || "";
+};
+
 const ProfilePage = () => {
   const router = useRouter();
   const { user, updateUser, logout } = useAuth();
@@ -223,7 +236,25 @@ const ProfilePage = () => {
   const queryClient = useQueryClient();
   const { profileData, isLoadingProfile, assignedSubjects, t, formatDate, formatDateTime } = useProfileData();
   const isLoading = isLoadingProfile;
-  const lastUpdatedAt = user?.updatedAt || user?.createdAt;
+  const studentGrade = extractGradeNumber(
+    profileData?.studentProfile?.gradeLevel ||
+      profileData?.studentProfile?.className ||
+      profileData?.enrollment?.gradeLevel ||
+      profileData?.enrollment?.className,
+  );
+  const shouldShowStudentStream =
+    [11, 12].includes(studentGrade || 0) && !!profileData?.studentProfile?.stream;
+  const memberSinceAt =
+    profileData?.createdAt ||
+    profileData?.studentProfile?.createdAt ||
+    profileData?.enrollment?.createdAt ||
+    user?.createdAt;
+  const lastUpdatedAt =
+    profileData?.updatedAt ||
+    profileData?.studentProfile?.updatedAt ||
+    profileData?.enrollment?.updatedAt ||
+    user?.updatedAt ||
+    memberSinceAt;
   const { data: notificationPreferences, isLoading: isLoadingNotificationPreferences } = useQuery({
     queryKey: ["notification-preferences", user?.id],
     queryFn: async () => {
@@ -233,8 +264,32 @@ const ProfilePage = () => {
     enabled: !!user?.id,
   });
   const normalizedRole = (user?.role || "").toUpperCase() as AppUserRole;
+  const { data: school } = useQuery({
+    queryKey: queryKeys.school.detail(user?.schoolId),
+    queryFn: async () => {
+      if (!user?.schoolId) return null;
+      const response = await schoolsAPI.getById(user.schoolId);
+      return response.data;
+    },
+    enabled: !!user?.schoolId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const handleLogout = () => {
+    const redirectTo =
+      normalizedRole !== "SUPER_ADMIN" && school?.publicUrlSlug
+        ? `/sign-in?slug=${encodeURIComponent(school.publicUrlSlug)}`
+        : normalizedRole !== "SUPER_ADMIN" && user?.schoolId
+          ? `/sign-in?schoolId=${encodeURIComponent(user.schoolId)}`
+          : "/sign-in";
+
+    logout();
+    sessionStorage.setItem("postLogoutRedirect", redirectTo);
+    router.push(redirectTo);
+  };
+
   const persistThemePreference = (nextTheme: "LIGHT" | "DARK" | "SYSTEM", clientTheme: "light" | "dark" | "system") => {
-    setTheme(clientTheme);
+    setTheme(clientTheme, user?.id);
     if (user) {
       updateUser({ ...user, theme: nextTheme });
     }
@@ -501,7 +556,7 @@ const ProfilePage = () => {
               <Button 
                 variant="outline" 
                 className="gap-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                onClick={logout}
+                onClick={handleLogout}
               >
                 <LogOut className="w-4 h-4" />
                 {t.logout}
@@ -850,6 +905,24 @@ const ProfilePage = () => {
                               </CardContent>
                             </Card>
                           )}
+
+                          {shouldShowStudentStream && (
+                            <Card>
+                              <CardContent className="pt-6">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                                    <GraduationCap className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-slate-400">Stream</p>
+                                    <p className="text-sm font-bold text-gray-900 dark:text-slate-100">
+                                      {formatStream(profileData.studentProfile.stream)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
                           
                           {profileData.studentProfile.address && (
                             <Card>
@@ -954,7 +1027,7 @@ const ProfilePage = () => {
                               <div>
                                 <p className="text-xs font-medium text-gray-500">{t.info.memberSince}</p>
                                 <p className="text-sm font-bold text-gray-900">
-                                  {user?.createdAt ? formatDate(user.createdAt) : '-'}
+                                  {memberSinceAt ? formatDate(memberSinceAt) : '-'}
                                 </p>
                               </div>
                             </div>
@@ -1186,10 +1259,6 @@ const ProfilePage = () => {
               {/* Notification Channels */}
               <div className="space-y-3 md:space-y-4">
                 <h4 className="text-sm md:text-base font-medium">{t.notifications.channels}</h4>
-                <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
-                  In-app notifications are always kept in your account so important school alerts are not missed. Use browser push for real-time alerts on this device.
-                </div>
-
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                   <div className="space-y-1">
                     <Label htmlFor="push-notifications" className="text-sm md:text-base">{t.notifications.push}</Label>
