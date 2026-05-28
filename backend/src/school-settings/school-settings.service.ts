@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { DEFAULT_CACHE_TTL_SECONDS } from '../infrastructure/cache/cache.constants';
 import { CredentialService } from '../credential/credential.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Curriculum type enum
 type CurriculumType = 'SEMESTER' | 'QUARTER' | 'TERM' | 'CUSTOM';
@@ -74,6 +76,7 @@ export const SCHOOL_SETTING_KEYS = {
   SCHOOL_PHONE: 'school_phone',
   SCHOOL_EMAIL: 'school_email',
   LOGO_URL: 'logo_url',
+  LOGIN_IMAGE_URL: 'login_image_url',
   THEME_COLOR: 'theme_color',
   BRAND_COLOR_IN_NAVIGATION: 'BRAND_COLOR_IN_NAVIGATION',
   CERTIFICATE_SETTINGS: 'CERTIFICATE_SETTINGS',
@@ -253,7 +256,9 @@ export class SchoolSettingsService {
     if (key === SCHOOL_SETTING_KEYS.FEE_PAYMENT_DUE_DAY) {
       const day = Number(value);
       if (!Number.isInteger(day) || day < 1 || day > 31) {
-        throw new BadRequestException(`${key} must be an integer between 1 and 31`);
+        throw new BadRequestException(
+          `${key} must be an integer between 1 and 31`,
+        );
       }
       return day;
     }
@@ -300,7 +305,62 @@ export class SchoolSettingsService {
       return normalizedValue;
     }
 
+    if (key === SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL) {
+      const normalizedValue = String(value || '').trim();
+      if (!normalizedValue) return '';
+      const isValidRelativeUpload = /^\/uploads\/[A-Za-z0-9._~/-]+$/.test(
+        normalizedValue,
+      );
+      const isValidHttpUrl = /^https?:\/\/\S+$/i.test(normalizedValue);
+      if (!isValidRelativeUpload && !isValidHttpUrl) {
+        throw new BadRequestException(
+          `${key} must be an uploaded image path or a valid URL`,
+        );
+      }
+      return normalizedValue;
+    }
+
     return value;
+  }
+
+  async uploadLoginImage(
+    schoolId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    if (
+      !['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(
+        file.mimetype,
+      )
+    ) {
+      throw new BadRequestException(
+        'Login image must be PNG, JPG, JPEG, or WEBP',
+      );
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('Login image must be less than 5MB');
+    }
+
+    const extension =
+      file.mimetype === 'image/png'
+        ? '.png'
+        : file.mimetype === 'image/webp'
+          ? '.webp'
+          : '.jpg';
+    const relativeDir = path.join('uploads', 'schools', schoolId, 'branding');
+    const backendPublicDir = path.join(process.cwd(), 'public', relativeDir);
+
+    if (!fs.existsSync(backendPublicDir)) {
+      fs.mkdirSync(backendPublicDir, { recursive: true });
+    }
+
+    const fileName = `login-${Date.now()}${extension}`;
+    const filePath = path.join(backendPublicDir, fileName);
+    fs.writeFileSync(filePath, file.buffer);
+
+    const url = `/${relativeDir.replace(/\\/g, '/')}/${fileName}`;
+    await this.setSetting(schoolId, SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL, url);
+    return url;
   }
 
   private async validateCalendarTypeOneTimeChange(
@@ -526,9 +586,7 @@ export class SchoolSettingsService {
 
         for (let index = 0; index < orderedStudents.length; index++) {
           const item = orderedStudents[index];
-          const sectionName = this.getSectionNameByIndex(
-            index % totalSections,
-          );
+          const sectionName = this.getSectionNameByIndex(index % totalSections);
 
           let cls = await tx.class.findFirst({
             where: {

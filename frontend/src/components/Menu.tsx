@@ -1132,7 +1132,7 @@ const Menu = ({
                     {hasVisibleChildren ? (
                       <button
                         type="button"
-                        className="flex flex-1 items-center gap-3"
+                        className="flex flex-1 items-center gap-3 text-left"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1141,7 +1141,7 @@ const Menu = ({
                         aria-expanded={isOpen}
                         aria-label={`${displayLabel} submenu`}
                       >
-                        <div className="relative text-slate-900 dark:text-white">
+                        <div className="relative text-current">
                           {item.icon}
                         </div>
                         <span className={`text-sm ${isOpen ? "font-medium" : ""}`} dir={textDirection}>
@@ -1180,11 +1180,11 @@ const Menu = ({
                           className="flex h-6 w-6 items-center justify-center"
                         >
                           {isOpen ? (
-                            <ChevronDown className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                            <ChevronDown className="w-4 h-4 text-white" />
                           ) : language === "ar" ? (
-                            <ChevronLeft className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                            <ChevronLeft className="w-4 h-4 text-white" />
                           ) : (
-                            <ChevronRight className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                            <ChevronRight className="w-4 h-4 text-white" />
                           )}
                         </button>
                       ) : isActive && !hasChildren && !parentWithSameChild ? (

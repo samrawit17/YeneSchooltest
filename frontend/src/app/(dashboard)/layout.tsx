@@ -103,7 +103,6 @@ export default function DashboardLayout({
     enabled: !!user?.schoolId,
   });
   const schoolLogoSrc = resolveAssetUrl(school?.logoUrl);
-  const userAvatarSrc = resolveAssetUrl(user?.avatarUrl) || "/avatar.svg";
   // Set document title to school name
   useEffect(() => {
     if (school?.name) {
@@ -338,7 +337,7 @@ export default function DashboardLayout({
   const textDirection = language === "ar" ? "rtl" : "ltr";
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0F172A]" dir={textDirection}>
+    <div className="flex h-screen max-w-full overflow-x-hidden bg-[#F8FAFC] dark:bg-[#0F172A]" dir={textDirection}>
       {/* Desktop Sidebar */}
       <div className="relative hidden shrink-0 md:block md:w-16">
         <aside
@@ -346,14 +345,14 @@ export default function DashboardLayout({
           onMouseLeave={() => setIsSidebarHovered(false)}
           className={`dashboard-sidebar-flyout absolute inset-y-0 ${language === "ar" ? "right-0" : "left-0"} z-[60] flex h-full flex-col shadow-sm dark:bg-[#111827] dark:border-[#334155] transition-[width] duration-200 ease-out will-change-transform ${
             brandNavigationEnabled
-              ? `bg-[rgba(var(--brand-color-rgb),0.18)] ${language === "ar" ? "border-l" : "border-r"} border-[rgba(var(--brand-color-rgb),0.22)]`
+              ? `bg-[var(--brand-color,#e35336)] ${language === "ar" ? "border-l" : "border-r"} border-[var(--brand-color,#e35336)]`
               : `bg-[#F1F5F9] ${language === "ar" ? "border-l" : "border-r"} border-gray-200`
           } ${isSidebarHovered ? 'w-64' : 'w-16'} group/sidebar`}
         >
         {/* Logo */}
         <div className={`flex h-24 items-center px-4 border-b dark:border-[#334155] shrink-0 ${
           brandNavigationEnabled
-            ? 'border-[rgba(var(--brand-color-rgb),0.18)]'
+            ? 'border-white/25'
             : 'border-gray-200'
         }`}>
           {isSchoolLoading ? (
@@ -370,13 +369,13 @@ export default function DashboardLayout({
                   className="h-11 w-11 shrink-0 rounded-lg bg-transparent object-contain p-1 shadow-sm"
                 />
               ) : (
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-color,#e35336)] shadow-sm">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/20 shadow-sm">
                   <span className="text-xl font-bold text-white">
                     {school?.name?.charAt(0) || "S"}
                   </span>
                 </div>
               )}
-              <span className={`text-base font-bold text-slate-900 dark:text-white ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`}>
+              <span className={`text-base font-bold ${brandNavigationEnabled ? "text-white" : "text-slate-900 dark:text-white"} ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`}>
                 {formatPortalLabel(t.portal, school?.name, t.defaultPortal)}
               </span>
             </div>
@@ -393,38 +392,11 @@ export default function DashboardLayout({
           </div>
         </div>
 
-        {/* User Info */}
-        <div className={`${isSidebarHovered ? 'm-4 border-t pt-0' : 'mx-0 mb-4 mt-2 flex justify-center border-t-0'} dark:border-[#334155] ${
-          brandNavigationEnabled
-            ? 'border-[rgba(var(--brand-color-rgb),0.18)]'
-            : 'border-gray-200'
-        }`}>
-          <div className={`flex items-center ${
-            isSidebarHovered
-              ? 'mt-4 min-h-[72px] justify-start gap-3 rounded-lg border border-white/60 bg-white/80 p-3 backdrop-blur dark:border-slate-700/70 dark:bg-[#1E293B]'
-              : 'h-10 w-10 justify-center rounded-full bg-transparent p-0'
-          }`}>
-            <img
-              src={userAvatarSrc}
-              alt={user?.name || "User"}
-              className="h-8 w-8 rounded-full shrink-0 object-cover"
-            />
-            <div className={`min-w-0 flex-1 ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`}>
-                <p className="text-sm font-medium text-slate-800 dark:text-white truncate">
-                  {user?.name || "User"}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-gray-400 truncate">
-                  {user?.email || ""}
-                </p>
-            </div>
-          </div>
-        </div>
-
         </aside>
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-visible min-w-0">
+      <main className="flex-1 flex flex-col overflow-x-hidden min-w-0">
         {/* Top Navbar */}
         <Navbar
           sidebarCollapsed={!isSidebarHovered}

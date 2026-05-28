@@ -2,9 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "Lexend Deca";
+  src: local("Lexend Deca Thin"), local("LexendDeca-Thin"), url("/fonts/LexendDeca-Thin.ttf") format("truetype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lexend Deca";
+  src: local("Lexend Deca ExtraLight"), local("LexendDeca-ExtraLight"), url("/fonts/LexendDeca-ExtraLight.ttf") format("truetype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lexend Deca";
+  src: local("Lexend Deca Light"), local("LexendDeca-Light"), url("/fonts/LexendDeca-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lexend Deca";
+  src: local("Lexend Deca Regular"), local("LexendDeca-Regular"), url("/fonts/LexendDeca-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lexend Deca";
+  src: local("Lexend Deca Medium"), local("LexendDeca-Medium"), url("/fonts/LexendDeca-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lexend Deca";
+  src: local("Lexend Deca SemiBold"), local("LexendDeca-SemiBold"), url("/fonts/LexendDeca-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lexend Deca";
+  src: local("Lexend Deca Bold"), local("LexendDeca-Bold"), url("/fonts/LexendDeca-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lexend Deca";
+  src: local("Lexend Deca ExtraBold"), local("LexendDeca-ExtraBold"), url("/fonts/LexendDeca-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lexend Deca";
+  src: local("Lexend Deca Black"), local("LexendDeca-Black"), url("/fonts/LexendDeca-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 html,
 body {
   font-family: var(--font-sans), var(--font-ethiopic), var(--font-arabic), system-ui, sans-serif;
+  font-kerning: normal;
+  font-optical-sizing: auto;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html[lang="am"] body,
@@ -395,104 +473,104 @@ h1, h2, h3, p, h4, h5, h6, span, div, li, td, th, label, input, button, select, 
 }
 
 /* Custom Scrollbar - Cross-browser compatible */
-/* Firefox */
-html, body {
+html,
+body,
+* {
   scrollbar-width: thin;
-  scrollbar-color: #374151 #F3F4F6;
-  overflow-y: scroll; /* Force vertical scrollbar always visible */
+  scrollbar-color: #9CA3AF transparent;
 }
 
-/* Chrome, Edge, Safari */
-html::-webkit-scrollbar, body::-webkit-scrollbar {
-  width: 0 !important;
-  height: 0 !important;
-  opacity: 0;
-  transition: width 0.2s, height 0.2s, opacity 0.2s;
+html,
+body {
+  overflow-y: scroll;
 }
 
-html:hover::-webkit-scrollbar, body:hover::-webkit-scrollbar {
-  width: 1px !important;
-  height: 1px !important;
-  opacity: 1;
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-html::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
-  background: transparent !important;
-  border-radius: 0 !important;
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-html::-webkit-scrollbar-track:hover, body::-webkit-scrollbar-track:hover {
-  background: transparent !important;
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  background: #9CA3AF;
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  min-height: 24px;
 }
 
-html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
-  background: #374151 !important;
-  border-radius: 0 !important;
-  transition: background 0.2s ease;
-  min-height: 10px;
-  width: 1px !important;
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background: #6B7280;
+  background-clip: content-box;
 }
 
-html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
-  background: #1F2937;
+html::-webkit-scrollbar-thumb:active,
+body::-webkit-scrollbar-thumb:active,
+*::-webkit-scrollbar-thumb:active {
+  background: #4B5563;
+  background-clip: content-box;
 }
 
-html::-webkit-scrollbar-thumb:active, body::-webkit-scrollbar-thumb:active {
-  background: #111827;
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
-/* Scrollbar corner */
-html::-webkit-scrollbar-corner {
-  background: transparent !important;
+.dark,
+.dark body,
+.dark * {
+  scrollbar-color: #64748B transparent;
 }
 
-/* Global scrollbar for all scrollable elements */
-.overflow-y-auto::-webkit-scrollbar,
-.overflow-y-scroll::-webkit-scrollbar {
-  width: 1px !important;
+html.dark::-webkit-scrollbar-track,
+.dark html::-webkit-scrollbar-track,
+.dark body::-webkit-scrollbar-track,
+.dark *::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.overflow-x-auto::-webkit-scrollbar,
-.overflow-x-scroll::-webkit-scrollbar {
-  height: 1px !important;
+html.dark::-webkit-scrollbar-thumb,
+.dark html::-webkit-scrollbar-thumb,
+.dark body::-webkit-scrollbar-thumb,
+.dark *::-webkit-scrollbar-thumb {
+  background: #64748B;
+  background-clip: content-box;
+  border-color: transparent;
 }
 
-/* Dark mode scrollbar - Black background with brand color thumb */
-.dark html, .dark body {
-  scrollbar-color: var(--brand-color, #e35336) transparent;
+html.dark::-webkit-scrollbar-thumb:hover,
+.dark html::-webkit-scrollbar-thumb:hover,
+.dark body::-webkit-scrollbar-thumb:hover,
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+  background-clip: content-box;
 }
 
-.dark html::-webkit-scrollbar-track, .dark body::-webkit-scrollbar-track {
-  background: transparent !important;
-  border-radius: 0 !important;
+html.dark::-webkit-scrollbar-thumb:active,
+.dark html::-webkit-scrollbar-thumb:active,
+.dark body::-webkit-scrollbar-thumb:active,
+.dark *::-webkit-scrollbar-thumb:active {
+  background: #CBD5E1;
+  background-clip: content-box;
 }
 
-.dark html::-webkit-scrollbar-track:hover, .dark body::-webkit-scrollbar-track:hover {
-  background: transparent !important;
-}
-
-.dark html::-webkit-scrollbar-thumb, .dark body::-webkit-scrollbar-thumb {
-  background: var(--brand-color, #e35336) !important;
-  border-radius: 0 !important;
-  width: 0 !important;
-  transition: width 0.2s, opacity 0.2s, background 0.2s;
-}
-
-.dark html:hover::-webkit-scrollbar-thumb, .dark body:hover::-webkit-scrollbar-thumb {
-  width: 1px !important;
-}
-
-.dark html::-webkit-scrollbar-thumb:hover, .dark body::-webkit-scrollbar-thumb:hover {
-  background: #c74428 !important;
-  width: 1px !important;
-}
-
-.dark html::-webkit-scrollbar-thumb:active, .dark body::-webkit-scrollbar-thumb:active {
-  background: #b33a1f !important;
-}
-
-.dark html::-webkit-scrollbar-corner, .dark body::-webkit-scrollbar-corner {
-  background: transparent !important;
+html.dark::-webkit-scrollbar-corner,
+.dark html::-webkit-scrollbar-corner,
+.dark body::-webkit-scrollbar-corner,
+.dark *::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* Override React Big Calendar hidden scrollbars */
@@ -503,8 +581,8 @@ html::-webkit-scrollbar-corner {
 
 .rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar {
   display: block !important;
-  width: 1px !important;
-  height: 1px !important;
+  width: 8px !important;
+  height: 8px !important;
 }
 
 .rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-track {
@@ -512,20 +590,22 @@ html::-webkit-scrollbar-corner {
 }
 
 .rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
-  background: #374151 !important;
-  border-radius: 0 !important;
-  min-height: 10px;
-  width: 1px !important;
+  background: #9CA3AF !important;
+  background-clip: content-box !important;
+  border: 3px solid transparent !important;
+  border-radius: 999px !important;
+  min-height: 24px;
 }
 
 /* Dark mode */
 .dark .rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-track {
   background: transparent !important;
-  border-radius: 0 !important;
 }
 
 .dark .rbc-row-content-scrollable .rbc-row-content-scroll-container::-webkit-scrollbar-thumb {
-  background: var(--brand-color, #e35336) !important;
+  background: #64748B !important;
+  background-clip: content-box !important;
+  border-color: transparent !important;
 }
 
 /* Pagination Button Styles with #e35336 */
@@ -549,40 +629,6 @@ html::-webkit-scrollbar-corner {
 .pagination-active {
   background-color: var(--brand-color, #e35336) !important;
   border-color: var(--brand-color, #e35336) !important;
-}
-
-/* ULTRA SPECIFIC SCROLLBAR OVERRIDES - Maximum priority */
-html body *::-webkit-scrollbar {
-  width: 1px !important;
-  height: 1px !important;
-}
-
-html body *::-webkit-scrollbar-track {
-  background: transparent !important;
-}
-
-html body *::-webkit-scrollbar-corner {
-  background: transparent !important;
-}
-
-html body *::-webkit-scrollbar-thumb {
-  background: #374151 !important;
-  border-radius: 0 !important;
-  width: 1px !important;
-  min-width: 1px !important;
-}
-
-/* Dark mode ultra specific */
-.dark html body *::-webkit-scrollbar-thumb {
-  background: var(--brand-color, #e35336) !important;
-}
-
-.dark html body *::-webkit-scrollbar-track {
-  background: transparent !important;
-}
-
-.dark html body *::-webkit-scrollbar-corner {
-  background: transparent !important;
 }
 
 /* React Big Calendar Dark Mode - Month View */
@@ -732,8 +778,8 @@ html body *::-webkit-scrollbar-thumb {
 
 /* Calendar scrollbar in dark mode */
 .dark .rbc-calendar ::-webkit-scrollbar {
-  width: 1px;
-  height: 1px;
+  width: 8px;
+  height: 8px;
 }
 
 .dark .rbc-calendar ::-webkit-scrollbar-track {
@@ -741,8 +787,10 @@ html body *::-webkit-scrollbar-thumb {
 }
 
 .dark .rbc-calendar ::-webkit-scrollbar-thumb {
-  background: #475569;
-  border-radius: 2px;
+  background: #64748B;
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
 }
 
 /* Month header label */
@@ -849,10 +897,10 @@ html body *::-webkit-scrollbar-thumb {
 
 [class*="overflow-y-auto"]::-webkit-scrollbar,
 [class*="overflow-y-scroll"]::-webkit-scrollbar {
-  width: 1px !important;
+  width: 8px !important;
 }
 
 [class*="overflow-x-auto"]::-webkit-scrollbar,
 [class*="overflow-x-scroll"]::-webkit-scrollbar {
-  height: 1px !important;
+  height: 8px !important;
 }

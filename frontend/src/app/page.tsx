@@ -337,7 +337,7 @@ const Homepage = () => {
 
   const Navbar = () => (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed left-0 right-0 top-0 z-50 max-w-full overflow-x-clip transition-all duration-300 ${
         scrolled
           ? "bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-md"
           : "bg-transparent"
@@ -357,7 +357,7 @@ const Homepage = () => {
                 {(school?.name || "S").charAt(0)}
               </div>
             )}
-            <span className={`font-bold text-lg md:text-xl truncate max-w-[180px] md:max-w-[240px] ${
+            <span className={`max-w-[min(52vw,180px)] truncate text-lg font-bold md:max-w-[240px] md:text-xl ${
               scrolled ? "text-gray-900 dark:text-white" : "text-white"
             }`}>
               {school?.name || "School"}
@@ -365,7 +365,7 @@ const Homepage = () => {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1">
             {navLinks.map((link) => (
               <button
                 key={link.href}
@@ -399,7 +399,7 @@ const Homepage = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
-            className={`md:hidden p-2 rounded-lg transition-colors ${
+            className={`rounded-lg p-2 transition-colors lg:hidden ${
               scrolled
                 ? "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800"
                 : "text-white hover:bg-white/10"
@@ -417,7 +417,7 @@ const Homepage = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl"
+            className="border-t border-gray-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900 lg:hidden"
           >
             <div className="px-4 py-4 space-y-1">
               {navLinks.map((link) => (

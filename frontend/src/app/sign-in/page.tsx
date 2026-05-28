@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -85,6 +84,7 @@ const LoginPage = () => {
   const [announcementsLoading, setAnnouncementsLoading] = useState(true);
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
+  const [schoolLoginImageUrl, setSchoolLoginImageUrl] = useState<string | null>(null);
   const [schoolAccentColor, setSchoolAccentColor] = useState<string | null>(null);
   const displaySchoolName =
     schoolName ||
@@ -92,6 +92,9 @@ const LoginPage = () => {
     announcements[0]?.school?.name ||
     t.brand;
   const displaySchoolLogoUrl = resolveAssetUrl(schoolLogoUrl);
+  const displayLoginImageUrl =
+    resolveAssetUrl(schoolLoginImageUrl) ||
+    "https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2086&auto=format&fit=crop";
   const brandColor = /^#[0-9a-fA-F]{6}$/.test((schoolAccentColor || "").trim())
     ? schoolAccentColor!.trim()
     : "#e35336";
@@ -121,11 +124,13 @@ const LoginPage = () => {
           setResolvedLoginSchoolId(selectedSchool.id);
           setSchoolName(selectedSchool.name);
           setSchoolLogoUrl(selectedSchool.logoUrl || null);
+          setSchoolLoginImageUrl(selectedSchool.loginImageUrl || null);
           setSchoolAccentColor(selectedSchool.accentColor || null);
         } else {
           setResolvedLoginSchoolId(null);
           setSchoolName(null);
           setSchoolLogoUrl(null);
+          setSchoolLoginImageUrl(null);
           setSchoolAccentColor(null);
         }
         const data = Array.isArray(announcementResponse.data) ? announcementResponse.data : [];
@@ -236,25 +241,24 @@ const LoginPage = () => {
     >
       {/* Left Side - Full Size School Image with Announcement Slideshow */}
       <div className="hidden lg:block lg:w-1/2 relative">
-        <Image
-          src="https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2086&auto=format&fit=crop"
-          alt="Modern school campus with students"
-          fill
-          className="object-cover"
-          priority
+        <img
+          src={displayLoginImageUrl}
+          alt={`${displaySchoolName} login background`}
+          className="absolute inset-0 h-full w-full object-cover"
         />
+        <div className="absolute inset-0 bg-black/60" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
 
-        <div className="absolute left-0 right-0 top-10 px-10 text-center text-white">
-          <div className="flex w-full items-center justify-center gap-4">
+        <div className="absolute left-0 right-0 top-8 px-10 text-center text-white">
+          <div className="flex w-full flex-col items-center justify-center gap-4">
             {displaySchoolLogoUrl && (
               <img
                 src={displaySchoolLogoUrl}
                 alt={`${displaySchoolName} logo`}
-                className="h-28 w-28 shrink-0 rounded-lg bg-transparent object-contain md:h-32 md:w-32"
+                className="h-40 w-52 shrink-0 rounded-xl bg-transparent object-contain md:h-48 md:w-64"
               />
             )}
-            <h1 className="min-w-0 truncate text-2xl font-bold tracking-wide md:text-3xl">
+            <h1 className="max-w-full truncate text-3xl font-bold tracking-wide md:text-4xl">
               {displaySchoolName}
             </h1>
           </div>
@@ -515,10 +519,11 @@ const LoginPage = () => {
             </Link>
           </p>
 
-          {/* Footer */}
-          <div className="text-center text-xs text-gray-400 dark:text-gray-500 pt-6">
-            <p>{t.footer}</p>
-          </div>
+        </div>
+
+        {/* Footer - bottom right */}
+        <div className="absolute bottom-4 right-4 text-xs text-gray-400 dark:text-gray-500">
+          <p>{t.footer}</p>
         </div>
       </div>
     </div>

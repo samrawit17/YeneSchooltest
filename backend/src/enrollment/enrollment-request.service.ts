@@ -66,12 +66,12 @@ export class EnrollmentRequestService {
         logoUrl: true,
         schoolSettings: {
           where: {
-            key: 'theme_color',
+            key: { in: ['theme_color', 'login_image_url'] },
           },
           select: {
+            key: true,
             value: true,
           },
-          take: 1,
         },
       },
       orderBy: { name: 'asc' },
@@ -83,7 +83,13 @@ export class EnrollmentRequestService {
       code: school.code,
       publicUrlSlug: school.publicUrlSlug,
       logoUrl: school.logoUrl,
-      accentColor: school.schoolSettings[0]?.value || null,
+      accentColor:
+        school.schoolSettings.find((setting) => setting.key === 'theme_color')
+          ?.value || null,
+      loginImageUrl:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'login_image_url',
+        )?.value || null,
     }));
   }
 
@@ -101,9 +107,8 @@ export class EnrollmentRequestService {
         address: true,
         isActive: true,
         schoolSettings: {
-          where: { key: 'theme_color' },
-          select: { value: true },
-          take: 1,
+          where: { key: { in: ['theme_color', 'login_image_url'] } },
+          select: { key: true, value: true },
         },
       },
     });
@@ -118,7 +123,13 @@ export class EnrollmentRequestService {
       phone: school.phone,
       address: school.address,
       isActive: school.isActive,
-      accentColor: school.schoolSettings[0]?.value || null,
+      accentColor:
+        school.schoolSettings.find((setting) => setting.key === 'theme_color')
+          ?.value || null,
+      loginImageUrl:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'login_image_url',
+        )?.value || null,
     };
   }
 
@@ -136,9 +147,8 @@ export class EnrollmentRequestService {
         address: true,
         isActive: true,
         schoolSettings: {
-          where: { key: 'theme_color' },
-          select: { value: true },
-          take: 1,
+          where: { key: { in: ['theme_color', 'login_image_url'] } },
+          select: { key: true, value: true },
         },
       },
     });
@@ -153,7 +163,13 @@ export class EnrollmentRequestService {
       phone: school.phone,
       address: school.address,
       isActive: school.isActive,
-      accentColor: school.schoolSettings[0]?.value || null,
+      accentColor:
+        school.schoolSettings.find((setting) => setting.key === 'theme_color')
+          ?.value || null,
+      loginImageUrl:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'login_image_url',
+        )?.value || null,
     };
   }
 
@@ -260,16 +276,23 @@ export class EnrollmentRequestService {
     return { id: available[0].id, name: available[0].name };
   }
 
-  private normalizeStudentStream(stream?: string | null, grade?: number | null) {
+  private normalizeStudentStream(
+    stream?: string | null,
+    grade?: number | null,
+  ) {
     if (!grade || ![11, 12].includes(grade)) {
       return null;
     }
-    const normalized = String(stream || '').trim().toUpperCase();
+    const normalized = String(stream || '')
+      .trim()
+      .toUpperCase();
     if (!normalized) {
       return null;
     }
     if (!['SOCIAL', 'NATURAL'].includes(normalized)) {
-      throw new BadRequestException('Student stream must be SOCIAL or NATURAL for Grade 11 and 12');
+      throw new BadRequestException(
+        'Student stream must be SOCIAL or NATURAL for Grade 11 and 12',
+      );
     }
     return normalized;
   }
@@ -309,20 +332,36 @@ export class EnrollmentRequestService {
       throw new BadRequestException('Fayda Number (FAN) is already registered');
     }
 
-    const existingEnrollmentFayda = await this.prisma.enrollmentRequest.findFirst({
-      where: {
-        schoolId: dto.schoolId,
-        faydaNumber,
-        status: { in: [EnrollmentRequestStatus.PENDING, EnrollmentRequestStatus.WAITLISTED] },
-      },
-      select: { id: true },
-    });
+    const existingEnrollmentFayda =
+      await this.prisma.enrollmentRequest.findFirst({
+        where: {
+          schoolId: dto.schoolId,
+          faydaNumber,
+          status: {
+            in: [
+              EnrollmentRequestStatus.PENDING,
+              EnrollmentRequestStatus.WAITLISTED,
+            ],
+          },
+        },
+        select: { id: true },
+      });
     if (existingEnrollmentFayda) {
-      throw new BadRequestException('An active enrollment request already uses this Fayda Number (FAN)');
+      throw new BadRequestException(
+        'An active enrollment request already uses this Fayda Number (FAN)',
+      );
     }
-    const requestedStream = this.normalizeStudentStream(dto.requestedStream, dto.requestedGrade);
-    if ((dto.requestedGrade === 11 || dto.requestedGrade === 12) && !requestedStream) {
-      throw new BadRequestException('Grade 11 and 12 enrollment requires SOCIAL or NATURAL stream');
+    const requestedStream = this.normalizeStudentStream(
+      dto.requestedStream,
+      dto.requestedGrade,
+    );
+    if (
+      (dto.requestedGrade === 11 || dto.requestedGrade === 12) &&
+      !requestedStream
+    ) {
+      throw new BadRequestException(
+        'Grade 11 and 12 enrollment requires SOCIAL or NATURAL stream',
+      );
     }
 
     // Check for duplicate email
@@ -514,8 +553,13 @@ export class EnrollmentRequestService {
       enrollment.requestedStream,
       enrollment.requestedGrade,
     );
-    if ((enrollment.requestedGrade === 11 || enrollment.requestedGrade === 12) && !requestedStream) {
-      throw new BadRequestException('Grade 11 and 12 enrollment requires SOCIAL or NATURAL stream before approval');
+    if (
+      (enrollment.requestedGrade === 11 || enrollment.requestedGrade === 12) &&
+      !requestedStream
+    ) {
+      throw new BadRequestException(
+        'Grade 11 and 12 enrollment requires SOCIAL or NATURAL stream before approval',
+      );
     }
     const className = `Grade ${enrollment.requestedGrade}`;
 

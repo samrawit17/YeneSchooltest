@@ -445,6 +445,11 @@ export default function SchoolSettingsPage() {
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [savingLogo, setSavingLogo] = useState(false);
   const [isEditingLogo, setIsEditingLogo] = useState(false);
+  const [selectedLoginImageFile, setSelectedLoginImageFile] = useState<File | null>(null);
+  const [selectedLoginImagePreview, setSelectedLoginImagePreview] = useState('');
+  const [savingLoginImage, setSavingLoginImage] = useState(false);
+  const loginImageUrl = String(draftSettings.login_image_url || '');
+  const loginImageSrc = resolveAssetUrl(loginImageUrl);
 
   // Academic Year state
   const [academicYears, setAcademicYears] = useState<{
@@ -508,9 +513,10 @@ export default function SchoolSettingsPage() {
     return acc;
   }, {} as Record<string, SettingItem[]>);
 
-  // Filter visible categories
-  const visibleCategories = Object.keys(groupedSettings).filter(category =>
-    groupedSettings[category].some(setting => isSettingVisible(setting))
+  // Filter visible categories. Branding has its own login-image control, so it
+  // stays visible even when subscription-gated brand-color settings are hidden.
+  const visibleCategories = Object.keys(groupedSettings).filter((category) =>
+    category === 'branding' || groupedSettings[category].some((setting) => isSettingVisible(setting))
   );
 
   const fetchAcademicYears = useCallback(async () => {
@@ -601,6 +607,17 @@ export default function SchoolSettingsPage() {
     fetchSchoolPlan();
   }, [schoolId, fetchSettings, fetchSchoolInfo, fetchAcademicYears, fetchSchoolPlan]);
 
+  useEffect(() => {
+    if (!selectedLoginImageFile) {
+      setSelectedLoginImagePreview('');
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(selectedLoginImageFile);
+    setSelectedLoginImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [selectedLoginImageFile]);
+
   // Set breadcrumb with school name
   useEffect(() => {
     if (schoolInfo?.name) {
@@ -655,6 +672,73 @@ export default function SchoolSettingsPage() {
       }
       setSelectedLogoFile(file);
       setIsEditingLogo(true);
+    }
+  };
+
+  const handleLoginImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error(messageText('imageFile', 'Please select an image file'));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Login image size must be less than 5MB');
+      return;
+    }
+    setSelectedLoginImageFile(file);
+  };
+
+  const handleLoginImageSave = async () => {
+    if (isSettingsReadOnly) {
+      toast.error('Super Admin can manage school identity and public URLs here. School academic settings are managed by the school owner.');
+      return;
+    }
+    if (!selectedLoginImageFile) {
+      toast.error(messageText('imageFile', 'Please select an image file'));
+      return;
+    }
+
+    try {
+      setSavingLoginImage(true);
+      const result = await schoolSettingsAPI.uploadLoginImage(schoolId, selectedLoginImageFile);
+      const url = result?.url || '';
+      setSettings((prev) => ({ ...prev, login_image_url: url }));
+      setDraftSettings((prev) => ({ ...prev, login_image_url: url }));
+      queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
+      toast.success('Login image updated successfully');
+      setSelectedLoginImageFile(null);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to update login image';
+      toast.error(errorMessage);
+    } finally {
+      setSavingLoginImage(false);
+    }
+  };
+
+  const handleLoginImageReset = async () => {
+    if (isSettingsReadOnly) return;
+    try {
+      setSavingLoginImage(true);
+      await schoolSettingsAPI.delete(schoolId, 'login_image_url');
+      setSettings((prev) => {
+        const next = { ...prev };
+        delete next.login_image_url;
+        return next;
+      });
+      setDraftSettings((prev) => {
+        const next = { ...prev };
+        delete next.login_image_url;
+        return next;
+      });
+      setSelectedLoginImageFile(null);
+      queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
+      toast.success('Login image reset to default');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to reset login image';
+      toast.error(errorMessage);
+    } finally {
+      setSavingLoginImage(false);
     }
   };
 
@@ -1222,6 +1306,9 @@ export default function SchoolSettingsPage() {
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden p-3 sm:p-4 md:p-6">
+      {/* Page Title */}
+      <h1 className="mb-6 text-xl font-semibold text-slate-900 dark:text-white">{t.title}</h1>
+
       {/* School Header */}
       {schoolInfo && (
         <Card className="mb-6 overflow-hidden border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
@@ -1446,25 +1533,14 @@ export default function SchoolSettingsPage() {
       {/* Settings Tabs */}
       {!isSettingsReadOnly && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 max-w-full">
-          <div className="mb-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <h2 className="min-w-0 text-lg font-semibold text-slate-900 dark:text-white">{t.title}</h2>
-            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
-              <Button
-                type="button"
-                onClick={handleSaveAllChanges}
-                disabled={!hasUnsavedChanges || savingAll}
-                className="w-full sm:w-auto"
-              >
-                {savingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {actionText('saveChanges', 'Save Changes')}
-              </Button>
-              <div className="-mx-4 max-w-[100vw] overflow-x-auto overflow-y-hidden px-4 pb-2 md:mx-0 md:max-w-full md:px-0 lg:w-auto">
-                <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
-                  {visibleCategories.slice(0, 6).map((category) => {
+          <div className="mb-4 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+              <div className="-mx-4 max-w-[100vw] overflow-x-auto overflow-y-hidden px-4 pb-2 md:mx-0 md:max-w-full md:px-0 lg:w-full">
+                <TabsList className="flex h-auto w-full min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
+                  {visibleCategories.map((category) => {
                     const config = CATEGORY_CONFIG[category as keyof typeof CATEGORY_CONFIG];
                     const Icon = config?.icon || SettingsIcon;
                     return (
-                      <TabsTrigger key={category} value={category} className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
+                      <TabsTrigger key={category} value={category} className="flex-1 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">
                         <Icon className="h-3 w-3 shrink-0 md:h-4 md:w-4" />
                         <span>{categoryText(category)}</span>
                       </TabsTrigger>
@@ -1472,7 +1548,6 @@ export default function SchoolSettingsPage() {
                   })}
                 </TabsList>
               </div>
-            </div>
           </div>
 
           {visibleCategories.map((category) => {
@@ -1485,8 +1560,8 @@ export default function SchoolSettingsPage() {
               <Card className="max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                 <CardHeader className="min-w-0">
                   <div className="flex min-w-0 items-start gap-2">
-                    <div className={`h-10 w-10 shrink-0 rounded-lg ${config?.bgColor || 'bg-gray-100'} flex items-center justify-center`}>
-                      <Icon className={`w-5 h-5 ${config?.color || 'text-gray-600'}`} />
+                    <div className="h-10 w-10 shrink-0 rounded-lg bg-[var(--brand-color,#e35336)]/10 flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
                     </div>
                     <div className="min-w-0">
                       <CardTitle className="break-words text-slate-900 dark:text-white">{categoryText(category)}</CardTitle>
@@ -1497,6 +1572,66 @@ export default function SchoolSettingsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="min-w-0 space-y-4">
+                  {category === 'branding' && (
+                    <div className="flex flex-col gap-4 rounded-lg border bg-white p-4 dark:bg-slate-800/50 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1 sm:pr-4">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <h4 className="break-words font-medium text-slate-900 dark:text-white">Login Image</h4>
+                        </div>
+                        <p className="mt-0.5 break-words text-sm text-slate-500 dark:text-slate-400">
+                          Image shown on the left side of this school&apos;s login page.
+                        </p>
+                        <div className="mt-3 h-32 w-full max-w-sm overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900">
+                          {selectedLoginImagePreview ? (
+                            <img
+                              src={selectedLoginImagePreview}
+                              alt="Selected login image preview"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : loginImageSrc ? (
+                            <img
+                              src={loginImageSrc}
+                              alt="Login image preview"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-sm text-slate-500">
+                              Default login image
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-2 sm:w-64">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLoginImageFileChange}
+                          disabled={savingLoginImage}
+                          className="bg-white dark:bg-slate-700"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            onClick={handleLoginImageSave}
+                            disabled={!selectedLoginImageFile || savingLoginImage}
+                            className="flex-1"
+                          >
+                            {savingLoginImage ? <Loader2 className="h-4 w-4 animate-spin" /> : actionText('save', 'Save')}
+                          </Button>
+                          {loginImageUrl && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleLoginImageReset}
+                              disabled={savingLoginImage}
+                            >
+                              Reset
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {settings.map((setting) => (
                     <div
                       key={setting.key}
@@ -1532,6 +1667,16 @@ export default function SchoolSettingsPage() {
                       </div>
                     </div>
                   ))}
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      type="button"
+                      onClick={handleSaveAllChanges}
+                      disabled={!hasUnsavedChanges || savingAll}
+                    >
+                      {savingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {actionText('saveChanges', 'Save Changes')}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1540,35 +1685,6 @@ export default function SchoolSettingsPage() {
         </Tabs>
       )}
 
-      {/* All Settings View (if more than 6 categories) */}
-      {!isSettingsReadOnly && visibleCategories.length > 6 && (
-        <Card className="mt-4 max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-          <CardHeader className="min-w-0">
-            <CardTitle className="text-slate-900 dark:text-white">{t.allSettings}</CardTitle>
-            <CardDescription className="break-words text-slate-500 dark:text-slate-400">{t.allSettingsDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="min-w-0">
-            <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
-              {SETTINGS_CONFIG.filter(s => isSettingVisible(s)).map((setting) => (
-                <div
-                  key={setting.key}
-                  className="min-w-0 rounded-lg border bg-white p-3 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <h4 className="break-words text-sm font-medium text-slate-900 dark:text-white">{settingText(setting.label)}</h4>
-                      <p className="break-words text-xs text-slate-500 dark:text-slate-400">{settingText(setting.description)}</p>
-                    </div>
-                    <div className="sm:w-auto sm:flex-shrink-0 sm:ml-2">
-                      {renderSettingInput(setting)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

@@ -555,15 +555,11 @@ const Navbar = ({
   const dashboardPath = getDashboardPath(user?.role);
 
   return (
-    <header className={`sticky top-0 z-50 w-full border-b dark:border-[#334155] dark:bg-[#111827] dark:supports-[backdrop-filter]:bg-[#111827]/60 transition-all duration-300 ${
-      useBrandNavigation
-        ? "border-[rgba(var(--brand-color-rgb),0.53)] bg-[rgba(var(--brand-color-rgb),0.42)] supports-[backdrop-filter]:bg-[rgba(var(--brand-color-rgb),0.42)]"
-        : "border-gray-200 bg-[#F1F5F9] supports-[backdrop-filter]:bg-[#F1F5F9]/90"
-    }`}>
-      <div className="w-full h-14 sm:h-16 md:h-18">
-        <div className="flex items-center justify-between h-full gap-1 sm:gap-2 md:gap-4 px-2 sm:px-3 md:px-4 overflow-hidden">
+    <header className="sticky top-0 z-50 w-full max-w-full overflow-x-clip border-b border-gray-200 bg-[#F1F5F9] transition-all duration-300 supports-[backdrop-filter]:bg-[#F1F5F9]/90 dark:border-[#334155] dark:bg-[#111827] dark:supports-[backdrop-filter]:bg-[#111827]/60">
+      <div className="h-14 w-full max-w-full sm:h-16 md:h-18">
+        <div className="flex h-full max-w-full items-center overflow-hidden px-2 sm:px-3 md:px-4">
           {/* Left: Mobile Menu Button and Logo */}
-          <div className="relative z-20 flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0 min-w-0">
+          <div className="relative z-20 flex items-center flex-shrink-0 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -650,7 +646,7 @@ const Navbar = ({
           </div>
 
           {/* Center: Real-time Clock Display - Hidden on small mobile, visible on sm+ */}
-          <div className="hidden sm:flex items-center gap-1 sm:gap-2 md:gap-3 py-1 rounded-lg text-sm ml-2 flex-shrink-0">
+          <div className="hidden sm:flex items-center gap-1 sm:gap-2 md:gap-3 py-1 rounded-lg text-sm flex-shrink-0">
             {isLoading ? (
               <div className="flex items-center gap-2">
                 <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
@@ -684,32 +680,32 @@ const Navbar = ({
           </div>
 
           {/* Right Section: Search and User Menu */}
-          <div className="relative z-10 ml-1 flex flex-1 items-center justify-end gap-1.5 sm:ml-0 sm:gap-2 md:gap-4 min-w-0">
+          <div className="relative z-10 ml-2 flex min-w-0 flex-1 items-center justify-end gap-1 sm:ml-3 sm:gap-1.5 md:ml-4 md:gap-2 lg:gap-3">
             {/* Desktop Search - Fluid width that expands/shrinks with available space */}
             {isLoading ? (
               <div className="hidden sm:flex flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl">
                 <Skeleton className="h-9 sm:h-10 w-full rounded-full" />
               </div>
             ) : user && (
-              <div className="hidden sm:flex flex-1 min-w-0 transition-all duration-300 ease-in-out">
+              <div className="hidden min-w-0 flex-1 overflow-hidden sm:flex transition-all duration-300 ease-in-out">
                 <GlobalSearch />
               </div>
             )}
 
           {/* Mobile Search */}
           {isLoading ? (
-            <div className="sm:hidden flex-1 min-w-0 max-w-none">
+            <div className="min-w-0 max-w-none flex-1 overflow-hidden sm:hidden">
               <Skeleton className="h-8 w-full" />
             </div>
           ) : user && (
-            <div className="sm:hidden flex-1 min-w-0 max-w-none">
+            <div className="min-w-0 max-w-none flex-1 overflow-hidden sm:hidden">
               <GlobalSearch />
             </div>
           )}
 
 
           {/* Right: Icons and User Menu */}
-          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center gap-0.5 sm:gap-1 md:gap-2">
             {/* Enroll Button (for unauthenticated users) */}
             {!user && (
               <Button
@@ -725,13 +721,13 @@ const Navbar = ({
 
             {/* Notification and Message Icons */}
             {isLoading ? (
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
                 <Skeleton className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg" />
                 <Skeleton className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg" />
                 <Skeleton className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg" />
               </div>
             ) : user && (
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
                 {/* Notifications Dropdown */}
                 <DropdownMenu
                   open={notificationsOpen}
@@ -751,7 +747,7 @@ const Navbar = ({
                     >
                       <Bell className="h-5 w-5 sm:h-6 sm:w-6 font-bold" />
                       {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-[var(--brand-color,#e35336)] text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
+                        <span className="absolute right-0 top-0 flex h-[16px] min-w-[16px] translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] px-1 text-[9px] font-bold text-white sm:h-[18px] sm:min-w-[18px] sm:text-[10px]">
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                       )}
@@ -846,7 +842,7 @@ const Navbar = ({
                     >
                         <MessageSquare className="h-5 w-5 font-bold sm:h-6 sm:w-6" />
                         {unreadCommunicationsCount > 0 && (
-                          <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-[var(--brand-color,#e35336)] text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
+                          <span className="absolute right-0 top-0 flex h-[16px] min-w-[16px] translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] px-1 text-[9px] font-bold text-white sm:h-[18px] sm:min-w-[18px] sm:text-[10px]">
                             {unreadCommunicationsCount > 99 ? '99+' : unreadCommunicationsCount}
                           </span>
                         )}

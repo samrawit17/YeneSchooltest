@@ -5,6 +5,7 @@ export interface PublicSchoolSummary {
   publicUrlSlug?: string | null;
   logoUrl?: string | null;
   accentColor?: string | null;
+  loginImageUrl?: string | null;
 }
 
 export function normalizeSchoolUrlSlug(value: string | null | undefined) {

@@ -1,23 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Lexend_Deca, Cairo } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ToastProvider } from "@/components/ToastProvider";
 import { BreadcrumbProvider } from "@/context/BreadcrumbContext";
 import { AcademicYearProvider } from "@/context/AcademicYearContext";
 import PushNotificationManager from "@/components/PushNotificationManager";
-
-const lexend = Lexend_Deca({
-  subsets: ["latin"],
-  variable: "--font-lexend",
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-});
-
-const cairo = Cairo({
-  subsets: ["arabic"],
-  variable: "--font-cairo",
-  weight: ["200", "300", "400", "500", "600", "700", "800", "900"],
-});
 
 // Force dynamic rendering to avoid static generation issues with useSearchParams
 export const dynamic = 'force-dynamic';
@@ -36,20 +23,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const fontVariables = {
+    "--font-sans": '"Lexend Deca", "Segoe UI", system-ui, sans-serif',
+    "--font-ethiopic":
+      '"Noto Sans Ethiopic", "Abyssinica SIL", "Nyala", "Ebrima", sans-serif',
+    "--font-arabic":
+      '"Cairo", "Noto Naskh Arabic", "Amiri", sans-serif',
+  } as React.CSSProperties;
+
   return (
-    <html lang="en" suppressHydrationWarning className={`${lexend.variable} ${cairo.variable}`}>
-      <body
-        className={lexend.className}
-        style={
-          {
-            "--font-sans": 'var(--font-lexend), "Lexend Deca", "Segoe UI", system-ui, sans-serif',
-            "--font-ethiopic":
-              '"Noto Sans Ethiopic", "Abyssinica SIL", "Nyala", "Ebrima", sans-serif',
-            "--font-arabic":
-              'var(--font-cairo), "Cairo", "Noto Naskh Arabic", "Amiri", sans-serif',
-          } as React.CSSProperties
-        }
-      >
+    <html
+      lang="en"
+      suppressHydrationWarning
+      style={fontVariables}
+    >
+      <body>
         <script dangerouslySetInnerHTML={{
           __html: `
             (function() {

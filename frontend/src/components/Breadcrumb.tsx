@@ -317,7 +317,26 @@ const TECHNICAL_LABELS = new Set(["List"]);
 /**
  * Gets the appropriate dashboard URL based on the current user role/path
  */
-function getDashboardHref(pathname: string): string {
+function getRoleDashboardHref(userRole?: string): string | null {
+  const normalizedRole = userRole?.toUpperCase();
+  const roleMap: Record<string, string> = {
+    SUPER_ADMIN: "/superadmin",
+    ADMIN: "/admin",
+    IT_MANAGER: "/it-manager",
+    TEACHER: "/teacher",
+    STUDENT: "/student",
+    PARENT: "/parent",
+    REGISTRAR: "/registrar",
+    FINANCE: "/finance",
+  };
+
+  return normalizedRole ? roleMap[normalizedRole] ?? null : null;
+}
+
+function getDashboardHref(pathname: string, userRole?: string): string {
+  const roleDashboardHref = getRoleDashboardHref(userRole);
+  if (roleDashboardHref) return roleDashboardHref;
+
   // Check path prefixes to determine user role
   // Note: We check more specific paths first before general prefixes
 
@@ -445,11 +464,19 @@ function translateLabel(label: string, messages: BreadcrumbMessages): string {
   return messages.labels[label] ?? label;
 }
 
-function translateBreadcrumbItems(items: BreadcrumbItem[], messages: BreadcrumbMessages): BreadcrumbItem[] {
+function normalizeDashboardBreadcrumbHref(item: BreadcrumbItem, userRole?: string): BreadcrumbItem {
+  const roleDashboardHref = getRoleDashboardHref(userRole);
+  if (!roleDashboardHref || item.href !== "/dashboard") return item;
+
+  const isDashboardLabel = item.label === "Dashboard" || item.label === "ዳሽቦርድ";
+  return isDashboardLabel ? { ...item, href: roleDashboardHref } : item;
+}
+
+function translateBreadcrumbItems(items: BreadcrumbItem[], messages: BreadcrumbMessages, userRole?: string): BreadcrumbItem[] {
   return items
     .filter((item) => !TECHNICAL_LABELS.has(item.label))
     .map((item, index, visibleItems) => ({
-      ...item,
+      ...normalizeDashboardBreadcrumbHref(item, userRole),
       label: translateLabel(item.label, messages),
       isCurrent: item.isCurrent || index === visibleItems.length - 1,
     }));
@@ -465,7 +492,7 @@ function generateBreadcrumbsFromPath(pathname: string, userRole: string | undefi
   const breadcrumbs: BreadcrumbItem[] = [];
 
   // Determine dashboard URL based on path
-  const dashboardHref = getDashboardHref(pathname);
+  const dashboardHref = getDashboardHref(pathname, userRole);
 
   // Start with appropriate dashboard with icon
   breadcrumbs.push({
@@ -592,11 +619,11 @@ export function Breadcrumb({
   const breadcrumbItems = useMemo(() => {
     // Use context items if available (highest priority)
     if (contextItems && contextItems.length > 0) {
-      return translateBreadcrumbItems(contextItems, t);
+      return translateBreadcrumbItems(contextItems, t, user?.role);
     }
     // Use props items if provided
     if (items && items.length > 0) {
-      return translateBreadcrumbItems(items, t);
+      return translateBreadcrumbItems(items, t, user?.role);
     }
     // Auto-generate from path
     return generateBreadcrumbsFromPath(pathname, user?.role, t);

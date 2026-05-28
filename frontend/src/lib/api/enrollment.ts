@@ -86,6 +86,7 @@ export interface PublicEnrollmentSchool {
   publicUrlSlug?: string | null;
   logoUrl?: string | null;
   accentColor?: string | null;
+  loginImageUrl?: string | null;
 }
 
 export interface EnrollmentLandingResponse {
