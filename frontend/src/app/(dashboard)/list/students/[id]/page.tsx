@@ -527,9 +527,21 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
       : [];
   const installmentCount = terms.length > 0 ? terms.length : 1;
   const payments = Array.isArray(feeData?.payments) ? feeData.payments : [];
+  const unassignedFeeItems = feeItems.filter((fee: any) => !fee.isYearWide && !fee.termId);
+  const shouldDistributeUnassignedFees =
+    terms.length > 0 &&
+    unassignedFeeItems.length > terms.length &&
+    unassignedFeeItems.length === feeItems.length;
+
   const periodFeeRows = terms.map((term: any, index: number) => {
     const termId = String(term.id || term.termId || term.name || index);
     const termName = String(term.name || term.period || `Period ${index + 1}`);
+    const distributedFees = shouldDistributeUnassignedFees
+      ? unassignedFeeItems.filter((_: any, feeIndex: number) => {
+          const targetIndex = Math.floor((feeIndex * terms.length) / unassignedFeeItems.length);
+          return targetIndex === index;
+        })
+      : [];
     let due = 0;
 
     for (const fee of feeItems) {
@@ -540,6 +552,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
         due += amount;
       }
     }
+    due += distributedFees.reduce((sum: number, fee: any) => sum + (Number(fee.amount) || 0), 0);
 
     const directPaid = payments
       .filter((payment: any) => payment.termId === termId || payment.termName === termName)
@@ -547,14 +560,16 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
     const fallbackPaid = directPaid > 0
       ? directPaid
-      : feeItems
-          .filter((fee: any) => fee.isYearWide && !payments.some((payment: any) => payment.termId || payment.termName))
-          .reduce((sum: number, fee: any) => {
+      : distributedFees.length > 0
+        ? distributedFees.reduce((sum: number, fee: any) => sum + (Number(fee.paidAmount) || 0), 0)
+        : feeItems
+            .filter((fee: any) => fee.isYearWide && !payments.some((payment: any) => payment.termId || payment.termName))
+            .reduce((sum: number, fee: any) => {
             const perPeriodAmount = (Number(fee.amount) || 0) / installmentCount;
             const paidBeforeThisPeriod = perPeriodAmount * index;
             const remainingPaid = Math.max(0, (Number(fee.paidAmount) || 0) - paidBeforeThisPeriod);
             return sum + Math.min(perPeriodAmount, remainingPaid);
-          }, 0);
+            }, 0);
 
     const roundedDue = Math.round(due * 100) / 100;
     const roundedPaid = Math.round(fallbackPaid * 100) / 100;
@@ -597,7 +612,10 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   const avatarUrl = userData.img || userData.avatarUrl;
   const username = userData.username || student.studentCode || t.nA;
   const studentCode = student.studentCode || student.studentId || t.nA;
-  const displayStudentCode = formatStudentDisplayCode(studentCode, student.academicYear);
+  const displayStudentCode = formatStudentDisplayCode(
+    studentCode,
+    student.academicYearDisplay || student.enrollmentYear || student.academicYear,
+  );
   const faydaNumber = student.faydaNumber || t.nA;
   const phone = student.phone || userData.phone || t.nA;
   const motherName = student.motherName || t.nA;

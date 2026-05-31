@@ -51,6 +51,7 @@ interface Student {
   gender: string;
   address: string;
   dateOfBirth?: string;
+  faydaNumber?: string;
   enrollmentYear?: string;
   enrollmentStatus?: string;
   className?: string;
@@ -160,6 +161,7 @@ export default function EditStudentPage() {
     gender: "MALE",
     address: "",
     dateOfBirth: "",
+    faydaNumber: "",
     
     // Academic info
     studentCode: "",
@@ -312,6 +314,7 @@ export default function EditStudentPage() {
         gender: student.gender || "MALE",
         address: student.address || "",
         dateOfBirth: student.dateOfBirth || "",
+        faydaNumber: student.faydaNumber || "",
         studentCode: student.studentCode || "",
         rollNumber: student.rollNumber || "",
         classId: foundClassId,
@@ -461,6 +464,7 @@ export default function EditStudentPage() {
       gender: formData.gender,
       address: formData.address,
       dateOfBirth: formData.dateOfBirth || undefined,
+      faydaNumber: formData.faydaNumber || undefined,
     };
 
     // Update user name if changed
@@ -662,6 +666,16 @@ export default function EditStudentPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="faydaNumber">Fayda Number (FAN)</Label>
+                  <Input
+                    id="faydaNumber"
+                    value={formData.faydaNumber}
+                    onChange={(e) => handleInputChange("faydaNumber", e.target.value)}
+                    placeholder="Enter 12-digit Fayda number"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="motherName">Mother's Name</Label>
                   <Input
                     id="motherName"
@@ -795,7 +809,7 @@ export default function EditStudentPage() {
                     <SelectContent>
                       {classesData?.map((cls) => (
                         <SelectItem key={cls.id} value={cls.id}>
-                          Grade {cls.grade} - {cls.name}
+                          Grade {cls.grade}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -174,7 +174,7 @@ export const hasPermission = (user: User | null, permission: string): boolean =>
      STUDENT: ['exam:read', 'result:read', 'announcement:read', 'fee:read', 'attendance:read', 'timetable:read', 'assignment:read'],
      PARENT: ['student:read', 'result:read', 'announcement:read', 'fee:read', 'attendance:read', 'timetable:read', 'assignment:read'],
      REGISTRAR: ['student:create', 'student:read', 'student:update', 'student:approve', 'class:assign', 'document:upload', 'enrollment:read', 'enrollment:approve'],
-     FINANCE: ['fee:create', 'fee:read', 'fee:update', 'fee:pay', 'fee:assign', 'report:read', 'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete', 'finance:student_fees:generate', 'finance:student_fees:read', 'finance:payments:record', 'finance:reports:read'],
+     FINANCE: ['fee:create', 'fee:read', 'fee:update', 'fee:pay', 'fee:assign', 'report:read', 'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete', 'finance:student_fees:generate', 'finance:student_fees:read', 'finance:payments:record', 'finance:reports:read', 'finance:payroll:read', 'finance:payroll:manage', 'finance:payroll:approve', 'finance:payroll:pay'],
    };
 
   const userPermissions = rolePermissions[user.role] || [];

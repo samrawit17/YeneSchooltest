@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   UserCheck,
   Users,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -160,6 +161,7 @@ export default function RegistrarDashboard() {
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push("/sign-in");
@@ -314,7 +316,18 @@ export default function RegistrarDashboard() {
 
   const stats = dashboardData?.stats || {};
   const charts = dashboardData?.charts || {};
-  const alerts = dashboardData?.alerts || [];
+  const getAlertKey = (alert: DashboardAlert, index: number) =>
+    `${alert.type}:${alert.priority}:${alert.message}:${alert.actionUrl || ""}:${index}`;
+  const alerts = (dashboardData?.alerts || [])
+    .map((alert, index) => ({ alert, key: getAlertKey(alert, index) }))
+    .filter(({ key }) => !dismissedAlerts.has(key));
+  const dismissAlert = (key: string) => {
+    setDismissedAlerts((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 dark:bg-gray-900">
@@ -342,12 +355,12 @@ export default function RegistrarDashboard() {
 
         {alerts.length > 0 && (
           <div className="mb-6 space-y-3">
-            {alerts.map((alert, index) => {
+            {alerts.map(({ alert, key }) => {
               const alertStyle = getAlertStyles(alert.type);
               const AlertIcon = alertStyle.icon;
               return (
                 <div
-                  key={`${alert.message}-${index}`}
+                  key={key}
                   className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center ${alertStyle.bg}`}
                 >
                   <AlertIcon className={`h-5 w-5 shrink-0 ${alertStyle.iconColor}`} />
@@ -368,6 +381,16 @@ export default function RegistrarDashboard() {
                       <ExternalLink className="h-3 w-3" />
                     </Button>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => dismissAlert(key)}
+                    className="h-8 w-8 shrink-0 self-end text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white sm:self-auto"
+                    title="Dismiss notification"
+                    aria-label="Dismiss notification"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               );
             })}

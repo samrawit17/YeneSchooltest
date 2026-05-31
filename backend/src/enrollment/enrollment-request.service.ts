@@ -536,9 +536,13 @@ export class EnrollmentRequestService {
       throw new NotFoundException('Enrollment request not found');
     }
 
-    if (enrollment.status !== EnrollmentRequestStatus.PENDING) {
+    const approvableStatuses: EnrollmentRequestStatus[] = [
+      EnrollmentRequestStatus.PENDING,
+      EnrollmentRequestStatus.WAITLISTED,
+    ];
+    if (!approvableStatuses.includes(enrollment.status)) {
       throw new BadRequestException(
-        `Enrollment request is not pending. Current status: ${enrollment.status}`,
+        `Enrollment request cannot be approved from status: ${enrollment.status}`,
       );
     }
 
@@ -929,8 +933,14 @@ export class EnrollmentRequestService {
       throw new NotFoundException('Enrollment request not found');
     }
 
-    if (enrollment.status !== EnrollmentRequestStatus.PENDING) {
-      throw new BadRequestException('Enrollment request is not pending');
+    const rejectableStatuses: EnrollmentRequestStatus[] = [
+      EnrollmentRequestStatus.PENDING,
+      EnrollmentRequestStatus.WAITLISTED,
+    ];
+    if (!rejectableStatuses.includes(enrollment.status)) {
+      throw new BadRequestException(
+        `Enrollment request cannot be rejected from status: ${enrollment.status}`,
+      );
     }
 
     return this.prisma.enrollmentRequest.update({

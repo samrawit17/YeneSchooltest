@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -52,6 +52,9 @@ const languageOptions: Array<{ value: AppLanguage; label: string }> = [
   { value: "ar", label: "العربية" },
 ];
 
+const accentControlClassName =
+  "border bg-white/90 text-gray-700 shadow-sm transition-colors hover:bg-white focus:ring-2 focus:ring-offset-2 dark:bg-gray-900/80 dark:text-gray-200 dark:hover:bg-gray-900";
+
 const getTranslatedLoginError = (message: string | undefined, fallback: string) => {
   const normalizedMessage = (message || "").trim().toLowerCase();
   if (!normalizedMessage) return fallback;
@@ -86,6 +89,7 @@ const LoginPage = () => {
   const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
   const [schoolLoginImageUrl, setSchoolLoginImageUrl] = useState<string | null>(null);
   const [schoolAccentColor, setSchoolAccentColor] = useState<string | null>(null);
+  const [resolvedLoginSchoolSlug, setResolvedLoginSchoolSlug] = useState<string | null>(null);
   const displaySchoolName =
     schoolName ||
     announcements[currentSlide]?.school?.name ||
@@ -98,10 +102,16 @@ const LoginPage = () => {
   const brandColor = /^#[0-9a-fA-F]{6}$/.test((schoolAccentColor || "").trim())
     ? schoolAccentColor!.trim()
     : "#e35336";
-  const schoolEnrollHref = resolvedLoginSchoolId
-    ? `/enroll?schoolId=${encodeURIComponent(resolvedLoginSchoolId)}`
+  const accentControlStyle = {
+    borderColor: "color-mix(in srgb, var(--brand-color, #e35336) 45%, transparent)",
+    "--tw-ring-color": "color-mix(in srgb, var(--brand-color, #e35336) 35%, transparent)",
+  } as CSSProperties;
+  const schoolEnrollHref = resolvedLoginSchoolSlug
+    ? `/enroll?school=${encodeURIComponent(resolvedLoginSchoolSlug)}`
     : requestedSchoolSlug
       ? `/enroll?school=${encodeURIComponent(requestedSchoolSlug)}`
+      : resolvedLoginSchoolId
+        ? `/enroll?schoolId=${encodeURIComponent(resolvedLoginSchoolId)}`
       : "/enroll";
 
   useEffect(() => {
@@ -122,12 +132,14 @@ const LoginPage = () => {
 
         if (selectedSchool) {
           setResolvedLoginSchoolId(selectedSchool.id);
+          setResolvedLoginSchoolSlug(selectedSchool.publicUrlSlug || null);
           setSchoolName(selectedSchool.name);
           setSchoolLogoUrl(selectedSchool.logoUrl || null);
           setSchoolLoginImageUrl(selectedSchool.loginImageUrl || null);
           setSchoolAccentColor(selectedSchool.accentColor || null);
         } else {
           setResolvedLoginSchoolId(null);
+          setResolvedLoginSchoolSlug(null);
           setSchoolName(null);
           setSchoolLogoUrl(null);
           setSchoolLoginImageUrl(null);
@@ -335,9 +347,10 @@ const LoginPage = () => {
           <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
             <SelectTrigger
               aria-label={t.language}
-              className="h-10 w-[132px] rounded-full bg-gray-100 dark:bg-gray-800 border-0 text-gray-700 dark:text-gray-200"
+              className={`h-10 w-[132px] rounded-full ${accentControlClassName}`}
+              style={accentControlStyle}
             >
-              <Languages className="mr-2 h-4 w-4" />
+              <Languages className="mr-2 h-4 w-4 text-[var(--brand-color,#e35336)]" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end">
@@ -352,12 +365,13 @@ const LoginPage = () => {
             variant="ghost"
             size="icon"
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className={`w-10 h-10 rounded-full ${accentControlClassName}`}
+            style={accentControlStyle}
           >
             {resolvedTheme === 'dark' ? (
-              <Sun className="h-5 w-5 text-yellow-500" />
+              <Sun className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
             ) : (
-              <Moon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              <Moon className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
             )}
           </Button>
         </div>

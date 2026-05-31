@@ -518,6 +518,12 @@ const menuItems: MenuSection[] = [
         visible: ["finance"],
       },
       {
+        icon: <CreditCard className="w-5 h-5" />,
+        label: "Payroll",
+        href: "/finance/payroll",
+        visible: ["finance"],
+      },
+      {
         icon: <Megaphone className="w-5 h-5" />,
         label: "Announcements",
         href: "/list/announcements",
@@ -1027,9 +1033,10 @@ const Menu = ({
             // Check if this is a terms/quarters menu item (dynamic label based on curriculum type)
             const isTermsItem = item.label === "Semester";
             const isPerformanceBriefItem = item.label === "Performance Brief";
+            const summaryLabel = getNavigationLabel("Summary");
             const currentPeriodSummaryLabel = displayTermName
-              ? `${displayTermName} Summary`
-              : `${periodLabel} Summary`;
+              ? `${displayTermName} ${summaryLabel}`
+              : `${periodLabel} ${summaryLabel}`;
             const displayLabel = isTermsItem
               ? periodLabel
               : isPerformanceBriefItem

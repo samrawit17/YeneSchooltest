@@ -3,6 +3,7 @@ import {
   IsNumber,
   IsOptional,
   IsEnum,
+  IsBoolean,
   Min,
   Max,
 } from 'class-validator';
@@ -199,6 +200,136 @@ export class ReportQueryDto {
   @IsOptional()
   @IsEnum(['ETHIOPIAN', 'GREGORIAN'])
   calendarType?: 'ETHIOPIAN' | 'GREGORIAN';
+}
+
+export class PayrollQueryDto {
+  @IsString()
+  schoolId!: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(12)
+  month?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(2000)
+  year?: number;
+
+  @IsOptional()
+  @IsEnum(['DRAFT', 'APPROVED', 'PAID', 'CANCELLED'])
+  status?: 'DRAFT' | 'APPROVED' | 'PAID' | 'CANCELLED';
+}
+
+export class UpsertPayrollSalaryDto {
+  @IsString()
+  schoolId!: string;
+
+  @IsString()
+  staffUserId!: string;
+
+  @IsNumber()
+  @Min(0)
+  baseSalary!: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  allowances?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  deductions?: number;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccount?: string;
+
+  @IsOptional()
+  @IsString()
+  tinNumber?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  effectiveFrom?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class CreatePayrollRunDto {
+  @IsString()
+  schoolId!: string;
+
+  @IsNumber()
+  @Min(1)
+  @Max(12)
+  periodMonth!: number;
+
+  @IsNumber()
+  @Min(2000)
+  periodYear!: number;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentDate?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class UpdatePayrollRunStatusDto {
+  @IsString()
+  schoolId!: string;
+
+  @IsEnum(['DRAFT', 'APPROVED', 'PAID', 'CANCELLED'])
+  status!: 'DRAFT' | 'APPROVED' | 'PAID' | 'CANCELLED';
+
+  @IsOptional()
+  @IsString()
+  paymentDate?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class UpdatePayrollEntryStatusDto {
+  @IsString()
+  schoolId!: string;
+
+  @IsEnum(['PENDING', 'APPROVED', 'PAID', 'HELD'])
+  status!: 'PENDING' | 'APPROVED' | 'PAID' | 'HELD';
+
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @IsOptional()
+  @IsString()
+  transactionReference?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
 
 // Fee Collection Mode types - matches school setting fee_structure_mode

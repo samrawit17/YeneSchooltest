@@ -115,6 +115,60 @@ export const financeAPI = {
     api.post('/finance/fees/mark-overdue', data),
   getOverdueReport: (schoolId: string, academicYearId: string, termId?: string) =>
     api.get('/finance/reports/overdue', { params: { schoolId, academicYearId, termId } }),
-  getAuditLogs: (schoolId: string, entityType?: string, entityId?: string, limit?: number) =>
-    api.get('/finance/audit-logs', { params: { schoolId, entityType, entityId, limit } }),
+  getAuditLogs: (
+    schoolId: string,
+    entityType?: string,
+    entityId?: string,
+    limit?: number,
+    from?: string,
+    to?: string,
+  ) =>
+    api.get('/finance/audit-logs', { params: { schoolId, entityType, entityId, limit, from, to } }),
+  getPayrollStaff: (schoolId: string) =>
+    api.get('/finance/payroll/staff', { params: { schoolId } }),
+  getPayrollSalaries: (schoolId: string) =>
+    api.get('/finance/payroll/salaries', { params: { schoolId } }),
+  upsertPayrollSalary: (data: {
+    schoolId: string;
+    staffUserId: string;
+    baseSalary: number;
+    allowances?: number;
+    deductions?: number;
+    bankName?: string;
+    bankAccount?: string;
+    tinNumber?: string;
+    isActive?: boolean;
+    effectiveFrom?: string;
+    notes?: string;
+  }) => api.post('/finance/payroll/salaries', data),
+  getPayrollRuns: (params: {
+    schoolId: string;
+    month?: number;
+    year?: number;
+    status?: 'DRAFT' | 'APPROVED' | 'PAID' | 'CANCELLED';
+  }) => api.get('/finance/payroll/runs', { params }),
+  createPayrollRun: (data: {
+    schoolId: string;
+    periodMonth: number;
+    periodYear: number;
+    paymentDate?: string;
+    title?: string;
+    notes?: string;
+  }) => api.post('/finance/payroll/runs', data),
+  getPayrollRun: (id: string, schoolId: string) =>
+    api.get(`/finance/payroll/runs/${id}`, { params: { schoolId } }),
+  updatePayrollRunStatus: (
+    id: string,
+    data: { schoolId: string; status: 'DRAFT' | 'APPROVED' | 'PAID' | 'CANCELLED'; paymentDate?: string; notes?: string },
+  ) => api.patch(`/finance/payroll/runs/${id}/status`, data),
+  updatePayrollEntryStatus: (
+    id: string,
+    data: {
+      schoolId: string;
+      status: 'PENDING' | 'APPROVED' | 'PAID' | 'HELD';
+      paymentMethod?: string;
+      transactionReference?: string;
+      notes?: string;
+    },
+  ) => api.patch(`/finance/payroll/entries/${id}/status`, data),
 };

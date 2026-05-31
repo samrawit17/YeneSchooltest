@@ -9,7 +9,13 @@ export interface PublicSchoolSummary {
 }
 
 export function normalizeSchoolUrlSlug(value: string | null | undefined) {
-  return value?.trim().toLowerCase().replace(/[^a-z0-9-]/g, "") || "";
+  if (!value) return "";
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
 }
 
 export function getHostSchoolSlug() {

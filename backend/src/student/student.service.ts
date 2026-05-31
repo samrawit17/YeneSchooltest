@@ -560,6 +560,33 @@ export class StudentService {
           },
         });
 
+        const academicYearValues = [
+          ...new Set(
+            studentProfiles
+              .map((profile) => profile.academicYear)
+              .filter((value): value is string => !!value),
+          ),
+        ];
+        const academicYears = academicYearValues.length
+          ? await this.prismaService.academicYear.findMany({
+              where: {
+                schoolId,
+                OR: [
+                  { id: { in: academicYearValues } },
+                  { name: { in: academicYearValues } },
+                ],
+              },
+              select: { id: true, name: true, ethiopianYear: true },
+            })
+          : [];
+        const academicYearDisplayByValue = new Map<string, string>();
+        academicYears.forEach((year) => {
+          const display = String(year.ethiopianYear || year.name || '').trim();
+          if (!display) return;
+          academicYearDisplayByValue.set(year.id, display);
+          academicYearDisplayByValue.set(year.name, display);
+        });
+
         const total = await this.prismaService.studentProfile.count({ where });
 
         const data = studentProfiles.map((profile) => {
@@ -572,6 +599,10 @@ export class StudentService {
           return {
             ...profile,
             grade: gradeNum,
+            academicYearDisplay:
+              academicYearDisplayByValue.get(profile.academicYear || '') ||
+              profile.academicYear ||
+              null,
             parentName: profile.parents?.[0]?.parent?.user?.name || null,
             parentPhone: profile.parents?.[0]?.parent?.user?.phone || null,
             enrollment: enrollments.find((e) => e.studentId === profile.userId),
@@ -644,10 +675,15 @@ export class StudentService {
     let academicYearName: string | null = null;
     if (student.academicYear) {
       const academicYear = await this.prismaService.academicYear.findFirst({
-        where: { id: student.academicYear },
-        select: { id: true, name: true },
+        where: {
+          schoolId,
+          OR: [{ id: student.academicYear }, { name: student.academicYear }],
+        },
+        select: { id: true, name: true, ethiopianYear: true },
       });
-      academicYearName = academicYear?.name || null;
+      academicYearName = academicYear
+        ? String(academicYear.ethiopianYear || academicYear.name || '').trim()
+        : null;
     }
 
     // Prefer the canonical StudentClass assignment, then fall back to profile text fields.
@@ -744,6 +780,7 @@ export class StudentService {
 
     return {
       ...student,
+      academicYearDisplay: academicYearName || student.academicYear || null,
       enrollment,
       enrollmentYear: enrollment?.academicYear || academicYearName || null,
       classTeacher: homeroomTeacher?.name || null,

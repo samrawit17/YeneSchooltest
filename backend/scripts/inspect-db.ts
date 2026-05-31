@@ -13,34 +13,21 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter } as any);
 
 async function main() {
-  const userCount = await prisma.user.count();
-  const classes = await prisma.class.findMany({
-    select: { id: true, name: true, grade: true }
+  const activeYear = await prisma.academicYear.findFirst({
+    where: { isActive: true },
+    include: { terms: true }
   });
-  const sections = await prisma.section.findMany({
-    select: { id: true, name: true, classId: true }
+  console.log('Active Academic Year:', JSON.stringify(activeYear, null, 2));
+
+  const now = new Date();
+  const currentTerm = await prisma.term.findFirst({
+    where: {
+      startDate: { lte: now },
+      endDate: { gte: now },
+    },
+    include: { academicYear: true }
   });
-  const students = await prisma.studentClass.count();
-
-  console.log('Database Stats:');
-  console.log('Total Users:', userCount);
-  console.log('Total StudentClasses:', students);
-  console.log('Classes:', classes);
-  console.log('Sections:', sections);
-
-  if (userCount > 0) {
-    const roles = await prisma.user.groupBy({
-      by: ['role'],
-      _count: { id: true }
-    });
-    console.log('Users by role:', roles);
-
-    const firstFewUsers = await prisma.user.findMany({
-      take: 10,
-      select: { id: true, email: true, username: true, role: true }
-    });
-    console.log('First 10 users:', firstFewUsers);
-  }
+  console.log('Current Term by Date:', JSON.stringify(currentTerm, null, 2));
 }
 
 main()

@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Pagination from '@/components/Pagination';
 import { FormattedDate } from '@/components/ui/FormattedDate';
 import { CalendarDatePicker } from '@/components/ui/CalendarDatePicker';
-import { financeAPI, academicYearsAPI, studentsAPI, schoolSettingsAPI } from '@/lib/api';
+import { financeAPI, academicYearsAPI, studentsAPI, schoolSettingsAPI, termsAPI } from '@/lib/api';
 import { getGradeNumbersFromSystem } from '@/lib/grade-system';
 import {
   convertToEthiopian,
@@ -28,13 +28,11 @@ import {
   Plus, 
   Search, 
   Calendar,
-  Receipt,
   Users,
   AlertCircle,
   TrendingUp,
   TrendingDown,
   FileText,
-  Printer,
   Filter,
   Wallet,
   Banknote,
@@ -64,7 +62,6 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import FinanceSetupWizard from '@/components/finance/FinanceSetupWizard';
 import { useTranslations } from '@/hooks/useTranslations';
 import type { FinanceMessages } from '@/messages/registry';
 
@@ -143,6 +140,8 @@ interface FeeBreakdown {
 interface Transaction {
   id: string;
   receiptNumber: string;
+  paymentReference?: string;
+  transactionReference?: string | null;
   studentId: string;
   studentName?: string;
   className?: string;
@@ -226,6 +225,7 @@ export default function FinanceDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
+  const [currentTerm, setCurrentTerm] = useState<Term | null>(null);
   const [curriculumType, setCurriculumType] = useState<string>('TERM');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedTerm, setSelectedTerm] = useState<string>('');
@@ -253,7 +253,10 @@ export default function FinanceDashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [outstandingFees, setOutstandingFees] = useState<OutstandingFee[]>([]);
   const [feeStructures, setFeeStructures] = useState<any[]>([]);
-  const [billingPolicy, setBillingPolicy] = useState<{ dueDay: number; penalty: number }>({ dueDay: 5, penalty: 0 });
+  const [billingPolicy, setBillingPolicy] = useState<{
+    dueDay: number;
+    penalty: number;
+  }>({ dueDay: 15, penalty: 0 });
   
   // Pagination & Search
   const [transactionsPage, setTransactionsPage] = useState(1);
@@ -269,7 +272,6 @@ export default function FinanceDashboardPage() {
   // Dialogs
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [feeStructureOpen, setFeeStructureOpen] = useState(false);
-  const [setupWizardOpen, setSetupWizardOpen] = useState(false);
   
   // Record Payment Form State
   const [paymentForm, setPaymentForm] = useState({
@@ -327,142 +329,6 @@ export default function FinanceDashboardPage() {
     setFeeStructureOpen(true);
   };
 
-  // Print Summary
-  const handlePrintSummary = () => {
-    const periodLabel =
-      selectedTerm && selectedTerm !== 'all'
-        ? terms.find((term) => term.id === selectedTerm)?.name || 'Selected period'
-        : 'All periods';
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Finance Summary Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h1 { font-size: 24px; margin-bottom: 10px; }
-          h2 { font-size: 18px; margin: 20px 0 10px 0; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-          .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
-          .summary-item { border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
-          .summary-item label { display: block; font-size: 12px; color: #666; }
-          .summary-item .value { font-size: 20px; font-weight: bold; margin-top: 5px; }
-          .summary-item.green .value { color: #16a34a; }
-          .summary-item.red .value { color: #dc2626; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background: #f5f5f5; }
-          .footer { margin-top: 20px; font-size: 10px; color: #666; text-align: center; }
-        </style>
-      </head>
-      <body>
-        <h1>Finance Summary Report</h1>
-        <p>Generated: ${formatDate(new Date().toISOString())}</p>
-        <p>Period: ${periodLabel}</p>
-        
-        <h2>Summary</h2>
-        <div class="summary-grid">
-          <div class="summary-item">
-            <label>Total Revenue (Collected)</label>
-            <div class="value green">Brr ${stats.totalRevenue.toLocaleString()}</div>
-          </div>
-          <div class="summary-item">
-            <label>Collected Today</label>
-            <div class="value green">Brr ${stats.collectedToday.toLocaleString()}</div>
-          </div>
-          <div class="summary-item">
-            <label>Outstanding Balance</label>
-            <div class="value red">Brr ${stats.outstandingBalance.toLocaleString()}</div>
-          </div>
-          <div class="summary-item">
-            <label>Fully Paid Students</label>
-            <div class="value">${stats.totalStudentsFullyPaid}</div>
-          </div>
-          <div class="summary-item">
-            <label>Partial Payment Students</label>
-            <div class="value">${stats.studentsPartialPayment}</div>
-          </div>
-          <div class="summary-item">
-            <label>Unpaid Students</label>
-            <div class="value">${stats.unpaidStudentsCount}</div>
-          </div>
-        </div>
-
-        <h2>Outstanding Fees</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Grade</th>
-              <th>Total</th>
-              <th>Paid</th>
-              <th>Balance</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${outstandingFees.slice(0, 50).map(fee => `
-              <tr>
-                <td>${fee.studentName || '-'}</td>
-                <td>${fee.grade ? fee.grade + (fee.section ? ' - ' + fee.section : '') : '-'}</td>
-                <td>Brr ${(fee.total || 0).toLocaleString()}</td>
-                <td>Brr ${(fee.paid || 0).toLocaleString()}</td>
-                <td>Brr ${(fee.remaining || 0).toLocaleString()}</td>
-                <td>${fee.status || '-'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <h2>Recent Payment Transactions</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Receipt</th>
-              <th>Student</th>
-              <th>Class</th>
-              <th>Section</th>
-              <th>Term/Semester</th>
-              <th>Fee</th>
-              <th>Method</th>
-              <th>Amount</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${transactions.slice(0, 50).map(tx => `
-              <tr>
-                <td>${tx.receiptNumber || '-'}</td>
-                <td>${tx.studentName || '-'}</td>
-                <td>${tx.className || tx.grade || '-'}</td>
-                <td>${tx.section || '-'}</td>
-                <td>${tx.termName || 'Unassigned'}</td>
-                <td>${tx.feeType || '-'}</td>
-                <td>${tx.paymentMethod || '-'}</td>
-                <td>Brr ${(tx.amountPaid || 0).toLocaleString()}</td>
-                <td>${formatDate(tx.paymentDate)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <div class="footer">
-          <p>School Management System - Finance Report</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
-    }
-  };
-  
   // Current user (mock - in real app get from auth)
   const currentUser = { name: 'Finance Manager', role: 'FINANCE' };
 
@@ -528,24 +394,26 @@ export default function FinanceDashboardPage() {
     const loadCurriculumInfo = async () => {
       if (!selectedYear || !user?.schoolId) return;
       try {
-        const [response, collectionModeResponse, settingsResponse] = await Promise.all([
+        const [response, collectionModeResponse, settingsResponse, currentTermResponse] = await Promise.all([
           financeAPI.getCurriculumInfo(user.schoolId, selectedYear),
           financeAPI.getFeeCollectionMode(user.schoolId).catch(() => null),
-          // Fetch settings directly
-          Promise.all([
-            academicYearsAPI.getSchoolSetting(user.schoolId, 'fee_payment_due_day'),
-            academicYearsAPI.getSchoolSetting(user.schoolId, 'fee_daily_penalty_amount'),
-          ]).catch(() => []),
+          schoolSettingsAPI.getAll(user.schoolId).catch(() => null),
+          termsAPI.getCurrent({ schoolId: user.schoolId }).catch(() => null),
         ]);
         
-        if (settingsResponse) {
-          const dueDaySetting = (settingsResponse as any)[0]?.data?.value;
-          const penaltySetting = (settingsResponse as any)[1]?.data?.value;
+        if (settingsResponse?.data) {
+          const dueDaySetting = settingsResponse.data.fee_payment_due_day;
+          const penaltySetting = settingsResponse.data.fee_daily_penalty_amount;
+          const dueDay = Number(dueDaySetting ?? 15);
+          const penalty = Number(penaltySetting ?? 0);
           setBillingPolicy({
-            dueDay: parseInt(dueDaySetting || '5'),
-            penalty: parseFloat(penaltySetting || '0')
+            dueDay: Number.isInteger(dueDay) && dueDay >= 1 && dueDay <= 31 ? dueDay : 15,
+            penalty: Number.isFinite(penalty) && penalty >= 0 ? penalty : 0,
           });
         }
+
+        const resolvedCurrentTerm = currentTermResponse?.data || null;
+        setCurrentTerm(resolvedCurrentTerm);
 
         if (collectionModeResponse?.data?.data) {
           setFeeCollectionMode(collectionModeResponse.data.data);
@@ -560,13 +428,15 @@ export default function FinanceDashboardPage() {
               return currentSelectedTerm;
             }
 
-            const today = new Date();
-            const current = loadedTerms.find(term => {
-              if (!term.startDate || !term.endDate) return false;
-              const start = new Date(term.startDate);
-              const end = new Date(term.endDate);
-              return today >= start && today <= end;
-            });
+            const current =
+              loadedTerms.find(term => term.id === resolvedCurrentTerm?.id) ||
+              loadedTerms.find(term => {
+                if (!term.startDate || !term.endDate) return false;
+                const today = new Date();
+                const start = new Date(term.startDate);
+                const end = new Date(term.endDate);
+                return today >= start && today <= end;
+              });
 
             return current?.id || 'all';
           });
@@ -574,6 +444,7 @@ export default function FinanceDashboardPage() {
       } catch (error) {
         console.error('Error loading curriculum info:', error);
         setTerms([]);
+        setCurrentTerm(null);
         setSelectedTerm('all');
       }
     };
@@ -734,10 +605,10 @@ export default function FinanceDashboardPage() {
 
   const getBillingPeriodLabel = (mode?: string) => {
     const normalized = String(mode || '').toUpperCase();
-    if (normalized === 'MONTHLY' || normalized === 'MONTH') return t.billingMonth || 'Billing Month';
-    if (normalized === 'QUARTERLY' || normalized === 'QUARTER') return t.billingQuarter || 'Billing Quarter';
-    if (normalized === 'SEMESTER' || normalized === 'SEMESTERLY') return t.billingSemester || 'Billing Semester';
-    return t.billingTerm || 'Billing Term';
+    if (normalized === 'MONTHLY' || normalized === 'MONTH') return 'Billing Month';
+    if (normalized === 'QUARTERLY' || normalized === 'QUARTER') return 'Billing Quarter';
+    if (normalized === 'SEMESTER' || normalized === 'SEMESTERLY') return 'Billing Semester';
+    return 'Billing Term';
   };
 
   // Format date time
@@ -769,7 +640,7 @@ export default function FinanceDashboardPage() {
       case 'BANK_TRANSFER':
         return <Badge variant="outline" className="bg-purple-50 text-purple-700"><CreditCard className="w-3 h-3 mr-1" />Bank</Badge>;
       case 'CHEQUE':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700"><Receipt className="w-3 h-3 mr-1" />Cheque</Badge>;
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700"><FileText className="w-3 h-3 mr-1" />Cheque</Badge>;
       default:
         return <Badge variant="outline">{method}</Badge>;
     }
@@ -778,7 +649,7 @@ export default function FinanceDashboardPage() {
   // Filtered transactions
   const filteredTransactions = transactions.filter(t =>
     (t.studentName || '').toLowerCase().includes(transactionsSearch.toLowerCase()) ||
-    t.receiptNumber.toLowerCase().includes(transactionsSearch.toLowerCase()) ||
+    (t.transactionReference || t.paymentReference || t.receiptNumber || '').toLowerCase().includes(transactionsSearch.toLowerCase()) ||
     (t.termName || '').toLowerCase().includes(transactionsSearch.toLowerCase()) ||
     (t.feeType || '').toLowerCase().includes(transactionsSearch.toLowerCase())
   );
@@ -1010,6 +881,7 @@ export default function FinanceDashboardPage() {
 
   const formatInstallmentLabel = (fee: {
     feeType?: string | null;
+    termId?: string | null;
     termName?: string | null;
     description?: string | null;
   }) => {
@@ -1169,7 +1041,7 @@ export default function FinanceDashboardPage() {
     const schoolId = user.schoolId;
 
     toast.warning(t.reverseConfirm, {
-      description: t.reverseDesc.replace('{receipt}', tx.receiptNumber).replace('{amount}', formatCurrency(tx.amountPaid)),
+      description: `Reverse payment ${tx.transactionReference || tx.paymentReference || tx.receiptNumber || tx.id} for ${formatCurrency(tx.amountPaid)}?`,
       duration: 10000,
       cancel: {
         label: t.cancel,
@@ -1442,6 +1314,33 @@ setIsCreatingFeeStructure(true);
 
   // Calculate chart max value
   const chartMaxValue = Math.max(...chartRevenueData.map(d => d.amount), 1);
+  const selectedTermDetails = terms.find((term) => term.id === selectedTerm) || currentTerm;
+  const pendingBalanceCount = outstandingFees.filter((fee) =>
+    ['PENDING', 'UNPAID', 'PARTIAL'].includes(String(fee.status).toUpperCase()) && fee.remaining > 0,
+  ).length;
+  const billingStatus = (() => {
+    if (!selectedYear) return 'Academic year setup needed';
+    if (terms.length === 0) return 'No billing periods configured';
+    if (pendingBalanceCount > 0) return 'Collections need follow-up';
+    return 'No pending balances';
+  })();
+  const billingStatusTone =
+    !selectedYear || terms.length === 0
+      ? 'border-l-slate-400 bg-slate-50 text-slate-600'
+      : pendingBalanceCount > 0
+        ? 'border-l-amber-500 bg-amber-50 text-amber-600'
+        : 'border-l-emerald-500 bg-emerald-50 text-emerald-600';
+  const formatDueDay = (day: number) => {
+    const suffix =
+      day % 10 === 1 && day !== 11
+        ? 'st'
+        : day % 10 === 2 && day !== 12
+          ? 'nd'
+          : day % 10 === 3 && day !== 13
+            ? 'rd'
+            : 'th';
+    return `${day}${suffix} of month`;
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -1526,14 +1425,18 @@ setIsCreatingFeeStructure(true);
       <div className="p-4 md:p-6 space-y-6">
         {/* Billing Health Check Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+          <Card className={`border-l-4 shadow-sm ${billingStatusTone.split(' ')[0]}`}>
             <CardContent className="p-4 flex items-center gap-4">
-              <div className="p-2 bg-emerald-50 rounded-full text-emerald-600">
-                <CheckCircle className="w-5 h-5" />
+              <div className={`p-2 rounded-full ${billingStatusTone.split(' ').slice(1).join(' ')}`}>
+                {pendingBalanceCount > 0 || !selectedYear || terms.length === 0 ? (
+                  <AlertCircle className="w-5 h-5" />
+                ) : (
+                  <CheckCircle className="w-5 h-5" />
+                )}
               </div>
               <div>
                 <p className="text-xs text-slate-500">Billing Status</p>
-                <p className="text-sm font-semibold">All systems operational</p>
+                <p className="text-sm font-semibold">{billingStatus}</p>
               </div>
             </CardContent>
           </Card>
@@ -1544,7 +1447,7 @@ setIsCreatingFeeStructure(true);
               </div>
               <div>
                 <p className="text-xs text-slate-500">Active Term</p>
-                <p className="text-sm font-semibold">{terms.find(t => t.id === selectedTerm)?.name || 'No active term'}</p>
+                <p className="text-sm font-semibold">{selectedTermDetails?.name || 'No active term'}</p>
               </div>
             </CardContent>
           </Card>
@@ -1555,7 +1458,7 @@ setIsCreatingFeeStructure(true);
               </div>
               <div>
                 <p className="text-xs text-slate-500">Pending Actions</p>
-                <p className="text-sm font-semibold">{outstandingFees.filter(f => f.status === 'UNPAID').length} Unpaid Invoices</p>
+                <p className="text-sm font-semibold">{pendingBalanceCount} Unpaid Balances</p>
               </div>
             </CardContent>
           </Card>
@@ -1570,12 +1473,14 @@ setIsCreatingFeeStructure(true);
                   <div className="flex items-center gap-4 mt-0.5">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] text-slate-400 uppercase font-bold">Due Day:</span>
-                      <span className="text-sm font-semibold text-slate-700">{billingPolicy.dueDay}th of month</span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        {formatDueDay(billingPolicy.dueDay)}
+                      </span>
                     </div>
                     <div className="h-3 w-px bg-slate-200" />
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] text-slate-400 uppercase font-bold">Daily Penalty:</span>
-                      <span className="text-sm font-semibold text-slate-700">{formatCurrency(billingPolicy.penalty)}</span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(billingPolicy.penalty)}</span>
                     </div>
                   </div>
                 </div>
@@ -1627,7 +1532,7 @@ setIsCreatingFeeStructure(true);
                   <span>Outstanding Dues</span>
                 </div>
               </div>
-              <Receipt className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+              <FileText className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
             </CardContent>
           </Card>
 
@@ -1769,7 +1674,7 @@ setIsCreatingFeeStructure(true);
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold">{t.feeStructuresTitle}</CardTitle>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={async () => {
+                <Button size="sm" variant="destructive" onClick={async () => {
                   if (!user?.schoolId) {
                     toast.error('School ID not found');
                     return;
@@ -1841,7 +1746,7 @@ setIsCreatingFeeStructure(true);
               </Table>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                <Receipt className="w-8 h-8 mb-2" />
+                <FileText className="w-8 h-8 mb-2" />
                 <p className="text-sm">{t.noFeeStructures}</p>
                 <p className="text-xs mt-1">{t.addFeeStructureHint}</p>
               </div>
@@ -1871,7 +1776,7 @@ setIsCreatingFeeStructure(true);
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.receipt}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Payment Reference</TableHead>
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.student}</TableHead>
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.class}</TableHead>
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.section}</TableHead>
@@ -1887,7 +1792,9 @@ setIsCreatingFeeStructure(true);
                   {paginatedTransactions.length > 0 ? (
                     paginatedTransactions.map((tx) => (
                       <TableRow key={tx.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <TableCell className="text-xs font-medium dark:text-white py-3 px-4">{tx.receiptNumber}</TableCell>
+                        <TableCell className="text-xs font-medium dark:text-white py-3 px-4">
+                          {tx.transactionReference || tx.paymentReference || tx.receiptNumber || '-'}
+                        </TableCell>
                         <TableCell className="text-xs font-medium dark:text-white py-3 px-4">{tx.studentName}</TableCell>
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.className || tx.grade || '-'}</TableCell>
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.section || '-'}</TableCell>
@@ -1899,8 +1806,8 @@ setIsCreatingFeeStructure(true);
                         <TableCell className="text-xs py-3 px-4 text-right">
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="h-7 text-xs border-red-200 text-red-700 hover:bg-red-50"
+                            variant="destructive"
+                            className="h-7 text-xs"
                             disabled={reversingPaymentId === tx.id}
                             onClick={() => handleReversePayment(tx)}
                           >
@@ -2185,7 +2092,7 @@ setIsCreatingFeeStructure(true);
             
             {/* Transaction Reference */}
             <div className="space-y-2">
-              <Label>Transaction Reference (from bank receipt)</Label>
+              <Label>Bank Transaction Reference</Label>
               <Input 
                 placeholder="eg. TRANS-123456"
                 value={paymentForm.transactionReference}

@@ -25,7 +25,7 @@ export class RegistrarDashboardService {
         {
           label: 'Approve Enrollment',
           icon: 'enrollment',
-          url: '/enrollments/pending',
+          url: '/admin/enrollment',
           permission: 'student:approve_enrollment',
           disabled: true,
         },

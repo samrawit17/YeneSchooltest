@@ -350,15 +350,15 @@ export default function DashboardLayout({
           } ${isSidebarHovered ? 'w-64' : 'w-16'} group/sidebar`}
         >
         {/* Logo */}
-        <div className={`flex h-24 items-center px-4 border-b dark:border-[#334155] shrink-0 ${
+        <div className={`flex h-14 sm:h-16 md:h-18 items-center justify-center border-b dark:border-[#334155] shrink-0 ${
           brandNavigationEnabled
             ? 'border-white/25'
             : 'border-gray-200'
         }`}>
           {isSchoolLoading ? (
             <div className={`flex w-full items-center ${isSidebarHovered ? "justify-start gap-3" : "justify-center"}`}>
-              <Skeleton className="h-11 w-11 rounded-xl shrink-0" />
-              <Skeleton className={`h-6 ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`} />
+              <Skeleton className="h-20 w-20 rounded-xl shrink-0" />
+              <Skeleton className={`h-7 ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`} />
             </div>
           ) : (
             <div className={`flex w-full items-center ${isSidebarHovered ? "justify-start gap-3" : "justify-center"}`}>
@@ -366,10 +366,10 @@ export default function DashboardLayout({
                 <img
                   src={schoolLogoSrc}
                   alt={school.name || "School Logo"}
-                  className="h-11 w-11 shrink-0 rounded-lg bg-transparent object-contain p-1 shadow-sm"
+                  className="h-20 w-20 shrink-0 rounded-lg bg-transparent object-contain"
                 />
               ) : (
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/20 shadow-sm">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-white/20">
                   <span className="text-xl font-bold text-white">
                     {school?.name?.charAt(0) || "S"}
                   </span>

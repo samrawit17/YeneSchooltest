@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, Prisma } from '@prisma/client';
 import { Role } from '../auth/types/role.enum';
@@ -16,16 +22,23 @@ import {
   ReportQueryDto,
   CalculateInstallmentFeesDto,
   GenerateInstallmentFeesDto,
+  CreatePayrollRunDto,
+  PayrollQueryDto,
+  UpdatePayrollEntryStatusDto,
+  UpdatePayrollRunStatusDto,
+  UpsertPayrollSalaryDto,
 } from './dto/finance.dto';
 import {
   CalendarType,
   ETHIOPIAN_MONTH_NAMES,
+  formatSchoolDate,
   toEthiopianDate,
 } from '../common/date.util';
 
 @Injectable()
 export class FinanceService {
   private readonly logger = new Logger(FinanceService.name);
+  private readonly FAMILY_DISCOUNT_POLICY_NAME = 'Automatic Family Discount';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -130,6 +143,7 @@ export class FinanceService {
     payments: Array<{
       id: string;
       receiptNumber: string;
+      transactionReference?: string | null;
       studentId: string;
       paymentMethod: string;
       amountPaid: number;
@@ -246,6 +260,8 @@ export class FinanceService {
       return {
         id: payment.id,
         receiptNumber: payment.receiptNumber,
+        paymentReference: payment.receiptNumber,
+        transactionReference: payment.transactionReference || null,
         studentName: student?.name || 'N/A',
         studentId: payment.studentId,
         className: classInfo?.grade || 'N/A',
@@ -492,6 +508,125 @@ export class FinanceService {
           `Failed to send fee reminders for ${term.name}: ${error?.message || error}`,
         );
       }
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async notifyFinanceForUpcomingPayrollPayments() {
+    for (const daysBefore of [5, 2]) {
+      const targetStart = new Date();
+      targetStart.setDate(targetStart.getDate() + daysBefore);
+      targetStart.setHours(0, 0, 0, 0);
+      const targetEnd = new Date(targetStart);
+      targetEnd.setHours(23, 59, 59, 999);
+
+      const payrollRuns = await this.prisma.payrollRun.findMany({
+        where: {
+          status: { notIn: ['PAID', 'CANCELLED'] },
+          paymentDate: {
+            gte: targetStart,
+            lte: targetEnd,
+          },
+        },
+        select: {
+          id: true,
+          schoolId: true,
+          title: true,
+          periodMonth: true,
+          periodYear: true,
+          paymentDate: true,
+          netAmount: true,
+        },
+      });
+
+      for (const run of payrollRuns) {
+        try {
+          await this.notifyFinanceForPayrollRunDue(run, daysBefore);
+        } catch (error: any) {
+          this.logger.error(
+            `Failed to send payroll reminder for ${run.title}: ${error?.message || error}`,
+          );
+        }
+      }
+    }
+  }
+
+  private async getSchoolCalendarType(schoolId: string): Promise<CalendarType> {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: 'calendar_type' } },
+      select: { value: true },
+    });
+    return setting?.value === 'GREGORIAN' ? 'GREGORIAN' : 'ETHIOPIAN';
+  }
+
+  private async notifyFinanceForPayrollRunDue(
+    run: {
+      id: string;
+      schoolId: string;
+      title: string;
+      periodMonth: number;
+      periodYear: number;
+      paymentDate: Date | null;
+      netAmount: number;
+    },
+    daysBefore: number,
+  ) {
+    const financeUsers = await this.prisma.user.findMany({
+      where: {
+        schoolId: run.schoolId,
+        role: Role.FINANCE,
+        isActive: true,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (financeUsers.length === 0) return;
+
+    const calendarType = await this.getSchoolCalendarType(run.schoolId);
+    const paymentDateLabel = run.paymentDate
+      ? formatSchoolDate(run.paymentDate, { calendarType })
+      : 'the scheduled payment date';
+    const amount = new Intl.NumberFormat('en-ET', {
+      style: 'currency',
+      currency: 'ETB',
+      maximumFractionDigits: 0,
+    }).format(run.netAmount);
+    const title = `Payroll payment due in ${daysBefore} days`;
+    const message = `${run.title} is scheduled for payment on ${paymentDateLabel}. Net payroll: ${amount}.`;
+    const metadata = {
+      payrollRunId: run.id,
+      daysBefore,
+      paymentDate: run.paymentDate?.toISOString() || null,
+      periodMonth: run.periodMonth,
+      periodYear: run.periodYear,
+    };
+
+    for (const financeUser of financeUsers) {
+      const existing = await this.prisma.notification.findFirst({
+        where: {
+          schoolId: run.schoolId,
+          userId: financeUser.id,
+          type: NotificationType.PAYROLL_PAYMENT_DUE,
+          metadata: { contains: `"payrollRunId":"${run.id}"` },
+          AND: [
+            { metadata: { contains: `"daysBefore":${daysBefore}` } },
+          ],
+        },
+        select: { id: true },
+      });
+
+      if (existing) continue;
+
+      await this.notificationService.createNotification({
+        schoolId: run.schoolId,
+        userId: financeUser.id,
+        title,
+        message,
+        type: NotificationType.PAYROLL_PAYMENT_DUE,
+        actionUrl: '/finance/payroll',
+        metadata,
+      });
     }
   }
 
@@ -928,14 +1063,19 @@ export class FinanceService {
     const dueDaySetting = await this.prisma.schoolSetting.findUnique({
       where: { schoolId_key: { schoolId: dto.schoolId, key: 'fee_payment_due_day' } },
     });
-    const dueDay = parseInt(dueDaySetting?.value || '5', 10);
+    const dueDay = parseInt(dueDaySetting?.value || '15', 10);
 
     const students = await this.prisma.studentProfile.findMany({
       where: { schoolId: dto.schoolId, enrollmentStatus: 'APPROVED' },
-      select: { userId: true },
+      select: { id: true, userId: true, createdAt: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
     const studentIds = students.map((s) => s.userId).filter(Boolean);
     if (studentIds.length === 0) return { created: 0 };
+    const familyDiscount = await this.getFamilyDiscountContext(
+      dto.schoolId,
+      students,
+    );
 
     const termIds = Array.from(
       new Set(feeStructures.map((fs) => fs.termId).filter((id): id is string => Boolean(id))),
@@ -954,26 +1094,287 @@ export class FinanceService {
     const data = feeStructures.flatMap((fs) => {
       const dueDate = new Date(termStartById.get(fs.termId || '') || new Date());
       dueDate.setDate(dueDay);
-      return studentIds.map((studentId) => ({
-        schoolId: dto.schoolId,
-        studentId,
-        feeStructureId: fs.id,
-        academicYearId: dto.academicYearId,
-        termId: fs.termId || undefined,
-        totalAmount: fs.amount,
-        discount: 0,
-        finalAmount: fs.amount,
-        status: PaymentStatus.PENDING,
-        dueDate,
-      }));
+      return studentIds.map((studentId) => {
+        const discount = this.calculateFamilyDiscountAmount(
+          fs.feeType,
+          fs.amount,
+          studentId,
+          familyDiscount,
+        );
+
+        return {
+          schoolId: dto.schoolId,
+          studentId,
+          feeStructureId: fs.id,
+          academicYearId: dto.academicYearId,
+          termId: fs.termId || undefined,
+          totalAmount: fs.amount,
+          discount,
+          finalAmount: Math.max(0, fs.amount - discount),
+          discountPolicyId: discount > 0 ? familyDiscount.policyId : undefined,
+          notes: discount > 0 ? familyDiscount.note : undefined,
+          status: PaymentStatus.PENDING,
+          dueDate,
+        };
+      });
     });
 
     const result = await this.prisma.studentFee.createMany({
       data,
       skipDuplicates: true,
     });
-    console.log('Generated student fees:', result.count);
-    return { created: result.count };
+    const updated = await this.recalculateFamilyDiscountsForExistingFees({
+      schoolId: dto.schoolId,
+      academicYearId: dto.academicYearId,
+      feeStructures,
+      studentIds,
+      familyDiscount,
+    });
+    return { created: result.count, updatedDiscounts: updated };
+  }
+
+  private normalizeFeeType(value?: string | null) {
+    return String(value || '')
+      .trim()
+      .toUpperCase()
+      .replace(/_INSTALLMENT_\d+$/i, '')
+      .replace(/_ANNUAL$/i, '')
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  private parseBooleanSetting(value: unknown, fallback = false) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === 'true') return true;
+      if (normalized === 'false') return false;
+    }
+    return fallback;
+  }
+
+  private async getFamilyDiscountContext(
+    schoolId: string,
+    students: Array<{ id: string; userId: string; createdAt: Date }>,
+  ) {
+    const settings = await this.prisma.schoolSetting.findMany({
+      where: {
+        schoolId,
+        key: {
+          in: [
+            'family_discount_enabled',
+            'family_discount_min_students',
+            'family_discount_percent',
+            'family_discount_fee_types',
+          ],
+        },
+      },
+      select: { key: true, value: true },
+    });
+    const settingMap = new Map(settings.map((setting) => [setting.key, setting.value]));
+    const enabled = this.parseBooleanSetting(
+      settingMap.get('family_discount_enabled'),
+      false,
+    );
+    const minStudents = Math.max(
+      2,
+      Math.min(20, Number(settingMap.get('family_discount_min_students') || 3) || 3),
+    );
+    const configuredPercent = settingMap.has('family_discount_percent')
+      ? settingMap.get('family_discount_percent')
+      : '20';
+    const percent = Math.max(
+      0,
+      Math.min(100, Number(configuredPercent) || 0),
+    );
+    const feeTypes = String(settingMap.get('family_discount_fee_types') || 'TUITION')
+      .split(',')
+      .map((item) => this.normalizeFeeType(item))
+      .filter(Boolean);
+
+    const empty = {
+      enabled: false,
+      minStudents,
+      percent,
+      feeTypes: new Set(feeTypes.length ? feeTypes : ['TUITION']),
+      eligibleStudentIds: new Set<string>(),
+      policyId: undefined as string | undefined,
+      note: undefined as string | undefined,
+    };
+
+    if (!enabled || percent <= 0 || students.length < minStudents) {
+      return empty;
+    }
+
+    const studentByProfileId = new Map(students.map((student) => [student.id, student]));
+    const parentLinks = await this.prisma.parentStudent.findMany({
+      where: {
+        schoolId,
+        studentId: { in: students.map((student) => student.id) },
+      },
+      select: {
+        parentId: true,
+        studentId: true,
+        isPrimary: true,
+      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    const profileIdsByParent = new Map<string, Set<string>>();
+    parentLinks.forEach((link) => {
+      if (!studentByProfileId.has(link.studentId)) return;
+      if (!profileIdsByParent.has(link.parentId)) {
+        profileIdsByParent.set(link.parentId, new Set());
+      }
+      profileIdsByParent.get(link.parentId)!.add(link.studentId);
+    });
+
+    const eligibleStudentIds = new Set<string>();
+    profileIdsByParent.forEach((profileIds) => {
+      const familyStudents = Array.from(profileIds)
+        .map((profileId) => studentByProfileId.get(profileId))
+        .filter((student): student is { id: string; userId: string; createdAt: Date } => Boolean(student))
+        .sort((a, b) => {
+          const dateDiff = a.createdAt.getTime() - b.createdAt.getTime();
+          return dateDiff !== 0 ? dateDiff : a.id.localeCompare(b.id);
+        });
+
+      if (familyStudents.length < minStudents) return;
+
+      familyStudents.slice(minStudents - 1).forEach((student) => {
+        eligibleStudentIds.add(student.userId);
+      });
+    });
+
+    if (eligibleStudentIds.size === 0) return empty;
+
+    const policy = await this.prisma.discountPolicy.upsert({
+      where: {
+        schoolId_name: {
+          schoolId,
+          name: this.FAMILY_DISCOUNT_POLICY_NAME,
+        },
+      },
+      update: {
+        discountType: 'PERCENTAGE',
+        discountValue: percent,
+        isActive: true,
+        criteria: JSON.stringify({
+          type: 'FAMILY_SIZE',
+          minStudents,
+          appliesTo: 'CHILD_NUMBER_AND_ABOVE',
+          feeTypes: Array.from(empty.feeTypes),
+        }),
+      },
+      create: {
+        schoolId,
+        name: this.FAMILY_DISCOUNT_POLICY_NAME,
+        discountType: 'PERCENTAGE',
+        discountValue: percent,
+        isActive: true,
+        criteria: JSON.stringify({
+          type: 'FAMILY_SIZE',
+          minStudents,
+          appliesTo: 'CHILD_NUMBER_AND_ABOVE',
+          feeTypes: Array.from(empty.feeTypes),
+        }),
+      },
+      select: { id: true },
+    });
+
+    return {
+      ...empty,
+      enabled: true,
+      policyId: policy.id,
+      eligibleStudentIds,
+      note: `Family discount: ${percent}% for child ${minStudents} and above`,
+    };
+  }
+
+  private calculateFamilyDiscountAmount(
+    feeType: string,
+    amount: number,
+    studentId: string,
+    context: Awaited<ReturnType<FinanceService['getFamilyDiscountContext']>>,
+  ) {
+    if (!context.enabled || !context.eligibleStudentIds.has(studentId)) {
+      return 0;
+    }
+    if (
+      !context.feeTypes.has('ALL') &&
+      !context.feeTypes.has(this.normalizeFeeType(feeType))
+    ) {
+      return 0;
+    }
+
+    return Math.round(((amount * context.percent) / 100) * 100) / 100;
+  }
+
+  private async recalculateFamilyDiscountsForExistingFees(params: {
+    schoolId: string;
+    academicYearId: string;
+    feeStructures: Array<{ id: string; feeType: string; amount: number }>;
+    studentIds: string[];
+    familyDiscount: Awaited<ReturnType<FinanceService['getFamilyDiscountContext']>>;
+  }) {
+    if (params.studentIds.length === 0 || params.feeStructures.length === 0) {
+      return 0;
+    }
+
+    const feeStructureById = new Map(
+      params.feeStructures.map((feeStructure) => [feeStructure.id, feeStructure]),
+    );
+    const rows = await this.prisma.studentFee.findMany({
+      where: {
+        schoolId: params.schoolId,
+        academicYearId: params.academicYearId,
+        studentId: { in: params.studentIds },
+        feeStructureId: { in: params.feeStructures.map((feeStructure) => feeStructure.id) },
+        payments: { none: {} },
+      },
+      select: {
+        id: true,
+        studentId: true,
+        feeStructureId: true,
+        totalAmount: true,
+        discount: true,
+        finalAmount: true,
+        discountPolicyId: true,
+      },
+    });
+
+    let updated = 0;
+    for (const row of rows) {
+      const feeStructure = feeStructureById.get(row.feeStructureId);
+      if (!feeStructure) continue;
+      const discount = this.calculateFamilyDiscountAmount(
+        feeStructure.feeType,
+        row.totalAmount,
+        row.studentId,
+        params.familyDiscount,
+      );
+      const finalAmount = Math.max(0, row.totalAmount - discount);
+      const discountPolicyId = discount > 0 ? params.familyDiscount.policyId : null;
+      const shouldUpdate =
+        Math.abs(row.discount - discount) > 0.001 ||
+        Math.abs(row.finalAmount - finalAmount) > 0.001 ||
+        (row.discountPolicyId || null) !== discountPolicyId;
+
+      if (!shouldUpdate) continue;
+
+      await this.prisma.studentFee.update({
+        where: { id: row.id },
+        data: {
+          discount,
+          finalAmount,
+          discountPolicyId,
+          notes: discount > 0 ? params.familyDiscount.note : null,
+        },
+      });
+      updated += 1;
+    }
+
+    return updated;
   }
 
   async getStudentFees(query: StudentFeesQueryDto) {
@@ -1030,6 +1431,9 @@ export class FinanceService {
           feeStructure: {
             include: { term: { select: { id: true, name: true } } },
           },
+          discountPolicy: {
+            select: { name: true, discountType: true, discountValue: true },
+          },
           term: { select: { id: true, name: true } },
           payments: true,
         },
@@ -1049,6 +1453,13 @@ export class FinanceService {
         feeType: sf.feeStructure.feeType,
         totalFee: sf.totalAmount,
         discount: sf.discount,
+        discountPercent:
+          sf.discountPolicy?.discountType === 'PERCENTAGE'
+            ? sf.discountPolicy.discountValue
+            : sf.totalAmount > 0 && sf.discount > 0
+              ? Math.round((sf.discount / sf.totalAmount) * 10000) / 100
+              : 0,
+        discountLabel: sf.discountPolicy?.name || null,
         finalAmount: sf.finalAmount,
         paidAmount: paid,
         remainingBalance: remaining,
@@ -1066,15 +1477,15 @@ export class FinanceService {
   // PAYMENT METHODS
   // ========================================================
 
-  private getReceiptDateParts(date: Date) {
+  private getPaymentReferenceDateParts(date: Date) {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     return { y, m, d, dateKey: `${y}${m}${d}` };
   }
 
-  private async generateReceiptNumber(schoolId: string, paymentDate = new Date()) {
-    const { y, m, d, dateKey } = this.getReceiptDateParts(paymentDate);
+  private async generatePaymentReference(schoolId: string, paymentDate = new Date()) {
+    const { y, m, d, dateKey } = this.getPaymentReferenceDateParts(paymentDate);
     const latestPayment = await this.prisma.payment.findFirst({
       where: {
         schoolId,
@@ -1082,7 +1493,7 @@ export class FinanceService {
           gte: new Date(`${y}-${m}-${d}T00:00:00.000Z`),
           lte: new Date(`${y}-${m}-${d}T23:59:59.999Z`),
         },
-        receiptNumber: { startsWith: `RCPT-${dateKey}-` },
+        receiptNumber: { startsWith: `PAY-${dateKey}-` },
       },
       orderBy: { receiptNumber: 'desc' },
       select: { receiptNumber: true },
@@ -1092,15 +1503,15 @@ export class FinanceService {
       ? Number(latestPayment.receiptNumber.split('-').at(-1)) || 0
       : 0;
     const seq = String(latestSequence + 1).padStart(4, '0');
-    return `RCPT-${dateKey}-${seq}`;
+    return `PAY-${dateKey}-${seq}`;
   }
 
-  private async generateReceiptNumberCandidate(
+  private async generatePaymentReferenceCandidate(
     tx: any,
     schoolId: string,
     paymentDate: Date,
   ) {
-    const { y, m, d, dateKey } = this.getReceiptDateParts(paymentDate);
+    const { y, m, d, dateKey } = this.getPaymentReferenceDateParts(paymentDate);
     const latestPayment = await tx.payment.findFirst({
       where: {
         schoolId,
@@ -1108,7 +1519,7 @@ export class FinanceService {
           gte: new Date(`${y}-${m}-${d}T00:00:00.000Z`),
           lte: new Date(`${y}-${m}-${d}T23:59:59.999Z`),
         },
-        receiptNumber: { startsWith: `RCPT-${dateKey}-` },
+        receiptNumber: { startsWith: `PAY-${dateKey}-` },
       },
       orderBy: { receiptNumber: 'desc' },
       select: { receiptNumber: true },
@@ -1118,7 +1529,7 @@ export class FinanceService {
       ? Number(latestPayment.receiptNumber.split('-').at(-1)) || 0
       : 0;
     const seq = String(latestSequence + 1).padStart(4, '0');
-    return `RCPT-${dateKey}-${seq}`;
+    return `PAY-${dateKey}-${seq}`;
   }
 
   private isUniqueConstraintError(error: unknown) {
@@ -1128,7 +1539,7 @@ export class FinanceService {
     );
   }
 
-  private async createPaymentWithUniqueReceipt(
+  private async createPaymentWithUniqueReference(
     tx: any,
     data: {
       schoolId: string;
@@ -1145,7 +1556,7 @@ export class FinanceService {
   ) {
     let lastError: unknown;
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const receiptNumber = await this.generateReceiptNumberCandidate(
+      const receiptNumber = await this.generatePaymentReferenceCandidate(
         tx,
         data.schoolId,
         data.paymentDate,
@@ -1165,10 +1576,10 @@ export class FinanceService {
       }
     }
 
-    throw lastError || new Error('Failed to generate a unique receipt number');
+    throw lastError || new Error('Failed to generate a unique payment reference');
   }
 
-  private async createPaymentWithFallbackReceipt(
+  private async createPaymentWithFallbackReference(
     tx: any,
     data: {
       schoolId: string;
@@ -1184,13 +1595,13 @@ export class FinanceService {
     },
   ) {
     try {
-      return await this.createPaymentWithUniqueReceipt(tx, data);
+      return await this.createPaymentWithUniqueReference(tx, data);
     } catch (error) {
       if (!this.isUniqueConstraintError(error)) {
         throw error;
       }
 
-      const fallbackReceipt = `RCPT-${this.getReceiptDateParts(data.paymentDate).dateKey}-${Date.now().toString(36).toUpperCase()}`;
+      const fallbackReceipt = `PAY-${this.getPaymentReferenceDateParts(data.paymentDate).dateKey}-${Date.now().toString(36).toUpperCase()}`;
       return tx.payment.create({
         data: {
           ...data,
@@ -1220,25 +1631,6 @@ export class FinanceService {
     return this.getInstallmentCountInternal(
       feeStructureMode?.value || curriculumType?.value || 'TERM',
     );
-  }
-
-  private async legacyGenerateReceiptNumber(schoolId: string) {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, '0');
-    const d = String(today.getDate()).padStart(2, '0');
-    const dateKey = `${y}${m}${d}`;
-    const countToday = await this.prisma.payment.count({
-      where: {
-        schoolId,
-        paymentDate: {
-          gte: new Date(`${y}-${m}-${d}T00:00:00.000Z`),
-          lte: new Date(`${y}-${m}-${d}T23:59:59.999Z`),
-        },
-      },
-    });
-    const seq = String(countToday + 1).padStart(4, '0');
-    return `RCPT-${dateKey}-${seq}`;
   }
 
   private async logAudit(
@@ -1363,7 +1755,7 @@ export class FinanceService {
             : `Amount exceeds outstanding balance for the selected term or semester. Remaining: ${outstanding}`,
         );
 
-      const payment = await this.createPaymentWithFallbackReceipt(tx, {
+      const payment = await this.createPaymentWithFallbackReference(tx, {
         schoolId: dto.schoolId,
         studentFeeId: sf.id,
         termId: paymentTermId,
@@ -1385,20 +1777,6 @@ export class FinanceService {
         data: { status: newStatus },
       });
 
-      await tx.receipt.create({
-        data: {
-          schoolId: dto.schoolId,
-          paymentId: payment.id,
-          receiptNumber: payment.receiptNumber,
-          studentId: dto.studentId,
-          amountPaid: dto.amountPaid,
-          paymentMethod: dto.paymentMethod,
-          paymentDate,
-          generatedById: user.id,
-          notes: dto.notes,
-        },
-      });
-
       await this.logAudit(tx, {
         schoolId: dto.schoolId,
         userId: user.id,
@@ -1408,11 +1786,11 @@ export class FinanceService {
         previousValue: { paid: alreadyPaid, status: sf.status },
         newValue: { paid: paidNow, status: newStatus },
         amount: dto.amountPaid,
-        reference: payment.receiptNumber,
+        reference: dto.transactionReference || payment.receiptNumber,
         description: `Payment recorded for student fee ${sf.id}`,
       });
 
-      return { payment, receiptNumber: payment.receiptNumber, remaining, status: newStatus };
+      return { payment, paymentReference: payment.receiptNumber, remaining, status: newStatus };
     });
 
     await this.notifyParentsOfRecordedPayment(dto.schoolId, result.payment);
@@ -1428,6 +1806,7 @@ export class FinanceService {
       termId: string | null;
       amountPaid: number;
       receiptNumber: string;
+      transactionReference?: string | null;
     },
   ) {
     const studentProfile = await this.prisma.studentProfile.findFirst({
@@ -1480,12 +1859,13 @@ export class FinanceService {
       schoolId,
       userIds: parentUserIds,
       title: 'Payment Recorded',
-      message: `Payment of ${amount} has been recorded for ${studentName}${term?.name ? ` for ${term.name}` : ''}. Receipt #: ${payment.receiptNumber}`,
+      message: `Payment of ${amount} has been recorded for ${studentName}${term?.name ? ` for ${term.name}` : ''}.`,
       type: NotificationType.PAYMENT_RECEIVED,
       actionUrl: '/parent/fees',
       metadata: {
         paymentId: payment.id,
-        receiptNumber: payment.receiptNumber,
+        paymentReference: payment.receiptNumber,
+        transactionReference: payment.transactionReference || null,
         amountPaid: payment.amountPaid,
         studentId: studentProfile?.id || payment.studentId,
         studentUserId: payment.studentId,
@@ -1539,7 +1919,6 @@ export class FinanceService {
               payments: { select: { id: true, amountPaid: true } },
             },
           },
-          receipt: true,
         },
       });
 
@@ -1561,10 +1940,6 @@ export class FinanceService {
             ? PaymentStatus.PARTIAL
             : PaymentStatus.PENDING;
 
-      if (payment.receipt) {
-        await tx.receipt.delete({ where: { id: payment.receipt.id } });
-      }
-
       await tx.payment.delete({ where: { id: payment.id } });
 
       await tx.studentFee.update({
@@ -1581,7 +1956,7 @@ export class FinanceService {
         previousValue: {
           amountPaid: payment.amountPaid,
           status: payment.studentFee.status,
-          receiptNumber: payment.receiptNumber,
+          paymentReference: payment.receiptNumber,
           termId: payment.termId,
         },
         newValue: {
@@ -1590,13 +1965,13 @@ export class FinanceService {
           reason: reason || null,
         },
         amount: payment.amountPaid,
-        reference: payment.receiptNumber,
+        reference: payment.transactionReference || payment.receiptNumber,
         description: `Payment reversed for student fee ${payment.studentFeeId}`,
       });
 
       return {
         reversed: true,
-        receiptNumber: payment.receiptNumber,
+        paymentReference: payment.receiptNumber,
         remainingPaid,
         remainingBalance,
         status: newStatus,
@@ -1852,8 +2227,7 @@ export class FinanceService {
       const installmentIndex = this.getFeeStructureInstallmentIndex(
         sf.feeStructure.feeType,
       );
-      const isInstallmentFee = installmentIndex !== null;
-      const isYearWide = !sf.termId && !isInstallmentFee;
+      const isYearWide = !sf.termId;
       const isPeriodView = Boolean(selectedTerm);
 
       if (
@@ -2029,15 +2403,537 @@ export class FinanceService {
     entityType?: string,
     entityId?: string,
     limit = 100,
+    from?: string,
+    to?: string,
   ) {
     const where: any = { schoolId };
     if (entityType) where.entityType = entityType;
     if (entityId) where.entityId = entityId;
+    if (from || to) {
+      where.createdAt = {};
+      if (from) {
+        const fromDate = new Date(from);
+        if (!Number.isNaN(fromDate.getTime())) {
+          fromDate.setHours(0, 0, 0, 0);
+          where.createdAt.gte = fromDate;
+        }
+      }
+      if (to) {
+        const toDate = new Date(to);
+        if (!Number.isNaN(toDate.getTime())) {
+          toDate.setHours(23, 59, 59, 999);
+          where.createdAt.lte = toDate;
+        }
+      }
+      if (Object.keys(where.createdAt).length === 0) {
+        delete where.createdAt;
+      }
+    }
 
     return this.prisma.financeAuditLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take: limit,
+    });
+  }
+
+  private getPayrollStaffRoles() {
+    return [
+      Role.ADMIN,
+      Role.IT_MANAGER,
+      Role.REGISTRAR,
+      Role.TEACHER,
+      Role.FINANCE,
+    ];
+  }
+
+  private getPayrollRunTitle(month: number, year: number) {
+    return `${new Date(year, month - 1, 1).toLocaleString('en-US', {
+      month: 'long',
+    })} ${year} Payroll`;
+  }
+
+  private calculatePayrollTotals(row: {
+    baseSalary: number;
+    allowances?: number | null;
+    deductions?: number | null;
+    bonus?: number | null;
+    tax?: number | null;
+  }) {
+    const baseSalary = Number(row.baseSalary || 0);
+    const allowances = Number(row.allowances || 0);
+    const deductions = Number(row.deductions || 0);
+    const bonus = Number(row.bonus || 0);
+    const tax = Number(row.tax || 0);
+    const grossPay = baseSalary + allowances + bonus;
+    const netPay = Math.max(0, grossPay - deductions - tax);
+
+    return {
+      grossPay: Math.round(grossPay * 100) / 100,
+      deductionsAmount: Math.round((deductions + tax) * 100) / 100,
+      netPay: Math.round(netPay * 100) / 100,
+    };
+  }
+
+  private async refreshPayrollRunTotals(tx: any, runId: string) {
+    const entries = await tx.payrollEntry.findMany({
+      where: { runId },
+      select: { grossPay: true, deductions: true, tax: true, netPay: true },
+    });
+
+    const totals = entries.reduce(
+      (sum, entry) => ({
+        grossAmount: sum.grossAmount + Number(entry.grossPay || 0),
+        deductionsAmount:
+          sum.deductionsAmount +
+          Number(entry.deductions || 0) +
+          Number(entry.tax || 0),
+        netAmount: sum.netAmount + Number(entry.netPay || 0),
+      }),
+      { grossAmount: 0, deductionsAmount: 0, netAmount: 0 },
+    );
+
+    return tx.payrollRun.update({
+      where: { id: runId },
+      data: {
+        grossAmount: Math.round(totals.grossAmount * 100) / 100,
+        deductionsAmount: Math.round(totals.deductionsAmount * 100) / 100,
+        netAmount: Math.round(totals.netAmount * 100) / 100,
+        entryCount: entries.length,
+      },
+    });
+  }
+
+  async listPayrollStaff(schoolId: string) {
+    const users = await this.prisma.user.findMany({
+      where: {
+        schoolId,
+        deletedAt: null,
+        role: { in: this.getPayrollStaffRoles() },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        isActive: true,
+        teacherProfile: {
+          select: {
+            employeeId: true,
+            designation: true,
+            department: { select: { name: true } },
+          },
+        },
+        financeProfile: {
+          select: {
+            employeeId: true,
+            department: { select: { name: true } },
+          },
+        },
+        payrollSalaries: {
+          where: { schoolId },
+          take: 1,
+          select: {
+            id: true,
+            baseSalary: true,
+            allowances: true,
+            deductions: true,
+            bankName: true,
+            bankAccount: true,
+            tinNumber: true,
+            isActive: true,
+            effectiveFrom: true,
+            notes: true,
+          },
+        },
+      },
+      orderBy: [{ role: 'asc' }, { name: 'asc' }],
+    });
+
+    return users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      isActive: user.isActive,
+      employeeId:
+        user.teacherProfile?.employeeId ||
+        user.financeProfile?.employeeId ||
+        null,
+      designation:
+        user.teacherProfile?.designation ||
+        (user.role === Role.FINANCE ? 'Finance Staff' : null),
+      department:
+        user.teacherProfile?.department?.name ||
+        user.financeProfile?.department?.name ||
+        null,
+      salary: user.payrollSalaries[0] || null,
+    }));
+  }
+
+  async listPayrollSalaries(schoolId: string) {
+    return this.prisma.payrollSalary.findMany({
+      where: { schoolId },
+      include: {
+        staffUser: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isActive: true,
+            teacherProfile: {
+              select: {
+                employeeId: true,
+                designation: true,
+                department: { select: { name: true } },
+              },
+            },
+            financeProfile: {
+              select: {
+                employeeId: true,
+                department: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ isActive: 'desc' }, { updatedAt: 'desc' }],
+    });
+  }
+
+  async upsertPayrollSalary(user: any, dto: UpsertPayrollSalaryDto) {
+    const staff = await this.prisma.user.findFirst({
+      where: {
+        id: dto.staffUserId,
+        schoolId: dto.schoolId,
+        deletedAt: null,
+        role: { in: this.getPayrollStaffRoles() },
+      },
+      select: { id: true, name: true },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Staff member not found for this school');
+    }
+
+    const salary = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.payrollSalary.findUnique({
+        where: {
+          schoolId_staffUserId: {
+            schoolId: dto.schoolId,
+            staffUserId: dto.staffUserId,
+          },
+        },
+      });
+
+      const payload = {
+        baseSalary: dto.baseSalary,
+        allowances: dto.allowances ?? 0,
+        deductions: dto.deductions ?? 0,
+        bankName: dto.bankName || null,
+        bankAccount: dto.bankAccount || null,
+        tinNumber: dto.tinNumber || null,
+        isActive: dto.isActive ?? true,
+        effectiveFrom: dto.effectiveFrom ? new Date(dto.effectiveFrom) : new Date(),
+        notes: dto.notes || null,
+      };
+
+      const saved = await tx.payrollSalary.upsert({
+        where: {
+          schoolId_staffUserId: {
+            schoolId: dto.schoolId,
+            staffUserId: dto.staffUserId,
+          },
+        },
+        update: payload,
+        create: {
+          schoolId: dto.schoolId,
+          staffUserId: dto.staffUserId,
+          ...payload,
+        },
+      });
+
+      await this.logAudit(tx, {
+        schoolId: dto.schoolId,
+        userId: user.id,
+        action: existing ? 'UPDATE' : 'CREATE',
+        entityType: 'PayrollSalary',
+        entityId: saved.id,
+        previousValue: existing,
+        newValue: saved,
+        amount: saved.baseSalary + saved.allowances - saved.deductions,
+        description: `Payroll salary ${existing ? 'updated' : 'created'} for ${staff.name}`,
+      });
+
+      return saved;
+    });
+
+    return salary;
+  }
+
+  async listPayrollRuns(query: PayrollQueryDto) {
+    const where: Prisma.PayrollRunWhereInput = { schoolId: query.schoolId };
+    if (query.month) where.periodMonth = query.month;
+    if (query.year) where.periodYear = query.year;
+    if (query.status) where.status = query.status;
+
+    const runs = await this.prisma.payrollRun.findMany({
+      where,
+      include: {
+        createdBy: { select: { id: true, name: true } },
+        approvedBy: { select: { id: true, name: true } },
+        paidBy: { select: { id: true, name: true } },
+        _count: { select: { entries: true } },
+      },
+      orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
+    });
+
+    const summary = runs.reduce(
+      (sum, run) => ({
+        runCount: sum.runCount + 1,
+        entryCount: sum.entryCount + run.entryCount,
+        grossAmount: sum.grossAmount + run.grossAmount,
+        deductionsAmount: sum.deductionsAmount + run.deductionsAmount,
+        netAmount: sum.netAmount + run.netAmount,
+      }),
+      {
+        runCount: 0,
+        entryCount: 0,
+        grossAmount: 0,
+        deductionsAmount: 0,
+        netAmount: 0,
+      },
+    );
+
+    return { runs, summary };
+  }
+
+  async getPayrollRun(schoolId: string, runId: string) {
+    const run = await this.prisma.payrollRun.findFirst({
+      where: { id: runId, schoolId },
+      include: {
+        createdBy: { select: { id: true, name: true } },
+        approvedBy: { select: { id: true, name: true } },
+        paidBy: { select: { id: true, name: true } },
+        entries: {
+          include: {
+            staffUser: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                teacherProfile: {
+                  select: {
+                    employeeId: true,
+                    designation: true,
+                    department: { select: { name: true } },
+                  },
+                },
+                financeProfile: {
+                  select: {
+                    employeeId: true,
+                    department: { select: { name: true } },
+                  },
+                },
+              },
+            },
+          },
+          orderBy: [{ staffUser: { name: 'asc' } }],
+        },
+      },
+    });
+
+    if (!run) {
+      throw new NotFoundException('Payroll run not found');
+    }
+
+    return run;
+  }
+
+  async createPayrollRun(user: any, dto: CreatePayrollRunDto) {
+    const activeSalaries = await this.prisma.payrollSalary.findMany({
+      where: {
+        schoolId: dto.schoolId,
+        isActive: true,
+        staffUser: {
+          isActive: true,
+          deletedAt: null,
+          role: { in: this.getPayrollStaffRoles() },
+        },
+      },
+      include: { staffUser: { select: { id: true, name: true } } },
+      orderBy: [{ staffUser: { name: 'asc' } }],
+    });
+
+    if (activeSalaries.length === 0) {
+      throw new BadRequestException(
+        'Add at least one active staff salary before creating payroll',
+      );
+    }
+
+    try {
+      const runId = await this.prisma.$transaction(async (tx) => {
+        const run = await tx.payrollRun.create({
+          data: {
+            schoolId: dto.schoolId,
+            title: dto.title || this.getPayrollRunTitle(dto.periodMonth, dto.periodYear),
+            periodMonth: dto.periodMonth,
+            periodYear: dto.periodYear,
+            paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : null,
+            notes: dto.notes || null,
+            createdById: user.id,
+          },
+        });
+
+        await tx.payrollEntry.createMany({
+          data: activeSalaries.map((salary) => {
+            const totals = this.calculatePayrollTotals(salary);
+            return {
+              runId: run.id,
+              schoolId: dto.schoolId,
+              staffUserId: salary.staffUserId,
+              salaryId: salary.id,
+              baseSalary: salary.baseSalary,
+              allowances: salary.allowances,
+              deductions: salary.deductions,
+              grossPay: totals.grossPay,
+              netPay: totals.netPay,
+              status: 'PENDING',
+            };
+          }),
+        });
+
+        const refreshedRun = await this.refreshPayrollRunTotals(tx, run.id);
+        await this.logAudit(tx, {
+          schoolId: dto.schoolId,
+          userId: user.id,
+          action: 'CREATE',
+          entityType: 'PayrollRun',
+          entityId: run.id,
+          newValue: refreshedRun,
+          amount: refreshedRun.netAmount,
+          description: `Payroll run created for ${dto.periodMonth}/${dto.periodYear}`,
+        });
+
+        return run.id;
+      });
+
+      return this.getPayrollRun(dto.schoolId, runId);
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        throw new BadRequestException('Payroll already exists for this month');
+      }
+      throw error;
+    }
+  }
+
+  async updatePayrollRunStatus(
+    user: any,
+    runId: string,
+    dto: UpdatePayrollRunStatusDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const run = await tx.payrollRun.findFirst({
+        where: { id: runId, schoolId: dto.schoolId },
+      });
+
+      if (!run) {
+        throw new NotFoundException('Payroll run not found');
+      }
+
+      if (run.status === 'PAID' && dto.status !== 'PAID') {
+        throw new BadRequestException('Paid payroll runs cannot be reopened');
+      }
+
+      const statusData: Record<string, any> = {
+        status: dto.status,
+        paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : run.paymentDate,
+        notes: dto.notes ?? run.notes,
+      };
+
+      if (dto.status === 'APPROVED') {
+        statusData.approvedById = user.id;
+        await tx.payrollEntry.updateMany({
+          where: { runId, status: 'PENDING' },
+          data: { status: 'APPROVED' },
+        });
+      }
+
+      if (dto.status === 'PAID') {
+        statusData.paidById = user.id;
+        statusData.paidAt = dto.paymentDate ? new Date(dto.paymentDate) : new Date();
+        await tx.payrollEntry.updateMany({
+          where: { runId, status: { in: ['PENDING', 'APPROVED'] } },
+          data: { status: 'PAID', paidAt: statusData.paidAt },
+        });
+      }
+
+      const updated = await tx.payrollRun.update({
+        where: { id: runId },
+        data: statusData,
+      });
+
+      await this.logAudit(tx, {
+        schoolId: dto.schoolId,
+        userId: user.id,
+        action: dto.status,
+        entityType: 'PayrollRun',
+        entityId: runId,
+        previousValue: run,
+        newValue: updated,
+        amount: updated.netAmount,
+        description: `Payroll run marked ${dto.status}`,
+      });
+
+      return updated;
+    });
+  }
+
+  async updatePayrollEntryStatus(
+    user: any,
+    entryId: string,
+    dto: UpdatePayrollEntryStatusDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const entry = await tx.payrollEntry.findFirst({
+        where: { id: entryId, schoolId: dto.schoolId },
+      });
+
+      if (!entry) {
+        throw new NotFoundException('Payroll entry not found');
+      }
+
+      const updated = await tx.payrollEntry.update({
+        where: { id: entryId },
+        data: {
+          status: dto.status,
+          paymentMethod: dto.paymentMethod || entry.paymentMethod,
+          transactionReference:
+            dto.transactionReference || entry.transactionReference,
+          notes: dto.notes ?? entry.notes,
+          paidAt: dto.status === 'PAID' ? new Date() : entry.paidAt,
+        },
+      });
+
+      await this.refreshPayrollRunTotals(tx, entry.runId);
+      await this.logAudit(tx, {
+        schoolId: dto.schoolId,
+        userId: user.id,
+        action: dto.status,
+        entityType: 'PayrollEntry',
+        entityId: entryId,
+        previousValue: entry,
+        newValue: updated,
+        amount: updated.netPay,
+        reference: updated.transactionReference || undefined,
+        description: `Payroll entry marked ${dto.status}`,
+      });
+
+      return updated;
     });
   }
 
@@ -2116,6 +3012,29 @@ export class FinanceService {
       throw new Error('Academic year not found');
     }
 
+    const discountStudents = await this.prisma.studentProfile.findMany({
+      where: { schoolId, enrollmentStatus: 'APPROVED' },
+      select: { id: true, userId: true, createdAt: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    const familyDiscount = await this.getFamilyDiscountContext(
+      schoolId,
+      discountStudents,
+    );
+    if (familyDiscount.enabled) {
+      const feeStructures = await this.prisma.feeStructure.findMany({
+        where: { schoolId, academicYearId, isActive: true },
+        select: { id: true, feeType: true, amount: true },
+      });
+      await this.recalculateFamilyDiscountsForExistingFees({
+        schoolId,
+        academicYearId,
+        feeStructures,
+        studentIds: candidateStudentIds,
+        familyDiscount,
+      });
+    }
+
     const selectedTerm =
       termId && termId !== 'all'
         ? await this.prisma.term.findFirst({
@@ -2146,6 +3065,9 @@ export class FinanceService {
       where: studentFeesWhere,
       include: {
         feeStructure: { include: { term: { select: { name: true } } } },
+        discountPolicy: {
+          select: { name: true, discountType: true, discountValue: true },
+        },
         term: { select: { name: true } },
         payments: {
           orderBy: { paymentDate: 'desc' },
@@ -2159,8 +3081,7 @@ export class FinanceService {
       const installmentIndex = this.getFeeStructureInstallmentIndex(
         sf.feeStructure.feeType,
       );
-      const isInstallmentFee = installmentIndex !== null;
-      const isYearWide = !sf.termId && !isInstallmentFee;
+      const isYearWide = !sf.termId;
       const isPeriodView = Boolean(selectedTerm);
 
       let amount = sf.totalAmount;
@@ -2200,6 +3121,16 @@ export class FinanceService {
         id: sf.id,
         name: sf.feeStructure.feeType,
         amount,
+        originalAmount: sf.totalAmount,
+        discount: sf.discount,
+        finalAmount: sf.finalAmount,
+        discountPercent:
+          sf.discountPolicy?.discountType === 'PERCENTAGE'
+            ? sf.discountPolicy.discountValue
+            : sf.totalAmount > 0 && sf.discount > 0
+              ? Math.round((sf.discount / sf.totalAmount) * 10000) / 100
+              : 0,
+        discountLabel: sf.discountPolicy?.name || null,
         dueDate: sf.dueDate?.toISOString() || null,
         status,
         paidAmount,
@@ -2228,6 +3159,8 @@ export class FinanceService {
       return sf.payments.map((p) => ({
         id: p.id,
         receiptNumber: p.receiptNumber,
+        paymentReference: p.receiptNumber,
+        transactionReference: p.transactionReference || null,
         studentFeeId: sf.id,
         amount: p.amountPaid,
         paymentMethod: p.paymentMethod,

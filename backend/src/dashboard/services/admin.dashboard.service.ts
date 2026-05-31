@@ -276,8 +276,10 @@ export class AdminDashboardService {
           ? Math.round((presentToday / totalTodayRecords) * 100)
           : 0;
 
-      // Get pending enrollments
-      const pendingEnrollments = await this.prisma.enrollment.count({
+      // Count the public enrollment requests managed by /admin/enrollment.
+      // The legacy Enrollment table can contain old internal rows that are not
+      // visible on that page.
+      const pendingEnrollments = await this.prisma.enrollmentRequest.count({
         where: {
           schoolId,
           status: 'PENDING',
@@ -340,7 +342,7 @@ export class AdminDashboardService {
           message: `${pendingEnrollments} enrollment(s) pending approval`,
           type: 'warning',
           priority: 'high',
-          actionUrl: '/enrollments?status=pending',
+          actionUrl: '/admin/enrollment',
           actionLabel: 'Review',
         });
       }
@@ -381,7 +383,7 @@ export class AdminDashboardService {
         {
           label: 'Approve Enrollments',
           icon: 'enrollment',
-          url: '/enrollments/pending',
+          url: '/admin/enrollment',
           permission: 'enrollment:approve',
           disabled:
             pendingEnrollments === 0 ||

@@ -10,7 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarDatePicker } from '@/components/ui/CalendarDatePicker';
 import { useThemeStore } from '@/lib/themeStore';
+import { AppLanguage, useLanguageStore } from '@/lib/languageStore';
+import { useTranslations } from '@/hooks/useTranslations';
 import {
   GraduationCap,
   User,
@@ -33,6 +36,10 @@ import {
   ChevronRight,
   Check,
   Sparkles,
+  Languages,
+  Moon,
+  Sun,
+  LogOut,
 } from 'lucide-react';
 
 interface School {
@@ -51,11 +58,12 @@ interface GradeCapacity {
 
 type FormStep = 'school' | 'student' | 'guardian' | 'review';
 
-const PARENT_RELATIONS = [
-  { value: 'FATHER', label: 'Father' },
-  { value: 'MOTHER', label: 'Mother' },
-  { value: 'GUARDIAN', label: 'Guardian' },
-  { value: 'OTHER', label: 'Other' },
+const languageOptions: Array<{ value: AppLanguage; label: string }> = [
+  { value: "en", label: "English" },
+  { value: "am", label: "አማርኛ" },
+  { value: "om", label: "Afaan Oromo" },
+  { value: "so", label: "Soomaali" },
+  { value: "ar", label: "العربية" },
 ];
 
 const STEP_ICONS: Record<FormStep, ReactNode> = {
@@ -66,13 +74,41 @@ const STEP_ICONS: Record<FormStep, ReactNode> = {
 };
 
 const STEP_LABELS: Record<FormStep, string> = {
-  school: 'School & Grade',
-  student: 'Student Details',
-  guardian: 'Parent / Guardian',
-  review: 'Review & Submit',
+  school: 'stepSchool',
+  student: 'stepStudent',
+  guardian: 'stepGuardian',
+  review: 'stepReview',
 };
 
 const STEPS: FormStep[] = ['school', 'student', 'guardian', 'review'];
+
+const accentControlClassName =
+  'border bg-white/90 text-slate-700 shadow-sm transition-colors hover:bg-white focus:ring-2 focus:ring-offset-2 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900';
+
+const accentControlStyle: CSSProperties = {
+  borderColor: 'rgba(var(--enroll-brand-rgb), 0.45)',
+  '--tw-ring-color': 'rgba(var(--enroll-brand-rgb), 0.35)',
+} as CSSProperties;
+
+const brandedFieldClassName =
+  'border-slate-200 bg-white transition-colors focus:border-[var(--enroll-brand)] focus-visible:ring-2 focus-visible:ring-[rgba(var(--enroll-brand-rgb),0.28)] dark:border-slate-600 dark:bg-slate-800';
+
+const brandedFieldTriggerClassName = `h-11 ${brandedFieldClassName}`;
+const brandedDatePickerClassName = `${brandedFieldTriggerClassName} text-slate-900 hover:border-[var(--enroll-brand)] hover:bg-white focus-visible:border-[var(--enroll-brand)] dark:text-slate-100 dark:hover:bg-slate-800 [&_svg]:text-[var(--enroll-brand)]`;
+
+const parseDateValue = (value?: string) => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+};
+
+const toDateInputValue = (date?: Date) => {
+  if (!date || Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const slideVariants = {
   enter: (direction: number) => ({
@@ -91,7 +127,10 @@ const slideVariants = {
 
 export default function EnrollmentPage() {
   const router = useRouter();
-  const { resolvedTheme } = useThemeStore();
+  const { resolvedTheme, setTheme } = useThemeStore();
+  const language = useLanguageStore((state) => state.language);
+  const setLanguage = useLanguageStore((state) => state.setLanguage);
+  const { t } = useTranslations<any>('enrollment');
   const [currentStep, setCurrentStep] = useState<FormStep>('school');
   const [direction, setDirection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,12 +168,19 @@ export default function EnrollmentPage() {
 
   const stepIndex = STEPS.indexOf(currentStep);
   const selectedSchool = schools.find((school) => school.id === formData.schoolId) || null;
+  const selectedSchoolSlug = selectedSchool?.publicUrlSlug || schoolSlug || null;
+  const schoolSignInHref = selectedSchoolSlug
+    ? `/schools/${encodeURIComponent(selectedSchoolSlug)}/login`
+    : formData.schoolId
+      ? `/sign-in?schoolId=${encodeURIComponent(formData.schoolId)}`
+      : '/sign-in';
   const brandColor = normalizeBrandColor(selectedSchool?.accentColor);
   const brandColorRgb = hexToRgb(brandColor);
   const schoolLogoUrl = resolveMediaUrl(selectedSchool?.logoUrl);
   const pageStyle = {
     '--enroll-brand': brandColor,
     '--enroll-brand-rgb': `${brandColorRgb.r}, ${brandColorRgb.g}, ${brandColorRgb.b}`,
+    '--brand-color': brandColor,
   } as CSSProperties;
 
   useEffect(() => {
@@ -151,10 +197,10 @@ export default function EnrollmentPage() {
           if (resolvedSchoolId) {
             setFormData((prev) => ({ ...prev, schoolId: resolvedSchoolId }));
           } else {
-            toast.error(response.data?.message || 'Failed to resolve school');
+            toast.error(response.data?.message || t.failedToResolve);
           }
         } catch {
-          toast.error('Failed to resolve school');
+          toast.error(t.failedToResolve);
         }
         return;
       }
@@ -169,12 +215,12 @@ export default function EnrollmentPage() {
         if (resolvedSchoolId) {
           setFormData((prev) => ({ ...prev, schoolId: resolvedSchoolId }));
         } else {
-          toast.error(response.data?.message || 'Failed to resolve school');
+            toast.error(response.data?.message || t.failedToResolve);
+          }
+        } catch {
+          toast.error(t.failedToResolve);
         }
-      } catch {
-        toast.error('Failed to resolve school');
-      }
-    };
+      };
 
     resolveSchool();
   }, [enrollmentKey, preselectedSchoolId, schoolSlug]);
@@ -189,7 +235,7 @@ export default function EnrollmentPage() {
           setFormData((prev) => ({ ...prev, schoolId: loaded[0].id }));
         }
       } catch {
-        toast.error('Failed to load schools');
+        toast.error(t.failedToLoadSchools);
       }
     };
     loadSchools();
@@ -277,7 +323,7 @@ export default function EnrollmentPage() {
     setIsSubmitting(true);
     try {
       if (!selectedSchoolData?.academicYearId) {
-        toast.error('Academic year not found. Please select a school.');
+        toast.error(t.academicYearNotFound);
         setIsSubmitting(false);
         return;
       }
@@ -309,9 +355,9 @@ export default function EnrollmentPage() {
 
       setSubmitted(true);
       setReferenceNumber(response.data?.data?.referenceNumber || '');
-      toast.success('Enrollment submitted successfully!');
+      toast.success(t.submittedSuccess);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to submit enrollment');
+      toast.error(error?.response?.data?.message || t.failedToSubmit);
     } finally {
       setIsSubmitting(false);
     }
@@ -346,21 +392,21 @@ export default function EnrollmentPage() {
                   <Check className="w-7 h-7" />
                 </div>
               </div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Enrollment Submitted!</h1>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">{t.submittedTitle}</h1>
               <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">
-                Your application has been received. Please save your reference number for future correspondence.
+                {t.submittedDesc}
               </p>
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 p-5 mb-8">
-                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Reference Number</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">{t.referenceNumber}</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 font-mono tracking-tight">{referenceNumber}</p>
               </div>
               <Button
-                onClick={() => router.push('/sign-in')}
+                onClick={() => router.push(schoolSignInHref)}
                 className="w-full h-11 text-white shadow-lg shadow-slate-200/80 dark:shadow-slate-900/80"
                 style={{ backgroundColor: 'var(--enroll-brand)' }}
               >
                 <ArrowRight className="w-4 h-4 mr-2" />
-                Go to Sign In
+                {t.goToSignIn}
               </Button>
             </CardContent>
           </Card>
@@ -371,9 +417,52 @@ export default function EnrollmentPage() {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 ${resolvedTheme === 'dark' ? 'dark' : ''}`}
+      className={`min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 ${resolvedTheme === 'dark' ? 'dark' : ''} relative`}
       style={pageStyle}
     >
+      {/* Top Right Controls */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+        <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
+          <SelectTrigger
+            className={`h-10 w-[132px] rounded-full ${accentControlClassName}`}
+            style={accentControlStyle}
+          >
+            <Languages className="mr-2 h-4 w-4" style={{ color: 'var(--enroll-brand)' }} />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
+            {languageOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          className={`w-10 h-10 rounded-full ${accentControlClassName}`}
+          style={accentControlStyle}
+        >
+          {resolvedTheme === 'dark' ? (
+            <Sun className="h-5 w-5" style={{ color: 'var(--enroll-brand)' }} />
+          ) : (
+            <Moon className="h-5 w-5" style={{ color: 'var(--enroll-brand)' }} />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push(schoolSignInHref)}
+          className={`w-10 h-10 rounded-full ${accentControlClassName}`}
+          style={accentControlStyle}
+          title="Sign In"
+        >
+          <LogOut className="h-5 w-5" style={{ color: 'var(--enroll-brand)' }} />
+        </Button>
+      </div>
+
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-12">
         {/* Header */}
         <div className="text-center mb-10">
@@ -383,21 +472,24 @@ export default function EnrollmentPage() {
             transition={{ duration: 0.4 }}
             className="flex items-center justify-center gap-3 mb-4"
           >
-            <div
-              className="flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-md"
-              style={{ backgroundColor: 'var(--enroll-brand)' }}
-            >
-              <GraduationCap className="w-6 h-6" />
-            </div>
+            {schoolLogoUrl ? (
+              <img src={schoolLogoUrl} alt={selectedSchool?.name || t.schoolAlt} className="h-32 w-32 object-contain" />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl"
+                style={{ backgroundColor: 'var(--enroll-brand)' }}
+              >
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+            )}
             <div className="text-left">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Student Enrollment</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">{t.title}</p>
               <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                {selectedSchool?.name || 'Admission Request'}
+                {selectedSchool?.name || t.titleFallback}
               </h1>
             </div>
           </motion.div>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            Complete the form below to submit an enrollment request. Fields marked with * are required.
+            {t.subtitle}
           </p>
         </div>
 
@@ -432,7 +524,7 @@ export default function EnrollmentPage() {
                       }`}
                       style={{ color: active ? 'var(--enroll-brand)' : undefined }}
                     >
-                      {STEP_LABELS[step]}
+                      {t[STEP_LABELS[step]]}
                     </span>
                   </div>
                   {index < STEPS.length - 1 && (
@@ -480,7 +572,7 @@ export default function EnrollmentPage() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                      Step {stepIndex + 1} of {STEPS.length}
+                      {t.stepOf.replace('{step}', String(stepIndex + 1)).replace('{total}', String(STEPS.length))}
                     </p>
                     <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{STEP_LABELS[currentStep]}</h2>
                   </div>
@@ -492,43 +584,26 @@ export default function EnrollmentPage() {
                     {!formData.schoolId ? (
                       <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 p-6 text-center">
                         <Building2 className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-                        <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-2">No School Selected</h3>
+                        <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-2">{t.noSchoolTitle}</h3>
                         <p className="text-sm text-amber-700 dark:text-amber-300">
-                          Open this page from the selected school&apos;s website, or make sure exactly one public school is available so it can be selected automatically.
+                          {t.noSchoolDesc}
                         </p>
                       </div>
                     ) : (
                       <>
-                        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="flex h-10 w-10 items-center justify-center rounded-lg"
-                              style={{ backgroundColor: `rgba(var(--enroll-brand-rgb), 0.12)` }}
-                            >
-                              <Building2 className="w-5 h-5" style={{ color: 'var(--enroll-brand)' }} />
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">School</p>
-                              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {selectedSchool?.name || 'Loading...'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
                         {enrollmentStatus && !enrollmentStatus.isOpen && (
                           <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/60 p-5">
                             <div className="flex items-start gap-3">
                               <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
                               <div>
-                                <h3 className="font-semibold text-red-900 dark:text-red-200 text-sm">Enrollment Closed</h3>
+                                <h3 className="font-semibold text-red-900 dark:text-red-200 text-sm">{t.enrollmentClosed}</h3>
                                 <p className="text-sm text-red-700 dark:text-red-300 mt-1">{enrollmentStatus.message}</p>
                                 <Button
                                   variant="outline"
-                                  onClick={() => router.push('/sign-in')}
+                                  onClick={() => router.push(schoolSignInHref)}
                                   className="mt-3 h-9 text-xs border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50"
                                 >
-                                  Already enrolled? Sign in
+                                  {t.alreadyEnrolled}
                                 </Button>
                               </div>
                             </div>
@@ -546,46 +621,46 @@ export default function EnrollmentPage() {
                                   <Calendar className="w-4 h-4" style={{ color: 'var(--enroll-brand)' }} />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Academic Year</p>
+                                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.academicYear}</p>
                                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                    {selectedSchoolData?.academicYearName || 'Loading...'}
+                                    {selectedSchoolData?.academicYearName || t.loading}
                                   </p>
                                 </div>
                               </div>
                             </div>
 
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Grade Applying For *</Label>
+                              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t.gradeApplying}</Label>
                               <Select
                                 value={String(formData.requestedGrade)}
                                 onValueChange={(v) => updateFormData('requestedGrade', parseInt(v))}
                               >
-                                <SelectTrigger className="h-11 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800">
-                                  <SelectValue placeholder="Select grade" />
+                                <SelectTrigger className={brandedFieldTriggerClassName}>
+                                  <SelectValue placeholder={t.selectGrade} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {availableGrades.map((grade) => (
                                     <SelectItem key={grade.grade} value={String(grade.grade)}>
-                                      Grade {grade.grade}
+                                      {t.gradeLabel.replace('{grade}', String(grade.grade))}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <p className="text-xs text-slate-400 dark:text-slate-500">Sections are assigned based on availability</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-500">{t.sectionsAvailability}</p>
                             </div>
                             {[11, 12].includes(formData.requestedGrade) && (
                               <div className="space-y-2">
-                                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Stream *</Label>
+                                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t.stream}</Label>
                                 <Select
                                   value={formData.requestedStream}
                                   onValueChange={(v) => updateFormData('requestedStream', v)}
                                 >
-                                  <SelectTrigger className="h-11 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800">
-                                    <SelectValue placeholder="Select stream" />
+                                  <SelectTrigger className={brandedFieldTriggerClassName}>
+                                    <SelectValue placeholder={t.selectStream} />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="SOCIAL">Social Science</SelectItem>
-                                    <SelectItem value="NATURAL">Natural Science</SelectItem>
+                                    <SelectItem value="SOCIAL">{t.socialScience}</SelectItem>
+                                    <SelectItem value="NATURAL">{t.naturalScience}</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -602,142 +677,143 @@ export default function EnrollmentPage() {
                   <div className="space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <Field>
-                        <Label>First Name *</Label>
+                        <Label>{t.firstName}</Label>
                         <Input
                           value={formData.firstName}
                           onChange={(e) => updateFormData('firstName', e.target.value)}
-                          placeholder="First name"
-                          className="h-11"
+                          placeholder={t.firstNamePlaceholder}
+                          className={brandedFieldTriggerClassName}
                         />
                       </Field>
                       <Field>
-                        <Label>Middle Name</Label>
+                        <Label>{t.middleName}</Label>
                         <Input
                           value={formData.middleName}
                           onChange={(e) => updateFormData('middleName', e.target.value)}
-                          placeholder="Optional"
-                          className="h-11"
+                          placeholder={t.middleNamePlaceholder}
+                          className={brandedFieldTriggerClassName}
                         />
                       </Field>
                       <Field>
-                        <Label>Last Name *</Label>
+                        <Label>{t.lastName}</Label>
                         <Input
                           value={formData.lastName}
                           onChange={(e) => updateFormData('lastName', e.target.value)}
-                          placeholder="Last name"
-                          className="h-11"
+                          placeholder={t.lastNamePlaceholder}
+                          className={brandedFieldTriggerClassName}
                         />
                       </Field>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field>
-                        <Label>Date of Birth *</Label>
-                        <Input
-                          type="date"
-                          value={formData.dateOfBirth}
-                          onChange={(e) => updateFormData('dateOfBirth', e.target.value)}
-                          className="h-11"
+                        <Label>{t.dateOfBirth}</Label>
+                        <CalendarDatePicker
+                          value={parseDateValue(formData.dateOfBirth)}
+                          onChange={(date) => updateFormData('dateOfBirth', toDateInputValue(date))}
+                          placeholder={t.dateOfBirth}
+                          className={brandedDatePickerClassName}
+                          brandColor={brandColor}
+                          maxYear={new Date().getFullYear()}
                         />
                       </Field>
                       <Field>
-                        <Label>Gender *</Label>
+                        <Label>{t.gender}</Label>
                         <Select value={formData.gender} onValueChange={(v) => updateFormData('gender', v)}>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Select gender" />
+                          <SelectTrigger className={brandedFieldTriggerClassName}>
+                            <SelectValue placeholder={t.selectGender} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="MALE">Male</SelectItem>
-                            <SelectItem value="FEMALE">Female</SelectItem>
-                            <SelectItem value="OTHER">Other</SelectItem>
+                            <SelectItem value="MALE">{t.male}</SelectItem>
+                            <SelectItem value="FEMALE">{t.female}</SelectItem>
                           </SelectContent>
                         </Select>
                       </Field>
                     </div>
 
                     <Field>
-                      <Label>Fayda Number (FAN) *</Label>
+                      <Label>{t.faydaNumber}</Label>
                       <Input
                         value={formData.faydaNumber}
-                        onChange={(e) => updateFormData('faydaNumber', e.target.value)}
-                        placeholder="123456789012"
+                        onChange={(e) => updateFormData('faydaNumber', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                        placeholder={t.faydaPlaceholder}
                         inputMode="numeric"
-                        maxLength={16}
-                        className="h-11"
+                        pattern="[0-9]{12}"
+                        className={brandedFieldTriggerClassName}
                       />
-                      <p className="text-xs text-slate-400 dark:text-slate-500">FAN is required. FCN is not required.</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{t.faydaHint}</p>
                     </Field>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field>
-                        <Label>Nationality</Label>
+                        <Label>{t.nationality}</Label>
                         <Input
                           value={formData.nationality}
                           onChange={(e) => updateFormData('nationality', e.target.value)}
-                          placeholder="Your nationality"
-                          className="h-11"
+                          placeholder={t.nationalityPlaceholder}
+                          className={brandedFieldTriggerClassName}
                         />
                       </Field>
                       <Field>
-                        <Label>Phone Number *</Label>
+                        <Label>{t.phoneNumber}</Label>
                         <Input
                           type="tel"
                           value={formData.phone}
                           onChange={(e) => updateFormData('phone', e.target.value)}
-                          placeholder="+251..."
-                          className="h-11"
+                          placeholder={t.phonePlaceholder}
+                          className={brandedFieldTriggerClassName}
                         />
                       </Field>
                     </div>
 
                     <Field>
-                      <Label>Email</Label>
+                      <Label>{t.email} <span className="font-normal text-slate-400">({t.optional || 'Optional'})</span></Label>
                       <Input
                         type="email"
                         value={formData.email}
                         onChange={(e) => updateFormData('email', e.target.value)}
-                        placeholder="student@email.com"
-                        className="h-11"
+                        placeholder={t.emailPlaceholder}
+                        className={brandedFieldTriggerClassName}
                       />
                     </Field>
 
                     <Field>
-                      <Label>Address</Label>
+                      <Label>{t.address}</Label>
                       <Input
                         value={formData.address}
                         onChange={(e) => updateFormData('address', e.target.value)}
-                        placeholder="Full address"
-                        className="h-11"
+                        placeholder={t.addressPlaceholder}
+                        className={brandedFieldTriggerClassName}
                       />
                     </Field>
 
                     <div className="border-t border-slate-100 dark:border-slate-700 pt-6">
                       <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
                         <BookOpen className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                        Previous School (if applicable)
+                        {t.previousSchool}
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Field>
-                          <Label>School Name</Label>
+                          <Label>{t.previousSchoolName}</Label>
                           <Input
                             value={formData.previousSchool}
                             onChange={(e) => updateFormData('previousSchool', e.target.value)}
-                            placeholder="Previous school name"
-                            className="h-11"
+                            placeholder={t.previousSchoolPlaceholder}
+                            className={brandedFieldTriggerClassName}
                           />
                         </Field>
                         <Field>
-                          <Label>Grade Completed</Label>
+                          <Label>{t.gradeCompleted}</Label>
                           <Select
                             value={formData.previousGrade ? String(formData.previousGrade) : ''}
                             onValueChange={(v) => updateFormData('previousGrade', parseInt(v))}
                           >
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Select grade" />
+                            <SelectTrigger className={brandedFieldTriggerClassName}>
+                              <SelectValue placeholder={t.selectGradeShort} />
                             </SelectTrigger>
                             <SelectContent>
                               {Array.from({ length: 12 }, (_, i) => i + 1).map(g => (
-                                <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>
+                                <SelectItem key={g} value={String(g)}>{t.gradeLabel.replace('{grade}', String(g))}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -751,64 +827,65 @@ export default function EnrollmentPage() {
                 {currentStep === 'guardian' && (
                   <div className="space-y-5">
                     <p className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700">
-                      Provide contact information for the parent or guardian responsible for this student.
+                      {t.guardianInfo}
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field>
-                        <Label>First Name *</Label>
+                        <Label>{t.parentFirstName}</Label>
                         <Input
                           value={formData.parentFirstName}
                           onChange={(e) => updateFormData('parentFirstName', e.target.value)}
-                          placeholder="Parent's first name"
-                          className="h-11"
+                          placeholder={t.parentFirstNamePlaceholder}
+                          className={brandedFieldTriggerClassName}
                         />
                       </Field>
                       <Field>
-                        <Label>Last Name *</Label>
+                        <Label>{t.parentLastName}</Label>
                         <Input
                           value={formData.parentLastName}
                           onChange={(e) => updateFormData('parentLastName', e.target.value)}
-                          placeholder="Parent's last name"
-                          className="h-11"
+                          placeholder={t.parentLastNamePlaceholder}
+                          className={brandedFieldTriggerClassName}
                         />
                       </Field>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field>
-                        <Label>Phone Number *</Label>
+                        <Label>{t.parentPhone}</Label>
                         <Input
                           type="tel"
                           value={formData.parentPhone}
                           onChange={(e) => updateFormData('parentPhone', e.target.value)}
-                          placeholder="+251..."
-                          className="h-11"
+                          placeholder={t.parentPhonePlaceholder}
+                          className={brandedFieldTriggerClassName}
                         />
                       </Field>
                       <Field>
-                        <Label>Relationship *</Label>
+                        <Label>{t.relationship}</Label>
                         <Select value={formData.parentRelation} onValueChange={(v) => updateFormData('parentRelation', v)}>
-                          <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Select relationship" />
+                          <SelectTrigger className={brandedFieldTriggerClassName}>
+                            <SelectValue placeholder={t.selectRelationship} />
                           </SelectTrigger>
                           <SelectContent>
-                            {PARENT_RELATIONS.map(rel => (
-                              <SelectItem key={rel.value} value={rel.value}>{rel.label}</SelectItem>
-                            ))}
+                            <SelectItem value="FATHER">{t.father}</SelectItem>
+                            <SelectItem value="MOTHER">{t.mother}</SelectItem>
+                            <SelectItem value="GUARDIAN">{t.guardian}</SelectItem>
+                            <SelectItem value="OTHER">{t.other}</SelectItem>
                           </SelectContent>
                         </Select>
                       </Field>
                     </div>
 
                     <Field>
-                      <Label>Email</Label>
+                      <Label>{t.parentEmail} <span className="font-normal text-slate-400">({t.optional || 'Optional'})</span></Label>
                       <Input
                         type="email"
                         value={formData.parentEmail}
                         onChange={(e) => updateFormData('parentEmail', e.target.value)}
-                        placeholder="parent@email.com"
-                        className="h-11"
+                        placeholder={t.parentEmailPlaceholder}
+                        className={brandedFieldTriggerClassName}
                       />
                     </Field>
                   </div>
@@ -826,9 +903,9 @@ export default function EnrollmentPage() {
                     >
                       <Sparkles className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--enroll-brand)' }} />
                       <div>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Review Your Application</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t.reviewTitle}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          Please double-check all details. You will receive a reference number after submission.
+                          {t.reviewDesc}
                         </p>
                       </div>
                     </div>
@@ -836,40 +913,40 @@ export default function EnrollmentPage() {
                     <div className="space-y-5">
                       <ReviewSection
                         icon={<Building2 className="w-4 h-4" />}
-                        title="School Information"
+                        title={t.schoolInfo}
                       >
-                        <ReviewRow label="School" value={selectedSchoolData?.name} />
-                        <ReviewRow label="Academic Year" value={selectedSchoolData?.academicYearName} />
-                        <ReviewRow label="Grade" value={`Grade ${formData.requestedGrade}`} />
+                        <ReviewRow label={t.school} value={selectedSchoolData?.name} />
+                        <ReviewRow label={t.academicYear} value={selectedSchoolData?.academicYearName} />
+                        <ReviewRow label={t.grade} value={`${t.gradeLabel.replace('{grade}', String(formData.requestedGrade))}`} />
                         {[11, 12].includes(formData.requestedGrade) && (
-                          <ReviewRow label="Stream" value={formData.requestedStream === 'NATURAL' ? 'Natural Science' : formData.requestedStream === 'SOCIAL' ? 'Social Science' : '-'} />
+                          <ReviewRow label={t.streamLabel} value={formData.requestedStream === 'NATURAL' ? t.naturalScience : formData.requestedStream === 'SOCIAL' ? t.socialScience : '-'} />
                         )}
                       </ReviewSection>
 
                       <ReviewSection
                         icon={<User className="w-4 h-4" />}
-                        title="Student Information"
+                        title={t.studentInfo}
                       >
                         <ReviewRow
-                          label="Full Name"
+                          label={t.fullName}
                           value={`${formData.firstName} ${formData.middleName ? formData.middleName + ' ' : ''}${formData.lastName}`}
                         />
-                        <ReviewRow label="Date of Birth" value={formData.dateOfBirth} />
-                        <ReviewRow label="Gender" value={formData.gender} />
-                        <ReviewRow label="Fayda Number (FAN)" value={formData.faydaNumber.replace(/\D/g, '')} />
-                        {formData.phone && <ReviewRow label="Phone" value={formData.phone} />}
-                        {formData.email && <ReviewRow label="Email" value={formData.email} />}
-                        {formData.nationality && <ReviewRow label="Nationality" value={formData.nationality} />}
+                        <ReviewRow label={t.dateOfBirth} value={formData.dateOfBirth} />
+                        <ReviewRow label={t.gender} value={formData.gender === 'MALE' ? t.male : formData.gender === 'FEMALE' ? t.female : formData.gender} />
+                        <ReviewRow label={t.faydaLabel} value={formData.faydaNumber.replace(/\D/g, '')} />
+                        {formData.phone && <ReviewRow label={t.phone} value={formData.phone} />}
+                        {formData.email && <ReviewRow label={t.email} value={formData.email} />}
+                        {formData.nationality && <ReviewRow label={t.nationalityLabel} value={formData.nationality} />}
                       </ReviewSection>
 
                       <ReviewSection
                         icon={<Heart className="w-4 h-4" />}
-                        title="Guardian Information"
+                        title={t.guardianInfoTitle}
                       >
-                        <ReviewRow label="Name" value={`${formData.parentFirstName} ${formData.parentLastName}`} />
-                        <ReviewRow label="Phone" value={formData.parentPhone} />
-                        <ReviewRow label="Relationship" value={formData.parentRelation} />
-                        {formData.parentEmail && <ReviewRow label="Email" value={formData.parentEmail} />}
+                        <ReviewRow label={t.name} value={`${formData.parentFirstName} ${formData.parentLastName}`} />
+                        <ReviewRow label={t.phone} value={formData.parentPhone} />
+                        <ReviewRow label={t.relationship} value={formData.parentRelation === 'FATHER' ? t.father : formData.parentRelation === 'MOTHER' ? t.mother : formData.parentRelation === 'GUARDIAN' ? t.guardian : formData.parentRelation === 'OTHER' ? t.other : formData.parentRelation} />
+                        {formData.parentEmail && <ReviewRow label={t.email} value={formData.parentEmail} />}
                       </ReviewSection>
                     </div>
                   </div>
@@ -884,7 +961,7 @@ export default function EnrollmentPage() {
                     className="rounded-lg h-11 px-5 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back
+                    {t.back}
                   </Button>
 
                   {currentStep === 'review' ? (
@@ -900,11 +977,11 @@ export default function EnrollmentPage() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Submitting...
+                          {t.submitting}
                         </>
                       ) : (
                         <>
-                          Submit Application
+                          {t.submit}
                           <CheckCircle className="w-4 h-4 ml-2" />
                         </>
                       )}
@@ -919,7 +996,7 @@ export default function EnrollmentPage() {
                         boxShadow: `0 4px 16px rgba(var(--enroll-brand-rgb), 0.3)`,
                       }}
                     >
-                      Next
+                      {t.next}
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   )}
@@ -931,7 +1008,7 @@ export default function EnrollmentPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-400 dark:text-slate-600 mt-8">
-          Need assistance? Contact the school administration for help.
+          {t.footer}
         </p>
       </div>
     </div>

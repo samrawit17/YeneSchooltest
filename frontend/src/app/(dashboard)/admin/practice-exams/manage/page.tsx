@@ -4,11 +4,17 @@ import Link from "next/link";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Edit, Eye, Loader2, Plus, Save, Trash2, X } from "lucide-react";
+import { ArrowLeft, Edit, Eye, Loader2, MoreVertical, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -184,12 +190,8 @@ export default function ManageOnlineExamsPage() {
                             updateStatus.mutate({ id: exam.id, status: status as PracticeExamStatus })
                           }
                         >
-                          <SelectTrigger className="h-8 w-32">
-                            <SelectValue>
-                              <Badge variant="outline" className={statusTone[exam.status]}>
-                                {exam.status}
-                              </Badge>
-                            </SelectValue>
+                          <SelectTrigger className="h-8 w-28">
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="DRAFT">Draft</SelectItem>
@@ -199,25 +201,33 @@ export default function ManageOnlineExamsPage() {
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="icon" asChild>
-                            <Link href={`/admin/practice-exams?examId=${exam.id}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button variant="outline" size="icon" onClick={() => openEdit(exam)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            disabled={deleteExam.isPending}
-                            onClick={() => setDeleteConfirmExam(exam)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-auto">
+                              <MoreVertical className="w-4 h-4 text-gray-900 dark:text-white" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/practice-exams?examId=${exam.id}`} className="flex items-center">
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEdit(exam)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={deleteExam.isPending}
+                              onClick={() => setDeleteConfirmExam(exam)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2 text-red-500" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}

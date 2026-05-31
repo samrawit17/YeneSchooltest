@@ -68,6 +68,10 @@ export const SCHOOL_SETTING_KEYS = {
   FEE_STRUCTURE_MODE: 'fee_structure_mode',
   FEE_PAYMENT_DUE_DAY: 'fee_payment_due_day',
   FEE_DAILY_PENALTY_AMOUNT: 'fee_daily_penalty_amount',
+  FAMILY_DISCOUNT_ENABLED: 'family_discount_enabled',
+  FAMILY_DISCOUNT_MIN_STUDENTS: 'family_discount_min_students',
+  FAMILY_DISCOUNT_PERCENT: 'family_discount_percent',
+  FAMILY_DISCOUNT_FEE_TYPES: 'family_discount_fee_types',
   PARENT_VIEW_GRADES: 'parent_view_grades',
   ATTENDANCE_CUTOFF_TIME: 'ATTENDANCE_CUTOFF_TIME',
   DEFAULT_SECTION_CAPACITY: 'DEFAULT_SECTION_CAPACITY',
@@ -150,6 +154,7 @@ export class SchoolSettingsService {
     SCHOOL_SETTING_KEYS.PARENT_PORTAL_ACCESS,
     SCHOOL_SETTING_KEYS.FINANCE_PORTAL_ACCESS,
     SCHOOL_SETTING_KEYS.REGISTRAR_PORTAL_ACCESS,
+    SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_ENABLED,
     'PARENT_VIEW_ATTENDANCE',
     'SELF_ENROLLMENT_ACTIVE',
   ]);
@@ -271,6 +276,44 @@ export class SchoolSettingsService {
         );
       }
       return Math.round(amount * 100) / 100;
+    }
+
+    if (key === SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_MIN_STUDENTS) {
+      const count = Number(value);
+      if (!Number.isInteger(count) || count < 2 || count > 20) {
+        throw new BadRequestException(
+          'family_discount_min_students must be an integer between 2 and 20',
+        );
+      }
+      return count;
+    }
+
+    if (key === SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_PERCENT) {
+      const percent = Number(value);
+      if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+        throw new BadRequestException(
+          'family_discount_percent must be a number between 0 and 100',
+        );
+      }
+      return Math.round(percent * 100) / 100;
+    }
+
+    if (key === SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_FEE_TYPES) {
+      const rawValues = Array.isArray(value)
+        ? value
+        : String(value || '')
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+      const normalizedValues = Array.from(
+        new Set(rawValues.map((item) => String(item).trim().toUpperCase())),
+      );
+      if (normalizedValues.length === 0) {
+        throw new BadRequestException(
+          'family_discount_fee_types must include at least one fee type',
+        );
+      }
+      return normalizedValues.join(',');
     }
 
     if (key === SCHOOL_SETTING_KEYS.DEFAULT_SECTION_CAPACITY) {

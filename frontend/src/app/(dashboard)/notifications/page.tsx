@@ -37,19 +37,15 @@ interface Notification {
   type?: string;
 }
 
-const formatTimeAgo = (dateString: string, t: any) => {
+const formatTimeAgo = (dateString: string, _t: any) => {
   const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return t.justNow;
-  if (diffMins < 60) return t.minAgo.replace("{count}", diffMins);
-  if (diffHours < 24) return t.hoursAgo.replace("{count}", diffHours).replace("{s}", diffHours > 1 ? "s" : "");
-  if (diffDays < 7) return t.daysAgo.replace("{count}", diffDays).replace("{s}", diffDays > 1 ? "s" : "");
-  return date.toLocaleDateString();
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 interface NotificationsMessages {

@@ -39,7 +39,7 @@ export class CreateEnrollmentRequestDto {
   dateOfBirth!: string;
 
   @IsString()
-  @IsEnum(['MALE', 'FEMALE', 'OTHER'])
+  @IsEnum(['MALE', 'FEMALE'])
   gender!: string;
 
   @IsString()

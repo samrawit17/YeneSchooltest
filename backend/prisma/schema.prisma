@@ -57,6 +57,9 @@ model School {
   parentProfiles            ParentProfile[]
   parentStudents            ParentStudent[]
   payments                  Payment[]
+  payrollSalaries           PayrollSalary[]
+  payrollRuns               PayrollRun[]
+  payrollEntries            PayrollEntry[]
   pendingCredentials        PendingCredential[]
   receipts                  Receipt[]
   reportCards               ReportCard[]
@@ -372,6 +375,11 @@ model User {
   parentProfile               ParentProfile?
   passwordResetTokens         PasswordResetToken[]
   paymentsReceived            Payment[]                  @relation("PaymentReceivedBy")
+  payrollCreatedRuns          PayrollRun[]               @relation("PayrollRunCreatedBy")
+  payrollApprovedRuns         PayrollRun[]               @relation("PayrollRunApprovedBy")
+  payrollPaidRuns             PayrollRun[]               @relation("PayrollRunPaidBy")
+  payrollSalaries             PayrollSalary[]            @relation("PayrollSalaryStaff")
+  payrollEntries              PayrollEntry[]             @relation("PayrollEntryStaff")
   studentPayments             Payment[]                  @relation("StudentPayments")
   pendingCredentials          PendingCredential[]
   receiptsGenerated           Receipt[]                  @relation("ReceiptGeneratedBy")
@@ -1232,6 +1240,95 @@ model FinanceAuditLog {
   @@index([schoolId, createdAt], name: "FinanceAuditLog_school_created")
   @@index([entityType, entityId], name: "FinanceAuditLog_entity")
   @@index([userId], name: "FinanceAuditLog_user")
+}
+
+model PayrollSalary {
+  id            String         @id @default(cuid())
+  schoolId      String
+  staffUserId   String
+  baseSalary    Float
+  allowances    Float          @default(0)
+  deductions    Float          @default(0)
+  bankName      String?
+  bankAccount   String?
+  tinNumber     String?
+  payFrequency  String         @default("MONTHLY")
+  isActive      Boolean        @default(true)
+  effectiveFrom DateTime       @default(now())
+  effectiveTo   DateTime?
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  school        School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  staffUser     User           @relation("PayrollSalaryStaff", fields: [staffUserId], references: [id], onDelete: Cascade)
+  entries       PayrollEntry[]
+
+  @@unique([schoolId, staffUserId])
+  @@index([schoolId, isActive])
+  @@index([staffUserId])
+}
+
+model PayrollRun {
+  id               String         @id @default(cuid())
+  schoolId         String
+  title            String
+  periodMonth      Int
+  periodYear       Int
+  status           String         @default("DRAFT")
+  grossAmount      Float          @default(0)
+  deductionsAmount Float          @default(0)
+  netAmount        Float          @default(0)
+  entryCount       Int            @default(0)
+  createdById      String?
+  approvedById     String?
+  paidById         String?
+  paymentDate      DateTime?
+  paidAt           DateTime?
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  school           School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdBy        User?          @relation("PayrollRunCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy       User?          @relation("PayrollRunApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  paidBy           User?          @relation("PayrollRunPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
+  entries          PayrollEntry[]
+
+  @@unique([schoolId, periodYear, periodMonth])
+  @@index([schoolId, status])
+  @@index([createdById])
+  @@index([approvedById])
+  @@index([paidById])
+}
+
+model PayrollEntry {
+  id                   String        @id @default(cuid())
+  runId                String
+  schoolId             String
+  staffUserId          String
+  salaryId             String?
+  baseSalary           Float
+  allowances           Float         @default(0)
+  deductions           Float         @default(0)
+  bonus                Float         @default(0)
+  tax                  Float         @default(0)
+  grossPay             Float
+  netPay               Float
+  status               String        @default("PENDING")
+  paymentMethod        String?
+  transactionReference String?
+  paidAt               DateTime?
+  notes                String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  run                  PayrollRun    @relation(fields: [runId], references: [id], onDelete: Cascade)
+  school               School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  staffUser            User          @relation("PayrollEntryStaff", fields: [staffUserId], references: [id], onDelete: Cascade)
+  salary               PayrollSalary? @relation(fields: [salaryId], references: [id], onDelete: SetNull)
+
+  @@unique([runId, staffUserId])
+  @@index([schoolId, status])
+  @@index([staffUserId])
+  @@index([salaryId])
 }
 
 model SystemAuditLog {

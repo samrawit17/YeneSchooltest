@@ -193,6 +193,55 @@ const SETTINGS_CONFIG: SettingItem[] = [
       step: 0.01,
     },
   },
+  {
+    key: 'family_discount_enabled',
+    label: 'Family Discount',
+    description: 'Automatically discount fees for families with multiple enrolled children.',
+    type: 'boolean',
+    category: 'finance',
+    systemDefault: false,
+    requiredFeature: 'FINANCE_MANAGEMENT',
+  },
+  {
+    key: 'family_discount_min_students',
+    label: 'Family Discount Minimum Children',
+    description: 'Number of approved enrolled children required before the discount starts.',
+    type: 'number',
+    category: 'finance',
+    systemDefault: 3,
+    requiredFeature: 'FINANCE_MANAGEMENT',
+    validation: {
+      min: 2,
+      max: 20,
+    },
+  },
+  {
+    key: 'family_discount_percent',
+    label: 'Family Discount Percent',
+    description: 'Percentage discount applied from the qualifying child onward.',
+    type: 'number',
+    category: 'finance',
+    systemDefault: 20,
+    requiredFeature: 'FINANCE_MANAGEMENT',
+    validation: {
+      min: 0,
+      max: 100,
+      step: 0.01,
+    },
+  },
+  {
+    key: 'family_discount_fee_types',
+    label: 'Family Discount Fee Types',
+    description: 'Fee categories that receive the family discount.',
+    type: 'select',
+    category: 'finance',
+    systemDefault: 'TUITION',
+    requiredFeature: 'FINANCE_MANAGEMENT',
+    options: [
+      { value: 'TUITION', label: 'Tuition only' },
+      { value: 'ALL', label: 'All fee types' },
+    ],
+  },
 
   // Communication Settings
   {
@@ -1139,6 +1188,8 @@ export default function SchoolSettingsPage() {
 
     if (setting.type === 'number') {
       const isPenaltyAmount = setting.key === 'fee_daily_penalty_amount';
+      const isDiscountPercent = setting.key === 'family_discount_percent';
+      const isPaymentDueDay = setting.key === 'fee_payment_due_day';
       const draftValue = numberDrafts[setting.key] ?? String(value);
       const numericDraftValue = Number(draftValue || 0);
 
@@ -1170,27 +1221,22 @@ export default function SchoolSettingsPage() {
                 }
               }}
               disabled={isControlDisabled}
-              className={isPenaltyAmount ? "w-32" : "w-24"}
+              className={isPenaltyAmount ? "w-32" : isDiscountPercent ? "w-24" : "w-24"}
             />
-            {hasSettingChanged(setting) && !isLocked && !isSettingsReadOnly && (
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => void saveNumberSetting(setting)}
-                disabled={isSaving || savingAll}
-                className="h-9"
-              >
-                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : actionText('save', 'Save')}
-              </Button>
+            {isDiscountPercent && (
+              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                %
+              </span>
+            )}
+            {isPaymentDueDay && (
+              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                day
+              </span>
             )}
             {isLocked && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
             {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
           </div>
-          {isPenaltyAmount && (
-            <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">
-              Parents are charged {Number.isFinite(numericDraftValue) ? `ETB ${numericDraftValue.toLocaleString()}` : 'this amount'} per late day after the payment deadline.
-            </p>
-          )}
+
         </div>
       );
     }

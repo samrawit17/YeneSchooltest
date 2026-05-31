@@ -43,6 +43,8 @@ export interface UpdateStudentDto {
   phone?: string;
   motherName?: string;
   motherPhone?: string;
+  dateOfBirth?: string;
+  faydaNumber?: string | null;
   emergencyContact?: {
     name: string;
     phone: string;
@@ -302,6 +304,8 @@ export class RegistrarService {
       phone,
       motherName,
       motherPhone,
+      dateOfBirth,
+      faydaNumber,
       emergencyContact,
       guardianName,
       guardianPhone,
@@ -330,6 +334,8 @@ export class RegistrarService {
         ...(phone && { phone }),
         ...(motherName !== undefined && { motherName }),
         ...(motherPhone !== undefined && { motherPhone }),
+        ...(dateOfBirth !== undefined && { dateOfBirth: new Date(dateOfBirth) }),
+        ...(faydaNumber !== undefined && { faydaNumber: faydaNumber || null }),
         ...(emergencyContact && {
           emergencyContact: JSON.stringify(emergencyContact),
         }),

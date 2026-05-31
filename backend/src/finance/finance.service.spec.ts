@@ -23,7 +23,7 @@ describe('FinanceService critical payment flows', () => {
     };
   };
 
-  it('records payment with the selected term and creates a matching receipt', async () => {
+  it('records payment with the selected term and an internal payment reference', async () => {
     const paymentDate = new Date('2026-05-14T00:00:00.000Z');
     const tx: any = {
       studentFee: {
@@ -50,11 +50,8 @@ describe('FinanceService critical payment flows', () => {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({
           id: 'payment-1',
-          receiptNumber: 'RCPT-1',
+          receiptNumber: 'PAY-1',
         }),
-      },
-      receipt: {
-        create: jest.fn(),
       },
       financeAuditLog: {
         create: jest.fn(),
@@ -88,14 +85,7 @@ describe('FinanceService critical payment flows', () => {
         termId: 'term-3',
         studentFeeId: 'fee-1',
         amountPaid: 3000,
-        receiptNumber: 'RCPT-20260514-0001',
-      }),
-    });
-    expect(tx.receipt.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        paymentId: 'payment-1',
-        receiptNumber: 'RCPT-1',
-        amountPaid: 3000,
+        receiptNumber: 'PAY-20260514-0001',
       }),
     });
   });
@@ -165,7 +155,7 @@ describe('FinanceService critical payment flows', () => {
     ).rejects.toThrow('Fee does not match this student');
   });
 
-  it('reverses payment, deletes receipt, recalculates fee status, and audits it', async () => {
+  it('reverses payment, recalculates fee status, and audits it', async () => {
     const tx: any = {
       payment: {
         findFirst: jest.fn().mockResolvedValue({
@@ -173,7 +163,7 @@ describe('FinanceService critical payment flows', () => {
           schoolId: 'school-1',
           studentFeeId: 'fee-1',
           amountPaid: 3000,
-          receiptNumber: 'RCPT-2',
+          receiptNumber: 'PAY-2',
           termId: 'term-2',
           studentFee: {
             finalAmount: 9000,
@@ -183,11 +173,7 @@ describe('FinanceService critical payment flows', () => {
               { id: 'payment-2', amountPaid: 3000 },
             ],
           },
-          receipt: { id: 'receipt-2' },
         }),
-        delete: jest.fn(),
-      },
-      receipt: {
         delete: jest.fn(),
       },
       studentFee: {
@@ -206,7 +192,6 @@ describe('FinanceService critical payment flows', () => {
       'Wrong term selected',
     );
 
-    expect(tx.receipt.delete).toHaveBeenCalledWith({ where: { id: 'receipt-2' } });
     expect(tx.payment.delete).toHaveBeenCalledWith({ where: { id: 'payment-2' } });
     expect(tx.studentFee.update).toHaveBeenCalledWith({
       where: { id: 'fee-1' },
@@ -215,13 +200,13 @@ describe('FinanceService critical payment flows', () => {
     expect(tx.financeAuditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         action: 'PAYMENT_REVERSED',
-        reference: 'RCPT-2',
+        reference: 'PAY-2',
         amount: 3000,
       }),
     });
     expect(result).toMatchObject({
       reversed: true,
-      receiptNumber: 'RCPT-2',
+      paymentReference: 'PAY-2',
       remainingPaid: 3000,
       remainingBalance: 6000,
       status: PaymentStatus.PARTIAL,
@@ -254,11 +239,8 @@ describe('FinanceService critical payment flows', () => {
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({
           id: 'payment-2',
-          receiptNumber: 'RCPT-2',
+          receiptNumber: 'PAY-2',
         }),
-      },
-      receipt: {
-        create: jest.fn(),
       },
       financeAuditLog: {
         create: jest.fn(),
@@ -341,6 +323,7 @@ describe('FinanceService critical payment flows', () => {
           section: 'A',
           user: { name: 'Student One' },
         }),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       academicYear: {
         findFirst: jest.fn().mockResolvedValue({ id: 'year-1' }),
@@ -356,6 +339,10 @@ describe('FinanceService critical payment flows', () => {
       },
       schoolSetting: {
         findUnique: jest.fn().mockResolvedValue({ value: 'TERM' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      feeStructure: {
+        findMany: jest.fn().mockResolvedValue([]),
       },
       studentFee: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -384,6 +371,89 @@ describe('FinanceService critical payment flows', () => {
     expect(prisma.term.findFirst).toHaveBeenCalledWith({
       where: { id: 'term-1', academicYear: { schoolId: 'school-1' } },
       select: { id: true, name: true, order: true, academicYearId: true },
+    });
+  });
+
+  it('applies family discount to the third approved child and above during fee generation', async () => {
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
+    const prisma: any = {
+      academicYear: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'year-1', schoolId: 'school-1' }),
+      },
+      feeStructure: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'fee-structure-1',
+            schoolId: 'school-1',
+            academicYearId: 'year-1',
+            termId: null,
+            feeType: 'TUITION',
+            amount: 1000,
+          },
+        ]),
+      },
+      schoolSetting: {
+        findUnique: jest.fn().mockResolvedValue({ value: '15' }),
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'family_discount_enabled', value: 'true' },
+          { key: 'family_discount_min_students', value: '3' },
+          { key: 'family_discount_percent', value: '20' },
+          { key: 'family_discount_fee_types', value: 'TUITION' },
+        ]),
+      },
+      studentProfile: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'student-profile-1', userId: 'student-user-1', createdAt },
+          { id: 'student-profile-2', userId: 'student-user-2', createdAt: new Date('2026-01-02T00:00:00.000Z') },
+          { id: 'student-profile-3', userId: 'student-user-3', createdAt: new Date('2026-01-03T00:00:00.000Z') },
+        ]),
+      },
+      parentStudent: {
+        findMany: jest.fn().mockResolvedValue([
+          { parentId: 'parent-profile-1', studentId: 'student-profile-1', isPrimary: true },
+          { parentId: 'parent-profile-1', studentId: 'student-profile-2', isPrimary: true },
+          { parentId: 'parent-profile-1', studentId: 'student-profile-3', isPrimary: true },
+        ]),
+      },
+      discountPolicy: {
+        upsert: jest.fn().mockResolvedValue({ id: 'family-policy-1' }),
+      },
+      term: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      studentFee: {
+        createMany: jest.fn().mockResolvedValue({ count: 3 }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const { service } = createService({} as any, prisma);
+
+    const result = await service.generateStudentFees({
+      schoolId: 'school-1',
+      academicYearId: 'year-1',
+    });
+
+    expect(result).toEqual({ created: 3, updatedDiscounts: 0 });
+    expect(prisma.studentFee.createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({
+          studentId: 'student-user-1',
+          discount: 0,
+          finalAmount: 1000,
+        }),
+        expect.objectContaining({
+          studentId: 'student-user-2',
+          discount: 0,
+          finalAmount: 1000,
+        }),
+        expect.objectContaining({
+          studentId: 'student-user-3',
+          discount: 200,
+          finalAmount: 800,
+          discountPolicyId: 'family-policy-1',
+        }),
+      ]),
+      skipDuplicates: true,
     });
   });
 });

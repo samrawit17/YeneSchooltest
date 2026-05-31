@@ -20,7 +20,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import Pagination from '@/components/Pagination';
+import { useAcademicYear } from '@/context/AcademicYearContext';
 import { 
   Users, 
   CheckCircle, 
@@ -37,6 +44,7 @@ import {
   User,
   Loader2,
   Send,
+  MoreVertical,
   RefreshCw,
   FileText,
   Check,
@@ -59,8 +67,12 @@ const statusConfig: Record<string, { color: string; icon: React.ReactNode; label
   CANCELLED: { color: 'bg-gray-100 text-gray-800', icon: <Ban className="w-4 h-4" />, label: 'Cancelled' },
 };
 
+const canApproveOrReject = (status: string) => status === 'PENDING' || status === 'WAITLISTED';
+const canWaitlist = (status: string) => status === 'PENDING';
+
 export default function AdminEnrollmentPage() {
   const { user } = useAuth();
+  const { formatDate: formatSchoolDate } = useAcademicYear();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<EnrollmentStats | null>(null);
   const [requests, setRequests] = useState<EnrollmentRequest[]>([]);
@@ -212,13 +224,7 @@ export default function AdminEnrollmentPage() {
     setApproveDialogOpen(true);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-ET', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const formatEnrollmentDate = (dateString: string) => formatSchoolDate(dateString);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
@@ -345,24 +351,34 @@ export default function AdminEnrollmentPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {formatDate(request.createdAt)}
+                          {formatEnrollmentDate(request.createdAt)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleViewDetails(request)}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            {request.status === 'PENDING' && (
-                              <>
-                                <Button variant="ghost" size="sm" onClick={() => openApproveDialog(request)}>
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => openRejectDialog(request)}>
-                                  <XCircle className="w-4 h-4 text-red-500" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="w-4 h-4 text-gray-900 dark:text-white" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(request)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              {canApproveOrReject(request.status) && (
+                                <>
+                                  <DropdownMenuItem onClick={() => openApproveDialog(request)}>
+                                    <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                                    Approve
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openRejectDialog(request)}>
+                                    <XCircle className="w-4 h-4 mr-2 text-red-500" />
+                                    Reject
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -411,7 +427,7 @@ export default function AdminEnrollmentPage() {
                 </h3>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div><span className="text-gray-500">Name:</span> {selectedRequest.firstName} {selectedRequest.middleName} {selectedRequest.lastName}</div>
-                  <div><span className="text-gray-500">DOB:</span> {formatDate(selectedRequest.dateOfBirth)}</div>
+                  <div><span className="text-gray-500">DOB:</span> {formatEnrollmentDate(selectedRequest.dateOfBirth)}</div>
                   <div><span className="text-gray-500">Gender:</span> {selectedRequest.gender}</div>
                   <div><span className="text-gray-500">Fayda Number (FAN):</span> {selectedRequest.faydaNumber || '-'}</div>
                   <div><span className="text-gray-500">Nationality:</span> {selectedRequest.nationality || '-'}</div>
@@ -467,17 +483,23 @@ export default function AdminEnrollmentPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
-            {selectedRequest?.status === 'PENDING' && (
+            {selectedRequest && (canWaitlist(selectedRequest.status) || canApproveOrReject(selectedRequest.status)) && (
               <>
-                <Button variant="outline" onClick={() => { setViewDialogOpen(false); handleWaitlist(selectedRequest); }}>
-                  Add to Waitlist
-                </Button>
-                <Button variant="destructive" onClick={() => { setViewDialogOpen(false); openRejectDialog(selectedRequest); }}>
-                  Reject
-                </Button>
-                <Button onClick={() => { setViewDialogOpen(false); openApproveDialog(selectedRequest); }}>
-                  Approve
-                </Button>
+                {canWaitlist(selectedRequest.status) && (
+                  <Button variant="outline" onClick={() => { setViewDialogOpen(false); handleWaitlist(selectedRequest); }}>
+                    Add to Waitlist
+                  </Button>
+                )}
+                {canApproveOrReject(selectedRequest.status) && (
+                  <>
+                    <Button variant="destructive" onClick={() => { setViewDialogOpen(false); openRejectDialog(selectedRequest); }}>
+                      Reject
+                    </Button>
+                    <Button onClick={() => { setViewDialogOpen(false); openApproveDialog(selectedRequest); }}>
+                      Approve
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </DialogFooter>

@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "@/hooks/useTranslations";
-import { academicYearsAPI, financeAPI } from "@/lib/api";
+import { academicYearsAPI, financeAPI, schoolSettingsAPI } from "@/lib/api";
 import { gradingAPI } from "@/lib/api/assessment";
 import { parentDashboardAPI } from "@/lib/api/parent";
 import { reportCardsAPI } from "@/lib/api/reporting";
 import { resolveAssetUrl } from "@/lib/asset-url";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { toEthiopianDate, toGregorianDate } from "@/utils/date";
 import { useSchoolFeatureSetting } from "@/hooks/useSchoolFeatureSetting";
 import {
   User,
@@ -81,7 +82,11 @@ interface Child {
   feeBalance: number;
   totalPaid: number;
   totalDue: number;
+  totalDiscount: number;
+  discountPercent?: number;
+  discountLabel?: string | null;
   feePeriods?: FeePeriodSummary[];
+  curriculumType?: string;
   photoUrl?: string | null;
   avatarUrl?: string | null;
   reportCard: {
@@ -107,6 +112,9 @@ interface FeePeriodSummary {
   totalDue: number;
   totalPaid: number;
   balance: number;
+  discount: number;
+  discountPercent?: number;
+  discountLabel?: string | null;
 }
 
 interface TopRankChild {
@@ -143,53 +151,167 @@ const getInstallmentNumber = (feeType?: string | null) => {
   return match ? Number(match[1]) : null;
 };
 
-const buildFeePeriodSummary = (feeData: any): FeePeriodSummary[] => {
+const buildFeePeriodSummary = (
+  feeData: any,
+  calendarType: "ETHIOPIAN" | "GREGORIAN" = "ETHIOPIAN",
+  currentTerm?: any,
+  academicYear?: any
+): FeePeriodSummary[] => {
   const terms = Array.isArray(feeData?.terms) ? feeData.terms : [];
   const feeItems = Array.isArray(feeData?.feeItems) ? feeData.feeItems : [];
   const payments = Array.isArray(feeData?.payments) ? feeData.payments : [];
-  const monthlyTitles = Array.from({ length: 12 }, (_, index) => `Month ${index + 1}`);
+
+  const ETHIOPIAN_MONTH_NAMES = [
+    'Meskerem', 'Tikemet', 'Hidar', 'Tahsas', 'Ter', 'Yekatit',
+    'Megabit', 'Miyazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume',
+  ];
+
+  const GREGORIAN_MONTH_NAMES = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const getMonthTitles = (period: any) => {
+    if (!period?.startDate || !period?.endDate) {
+      if (calendarType === "ETHIOPIAN") {
+        return ETHIOPIAN_MONTH_NAMES.slice(0, 12);
+      } else {
+        const months: string[] = [];
+        for (let i = 0; i < 12; i++) {
+          months.push(GREGORIAN_MONTH_NAMES[(8 + i) % 12]);
+        }
+        return months;
+      }
+    }
+
+    const startDate = new Date(period.startDate);
+    const endDate = new Date(period.endDate);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      if (calendarType === "ETHIOPIAN") {
+        return ETHIOPIAN_MONTH_NAMES.slice(0, 12);
+      } else {
+        const months: string[] = [];
+        for (let i = 0; i < 12; i++) {
+          months.push(GREGORIAN_MONTH_NAMES[(8 + i) % 12]);
+        }
+        return months;
+      }
+    }
+
+    const titles: string[] = [];
+
+    if (calendarType === "ETHIOPIAN") {
+      const startEth = toEthiopianDate(startDate);
+      const endEth = toEthiopianDate(endDate);
+      
+      let currentMonth = startEth.month;
+      let currentYear = startEth.year;
+      const endMonth = endEth.month;
+      const endYear = endEth.year;
+
+      while (
+        currentYear < endYear || 
+        (currentYear === endYear && currentMonth <= endMonth)
+      ) {
+        titles.push(ETHIOPIAN_MONTH_NAMES[currentMonth - 1]);
+        currentMonth++;
+        if (currentMonth > 13) {
+          currentMonth = 1;
+          currentYear++;
+        }
+        if (titles.length >= 12) break;
+      }
+    } else {
+      let current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      const targetEnd = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+
+      while (current <= targetEnd && titles.length < 12) {
+        titles.push(GREGORIAN_MONTH_NAMES[current.getMonth()]);
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
+
+    return titles.length ? titles : (calendarType === "ETHIOPIAN" ? ETHIOPIAN_MONTH_NAMES.slice(0, 12) : GREGORIAN_MONTH_NAMES);
+  };
+
+  const allYearMonths = getMonthTitles(academicYear);
+  const currentTermMonths = getMonthTitles(currentTerm);
+
   const billingMode = String(feeData?.curriculumType || "").toUpperCase();
-  const periodTitles = billingMode === "MONTHLY" || billingMode === "MONTH"
-    ? monthlyTitles
+  const isMonthly = billingMode === "MONTHLY" || billingMode === "MONTH";
+
+  const periodTitles = isMonthly
+    ? currentTermMonths
     : terms.length > 0
-    ? terms.map((term: any) => String(term.name || term.period || "Period"))
-    : monthlyTitles;
+    ? terms
+        .filter((t: any) => !currentTerm || String(t.id || t.termId || t.name) === String(currentTerm.id))
+        .map((term: any) => String(term.name || term.period || "Period"))
+    : currentTermMonths;
 
   if (periodTitles.length === 0) {
     return [];
   }
 
   return periodTitles.map((termName: string, index: number) => {
-    const term = terms[index];
-    const termId = String(term?.id || term?.termId || termName);
+    const term = terms.find((t: any) => String(t.id || t.termId || t.name) === String(currentTerm?.id)) || terms[index];
+    const termId = term ? String(term.id || term.termId || termName) : termName;
     let totalDue = 0;
+    let discount = 0;
+    let discountPercent = 0;
+    let discountLabel: string | null = null;
 
     for (const item of feeItems) {
-      const amount = Number(item.amount) || 0;
-      const installmentNumber = getInstallmentNumber(item.name || item.category);
-      const installmentTitle = installmentNumber ? periodTitles[installmentNumber - 1] : null;
+      const amount = Number(item.finalAmount ?? item.amount) || 0;
+      const itemDiscount = Number(item.discount) || 0;
+      const itemInstallmentNumber = getInstallmentNumber(item.name || item.category);
 
-      if (item.isYearWide && !installmentNumber) {
+      let isMatch = false;
+      if (isMonthly && itemInstallmentNumber) {
+        const monthForInstallment = allYearMonths[itemInstallmentNumber - 1];
+        if (monthForInstallment === termName) {
+          isMatch = true;
+        }
+      } else if (!isMonthly && (item.termId === termId || item.termName === termName)) {
+        isMatch = true;
+      } else if (item.isYearWide && !itemInstallmentNumber) {
         totalDue += amount / periodTitles.length;
-      } else if (item.termId === termId || item.termName === termName || installmentTitle === termName) {
+        discount += itemDiscount / periodTitles.length;
+      }
+
+      if (isMatch) {
         totalDue += amount;
+        discount += itemDiscount;
+      }
+
+      if ((isMatch || item.isYearWide) && itemDiscount > 0) {
+        discountPercent = Number(item.discountPercent) || discountPercent;
+        discountLabel = item.discountLabel || discountLabel;
       }
     }
 
     const totalPaid = payments
       .filter((payment: any) => {
-        const installmentNumber = getInstallmentNumber(payment.feeItemName);
-        const installmentTitle = installmentNumber ? periodTitles[installmentNumber - 1] : null;
-        return payment.termId === termId || payment.termName === termName || installmentTitle === termName;
+        const paymentInstallmentNumber = getInstallmentNumber(payment.feeItemName);
+
+        if (isMonthly && paymentInstallmentNumber) {
+          const monthForInstallment = allYearMonths[paymentInstallmentNumber - 1];
+          return monthForInstallment === termName;
+        } else {
+          return payment.termId === termId || payment.termName === termName;
+        }
       })
       .reduce((sum: number, payment: any) => sum + (Number(payment.amount) || 0), 0);
 
     return {
-      id: termId,
+      id: `${termId}-${termName}-${index}`,
       name: termName,
       totalDue: Math.round(totalDue * 100) / 100,
       totalPaid: Math.round(totalPaid * 100) / 100,
       balance: Math.max(0, Math.round((totalDue - totalPaid) * 100) / 100),
+      discount: Math.round(discount * 100) / 100,
+      discountPercent,
+      discountLabel,
     };
   });
 };
@@ -197,6 +319,8 @@ const buildFeePeriodSummary = (feeData: any): FeePeriodSummary[] => {
 interface AcademicYear {
   id: string;
   name: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface DashboardData {
@@ -382,13 +506,15 @@ const ParentDashboard = () => {
     };
     return map[statusText] || statusText;
   };
-  const { currentTerm, displayTermName, periodLabel, formatDate } = useAcademicYear();
+  const { currentTerm, displayTermName, periodLabel, formatDate, schoolCalendarType } = useAcademicYear();
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [studentDropdownOpen, setStudentDropdownOpen] = useState(false);
+  const [feeDeadlineDay, setFeeDeadlineDay] = useState(15);
+  const [dailyPenaltyAmount, setDailyPenaltyAmount] = useState(0);
   
   // Grade-related state
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
@@ -442,6 +568,28 @@ const ParentDashboard = () => {
         setSelectedYear(activeYearId);
         const activeYearName =
           years.find((year: any) => year.id === activeYearId)?.name || "";
+        const dashboardSchoolId =
+          data?.metadata?.schoolId ||
+          (data.stats?.children || []).find((child: Child) => (child as any).schoolId)?.schoolId;
+
+        if (dashboardSchoolId) {
+          try {
+            const settingsRes = await schoolSettingsAPI.getAll(dashboardSchoolId);
+            const settings = settingsRes.data || {};
+            const deadlineDay = Number(settings.fee_payment_due_day ?? 15);
+            const penaltyAmount = Number(settings.fee_daily_penalty_amount ?? 0);
+            setFeeDeadlineDay(
+              Number.isFinite(deadlineDay)
+                ? Math.min(31, Math.max(1, Math.floor(deadlineDay)))
+                : 15,
+            );
+            setDailyPenaltyAmount(
+              Number.isFinite(penaltyAmount) && penaltyAmount >= 0 ? penaltyAmount : 0,
+            );
+          } catch (settingsError) {
+            console.warn("Could not fetch fee penalty settings:", settingsError);
+          }
+        }
 
         const enhancedChildren = await Promise.all(
           (data.stats?.children || []).map(async (child: Child) => {
@@ -453,18 +601,29 @@ const ParentDashboard = () => {
             let feeBalance = 0;
             let totalPaid = 0;
             let totalDue = 0;
+            let totalDiscount = 0;
+            let discountPercent = 0;
+            let discountLabel: string | null = null;
+            let curriculumType: string | undefined;
             let feePeriods: FeePeriodSummary[] = [];
           
             if (schoolId && academicYearId) {
               try {
                 const feeResponse = await financeAPI.getStudentFees(child.id, schoolId, academicYearId);
                 const feeData = feeResponse.data;
+                curriculumType = feeData?.curriculumType;
                 if (feeData.summary) {
                   feeBalance = feeData.summary.totalBalance || 0;
                   totalPaid = feeData.summary.totalPaid || 0;
                   totalDue = feeData.summary.totalFees || 0;
                 }
-                feePeriods = buildFeePeriodSummary(feeData);
+                const feeItems = Array.isArray(feeData?.feeItems) ? feeData.feeItems : [];
+                totalDiscount = feeItems.reduce((sum: number, item: any) => sum + (Number(item.discount) || 0), 0);
+                const discountedItem = feeItems.find((item: any) => Number(item.discount) > 0);
+                discountPercent = Number(discountedItem?.discountPercent) || 0;
+                discountLabel = discountedItem?.discountLabel || null;
+                const childAcademicYear = years.find((year: any) => year.id === academicYearId);
+                feePeriods = buildFeePeriodSummary(feeData, schoolCalendarType, currentTerm, childAcademicYear);
               } catch (feeError) {
                 console.error("Could not fetch fee data for child:", child.id, feeError);
               }
@@ -477,7 +636,11 @@ const ParentDashboard = () => {
               feeBalance,
               totalPaid,
               totalDue,
+              totalDiscount,
+              discountPercent,
+              discountLabel,
               feePeriods,
+              curriculumType,
               grades: Array.isArray(child.grades) ? child.grades : [],
               attendanceTrend: Array.isArray(child.attendanceTrend)
                 ? child.attendanceTrend
@@ -627,6 +790,8 @@ const ParentDashboard = () => {
     : undefined;
   const canSelectedChildViewGrades =
     parentGradesEnabled && selectedChildGradeAccess?.canView !== false;
+  const gradesLockedForPayment =
+    parentGradesEnabled && selectedChildGradeAccess?.canView === false;
   const grades = selectedChildId ? childGrades[selectedChildId] || [] : [];
   const averageScore = calculateAverage(grades);
   const gpa = calculateGPA(grades);
@@ -637,8 +802,110 @@ const ParentDashboard = () => {
   
   const overallGrade = hasGrades ? gpa : (selectedChild?.overallGrade || "N/A");
   const feeBalance = selectedChild?.feeBalance || 0;
+  const totalDiscount = selectedChild?.totalDiscount || 0;
+  const discountPercent = selectedChild?.discountPercent || 0;
+  const discountLabel = selectedChild?.discountLabel || "Family discount";
   const upcomingExams = selectedChild?.upcomingExams || 0;
   const selectedChildPhotoSrc = resolveAssetUrl(selectedChild?.photoUrl || selectedChild?.avatarUrl);
+  const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
+
+  const buildDueDateFromPeriodStart = (periodStart: Date) => {
+    if (Number.isNaN(periodStart.getTime())) return null;
+
+    if (schoolCalendarType === "ETHIOPIAN") {
+      const etPeriodStart = toEthiopianDate(periodStart);
+      let etDay = Math.min(feeDeadlineDay, 30);
+      while (etDay > 0) {
+        try {
+          return new Date(
+            toGregorianDate({
+              year: etPeriodStart.year,
+              month: etPeriodStart.month,
+              day: etDay,
+            }).setHours(23, 59, 59, 999),
+          );
+        } catch {
+          etDay -= 1;
+        }
+      }
+
+      return new Date(
+        toGregorianDate({
+          year: etPeriodStart.year,
+          month: etPeriodStart.month,
+          day: 1,
+        }).setHours(23, 59, 59, 999),
+      );
+    }
+
+    const lastDayOfMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 0).getDate();
+    return new Date(
+      periodStart.getFullYear(),
+      periodStart.getMonth(),
+      Math.min(feeDeadlineDay, lastDayOfMonth),
+      23,
+      59,
+      59,
+      999,
+    );
+  };
+
+  const getMonthlyDueDateFromRange = (
+    periodTitle: string,
+    range?: { startDate?: string; endDate?: string } | null,
+  ) => {
+    if (!range?.startDate) return null;
+    const startDate = new Date(range.startDate);
+    if (Number.isNaN(startDate.getTime())) return null;
+    const endDate = range.endDate ? new Date(range.endDate) : null;
+
+    for (let index = 0; index < 12; index++) {
+      const monthDate = new Date(startDate);
+      monthDate.setMonth(startDate.getMonth() + index);
+      if (endDate && monthDate > endDate) break;
+      const label = formatDate(monthDate).replace(/\s+\d{1,2},/, "");
+      if (label === periodTitle || label.startsWith(`${periodTitle} `)) {
+        return buildDueDateFromPeriodStart(monthDate);
+      }
+    }
+
+    return null;
+  };
+
+  const getMonthlyDueDate = (periodTitle: string) =>
+    getMonthlyDueDateFromRange(periodTitle, currentTerm) ||
+    getMonthlyDueDateFromRange(periodTitle, selectedAcademicYear);
+
+  const getPeriodPenalty = (periodTitle: string, balance: number) => {
+    if (balance <= 0 || dailyPenaltyAmount <= 0) {
+      return { daysLate: 0, penalty: 0 };
+    }
+
+    const billingMode = String(selectedChild?.curriculumType || "").toUpperCase();
+    const normalizedMode = billingMode === "MONTH" ? "MONTHLY" : billingMode;
+    let dueDate: Date | null = null;
+
+    if (normalizedMode === "MONTHLY") {
+      dueDate = getMonthlyDueDate(periodTitle);
+    } else if (currentTerm?.startDate && currentTerm.name === periodTitle) {
+      dueDate = buildDueDateFromPeriodStart(new Date(currentTerm.startDate));
+    }
+
+    if (!dueDate) return { daysLate: 0, penalty: 0 };
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueDayStart = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+    const daysLate = Math.max(
+      0,
+      Math.floor((todayStart.getTime() - dueDayStart.getTime()) / (24 * 60 * 60 * 1000)),
+    );
+
+    return {
+      daysLate,
+      penalty: Math.round(daysLate * dailyPenaltyAmount * 100) / 100,
+    };
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
@@ -840,6 +1107,11 @@ const ParentDashboard = () => {
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.gpa}</p>
                 {gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
+                ) : gradesLockedForPayment ? (
+                  <>
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1.5">Not paid</p>
+                    <span className="text-xs text-amber-600 dark:text-amber-400">Results locked</span>
+                  </>
                 ) : hasGrades ? (
                   <>
                     <p className={`text-2xl font-bold mt-1.5 ${getGPAColor(parseFloat(gpa))}`}>{gpa}</p>
@@ -864,6 +1136,8 @@ const ParentDashboard = () => {
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.avgScore}</p>
                 {gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
+                ) : gradesLockedForPayment ? (
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1.5">Not paid</p>
                 ) : hasGrades ? (
                   <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{averageScore}%</p>
                 ) : (
@@ -885,7 +1159,14 @@ const ParentDashboard = () => {
                   {feeBalance.toLocaleString()} Br
                 </p>
                 <div className="flex items-center gap-1 mt-1">
-                  {feeBalance > 0 ? (
+                  {totalDiscount > 0 ? (
+                    <>
+                      <CheckCircle className="w-3 h-3 text-emerald-500" />
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                        {discountPercent ? `${discountPercent}% ` : ""}{discountLabel}
+                      </span>
+                    </>
+                  ) : feeBalance > 0 ? (
                     <>
                       <AlertCircle className="w-3 h-3 text-amber-500" />
                       <span className="text-xs text-amber-600 dark:text-amber-400">{t.due}</span>
@@ -962,20 +1243,39 @@ const ParentDashboard = () => {
               <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.feeSummary}</h3>
               <div className="space-y-3">
                 {selectedChild?.feePeriods?.length ? (
-                  selectedChild.feePeriods.map((period) => (
-                    <div key={period.id} className="border-b border-slate-100 dark:border-slate-700 pb-3 last:border-0 last:pb-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-slate-900 dark:text-white">{period.name}</span>
-                        <span className={`text-sm font-bold ${period.balance > 0 ? "text-amber-600" : "text-emerald-600"}`}>
-                          {formatBirr(period.balance)}
-                        </span>
+                  selectedChild.feePeriods.map((period, index) => {
+                    const periodPenalty = getPeriodPenalty(period.name, period.balance);
+                    return (
+                      <div key={`${period.id}-${index}`} className="border-b border-slate-100 dark:border-slate-700 pb-3 last:border-0 last:pb-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-slate-900 dark:text-white">{period.name}</span>
+                          <span className={`text-sm font-bold ${period.balance > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                            {formatBirr(period.balance + periodPenalty.penalty)}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                          <span>{t.paidLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalPaid)}</strong></span>
+                          <span>{t.dueLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalDue)}</strong></span>
+                          {periodPenalty.penalty > 0 && (
+                            <span className="text-red-600 dark:text-red-400">
+                              Penalty <strong>{formatBirr(periodPenalty.penalty)}</strong> ({periodPenalty.daysLate} days)
+                            </span>
+                          )}
+                        </div>
+                        {periodPenalty.penalty > 0 && (
+                          <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">
+                            Overdue: {formatBirr(period.balance)} balance + {formatBirr(periodPenalty.penalty)} penalty
+                          </p>
+                        )}
+                        {period.discount > 0 && (
+                          <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                            {period.discountLabel || "Family discount"}
+                            {period.discountPercent ? ` (${period.discountPercent}%)` : ""}: -{formatBirr(period.discount)}
+                          </p>
+                        )}
                       </div>
-                      <div className="flex gap-4 text-xs text-slate-500">
-                        <span>{t.paidLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalPaid)}</strong></span>
-                        <span>{t.dueLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalDue)}</strong></span>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600 dark:text-slate-300">{t.balance}</span>
@@ -985,6 +1285,11 @@ const ParentDashboard = () => {
                   </div>
                 )}
               </div>
+              {totalDiscount > 0 && (
+                <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                  {discountLabel}{discountPercent ? ` (${discountPercent}%)` : ""} applied: -{formatBirr(totalDiscount)}
+                </p>
+              )}
               {(selectedChild?.totalDue || 0) > 0 && (
                 <Button className="w-full mt-4 bg-blue-900 hover:bg-blue-800 text-white">
                   {t.payNow}

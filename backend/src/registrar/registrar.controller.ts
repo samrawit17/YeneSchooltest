@@ -90,6 +90,10 @@ export class RegistrarController {
       stream?: string | null;
       address?: string;
       phone?: string;
+      motherName?: string;
+      motherPhone?: string;
+      dateOfBirth?: string;
+      faydaNumber?: string | null;
       emergencyContact?: {
         name: string;
         phone: string;

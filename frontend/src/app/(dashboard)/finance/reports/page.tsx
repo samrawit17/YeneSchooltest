@@ -15,10 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FormattedDate } from "@/components/ui/FormattedDate";
 import {
-  Download, DollarSign, Receipt, TriangleAlert, Users, Send, History, Clock,
+  Download, DollarSign, FileText, TriangleAlert, Users, Send, History, Clock,
   TrendingUp, Search, Filter, ChevronDown, BarChart3, PieChart,
   CheckCircle2, XCircle, AlertTriangle, Wallet, ArrowUpRight,
-  Banknote, CreditCard, Calendar, MoreHorizontal, FileText
+  Banknote, CreditCard, Calendar, MoreHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
 import { convertToEthiopian, formatDateByCalendarType } from "@/lib/calendar-utils";
@@ -42,6 +42,8 @@ interface Term {
 interface PaymentRow {
   id: string;
   receiptNumber: string;
+  paymentReference?: string;
+  transactionReference?: string | null;
   studentName?: string;
   grade?: string | null;
   section?: string | null;
@@ -66,6 +68,23 @@ interface OutstandingRow {
   paid: number;
   remaining: number;
   status: "PAID" | "PARTIAL" | "PENDING" | "UNPAID";
+}
+
+type PayrollRunStatus = "DRAFT" | "APPROVED" | "PAID" | "CANCELLED";
+
+interface PayrollRunRow {
+  id: string;
+  title: string;
+  periodMonth: number;
+  periodYear: number;
+  status: PayrollRunStatus;
+  grossAmount: number;
+  deductionsAmount: number;
+  netAmount: number;
+  entryCount: number;
+  paymentDate?: string | null;
+  paidAt?: string | null;
+  createdAt?: string | null;
 }
 
 interface SummaryState {
@@ -178,6 +197,9 @@ const statusBadgeClasses: Record<string, string> = {
   UNPAID: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800",
   PENDING: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
   OVERDUE: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800",
+  DRAFT: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
+  APPROVED: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
+  CANCELLED: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800",
 };
 
 const methodBadgeClasses: Record<string, string> = {
@@ -213,6 +235,7 @@ export default function FinanceReportsPage() {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [outstandingRows, setOutstandingRows] = useState<OutstandingRow[]>([]);
   const [overdueRows, setOverdueRows] = useState<any[]>([]);
+  const [payrollRuns, setPayrollRuns] = useState<PayrollRunRow[]>([]);
 
   useEffect(() => {
     const loadYears = async () => {
@@ -237,12 +260,19 @@ export default function FinanceReportsPage() {
   const loadAuditLogs = useCallback(async () => {
     if (!user?.schoolId) return;
     try {
-      const response = await financeAPI.getAuditLogs(user.schoolId, undefined, undefined, 50);
+      const response = await financeAPI.getAuditLogs(
+        user.schoolId,
+        undefined,
+        undefined,
+        100,
+        toDateInputValue(fromDate),
+        toDateInputValue(toDate),
+      );
       setAuditLogs(response.data?.data || []);
     } catch (e) {
       console.error('Failed to load audit logs');
     }
-  }, [user?.schoolId]);
+  }, [fromDate, toDate, user?.schoolId]);
 
   useEffect(() => {
     if (activeTab === 'audit') {
@@ -286,7 +316,7 @@ export default function FinanceReportsPage() {
     setLoading(true);
     try {
       const termId = selectedTerm !== "all" ? selectedTerm : undefined;
-      const [summaryResponse, paymentsResponse, outstandingResponse] = await Promise.all([
+      const [summaryResponse, paymentsResponse, outstandingResponse, payrollResponse] = await Promise.all([
         financeAPI.getDailyReport({
           schoolId: user.schoolId,
           academicYearId: selectedYear,
@@ -301,12 +331,14 @@ export default function FinanceReportsPage() {
           termId,
           user.calendarType,
         ),
+        financeAPI.getPayrollRuns({ schoolId: user.schoolId }),
       ]);
 
       const summaryData = summaryResponse.data || {};
       const allPayments: PaymentRow[] = paymentsResponse.data?.payments || [];
       const paymentRows: PaymentRow[] = allPayments;
       const outstanding: OutstandingRow[] = outstandingResponse.data?.rows || [];
+      const payroll: PayrollRunRow[] = payrollResponse.data?.runs || [];
       const paidStudents = Number(summaryData.paidStudents || 0);
       const partialStudents = Number(summaryData.partialStudents || 0);
       const unpaidStudents = Number(summaryData.unpaidStudents || 0);
@@ -326,6 +358,7 @@ export default function FinanceReportsPage() {
         ),
       );
       setOutstandingRows(outstanding);
+      setPayrollRuns(payroll);
     } catch (error) {
       console.error("Failed to load finance reports", error);
       toast.error("Failed to load finance reports");
@@ -360,7 +393,8 @@ export default function FinanceReportsPage() {
     if (!search) return dateFilteredPayments;
     return dateFilteredPayments.filter((payment) =>
       [
-        payment.receiptNumber,
+        payment.transactionReference,
+        payment.paymentReference || payment.receiptNumber,
         payment.studentName,
         payment.grade,
         payment.section,
@@ -419,6 +453,70 @@ export default function FinanceReportsPage() {
     );
   }, [displayedOutstanding, outstandingSearch]);
 
+  const displayedPayrollRuns = useMemo(() => {
+    const calendarType = user?.calendarType || "ETHIOPIAN";
+    const start = fromDate ? new Date(fromDate) : undefined;
+    const end = toDate ? new Date(toDate) : undefined;
+    start?.setHours(0, 0, 0, 0);
+    end?.setHours(23, 59, 59, 999);
+
+    return payrollRuns
+      .filter((run) => {
+        const reportDate = run.paymentDate || run.paidAt || run.createdAt;
+        if (!reportDate) return !start && !end;
+        const parsedDate = new Date(reportDate);
+        if (Number.isNaN(parsedDate.getTime())) return false;
+        if (start && parsedDate < start) return false;
+        if (end && parsedDate > end) return false;
+        return true;
+      })
+      .map((run) => ({
+        ...run,
+        displaySalaryMonth: new Date(run.periodYear, run.periodMonth - 1, 1).toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+        }),
+        displayPaymentDate: run.paymentDate ? formatDateByCalendarType(run.paymentDate, calendarType) : "Not scheduled",
+        displayPaidAt: run.paidAt ? formatDateByCalendarType(run.paidAt, calendarType) : "Not paid",
+      }));
+  }, [fromDate, payrollRuns, toDate, user?.calendarType]);
+
+  const payrollReport = useMemo(() => {
+    return displayedPayrollRuns.reduce(
+      (totals, run) => {
+        if (run.status !== "CANCELLED") {
+          totals.totalGross += Number(run.grossAmount || 0);
+          totals.totalDeductions += Number(run.deductionsAmount || 0);
+          totals.totalNet += Number(run.netAmount || 0);
+          totals.staffEntries += Number(run.entryCount || 0);
+        }
+        if (run.status === "PAID") {
+          totals.paidNet += Number(run.netAmount || 0);
+          totals.paidRuns += 1;
+        }
+        if (run.status === "APPROVED") {
+          totals.pendingNet += Number(run.netAmount || 0);
+          totals.pendingRuns += 1;
+        }
+        if (run.status === "DRAFT") {
+          totals.draftRuns += 1;
+        }
+        return totals;
+      },
+      {
+        totalGross: 0,
+        totalDeductions: 0,
+        totalNet: 0,
+        paidNet: 0,
+        pendingNet: 0,
+        staffEntries: 0,
+        paidRuns: 0,
+        pendingRuns: 0,
+        draftRuns: 0,
+      },
+    );
+  }, [displayedPayrollRuns]);
+
   const handleExport = () => {
     const calendarType = user?.calendarType || "ETHIOPIAN";
     const dateSuffix = fromDate || toDate
@@ -438,9 +536,10 @@ export default function FinanceReportsPage() {
 
     if (activeTab === "payments") {
       downloadCsv(`finance-payments-${dateSuffix}.csv`, [
-        ["Receipt", "Student", "Class", "Section", "Amount Paid", "Method", "Date", "Recorded By", "Fee Period"],
+        ["Bank Reference", "Payment Reference", "Student", "Class", "Section", "Amount Paid", "Method", "Date", "Recorded By", "Fee Period"],
         ...displayedPayments.map((payment) => [
-          payment.receiptNumber,
+          payment.transactionReference || "N/A",
+          payment.paymentReference || payment.receiptNumber,
           payment.studentName || "N/A",
           payment.grade || "N/A",
           payment.section || "N/A",
@@ -449,6 +548,24 @@ export default function FinanceReportsPage() {
           payment.displayPaymentDate,
           payment.recordedBy || "N/A",
           payment.displayPaymentPeriod,
+        ]),
+      ]);
+      return;
+    }
+
+    if (activeTab === "payroll") {
+      downloadCsv(`finance-payroll-${dateSuffix}.csv`, [
+        ["Title", "Salary Month", "Payment Date", "Paid At", "Gross", "Deductions", "Net", "Staff Entries", "Status"],
+        ...displayedPayrollRuns.map((run) => [
+          run.title,
+          run.displaySalaryMonth,
+          run.displayPaymentDate,
+          run.displayPaidAt,
+          run.grossAmount,
+          run.deductionsAmount,
+          run.netAmount,
+          run.entryCount,
+          run.status,
         ]),
       ]);
       return;
@@ -615,7 +732,7 @@ export default function FinanceReportsPage() {
                   <span>Revenue received</span>
                 </div>
               </CardContent>
-              <Receipt className="absolute -right-3 -bottom-3 w-20 h-20 text-white/10" />
+              <FileText className="absolute -right-3 -bottom-3 w-20 h-20 text-white/10" />
             </Card>
 
             <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-rose-500 to-rose-600 text-white">
@@ -687,6 +804,13 @@ export default function FinanceReportsPage() {
               >
                 <Clock className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Overdue</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="payroll"
+                className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
+              >
+                <Wallet className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                <span>Payroll</span>
               </TabsTrigger>
               <TabsTrigger
                 value="audit"
@@ -884,7 +1008,7 @@ export default function FinanceReportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Receipt</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Payment Reference</TableHead>
                         <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Student</TableHead>
                         <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Class</TableHead>
                         <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Amount</TableHead>
@@ -899,7 +1023,7 @@ export default function FinanceReportsPage() {
                         <TableRow>
                           <TableCell colSpan={8} className="py-12 text-center">
                             <div className="flex flex-col items-center gap-2 text-slate-400">
-                              <Receipt className="h-8 w-8 opacity-40" />
+                              <FileText className="h-8 w-8 opacity-40" />
                               <p className="text-sm font-medium">No payments found</p>
                               <p className="text-xs">Try adjusting your search or filter criteria</p>
                             </div>
@@ -909,7 +1033,9 @@ export default function FinanceReportsPage() {
                         displayedPayments.map((payment) => (
                           <TableRow key={payment.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/40">
                             <TableCell className="py-3 px-4">
-                              <span className="font-mono text-xs font-medium text-slate-900 dark:text-white">{payment.receiptNumber}</span>
+                              <span className="font-mono text-xs font-medium text-slate-900 dark:text-white">
+                                {payment.transactionReference || payment.paymentReference || payment.receiptNumber}
+                              </span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
                               <span className="text-xs font-medium text-slate-900 dark:text-white">{payment.studentName || "N/A"}</span>
@@ -927,7 +1053,7 @@ export default function FinanceReportsPage() {
                               >
                                 {payment.paymentMethod === "CASH" && <Banknote className="mr-1 h-3 w-3" />}
                                 {payment.paymentMethod === "BANK_TRANSFER" && <CreditCard className="mr-1 h-3 w-3" />}
-                                {payment.paymentMethod === "CHEQUE" && <Receipt className="mr-1 h-3 w-3" />}
+                                {payment.paymentMethod === "CHEQUE" && <FileText className="mr-1 h-3 w-3" />}
                                 {payment.paymentMethod.replace(/_/g, " ")}
                               </Badge>
                             </TableCell>
@@ -1180,6 +1306,142 @@ export default function FinanceReportsPage() {
             </Card>
           </TabsContent>
 
+          {/* Payroll Tab */}
+          <TabsContent value="payroll" className="mt-6">
+            <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Paid Payroll</p>
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(payrollReport.paidNet)}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{payrollReport.paidRuns} paid runs in selected dates</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Approved Pending</p>
+                    <Clock className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(payrollReport.pendingNet)}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{payrollReport.pendingRuns} approved runs awaiting payment</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Payroll Net</p>
+                    <Wallet className="h-4 w-4 text-rose-500" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(payrollReport.totalNet)}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{payrollReport.staffEntries} staff entries across visible runs</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">After Paid Payroll</p>
+                    <ArrowUpRight className="h-4 w-4 text-slate-500" />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(summary.totalCollected - payrollReport.paidNet)}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Collected revenue minus paid salary outflow</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
+              <CardHeader className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+                <div>
+                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Payroll Report</CardTitle>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {displayedPayrollRuns.length} salary runs in view. Payroll is reported as a finance outflow.
+                  </p>
+                </div>
+                <Badge variant="outline" className="w-fit text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                  Gross {formatCurrency(payrollReport.totalGross)} - Deductions {formatCurrency(payrollReport.totalDeductions)}
+                </Badge>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Run</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Salary Month</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Payment Date</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Gross</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Deductions</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Net</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-center">Staff</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-center">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {displayedPayrollRuns.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="py-12 text-center">
+                            <div className="flex flex-col items-center gap-2 text-slate-400">
+                              <Wallet className="h-8 w-8 opacity-40" />
+                              <p className="text-sm font-medium">No payroll runs found</p>
+                              <p className="text-xs">Create payroll runs from Finance / Payroll, or adjust the report dates</p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        displayedPayrollRuns.map((run) => (
+                          <TableRow key={run.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/40">
+                            <TableCell className="py-3 px-4">
+                              <span className="text-xs font-medium text-slate-900 dark:text-white">{run.title || "Payroll Run"}</span>
+                              <span className="mt-0.5 block text-[11px] text-slate-500 dark:text-slate-400">{run.displayPaidAt}</span>
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <span className="text-xs text-slate-600 dark:text-slate-400">{run.displaySalaryMonth}</span>
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <span className="text-xs text-slate-600 dark:text-slate-400">{run.displayPaymentDate}</span>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-right">
+                              <span className="text-xs font-medium text-slate-900 dark:text-white">{formatCurrency(run.grossAmount)}</span>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-right">
+                              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">{formatCurrency(run.deductionsAmount)}</span>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-right">
+                              <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{formatCurrency(run.netAmount)}</span>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-center">
+                              <Badge variant="outline" className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                <Users className="mr-1 h-3 w-3" />
+                                {run.entryCount}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-center">
+                              <Badge
+                                variant="outline"
+                                className={`text-[11px] font-semibold ${statusBadgeClasses[run.status] || "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400"}`}
+                              >
+                                {run.status === "PAID" && <CheckCircle2 className="mr-1 h-3 w-3" />}
+                                {run.status === "APPROVED" && <Clock className="mr-1 h-3 w-3" />}
+                                {run.status === "DRAFT" && <FileText className="mr-1 h-3 w-3" />}
+                                {run.status === "CANCELLED" && <XCircle className="mr-1 h-3 w-3" />}
+                                {run.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Audit Logs Tab */}
           <TabsContent value="audit" className="mt-6">
             <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
@@ -1188,7 +1450,9 @@ export default function FinanceReportsPage() {
                   <History className="h-5 w-5 text-slate-400" />
                   Financial Audit Trail
                 </CardTitle>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Sequential log of all financial modifications and reversals</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Sequential log of all financial modifications and reversals for the selected calendar dates
+                </p>
               </CardHeader>
               <CardContent className="p-0">
                 {auditLogs.length === 0 ? (
@@ -1223,7 +1487,7 @@ export default function FinanceReportsPage() {
                               }`}>{log.action}</span>
                             </p>
                             <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
-                              {log.createdAt}
+                              {formatDateByCalendarType(log.createdAt, user?.calendarType || "ETHIOPIAN")}
                             </span>
                           </div>
                           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">

@@ -500,6 +500,7 @@ const Navbar = ({
         return <DollarSign className="w-4 h-4 text-red-500" />;
       case 'FEE_PAID':
       case 'PAYMENT_RECEIVED':
+      case 'PAYROLL_PAYMENT_DUE':
         return <CreditCard className="w-4 h-4 text-green-600" />;
 
       // System notifications
@@ -522,17 +523,13 @@ const Navbar = ({
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const handleLogout = () => {
@@ -638,7 +635,7 @@ const Navbar = ({
                   <Calendar className="h-5 w-5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[min(92vw,360px)] p-2 bg-white dark:bg-gray-800" align="start">
+              <PopoverContent className="w-[min(92vw,360px)] p-2 bg-white dark:bg-gray-800 ml-4" align="start">
                 <WeeklyCalendar events={events} onEventClick={() => { setMobileCalendarOpen(false); router.push('/list/calendar'); }} />
               </PopoverContent>
             </Popover>
@@ -667,7 +664,7 @@ const Navbar = ({
                       </div>
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[360px] max-w-[92vw] p-2 sm:p-3 bg-white dark:bg-gray-800" align="center">
+                  <PopoverContent className="w-[360px] max-w-[92vw] p-2 sm:p-3 bg-white dark:bg-gray-800 ml-4" align="center">
                     <WeeklyCalendar events={events} onEventClick={() => { setCalendarOpen(false); router.push('/list/calendar'); }} />
                   </PopoverContent>
                 </Popover>
