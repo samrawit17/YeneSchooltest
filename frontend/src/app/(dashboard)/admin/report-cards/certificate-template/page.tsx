@@ -107,7 +107,7 @@ export default function CertificateTemplatePage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }

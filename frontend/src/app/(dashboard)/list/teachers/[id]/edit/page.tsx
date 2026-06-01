@@ -306,7 +306,7 @@ export default function EditTeacherPage() {
     return (
       <div className="flex-1 p-6 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
           <p className="text-gray-600 font-medium">Loading teacher data...</p>
         </div>
       </div>

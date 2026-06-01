@@ -473,7 +473,7 @@ const menuItems: MenuSection[] = [
         label: "Children Grades",
         href: "/parent/grades",
         visible: ["parent"],
-        schoolSettingFlag: "PARENT_VIEW_GRADES",
+        schoolSettingFlag: "parent_view_grades",
         subscriptionFeature: "REPORT_CARDS",
       },
       {

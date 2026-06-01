@@ -142,10 +142,35 @@ const BigCalendar = ({
     return moment(date).format('MMM D');
   };
 
-  // Day style getter for today highlight
+  // Day style getter for today and attendance-state highlights
   const getDayStyle = (date: Date) => {
     const isToday = new Date().toDateString() === date.toDateString();
     const isDark = document.documentElement.classList.contains('dark');
+    const dateKey = moment(date).format("YYYY-MM-DD");
+    const attendancePriority: Record<string, number> = {
+      ATTENDANCE_ABSENT: 4,
+      ATTENDANCE_LATE: 3,
+      ATTENDANCE_EXCUSED: 2,
+      ATTENDANCE_PRESENT: 1,
+    };
+    const dayAttendanceType = calendarEvents.reduce<string | null>((selected, event) => {
+      const eventType = event.resource?.eventType || "";
+      if (!eventType.startsWith("ATTENDANCE_")) return selected;
+      if (moment(event.start).format("YYYY-MM-DD") !== dateKey) return selected;
+
+      const selectedPriority = selected ? attendancePriority[selected] || 0 : 0;
+      const eventPriority = attendancePriority[eventType] || 0;
+      return eventPriority > selectedPriority ? eventType : selected;
+    }, null);
+
+    if (dayAttendanceType === "ATTENDANCE_ABSENT") {
+      return {
+        style: {
+          backgroundColor: isDark ? "rgba(220, 38, 38, 0.24)" : "rgba(254, 226, 226, 0.9)",
+        },
+      };
+    }
+
     return {
       style: isToday ? {
         backgroundColor: isDark ? "rgba(var(--brand-color-rgb), 0.2)" : "rgba(var(--brand-color-rgb), 0.1)",

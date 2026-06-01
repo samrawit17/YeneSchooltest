@@ -282,7 +282,7 @@ export default function NewMessageModal({
                   className="w-full cursor-pointer rounded-xl border-0 bg-slate-100 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:bg-slate-700 dark:text-white"
                 />
                 {loadingStudents && (
-                  <Loader2 className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-slate-400" />
+                  <Loader2 className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-[var(--brand-color,#e35336)]" />
                 )}
                 {!loadingStudents && isTeacher && allStudents.length > 0 && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-400 dark:bg-slate-600">

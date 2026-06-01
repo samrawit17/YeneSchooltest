@@ -169,7 +169,7 @@ const ClassStudentsPage = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 animate-spin text-[#e35336]" />
+          <Loader2 className="w-12 h-12 animate-spin text-[var(--brand-color,#e35336)]" />
           <p className="text-gray-500 dark:text-gray-400">Loading students...</p>
         </div>
       </div>

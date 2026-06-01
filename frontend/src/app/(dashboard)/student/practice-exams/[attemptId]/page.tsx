@@ -318,7 +318,7 @@ export default function PracticeExamAttemptPage() {
   };
 
   if (attemptQuery.isLoading) {
-    return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-500" /></div>;
+    return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" /></div>;
   }
 
   if (!attempt) {

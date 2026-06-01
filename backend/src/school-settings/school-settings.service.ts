@@ -93,6 +93,10 @@ export const SCHOOL_SETTING_KEYS = {
   REGISTRAR_PORTAL_ACCESS: 'REGISTRAR_PORTAL_ACCESS',
 } as const;
 
+const SCHOOL_SETTING_KEY_ALIASES: Record<string, string> = {
+  PARENT_VIEW_GRADES: SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES,
+};
+
 @Injectable()
 export class SchoolSettingsService {
   constructor(
@@ -187,7 +191,23 @@ export class SchoolSettingsService {
     return JSON.stringify(value);
   }
 
+  private canonicalizeSettingKey(key: string) {
+    return SCHOOL_SETTING_KEY_ALIASES[key] || key;
+  }
+
+  private getSettingKeyAliases(key: string) {
+    const canonicalKey = this.canonicalizeSettingKey(key);
+    return [
+      canonicalKey,
+      ...Object.entries(SCHOOL_SETTING_KEY_ALIASES)
+        .filter(([, value]) => value === canonicalKey)
+        .map(([alias]) => alias),
+    ];
+  }
+
   private normalizeSettingValue(key: string, value: any) {
+    key = this.canonicalizeSettingKey(key);
+
     if (this.booleanKeys.has(key)) {
       if (typeof value === 'boolean') return value;
       if (value === 'true' || value === 'false') return value === 'true';
@@ -484,18 +504,21 @@ export class SchoolSettingsService {
 
   // Get a single school setting by schoolId and key
   async getSetting(schoolId: string, key: string) {
+    const canonicalKey = this.canonicalizeSettingKey(key);
+    const keyAliases = this.getSettingKeyAliases(canonicalKey);
+
     return this.cacheService.getOrSet(
-      this.getSettingCacheKey(schoolId, key),
+      this.getSettingCacheKey(schoolId, canonicalKey),
       DEFAULT_CACHE_TTL_SECONDS,
       async () => {
-        const setting = await this.prisma.schoolSetting.findUnique({
+        const settings = await this.prisma.schoolSetting.findMany({
           where: {
-            schoolId_key: {
-              schoolId,
-              key,
-            },
+            schoolId,
+            key: { in: keyAliases },
           },
         });
+        const setting =
+          settings.find((item) => item.key === canonicalKey) || settings[0];
         return setting ? this.parseStoredValue(setting.value) : null;
       },
     );
@@ -512,7 +535,14 @@ export class SchoolSettingsService {
         });
         const result: Record<string, any> = {};
         for (const setting of settings) {
-          result[setting.key] = this.parseStoredValue(setting.value);
+          const canonicalKey = this.canonicalizeSettingKey(setting.key);
+          const parsedValue = this.parseStoredValue(setting.value);
+          if (result[canonicalKey] === undefined || canonicalKey === setting.key) {
+            result[canonicalKey] = parsedValue;
+          }
+          if (canonicalKey !== setting.key) {
+            result[setting.key] = parsedValue;
+          }
         }
         return result;
       },
@@ -521,18 +551,19 @@ export class SchoolSettingsService {
 
   // Upsert a school setting
   async setSetting(schoolId: string, key: string, value: any) {
-    const normalizedValue = this.normalizeSettingValue(key, value);
+    const canonicalKey = this.canonicalizeSettingKey(key);
+    const normalizedValue = this.normalizeSettingValue(canonicalKey, value);
     const serializedValue = this.serializeSettingValue(normalizedValue);
 
-    if (key === SCHOOL_SETTING_KEYS.CALENDAR_TYPE) {
+    if (canonicalKey === SCHOOL_SETTING_KEYS.CALENDAR_TYPE) {
       await this.validateCalendarTypeOneTimeChange(schoolId, normalizedValue);
     }
 
-    if (key === SCHOOL_SETTING_KEYS.GRADE_SYSTEM) {
+    if (canonicalKey === SCHOOL_SETTING_KEYS.GRADE_SYSTEM) {
       await this.validateGradeSystemOneTimeChange(schoolId, normalizedValue);
     }
 
-    if (key === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE) {
+    if (canonicalKey === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE) {
       await this.validateCurriculumTypeOneTimeChange(schoolId, normalizedValue);
     }
 
@@ -540,16 +571,25 @@ export class SchoolSettingsService {
       where: {
         schoolId_key: {
           schoolId,
-          key,
+          key: canonicalKey,
         },
       },
       update: { value: serializedValue },
-      create: { schoolId, key, value: serializedValue },
+      create: { schoolId, key: canonicalKey, value: serializedValue },
     });
+
+    const legacyAliases = this.getSettingKeyAliases(canonicalKey).filter(
+      (item) => item !== canonicalKey,
+    );
+    if (legacyAliases.length > 0) {
+      await this.prisma.schoolSetting.deleteMany({
+        where: { schoolId, key: { in: legacyAliases } },
+      });
+    }
 
     // If CURRICULUM_TYPE is changed, auto-create terms for all academic years
     if (
-      key === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE &&
+      canonicalKey === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE &&
       normalizedValue !== 'CUSTOM'
     ) {
       await this.autoCreateTermsForAcademicYears(
@@ -559,12 +599,12 @@ export class SchoolSettingsService {
     }
 
     // If GRADE_SYSTEM is changed, auto-create grade levels
-    if (key === SCHOOL_SETTING_KEYS.GRADE_SYSTEM) {
+    if (canonicalKey === SCHOOL_SETTING_KEYS.GRADE_SYSTEM) {
       await this.autoCreateGradeLevels(schoolId, normalizedValue as string);
     }
 
     // If DEFAULT_SECTION_CAPACITY is changed, sync all sections to use the new capacity
-    if (key === SCHOOL_SETTING_KEYS.DEFAULT_SECTION_CAPACITY) {
+    if (canonicalKey === SCHOOL_SETTING_KEYS.DEFAULT_SECTION_CAPACITY) {
       const newCapacity =
         typeof normalizedValue === 'number'
           ? normalizedValue
@@ -574,7 +614,7 @@ export class SchoolSettingsService {
       }
     }
 
-    await this.invalidateCache(schoolId, [key]);
+    await this.invalidateCache(schoolId, this.getSettingKeyAliases(canonicalKey));
 
     return {
       ...setting,
@@ -1039,25 +1079,24 @@ export class SchoolSettingsService {
 
   // Delete a school setting
   async deleteSetting(schoolId: string, key: string) {
+    const canonicalKey = this.canonicalizeSettingKey(key);
     if (
-      key === SCHOOL_SETTING_KEYS.CALENDAR_TYPE ||
-      key === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE ||
-      key === SCHOOL_SETTING_KEYS.GRADE_SYSTEM
+      canonicalKey === SCHOOL_SETTING_KEYS.CALENDAR_TYPE ||
+      canonicalKey === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE ||
+      canonicalKey === SCHOOL_SETTING_KEYS.GRADE_SYSTEM
     ) {
       throw new BadRequestException(
         'This academic setting cannot be deleted after being set. It is locked to preserve data consistency.',
       );
     }
 
-    await this.prisma.schoolSetting.delete({
+    await this.prisma.schoolSetting.deleteMany({
       where: {
-        schoolId_key: {
-          schoolId,
-          key,
-        },
+        schoolId,
+        key: { in: this.getSettingKeyAliases(canonicalKey) },
       },
     });
-    await this.invalidateCache(schoolId, [key]);
+    await this.invalidateCache(schoolId, this.getSettingKeyAliases(canonicalKey));
     return { message: 'Setting deleted successfully' };
   }
 
@@ -1090,7 +1129,10 @@ export class SchoolSettingsService {
       const result = await this.setSetting(schoolId, key, value);
       results.push(result);
     }
-    await this.invalidateCache(schoolId, Object.keys(settings));
+    await this.invalidateCache(
+      schoolId,
+      Object.keys(settings).flatMap((key) => this.getSettingKeyAliases(key)),
+    );
     return results;
   }
 

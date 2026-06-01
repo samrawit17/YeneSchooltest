@@ -98,7 +98,7 @@ const ROLE_QUICK_LINKS: Record<string, QuickLink[]> = {
     parent: [
         { label: "Dashboard", href: "/parent", icon: <School className="h-4 w-4" /> },
         { label: "Children", href: "/parent/children", icon: <Users className="h-4 w-4" /> },
-        { label: "Grades", href: "/parent/grades", icon: <BookOpen className="h-4 w-4" />, schoolSettingFlag: "PARENT_VIEW_GRADES" },
+        { label: "Grades", href: "/parent/grades", icon: <BookOpen className="h-4 w-4" />, schoolSettingFlag: "parent_view_grades" },
         { label: "Attendance", href: "/parent/children", icon: <Calendar className="h-4 w-4" /> },
         { label: "Payments", href: "/list/finance", icon: <CreditCard className="h-4 w-4" /> },
     ],
@@ -187,7 +187,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const { user } = useAuth();
     const isSuperAdmin = user?.role === "SUPER_ADMIN";
-    const { enabled: parentGradesEnabled } = useSchoolFeatureSetting("PARENT_VIEW_GRADES");
+    const { enabled: parentGradesEnabled } = useSchoolFeatureSetting("parent_view_grades");
     const { enabled: announcementsEnabled } = useSchoolFeatureSetting("ANNOUNCEMENTS_ENABLED");
     const { t: navigationText } = useTranslations<NavigationMessages>("navigation");
     const searchText = useCallback(
@@ -214,7 +214,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
 
     const isSchoolSettingVisible = useCallback((settingKey?: string) => {
         if (!settingKey) return true;
-        if (settingKey === "PARENT_VIEW_GRADES") return parentGradesEnabled;
+        if (settingKey === "parent_view_grades") return parentGradesEnabled;
         if (settingKey === "ANNOUNCEMENTS_ENABLED") return announcementsEnabled;
         return true;
     }, [parentGradesEnabled, announcementsEnabled]);
@@ -534,7 +534,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
 
                                     {loading ? (
                                         <div className="flex items-center justify-center py-8">
-                                            <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+                                            <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-color,#e35336)]" />
                                         </div>
                                     ) : !hasDisplayResults ? (
                                         <div className="py-8 text-center text-gray-500 dark:text-gray-400">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { academicYearsAPI, gradingAPI, reportCardsAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
+import { useSchoolFeatureSetting } from "@/hooks/useSchoolFeatureSetting";
 import { Download, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,6 +107,10 @@ const calculateGradePoint = (average: number) => {
 export default function ParentGradesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const {
+    enabled: parentGradesEnabled,
+    isLoading: parentGradesSettingLoading,
+  } = useSchoolFeatureSetting("parent_view_grades");
 
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
@@ -189,7 +194,9 @@ export default function ParentGradesPage() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading || parentGradesSettingLoading) return;
+
+    if (!user) {
       router.push("/sign-in");
       return;
     }
@@ -199,10 +206,29 @@ export default function ParentGradesPage() {
       return;
     }
 
+    if (!parentGradesEnabled) {
+      setInitialLoad(false);
+      return;
+    }
+
     fetchInitialData();
-  }, [authLoading, fetchInitialData, router, user]);
+  }, [
+    authLoading,
+    fetchInitialData,
+    parentGradesEnabled,
+    parentGradesSettingLoading,
+    router,
+    user,
+  ]);
 
   const fetchGrades = useCallback(async () => {
+    if (!parentGradesEnabled) {
+      setGradeRows([]);
+      setRankSummary({ rank: null, termName: null });
+      setPaymentGate({ blocked: false, message: "" });
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await gradingAPI.getChildGrades(selectedChildId, {
@@ -335,13 +361,13 @@ export default function ParentGradesPage() {
     } finally {
       setLoading(false);
     }
-  }, [academicYears, children, selectedChildId, selectedTerm, selectedYear]);
+  }, [academicYears, children, parentGradesEnabled, selectedChildId, selectedTerm, selectedYear]);
 
   useEffect(() => {
-    if (selectedChildId && selectedYear) {
+    if (parentGradesEnabled && selectedChildId && selectedYear) {
       fetchGrades();
     }
-  }, [fetchGrades, selectedChildId, selectedYear]);
+  }, [fetchGrades, parentGradesEnabled, selectedChildId, selectedYear]);
 
   const selectedChild = useMemo(
     () => children.find((child) => (child.profileId || child.userId || child.id) === selectedChildId),
@@ -391,10 +417,37 @@ export default function ParentGradesPage() {
     return score > highest ? score : highest;
   }, 0);
 
-  if (authLoading || initialLoad) {
+  if (authLoading || parentGradesSettingLoading || initialLoad) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
+      </div>
+    );
+  }
+
+  if (!parentGradesEnabled) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+        <div className="px-4 py-6 md:px-6 space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              Published Results
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              View published subject results for your children.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-800">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Grade viewing is disabled
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 dark:text-slate-400">
+              This school has disabled parent access to student grades. Contact the school
+              administration if you need access to published results.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -518,7 +571,7 @@ export default function ParentGradesPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-14">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
           </div>
         ) : paymentGate.blocked ? null : gradeRows.length === 0 ? (
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-14 text-center text-slate-500">

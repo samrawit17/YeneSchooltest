@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type CSSProperties } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -102,6 +102,7 @@ const LoginPage = () => {
   const [schoolLoginImageUrl, setSchoolLoginImageUrl] = useState<string | null>(cachedLoginSchool?.loginImageUrl || null);
   const [schoolAccentColor, setSchoolAccentColor] = useState<string | null>(cachedLoginSchool?.accentColor || null);
   const [resolvedLoginSchoolSlug, setResolvedLoginSchoolSlug] = useState<string | null>(cachedLoginSchool?.publicUrlSlug || null);
+  const initialDocumentTitleRef = useRef<string | null>(null);
   const displaySchoolName =
     schoolName ||
     announcements[currentSlide]?.school?.name ||
@@ -121,6 +122,7 @@ const LoginPage = () => {
   const brandColor = /^#[0-9a-fA-F]{6}$/.test((schoolAccentColor || "").trim())
     ? schoolAccentColor!.trim()
     : "#e35336";
+  const brandColorRgb = `${parseInt(brandColor.slice(1, 3), 16)}, ${parseInt(brandColor.slice(3, 5), 16)}, ${parseInt(brandColor.slice(5, 7), 16)}`;
   const accentControlStyle = {
     borderColor: "color-mix(in srgb, var(--brand-color, #e35336) 45%, transparent)",
     "--tw-ring-color": "color-mix(in srgb, var(--brand-color, #e35336) 35%, transparent)",
@@ -132,6 +134,43 @@ const LoginPage = () => {
       : resolvedLoginSchoolId
         ? `/enroll?schoolId=${encodeURIComponent(resolvedLoginSchoolId)}`
       : "/enroll";
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    initialDocumentTitleRef.current ??= document.title;
+    document.title = `${displaySchoolName} - ${t.signIn}`;
+
+    return () => {
+      if (initialDocumentTitleRef.current) {
+        document.title = initialDocumentTitleRef.current;
+      }
+    };
+  }, [displaySchoolName, t.signIn]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const selector = 'link[data-school-favicon="true"]';
+    document.head.querySelectorAll(selector).forEach((node) => node.remove());
+
+    if (!displaySchoolLogoUrl) return;
+
+    const icon = document.createElement("link");
+    icon.rel = "icon";
+    icon.href = displaySchoolLogoUrl;
+    icon.setAttribute("data-school-favicon", "true");
+
+    const shortcutIcon = document.createElement("link");
+    shortcutIcon.rel = "shortcut icon";
+    shortcutIcon.href = displaySchoolLogoUrl;
+    shortcutIcon.setAttribute("data-school-favicon", "true");
+
+    document.head.append(icon, shortcutIcon);
+
+    return () => {
+      document.head.querySelectorAll(selector).forEach((node) => node.remove());
+    };
+  }, [displaySchoolLogoUrl]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -280,7 +319,7 @@ const LoginPage = () => {
   return (
     <div
       className={`flex h-screen w-full overflow-hidden ${resolvedTheme === 'dark' ? 'dark' : ''}`}
-      style={{ "--brand-color": brandColor } as React.CSSProperties}
+      style={{ "--brand-color": brandColor, "--brand-color-rgb": brandColorRgb } as React.CSSProperties}
     >
       {/* Left Side - Full Size School Image with Announcement Slideshow */}
       <div className="hidden lg:block lg:w-1/2 relative">
@@ -535,7 +574,7 @@ const LoginPage = () => {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="h-12 w-full bg-[var(--brand-color,#e35336)] text-white transition-all hover:brightness-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
+                className="h-12 w-full bg-[rgba(var(--brand-color-rgb),0.9)] text-white transition-all hover:bg-[rgba(var(--brand-color-rgb),0.82)] hover:shadow-lg hover:shadow-[var(--brand-color)]/20 active:bg-[rgba(var(--brand-color-rgb),0.75)]"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">

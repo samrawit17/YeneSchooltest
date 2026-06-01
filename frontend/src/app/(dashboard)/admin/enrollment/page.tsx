@@ -300,7 +300,7 @@ export default function AdminEnrollmentPage() {
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
               </div>
             ) : requests.length === 0 ? (
               <div className="text-center py-8 text-gray-500">

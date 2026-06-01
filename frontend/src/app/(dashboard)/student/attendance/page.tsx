@@ -106,7 +106,7 @@ export default function StudentAttendancePage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-8 h-8 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
@@ -168,7 +168,7 @@ export default function StudentAttendancePage() {
       {/* Attendance Records */}
       {loading ? (
         <div className="flex items-center justify-center py-8">
-          <div className="w-8 h-8 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : attendance.length === 0 ? (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-8 rounded text-center">

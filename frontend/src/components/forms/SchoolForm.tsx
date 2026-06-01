@@ -42,9 +42,21 @@ const SchoolForm = ({ type, data, onSuccess, onCancel }: SchoolFormProps) => {
         return schoolsAPI.update(data.id, formData);
       }
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       toast.success(type === "create" ? "School created successfully" : "School updated successfully");
       queryClient.invalidateQueries({ queryKey: queryKeys.schools.all });
+      if (type === "update" && data?.id) {
+        const updatedSchool = response.data || { ...data, ...formData };
+        const updateSchool = (current: any) =>
+          current ? { ...current, ...updatedSchool } : current;
+
+        queryClient.setQueryData(queryKeys.school.layout(data.id), updateSchool);
+        queryClient.setQueryData(queryKeys.school.detail(data.id), updateSchool);
+        queryClient.setQueryData(queryKeys.schools.detail(data.id), updateSchool);
+        queryClient.invalidateQueries({ queryKey: queryKeys.school.layout(data.id) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.school.detail(data.id) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.schools.detail(data.id) });
+      }
       onSuccess?.();
     },
     onError: (error: any) => {

@@ -34,6 +34,9 @@ interface AttendanceStats {
   attendancePercentage: number;
 }
 
+const normalizeAttendanceStatus = (status?: string) =>
+  String(status || "").trim().toUpperCase();
+
 const ChildAttendancePage = () => {
   const params = useParams();
   const router = useRouter();
@@ -92,7 +95,7 @@ const ChildAttendancePage = () => {
   ];
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (normalizeAttendanceStatus(status)) {
       case "PRESENT":
         return "bg-green-100 text-green-700 border-green-200";
       case "ABSENT":
@@ -111,7 +114,7 @@ const ChildAttendancePage = () => {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    switch (normalizeAttendanceStatus(status)) {
       case "PRESENT":
         return "✓";
       case "ABSENT":
@@ -130,17 +133,17 @@ const ChildAttendancePage = () => {
   };
   const attendanceCalendarEvents: CalendarDisplayEvent[] = attendance.map((record) => ({
     id: record.id,
-    title: record.status.replace("_", " "),
+    title: normalizeAttendanceStatus(record.status).replace("_", " "),
     startDate: record.date,
     endDate: record.date,
-    eventType: record.status === "ABSENT" ? "ADMINISTRATIVE" : "ACADEMIC",
+    eventType: `ATTENDANCE_${normalizeAttendanceStatus(record.status)}`,
     resource: record,
   }));
 
   if (loading) {
     return (
       <div className="flex-1 p-4 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#e35336]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--brand-color,#e35336)]"></div>
       </div>
     );
   }
@@ -311,7 +314,7 @@ const ChildAttendancePage = () => {
                   </div>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(record.status)}`}>
-                  {record.status.replace("_", " ")}
+                  {normalizeAttendanceStatus(record.status).replace("_", " ")}
                 </span>
               </div>
             ))}

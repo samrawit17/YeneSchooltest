@@ -536,7 +536,7 @@ const SubscriptionPlansPage = () => {
               <CardContent>
                 {loadingSchools ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-500 dark:text-gray-400" />
+                    <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)]" />
                   </div>
                 ) : schools.length === 0 ? (
                   <div className="text-center py-8">

@@ -142,7 +142,7 @@ export default function EditLessonPage() {
   if (loading || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="w-12 h-12 animate-spin rounded-full border-4 border-[#e35336] border-t-transparent" />
+        <div className="w-12 h-12 animate-spin rounded-full border-4 border-[var(--brand-color,#e35336)] border-t-transparent" />
       </div>
     );
   }

@@ -51,7 +51,7 @@ export default function StudentPracticeExamsPage() {
 
       {examsQuery.isLoading ? (
         <div className="flex min-h-[320px] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
         </div>
       ) : exams.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

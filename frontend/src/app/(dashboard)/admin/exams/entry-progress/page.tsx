@@ -490,7 +490,7 @@ export default function EntryProgressPage() {
 
       {loading && !hasFetched ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[#e35336]" />
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
           <p className="text-sm text-gray-400 dark:text-gray-500">Loading entry progress...</p>
         </div>
       ) : (

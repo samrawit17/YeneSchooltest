@@ -1011,7 +1011,7 @@ export default function TeacherGradingPage() {
   if (authLoading || initialLoad) {
     return (
       <div className="flex items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
@@ -1164,7 +1164,7 @@ export default function TeacherGradingPage() {
 
             {loading ? (
               <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
               </div>
             ) : (
               <>

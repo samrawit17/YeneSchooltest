@@ -24,7 +24,7 @@ export function FeatureGuard({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
@@ -74,7 +74,7 @@ export function FeatureGate({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
