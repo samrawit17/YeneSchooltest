@@ -94,7 +94,7 @@ export const notificationMessages: Record<NotificationLanguage, NotificationMess
     welcome: (tempPasswordStr: string) => {
       const isTemp = tempPasswordStr === 'true';
       return {
-        title: 'Welcome to School Management System',
+        title: 'Welcome to YeneSchool',
         message: isTemp
           ? 'Your account has been created. Please check your email for login credentials.'
           : 'Your account has been created. You can now log in.',

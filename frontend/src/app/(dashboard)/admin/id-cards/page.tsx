@@ -209,7 +209,7 @@ export default function IdCardGeneratorPage() {
   if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
@@ -365,7 +365,7 @@ export default function IdCardGeneratorPage() {
         {loading ? (
           <Card className="dark:border-slate-800 dark:bg-slate-900">
             <CardContent className="flex flex-col items-center justify-center py-16">
-              <Loader2 className="mb-4 h-10 w-10 animate-spin text-blue-600" />
+              <Loader2 className="mb-4 h-10 w-10 animate-spin text-[var(--brand-color,#e35336)]" />
               <p className="text-gray-500">Loading students...</p>
             </CardContent>
           </Card>

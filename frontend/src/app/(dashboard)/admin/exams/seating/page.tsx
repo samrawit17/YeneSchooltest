@@ -1328,7 +1328,7 @@ export default function ExamSeatingPage() {
               <CardContent className="p-0">
                 {loadingOverview ? (
                   <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                    <div className="w-8 h-8 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin mb-4" />
                     <p>Loading seating overview...</p>
                   </div>
                 ) : !selectedExamType ? (

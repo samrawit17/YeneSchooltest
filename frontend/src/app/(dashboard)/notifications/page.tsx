@@ -35,6 +35,7 @@ interface Notification {
   createdAt: string;
   actionUrl?: string;
   type?: string;
+  metadata?: unknown;
 }
 
 const formatTimeAgo = (dateString: string, _t: any) => {

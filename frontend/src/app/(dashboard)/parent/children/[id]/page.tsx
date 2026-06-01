@@ -136,7 +136,7 @@ const ChildDetailPage = () => {
   const {
     enabled: parentGradesEnabled,
     isLoading: parentGradesSettingLoading,
-  } = useSchoolFeatureSetting("PARENT_VIEW_GRADES");
+  } = useSchoolFeatureSetting("parent_view_grades");
 
   useEffect(() => {
     const fetchChildDetail = async () => {

@@ -398,15 +398,18 @@ export class LessonService {
         where: { classId: classRecord.id, section: { name: lesson.sectionName } },
       });
 
-      const parentIds = new Set<string>();
+      const parentUserIds = new Set<string>();
       for (const sc of studentClasses) {
         const parentLinks = await (this.prisma as any).parentStudent.findMany({
-          where: { studentId: sc.studentId },
+          where: { student: { userId: sc.studentId }, schoolId: lesson.schoolId },
+          select: { parent: { select: { userId: true } } },
         });
-        parentLinks.forEach((pl: any) => parentIds.add(pl.parentId));
+        parentLinks.forEach((pl: any) => {
+          if (pl.parent?.userId) parentUserIds.add(pl.parent.userId);
+        });
       }
 
-      const userIds = Array.from(parentIds);
+      const userIds = Array.from(parentUserIds);
       if (userIds.length > 0) {
         await this.notificationService.createBulkNotifications({
           schoolId: lesson.schoolId,
@@ -414,6 +417,16 @@ export class LessonService {
           title: 'New Lesson Published',
           message: `New lesson: ${lesson.title} for Grade ${lesson.grade} ${lesson.sectionName} by ${lesson.teacher?.name || 'Teacher'}`,
           type: 'LESSON',
+          actionUrl: `/parent/lessons/${lesson.id}`,
+          metadata: {
+            lessonId: lesson.id,
+            lessonTitle: lesson.title,
+            grade: lesson.grade,
+            section: lesson.sectionName,
+            subjectId: lesson.subjectId,
+            subjectName: lesson.subject?.name || 'lesson',
+            teacherName: lesson.teacher?.name || 'Teacher',
+          },
         });
       }
     } catch (e) {
@@ -463,10 +476,12 @@ export class LessonService {
       const subjectName = lesson.subject?.name || 'lesson';
       const metadata = {
         lessonId: lesson.id,
+        lessonTitle: lesson.title,
         grade: lesson.grade,
         section: lesson.sectionName,
         subjectId: lesson.subjectId,
         subjectName,
+        teacherName: lesson.teacher?.name || 'Teacher',
       };
       const message = `${lesson.teacher?.name || 'Teacher'} created "${lesson.title}" for ${subjectName}.`;
 
@@ -478,13 +493,13 @@ export class LessonService {
           title: 'New Lesson Created',
           message,
           type: NotificationType.LESSON,
-          actionUrl: '/student/lessons',
+          actionUrl: `/student/lessons/${lesson.id}`,
           metadata,
         });
       }
 
       const uniqueParentUserIds = Array.from(
-        new Set(parentLinks.map((link) => link.parent.userId)),
+        new Set(parentLinks.map((link) => link.parent.userId).filter(Boolean)),
       );
       if (uniqueParentUserIds.length > 0) {
         await this.notificationService.createBulkNotifications({
@@ -493,7 +508,7 @@ export class LessonService {
           title: 'New Lesson Created',
           message,
           type: NotificationType.LESSON,
-          actionUrl: '/parent/lessons',
+          actionUrl: `/parent/lessons/${lesson.id}`,
           metadata,
         });
       }
@@ -795,7 +810,7 @@ export class LessonService {
     });
     if (existing) throw new BadRequestException('Lesson exists');
 
-    return this.prisma.content.create({
+    const lesson = await this.prisma.content.create({
       data: {
         schoolId,
         academicYearId: data.academicYearId,
@@ -807,6 +822,8 @@ export class LessonService {
         subjectId: data.subjectId,
         teacherId,
         title: data.title,
+        description: data.description,
+        instructions: data.instructions,
         objective: data.objective,
         lessonContent: data.lessonContent,
         lessonDate: new Date(data.lessonDate),
@@ -821,6 +838,10 @@ export class LessonService {
         attachmentsNew: true,
       },
     });
+
+    await this.notifyLessonCreated(lesson);
+
+    return lesson;
   }
 
   async findAll(

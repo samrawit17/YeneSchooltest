@@ -7,6 +7,7 @@ import { schoolSettingsAPI, schoolsAPI, academicYearsAPI } from '@/lib/api';
 import { subscriptionAPI } from '@/lib/api/subscription';
 import { resolveAssetUrl } from '@/lib/asset-url';
 import { getCurrentEthiopianYear, normalizeCalendarType } from '@/lib/calendar-utils';
+import { writeCachedSchoolLoginContext } from '@/lib/school-resolver';
 import { useAuth } from '@/context/AuthContext';
 import { useBreadcrumb } from '@/context/BreadcrumbContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -143,7 +144,7 @@ const SETTINGS_CONFIG: SettingItem[] = [
   },
   // Finance Settings
   {
-    key: 'PARENT_VIEW_GRADES',
+    key: 'parent_view_grades',
     label: 'Parent View Grades',
     description: 'Allow parents to view their children\'s grades',
     type: 'boolean',
@@ -685,19 +686,97 @@ export default function SchoolSettingsPage() {
     }
   }, [calendarType, fetchAcademicYears]);
 
+  const syncSchoolCaches = (schoolPatch: Record<string, any>) => {
+    const updateSchool = (current: any) =>
+      current ? { ...current, ...schoolPatch } : current;
+
+    queryClient.setQueryData(queryKeys.school.layout(schoolId), updateSchool);
+    queryClient.setQueryData(queryKeys.school.detail(schoolId), updateSchool);
+    queryClient.setQueryData(queryKeys.schools.detail(schoolId), updateSchool);
+    queryClient.invalidateQueries({ queryKey: queryKeys.schools.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.school.layout(schoolId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.school.detail(schoolId) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.schools.detail(schoolId) });
+  };
+
+  const syncSchoolSettingsCaches = (
+    nextSettings: Record<string, any>,
+    keys: string[],
+    options?: { remove?: boolean },
+  ) => {
+    queryClient.setQueryData(queryKeys.school.settings(schoolId), (current: any) => {
+      const currentSettings = current && typeof current === 'object' ? current : {};
+      const merged = { ...currentSettings, ...nextSettings };
+
+      if (options?.remove) {
+        keys.forEach((key) => {
+          delete merged[key];
+        });
+      }
+
+      return merged;
+    });
+
+    keys.forEach((key) => {
+      if (options?.remove) {
+        queryClient.removeQueries({ queryKey: queryKeys.school.setting(key, schoolId) });
+      } else {
+        queryClient.setQueryData(queryKeys.school.setting(key, schoolId), {
+          key,
+          value: nextSettings[key],
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.school.setting(key, schoolId) });
+    });
+
+    queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
+  };
+
+  const syncCachedLoginContext = (
+    schoolPatch: Partial<{
+      code: string | null;
+      publicUrlSlug: string | null;
+      logoUrl: string | null;
+      loginImageUrl: string | null;
+      accentColor: string | null;
+    }>,
+  ) => {
+    if (!schoolInfo?.name) return;
+
+    writeCachedSchoolLoginContext({
+      id: schoolId,
+      name: schoolInfo.name,
+      code: schoolPatch.code ?? schoolInfo.code ?? null,
+      publicUrlSlug: schoolPatch.publicUrlSlug ?? schoolInfo.publicUrlSlug ?? null,
+      logoUrl: schoolPatch.logoUrl ?? schoolInfo.logoUrl ?? null,
+      accentColor:
+        schoolPatch.accentColor ??
+        (typeof draftSettings.theme_color === 'string' ? draftSettings.theme_color : null),
+      loginImageUrl:
+        schoolPatch.loginImageUrl ??
+        (typeof draftSettings.login_image_url === 'string' ? draftSettings.login_image_url : null),
+    });
+  };
+
   const handleLogoSave = async () => {
     try {
       setSavingLogo(true);
+      let nextLogoUrl = schoolLogo || null;
+
       if (selectedLogoFile) {
         const result = await schoolsAPI.uploadLogo(schoolId, selectedLogoFile);
-        const url = result?.url || '';
-        setSchoolLogo(url);
-        setSchoolInfo(prev => prev ? { ...prev, logoUrl: url } : prev);
+        nextLogoUrl = result?.url || null;
+        setSchoolLogo(nextLogoUrl || '');
+        setSchoolInfo(prev => prev ? { ...prev, logoUrl: nextLogoUrl } : prev);
         toast.success(messageText('logoUploadSuccess', 'School logo uploaded successfully!'));
       } else {
-        const response = await schoolsAPI.update(schoolId, { logoUrl: schoolLogo });
+        await schoolsAPI.update(schoolId, { logoUrl: schoolLogo });
+        setSchoolInfo(prev => prev ? { ...prev, logoUrl: nextLogoUrl } : prev);
         toast.success(messageText('logoUpdateSuccess', 'School logo updated successfully!'));
       }
+
+      syncSchoolCaches({ logoUrl: nextLogoUrl });
+      syncCachedLoginContext({ logoUrl: nextLogoUrl });
       setIsEditingLogo(false);
       setSelectedLogoFile(null);
     } catch (err: any) {
@@ -754,7 +833,8 @@ export default function SchoolSettingsPage() {
       const url = result?.url || '';
       setSettings((prev) => ({ ...prev, login_image_url: url }));
       setDraftSettings((prev) => ({ ...prev, login_image_url: url }));
-      queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
+      syncSchoolSettingsCaches({ login_image_url: url }, ['login_image_url']);
+      syncCachedLoginContext({ loginImageUrl: url });
       toast.success('Login image updated successfully');
       setSelectedLoginImageFile(null);
     } catch (err: any) {
@@ -781,7 +861,8 @@ export default function SchoolSettingsPage() {
         return next;
       });
       setSelectedLoginImageFile(null);
-      queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
+      syncSchoolSettingsCaches({}, ['login_image_url'], { remove: true });
+      syncCachedLoginContext({ loginImageUrl: null });
       toast.success('Login image reset to default');
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to reset login image';
@@ -795,10 +876,13 @@ export default function SchoolSettingsPage() {
     try {
       setSavingSchoolCode(true);
       const response = await schoolsAPI.update(schoolId, { code: schoolCode });
+      const nextCode = response.data?.code ?? schoolCode;
       toast.success(messageText('codeUpdateSuccess', 'School code updated successfully!'));
       setIsEditingCode(false);
-      const schoolResponse = await schoolsAPI.getById(schoolId);
-      setSchoolInfo(schoolResponse.data);
+      setSchoolInfo(prev => prev ? { ...prev, code: nextCode } : response.data);
+      setSchoolCode(nextCode || '');
+      syncSchoolCaches({ code: nextCode });
+      syncCachedLoginContext({ code: nextCode || null });
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || messageText('codeUpdateFailed', 'Failed to update school code');
       toast.error(errorMessage);
@@ -824,10 +908,12 @@ export default function SchoolSettingsPage() {
 
     try {
       setSavingPublicUrlSlug(true);
-      await schoolsAPI.update(schoolId, { publicUrlSlug: normalizedSlug });
-      const schoolResponse = await schoolsAPI.getById(schoolId);
-      setSchoolInfo(schoolResponse.data);
-      setPublicUrlSlug(schoolResponse.data.publicUrlSlug || normalizedSlug);
+      const response = await schoolsAPI.update(schoolId, { publicUrlSlug: normalizedSlug });
+      const nextSlug = response.data?.publicUrlSlug || normalizedSlug;
+      setSchoolInfo(prev => prev ? { ...prev, publicUrlSlug: nextSlug } : response.data);
+      setPublicUrlSlug(nextSlug);
+      syncSchoolCaches({ publicUrlSlug: nextSlug });
+      syncCachedLoginContext({ publicUrlSlug: nextSlug });
       setIsEditingPublicUrlSlug(false);
       toast.success('Public school URL updated successfully');
     } catch (err: any) {
@@ -887,16 +973,10 @@ export default function SchoolSettingsPage() {
       setError(null);
       await schoolSettingsAPI.set(schoolId, key, value);
       setSettings((prev) => ({ ...prev, [key]: value }));
-      queryClient.setQueryData(queryKeys.school.setting(key, schoolId), {
-        key,
-        value,
-      });
-      queryClient.invalidateQueries({ queryKey: queryKeys.school.setting(key, schoolId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
+      syncSchoolSettingsCaches({ [key]: value }, [key]);
 
-      if (key === 'theme_color' || key === 'BRAND_COLOR_IN_NAVIGATION') {
-        queryClient.invalidateQueries({ queryKey: queryKeys.school.setting('theme_color', schoolId) });
-        queryClient.invalidateQueries({ queryKey: queryKeys.school.setting('BRAND_COLOR_IN_NAVIGATION', schoolId) });
+      if (key === 'theme_color') {
+        syncCachedLoginContext({ accentColor: value });
       }
       
       // Update user session for calendar type change
@@ -972,11 +1052,10 @@ export default function SchoolSettingsPage() {
           [key]: String(setting.systemDefault ?? ''),
         }));
       }
-      queryClient.removeQueries({ queryKey: queryKeys.school.setting(key, schoolId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.school.settings(schoolId) });
+      syncSchoolSettingsCaches({}, [key], { remove: true });
 
       if (key === 'theme_color') {
-        queryClient.invalidateQueries({ queryKey: queryKeys.school.setting('theme_color', schoolId) });
+        syncCachedLoginContext({ accentColor: null });
       }
 
       if (key === 'calendar_type' && user && setting.systemDefault) {
@@ -1105,6 +1184,10 @@ export default function SchoolSettingsPage() {
             delete next[setting.key];
             return next;
           });
+          syncSchoolSettingsCaches({}, [setting.key], { remove: true });
+          if (setting.key === 'theme_color') {
+            syncCachedLoginContext({ accentColor: null });
+          }
           continue;
         }
 

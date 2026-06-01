@@ -85,6 +85,7 @@ interface Notification {
   isRead: boolean;
   userId?: string | null;
   actionUrl?: string;
+  metadata?: unknown;
   createdAt: string;
 }
 

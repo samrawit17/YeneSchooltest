@@ -129,6 +129,9 @@ const getSelectedYearName = (
 const formatStatusLabel = (status: string) =>
   status.charAt(0) + status.slice(1).toLowerCase();
 
+const normalizeAttendanceStatus = (status?: string) =>
+  String(status || "").trim().toUpperCase();
+
 export default function ParentAttendancePage() {
   const { t } = useTranslations<ParentAttendanceMessages>("parentAttendance");
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
@@ -269,7 +272,7 @@ export default function ParentAttendancePage() {
   }, [fetchAttendance, selectedChild]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (normalizeAttendanceStatus(status)) {
       case "PRESENT": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
       case "ABSENT": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
       case "LATE": return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
@@ -279,15 +282,16 @@ export default function ParentAttendancePage() {
   const dailyAttendance = Array.from(
     attendance.reduce((grouped, record) => {
       const dateKey = record.session.date.split("T")[0];
+      const status = normalizeAttendanceStatus(record.status);
       const existing = grouped.get(dateKey);
       const existingPriority = existing ? ATTENDANCE_STATUS_PRIORITY[existing.status] || 0 : 0;
-      const recordPriority = ATTENDANCE_STATUS_PRIORITY[record.status] || 0;
+      const recordPriority = ATTENDANCE_STATUS_PRIORITY[status] || 0;
 
       if (!existing || recordPriority > existingPriority) {
         grouped.set(dateKey, {
           id: record.id,
           date: record.session.date,
-          status: record.status,
+          status,
           remark: record.remark,
         });
       }
@@ -319,7 +323,7 @@ export default function ParentAttendancePage() {
     title: formatStatusLabel(record.status),
     startDate: record.date,
     endDate: record.date,
-    eventType: `ATTENDANCE_${record.status}`,
+    eventType: `ATTENDANCE_${normalizeAttendanceStatus(record.status)}`,
     resource: record,
   }));
   const emptyAttendanceMessage = selectedChild
@@ -339,7 +343,7 @@ export default function ParentAttendancePage() {
       <div>
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-color, #e35336)' }}>Child Attendance</h1>
+          <h1 className="text-2xl font-bold text-black">Child Attendance</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">View your children's attendance records</p>
         </div>
 

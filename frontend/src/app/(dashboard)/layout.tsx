@@ -106,7 +106,7 @@ export default function DashboardLayout({
   // Set document title to school name
   useEffect(() => {
     if (school?.name) {
-      document.title = `${school.name} - SMS Portal`;
+      document.title = `${school.name} - YeneSchool`;
     }
   }, [school?.name]);
 
@@ -224,7 +224,7 @@ export default function DashboardLayout({
       const hslL = Math.round(l * 100);
       root.style.setProperty('--primary', `${hslH} ${hslS}% ${hslL}%`);
       root.style.setProperty('--ring', `${hslH} ${hslS}% ${hslL}%`);
-    } else {
+    } else if (brandColor) {
       const root = document.documentElement;
       root.style.setProperty('--brand-color', '#e35336');
       root.style.setProperty('--brand-color-rgb', '227, 83, 54');
@@ -275,7 +275,7 @@ export default function DashboardLayout({
     return (
       <div className="flex items-center justify-center h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#e35336] dark:border-[#e35336] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 dark:text-gray-400">Loading...</p>
         </div>
       </div>
@@ -287,7 +287,7 @@ export default function DashboardLayout({
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-slate-900">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 dark:text-gray-400">Redirecting...</p>
         </div>
       </div>
@@ -298,7 +298,7 @@ export default function DashboardLayout({
     return (
       <div className="flex items-center justify-center h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 dark:text-gray-400">Checking platform status...</p>
         </div>
       </div>

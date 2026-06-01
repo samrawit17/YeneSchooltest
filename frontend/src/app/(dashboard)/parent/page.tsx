@@ -527,7 +527,7 @@ const ParentDashboard = () => {
   const {
     enabled: parentGradesEnabled,
     isLoading: parentGradesSettingLoading,
-  } = useSchoolFeatureSetting("PARENT_VIEW_GRADES");
+  } = useSchoolFeatureSetting("parent_view_grades");
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -1105,8 +1105,13 @@ const ParentDashboard = () => {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.gpa}</p>
-                {gradesLoading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
+                {!parentGradesEnabled ? (
+                  <>
+                    <p className="text-2xl font-bold text-slate-400 mt-1.5">Disabled</p>
+                    <span className="text-xs text-slate-400">By school setting</span>
+                  </>
+                ) : gradesLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />
                 ) : gradesLockedForPayment ? (
                   <>
                     <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1.5">Not paid</p>
@@ -1134,8 +1139,13 @@ const ParentDashboard = () => {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.avgScore}</p>
-                {gradesLoading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
+                {!parentGradesEnabled ? (
+                  <>
+                    <p className="text-2xl font-bold text-slate-400 mt-1.5">Disabled</p>
+                    <p className="text-xs text-slate-400 mt-1">By school setting</p>
+                  </>
+                ) : gradesLoading ? (
+                  <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />
                 ) : gradesLockedForPayment ? (
                   <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1.5">Not paid</p>
                 ) : hasGrades ? (
@@ -1143,7 +1153,7 @@ const ParentDashboard = () => {
                 ) : (
                   <p className="text-2xl font-bold text-slate-400 mt-1.5">{t.nA}</p>
                 )}
-                <p className="text-xs text-slate-400 mt-1">{t.outOf100}</p>
+                {parentGradesEnabled && <p className="text-xs text-slate-400 mt-1">{t.outOf100}</p>}
               </div>
               <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-900/30">
                 <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -1171,9 +1181,6 @@ const ParentDashboard = () => {
                     </>
                   )}
                 </div>
-                <p className="mt-2 max-w-[14rem] text-xs leading-5 text-slate-500 dark:text-slate-400">
-                  {t.totalOutstandingHelp}
-                </p>
               </div>
               <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/30">
                 <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -1298,11 +1305,6 @@ const ParentDashboard = () => {
                   {discountLabel}{discountPercent ? ` (${discountPercent}%)` : ""} applied: -{formatBirr(totalDiscount)}
                 </p>
               )}
-              {(selectedChild?.totalDue || 0) > 0 && (
-                <Button className="w-full mt-4 bg-blue-900 hover:bg-blue-800 text-white">
-                  {t.payNow}
-                </Button>
-              )}
             </div>
           </div>
         </div>
@@ -1321,7 +1323,7 @@ const ParentDashboard = () => {
             </div>
             {gradesLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)]" />
               </div>
             ) : hasGradeOverview ? (
               <div className="overflow-x-auto">

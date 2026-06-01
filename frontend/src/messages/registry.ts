@@ -53,7 +53,7 @@ const legacyModuleKeys: Partial<Record<MessageModule, string>> = {
 
 const loginMessages = {
   en: {
-    brand: "EduPortal",
+    brand: "YeneSchool",
     heroTitle: "Where education meets innovation",
     heroSubtitle: "A minimalist approach to modern school management",
     welcome: "Welcome back",
@@ -69,7 +69,7 @@ const loginMessages = {
     needAdmission: "Need admission?",
     enrollNow: "Enroll Now",
     language: "Language",
-    footer: "© 2026 EduPortal. All rights reserved.",
+    footer: "© 2026 YeneSchool. All rights reserved.",
     validationIdentifier: "Please enter your email or username",
     validationPassword: "Password is required",
     welcomeToast: "Welcome back, {name}!",
@@ -77,7 +77,7 @@ const loginMessages = {
     invalidCredentials: "Invalid credentials. Please try again.",
   },
   am: {
-    brand: "ኢዱፖርታል",
+    brand: "YeneSchool",
     heroTitle: "ትምህርት ከቴክኖሎጂ ጋር የሚገናኝበት",
     heroSubtitle: "ለዘመናዊ የትምህርት ቤት አስተዳደር ቀላል አቀራረብ",
     welcome: "እንኳን ደህና ተመለሱ",
@@ -93,7 +93,7 @@ const loginMessages = {
     needAdmission: "ምዝገባ ይፈልጋሉ?",
     enrollNow: "አሁን ይመዝገቡ",
     language: "ቋንቋ",
-    footer: "© 2026 ኢዱፖርታል። መብቱ በሙሉ የተጠበቀ ነው።",
+    footer: "© 2026 YeneSchool። መብቱ በሙሉ የተጠበቀ ነው።",
     validationIdentifier: "ኢሜይልዎን ወይም የተጠቃሚ ስምዎን ያስገቡ",
     validationPassword: "የይለፍ ቃል ያስፈልጋል",
     welcomeToast: "እንኳን ደህና ተመለሱ፣ {name}!",
@@ -101,7 +101,7 @@ const loginMessages = {
     invalidCredentials: "መግቢያ መረጃው ትክክል አይደለም። እንደገና ይሞክሩ።",
   },
   ar: {
-    brand: "إديو بورتال",
+    brand: "YeneSchool",
     heroTitle: "حيث يلتقي التعليم بالابتكار",
     heroSubtitle: "نهج بسيط لإدارة المدارس الحديثة",
     welcome: "مرحباً بعودتك",
@@ -117,7 +117,7 @@ const loginMessages = {
     needAdmission: "تحتاج إلى قبول؟",
     enrollNow: "سجل الآن",
     language: "اللغة",
-    footer: "© 2026 إديو بورتال. جميع الحقوق محفوظة.",
+    footer: "© 2026 YeneSchool. جميع الحقوق محفوظة.",
     validationIdentifier: "أدخل البريد الإلكتروني أو اسم المستخدم",
     validationPassword: "كلمة المرور مطلوبة",
     welcomeToast: "مرحباً بعودتك، {name}!",
@@ -125,7 +125,7 @@ const loginMessages = {
     invalidCredentials: "بيانات الدخول غير صحيحة. حاول مرة أخرى.",
   },
   om: {
-    brand: "EduPortal",
+    brand: "YeneSchool",
     heroTitle: "Bakka barnoonni kalaqa waliin wal argu",
     heroSubtitle: "Bulchiinsa mana barumsaa ammayyaa salphaa",
     welcome: "Baga deebite",
@@ -141,7 +141,7 @@ const loginMessages = {
     needAdmission: "Galmee barbaaddaa?",
     enrollNow: "Amma galmaa'i",
     language: "Afaan",
-    footer: "© 2026 EduPortal. Mirgi hundi eegameera.",
+    footer: "© 2026 YeneSchool. Mirgi hundi eegameera.",
     validationIdentifier: "Imeelii yookaan maqaa fayyadamaa galchi",
     validationPassword: "Jechi icciitii barbaachisa",
     welcomeToast: "Baga deebite, {name}!",
@@ -149,7 +149,7 @@ const loginMessages = {
     invalidCredentials: "Odeeffannoon seensaa sirrii miti. Ammas yaali.",
   },
   so: {
-    brand: "EduPortal",
+    brand: "YeneSchool",
     heroTitle: "Meesha waxbarashadu la kulanto hal-abuurka",
     heroSubtitle: "Hab fudud oo lagu maamulo dugsiyada casriga ah",
     welcome: "Soo dhawoow mar kale",
@@ -165,7 +165,7 @@ const loginMessages = {
     needAdmission: "Ma u baahan tahay diiwaangelin?",
     enrollNow: "Hadda Isdiiwaangeli",
     language: "Luqad",
-    footer: "© 2026 EduPortal. Xuquuqdu way dhowran tahay.",
+    footer: "© 2026 YeneSchool. Xuquuqdu way dhowran tahay.",
     validationIdentifier: "Geli iimaylka ama magaca isticmaalaha",
     validationPassword: "Erayga sirta ah waa loo baahan yahay",
     welcomeToast: "Soo dhawoow mar kale, {name}!",
@@ -591,11 +591,11 @@ const filterMessages = {
 } as const;
 
 const layoutMessages = {
-  en: { portal: "{school} Portal", defaultPortal: "SMS Portal", era: "E.C.", product: "Lemari SMS" },
-  am: { portal: "{school} ፖርታል", defaultPortal: "SMS ፖርታል", era: "ዓ.ም.", product: "ለማሪ SMS" },
-  ar: { portal: "بوابة {school}", defaultPortal: "بوابة SMS", era: "ت.إ.", product: "ليماري SMS" },
-  om: { portal: "Poortaalii {school}", defaultPortal: "Poortaalii SMS", era: "A.L.I.", product: "Lemari SMS" },
-  so: { portal: "Poortal-ka {school}", defaultPortal: "Poortal-ka SMS", era: "T.I.", product: "Lemari SMS" },
+  en: { portal: "{school} Portal", defaultPortal: "YeneSchool", era: "E.C.", product: "YeneSchool" },
+  am: { portal: "{school} ፖርታል", defaultPortal: "YeneSchool", era: "ዓ.ም.", product: "YeneSchool" },
+  ar: { portal: "بوابة {school}", defaultPortal: "YeneSchool", era: "ت.إ.", product: "YeneSchool" },
+  om: { portal: "Poortaalii {school}", defaultPortal: "YeneSchool", era: "A.L.I.", product: "YeneSchool" },
+  so: { portal: "Poortal-ka {school}", defaultPortal: "YeneSchool", era: "T.I.", product: "YeneSchool" },
 } as const;
 
 const formatTranslation = (template: string, values: Record<string, string | number>) =>

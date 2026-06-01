@@ -284,7 +284,7 @@ const AnnouncementListPage = () => {
         {isLoading ? (
           // Card-level skeleton - simple centered spinner
           <div className="flex items-center justify-center py-12 border rounded-lg bg-card">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
           </div>
         ) : paginatedAnnouncements.length === 0 ? (
           <div className="text-center py-12 border rounded-lg bg-card">

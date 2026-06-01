@@ -139,7 +139,7 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
         )}
-        <div className="flex w-full flex-1 items-center justify-center">
+        <div className="mt-8 flex w-full justify-center px-4">
           <Card className="w-full max-w-lg dark:bg-slate-900 dark:border-slate-800">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
@@ -185,7 +185,7 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
         )}
-        <div className="flex w-full flex-1 items-center justify-center">
+        <div className="mt-8 flex w-full justify-center px-4">
           <Card className="w-full max-w-lg dark:bg-slate-900 dark:border-slate-800">
             <CardHeader>
               <CardTitle className="dark:text-white">{t.title}</CardTitle>

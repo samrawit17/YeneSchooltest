@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, Notification as PrismaNotification } from '@prisma/client';
 import * as webpush from 'web-push';
 import { randomUUID } from 'crypto';
 import { notificationMessages, NotificationLanguage } from './notification-messages';
@@ -606,19 +606,66 @@ export class NotificationService {
       where.type = { in: typesInCategory };
     }
 
+    const requestedLimit = options?.limit || 20;
     const notifications = await this.prisma.notification.findMany({
       where,
       orderBy: {
         createdAt: 'desc',
       },
-      take: options?.limit || 20,
+      take: Math.min(requestedLimit * 3, 100),
     });
 
     const preferences = await this.getNotificationPreferences(userId, userRole);
 
-    return notifications.filter((notification) =>
-      this.isNotificationTypeEnabled(notification.type, preferences),
-    );
+    return this.dedupeNotifications(
+      notifications.filter((notification) =>
+        this.isNotificationTypeEnabled(notification.type, preferences),
+      ),
+    ).slice(0, requestedLimit);
+  }
+
+  private parseNotificationMetadata(metadata: string | null) {
+    if (!metadata) return {};
+    try {
+      const parsed = JSON.parse(metadata);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private getNotificationDisplayDedupeKey(notification: PrismaNotification) {
+    const metadata = this.parseNotificationMetadata(notification.metadata);
+    const day = notification.createdAt.toISOString().slice(0, 10);
+    const owner = `${notification.schoolId || 'platform'}:${notification.userId || 'global'}`;
+    const metadataDedupeKey =
+      typeof metadata.dedupeKey === 'string' ? metadata.dedupeKey.trim() : '';
+
+    if (metadataDedupeKey) {
+      return `${owner}:${notification.type}:metadata:${metadataDedupeKey}:${day}`;
+    }
+
+    return [
+      owner,
+      notification.type,
+      notification.title.trim(),
+      notification.message.trim(),
+      notification.actionUrl || '',
+      day,
+    ].join('|');
+  }
+
+  private dedupeNotifications(notifications: PrismaNotification[]) {
+    const seen = new Set<string>();
+
+    return notifications.filter((notification) => {
+      const key = this.getNotificationDisplayDedupeKey(notification);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   // Helper to map categories to notification types
@@ -935,36 +982,71 @@ export class NotificationService {
     metadata?: any;
     bypassPreferences?: boolean;
   }) {
-    const notification = await this.prisma.notification.create({
-      data: {
-        schoolId: data.schoolId,
-        userId: data.userId,
-        title: data.title,
-        message: data.message,
-        type: data.type,
-        actionUrl: data.actionUrl,
-        metadata: data.metadata ? JSON.stringify(data.metadata) : null,
-      },
+    const metadata = this.serializeNotificationMetadata(data.metadata);
+    const actionUrl = data.actionUrl || null;
+    const since = this.getNotificationCreateDedupeSince();
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${this.getNotificationCreateLockKey({
+          schoolId: data.schoolId,
+          userId: data.userId || null,
+          title: data.title,
+          message: data.message,
+          type: data.type,
+          actionUrl,
+          metadata,
+        })}))`,
+      );
+
+      const existing = await tx.notification.findFirst({
+        where: {
+          schoolId: data.schoolId,
+          userId: data.userId || null,
+          title: data.title,
+          message: data.message,
+          type: data.type,
+          actionUrl,
+          metadata,
+          createdAt: { gte: since },
+        },
+      });
+
+      if (existing) return { notification: existing, created: false };
+
+      const notification = await tx.notification.create({
+        data: {
+          schoolId: data.schoolId,
+          userId: data.userId,
+          title: data.title,
+          message: data.message,
+          type: data.type,
+          actionUrl,
+          metadata,
+        },
+      });
+
+      return { notification, created: true };
     });
 
-    if (data.userId) {
+    if (data.userId && result.created) {
       try {
         await this.sendPushToUsers([data.userId], {
           title: data.title,
           message: data.message,
           type: data.type,
           actionUrl: data.actionUrl,
-          notificationId: notification.id,
+          notificationId: result.notification.id,
           metadata: data.metadata,
         });
       } catch (error: any) {
         this.logger.warn(
-          `Push delivery lookup failed for notification ${notification.id}: ${error?.message || 'unknown error'}`,
+          `Push delivery lookup failed for notification ${result.notification.id}: ${error?.message || 'unknown error'}`,
         );
       }
     }
 
-    return notification;
+    return result.notification;
   }
 
   async createBulkNotifications(data: {
@@ -982,27 +1064,123 @@ export class NotificationService {
       return { count: 0 };
     }
 
-    const notifications = await this.prisma.notification.createMany({
-      data: eligibleUserIds.map((userId) => ({
-        schoolId: data.schoolId,
-        userId,
+    const metadata = this.serializeNotificationMetadata(data.metadata);
+    const actionUrl = data.actionUrl || null;
+    const since = this.getNotificationCreateDedupeSince();
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${this.getNotificationCreateLockKey({
+          schoolId: data.schoolId,
+          userId: 'bulk',
+          title: data.title,
+          message: data.message,
+          type: data.type,
+          actionUrl,
+          metadata,
+        })}))`,
+      );
+
+      const existingNotifications = await tx.notification.findMany({
+        where: {
+          schoolId: data.schoolId,
+          userId: { in: eligibleUserIds },
+          title: data.title,
+          message: data.message,
+          type: data.type,
+          actionUrl,
+          metadata,
+          createdAt: { gte: since },
+        },
+        select: { userId: true },
+      });
+      const existingUserIds = new Set(
+        existingNotifications
+          .map((notification) => notification.userId)
+          .filter((userId): userId is string => Boolean(userId)),
+      );
+      const userIdsToCreate = eligibleUserIds.filter(
+        (userId) => !existingUserIds.has(userId),
+      );
+
+      if (userIdsToCreate.length === 0) {
+        return { notifications: { count: 0 }, userIdsToCreate };
+      }
+
+      const notifications = await tx.notification.createMany({
+        data: userIdsToCreate.map((userId) => ({
+          schoolId: data.schoolId,
+          userId,
+          title: data.title,
+          message: data.message,
+          type: data.type,
+          actionUrl,
+          metadata,
+        })),
+      });
+
+      return { notifications, userIdsToCreate };
+    });
+
+    if (result.userIdsToCreate.length > 0) {
+      await this.sendPushToUsers(result.userIdsToCreate, {
         title: data.title,
         message: data.message,
         type: data.type,
         actionUrl: data.actionUrl,
-        metadata: data.metadata ? JSON.stringify(data.metadata) : null,
-      })),
-    });
+        metadata: data.metadata,
+      });
+    }
 
-    await this.sendPushToUsers(eligibleUserIds, {
-      title: data.title,
-      message: data.message,
-      type: data.type,
-      actionUrl: data.actionUrl,
-      metadata: data.metadata,
-    });
+    return result.notifications;
+  }
 
-    return notifications;
+  private getNotificationCreateDedupeSince() {
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    return since;
+  }
+
+  private getNotificationCreateLockKey(data: {
+    schoolId: string;
+    userId: string | null;
+    title: string;
+    message: string;
+    type: string;
+    actionUrl: string | null;
+    metadata: string | null;
+  }) {
+    return [
+      'notification-create',
+      data.schoolId,
+      data.userId || 'global',
+      data.type,
+      data.title,
+      data.message,
+      data.actionUrl || '',
+      data.metadata || '',
+    ].join('|');
+  }
+
+  private serializeNotificationMetadata(metadata: any) {
+    if (metadata === undefined || metadata === null) return null;
+    return JSON.stringify(this.normalizeNotificationMetadata(metadata));
+  }
+
+  private normalizeNotificationMetadata(value: any): unknown {
+    if (value instanceof Date) return value.toISOString();
+    if (Array.isArray(value)) {
+      return value.map((item) => this.normalizeNotificationMetadata(item));
+    }
+    if (value && typeof value === 'object') {
+      return Object.keys(value)
+        .sort()
+        .reduce<Record<string, unknown>>((acc, key) => {
+          acc[key] = this.normalizeNotificationMetadata(value[key]);
+          return acc;
+        }, {});
+    }
+    return value;
   }
 
   private toHHMM(date: Date, timeZone = 'Africa/Addis_Ababa') {
@@ -1426,32 +1604,88 @@ export class NotificationService {
     metadata?: Record<string, unknown>;
   }) {
     const since = new Date(Date.now() - data.dedupeDays * 24 * 60 * 60 * 1000);
-    await Promise.all(
+    const createdNotifications = await Promise.all(
       data.userIds.map(async (userId) => {
-        const existing = await this.prisma.notification.findFirst({
-          where: {
-            userId,
-            schoolId: null as any,
-            type: data.type,
-            title: data.title,
-            createdAt: { gte: since },
-          },
-          select: { id: true },
-        });
-        if (existing) return;
+        return this.prisma.$transaction(async (tx) => {
+          const lockKey = `platform-notification:${userId}:${data.dedupeKey}`;
+          await tx.$queryRaw(
+            Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`,
+          );
 
-        await this.createPlatformNotification({
-          userId,
-          title: data.title,
-          message: data.message,
-          type: data.type,
-          actionUrl: data.actionUrl,
-          metadata: {
+          const existing = await tx.notification.findFirst({
+            where: {
+              userId,
+              schoolId: null as any,
+              type: data.type,
+              title: data.title,
+              createdAt: { gte: since },
+            },
+            select: { id: true },
+          });
+          if (existing) return null;
+
+          const id = randomUUID();
+          const metadata = {
             ...data.metadata,
             dedupeKey: data.dedupeKey,
-          },
+          };
+
+          await tx.$executeRaw(
+            Prisma.sql`
+              INSERT INTO "Notification" (
+                "id",
+                "schoolId",
+                "userId",
+                "title",
+                "message",
+                "type",
+                "actionUrl",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              )
+              VALUES (
+                ${id},
+                NULL,
+                ${userId},
+                ${data.title},
+                ${data.message},
+                ${data.type},
+                ${data.actionUrl || null},
+                ${JSON.stringify(metadata)},
+                NOW(),
+                NOW()
+              )
+            `,
+          );
+
+          return { id, userId, metadata };
         });
       }),
+    );
+
+    await Promise.all(
+      createdNotifications
+        .filter(
+          (
+            notification,
+          ): notification is NonNullable<(typeof createdNotifications)[number]> =>
+            notification !== null,
+        )
+        .map((notification) =>
+          this.sendPushToUsers([notification.userId], {
+            title: data.title,
+            message: data.message,
+            type: data.type,
+            actionUrl: data.actionUrl,
+            notificationId: notification.id,
+            metadata: notification.metadata,
+          }).catch((error: any) => {
+            this.logger.warn(
+              `Push delivery lookup failed for platform notification ${notification.id}: ${error?.message || 'unknown error'}`,
+            );
+          }),
+        ),
     );
   }
 

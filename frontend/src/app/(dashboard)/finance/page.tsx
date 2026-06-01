@@ -570,7 +570,7 @@ export default function FinanceDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, selectedTerm, terms, fromDate, toDate, user?.schoolId]);
+  }, [selectedYear, selectedTerm, terms, fromDate, toDate, user?.schoolId, t.failedLoadYears, t.schoolIdNotFound]);
 
   // Load dashboard when filters or school context change
   useEffect(() => {
@@ -1179,7 +1179,7 @@ export default function FinanceDashboardPage() {
     } finally {
       setIsSearchingStudents(false);
     }
-  }, [selectedTerm, selectedYear, user?.schoolId]);
+  }, [selectedYear, user?.schoolId]);
 
   // Auto-search when typing
   useEffect(() => {
@@ -1711,6 +1711,7 @@ setIsCreatingFeeStructure(true);
                   try {
                     await financeAPI.clearFeeStructures(user.schoolId, selectedYear);
                     setFeeStructures([]);
+                    await loadDashboardData();
                     toast.success('Fee structures cleared');
                   } catch (e: any) {
                     toast.error(e.response?.data?.message || e.message || 'Failed to clear fee structures');

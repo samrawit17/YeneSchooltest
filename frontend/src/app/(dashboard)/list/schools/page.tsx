@@ -322,7 +322,7 @@ const SchoolsPage = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
           {isLoading ? (
             <div className="p-8 text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+              <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
               <p className="text-gray-600 dark:text-gray-400 mt-4 font-semibold">Loading schools data...</p>
             </div>
           ) : error ? (

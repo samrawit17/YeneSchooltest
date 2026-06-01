@@ -87,7 +87,7 @@ async function main() {
   const user = await prisma.user.upsert({
     where: { email: SUPERADMIN_EMAIL },
     update: {
-      name: 'Lemari Superadmin',
+      name: 'YeneSchool Superadmin',
       role: Role.SUPER_ADMIN,
       isActive: true,
       schoolId: null,
@@ -98,7 +98,7 @@ async function main() {
     create: {
       email: SUPERADMIN_EMAIL,
       username: SUPERADMIN_EMAIL,
-      name: 'Lemari Superadmin',
+      name: 'YeneSchool Superadmin',
       role: Role.SUPER_ADMIN,
       isActive: true,
       schoolId: null,

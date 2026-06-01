@@ -161,7 +161,7 @@ const ParentLessonsPage = () => {
   if (loading || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="w-12 h-12 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }

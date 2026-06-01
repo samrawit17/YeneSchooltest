@@ -1163,7 +1163,7 @@ export default function AssessmentManagementPage() {
       {/* ── Assessment List ── */}
       {listLoading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)]" />
         </div>
       ) : filtered.length === 0 ? (
         <Card className="border-dashed border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">

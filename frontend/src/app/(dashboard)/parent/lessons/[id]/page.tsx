@@ -88,7 +88,7 @@ const ParentLessonDetailPage = () => {
   if (loading || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="w-12 h-12 border-4 border-[#e35336] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -237,8 +237,8 @@ const ParentLessonDetailPage = () => {
               <div className="flex items-center gap-3">
                 <Users className="w-5 h-5 text-gray-500" />
                 <div>
-                  <p className="-500">Class</p>
-                 text-sm text-gray <p className="font-medium">
+                  <p className="text-sm text-gray-500">Class</p>
+                  <p className="font-medium">
                     Grade {lesson.grade} - Section {lesson.section}
                     {lesson.stream && ` (${lesson.stream})`}
                   </p>

@@ -10,7 +10,7 @@ import PushNotificationManager from "@/components/PushNotificationManager";
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "SMS Portal - School Management System",
+  title: "YeneSchool - School Management System",
   description: "A comprehensive school management system",
 };
 

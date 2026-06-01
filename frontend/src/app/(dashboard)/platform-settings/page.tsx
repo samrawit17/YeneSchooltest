@@ -125,7 +125,7 @@ export default function PlatformSettingsPage() {
             onCheckedChange={(checked) => handleSettingChange(setting.key, checked)}
             disabled={isSaving}
           />
-          {isSaving && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
+          {isSaving && <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-color,#e35336)]" />}
         </div>
       );
     }
@@ -147,7 +147,7 @@ export default function PlatformSettingsPage() {
           />
           {isSaving && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-color,#e35336)]" />
             </div>
           )}
         </div>
@@ -173,7 +173,7 @@ export default function PlatformSettingsPage() {
           />
           {isSaving && (
             <div className="absolute right-3 top-2.5">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-color,#e35336)]" />
             </div>
           )}
         </div>
@@ -191,7 +191,7 @@ export default function PlatformSettingsPage() {
         />
         {isSaving && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+            <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-color,#e35336)]" />
           </div>
         )}
       </div>

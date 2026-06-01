@@ -124,7 +124,7 @@ export default function DisciplinePage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
@@ -243,7 +243,7 @@ export default function DisciplinePage() {
         {loading ? (
           <Card className="dark:bg-slate-900 dark:border-slate-800">
             <CardContent className="flex flex-col items-center justify-center py-16">
-              <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
+              <Loader2 className="w-10 h-10 animate-spin text-[var(--brand-color,#e35336)] mb-4" />
               <p className="text-gray-500">Loading incidents...</p>
             </CardContent>
           </Card>

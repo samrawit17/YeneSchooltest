@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -381,8 +381,9 @@ export default function FinanceListPage() {
   // Load academic years
   useEffect(() => {
     const loadAcademicYears = async () => {
+      if (!user?.schoolId) return;
       try {
-        const response = await academicYearsAPI.getAll();
+        const response = await academicYearsAPI.getAll({ schoolId: user.schoolId });
         const years = response.data;
         setAcademicYears(years);
         // Set the first academic year as default (prefer active one)
@@ -395,7 +396,7 @@ export default function FinanceListPage() {
       }
     };
     loadAcademicYears();
-  }, []);
+  }, [user?.schoolId]);
 
   // Load curriculum info when academic year changes
   useEffect(() => {
@@ -453,19 +454,7 @@ export default function FinanceListPage() {
     loadGradeRange();
   }, [user?.schoolId]);
 
-  // Load data based on active tab
-  useEffect(() => {
-    if (!selectedYear) return;
-    loadData();
-  }, [activeTab, selectedYear, selectedTerm, currentPage, searchTerm, selectedGrade, selectedStatus]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-    setFeeStructuresPage(1);
-    setPaymentsPage(1);
-  }, [activeTab, selectedYear, selectedTerm, searchTerm, selectedGrade, selectedStatus]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       if (activeTab === 'fee-structures') {
@@ -520,7 +509,19 @@ export default function FinanceListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, currentPage, pageSize, searchTerm, selectedGrade, selectedStatus, selectedTerm, selectedYear, user?.schoolId]);
+
+  // Load data based on active tab
+  useEffect(() => {
+    if (!selectedYear || !user?.schoolId) return;
+    loadData();
+  }, [loadData, selectedYear, user?.schoolId]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setFeeStructuresPage(1);
+    setPaymentsPage(1);
+  }, [activeTab, selectedYear, selectedTerm, searchTerm, selectedGrade, selectedStatus]);
 
   // Create fee structure
   const handleCreateFeeStructure = async () => {

@@ -198,7 +198,7 @@ export default function StudentGradesPage() {
   if (authLoading || initialLoad) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
@@ -278,7 +278,7 @@ export default function StudentGradesPage() {
         {/* Grades by Term */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
           </div>
         ) : grades.length === 0 ? (
           <div className="text-center py-20 text-sm text-slate-400 dark:text-slate-500">

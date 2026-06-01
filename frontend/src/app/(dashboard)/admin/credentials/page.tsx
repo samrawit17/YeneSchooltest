@@ -345,7 +345,7 @@ export default function CredentialsPage() {
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-8 sm:py-12">
-                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-gray-400" />
+                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-[var(--brand-color,#e35336)]" />
               </div>
             ) : credentials.length === 0 ? (
               <div className="text-center py-8 sm:py-12">
@@ -632,7 +632,7 @@ export default function CredentialsPage() {
                 <Label htmlFor="user-search" className="dark:text-gray-300 text-xs">{t.resetDialog.searchUser}</Label>
                 <div className="relative">
                   {searchingUsers ? (
-                    <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
+                    <Loader2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[var(--brand-color,#e35336)]" />
                   ) : (
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   )}

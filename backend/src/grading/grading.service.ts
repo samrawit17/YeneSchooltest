@@ -75,15 +75,16 @@ export class GradingService {
   }
 
   private async ensureParentGradeAccessEnabled(schoolId: string) {
-    const setting = await this.prisma.schoolSetting.findUnique({
+    const settings = await this.prisma.schoolSetting.findMany({
       where: {
-        schoolId_key: {
-          schoolId,
-          key: SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES,
-        },
+        schoolId,
+        key: { in: [SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES, 'PARENT_VIEW_GRADES'] },
       },
-      select: { value: true },
+      select: { key: true, value: true },
     });
+    const setting =
+      settings.find((item) => item.key === SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES) ||
+      settings[0];
     const value = this.parseSettingValue(setting?.value);
 
     if (value === false || value === 'false') {

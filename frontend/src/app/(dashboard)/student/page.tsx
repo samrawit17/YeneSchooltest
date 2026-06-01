@@ -429,7 +429,7 @@ const StudentPage = () => {
               <div>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.gpa}</p>
                 {gradesLoading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
+                  <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />
                 ) : hasGrades ? (
                   <>
                     <p className={`text-2xl font-bold mt-1.5 ${getGPAColor(gpa)}`}>{gpa.toFixed(1)}</p>
@@ -453,7 +453,7 @@ const StudentPage = () => {
               <div>
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.avgScore}</p>
                 {gradesLoading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-400 mt-1.5" />
+                  <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />
                 ) : hasGrades ? (
                   <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{averageScore}%</p>
                 ) : (
@@ -512,7 +512,7 @@ const StudentPage = () => {
             <p className="text-xs text-slate-500 mb-4">{t.student.currentTerm}</p>
             {gradesLoading ? (
               <div className="h-[260px] flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)]" />
               </div>
             ) : displaySubjectPerformance.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
@@ -549,7 +549,7 @@ const StudentPage = () => {
             </div>
             {gradesLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)]" />
               </div>
             ) : displayRecentGrades.length > 0 ? (
               <div className="space-y-2">

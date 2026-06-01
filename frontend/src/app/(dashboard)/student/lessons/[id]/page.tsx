@@ -84,7 +84,7 @@ export default function StudentLessonDetailPage() {
   if (loading || isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#e35336] border-t-transparent" />
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[var(--brand-color,#e35336)] border-t-transparent" />
       </div>
     );
   }
