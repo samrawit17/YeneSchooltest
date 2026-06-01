@@ -7,6 +7,7 @@ import {
   UseGuards,
   Get,
   Param,
+  Query,
   HttpException,
   HttpStatus,
   Request,
@@ -66,9 +67,14 @@ export class SchoolController {
 
   @Get()
   @Permissions('school:read')
-  async getSchools() {
+  async getSchools(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     try {
-      return await this.schoolService.getSchools();
+      const pageNum = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
+      const limitNum = limit ? Math.max(1, Math.min(100, parseInt(limit, 10) || 10)) : 10;
+      return await this.schoolService.getSchools(pageNum, limitNum);
     } catch (error) {
       throw new HttpException(
         'Failed to get schools: ' + error.message,
