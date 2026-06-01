@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { generateEnrollmentKey } from '../common/utils/enrollment.util';
+import { Role } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -95,11 +96,65 @@ export class SchoolService {
     return null;
   }
 
-  async getSchools() {
-    return this.prismaService.school.findMany({
-      include: { plan: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getSchools(page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+
+    const [schools, total, activeTotal, totalStudents] = await Promise.all([
+      this.prismaService.school.findMany({
+        skip,
+        take: limit,
+        include: { plan: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prismaService.school.count(),
+      this.prismaService.school.count({ where: { isActive: true } }),
+      this.prismaService.user.count({
+        where: { role: Role.STUDENT, deletedAt: null },
+      }),
+    ]);
+    const schoolIds = schools.map((school) => school.id);
+    const [studentUserCounts, studentProfileCounts] = schoolIds.length
+      ? await Promise.all([
+          this.prismaService.user.groupBy({
+            by: ['schoolId'],
+            where: {
+              schoolId: { in: schoolIds },
+              role: Role.STUDENT,
+              deletedAt: null,
+            },
+            _count: { _all: true },
+          }),
+          this.prismaService.studentProfile.groupBy({
+            by: ['schoolId'],
+            where: { schoolId: { in: schoolIds } },
+            _count: { _all: true },
+          }),
+        ])
+      : [[], []];
+    const studentUserCountBySchool = new Map(
+      studentUserCounts
+        .filter((item) => item.schoolId)
+        .map((item) => [item.schoolId!, item._count._all]),
+    );
+    const studentProfileCountBySchool = new Map(
+      studentProfileCounts.map((item) => [item.schoolId, item._count._all]),
+    );
+
+    return {
+      data: schools.map((school) => ({
+        ...school,
+        studentCount: Math.max(
+          studentUserCountBySchool.get(school.id) || 0,
+          studentProfileCountBySchool.get(school.id) || 0,
+        ),
+      })),
+      total,
+      activeTotal,
+      totalStudents,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async getSchoolById(id: string) {

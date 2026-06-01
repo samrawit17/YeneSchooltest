@@ -30,7 +30,7 @@ export const schoolSettingsAPI = {
 export const schoolsAPI = {
   create: (data: { name: string; email: string; address?: string; phone?: string }) =>
     api.post('/schools', data),
-  getAll: () => api.get('/schools'),
+  getAll: (params?: { page?: number; limit?: number }) => api.get('/schools', { params }),
   getById: (id: string) => api.get(`/schools/${id}`),
   update: (
     id: string,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { schoolsAPI } from "@/lib/api";
@@ -37,9 +37,48 @@ interface School {
   address?: string;
   phone?: string;
   publicUrlSlug?: string;
+  studentCount?: number;
   createdAt: string;
   updatedAt: string;
 }
+
+interface SchoolsResponse {
+  data: School[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  activeTotal: number;
+  totalStudents: number;
+}
+
+const normalizeSchoolsResponse = (payload: any, page: number, limit: number): SchoolsResponse => {
+  const source = payload?.data && !Array.isArray(payload) ? payload.data : payload;
+  const schools = Array.isArray(source)
+    ? source
+    : Array.isArray(source?.data)
+      ? source.data
+      : Array.isArray(payload?.schools)
+        ? payload.schools
+        : [];
+  const total = Number(source?.total ?? payload?.total ?? schools.length) || 0;
+  const activeTotal = Number(source?.activeTotal ?? payload?.activeTotal ?? total) || 0;
+  const totalStudents = Number(source?.totalStudents ?? payload?.totalStudents ?? 0) || 0;
+  const resolvedLimit = Number(source?.limit ?? payload?.limit ?? limit) || limit;
+  const totalPages =
+    Number(source?.totalPages ?? payload?.totalPages) ||
+    Math.max(1, Math.ceil(total / resolvedLimit));
+
+  return {
+    data: schools,
+    total,
+    activeTotal,
+    totalStudents,
+    page: Number(source?.page ?? payload?.page ?? page) || page,
+    limit: resolvedLimit,
+    totalPages,
+  };
+};
 
 const SchoolsPage = () => {
   const [page, setPage] = useState(1);
@@ -50,13 +89,26 @@ const SchoolsPage = () => {
   const queryClient = useQueryClient();
 
   // Fetch schools
+  const LIMIT = 10;
   const { data: schoolsData, isLoading, error } = useQuery({
     queryKey: queryKeys.schools.list(page),
     queryFn: async () => {
-      const response = await schoolsAPI.getAll();
-      return response.data as School[];
+      const response = await schoolsAPI.getAll({ page, limit: LIMIT });
+      return normalizeSchoolsResponse(response.data, page, LIMIT);
     },
   });
+
+  const schools = schoolsData?.data || [];
+  const totalPages = schoolsData?.totalPages || 1;
+  const totalSchools = schoolsData?.total || 0;
+  const activeSchools = schoolsData?.activeTotal || 0;
+  const totalStudents = schoolsData?.totalStudents || 0;
+
+  useEffect(() => {
+    if (!isLoading && totalSchools > 0 && schools.length === 0 && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [isLoading, page, schools.length, totalPages, totalSchools]);
 
   // Delete school mutation
   const deleteMutation = useMutation({
@@ -87,6 +139,11 @@ const SchoolsPage = () => {
       header: "Public URL",
       accessor: "publicUrlSlug",
       className: "hidden xl:table-cell",
+    },
+    {
+      header: "Students",
+      accessor: "studentCount",
+      className: "hidden lg:table-cell",
     },
     {
       header: "Phone",
@@ -196,6 +253,12 @@ const SchoolsPage = () => {
           <span className="text-sm text-gray-400">Run migration</span>
         )}
       </td>
+      <td className="hidden lg:table-cell p-4">
+        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+          <Users className="w-4 h-4" />
+          <span className="font-semibold">{item.studentCount ?? 0}</span>
+        </div>
+      </td>
       <td className="hidden 2xl:table-cell p-4">
         <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
           <Phone className="w-4 h-4" />
@@ -280,7 +343,7 @@ const SchoolsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Schools</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{schoolsData?.length || 0}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{totalSchools}</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-700 rounded-lg flex items-center justify-center">
                 <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -291,7 +354,7 @@ const SchoolsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-700 dark:text-green-300">Active Institutions</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{schoolsData?.length || 0}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{activeSchools}</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-800 dark:to-green-700 rounded-lg flex items-center justify-center">
                 <SchoolIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -301,8 +364,8 @@ const SchoolsPage = () => {
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl border border-purple-200 dark:border-purple-800 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Registered Users</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{(schoolsData?.length ?? 0) * 50}</p>
+                <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Registered Students</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{totalStudents}</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-800 dark:to-purple-700 rounded-lg flex items-center justify-center">
                 <Users className="w-6 h-6 text-purple-600 dark:text-purple-400" />
@@ -331,7 +394,7 @@ const SchoolsPage = () => {
               <p className="text-red-600 dark:text-red-400 font-semibold">Error loading schools</p>
               <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">Please check your connection and try again</p>
             </div>
-          ) : schoolsData?.length === 0 ? (
+          ) : schools.length === 0 ? (
             <div className="p-8 text-center">
               <Building2 className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
               <p className="text-gray-600 dark:text-gray-400 font-semibold">No schools found in the system</p>
@@ -348,17 +411,17 @@ const SchoolsPage = () => {
               </button>
             </div>
           ) : (
-            <Table columns={columns} renderRow={renderRow} data={schoolsData || []} />
+            <Table columns={columns} renderRow={renderRow} data={schools} />
           )}
         </div>
 
         {/* Pagination */}
-        {schoolsData && schoolsData.length > 0 && (
+        {totalPages > 1 && (
           <div className="mt-6">
             <Pagination
               page={page}
               setPage={setPage}
-              totalPages={5}
+              totalPages={totalPages}
             />
           </div>
         )}
