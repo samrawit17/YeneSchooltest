@@ -406,7 +406,7 @@ const AdminTimetablePage = () => {
     } finally {
       setFetchingData(false);
     }
-  }, [user?.schoolId, currentAcademicYear]);
+  }, [user?.schoolId, currentAcademicYear, t.toasts.loadFailed]);
 
   const fetchClassesForYear = useCallback(async () => {
     if (!selectedYear) {
@@ -422,7 +422,7 @@ const AdminTimetablePage = () => {
       toast.error(t.toasts.loadClassesFailed);
       setClasses([]);
     }
-  }, [selectedYear]);
+  }, [selectedYear, t.toasts.loadClassesFailed]);
 
   // Link grade filter to class selection
   useEffect(() => {
@@ -478,7 +478,7 @@ const AdminTimetablePage = () => {
         setSelectedSectionId(sections[0].id);
       }
     }
-  }, [selectedClassId, classes, fetchingData, selectedSection]);
+  }, [selectedClassId, classes, fetchingData, selectedSection, setSelectedSection]);
 
   // Set the academic year for filters
   useEffect(() => {
@@ -522,7 +522,8 @@ const AdminTimetablePage = () => {
       setAutoPreview(null);
 
       const slotsRes = await adminTimetableAPI.getGrid(selectedClassId, {
-        sectionId: selectedSectionId
+        sectionId: selectedSectionId,
+        academicYearId: selectedYear,
       });
 
       const slots = slotsRes.data?.slots || [];
@@ -544,7 +545,7 @@ const AdminTimetablePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedClassId, selectedSectionId, selectedYear, user?.schoolId]);
+  }, [selectedClassId, selectedSectionId, selectedYear, t.toasts.loadScheduleFailed]);
 
   useEffect(() => {
     if (selectedClassId && selectedSectionId && selectedYear) {
@@ -1000,7 +1001,9 @@ const AdminTimetablePage = () => {
     try {
       setSaving(true);
 
-      await adminTimetableAPI.clearSectionSlots(selectedClassId, selectedSectionId);
+      await adminTimetableAPI.clearSectionSlots(selectedClassId, selectedSectionId, {
+        academicYearId: selectedYear,
+      });
 
       const slots: any[] = [];
       Object.entries(schedule).forEach(([key, value]) => {

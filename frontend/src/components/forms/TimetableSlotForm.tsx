@@ -42,13 +42,17 @@ const TimetableSlotForm = ({ type, data }: TimetableSlotFormProps) => {
     () => generateTimeOptions(schoolStartTime, schoolEndTime),
     [schoolStartTime, schoolEndTime],
   );
+  const timeOptionValues = useMemo(
+    () => timeOptions.map((option) => option.value),
+    [timeOptions],
+  );
   const [formData, setFormData] = useState({
     classId: data?.classId || "",
     subjectId: data?.subjectId || "",
     teacherId: data?.teacherId || "",
     dayOfWeek: data?.dayOfWeek || 1,
     startTime: data?.startTime || schoolStartTime || DEFAULT_SCHOOL_START_TIME,
-    endTime: data?.endTime || timeOptions[1] || schoolEndTime || DEFAULT_SCHOOL_END_TIME,
+    endTime: data?.endTime || timeOptionValues[1] || schoolEndTime || DEFAULT_SCHOOL_END_TIME,
     room: data?.room || "",
     academicYearId: data?.academicYearId || "",
   });
@@ -57,12 +61,12 @@ const TimetableSlotForm = ({ type, data }: TimetableSlotFormProps) => {
     if (data) return;
 
     setFormData((current) => {
-      const nextStartTime = timeOptions.includes(current.startTime)
+      const nextStartTime = timeOptionValues.includes(current.startTime)
         ? current.startTime
         : schoolStartTime;
-      const fallbackEndTime = timeOptions[1] || schoolEndTime || DEFAULT_SCHOOL_END_TIME;
+      const fallbackEndTime = timeOptionValues[1] || schoolEndTime || DEFAULT_SCHOOL_END_TIME;
       const nextEndTime =
-        timeOptions.includes(current.endTime) && current.endTime > nextStartTime
+        timeOptionValues.includes(current.endTime) && current.endTime > nextStartTime
           ? current.endTime
           : fallbackEndTime;
 
@@ -72,7 +76,7 @@ const TimetableSlotForm = ({ type, data }: TimetableSlotFormProps) => {
         endTime: nextEndTime > nextStartTime ? nextEndTime : fallbackEndTime,
       };
     });
-  }, [data, schoolEndTime, schoolStartTime, timeOptions]);
+  }, [data, schoolEndTime, schoolStartTime, timeOptionValues]);
 
   const queryClient = useQueryClient();
 
@@ -148,7 +152,7 @@ const TimetableSlotForm = ({ type, data }: TimetableSlotFormProps) => {
               setFormData((current) => {
                 const nextStartTime = e.target.value;
                 const currentEndTime =
-                  current.endTime > nextStartTime ? current.endTime : timeOptions[timeOptions.indexOf(nextStartTime) + 1] || schoolEndTime;
+                  current.endTime > nextStartTime ? current.endTime : timeOptionValues[timeOptionValues.indexOf(nextStartTime) + 1] || schoolEndTime;
                 return {
                   ...current,
                   startTime: nextStartTime,
@@ -160,8 +164,8 @@ const TimetableSlotForm = ({ type, data }: TimetableSlotFormProps) => {
             required
           >
             {timeOptions.map((time) => (
-              <option key={time} value={time}>
-                {time}
+              <option key={time.value} value={time.value}>
+                {time.label}
               </option>
             ))}
           </select>
@@ -176,9 +180,9 @@ const TimetableSlotForm = ({ type, data }: TimetableSlotFormProps) => {
             className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           >
-            {timeOptions.filter((time) => time > formData.startTime).map((time) => (
-              <option key={time} value={time}>
-                {time}
+            {timeOptions.filter((time) => time.value > formData.startTime).map((time) => (
+              <option key={time.value} value={time.value}>
+                {time.label}
               </option>
             ))}
           </select>

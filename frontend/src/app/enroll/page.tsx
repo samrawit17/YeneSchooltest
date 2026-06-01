@@ -39,7 +39,7 @@ import {
   Languages,
   Moon,
   Sun,
-  LogOut,
+  LogIn,
 } from 'lucide-react';
 
 interface School {
@@ -453,13 +453,12 @@ export default function EnrollmentPage() {
         </Button>
         <Button
           variant="ghost"
-          size="icon"
           onClick={() => router.push(schoolSignInHref)}
-          className={`w-10 h-10 rounded-full ${accentControlClassName}`}
+          className={`h-10 rounded-full px-4 ${accentControlClassName}`}
           style={accentControlStyle}
-          title="Sign In"
         >
-          <LogOut className="h-5 w-5" style={{ color: 'var(--enroll-brand)' }} />
+          <LogIn className="h-4 w-4 mr-1.5" style={{ color: 'var(--enroll-brand)' }} />
+          <span style={{ color: 'var(--enroll-brand)' }}>Sign In</span>
         </Button>
       </div>
 

@@ -1,15 +1,17 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomInt } from 'crypto';
-import { PracticeExamAttemptStatus, PracticeExamOption, PracticeExamStatus } from '@prisma/client';
+import { PracticeExamAttemptStatus, PracticeExamOption, PracticeExamQuestionType, PracticeExamStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 type AnswerInput = {
   questionId: string;
   selectedOption?: PracticeExamOption | null;
+  textAnswer?: string | null;
   isFlagged?: boolean;
 };
 
 const allowedOptions = new Set(['A', 'B', 'C', 'D']);
+const allowedQuestionTypes = new Set(['MCQ', 'TRUE_FALSE', 'SHORT_ANSWER']);
 const adminRoles = new Set(['ADMIN', 'REGISTRAR', 'IT_MANAGER', 'SUPER_ADMIN']);
 const gradeSystemRanges: Record<string, { min: number; max: number }> = {
   KG_TO_12: { min: 0, max: 12 },
@@ -117,24 +119,100 @@ export class PracticeExamsService {
     return option as PracticeExamOption;
   }
 
+  private normalizeQuestionType(value: any): PracticeExamQuestionType {
+    const type = String(value || 'MCQ').trim().toUpperCase().replace(/[\s-]+/g, '_');
+    if (!allowedQuestionTypes.has(type)) {
+      throw new BadRequestException('Question type must be MCQ, TRUE_FALSE, or SHORT_ANSWER');
+    }
+    return type as PracticeExamQuestionType;
+  }
+
+  private normalizeTextAnswer(value: any) {
+    return String(value || '').trim();
+  }
+
+  private isTextAnswerCorrect(answer: string | null | undefined, correctText: string | null | undefined, caseSensitive = false) {
+    const normalize = (value: string) => this.normalizeTextAnswer(value).replace(/\s+/g, ' ');
+    const submitted = normalize(String(answer || ''));
+    const acceptedAnswers = String(correctText || '')
+      .split('|')
+      .map((value) => normalize(value))
+      .filter(Boolean);
+    if (!submitted || !acceptedAnswers.length) return null;
+    return acceptedAnswers.some((expected) =>
+      caseSensitive
+        ? submitted === expected
+        : submitted.toLocaleLowerCase() === expected.toLocaleLowerCase(),
+    );
+  }
+
+  private isAnswerCorrect(question: any, answer: any) {
+    if (!answer) return null;
+    if (question.questionType === 'SHORT_ANSWER') {
+      return this.isTextAnswerCorrect(answer.textAnswer, question.correctText, question.caseSensitive);
+    }
+    return answer.selectedOption ? answer.selectedOption === question.correctOption : null;
+  }
+
+  private isAnswerProvided(question: any, answer: any) {
+    if (!answer) return false;
+    if (question.questionType === 'SHORT_ANSWER') {
+      return !!this.normalizeTextAnswer(answer.textAnswer);
+    }
+    return !!answer.selectedOption;
+  }
+
   private ensureQuestionPayload(body: any) {
     const subject = String(body.subject || '').trim();
     const questionText = String(body.questionText || body.question || '').trim();
-    const optionA = String(body.optionA || body.option_a || '').trim();
-    const optionB = String(body.optionB || body.option_b || '').trim();
-    const optionC = String(body.optionC || body.option_c || '').trim();
-    const optionD = String(body.optionD || body.option_d || '').trim();
-    if (!subject || !questionText || !optionA || !optionB || !optionC || !optionD) {
-      throw new BadRequestException('Subject, question, and all A/B/C/D options are required');
+    const questionType = this.normalizeQuestionType(body.questionType || body.question_type || body.type);
+    let optionA = String(body.optionA || body.option_a || '').trim();
+    let optionB = String(body.optionB || body.option_b || '').trim();
+    let optionC = String(body.optionC || body.option_c || '').trim();
+    let optionD = String(body.optionD || body.option_d || '').trim();
+    let correctOption: PracticeExamOption | null = null;
+    let correctText: string | null = null;
+
+    if (!subject || !questionText) {
+      throw new BadRequestException('Subject and question are required');
+    }
+
+    if (questionType === 'MCQ') {
+      if (!optionA || !optionB || !optionC || !optionD) {
+        throw new BadRequestException('Multiple choice questions require all A/B/C/D options');
+      }
+      correctOption = this.normalizeOption(body.correctOption || body.correct_option || body.correctAnswer || body.correct_answer);
+    } else if (questionType === 'TRUE_FALSE') {
+      optionA = optionA || 'True';
+      optionB = optionB || 'False';
+      optionC = '';
+      optionD = '';
+      const rawCorrect = String(body.correctOption || body.correct_option || body.correctAnswer || body.correct_answer || '').trim().toUpperCase();
+      correctOption = rawCorrect === 'TRUE' ? 'A' : rawCorrect === 'FALSE' ? 'B' : this.normalizeOption(rawCorrect);
+      if (!['A', 'B'].includes(correctOption)) {
+        throw new BadRequestException('True/false correct answer must be True or False');
+      }
+    } else {
+      correctText = this.normalizeTextAnswer(body.correctText || body.correct_text || body.correctAnswer || body.correct_answer);
+      optionA = '';
+      optionB = '';
+      optionC = '';
+      optionD = '';
+      if (!correctText) {
+        throw new BadRequestException('Short answer questions require a correct answer');
+      }
     }
     return {
       subject,
+      questionType,
       questionText,
-      optionA,
-      optionB,
-      optionC,
-      optionD,
-      correctOption: this.normalizeOption(body.correctOption || body.correct_option),
+      optionA: optionA || null,
+      optionB: optionB || null,
+      optionC: optionC || null,
+      optionD: optionD || null,
+      correctOption,
+      correctText,
+      caseSensitive: body.caseSensitive === true || body.case_sensitive === true || String(body.caseSensitive || body.case_sensitive || '').toLowerCase() === 'true',
       order: Number.isFinite(Number(body.order)) ? Number(body.order) : 0,
       isActive: body.isActive !== false,
     };
@@ -548,11 +626,15 @@ export class PracticeExamsService {
         id: question.id,
         subject: question.subject,
         questionText: question.questionText,
+        questionType: question.questionType,
         optionA: question.optionA,
         optionB: question.optionB,
         optionC: question.optionC,
         optionD: question.optionD,
+        correctText: attempt.status === 'IN_PROGRESS' ? undefined : question.correctText,
+        caseSensitive: question.caseSensitive,
         selectedOption: answerMap.get(question.id)?.selectedOption || null,
+        textAnswer: answerMap.get(question.id)?.textAnswer || null,
         isFlagged: answerMap.get(question.id)?.isFlagged || false,
         ...(attempt.status === 'IN_PROGRESS' ? {} : { correctOption: question.correctOption, isCorrect: answerMap.get(question.id)?.isCorrect ?? null }),
       })),
@@ -588,7 +670,9 @@ export class PracticeExamsService {
     for (const answer of answers) {
       if (!questionIds.has(answer.questionId)) continue;
       const selectedOption = answer.selectedOption ? this.normalizeOption(answer.selectedOption) : null;
+      const textAnswer = answer.textAnswer !== undefined && answer.textAnswer !== null ? this.normalizeTextAnswer(answer.textAnswer) : null;
       const question = attempt.exam.questions.find((q: any) => q.id === answer.questionId);
+      const answerForGrading = { selectedOption, textAnswer };
       await this.prisma.practiceExamAnswer.upsert({
         where: { attemptId_questionId: { attemptId: attempt.id, questionId: answer.questionId } },
         create: {
@@ -598,13 +682,15 @@ export class PracticeExamsService {
           studentId: attempt.studentId,
           questionId: answer.questionId,
           selectedOption,
+          textAnswer,
           isFlagged: !!answer.isFlagged,
-          isCorrect: gradeNow && selectedOption ? selectedOption === question.correctOption : null,
+          isCorrect: gradeNow ? this.isAnswerCorrect(question, answerForGrading) : null,
         },
         update: {
           selectedOption,
+          textAnswer,
           isFlagged: !!answer.isFlagged,
-          ...(gradeNow ? { isCorrect: selectedOption ? selectedOption === question.correctOption : null } : {}),
+          ...(gradeNow ? { isCorrect: this.isAnswerCorrect(question, answerForGrading) } : {}),
         },
       });
     }
@@ -635,8 +721,10 @@ export class PracticeExamsService {
     let skippedCount = 0;
     for (const question of attempt.exam.questions) {
       const answer = answerMap.get(question.id);
-      if (!answer?.selectedOption) skippedCount++;
-      else if (answer.selectedOption === question.correctOption) correctCount++;
+      const provided = this.isAnswerProvided(question, answer);
+      const correct = this.isAnswerCorrect(question, answer);
+      if (!provided) skippedCount++;
+      else if (correct === true) correctCount++;
       else wrongCount++;
     }
     const total = attempt.exam.questions.length;
@@ -675,7 +763,7 @@ export class PracticeExamsService {
       if (!question) continue;
       await this.prisma.practiceExamAnswer.update({
         where: { id: answer.id },
-        data: { isCorrect: answer.selectedOption ? answer.selectedOption === question.correctOption : null },
+        data: { isCorrect: this.isAnswerCorrect(question, answer) },
       });
     }
   }

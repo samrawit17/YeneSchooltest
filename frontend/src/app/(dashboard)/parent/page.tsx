@@ -1154,30 +1154,26 @@ const ParentDashboard = () => {
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.feeBalance}</p>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.totalOutstandingBalance}</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">
                   {feeBalance.toLocaleString()} Br
                 </p>
                 <div className="flex items-center gap-1 mt-1">
-                  {totalDiscount > 0 ? (
-                    <>
-                      <CheckCircle className="w-3 h-3 text-emerald-500" />
-                      <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                        {discountPercent ? `${discountPercent}% ` : ""}{discountLabel}
-                      </span>
-                    </>
-                  ) : feeBalance > 0 ? (
+                  {feeBalance > 0 ? (
                     <>
                       <AlertCircle className="w-3 h-3 text-amber-500" />
-                      <span className="text-xs text-amber-600 dark:text-amber-400">{t.due}</span>
+                      <span className="text-xs text-amber-600 dark:text-amber-400">{t.unpaidNeedsPayment}</span>
                     </>
                   ) : (
                     <>
                       <CheckCircle className="w-3 h-3 text-emerald-500" />
-                      <span className="text-xs text-emerald-600 dark:text-emerald-400">{t.paid}</span>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400">{t.allFeesPaid}</span>
                     </>
                   )}
                 </div>
+                <p className="mt-2 max-w-[14rem] text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  {t.totalOutstandingHelp}
+                </p>
               </div>
               <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/30">
                 <DollarSign className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -1240,22 +1236,34 @@ const ParentDashboard = () => {
             </div>
 
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.feeSummary}</h3>
+              <div className="mb-4">
+                <h3 className="font-semibold text-slate-900 dark:text-white">{t.currentPeriodFeeSummary}</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  {t.currentPeriodFeeSummaryHelp}
+                </p>
+              </div>
               <div className="space-y-3">
                 {selectedChild?.feePeriods?.length ? (
                   selectedChild.feePeriods.map((period, index) => {
                     const periodPenalty = getPeriodPenalty(period.name, period.balance);
+                    const amountDueNow = period.balance + periodPenalty.penalty;
                     return (
                       <div key={`${period.id}-${index}`} className="border-b border-slate-100 dark:border-slate-700 pb-3 last:border-0 last:pb-0">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm font-medium text-slate-900 dark:text-white">{period.name}</span>
-                          <span className={`text-sm font-bold ${period.balance > 0 ? "text-amber-600" : "text-emerald-600"}`}>
-                            {formatBirr(period.balance + periodPenalty.penalty)}
-                          </span>
+                          <div className="text-right">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                              {t.dueNow}
+                            </p>
+                            <span className={`text-sm font-bold ${amountDueNow > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                              {formatBirr(amountDueNow)}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                           <span>{t.paidLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalPaid)}</strong></span>
-                          <span>{t.dueLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalDue)}</strong></span>
+                          <span>{t.feeAmountLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalDue)}</strong></span>
+                          <span>{t.remainingLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.balance)}</strong></span>
                           {periodPenalty.penalty > 0 && (
                             <span className="text-red-600 dark:text-red-400">
                               Penalty <strong>{formatBirr(periodPenalty.penalty)}</strong> ({periodPenalty.daysLate} days)

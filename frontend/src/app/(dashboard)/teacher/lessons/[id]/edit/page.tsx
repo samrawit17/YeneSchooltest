@@ -76,7 +76,10 @@ export default function EditLessonPage() {
           title: data.title || "",
           objective: data.objective || "",
           lessonContent: data.lessonContent || "",
-          homework: data.homework || data.instructions || "",
+          homework:
+            typeof data.homework === "string"
+              ? data.homework
+              : data.homework?.description || data.homework?.title || data.instructions || "",
           periodNumber: data.periodNumber || null,
           status: (data.status as FormState["status"]) || "DRAFT",
         });

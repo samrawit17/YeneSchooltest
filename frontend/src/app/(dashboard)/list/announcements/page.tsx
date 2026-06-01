@@ -48,7 +48,8 @@ import {
   User,
   GraduationCap,
   BookOpen,
-  X
+  X,
+  Globe2
 } from "lucide-react";
 import { format, parseISO, isAfter, isBefore } from "date-fns";
 import { formatDateByCalendarType, formatDateTimeByCalendarType } from "@/lib/calendar-utils";
@@ -328,6 +329,13 @@ const AnnouncementListPage = () => {
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${statusInfo.className}`}>
                         {statusInfo.label}
                       </span>
+
+                      {announcement.isPublic && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800">
+                          <Globe2 className="h-3 w-3" />
+                          Login page
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="font-medium mb-1 line-clamp-1">{announcement.title}</h3>

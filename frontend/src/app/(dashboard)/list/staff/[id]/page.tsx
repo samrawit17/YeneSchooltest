@@ -46,7 +46,7 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
   const { setItems } = useBreadcrumb();
   const { user: currentUser } = useAuth();
   const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
-  const displayYear = currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel;
+  const displayYear = String(currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel || "");
   const currentRole = String(currentUser?.role || "").toUpperCase();
   const canManageStaff = ["ADMIN", "REGISTRAR", "IT_MANAGER", "SUPER_ADMIN"].includes(currentRole);
 

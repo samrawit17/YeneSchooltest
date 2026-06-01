@@ -2,6 +2,7 @@ import api from "./core";
 
 export type PracticeExamStatus = "DRAFT" | "READY" | "ACTIVE" | "ARCHIVED";
 export type PracticeExamOption = "A" | "B" | "C" | "D";
+export type PracticeExamQuestionType = "MCQ" | "TRUE_FALSE" | "SHORT_ANSWER";
 
 export interface PracticeExam {
   id: string;
@@ -26,13 +27,17 @@ export interface PracticeExam {
 export interface PracticeExamQuestion {
   id: string;
   subject: string;
+  questionType?: PracticeExamQuestionType;
   questionText: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
+  optionA?: string | null;
+  optionB?: string | null;
+  optionC?: string | null;
+  optionD?: string | null;
   correctOption?: PracticeExamOption;
+  correctText?: string | null;
+  caseSensitive?: boolean;
   selectedOption?: PracticeExamOption | null;
+  textAnswer?: string | null;
   isFlagged?: boolean;
   isCorrect?: boolean | null;
 }
@@ -111,8 +116,8 @@ export const practiceExamsAPI = {
       { skipAuthErrorRedirect: true },
     ),
   attempt: (attemptId: string) => api.get<PracticeExamAttempt>(`/practice-exams/student/attempts/${attemptId}`),
-  autosave: (attemptId: string, answers: { questionId: string; selectedOption?: PracticeExamOption | null; isFlagged?: boolean }[]) =>
+  autosave: (attemptId: string, answers: { questionId: string; selectedOption?: PracticeExamOption | null; textAnswer?: string | null; isFlagged?: boolean }[]) =>
     api.post(`/practice-exams/student/attempts/${attemptId}/autosave`, { answers }),
-  submit: (attemptId: string, answers: { questionId: string; selectedOption?: PracticeExamOption | null; isFlagged?: boolean }[]) =>
+  submit: (attemptId: string, answers: { questionId: string; selectedOption?: PracticeExamOption | null; textAnswer?: string | null; isFlagged?: boolean }[]) =>
     api.post<PracticeExamAttempt>(`/practice-exams/student/attempts/${attemptId}/submit`, { answers }),
 };

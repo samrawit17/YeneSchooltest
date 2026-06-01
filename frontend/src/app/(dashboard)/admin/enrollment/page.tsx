@@ -87,7 +87,6 @@ export default function AdminEnrollmentPage() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedGrade, setSelectedGrade] = useState('all');
   const selectedYearLabel =
-    academicYears.find((year) => year.id === selectedYear)?.ethiopianYear ||
     academicYears.find((year) => year.id === selectedYear)?.name ||
     selectedYear;
   const [searchTerm, setSearchTerm] = useState('');

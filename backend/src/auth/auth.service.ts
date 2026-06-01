@@ -36,6 +36,14 @@ const AVATAR_EXTENSIONS_BY_MIME: Record<string, string> = {
   'image/webp': '.webp',
 };
 
+const shouldUseSecureCookies = () => {
+  if (process.env.COOKIE_SECURE != null) {
+    return process.env.COOKIE_SECURE === 'true';
+  }
+
+  return process.env.NODE_ENV === 'production';
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -282,7 +290,7 @@ export class AuthService {
     if (res) {
       res.cookie(JWT_COOKIE_NAME, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: shouldUseSecureCookies(),
         sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
         maxAge: this.parseJwtCookieMaxAge(),
       });

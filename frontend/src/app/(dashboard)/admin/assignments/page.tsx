@@ -129,7 +129,7 @@ const TeacherAssignmentPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.schoolId]);
+  }, [t.toasts.loadMatrixFailed, user?.schoolId]);
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -155,7 +155,7 @@ const TeacherAssignmentPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, setSelectedYear, user?.schoolId]);
+  }, [selectedYear, setSelectedYear, t.toasts.loadSetupFailed, user?.schoolId]);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {

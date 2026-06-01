@@ -100,7 +100,7 @@ const calculatePasswordStrength = (password: string): PasswordStrength => {
   return { score, label, color, checks };
 };
 
-const isValidHexColor = (value?: string | null) =>
+const isValidHexColor = (value?: string | null): value is string =>
   typeof value === "string" && /^#([0-9A-Fa-f]{6})$/.test(value);
 
 const hexToRgb = (hex: string) => {
@@ -144,7 +144,7 @@ const ChangePasswordPage = () => {
     queryFn: async () => {
       if (!user?.schoolId) return null;
       const response = await schoolSettingsAPI.get(user.schoolId, "theme_color");
-      const value = response.data?.value;
+      const value = response.data?.value as string | null | undefined;
       return isValidHexColor(value) ? value : null;
     },
     enabled: !!user?.schoolId,

@@ -26,12 +26,15 @@ interface TeacherAssignment {
 
 const emptyQuestion = {
   subject: "",
+  questionType: "MCQ",
   questionText: "",
   optionA: "",
   optionB: "",
   optionC: "",
   optionD: "",
   correctOption: "A",
+  correctText: "",
+  caseSensitive: false,
 };
 
 const normalizeAssignments = (payload: any): TeacherAssignment[] => {
@@ -220,6 +223,8 @@ export default function TeacherOnlineExamsPage() {
   };
 
   const questions = examDetailQuery.data?.questions || [];
+  const questionType = questionForm.questionType || "MCQ";
+  const optionLabels = questionType === "TRUE_FALSE" ? (["A", "B"] as const) : (["A", "B", "C", "D"] as const);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-950">
@@ -385,24 +390,63 @@ export default function TeacherOnlineExamsPage() {
                     <Input id="online-question-subject" value={questionForm.subject} onChange={(e) => setQuestionForm({ ...questionForm, subject: e.target.value })} placeholder="Mathematics" />
                   </div>
                   <div className="space-y-1.5 md:col-span-2">
-                    <Label htmlFor="online-question-text">Question</Label>
-                    <Textarea id="online-question-text" value={questionForm.questionText} onChange={(e) => setQuestionForm({ ...questionForm, questionText: e.target.value })} />
-                  </div>
-                  {(["A", "B", "C", "D"] as const).map((option) => (
-                    <div key={option} className="space-y-1.5">
-                      <Label htmlFor={`online-option-${option}`}>Option {option}</Label>
-                      <Input id={`online-option-${option}`} value={questionForm[`option${option}`]} onChange={(e) => setQuestionForm({ ...questionForm, [`option${option}`]: e.target.value })} />
-                    </div>
-                  ))}
-                  <div className="space-y-1.5">
-                    <Label>Correct option</Label>
-                    <Select value={questionForm.correctOption} onValueChange={(correctOption) => setQuestionForm({ ...questionForm, correctOption })}>
+                    <Label>Question type</Label>
+                    <Select
+                      value={questionType}
+                      onValueChange={(nextType) =>
+                        setQuestionForm({
+                          ...questionForm,
+                          questionType: nextType,
+                          optionA: nextType === "TRUE_FALSE" ? "True" : nextType === "SHORT_ANSWER" ? "" : questionForm.optionA,
+                          optionB: nextType === "TRUE_FALSE" ? "False" : nextType === "SHORT_ANSWER" ? "" : questionForm.optionB,
+                          optionC: nextType === "SHORT_ANSWER" || nextType === "TRUE_FALSE" ? "" : questionForm.optionC,
+                          optionD: nextType === "SHORT_ANSWER" || nextType === "TRUE_FALSE" ? "" : questionForm.optionD,
+                          correctOption: nextType === "TRUE_FALSE" ? "A" : questionForm.correctOption || "A",
+                        })
+                      }
+                    >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {(["A", "B", "C", "D"] as const).map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                        <SelectItem value="MCQ">Multiple choice</SelectItem>
+                        <SelectItem value="TRUE_FALSE">True or false</SelectItem>
+                        <SelectItem value="SHORT_ANSWER">Short answer</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="online-question-text">Question</Label>
+                    <Textarea id="online-question-text" value={questionForm.questionText} onChange={(e) => setQuestionForm({ ...questionForm, questionText: e.target.value })} />
+                  </div>
+                  {questionType !== "SHORT_ANSWER" ? (
+                    <>
+                      {optionLabels.map((option) => (
+                        <div key={option} className="space-y-1.5">
+                          <Label htmlFor={`online-option-${option}`}>{questionType === "TRUE_FALSE" ? (option === "A" ? "True label" : "False label") : `Option ${option}`}</Label>
+                          <Input id={`online-option-${option}`} value={questionForm[`option${option}`]} disabled={questionType === "TRUE_FALSE"} onChange={(e) => setQuestionForm({ ...questionForm, [`option${option}`]: e.target.value })} />
+                        </div>
+                      ))}
+                      <div className="space-y-1.5">
+                        <Label>{questionType === "TRUE_FALSE" ? "Correct answer" : "Correct option"}</Label>
+                        <Select value={questionForm.correctOption} onValueChange={(correctOption) => setQuestionForm({ ...questionForm, correctOption })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {optionLabels.map((option) => <SelectItem key={option} value={option}>{questionType === "TRUE_FALSE" ? (option === "A" ? "True" : "False") : option}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="online-short-answer">Accepted answer</Label>
+                        <Input id="online-short-answer" value={questionForm.correctText} onChange={(e) => setQuestionForm({ ...questionForm, correctText: e.target.value })} placeholder="Exact answer or variants separated by |" />
+                      </div>
+                      <label className="flex items-end gap-2 pb-2 text-sm text-slate-700 dark:text-slate-200">
+                        <input type="checkbox" checked={!!questionForm.caseSensitive} onChange={(e) => setQuestionForm({ ...questionForm, caseSensitive: e.target.checked })} />
+                        Case sensitive
+                      </label>
+                    </>
+                  )}
                   <div className="flex items-end">
                     <Button disabled={addQuestion.isPending || !selectedExam} onClick={() => addQuestion.mutate()}>
                       {addQuestion.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
@@ -416,7 +460,15 @@ export default function TeacherOnlineExamsPage() {
                 <CardHeader><CardTitle className="text-base">CSV Import</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <Input type="file" accept=".csv" onChange={(event) => handleCsvFile(event.target.files?.[0])} />
-                  <Textarea rows={4} placeholder="subject,questionText,optionA,optionB,optionC,optionD,correctOption" value={csv} onChange={(event) => setCsv(event.target.value)} />
+                  <Textarea
+                    rows={6}
+                    placeholder={"subject,question_type,question,option_a,option_b,option_c,option_d,correct_answer,case_sensitive\nMathematics,MCQ,What is 5+7?,10,11,12,13,C,false\nCivics,TRUE_FALSE,The capital city of Ethiopia is Addis Ababa.,,,,,True,false\nEnglish,SHORT_ANSWER,Write a greeting.,,,,,Hello|Hi,false"}
+                    value={csv}
+                    onChange={(event) => setCsv(event.target.value)}
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Use question_type MCQ, TRUE_FALSE, or SHORT_ANSWER. Short answers can include accepted variants separated by |.
+                  </p>
                   <Button variant="outline" disabled={importQuestions.isPending || !csv.trim()} onClick={() => importQuestions.mutate()}>
                     {importQuestions.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                     Import Questions
@@ -438,7 +490,13 @@ export default function TeacherOnlineExamsPage() {
                           <div>
                             <p className="text-xs font-semibold text-slate-500">Question {index + 1}</p>
                             <p className="font-medium text-slate-900 dark:text-slate-100">{question.questionText}</p>
-                            <p className="mt-2 text-xs text-slate-500">Answer: {question.correctOption}</p>
+                            <p className="mt-2 text-xs text-slate-500">
+                              {question.questionType === "SHORT_ANSWER"
+                                ? `Short answer: ${question.correctText || "-"}`
+                                : question.questionType === "TRUE_FALSE"
+                                  ? `True/false: ${question.correctOption === "A" ? "True" : "False"}`
+                                  : `Answer: ${question.correctOption}`}
+                            </p>
                           </div>
                           <Button variant="outline" size="icon" onClick={() => deleteQuestion.mutate(question.id)}>
                             <Trash2 className="h-4 w-4" />

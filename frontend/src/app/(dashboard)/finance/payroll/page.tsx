@@ -14,6 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  convertToEthiopian,
+  formatDateByCalendarType,
+  getLocalizedEthiopianMonthName,
+  type CalendarType,
+} from "@/lib/calendar-utils";
 import { toast } from "sonner";
 import {
   Banknote,
@@ -58,6 +64,7 @@ interface PayrollRun {
   title: string;
   periodMonth: number;
   periodYear: number;
+  periodCalendarType?: CalendarType | null;
   status: PayrollStatus;
   grossAmount: number;
   deductionsAmount: number;
@@ -103,12 +110,12 @@ interface PayrollRunDetail extends PayrollRun {
 }
 
 const statusTone: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-700",
-  PENDING: "bg-slate-100 text-slate-700",
-  APPROVED: "bg-blue-100 text-blue-700",
-  PAID: "bg-emerald-100 text-emerald-700",
-  HELD: "bg-amber-100 text-amber-700",
-  CANCELLED: "bg-rose-100 text-rose-700",
+  DRAFT: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  PENDING: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  APPROVED: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
+  PAID: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
+  HELD: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
+  CANCELLED: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400",
 };
 
 const money = (amount: number) =>
@@ -140,6 +147,7 @@ const downloadCsv = (filename: string, rows: Array<Record<string, string | numbe
 export default function PayrollPage() {
   const { user } = useAuth();
   const schoolId = user?.schoolId || "";
+  const activeCalendarType: CalendarType = user?.calendarType === "GREGORIAN" ? "GREGORIAN" : "ETHIOPIAN";
   const now = new Date();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -224,15 +232,54 @@ export default function PayrollPage() {
 
   const activeSalaryCount = staff.filter((item) => item.salary?.isActive).length;
   const currentNet = runs.find((run) => run.status !== "CANCELLED")?.netAmount || 0;
+  const monthKey = (date: Date) => {
+    if (activeCalendarType === "ETHIOPIAN") {
+      const ethiopian = convertToEthiopian(date);
+      return `${ethiopian.year}-${ethiopian.month}`;
+    }
+    return `${date.getFullYear()}-${date.getMonth() + 1}`;
+  };
+  const currentMonthKey = monthKey(now);
   const paidThisMonth = runs
     .filter((run) => {
       if (run.status !== "PAID") return false;
       const paidDate = run.paymentDate || run.paidAt;
       if (!paidDate) return false;
       const date = new Date(paidDate);
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      return monthKey(date) === currentMonthKey;
     })
     .reduce((total, run) => total + Number(run.netAmount || 0), 0);
+
+  const getPayrollPeriodPayload = (date: Date) => {
+    if (activeCalendarType === "ETHIOPIAN") {
+      const ethiopian = convertToEthiopian(date);
+      return { periodMonth: ethiopian.month, periodYear: ethiopian.year };
+    }
+
+    return { periodMonth: date.getMonth() + 1, periodYear: date.getFullYear() };
+  };
+
+  const formatPayrollPeriod = (run: Pick<PayrollRun, "periodMonth" | "periodYear" | "periodCalendarType">) => {
+    if (run.periodCalendarType === "ETHIOPIAN") {
+      return `${getLocalizedEthiopianMonthName(run.periodMonth)} ${run.periodYear} E.C.`;
+    }
+
+    return new Date(run.periodYear, run.periodMonth - 1, 1).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  const formatPayrollDate = (date?: string | null) =>
+    date ? formatDateByCalendarType(date, activeCalendarType) : "-";
+
+  const getRunTitle = (run: Pick<PayrollRun, "title" | "periodMonth" | "periodYear" | "periodCalendarType">) => {
+    const generatedTitlePattern = /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\s+Payroll$/;
+    if (!run.title || (run.periodCalendarType === "ETHIOPIAN" && generatedTitlePattern.test(run.title))) {
+      return `${formatPayrollPeriod(run)} Payroll`;
+    }
+    return run.title;
+  };
 
   const fillSalaryForm = (staffId: string) => {
     const item = staff.find((row) => row.id === staffId);
@@ -254,14 +301,21 @@ export default function PayrollPage() {
       toast.error("Select staff and enter base salary");
       return;
     }
+    const baseSalary = Number(salaryForm.baseSalary);
+    const allowances = Number(salaryForm.allowances || 0);
+    const deductions = Number(salaryForm.deductions || 0);
+    if (![baseSalary, allowances, deductions].every(Number.isFinite) || baseSalary <= 0 || allowances < 0 || deductions < 0) {
+      toast.error("Salary amounts must be valid non-negative numbers");
+      return;
+    }
     setSaving(true);
     try {
       await financeAPI.upsertPayrollSalary({
         schoolId,
         staffUserId: salaryForm.staffUserId,
-        baseSalary: Number(salaryForm.baseSalary),
-        allowances: Number(salaryForm.allowances || 0),
-        deductions: Number(salaryForm.deductions || 0),
+        baseSalary,
+        allowances,
+        deductions,
         bankName: salaryForm.bankName || undefined,
         bankAccount: salaryForm.bankAccount || undefined,
         tinNumber: salaryForm.tinNumber || undefined,
@@ -279,12 +333,12 @@ export default function PayrollPage() {
 
   const createRun = async () => {
     if (!schoolId) return;
+    const period = getPayrollPeriodPayload(salaryMonthDate);
     setSaving(true);
     try {
       const response = await financeAPI.createPayrollRun({
         schoolId,
-        periodMonth: salaryMonthDate.getMonth() + 1,
-        periodYear: salaryMonthDate.getFullYear(),
+        ...period,
         paymentDate: paymentDate.toISOString(),
         title: runForm.title || undefined,
         notes: runForm.notes || undefined,
@@ -304,11 +358,12 @@ export default function PayrollPage() {
     if (!schoolId || !selectedRunId) return;
     setSaving(true);
     try {
-      await financeAPI.updatePayrollRunStatus(selectedRunId, {
+      const payload: Parameters<typeof financeAPI.updatePayrollRunStatus>[1] = {
         schoolId,
         status,
-        paymentDate: paymentDate.toISOString(),
-      });
+      };
+      if (status === "PAID") payload.paymentDate = paymentDate.toISOString();
+      await financeAPI.updatePayrollRunStatus(selectedRunId, payload);
       toast.success(`Payroll marked ${status.toLowerCase()}`);
       await Promise.all([loadPayroll(), loadRunDetail()]);
     } catch (error: any) {
@@ -324,7 +379,7 @@ export default function PayrollPage() {
     try {
       await financeAPI.updatePayrollEntryStatus(entryId, { schoolId, status });
       toast.success(`Entry marked ${status.toLowerCase()}`);
-      await loadRunDetail();
+      await Promise.all([loadPayroll(), loadRunDetail()]);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to update entry");
     } finally {
@@ -349,6 +404,11 @@ export default function PayrollPage() {
       transactionReference: entry.transactionReference || "",
     })));
   };
+
+  const canApproveRun = selectedRun?.status === "DRAFT";
+  const canMarkRunPaid = selectedRun?.status === "APPROVED";
+  const canHoldEntries = selectedRun?.status === "DRAFT" || selectedRun?.status === "APPROVED";
+  const canPayEntries = selectedRun?.status === "APPROVED";
 
   if (loading) {
     return (
@@ -423,10 +483,22 @@ export default function PayrollPage() {
       </div>
 
       <Tabs defaultValue="runs" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="runs">Runs</TabsTrigger>
-          <TabsTrigger value="salaries">Salaries</TabsTrigger>
-        </TabsList>
+        <div className="border-b border-slate-200 dark:border-slate-800">
+          <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
+            <TabsTrigger
+              value="runs"
+              className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
+            >
+              Runs
+            </TabsTrigger>
+            <TabsTrigger
+              value="salaries"
+              className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
+            >
+              Salaries
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="runs" className="space-y-4">
           <Card>
@@ -481,13 +553,13 @@ export default function PayrollPage() {
                     className={`w-full rounded-md border p-3 text-left transition ${selectedRunId === run.id ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{run.title}</span>
+                      <span className="font-medium">{getRunTitle(run)}</span>
                       <Badge className={statusTone[run.status]}>{run.status}</Badge>
                     </div>
-                      <div className="mt-1 text-sm text-muted-foreground">{run.entryCount} entries · {money(run.netAmount)}</div>
+                      <div className="mt-1 text-sm text-muted-foreground">{formatPayrollPeriod(run)} · {run.entryCount} entries · {money(run.netAmount)}</div>
                       {run.paymentDate ? (
                         <div className="mt-1 text-xs text-muted-foreground">
-                          Payment date: {new Date(run.paymentDate).toLocaleDateString()}
+                          Payment date: {formatPayrollDate(run.paymentDate)}
                         </div>
                       ) : null}
                     </button>
@@ -497,13 +569,13 @@ export default function PayrollPage() {
 
             <Card>
               <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <CardTitle className="text-base">{selectedRun?.title || "Payroll Details"}</CardTitle>
+                <CardTitle className="text-base">{selectedRun ? getRunTitle(selectedRun) : "Payroll Details"}</CardTitle>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => updateRunStatus("APPROVED")} disabled={!selectedRun || saving || selectedRun.status === "PAID"}>
+                  <Button size="sm" variant="outline" onClick={() => updateRunStatus("APPROVED")} disabled={!canApproveRun || saving}>
                     <ShieldCheck className="mr-2 h-4 w-4" />
                     Approve
                   </Button>
-                  <Button size="sm" onClick={() => updateRunStatus("PAID")} disabled={!selectedRun || saving || selectedRun.status === "PAID"}>
+                  <Button size="sm" onClick={() => updateRunStatus("PAID")} disabled={!canMarkRunPaid || saving}>
                     <CheckCircle2 className="mr-2 h-4 w-4" />
                     Mark Paid
                   </Button>
@@ -518,8 +590,9 @@ export default function PayrollPage() {
                       <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Net</div><div className="font-semibold">{money(selectedRun.netAmount)}</div></div>
                       <div className="rounded-md border p-3">
                         <div className="text-xs text-muted-foreground">Payment Date</div>
-                        <div className="font-semibold">{selectedRun.paymentDate ? new Date(selectedRun.paymentDate).toLocaleDateString() : "-"}</div>
+                        <div className="font-semibold">{formatPayrollDate(selectedRun.paymentDate)}</div>
                       </div>
+                      <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Salary Month</div><div className="font-semibold">{formatPayrollPeriod(selectedRun)}</div></div>
                       <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Status</div><Badge className={statusTone[selectedRun.status]}>{selectedRun.status}</Badge></div>
                     </div>
                     <div className="overflow-x-auto">
@@ -547,8 +620,8 @@ export default function PayrollPage() {
                               <TableCell><Badge className={statusTone[entry.status]}>{entry.status}</Badge></TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
-                                  <Button size="sm" variant="outline" onClick={() => updateEntryStatus(entry.id, "HELD")} disabled={saving || entry.status === "PAID"}>Hold</Button>
-                                  <Button size="sm" onClick={() => updateEntryStatus(entry.id, "PAID")} disabled={saving || entry.status === "PAID"}>Paid</Button>
+                                  <Button size="sm" variant="outline" onClick={() => updateEntryStatus(entry.id, "HELD")} disabled={saving || !canHoldEntries || entry.status === "PAID" || entry.status === "HELD"}>Hold</Button>
+                                  <Button size="sm" onClick={() => updateEntryStatus(entry.id, "PAID")} disabled={saving || !canPayEntries || entry.status === "PAID" || entry.status === "HELD"}>Paid</Button>
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -583,17 +656,17 @@ export default function PayrollPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Base Salary</Label>
-                  <Input type="number" value={salaryForm.baseSalary} onChange={(event) => setSalaryForm((prev) => ({ ...prev, baseSalary: event.target.value }))} />
+                  <Input type="number" min="0" step="0.01" value={salaryForm.baseSalary} onChange={(event) => setSalaryForm((prev) => ({ ...prev, baseSalary: event.target.value }))} />
                 </div>
                 <div>
                   <Label>Allowances</Label>
-                  <Input type="number" value={salaryForm.allowances} onChange={(event) => setSalaryForm((prev) => ({ ...prev, allowances: event.target.value }))} />
+                  <Input type="number" min="0" step="0.01" value={salaryForm.allowances} onChange={(event) => setSalaryForm((prev) => ({ ...prev, allowances: event.target.value }))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Deductions</Label>
-                  <Input type="number" value={salaryForm.deductions} onChange={(event) => setSalaryForm((prev) => ({ ...prev, deductions: event.target.value }))} />
+                  <Input type="number" min="0" step="0.01" value={salaryForm.deductions} onChange={(event) => setSalaryForm((prev) => ({ ...prev, deductions: event.target.value }))} />
                 </div>
                 <div>
                   <Label>TIN</Label>

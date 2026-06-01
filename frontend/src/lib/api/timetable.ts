@@ -19,7 +19,7 @@ export const adminTimetableAPI = {
         })
       : api.get('/class-subjects', { params }),
 
-  getGrid: (classId: string, params?: { sectionId?: string }) =>
+  getGrid: (classId: string, params?: { sectionId?: string; academicYearId?: string }) =>
     api.get(`/timetable-slots/grid/class/${classId}`, { params }),
 
   getAllSlots: (params?: {
@@ -29,8 +29,8 @@ export const adminTimetableAPI = {
     academicYearId?: string;
   }) => api.get('/timetable-slots', { params }),
 
-  clearSectionSlots: (classId: string, sectionId: string) =>
-    api.delete(`/timetable-slots/class/${classId}/section/${sectionId}`),
+  clearSectionSlots: (classId: string, sectionId: string, params?: { academicYearId?: string }) =>
+    api.delete(`/timetable-slots/class/${classId}/section/${sectionId}`, { params }),
 
   bulkCreateSlots: (slots: any[]) => api.post("/timetable-slots/bulk", { slots }),
 

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
+import { TimePicker } from "@/components/ui/TimePicker";
 import { toast } from "sonner";
 import { Loader2, Clock } from "lucide-react";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -243,7 +244,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
               </div>
               <div className="space-y-2">
                 <Label>{t.form.time}</Label>
-                <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="border-[#E2E8F0] focus-visible:ring-[var(--brand-color,#e35336)]" />
+                <TimePicker value={scheduleTime} onChange={setScheduleTime} />
               </div>
             </div>
           )}

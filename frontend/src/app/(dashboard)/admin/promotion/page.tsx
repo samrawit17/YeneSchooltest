@@ -60,7 +60,11 @@ export default function PromotionPage() {
       const response = await classesAPI.getAll({ academicYearId: currentAcademicYear?.id });
       const data = response.data?.data || response.data || [];
       const grades = Array.from(
-        new Set(data.map((cls: any) => Number(cls.grade)).filter((grade: number) => Number.isFinite(grade))),
+        new Set<number>(
+          data
+            .map((cls: any) => Number(cls.grade))
+            .filter((grade: number) => Number.isFinite(grade)),
+        ),
       ).sort((a, b) => a - b);
       setGradeOptions(grades);
       if (grades.length > 0) {

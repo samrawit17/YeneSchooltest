@@ -74,7 +74,7 @@ export default function StaffPage() {
   const { t } = useTranslations<any>("peopleLists");
   const router = useRouter();
   const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
-  const displayYear = currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel;
+  const displayYear = String(currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel || "");
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("");

@@ -654,6 +654,7 @@ export class TimetableSlotService {
     schoolId: string,
     classId: string,
     sectionId?: string,
+    academicYearId?: string,
   ) {
     const where: any = {
       schoolId,
@@ -662,6 +663,10 @@ export class TimetableSlotService {
 
     if (sectionId) {
       where.sectionId = sectionId;
+    }
+
+    if (academicYearId) {
+      where.academicYearId = academicYearId;
     }
 
     return this.prisma.timetableSlot.deleteMany({

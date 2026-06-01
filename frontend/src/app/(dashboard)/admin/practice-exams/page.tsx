@@ -17,12 +17,15 @@ import { getGradeNumbersFromSystem } from "@/lib/grade-system";
 
 const emptyQuestion = {
   subject: "",
+  questionType: "MCQ",
   questionText: "",
   optionA: "",
   optionB: "",
   optionC: "",
   optionD: "",
   correctOption: "A",
+  correctText: "",
+  caseSensitive: false,
 };
 
 export default function AdminPracticeExamsPage() {
@@ -146,6 +149,8 @@ export default function AdminPracticeExamsPage() {
   };
 
   const questions = examDetailQuery.data?.questions || [];
+  const questionType = questionForm.questionType || "MCQ";
+  const optionLabels = questionType === "TRUE_FALSE" ? (["A", "B"] as const) : (["A", "B", "C", "D"] as const);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-950">
@@ -255,22 +260,52 @@ export default function AdminPracticeExamsPage() {
                 <CardHeader><CardTitle className="text-base">Add Question</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <Input placeholder="Subject" value={questionForm.subject} onChange={(e) => setQuestionForm({ ...questionForm, subject: e.target.value })} />
+                  <Select
+                    value={questionType}
+                    onValueChange={(nextType) =>
+                      setQuestionForm({
+                        ...questionForm,
+                        questionType: nextType,
+                        optionA: nextType === "TRUE_FALSE" ? "True" : nextType === "SHORT_ANSWER" ? "" : questionForm.optionA,
+                        optionB: nextType === "TRUE_FALSE" ? "False" : nextType === "SHORT_ANSWER" ? "" : questionForm.optionB,
+                        optionC: nextType === "SHORT_ANSWER" || nextType === "TRUE_FALSE" ? "" : questionForm.optionC,
+                        optionD: nextType === "SHORT_ANSWER" || nextType === "TRUE_FALSE" ? "" : questionForm.optionD,
+                        correctOption: nextType === "TRUE_FALSE" ? "A" : questionForm.correctOption || "A",
+                      })
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MCQ">Multiple choice</SelectItem>
+                      <SelectItem value="TRUE_FALSE">True or false</SelectItem>
+                      <SelectItem value="SHORT_ANSWER">Short answer</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Textarea placeholder="Question" value={questionForm.questionText} onChange={(e) => setQuestionForm({ ...questionForm, questionText: e.target.value })} />
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {(["A", "B", "C", "D"] as const).map((option) => (
-                      <Input key={option} placeholder={`Option ${option}`} value={questionForm[`option${option}`]} onChange={(e) => setQuestionForm({ ...questionForm, [`option${option}`]: e.target.value })} />
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <Select value={questionForm.correctOption} onValueChange={(correctOption) => setQuestionForm({ ...questionForm, correctOption })}>
-                      <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="A">Correct A</SelectItem>
-                        <SelectItem value="B">Correct B</SelectItem>
-                        <SelectItem value="C">Correct C</SelectItem>
-                        <SelectItem value="D">Correct D</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  {questionType !== "SHORT_ANSWER" ? (
+                    <>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {optionLabels.map((option) => (
+                          <Input key={option} placeholder={questionType === "TRUE_FALSE" ? (option === "A" ? "True" : "False") : `Option ${option}`} disabled={questionType === "TRUE_FALSE"} value={questionForm[`option${option}`]} onChange={(e) => setQuestionForm({ ...questionForm, [`option${option}`]: e.target.value })} />
+                        ))}
+                      </div>
+                      <Select value={questionForm.correctOption} onValueChange={(correctOption) => setQuestionForm({ ...questionForm, correctOption })}>
+                        <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {optionLabels.map((option) => <SelectItem key={option} value={option}>{questionType === "TRUE_FALSE" ? (option === "A" ? "Correct True" : "Correct False") : `Correct ${option}`}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  ) : (
+                    <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                      <Input placeholder="Accepted answer or variants separated by |" value={questionForm.correctText} onChange={(e) => setQuestionForm({ ...questionForm, correctText: e.target.value })} />
+                      <label className="flex items-center gap-2 rounded-md border px-3 text-sm dark:border-slate-800">
+                        <input type="checkbox" checked={!!questionForm.caseSensitive} onChange={(e) => setQuestionForm({ ...questionForm, caseSensitive: e.target.checked })} />
+                        Case sensitive
+                      </label>
+                    </div>
+                  )}
+                  <div>
                     <Button disabled={addQuestion.isPending} onClick={() => addQuestion.mutate()}>
                       {addQuestion.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                       Save Question
@@ -283,7 +318,15 @@ export default function AdminPracticeExamsPage() {
                 <CardHeader><CardTitle className="text-base">CSV Import</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <Input type="file" accept=".csv,text/csv" onChange={(event) => handleCsvFile(event.target.files?.[0])} />
-                  <Textarea rows={5} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={"subject,question,option_a,option_b,option_c,option_d,correct_option\nMathematics,What is 5+7?,10,11,12,13,C"} />
+                  <Textarea
+                    rows={6}
+                    value={csv}
+                    onChange={(e) => setCsv(e.target.value)}
+                    placeholder={"subject,question_type,question,option_a,option_b,option_c,option_d,correct_answer,case_sensitive\nMathematics,MCQ,What is 5+7?,10,11,12,13,C,false\nCivics,TRUE_FALSE,The capital city of Ethiopia is Addis Ababa.,,,,,True,false\nEnglish,SHORT_ANSWER,Write a greeting.,,,,,Hello|Hi,false"}
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Use question_type MCQ, TRUE_FALSE, or SHORT_ANSWER. Short answers can include accepted variants separated by |.
+                  </p>
                   <Button variant="outline" disabled={importQuestions.isPending || !csv.trim()} onClick={() => importQuestions.mutate()}>
                     <FileText className="mr-2 h-4 w-4" />
                     Import Questions
@@ -299,7 +342,13 @@ export default function AdminPracticeExamsPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-semibold">{index + 1}. {question.questionText}</p>
-                          <p className="mt-1 text-xs text-slate-500">{question.subject} - Correct {question.correctOption}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {question.subject} - {question.questionType === "SHORT_ANSWER"
+                              ? `Short answer: ${question.correctText || "-"}`
+                              : question.questionType === "TRUE_FALSE"
+                                ? `True/false: ${question.correctOption === "A" ? "True" : "False"}`
+                                : `Correct ${question.correctOption}`}
+                          </p>
                         </div>
                         <Button size="sm" variant="outline" onClick={() => deleteQuestion.mutate(question.id)}>
                           <Trash2 className="h-4 w-4" />

@@ -54,7 +54,7 @@ const roleColors: Record<string, string> = {
 export default function CredentialsPage() {
   const { t } = useTranslations<any>("credentials");
   const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
-  const displayYear = currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel;
+  const displayYear = String(currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel || "");
   const [credentials, setCredentials] = useState<PendingCredential[]>([]);
   const [stats, setStats] = useState<CredentialStats | null>(null);
   const [loading, setLoading] = useState(false);

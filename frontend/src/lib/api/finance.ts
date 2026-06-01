@@ -40,6 +40,7 @@ export const financeAPI = {
     academicYearId?: string;
     termId?: string;
     studentId?: string;
+    search?: string;
     grade?: number;
     sectionId?: string;
     status?: 'PAID' | 'PARTIAL' | 'PENDING';

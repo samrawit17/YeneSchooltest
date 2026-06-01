@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
@@ -100,7 +100,7 @@ export default function PublishResultsPage() {
         if (active) setSelectedYear(active.id);
       }
     }).catch(() => {});
-  }, []);
+  }, [selectedYear]);
 
   useEffect(() => {
     if (currentAcademicYear?.id && !selectedYear) {
@@ -527,9 +527,10 @@ export default function PublishResultsPage() {
 <TableBody>
                       {rows.map((row) => {
                         const status = getStatusMeta(row.status);
+                        const rowKey = `${row.classId}-${row.sectionName || "all"}`;
                         return (
-                          <>
-                          <TableRow key={row.classId} className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                          <Fragment key={rowKey}>
+                          <TableRow className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                             <TableCell className="py-4">
                               <Checkbox
                                 checked={selectedClasses.includes(row.classId)}
@@ -689,7 +690,7 @@ export default function PublishResultsPage() {
                               </TableCell>
                             </TableRow>
                           ) : null}
-                          </>
+                          </Fragment>
                       );
                     })}
                   </TableBody>
@@ -710,7 +711,7 @@ export default function PublishResultsPage() {
           </AlertDialogHeader>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-900">
             {publishTargetRows.slice(0, 5).map((row) => (
-              <div key={row.classId} className="flex justify-between gap-3 py-1">
+              <div key={`${row.classId}-${row.sectionName || "all"}`} className="flex justify-between gap-3 py-1">
                 <span>{row.className}{row.sectionName ? ` - ${row.sectionName}` : ""}</span>
                 <span className="text-slate-500">{row.expectedEntries} students</span>
               </div>

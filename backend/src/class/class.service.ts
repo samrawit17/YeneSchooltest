@@ -386,6 +386,7 @@ export class ClassService {
             select: {
               id: true,
               name: true,
+              stream: true,
             },
           },
         },
@@ -410,7 +411,7 @@ export class ClassService {
         studentCode: sc.student.studentProfile?.studentCode,
         academicYear: sc.student.studentProfile?.academicYear,
         rollNumber: sc.student.studentProfile?.rollNumber,
-        stream: sc.student.studentProfile?.stream || null,
+        stream: sc.student.studentProfile?.stream || sc.section?.stream || null,
         parentName:
           sc.student.studentProfile?.parents?.[0]?.parent?.user?.name || null,
         parentPhone:

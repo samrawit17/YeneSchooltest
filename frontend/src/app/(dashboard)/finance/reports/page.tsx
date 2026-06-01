@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { financeAPI, academicYearsAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import Pagination from "@/components/Pagination";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,11 +18,16 @@ import { FormattedDate } from "@/components/ui/FormattedDate";
 import {
   Download, DollarSign, FileText, TriangleAlert, Users, Send, History, Clock,
   TrendingUp, Search, Filter, ChevronDown, BarChart3, PieChart,
-  CheckCircle2, XCircle, AlertTriangle, Wallet, ArrowUpRight,
+  CheckCircle2, XCircle, AlertTriangle, Wallet,
   Banknote, CreditCard, Calendar, MoreHorizontal
 } from "lucide-react";
 import { toast } from "sonner";
-import { convertToEthiopian, formatDateByCalendarType } from "@/lib/calendar-utils";
+import { convertToEthiopian, formatDateByCalendarType, getLocalizedEthiopianMonthName } from "@/lib/calendar-utils";
+import {
+  formatFinanceFeeItemLabel,
+  getInstallmentIndexFromFeeType,
+  getInstallmentMonthName,
+} from "@/lib/finance-labels";
 import {
   PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend
 } from "recharts";
@@ -77,6 +83,7 @@ interface PayrollRunRow {
   title: string;
   periodMonth: number;
   periodYear: number;
+  periodCalendarType?: "ETHIOPIAN" | "GREGORIAN" | null;
   status: PayrollRunStatus;
   grossAmount: number;
   deductionsAmount: number;
@@ -136,18 +143,7 @@ const getOutstandingPeriodLabel = (
     return row.scopeLabel || "Whole Academic Year";
   }
 
-  periodDate.setMonth(periodDate.getMonth() + row.installmentIndex - 1);
-
-  if (calendarType === "GREGORIAN") {
-    return periodDate.toLocaleDateString("en-US", { month: "long" });
-  }
-
-  return convertToEthiopian(periodDate).monthName || row.scopeLabel || "Whole Academic Year";
-};
-
-const getInstallmentIndexFromFeeType = (feeType?: string | null) => {
-  const match = String(feeType || "").match(/_INSTALLMENT_(\d+)$/i);
-  return match ? Number(match[1]) : null;
+  return getInstallmentMonthName(row.installmentIndex, academicYearStartDate, calendarType) || row.scopeLabel || "Whole Academic Year";
 };
 
 const getPaymentPeriodLabel = (
@@ -165,13 +161,34 @@ const getPaymentPeriodLabel = (
     return payment.termName || "Whole Academic Year";
   }
 
-  periodDate.setMonth(periodDate.getMonth() + installmentIndex - 1);
+  return getInstallmentMonthName(installmentIndex, academicYearStartDate, calendarType) || payment.termName || "Whole Academic Year";
+};
 
-  if (calendarType === "GREGORIAN") {
-    return periodDate.toLocaleDateString("en-US", { month: "long" });
+const formatPayrollPeriodLabel = (
+  month: number,
+  year: number,
+  calendarType: "ETHIOPIAN" | "GREGORIAN" = "GREGORIAN",
+) => {
+  if (calendarType === "ETHIOPIAN") {
+    return `${getLocalizedEthiopianMonthName(month)} ${year} E.C.`;
   }
 
-  return convertToEthiopian(periodDate).monthName || payment.termName || "Whole Academic Year";
+  return new Date(year, month - 1, 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const getPayrollRunTitle = (run: PayrollRunRow) => {
+  const generatedTitlePattern = /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\s+Payroll$/;
+  if (!run.title || (run.periodCalendarType === "ETHIOPIAN" && generatedTitlePattern.test(run.title))) {
+    return `${formatPayrollPeriodLabel(
+      run.periodMonth,
+      run.periodYear,
+      run.periodCalendarType || "GREGORIAN",
+    )} Payroll`;
+  }
+  return run.title;
 };
 
 const downloadCsv = (filename: string, rows: Array<Array<string | number>>) => {
@@ -224,7 +241,11 @@ export default function FinanceReportsPage() {
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
   const [paymentSearch, setPaymentSearch] = useState("");
+  const [paymentPage, setPaymentPage] = useState(1);
+  const PAYMENTS_PER_PAGE = 15;
   const [outstandingSearch, setOutstandingSearch] = useState("");
+  const [outstandingPage, setOutstandingPage] = useState(1);
+  const OUTSTANDING_PER_PAGE = 15;
   const [summary, setSummary] = useState<SummaryState>({
     totalExpected: 0,
     totalCollected: 0,
@@ -398,7 +419,7 @@ export default function FinanceReportsPage() {
         payment.studentName,
         payment.grade,
         payment.section,
-        payment.feeType,
+        (payment as any).displayFeeType || payment.feeType,
         payment.paymentMethod,
       ]
         .filter(Boolean)
@@ -413,28 +434,51 @@ export default function FinanceReportsPage() {
 
   const displayedOutstanding = useMemo(() => {
     const calendarType = user?.calendarType || "ETHIOPIAN";
-    return outstandingRows.map((row) => ({
-      ...row,
-      displayScopeLabel: getOutstandingPeriodLabel(
+    return outstandingRows.map((row) => {
+      const displayScopeLabel = getOutstandingPeriodLabel(
         row,
         selectedAcademicYear?.startDate,
         calendarType,
-      ),
-    }));
+      );
+      return {
+        ...row,
+        displayScopeLabel,
+        displayFeeType: formatFinanceFeeItemLabel(row.feeType, {
+          academicYearStartDate: selectedAcademicYear?.startDate,
+          calendarType,
+          periodLabel: displayScopeLabel,
+        }),
+      };
+    });
   }, [outstandingRows, selectedAcademicYear?.startDate, user?.calendarType]);
 
   const displayedPayments = useMemo(() => {
     const calendarType = user?.calendarType || "ETHIOPIAN";
-    return filteredPayments.map((payment) => ({
-      ...payment,
-      displayPaymentDate: formatDateByCalendarType(payment.paymentDate, calendarType),
-      displayPaymentPeriod: getPaymentPeriodLabel(
+    return filteredPayments.map((payment) => {
+      const displayPaymentPeriod = getPaymentPeriodLabel(
         payment,
         selectedAcademicYear?.startDate,
         calendarType,
-      ),
-    }));
+      );
+      return {
+        ...payment,
+        displayPaymentDate: formatDateByCalendarType(payment.paymentDate, calendarType),
+        displayPaymentPeriod,
+        displayFeeType: formatFinanceFeeItemLabel(payment.feeType, {
+          academicYearStartDate: selectedAcademicYear?.startDate,
+          calendarType,
+          periodLabel: displayPaymentPeriod,
+        }),
+      };
+    });
   }, [filteredPayments, selectedAcademicYear?.startDate, user?.calendarType]);
+
+  const paymentTotalPages = Math.ceil(displayedPayments.length / PAYMENTS_PER_PAGE);
+
+  const paginatedPayments = useMemo(() => {
+    const start = (paymentPage - 1) * PAYMENTS_PER_PAGE;
+    return displayedPayments.slice(start, start + PAYMENTS_PER_PAGE);
+  }, [displayedPayments, paymentPage]);
 
   const filteredOutstanding = useMemo(() => {
     const search = outstandingSearch.trim().toLowerCase();
@@ -444,7 +488,7 @@ export default function FinanceReportsPage() {
         row.studentName,
         row.grade,
         row.section,
-        row.feeType,
+        row.displayFeeType,
         row.displayScopeLabel,
         row.status,
       ]
@@ -452,6 +496,21 @@ export default function FinanceReportsPage() {
         .some((value) => String(value).toLowerCase().includes(search)),
     );
   }, [displayedOutstanding, outstandingSearch]);
+
+  const outstandingTotalPages = Math.ceil(filteredOutstanding.length / OUTSTANDING_PER_PAGE);
+
+  const paginatedOutstanding = useMemo(() => {
+    const start = (outstandingPage - 1) * OUTSTANDING_PER_PAGE;
+    return filteredOutstanding.slice(start, start + OUTSTANDING_PER_PAGE);
+  }, [filteredOutstanding, outstandingPage]);
+
+  useEffect(() => {
+    setOutstandingPage(1);
+  }, [outstandingSearch]);
+
+  useEffect(() => {
+    setPaymentPage(1);
+  }, [paymentSearch]);
 
   const displayedPayrollRuns = useMemo(() => {
     const calendarType = user?.calendarType || "ETHIOPIAN";
@@ -472,10 +531,12 @@ export default function FinanceReportsPage() {
       })
       .map((run) => ({
         ...run,
-        displaySalaryMonth: new Date(run.periodYear, run.periodMonth - 1, 1).toLocaleDateString("en-US", {
-          month: "long",
-          year: "numeric",
-        }),
+        displayTitle: getPayrollRunTitle(run),
+        displaySalaryMonth: formatPayrollPeriodLabel(
+          run.periodMonth,
+          run.periodYear,
+          run.periodCalendarType || "GREGORIAN",
+        ),
         displayPaymentDate: run.paymentDate ? formatDateByCalendarType(run.paymentDate, calendarType) : "Not scheduled",
         displayPaidAt: run.paidAt ? formatDateByCalendarType(run.paidAt, calendarType) : "Not paid",
       }));
@@ -577,7 +638,7 @@ export default function FinanceReportsPage() {
         row.studentName,
         row.grade || "N/A",
         row.section || "N/A",
-        row.feeType,
+        (row as any).displayFeeType || row.feeType,
         row.displayScopeLabel,
         row.total,
         row.paid,
@@ -598,7 +659,7 @@ export default function FinanceReportsPage() {
   [overdueRows, selectedOverdueRows]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/60 dark:from-slate-950 dark:to-slate-900/80">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/60 dark:from-slate-900 dark:to-slate-900/60">
       <div className="w-full p-4 md:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6">
@@ -619,7 +680,7 @@ export default function FinanceReportsPage() {
         </div>
 
         {/* Filter Card */}
-        <Card className="mb-6 border-slate-200/70 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/50 dark:bg-slate-900/80">
+        <Card className="mb-6 border-slate-200/70 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/50 dark:bg-slate-800/60">
           <CardContent className="p-4 md:p-5">
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex-1 min-w-[160px]">
@@ -991,7 +1052,7 @@ export default function FinanceReportsPage() {
               <CardHeader className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
                 <div>
                   <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Payment Report</CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{displayedPayments.length} payments in view</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{displayedPayments.length} payments — Page {paymentPage} of {paymentTotalPages || 1}</p>
                 </div>
                 <div className="relative w-full sm:w-[280px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -1030,7 +1091,7 @@ export default function FinanceReportsPage() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        displayedPayments.map((payment) => (
+                        paginatedPayments.map((payment) => (
                           <TableRow key={payment.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/40">
                             <TableCell className="py-3 px-4">
                               <span className="font-mono text-xs font-medium text-slate-900 dark:text-white">
@@ -1076,6 +1137,11 @@ export default function FinanceReportsPage() {
                     </TableBody>
                   </Table>
                 </div>
+                {displayedPayments.length > PAYMENTS_PER_PAGE && (
+                  <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+                    <Pagination page={paymentPage} setPage={setPaymentPage} totalPages={paymentTotalPages} />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1086,7 +1152,7 @@ export default function FinanceReportsPage() {
               <CardHeader className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
                 <div>
                   <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Outstanding Report</CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{filteredOutstanding.length} balances in view</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{filteredOutstanding.length} balances — Page {outstandingPage} of {outstandingTotalPages || 1}</p>
                 </div>
                 <div className="relative w-full sm:w-[280px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -1124,7 +1190,7 @@ export default function FinanceReportsPage() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredOutstanding.map((row) => (
+                        paginatedOutstanding.map((row) => (
                           <TableRow
                             key={`${row.studentId}-${row.feeType}-${row.displayScopeLabel || "all"}`}
                             className={`border-b border-slate-100 transition-colors hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/40 ${
@@ -1172,6 +1238,11 @@ export default function FinanceReportsPage() {
                     </TableBody>
                   </Table>
                 </div>
+                {filteredOutstanding.length > OUTSTANDING_PER_PAGE && (
+                  <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+                    <Pagination page={outstandingPage} setPage={setOutstandingPage} totalPages={outstandingTotalPages} />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1262,7 +1333,7 @@ export default function FinanceReportsPage() {
                               <span className="text-xs font-medium text-slate-900 dark:text-white">{row.studentName}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs text-slate-600 dark:text-slate-400">{row.feeType}</span>
+                              <span className="text-xs text-slate-600 dark:text-slate-400">{(row as any).displayFeeType || row.feeType}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
                               <span className="text-xs font-medium text-slate-900 dark:text-white">{formatCurrency(row.total)}</span>
@@ -1341,17 +1412,6 @@ export default function FinanceReportsPage() {
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{payrollReport.staffEntries} staff entries across visible runs</p>
                 </CardContent>
               </Card>
-
-              <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">After Paid Payroll</p>
-                    <ArrowUpRight className="h-4 w-4 text-slate-500" />
-                  </div>
-                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(summary.totalCollected - payrollReport.paidNet)}</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Collected revenue minus paid salary outflow</p>
-                </CardContent>
-              </Card>
             </div>
 
             <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
@@ -1396,7 +1456,7 @@ export default function FinanceReportsPage() {
                         displayedPayrollRuns.map((run) => (
                           <TableRow key={run.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/40">
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs font-medium text-slate-900 dark:text-white">{run.title || "Payroll Run"}</span>
+                              <span className="text-xs font-medium text-slate-900 dark:text-white">{run.displayTitle || "Payroll Run"}</span>
                               <span className="mt-0.5 block text-[11px] text-slate-500 dark:text-slate-400">{run.displayPaidAt}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">

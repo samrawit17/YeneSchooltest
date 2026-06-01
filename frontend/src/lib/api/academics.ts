@@ -225,8 +225,8 @@ export const timetableSlotsAPI = {
     room?: string;
     academicYearId?: string;
   }[]) => api.post('/timetable-slots/bulk', { slots }),
-  deleteByClassSection: (classId: string, sectionId: string) =>
-    api.delete(`/timetable-slots/class/${classId}/section/${sectionId}`),
+  deleteByClassSection: (classId: string, sectionId: string, params?: { academicYearId?: string }) =>
+    api.delete(`/timetable-slots/class/${classId}/section/${sectionId}`, { params }),
   getGrid: (classId: string, sectionId?: string, academicYearId?: string) =>
     api.get(`/timetable-slots/grid/class/${classId}`, {
       params: { sectionId, academicYearId },

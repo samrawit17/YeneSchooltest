@@ -63,7 +63,7 @@ const SingleParentPage = ({ params }: PageProps) => {
   const { user } = useAuth();
   const { setItems } = useBreadcrumb();
   const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
-  const displayYear = currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel;
+  const displayYear = String(currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel || "");
   const currentRole = String(user?.role || '').toUpperCase();
 
   const { data: parent, isLoading, error, refetch } = useQuery({

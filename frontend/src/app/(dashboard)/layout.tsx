@@ -383,7 +383,7 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation Menu */}
-        <div className={`flex flex-1 overflow-y-auto py-4 ${isSidebarHovered ? (language === 'ar' ? 'pr-4' : 'pl-4') : 'px-3'}`}>
+        <div className={`flex flex-1 overflow-y-auto overflow-x-hidden py-4 ${isSidebarHovered ? (language === 'ar' ? 'pr-4' : 'pl-4') : 'px-3'}`}>
           <div className={isSidebarHovered ? 'w-56' : 'w-10'}>
           <Menu
             collapsed={!isSidebarHovered}

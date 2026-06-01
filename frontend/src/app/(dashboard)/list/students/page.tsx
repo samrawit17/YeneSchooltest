@@ -489,9 +489,6 @@ const StudentsListPage = () => {
                               student.academicYear,
                           )}
                         </div>
-                        {student.studentCode ? (
-                          <div className="text-xs text-gray-400">Login: {student.studentCode}</div>
-                        ) : null}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                         {student.grade ? `${t.table.grade} ${student.grade}` : "-"}

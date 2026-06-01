@@ -1242,30 +1242,18 @@ export default function SchoolSettingsPage() {
     }
 
     if (setting.type === 'time') {
-      const useTimePicker = setting.key === 'SCHOOL_START_TIME' || setting.key === 'SCHOOL_END_TIME';
-
       return (
         <div className="flex items-center gap-2">
-          {useTimePicker ? (
-            <TimePicker
-              value={value || setting.systemDefault || '08:00'}
-              onChange={(time) => updateDraftSetting(setting.key, time)}
-              onCommit={(time) => handleSettingChange(setting.key, time, setting)}
-              disabled={isControlDisabled}
-              calendarType={normalizeCalendarType(calendarType)}
-              allowedEthiopianPeriods={setting.key === 'SCHOOL_END_TIME' ? ['afternoon', 'evening'] : ['morning', 'afternoon']}
-              defaultEthiopianPeriod={setting.key === 'SCHOOL_END_TIME' ? 'afternoon' : 'morning'}
-              className="w-56"
-            />
-          ) : (
-            <Input
-              type="time"
-              value={value || setting.systemDefault || '08:00'}
-              onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
-              disabled={isControlDisabled}
-              className="w-32"
-            />
-          )}
+          <TimePicker
+            value={value || setting.systemDefault || '08:00'}
+            onChange={(time) => updateDraftSetting(setting.key, time)}
+            onCommit={(time) => handleSettingChange(setting.key, time, setting)}
+            disabled={isControlDisabled}
+            calendarType={normalizeCalendarType(calendarType)}
+            allowedEthiopianPeriods={setting.key === 'SCHOOL_END_TIME' ? ['afternoon', 'evening'] : ['morning', 'afternoon']}
+            defaultEthiopianPeriod={setting.key === 'SCHOOL_END_TIME' ? 'afternoon' : 'morning'}
+            className="w-56"
+          />
           {isLocked && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
           {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>

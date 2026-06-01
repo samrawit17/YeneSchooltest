@@ -141,7 +141,7 @@ export interface Lesson {
   instructions?: string;
   lessonDate: string;
   periodNumber: number;
-  status: "DRAFT" | "PUBLISHED" | "COVERED" | "MISSED" | "RESCHEDULED";
+  status: "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" | "COVERED" | "MISSED" | "RESCHEDULED";
   attachments?: LessonAttachment[];
   academicYear?: { id: string; name: string };
   semester?: { id: string; name: string };

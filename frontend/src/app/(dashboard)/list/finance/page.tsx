@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { financeAPI, academicYearsAPI, classesAPI, schoolSettingsAPI } from '@/lib/api';
-import { convertToEthiopian, formatDateByCalendarType, formatDateTimeByCalendarType } from '@/lib/calendar-utils';
+import { formatDateByCalendarType, formatDateTimeByCalendarType } from '@/lib/calendar-utils';
+import {
+  formatBaseFeeTypeName,
+  formatFinanceFeeItemLabel,
+  getInstallmentIndexFromFeeType,
+  getInstallmentMonthName as getCalendarInstallmentMonthName,
+} from '@/lib/finance-labels';
 import { getGradeRangeFromSystem } from '@/lib/grade-system';
 import { useAuth } from '@/context/AuthContext';
 import Pagination from '@/components/Pagination';
 import TableSearch from '@/components/TableSearch';
+import { CalendarDatePicker } from '@/components/ui/CalendarDatePicker';
 import { 
   DollarSign, 
   CreditCard, 
@@ -63,6 +70,8 @@ interface StudentFee {
   grade: string;
   section: string;
   feeType: string;
+  scopeLabel?: string | null;
+  installmentIndex?: number | null;
   totalFee: number;
   discount: number;
   finalAmount: number;
@@ -85,17 +94,32 @@ interface PaymentRecord {
   recordedBy: string;
   paymentDate: string;
   notes: string | null;
+  termName?: string | null;
+  feeType?: string | null;
+}
+
+interface PaymentFeeOption {
+  id: string;
+  name: string;
+  balance: number;
+  amount?: number;
+  status?: string;
+  termId?: string | null;
+  termName?: string | null;
 }
 
 interface AcademicYear {
   id: string;
   name: string;
+  startDate?: string;
 }
 
 interface Term {
   id: string;
   name: string;
   order: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface CurriculumInfo {
@@ -122,6 +146,21 @@ const GRADE_RANGES = [
   { value: '1-5', label: 'Grades 1-5', from: 1, to: 5 },
   { value: '9-12', label: 'Grades 9-12', from: 9, to: 12 },
 ];
+
+const toLocalDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseLocalDateInputValue = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
+};
+
+const csvEscape = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
 
 export default function FinanceListPage() {
   const { user } = useAuth();
@@ -156,12 +195,29 @@ export default function FinanceListPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const pageSize = 10;
+  const [feeStructuresPage, setFeeStructuresPage] = useState(1);
+  const FEE_STRUCTURES_PAGE_SIZE = 15;
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const PAYMENTS_PAGE_SIZE = 15;
   
   // Dialogs
   const [feeStructureDialogOpen, setFeeStructureDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false);
   const [selectedFee, setSelectedFee] = useState<StudentFee | null>(null);
+  const [monthlyPaymentFees, setMonthlyPaymentFees] = useState<PaymentFeeOption[]>([]);
+  const [selectedPaymentFeeId, setSelectedPaymentFeeId] = useState('');
+  const [paymentFeeOptionsLoading, setPaymentFeeOptionsLoading] = useState(false);
+  const isMonthlyBilling = feeCollectionMode === 'MONTHLY' || feeCollectionMode === 'MONTH';
+  const showBillingPeriodFilter = activeTab === 'fee-structures' || activeTab === 'student-fees';
+  const showGradeFilter = activeTab === 'fee-structures' || activeTab === 'student-fees';
+  const showStatusFilter = activeTab === 'student-fees';
+  const searchPlaceholder =
+    activeTab === 'fee-structures'
+      ? 'Search fee, month...'
+      : activeTab === 'payments'
+        ? 'Search receipt, student...'
+        : 'Search student...';
   
   // Form data
   const [formData, setFormData] = useState({
@@ -176,6 +232,150 @@ export default function FinanceListPage() {
 
   const generatedFeeStructures = feeStructures.filter((structure) =>
     structure.feeType.includes('_INSTALLMENT_'),
+  );
+
+  const filteredFeeStructures = useMemo(() => {
+    const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
+    const getStructureInstallmentIndex = (feeType?: string | null) => {
+      const match = String(feeType || '').match(/_INSTALLMENT_(\d+)$/i);
+      return match ? Number(match[1]) : null;
+    };
+    const getStructureInstallmentMonth = (installmentNumber: number) =>
+      getCalendarInstallmentMonthName(
+        installmentNumber,
+        selectedAcademicYear?.startDate,
+        activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
+      );
+    const getSelectedTermInstallmentRange = () => {
+      if (!isMonthlyBilling || selectedTerm === 'all') return null;
+      const term = terms.find((item) => item.id === selectedTerm);
+      if (!term) {
+        return null;
+      }
+
+      if (term.startDate && term.endDate && selectedAcademicYear?.startDate) {
+        const academicYearStart = new Date(selectedAcademicYear.startDate);
+        const termStart = new Date(term.startDate);
+        const termEnd = new Date(term.endDate);
+        const hasValidDates =
+          !Number.isNaN(academicYearStart.getTime()) &&
+          !Number.isNaN(termStart.getTime()) &&
+          !Number.isNaN(termEnd.getTime());
+
+        if (hasValidDates) {
+          const monthDiff = (date: Date) =>
+            (date.getFullYear() - academicYearStart.getFullYear()) * 12 +
+            (date.getMonth() - academicYearStart.getMonth());
+          return {
+            start: Math.max(1, monthDiff(termStart) + 1),
+            end: Math.min(installmentCount || 12, Math.max(monthDiff(termEnd) + 1, monthDiff(termStart) + 1)),
+          };
+        }
+      }
+
+      const totalInstallments = installmentCount || 12;
+      const orderedTerms = terms
+        .slice()
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+      const termIndex = orderedTerms.findIndex((item) => item.id === term.id);
+      if (termIndex === -1 || orderedTerms.length === 0) return null;
+
+      const installmentsPerTerm = Math.ceil(totalInstallments / orderedTerms.length);
+      const start = termIndex * installmentsPerTerm + 1;
+      return {
+        start,
+        end: Math.min(totalInstallments, start + installmentsPerTerm - 1),
+      };
+    };
+    const termInstallmentRange = getSelectedTermInstallmentRange();
+    const q = searchTerm.trim().toLowerCase();
+
+    return generatedFeeStructures.filter((fs) =>
+      {
+        if (selectedGrade !== 'all' && fs.grade !== Number(selectedGrade)) {
+          return false;
+        }
+
+        if (selectedTerm !== 'all') {
+          const installmentIndex = getStructureInstallmentIndex(fs.feeType);
+          const matchesSelectedTerm =
+            fs.termId === selectedTerm ||
+            (termInstallmentRange &&
+              installmentIndex !== null &&
+              installmentIndex >= termInstallmentRange.start &&
+              installmentIndex <= termInstallmentRange.end);
+
+          if (!matchesSelectedTerm) return false;
+        }
+
+        if (!q) return true;
+
+        const installmentIndex = getStructureInstallmentIndex(fs.feeType);
+        const periodLabel = installmentIndex !== null
+          ? getStructureInstallmentMonth(installmentIndex)
+          : fs.term?.name || fs.description || '';
+        const displayFeeType = formatFinanceFeeItemLabel(fs.feeType, {
+          academicYearStartDate: selectedAcademicYear?.startDate,
+          calendarType: activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
+          periodLabel,
+        });
+
+        return [fs.feeType, displayFeeType, fs.description, periodLabel, fs.grade?.toString(), fs.isActive ? 'active' : 'inactive']
+        .filter(Boolean)
+          .some((v) => v!.toLowerCase().includes(q));
+      }
+    );
+  }, [
+    activeCalendarType,
+    academicYears,
+    generatedFeeStructures,
+    installmentCount,
+    isMonthlyBilling,
+    searchTerm,
+    selectedGrade,
+    selectedTerm,
+    selectedYear,
+    terms,
+  ]);
+
+  const filteredStudentFees = useMemo(() => {
+    if (!searchTerm) return studentFees;
+    const q = searchTerm.toLowerCase();
+    return studentFees.filter((sf) =>
+      [sf.studentName, sf.grade?.toString(), sf.feeType, sf.status]
+        .filter(Boolean)
+        .some((v) => v!.toLowerCase().includes(q)),
+    );
+  }, [studentFees, searchTerm]);
+
+  const filteredPayments = useMemo(() => {
+    if (!searchTerm) return payments;
+    const q = searchTerm.toLowerCase();
+    return payments.filter((p) =>
+      [p.studentName, p.receiptNumber, p.paymentMethod, p.grade?.toString()]
+        .filter(Boolean)
+        .some((v) => v!.toLowerCase().includes(q)),
+    );
+  }, [payments, searchTerm]);
+
+  const paginatedFeeStructures = useMemo(() => {
+    const start = (feeStructuresPage - 1) * FEE_STRUCTURES_PAGE_SIZE;
+    return filteredFeeStructures.slice(start, start + FEE_STRUCTURES_PAGE_SIZE);
+  }, [filteredFeeStructures, feeStructuresPage]);
+
+  const feeStructuresTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredFeeStructures.length / FEE_STRUCTURES_PAGE_SIZE)),
+    [filteredFeeStructures],
+  );
+
+  const paginatedPayments = useMemo(() => {
+    const start = (paymentsPage - 1) * PAYMENTS_PAGE_SIZE;
+    return filteredPayments.slice(start, start + PAYMENTS_PAGE_SIZE);
+  }, [filteredPayments, paymentsPage]);
+
+  const paymentsTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredPayments.length / PAYMENTS_PAGE_SIZE)),
+    [filteredPayments],
   );
 
   // Load academic years
@@ -259,6 +459,12 @@ export default function FinanceListPage() {
     loadData();
   }, [activeTab, selectedYear, selectedTerm, currentPage, searchTerm, selectedGrade, selectedStatus]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+    setFeeStructuresPage(1);
+    setPaymentsPage(1);
+  }, [activeTab, selectedYear, selectedTerm, searchTerm, selectedGrade, selectedStatus]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -269,8 +475,7 @@ export default function FinanceListPage() {
           setLoading(false);
           return;
         }
-        const termId = selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined;
-        const response = await financeAPI.listFeeStructures(schoolId, selectedYear, termId);
+        const response = await financeAPI.listFeeStructures(schoolId, selectedYear);
         setFeeStructures((response.data?.data || []).filter((structure: FeeStructure) => structure.isActive));
       } else if (activeTab === 'student-fees') {
         const schoolId = user?.schoolId;
@@ -284,6 +489,7 @@ export default function FinanceListPage() {
           schoolId: schoolId,
           academicYearId: selectedYear,
           termId,
+          search: searchTerm.trim() || undefined,
           grade: selectedGrade && selectedGrade !== 'all' ? parseInt(selectedGrade) : undefined,
           status: selectedStatus && selectedStatus !== 'all' ? selectedStatus as 'PAID' | 'PARTIAL' | 'PENDING' : undefined,
           page: Number(currentPage),
@@ -418,14 +624,68 @@ export default function FinanceListPage() {
     amountPaid: '',
     paymentMethod: 'CASH' as 'CASH' | 'BANK_TRANSFER' | 'CHEQUE',
     transactionReference: '',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: toLocalDateInputValue(new Date()),
     notes: '',
   });
 
+  const selectedPaymentFee = isMonthlyBilling
+    ? monthlyPaymentFees.find((fee) => fee.id === selectedPaymentFeeId) || null
+    : null;
+  const paymentTargetFee = selectedPaymentFee || selectedFee;
+
+  const loadMonthlyPaymentFees = async (fee: StudentFee) => {
+    if (!user?.schoolId || !selectedYear) return;
+    setPaymentFeeOptionsLoading(true);
+    try {
+      const response = await financeAPI.getStudentFees(fee.studentId, user.schoolId, selectedYear);
+      const feeItems: PaymentFeeOption[] = Array.isArray(response.data?.feeItems) ? response.data.feeItems : [];
+      const monthlyFees = feeItems
+        .filter((item) => getInstallmentIndexFromFeeType(item.name) !== null)
+        .sort((a, b) => (getInstallmentIndexFromFeeType(a.name) || 0) - (getInstallmentIndexFromFeeType(b.name) || 0));
+      setMonthlyPaymentFees(monthlyFees);
+      const preferredFee =
+        monthlyFees.find((item) => item.id === fee.id) ||
+        monthlyFees.find((item) => item.balance > 0) ||
+        monthlyFees[0];
+      setSelectedPaymentFeeId(preferredFee?.id || '');
+      setPaymentFormData((current) => ({
+        ...current,
+        amountPaid: preferredFee?.balance ? String(preferredFee.balance) : current.amountPaid,
+      }));
+    } catch (error) {
+      console.error('Failed to load monthly payment fees:', error);
+      toast.error('Failed to load billing months');
+      setMonthlyPaymentFees([]);
+      setSelectedPaymentFeeId('');
+    } finally {
+      setPaymentFeeOptionsLoading(false);
+    }
+  };
+
+  const openRecordPaymentDialog = (fee: StudentFee) => {
+    setSelectedFee(fee);
+    setPaymentFormData((current) => ({
+      ...current,
+      amountPaid: fee.remainingBalance ? String(fee.remainingBalance) : current.amountPaid,
+    }));
+    setPaymentDialogOpen(true);
+    if (isMonthlyBilling) {
+      loadMonthlyPaymentFees(fee);
+    } else {
+      setMonthlyPaymentFees([]);
+      setSelectedPaymentFeeId('');
+    }
+  };
+
   // Handle record payment
   const handleRecordPayment = async () => {
-    if (!selectedFee || !paymentFormData.amountPaid) {
+    if (!selectedFee || !paymentTargetFee || !paymentFormData.amountPaid) {
       toast.error('Please enter payment amount');
+      return;
+    }
+
+    if (isMonthlyBilling && !selectedPaymentFeeId) {
+      toast.error('Please select the billing month');
       return;
     }
 
@@ -435,7 +695,11 @@ export default function FinanceListPage() {
       return;
     }
 
-    if (amount > selectedFee.remainingBalance) {
+    const remainingBalance = isMonthlyBilling && selectedPaymentFee
+      ? selectedPaymentFee.balance
+      : selectedFee.remainingBalance;
+
+    if (amount > remainingBalance) {
       toast.error('Amount exceeds remaining balance');
       return;
     }
@@ -449,7 +713,7 @@ export default function FinanceListPage() {
     try {
       await financeAPI.recordPayment({
         schoolId,
-        studentFeeId: selectedFee.id,
+        studentFeeId: paymentTargetFee.id,
         studentId: selectedFee.studentId,
         amountPaid: amount,
         paymentMethod: paymentFormData.paymentMethod,
@@ -459,11 +723,13 @@ export default function FinanceListPage() {
       });
       toast.success('Payment recorded successfully');
       setPaymentDialogOpen(false);
+      setMonthlyPaymentFees([]);
+      setSelectedPaymentFeeId('');
       setPaymentFormData({
         amountPaid: '',
         paymentMethod: 'CASH',
         transactionReference: '',
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentDate: toLocalDateInputValue(new Date()),
         notes: '',
       });
       loadData(); // Refresh the data
@@ -487,12 +753,12 @@ export default function FinanceListPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PAID':
-        return <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Paid</Badge>;
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400"><CheckCircle className="w-3 h-3 mr-1" />Paid</Badge>;
       case 'PARTIAL':
-        return <Badge className="bg-orange-100 text-orange-800"><Clock className="w-3 h-3 mr-1" />Partial</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-400"><Clock className="w-3 h-3 mr-1" />Partial</Badge>;
       case 'PENDING':
       case 'UNPAID':
-        return <Badge className="bg-red-100 text-red-800"><AlertCircle className="w-3 h-3 mr-1" />Unpaid</Badge>;
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400"><AlertCircle className="w-3 h-3 mr-1" />Unpaid</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -500,7 +766,8 @@ export default function FinanceListPage() {
 
   // Handler for generating installments
   const handleGenerateInstallments = async () => {
-    if (!user?.schoolId || !selectedYear) {
+    const schoolId = user?.schoolId;
+    if (!schoolId || !selectedYear) {
       toast.error('Please select an academic year');
       return;
     }
@@ -528,16 +795,28 @@ export default function FinanceListPage() {
 
       await Promise.all(
         activeTuitionInstallments.map((structure) =>
-          financeAPI.updateFeeStructure(structure.id, user.schoolId, { isActive: false }),
+          financeAPI.updateFeeStructure(structure.id, schoolId, { isActive: false }),
         ),
       );
 
       const responses = await Promise.all(
         gradeSpecificBaseStructures.flatMap((baseStructure) => {
+          const isMonthlyMode = feeCollectionMode === 'MONTHLY' || feeCollectionMode === 'MONTH';
+          const isYearlyMode = feeCollectionMode === 'YEARLY' || feeCollectionMode === 'YEAR';
           const selectedTerms = baseStructure.termId
             ? terms.filter((term) => term.id === baseStructure.termId)
             : terms;
-          const periods = selectedTerms.length > 0 ? selectedTerms : [{ id: undefined, name: 'Whole Academic Year', order: 1 }];
+          const periods = isMonthlyMode
+            ? Array.from({ length: installmentCount || 12 }, (_, index) => ({
+                id: undefined,
+                name: getInstallmentMonthName(index + 1),
+                order: index + 1,
+              }))
+            : isYearlyMode
+              ? [{ id: undefined, name: 'Full Year', order: 1 }]
+              : selectedTerms.length > 0
+                ? selectedTerms
+                : [{ id: undefined, name: 'Whole Academic Year', order: 1 }];
           const baseAmount = Number(baseStructure.amount || 0);
           const baseInstallmentAmount = Math.floor((baseAmount / periods.length) * 100) / 100;
           const remainder = Math.round((baseAmount - baseInstallmentAmount * periods.length) * 100) / 100;
@@ -548,9 +827,9 @@ export default function FinanceListPage() {
               : baseInstallmentAmount;
 
             return financeAPI.createFeeStructure({
-              schoolId: user.schoolId,
+              schoolId,
               academicYearId: selectedYear,
-              termId: period.id,
+              termId: isMonthlyMode || isYearlyMode ? undefined : period.id,
               feeType: `TUITION_INSTALLMENT_${period.order || index + 1}`,
               amount,
               grade: baseStructure.grade || undefined,
@@ -655,18 +934,67 @@ export default function FinanceListPage() {
 
   const getInstallmentMonthName = (installmentNumber: number) => {
     const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
-    const startDate = (selectedAcademicYear as any)?.startDate ? new Date((selectedAcademicYear as any).startDate) : null;
+    return getCalendarInstallmentMonthName(
+      installmentNumber,
+      selectedAcademicYear?.startDate,
+      activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
+    );
+  };
 
-    if (!startDate || isNaN(startDate.getTime())) {
-      return `Month ${installmentNumber}`;
+  const formatFeeTypeDisplay = (feeType?: string | null, periodLabel?: string | null) => {
+    const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
+    return formatFinanceFeeItemLabel(feeType, {
+      academicYearStartDate: selectedAcademicYear?.startDate,
+      calendarType: activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
+      periodLabel,
+    });
+  };
+
+  const getStudentFeeGradeLabel = (fee: StudentFee) => {
+    const grade = String(fee.grade || '').trim();
+    const section = String(fee.section || '').trim();
+    if (grade && section) return `${grade} - ${section}`;
+    if (grade) return grade;
+    if (section) return section;
+    return '-';
+  };
+
+  const getStudentFeePeriodLabel = (fee: StudentFee) => {
+    if (fee.scopeLabel) return fee.scopeLabel;
+    if (fee.installmentIndex != null) return getInstallmentMonthName(fee.installmentIndex);
+    return fee.termName || '-';
+  };
+
+  const formatPaymentPaidMonth = (payment: PaymentRecord) => {
+    const installmentIndex = getInstallmentIndexFromFeeType(payment.feeType);
+    if (isMonthlyBilling && installmentIndex !== null) {
+      return getInstallmentMonthName(installmentIndex);
     }
+    return payment.termName || (installmentIndex !== null ? getInstallmentMonthName(installmentIndex) : '-');
+  };
 
-    const monthDate = new Date(startDate);
-    monthDate.setMonth(startDate.getMonth() + installmentNumber - 1);
-    
-    return activeCalendarType === 'ETHIOPIAN'
-      ? convertToEthiopian(monthDate).monthName
-      : monthDate.toLocaleDateString('en-US', { month: 'long' });
+  const exportPaymentsCsv = () => {
+    const rows = [
+      ['Receipt #', 'Student Name', 'Grade', 'Paid Period', 'Payment Method', 'Amount', 'Recorded By', 'Date', 'Notes'],
+      ...payments.map((payment) => [
+        payment.receiptNumber,
+        payment.studentName,
+        `${payment.grade} - ${payment.section}`,
+        formatPaymentPaidMonth(payment),
+        payment.paymentMethod,
+        payment.amountPaid,
+        payment.recordedBy,
+        formatDate(payment.paymentDate),
+        payment.notes || '-',
+      ]),
+    ];
+    const csv = rows.map((row) => row.map(csvEscape).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `payment-history-${toLocalDateInputValue(new Date())}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
   const getTermMonthRangeLabel = (termId: string) => {
@@ -696,16 +1024,21 @@ export default function FinanceListPage() {
       if (rangeLabel) return rangeLabel;
     }
     if (fs.term?.name) return fs.term.name;
-    if (feeCollectionMode === 'MONTHLY') {
-      const installmentMatch = fs.feeType.match(/_INSTALLMENT_(\d+)$/i);
-      if (installmentMatch?.[1]) {
-        return getInstallmentMonthName(Number(installmentMatch[1]));
-      }
+    const feeTypeInstallmentMatch = fs.feeType.match(/_INSTALLMENT_(\d+)$/i);
+    if (feeTypeInstallmentMatch?.[1]) {
+      return getInstallmentMonthName(Number(feeTypeInstallmentMatch[1]));
     }
     const installmentMatch = fs.description?.match(/\bfor\s+(.+)$/i);
     if (installmentMatch?.[1]) return installmentMatch[1];
     if (fs.semester) return `Semester ${fs.semester}`;
     return 'Whole Academic Year';
+  };
+
+  const formatFeeStructureDescription = (fs: FeeStructure, periodLabel: string) => {
+    if (!fs.description) return '-';
+    return fs.description
+      .replace(/^([A-Z_]+)\s+installment\s+for\s+.+$/i, `${formatBaseFeeTypeName(fs.feeType)} installment for ${periodLabel}`)
+      .replace(/\bMonth\s+\d+\b/i, periodLabel);
   };
 
   return (
@@ -728,10 +1061,6 @@ export default function FinanceListPage() {
           </div>
           
           <div className="flex items-center gap-2">
-             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                <DollarSign className="w-3 h-3 mr-1" />
-                Active Year: {academicYears.find(y => y.id === selectedYear)?.name || '...'}
-             </Badge>
           </div>
         </div>
       </div>
@@ -750,13 +1079,15 @@ export default function FinanceListPage() {
               </SelectContent>
             </Select>
 
-            {terms.length > 0 && (
+            {showBillingPeriodFilter && terms.length > 0 && (
               <Select value={selectedTerm} onValueChange={setSelectedTerm}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={`${curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'}`} />
+                  <SelectValue placeholder={isMonthlyBilling ? 'Billing Period' : `${curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All {curriculumType === 'SEMESTER' ? 'Semesters' : curriculumType === 'QUARTER' ? 'Quarters' : 'Terms'}</SelectItem>
+                  <SelectItem value="all">
+                    {isMonthlyBilling ? 'All Billing Periods' : `All ${curriculumType === 'SEMESTER' ? 'Semesters' : curriculumType === 'QUARTER' ? 'Quarters' : 'Terms'}`}
+                  </SelectItem>
                   {terms.map(term => (
                     <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
                   ))}
@@ -768,34 +1099,38 @@ export default function FinanceListPage() {
               <TableSearch
                 search={searchTerm}
                 setSearch={setSearchTerm}
-                placeholder="Search..."
+                placeholder={searchPlaceholder}
                 className="w-full"
               />
             </div>
 
-            <Select value={selectedGrade} onValueChange={setSelectedGrade}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Grade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Grades</SelectItem>
-                {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
-                  <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {showGradeFilter && (
+              <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Grade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Grades</SelectItem>
+                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
+                    <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="PAID">Paid</SelectItem>
-                <SelectItem value="PARTIAL">Partial</SelectItem>
-                <SelectItem value="PENDING">Unpaid</SelectItem>
-              </SelectContent>
-            </Select>
+            {showStatusFilter && (
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="PAID">Paid</SelectItem>
+                  <SelectItem value="PARTIAL">Partial</SelectItem>
+                  <SelectItem value="PENDING">Unpaid</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
 
             <Button variant="outline" onClick={() => {
               setSearchTerm('');
@@ -810,11 +1145,22 @@ export default function FinanceListPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="fee-structures">Fee Structures</TabsTrigger>
-            <TabsTrigger value="student-fees">Student Fees</TabsTrigger>
-            <TabsTrigger value="payments">Payment History</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+            <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
+              <TabsTrigger
+                value="fee-structures"
+                className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
+              >Fee Structures</TabsTrigger>
+              <TabsTrigger
+                value="student-fees"
+                className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
+              >Student Fees</TabsTrigger>
+              <TabsTrigger
+                value="payments"
+                className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
+              >Payment History</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Fee Structures Tab */}
           <TabsContent value="fee-structures">
@@ -864,37 +1210,47 @@ export default function FinanceListPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {generatedFeeStructures.length > 0 ? (
-                      generatedFeeStructures.map(fs => (
-                        <TableRow key={fs.id}>
-                          <TableCell className="font-medium">{fs.feeType}</TableCell>
-                          <TableCell>{fs.grade ? `Grade ${fs.grade}` : 'All Grades'}</TableCell>
-                          <TableCell>{getFeeStructurePeriod(fs)}</TableCell>
-                          <TableCell>{formatCurrency(fs.amount)}</TableCell>
-                          <TableCell>{fs.description || '-'}</TableCell>
-                          <TableCell>
-                            <Badge variant={fs.isActive ? 'default' : 'secondary'}>
-                              {fs.isActive ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => handleDeleteFeeStructure(fs.id)}>
-                                <Trash2 className="w-4 h-4 text-red-500" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                    {filteredFeeStructures.length > 0 ? (
+                      paginatedFeeStructures.map(fs => {
+                        const period = getFeeStructurePeriod(fs);
+                        return (
+                          <TableRow key={fs.id}>
+                            <TableCell className="font-medium">{formatFeeTypeDisplay(fs.feeType, period)}</TableCell>
+                            <TableCell>{fs.grade ? `Grade ${fs.grade}` : 'All Grades'}</TableCell>
+                            <TableCell>{period}</TableCell>
+                            <TableCell>{formatCurrency(fs.amount)}</TableCell>
+                            <TableCell>{formatFeeStructureDescription(fs, period)}</TableCell>
+                            <TableCell>
+                              <Badge variant={fs.isActive ? 'default' : 'secondary'}>
+                                {fs.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleDeleteFeeStructure(fs.id)}>
+                                  <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     ) : (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8 text-slate-500">
-                          No generated fee structures found. Add the base fee structure, then run Auto-Generate.
+                          {searchTerm || selectedGrade !== 'all' || selectedTerm !== 'all'
+                            ? 'No fee structures match the selected filters.'
+                            : 'No generated fee structures found. Add the base fee structure, then run Auto-Generate.'}
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
+                {filteredFeeStructures.length > FEE_STRUCTURES_PAGE_SIZE && (
+                  <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 flex justify-end">
+                    <Pagination page={feeStructuresPage} setPage={setFeeStructuresPage} totalPages={feeStructuresTotalPages} />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -921,7 +1277,7 @@ export default function FinanceListPage() {
                     <TableRow>
                       <TableHead className="whitespace-nowrap">Student Name</TableHead>
                       <TableHead className="whitespace-nowrap">Grade</TableHead>
-                      <TableHead className="whitespace-nowrap">{curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'}</TableHead>
+                      <TableHead className="whitespace-nowrap">{getBillingPeriodLabel(feeCollectionMode)}</TableHead>
                       <TableHead className="whitespace-nowrap">Fee Type</TableHead>
                       <TableHead className="whitespace-nowrap">Total Fee</TableHead>
                       <TableHead className="whitespace-nowrap">Paid</TableHead>
@@ -932,13 +1288,13 @@ export default function FinanceListPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {studentFees.length > 0 ? (
-                      studentFees.map(sf => (
+                    {filteredStudentFees.length > 0 ? (
+                      filteredStudentFees.map(sf => (
                         <TableRow key={sf.id}>
                           <TableCell className="font-medium">{sf.studentName}</TableCell>
-                          <TableCell>{sf.grade} - {sf.section}</TableCell>
-                          <TableCell>{sf.termName || '-'}</TableCell>
-                          <TableCell>{sf.feeType}</TableCell>
+                          <TableCell>{getStudentFeeGradeLabel(sf)}</TableCell>
+                          <TableCell>{getStudentFeePeriodLabel(sf)}</TableCell>
+                          <TableCell>{formatFeeTypeDisplay(sf.feeType, getStudentFeePeriodLabel(sf))}</TableCell>
                           <TableCell>{formatCurrency(sf.finalAmount)}</TableCell>
                           <TableCell className="text-green-600">{formatCurrency(sf.paidAmount)}</TableCell>
                           <TableCell className={sf.remainingBalance > 0 ? 'text-red-600 font-medium' : ''}>
@@ -956,7 +1312,9 @@ export default function FinanceListPage() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={10} className="text-center py-8 text-slate-500">
-                          No student fees found
+                          {searchTerm || selectedGrade !== 'all' || selectedStatus !== 'all' || selectedTerm !== 'all'
+                            ? 'No student fees match the selected filters.'
+                            : 'No student fees found'}
                         </TableCell>
                       </TableRow>
                     )}
@@ -964,10 +1322,10 @@ export default function FinanceListPage() {
                 </Table>
 
                 {/* Pagination */}
-                {totalItems > 0 && (
+                {filteredStudentFees.length > 0 && (
                   <div className="flex items-center justify-between mt-4">
                     <div className="text-sm text-slate-500">
-                      Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalItems)} of {totalItems}
+                      Showing 1 to {filteredStudentFees.length} of {filteredStudentFees.length}
                     </div>
                     <Pagination
                       page={currentPage}
@@ -986,7 +1344,7 @@ export default function FinanceListPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Payment History</CardTitle>
-                <Button variant="outline">
+                <Button variant="outline" onClick={exportPaymentsCsv} disabled={payments.length === 0}>
                   <Download className="w-4 h-4 mr-2" />
                   Export CSV
                 </Button>
@@ -998,6 +1356,7 @@ export default function FinanceListPage() {
                       <TableHead>Receipt #</TableHead>
                       <TableHead>Student Name</TableHead>
                       <TableHead>Grade</TableHead>
+                      <TableHead>Paid Period</TableHead>
                       <TableHead>Payment Method</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Recorded By</TableHead>
@@ -1006,12 +1365,13 @@ export default function FinanceListPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {payments.length > 0 ? (
-                      payments.map(p => (
+                    {filteredPayments.length > 0 ? (
+                      paginatedPayments.map(p => (
                         <TableRow key={p.id}>
                           <TableCell className="font-medium">{p.receiptNumber}</TableCell>
                           <TableCell>{p.studentName}</TableCell>
                           <TableCell>{p.grade} - {p.section}</TableCell>
+                          <TableCell>{formatPaymentPaidMonth(p)}</TableCell>
                           <TableCell>
                             <Badge variant="outline">
                               {p.paymentMethod === 'CASH' && <Banknote className="w-3 h-3 mr-1" />}
@@ -1030,13 +1390,18 @@ export default function FinanceListPage() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                        <TableCell colSpan={9} className="text-center py-8 text-slate-500">
                           No payments found
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
+                {filteredPayments.length > PAYMENTS_PAGE_SIZE && (
+                  <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 flex justify-end">
+                    <Pagination page={paymentsPage} setPage={setPaymentsPage} totalPages={paymentsTotalPages} />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1140,7 +1505,7 @@ export default function FinanceListPage() {
                   )}
                   <div>
                     <Label className="text-slate-500">Fee Type</Label>
-                    <p className="font-medium">{selectedFee.feeType}</p>
+                    <p className="font-medium">{formatFeeTypeDisplay(selectedFee.feeType, selectedFee.termName)}</p>
                   </div>
                   <div>
                     <Label className="text-slate-500">Status</Label>
@@ -1172,8 +1537,9 @@ export default function FinanceListPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setViewDetailsDialogOpen(false)}>Close</Button>
               <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
+                if (!selectedFee) return;
                 setViewDetailsDialogOpen(false);
-                setPaymentDialogOpen(true);
+                openRecordPaymentDialog(selectedFee);
               }}>
                 Record Payment
               </Button>
@@ -1195,16 +1561,49 @@ export default function FinanceListPage() {
                     <span className="font-medium">{selectedFee.studentName}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Fee Type:</span>
-                    <span className="font-medium">{selectedFee.feeType}</span>
+                    <span className="text-slate-500">{isMonthlyBilling ? 'Billing Month:' : 'Fee Type:'}</span>
+                    <span className="font-medium">
+                      {selectedPaymentFee
+                        ? formatFeeTypeDisplay(selectedPaymentFee.name, null)
+                        : formatFeeTypeDisplay(selectedFee.feeType, isMonthlyBilling ? null : selectedFee.termName)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Remaining Balance:</span>
-                    <span className="font-medium text-red-600">{formatCurrency(selectedFee.remainingBalance)}</span>
+                    <span className="font-medium text-red-600">{formatCurrency(selectedPaymentFee?.balance ?? selectedFee.remainingBalance)}</span>
                   </div>
                 </div>
 
                 <div className="space-y-3">
+                  {isMonthlyBilling && (
+                    <div>
+                      <Label>Billing Month *</Label>
+                      <Select
+                        value={selectedPaymentFeeId}
+                        onValueChange={(value) => {
+                          setSelectedPaymentFeeId(value);
+                          const fee = monthlyPaymentFees.find((item) => item.id === value);
+                          setPaymentFormData({
+                            ...paymentFormData,
+                            amountPaid: fee?.balance ? String(fee.balance) : '',
+                          });
+                        }}
+                        disabled={paymentFeeOptionsLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={paymentFeeOptionsLoading ? 'Loading months...' : 'Select billing month'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {monthlyPaymentFees.map((fee) => (
+                            <SelectItem key={fee.id} value={fee.id} disabled={fee.balance <= 0}>
+                              {formatFeeTypeDisplay(fee.name, null)} - {formatCurrency(fee.balance)} remaining
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   <div>
                     <Label htmlFor="amountPaid">Amount to Pay *</Label>
                     <Input
@@ -1213,7 +1612,7 @@ export default function FinanceListPage() {
                       placeholder="Enter amount"
                       value={paymentFormData.amountPaid}
                       onChange={(e) => setPaymentFormData({ ...paymentFormData, amountPaid: e.target.value })}
-                      max={selectedFee.remainingBalance}
+                      max={selectedPaymentFee?.balance ?? selectedFee.remainingBalance}
                     />
                   </div>
 
@@ -1248,11 +1647,15 @@ export default function FinanceListPage() {
 
                   <div>
                     <Label htmlFor="paymentDate">Payment Date *</Label>
-                    <Input
-                      id="paymentDate"
-                      type="date"
-                      value={paymentFormData.paymentDate}
-                      onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentDate: e.target.value })}
+                    <CalendarDatePicker
+                      value={parseLocalDateInputValue(paymentFormData.paymentDate)}
+                      onChange={(date) =>
+                        setPaymentFormData({
+                          ...paymentFormData,
+                          paymentDate: date ? toLocalDateInputValue(date) : '',
+                        })
+                      }
+                      placeholder="Select payment date"
                     />
                   </div>
 

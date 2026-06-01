@@ -22,6 +22,7 @@ export interface ReportCard {
   attendancePercentage: number | null;
   teacherRemarks: string | null;
   principalRemarks: string | null;
+  internalRemarks?: string | null;
   gradeDetails: GradeDetail[];
   coCurricular: string | null;
   behavior: string | null;
@@ -210,6 +211,7 @@ export const reportCardsAPI = {
     data: {
       teacherRemarks?: string;
       principalRemarks?: string;
+      internalRemarks?: string;
       coCurricular?: string;
       behavior?: string;
     }
@@ -303,8 +305,10 @@ export const promotionAPI = {
     toAcademicYear: string;
   }) => api.post("/promotion/single", data),
   bulkPromote: (data: {
-    fromClassId: string;
+    fromClassId?: string;
+    fromGrade?: number;
     toClassId?: string | null;
+    toGrade?: number | null;
     fromAcademicYear: string;
     toAcademicYear: string;
     studentIds: string[];

@@ -1187,11 +1187,11 @@ const Menu = ({
                           className="flex h-6 w-6 items-center justify-center"
                         >
                           {isOpen ? (
-                            <ChevronDown className="w-4 h-4 text-white" />
+                            <ChevronDown className="w-4 h-4" />
                           ) : language === "ar" ? (
-                            <ChevronLeft className="w-4 h-4 text-white" />
+                            <ChevronLeft className="w-4 h-4" />
                           ) : (
-                            <ChevronRight className="w-4 h-4 text-white" />
+                            <ChevronRight className="w-4 h-4" />
                           )}
                         </button>
                       ) : isActive && !hasChildren && !parentWithSameChild ? (
@@ -1202,7 +1202,7 @@ const Menu = ({
 
                   {/* Related children */}
                   {hasVisibleChildren && !collapsed && isOpen && (
-                    <div className={`${language === "ar" ? "mr-4 pr-2 border-r" : "ml-4 pl-2 border-l"} dark:border-gray-700 space-y-1 ${useBrandNavigation ? "border-white/55" : "border-gray-200"}`}>
+                    <div className={`animate-in fade-in slide-in-from-top-1 duration-200 ease-out ${language === "ar" ? "mr-4 pr-2 border-r" : "ml-4 pl-2 border-l"} dark:border-gray-700 space-y-1 ${useBrandNavigation ? "border-white/55" : "border-gray-200"}`}>
                       {visibleChildren.map((child) => {
                         const childHref = child.href;
                         const childPath = childHref.split("#")[0];

@@ -9,10 +9,11 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { practiceExamsAPI, type PracticeExamOption, type PracticeExamQuestion } from "@/lib/api";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 
-type AnswerState = Record<string, { selectedOption: PracticeExamOption | null; isFlagged: boolean }>;
+type AnswerState = Record<string, { selectedOption: PracticeExamOption | null; textAnswer: string; isFlagged: boolean }>;
 
 const options: PracticeExamOption[] = ["A", "B", "C", "D"];
 
@@ -36,7 +37,7 @@ export default function PracticeExamAttemptPage() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const submittedRef = useRef(false);
-  const answerPayloadRef = useRef<{ questionId: string; selectedOption?: PracticeExamOption | null; isFlagged?: boolean }[]>([]);
+  const answerPayloadRef = useRef<{ questionId: string; selectedOption?: PracticeExamOption | null; textAnswer?: string | null; isFlagged?: boolean }[]>([]);
 
   const attemptQuery = useQuery({
     queryKey: ["practice-exam-attempt", attemptId],
@@ -69,6 +70,7 @@ export default function PracticeExamAttemptPage() {
     for (const question of attempt.questions || []) {
       next[question.id] = {
         selectedOption: question.selectedOption || null,
+        textAnswer: question.textAnswer || "",
         isFlagged: Boolean(question.isFlagged),
       };
     }
@@ -82,6 +84,7 @@ export default function PracticeExamAttemptPage() {
           if (draftAnswer) {
             merged[question.id] = {
               selectedOption: draftAnswer.selectedOption || next[question.id]?.selectedOption || null,
+              textAnswer: draftAnswer.textAnswer ?? next[question.id]?.textAnswer ?? "",
               isFlagged: Boolean(draftAnswer.isFlagged || next[question.id]?.isFlagged),
             };
           }
@@ -103,6 +106,7 @@ export default function PracticeExamAttemptPage() {
       Object.entries(answers).map(([questionId, value]) => ({
         questionId,
         selectedOption: value.selectedOption,
+        textAnswer: value.textAnswer,
         isFlagged: value.isFlagged,
       })),
     [answers],
@@ -163,7 +167,11 @@ export default function PracticeExamAttemptPage() {
     return () => window.clearInterval(interval);
   }, [isOpen, questions.length, autosave]);
 
-  const answeredCount = Object.values(answers).filter((answer) => answer.selectedOption).length;
+  const answeredQuestionCount = questions.filter((question) =>
+    question.questionType === "SHORT_ANSWER"
+      ? Boolean(answers[question.id]?.textAnswer?.trim() || question.textAnswer?.trim())
+      : Boolean(answers[question.id]?.selectedOption || question.selectedOption),
+  ).length;
   const flaggedCount = Object.values(answers).filter((answer) => answer.isFlagged).length;
   const timerClass = remainingSeconds <= 300 ? "text-red-600" : remainingSeconds <= 600 ? "text-amber-600" : "text-slate-950 dark:text-white";
   const submitConfirmOverlay =
@@ -201,7 +209,14 @@ export default function PracticeExamAttemptPage() {
   const setSelectedOption = (questionId: string, selectedOption: PracticeExamOption) => {
     setAnswers((prev) => ({
       ...prev,
-      [questionId]: { selectedOption, isFlagged: prev[questionId]?.isFlagged || false },
+      [questionId]: { selectedOption, textAnswer: prev[questionId]?.textAnswer || "", isFlagged: prev[questionId]?.isFlagged || false },
+    }));
+  };
+
+  const setTextAnswer = (questionId: string, textAnswer: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: { selectedOption: prev[questionId]?.selectedOption || null, textAnswer, isFlagged: prev[questionId]?.isFlagged || false },
     }));
   };
 
@@ -210,6 +225,7 @@ export default function PracticeExamAttemptPage() {
       ...prev,
       [questionId]: {
         selectedOption: prev[questionId]?.selectedOption || null,
+        textAnswer: prev[questionId]?.textAnswer || "",
         isFlagged: !prev[questionId]?.isFlagged,
       },
     }));
@@ -225,10 +241,14 @@ export default function PracticeExamAttemptPage() {
   };
 
   const renderAnsweredQuestionReview = (question: PracticeExamQuestion, index: number, showCorrectAnswer = false) => {
+    const isShortAnswer = question.questionType === "SHORT_ANSWER";
     const selectedOption = showCorrectAnswer
       ? question.selectedOption || null
       : answers[question.id]?.selectedOption || question.selectedOption || null;
-    const isSkipped = !selectedOption;
+    const textAnswer = showCorrectAnswer
+      ? question.textAnswer || ""
+      : answers[question.id]?.textAnswer || question.textAnswer || "";
+    const isSkipped = isShortAnswer ? !textAnswer.trim() : !selectedOption;
     const isCorrect = showCorrectAnswer ? question.isCorrect === true : false;
     const statusClass = showCorrectAnswer
       ? isSkipped
@@ -254,8 +274,17 @@ export default function PracticeExamAttemptPage() {
           </Badge>
         </div>
 
-        <div className="mt-4 grid gap-2">
-          {options.map((option) => {
+        {isShortAnswer ? (
+          <div className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+            <p className="text-xs font-semibold uppercase text-slate-500">Your answer</p>
+            <p className="mt-1 whitespace-pre-wrap">{textAnswer || "Not answered"}</p>
+            {showCorrectAnswer ? (
+              <p className="mt-3 text-xs text-slate-500">Accepted answer: {question.correctText || "-"}</p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-2">
+          {(question.questionType === "TRUE_FALSE" ? ["A", "B"] : options).map((option) => {
             const optionText = question[`option${option}` as keyof PracticeExamQuestion] as string;
             const selected = selectedOption === option;
             const correct = showCorrectAnswer && question.correctOption === option;
@@ -282,7 +311,8 @@ export default function PracticeExamAttemptPage() {
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -337,7 +367,7 @@ export default function PracticeExamAttemptPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Review Answers</h1>
             <p className="text-sm text-slate-500">
-              {attempt.exam.title} - {answeredCount} answered, {questions.length - answeredCount} not answered
+              {attempt.exam.title} - {answeredQuestionCount} answered, {questions.length - answeredQuestionCount} not answered
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -392,7 +422,15 @@ export default function PracticeExamAttemptPage() {
                 </Button>
               </div>
               <div className="grid gap-3">
-                {options.map((option) => {
+                {currentQuestion.questionType === "SHORT_ANSWER" ? (
+                  <Textarea
+                    value={answers[currentQuestion.id]?.textAnswer || ""}
+                    onChange={(event) => setTextAnswer(currentQuestion.id, event.target.value)}
+                    rows={6}
+                    placeholder="Type your answer here"
+                    className="resize-y bg-white dark:bg-slate-900"
+                  />
+                ) : (currentQuestion.questionType === "TRUE_FALSE" ? (["A", "B"] as PracticeExamOption[]) : options).map((option) => {
                   const selected = answers[currentQuestion.id]?.selectedOption === option;
                   const text = currentQuestion[`option${option}` as keyof PracticeExamQuestion] as string;
                   return (
@@ -447,15 +485,15 @@ export default function PracticeExamAttemptPage() {
           <CardHeader><CardTitle className="text-base">Progress</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-2 text-center text-sm">
-              <div className="rounded-lg bg-white p-3 dark:bg-slate-900"><div className="font-bold">{answeredCount}</div><div className="text-xs text-slate-500">Answered</div></div>
-              <div className="rounded-lg bg-white p-3 dark:bg-slate-900"><div className="font-bold">{questions.length - answeredCount}</div><div className="text-xs text-slate-500">Left</div></div>
+              <div className="rounded-lg bg-white p-3 dark:bg-slate-900"><div className="font-bold">{answeredQuestionCount}</div><div className="text-xs text-slate-500">Answered</div></div>
+              <div className="rounded-lg bg-white p-3 dark:bg-slate-900"><div className="font-bold">{questions.length - answeredQuestionCount}</div><div className="text-xs text-slate-500">Left</div></div>
               <div className="rounded-lg bg-white p-3 dark:bg-slate-900"><div className="font-bold">{flaggedCount}</div><div className="text-xs text-slate-500">Flagged</div></div>
             </div>
             <div className="grid grid-cols-5 gap-2">
               {questions.map((question, index) => {
                 const state = answers[question.id];
                 const active = currentIndex === index;
-                const answered = Boolean(state?.selectedOption);
+                const answered = question.questionType === "SHORT_ANSWER" ? Boolean(state?.textAnswer?.trim()) : Boolean(state?.selectedOption);
                 const flagged = Boolean(state?.isFlagged);
                 return (
                   <button key={question.id} onClick={() => setCurrentIndex(index)} className={`relative h-10 rounded-md border text-sm font-semibold ${active ? "border-blue-600 bg-blue-600 text-white" : answered ? "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100" : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"}`}>

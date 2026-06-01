@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/TimePicker";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -327,14 +328,7 @@ export function SirenScheduleManagement() {
 
                   <div>
                     <Label htmlFor="ringTime">Ring Time</Label>
-                    <Input
-                      id="ringTime"
-                      type="time"
-                      value={form.ringTime}
-                      onChange={(e) =>
-                        setForm({ ...form, ringTime: e.target.value })
-                      }
-                    />
+                    <TimePicker value={form.ringTime} onChange={(time) => setForm({ ...form, ringTime: time })} />
                   </div>
                 </div>
 

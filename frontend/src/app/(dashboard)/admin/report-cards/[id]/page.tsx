@@ -7,17 +7,20 @@ import {
   Award,
   CalendarDays,
   Download,
+  Edit2,
   FileText,
   GraduationCap,
   Loader2,
   Medal,
   RefreshCw,
+  Save,
+  ShieldAlert,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { reportCardsAPI, type GradeDetail, type ReportCard } from "@/lib/api/reporting";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Edit2, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 function valueOrDash(value: unknown) {
   if (value === null || value === undefined || value === "") return "-";
@@ -51,6 +54,13 @@ export default function ReportCardDetailPage() {
   const [reportCard, setReportCard] = useState<ReportCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [isEditingRemarks, setIsEditingRemarks] = useState(false);
+  const [savingRemarks, setSavingRemarks] = useState(false);
+  const [editedRemarks, setEditedRemarks] = useState({
+    teacher: "",
+    principal: "",
+    internal: "",
+  });
 
   const gradeRows = useMemo<GradeDetail[]>(() => reportCard?.gradeDetails || [], [reportCard]);
   const assessmentColumns = useMemo(() => {

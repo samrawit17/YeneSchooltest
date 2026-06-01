@@ -54,10 +54,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
        try {
          const response = await userAPI.getProfile({ skipAuthErrorRedirect: true });
          const profile = response.data;
-         if (profile) {
-           setUser(profile);
-           setToken('cookie-session');
-           const userTheme = (profile.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
+          if (profile) {
+            setUser(profile);
+            setToken('cookie-session');
+            sessionStorage.setItem('user', JSON.stringify({ id: profile.id }));
+            const userTheme = (profile.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
            useThemeStore.getState().setTheme(userTheme, profile.id);
          }
        } catch (error: any) {
@@ -96,10 +97,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      try {
        const response = await authAPI.login(loginIdentifier, password, schoolId);
        const { access_token, user: userData } = response.data;
-       setToken(access_token || 'cookie-session');
-       setUser(userData);
+        setToken(access_token || 'cookie-session');
+        setUser(userData);
+        sessionStorage.setItem('user', JSON.stringify({ id: userData.id }));
 
-       // Apply the authenticated user's own preference, not the guest key.
+        // Apply the authenticated user's own preference, not the guest key.
        const userTheme = (userData.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
        useThemeStore.getState().setTheme(userTheme, userData.id);
        useLanguageStore.getState().initializeLanguage();
@@ -116,10 +118,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      authAPI.logout().catch(() => undefined);
      // Reset theme to system default via Zustand store
      useThemeStore.getState().setTheme('light');
-     useLanguageStore.getState().initializeLanguage();
-     setToken(null);
-     setUser(null);
-     const language = useLanguageStore.getState().language;
+       useLanguageStore.getState().initializeLanguage();
+       setToken(null);
+       setUser(null);
+       sessionStorage.removeItem('user');
+       const language = useLanguageStore.getState().language;
      const navigationText = getModuleMessages<{ labels?: Record<string, string> }>(language, 'navigation');
      toast.success(navigationText.labels?.['Logged out successfully'] || 'Logged out successfully');
    };

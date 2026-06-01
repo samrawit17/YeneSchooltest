@@ -73,6 +73,7 @@ export enum NotificationType {
   FEE_PAID = 'FEE_PAID',
   PAYMENT_RECEIVED = 'PAYMENT_RECEIVED',
   PAYROLL_PAYMENT_DUE = 'PAYROLL_PAYMENT_DUE',
+  PAYROLL_RUN_REQUIRED = 'PAYROLL_RUN_REQUIRED',
 
   // System notifications
   SYSTEM_ALERT = 'SYSTEM_ALERT',
@@ -336,6 +337,7 @@ export class NotificationService {
         NotificationType.FEE_PAID,
         NotificationType.PAYMENT_RECEIVED,
         NotificationType.PAYROLL_PAYMENT_DUE,
+        NotificationType.PAYROLL_RUN_REQUIRED,
       ].includes(type as NotificationType)
     ) {
       return 'feesEnabled';
@@ -650,7 +652,13 @@ export class NotificationService {
       ],
       communication: ['MESSAGE_RECEIVED', 'ANNOUNCEMENT', 'COMMUNICATION'],
       event: ['EVENT', 'EVENT_UPDATED', 'EVENT_DELETED'],
-      finance: ['FEE_DUE', 'FEE_PAID', 'PAYMENT_RECEIVED', 'PAYROLL_PAYMENT_DUE'],
+      finance: [
+        'FEE_DUE',
+        'FEE_PAID',
+        'PAYMENT_RECEIVED',
+        'PAYROLL_PAYMENT_DUE',
+        'PAYROLL_RUN_REQUIRED',
+      ],
       system: [
         'SYSTEM_ALERT',
         'SIREN_ALERT',
@@ -775,7 +783,13 @@ export class NotificationService {
         categories.event.total++;
         if (isUnread) categories.event.unread++;
       } else if (
-        ['FEE_DUE', 'FEE_PAID', 'PAYMENT_RECEIVED', 'PAYROLL_PAYMENT_DUE'].includes(type)
+        [
+          'FEE_DUE',
+          'FEE_PAID',
+          'PAYMENT_RECEIVED',
+          'PAYROLL_PAYMENT_DUE',
+          'PAYROLL_RUN_REQUIRED',
+        ].includes(type)
       ) {
         categories.finance.total++;
         if (isUnread) categories.finance.unread++;

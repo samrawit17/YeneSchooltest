@@ -4,10 +4,11 @@ import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { schoolsAPI, platformSettingsAPI } from "@/lib/api";
+import { schoolsAPI, platformSettingsAPI, schoolSettingsAPI } from "@/lib/api";
 import { notificationsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { resolveAssetUrl } from "@/lib/asset-url";
+import { writeCachedSchoolLoginContext } from "@/lib/school-resolver";
 import { eventsAPI } from "@/lib/api/content";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { formatTimeByCalendarType } from "@/lib/calendar-utils";
@@ -181,6 +182,16 @@ const Navbar = ({
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
   const schoolLogoSrc = resolveAssetUrl(school?.logoUrl);
+  const { data: schoolLoginSettings } = useQuery({
+    queryKey: queryKeys.school.settings(user?.schoolId),
+    queryFn: async () => {
+      if (!user?.schoolId) return {};
+      const response = await schoolSettingsAPI.getAll(user.schoolId);
+      return response.data || {};
+    },
+    enabled: !!user?.schoolId && (user?.role || "").toUpperCase() !== "SUPER_ADMIN",
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Use React Query for notifications - cached across navigations but user-specific
   const { data: notificationsData, isLoading: notificationsLoading } = useQuery({
@@ -501,6 +512,7 @@ const Navbar = ({
       case 'FEE_PAID':
       case 'PAYMENT_RECEIVED':
       case 'PAYROLL_PAYMENT_DUE':
+      case 'PAYROLL_RUN_REQUIRED':
         return <CreditCard className="w-4 h-4 text-green-600" />;
 
       // System notifications
@@ -540,8 +552,22 @@ const Navbar = ({
           ? `/sign-in?schoolId=${encodeURIComponent(user.schoolId)}`
         : "/sign-in";
 
-    logout();
+    if (normalizedRole !== "SUPER_ADMIN" && school && user?.schoolId) {
+      writeCachedSchoolLoginContext({
+        id: user.schoolId,
+        name: school.name || "",
+        code: school.code || null,
+        publicUrlSlug: school.publicUrlSlug || null,
+        logoUrl: school.logoUrl || null,
+        accentColor: typeof schoolLoginSettings?.theme_color === "string" ? schoolLoginSettings.theme_color : null,
+        loginImageUrl:
+          typeof schoolLoginSettings?.login_image_url === "string"
+            ? schoolLoginSettings.login_image_url
+            : null,
+      });
+    }
     sessionStorage.setItem("postLogoutRedirect", redirectTo);
+    logout();
     router.push(redirectTo);
   };
 
@@ -857,7 +883,9 @@ const Navbar = ({
                             {navLabel("No communication notifications")}
                           </div>
                         ) : (
-                          communicationNotifications.map((notification: any) => (
+                          communicationNotifications.map((notification: any) => {
+                            const localized = localizeNotificationText(notification, language);
+                            return (
                             <div
                               key={notification.id}
                               className={`p-2 sm:p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${!isNotificationRead(notification) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
@@ -873,15 +901,15 @@ const Navbar = ({
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
                                     <p className={`text-xs sm:text-sm ${!isNotificationRead(notification) ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
-                                      {notification.title}
+                                      {localized.title}
                                     </p>
                                     {!isNotificationRead(notification) && (
                                       <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                                     )}
                                   </div>
-                                  {notification.message && (
+                                  {localized.message && (
                                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                                      {notification.message}
+                                      {localized.message}
                                     </p>
                                   )}
                                   <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
@@ -890,7 +918,8 @@ const Navbar = ({
                                 </div>
                               </div>
                             </div>
-                          ))
+                            );
+                          })
                         )}
                       </ScrollArea>
                       <DropdownMenuSeparator />

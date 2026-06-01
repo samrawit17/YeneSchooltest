@@ -33,6 +33,7 @@ import {
   ETHIOPIAN_MONTH_NAMES,
   formatSchoolDate,
   toEthiopianDate,
+  toGregorianDate,
 } from '../common/date.util';
 
 @Injectable()
@@ -351,10 +352,7 @@ export class FinanceService {
         ? 'GREGORIAN'
         : 'ETHIOPIAN';
     const normalizedMode = String(feeCollectionMode || '').toUpperCase();
-    if (
-      term?.name &&
-      !['MONTH', 'MONTHLY', 'YEAR', 'YEARLY'].includes(normalizedMode)
-    ) {
+    if (term?.name) {
       return term.name;
     }
 
@@ -394,6 +392,86 @@ export class FinanceService {
   private getFeeStructureInstallmentIndex(feeType?: string | null) {
     const match = String(feeType || '').match(/_INSTALLMENT_(\d+)$/i);
     return match ? Number(match[1]) : null;
+  }
+
+  private getClassGradeNumber(classInfo?: {
+    grade?: number | null;
+    name?: string | null;
+  } | null) {
+    if (classInfo?.grade != null && Number.isFinite(Number(classInfo.grade))) {
+      return Number(classInfo.grade);
+    }
+
+    const match = String(classInfo?.name || '').match(/\d+/);
+    return match ? Number(match[0]) : null;
+  }
+
+  private getStudentFeeDueDate(params: {
+    academicYearStartDate?: Date | null;
+    termStartDate?: Date | null;
+    feeType?: string | null;
+    dueDay: number;
+    calendarType?: CalendarType | string | null;
+  }) {
+    const installmentIndex = this.getFeeStructureInstallmentIndex(params.feeType);
+    const resolvedCalendarType =
+      String(params.calendarType || '').toUpperCase() === 'GREGORIAN'
+        ? 'GREGORIAN'
+        : 'ETHIOPIAN';
+    const safeDueDay = Math.max(1, Math.min(31, Number(params.dueDay) || 15));
+
+    if (
+      resolvedCalendarType === 'ETHIOPIAN' &&
+      params.academicYearStartDate &&
+      installmentIndex &&
+      !Number.isNaN(new Date(params.academicYearStartDate).getTime()) &&
+      !params.termStartDate
+    ) {
+      const startEth = toEthiopianDate(new Date(params.academicYearStartDate));
+      const zeroBasedMonth = startEth.month - 1 + installmentIndex - 1;
+      const year = startEth.year + Math.floor(zeroBasedMonth / 13);
+      const month = (zeroBasedMonth % 13) + 1;
+      const day = Math.min(safeDueDay, this.getEthiopianMonthLength(year, month));
+      return toGregorianDate({ year, month, day });
+    }
+
+    const baseDate = params.termStartDate
+      ? new Date(params.termStartDate)
+      : installmentIndex && params.academicYearStartDate
+        ? new Date(params.academicYearStartDate)
+        : new Date();
+
+    if (resolvedCalendarType === 'ETHIOPIAN') {
+      const baseEth = toEthiopianDate(baseDate);
+      const day = Math.min(
+        safeDueDay,
+        this.getEthiopianMonthLength(baseEth.year, baseEth.month),
+      );
+      return toGregorianDate({ year: baseEth.year, month: baseEth.month, day });
+    }
+
+    if (
+      !params.termStartDate &&
+      installmentIndex &&
+      params.academicYearStartDate
+    ) {
+      baseDate.setMonth(baseDate.getMonth() + installmentIndex - 1);
+    }
+
+    const dueDate = new Date(baseDate);
+    dueDate.setDate(1);
+    const lastDayOfMonth = new Date(
+      dueDate.getFullYear(),
+      dueDate.getMonth() + 1,
+      0,
+    ).getDate();
+    dueDate.setDate(Math.min(safeDueDay, lastDayOfMonth));
+    return dueDate;
+  }
+
+  private getEthiopianMonthLength(year: number, month: number) {
+    if (month >= 1 && month <= 12) return 30;
+    return year % 4 === 3 ? 6 : 5;
   }
 
   private normalizeFeeBreakdownType(feeType?: string | null) {
@@ -466,7 +544,14 @@ export class FinanceService {
 
     const term = await this.prisma.term.findFirst({
       where: { id: termId, academicYear: { schoolId } },
-      select: { id: true, name: true, order: true, academicYearId: true },
+      select: {
+        id: true,
+        name: true,
+        order: true,
+        academicYearId: true,
+        startDate: true,
+        endDate: true,
+      },
     });
     if (!term) {
       throw new Error('Term not found for this school');
@@ -534,6 +619,7 @@ export class FinanceService {
           title: true,
           periodMonth: true,
           periodYear: true,
+          periodCalendarType: true,
           paymentDate: true,
           netAmount: true,
         },
@@ -551,12 +637,143 @@ export class FinanceService {
     }
   }
 
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async notifyFinanceToCreateCurrentPayrollRun() {
+    const schools = await this.prisma.school.findMany({
+      where: {
+        isActive: true,
+        payrollSalaries: { some: { isActive: true } },
+      },
+      select: { id: true, name: true },
+    });
+
+    for (const school of schools) {
+      try {
+        const calendarType = await this.getSchoolCalendarType(school.id);
+        const period = this.getCurrentPayrollPeriod(calendarType);
+        const existingRun = await this.prisma.payrollRun.findFirst({
+          where: {
+            schoolId: school.id,
+            periodCalendarType: calendarType,
+            periodMonth: period.month,
+            periodYear: period.year,
+            status: { not: 'CANCELLED' },
+          },
+          select: { id: true },
+        });
+
+        if (existingRun) continue;
+
+        await this.notifyFinanceForMissingPayrollRun(
+          school,
+          period.month,
+          period.year,
+          calendarType,
+        );
+      } catch (error: any) {
+        this.logger.error(
+          `Failed to send payroll run creation reminder for ${school.name}: ${error?.message || error}`,
+        );
+      }
+    }
+  }
+
   private async getSchoolCalendarType(schoolId: string): Promise<CalendarType> {
     const setting = await this.prisma.schoolSetting.findUnique({
       where: { schoolId_key: { schoolId, key: 'calendar_type' } },
       select: { value: true },
     });
     return setting?.value === 'GREGORIAN' ? 'GREGORIAN' : 'ETHIOPIAN';
+  }
+
+  private getCurrentPayrollPeriod(calendarType: CalendarType) {
+    const today = new Date();
+    if (calendarType === 'ETHIOPIAN') {
+      const ethiopian = toEthiopianDate(today);
+      return { month: ethiopian.month, year: ethiopian.year };
+    }
+
+    return { month: today.getMonth() + 1, year: today.getFullYear() };
+  }
+
+  private getPayrollPeriodLabel(
+    month: number,
+    year: number,
+    calendarType: CalendarType,
+  ) {
+    if (calendarType === 'ETHIOPIAN') {
+      const monthName = ETHIOPIAN_MONTH_NAMES[month - 1] || `Month ${month}`;
+      return `${monthName} ${year} E.C.`;
+    }
+
+    return new Date(year, month - 1, 1).toLocaleString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    });
+  }
+
+  private async notifyFinanceForMissingPayrollRun(
+    school: { id: string; name: string },
+    periodMonth: number,
+    periodYear: number,
+    calendarType: CalendarType,
+  ) {
+    const financeUsers = await this.prisma.user.findMany({
+      where: {
+        schoolId: school.id,
+        role: Role.FINANCE,
+        isActive: true,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (financeUsers.length === 0) return;
+
+    const periodLabel = this.getPayrollPeriodLabel(
+      periodMonth,
+      periodYear,
+      calendarType,
+    );
+    const title = `Create ${periodLabel} payroll run`;
+    const message = `No payroll run has been created for ${periodLabel}. Create the monthly run so salaries can be reviewed, approved, and paid.`;
+    const metadata = {
+      periodMonth,
+      periodYear,
+      periodCalendarType: calendarType,
+      reminder: 'create-payroll-run',
+    };
+
+    for (const financeUser of financeUsers) {
+      const existing = await this.prisma.notification.findFirst({
+        where: {
+          schoolId: school.id,
+          userId: financeUser.id,
+          type: NotificationType.PAYROLL_RUN_REQUIRED,
+          metadata: {
+            contains: `"periodCalendarType":"${calendarType}"`,
+          },
+          AND: [
+            { metadata: { contains: `"periodMonth":${periodMonth}` } },
+            { metadata: { contains: `"periodYear":${periodYear}` } },
+            { metadata: { contains: `"reminder":"create-payroll-run"` } },
+          ],
+        },
+        select: { id: true },
+      });
+
+      if (existing) continue;
+
+      await this.notificationService.createNotification({
+        schoolId: school.id,
+        userId: financeUser.id,
+        title,
+        message,
+        type: NotificationType.PAYROLL_RUN_REQUIRED,
+        actionUrl: '/finance/payroll',
+        metadata,
+      });
+    }
   }
 
   private async notifyFinanceForPayrollRunDue(
@@ -566,6 +783,7 @@ export class FinanceService {
       title: string;
       periodMonth: number;
       periodYear: number;
+      periodCalendarType?: string | null;
       paymentDate: Date | null;
       netAmount: number;
     },
@@ -583,7 +801,17 @@ export class FinanceService {
 
     if (financeUsers.length === 0) return;
 
-    const calendarType = await this.getSchoolCalendarType(run.schoolId);
+    const schoolCalendarType = await this.getSchoolCalendarType(run.schoolId);
+    const calendarType: CalendarType =
+      run.periodCalendarType === 'ETHIOPIAN' ||
+      run.periodCalendarType === 'GREGORIAN'
+        ? run.periodCalendarType
+        : schoolCalendarType;
+    const periodLabel = this.getPayrollPeriodLabel(
+      run.periodMonth,
+      run.periodYear,
+      calendarType,
+    );
     const paymentDateLabel = run.paymentDate
       ? formatSchoolDate(run.paymentDate, { calendarType })
       : 'the scheduled payment date';
@@ -592,14 +820,15 @@ export class FinanceService {
       currency: 'ETB',
       maximumFractionDigits: 0,
     }).format(run.netAmount);
-    const title = `Payroll payment due in ${daysBefore} days`;
-    const message = `${run.title} is scheduled for payment on ${paymentDateLabel}. Net payroll: ${amount}.`;
+    const title = `${periodLabel} payroll payment due in ${daysBefore} days`;
+    const message = `${periodLabel} payroll is scheduled for payment on ${paymentDateLabel}. Net payroll: ${amount}.`;
     const metadata = {
       payrollRunId: run.id,
       daysBefore,
       paymentDate: run.paymentDate?.toISOString() || null,
       periodMonth: run.periodMonth,
       periodYear: run.periodYear,
+      periodCalendarType: calendarType,
     };
 
     for (const financeUser of financeUsers) {
@@ -1037,6 +1266,11 @@ export class FinanceService {
 
   async generateStudentFees(dto: GenerateStudentFeesDto) {
     await this.assertAcademicYearInSchool(dto.schoolId, dto.academicYearId);
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: dto.academicYearId, schoolId: dto.schoolId },
+      select: { name: true, startDate: true },
+    });
+    const calendarType = await this.getSchoolCalendarType(dto.schoolId);
     if (dto.termId) {
       await this.assertTermInSchool(dto.schoolId, dto.termId);
     }
@@ -1072,6 +1306,25 @@ export class FinanceService {
     });
     const studentIds = students.map((s) => s.userId).filter(Boolean);
     if (studentIds.length === 0) return { created: 0 };
+    const studentGradeById = new Map<string, number>();
+    if (academicYear?.name) {
+      const studentClasses = await this.prisma.studentClass.findMany({
+        where: {
+          schoolId: dto.schoolId,
+          academicYear: academicYear.name,
+          studentId: { in: studentIds },
+        },
+        include: {
+          class: { select: { grade: true, name: true } },
+        },
+      });
+      studentClasses.forEach((studentClass) => {
+        const gradeNumber = this.getClassGradeNumber(studentClass.class);
+        if (gradeNumber != null) {
+          studentGradeById.set(studentClass.studentId, gradeNumber);
+        }
+      });
+    }
     const familyDiscount = await this.getFamilyDiscountContext(
       dto.schoolId,
       students,
@@ -1092,9 +1345,21 @@ export class FinanceService {
     }
 
     const data = feeStructures.flatMap((fs) => {
-      const dueDate = new Date(termStartById.get(fs.termId || '') || new Date());
-      dueDate.setDate(dueDay);
-      return studentIds.map((studentId) => {
+      const dueDate = this.getStudentFeeDueDate({
+        academicYearStartDate: academicYear?.startDate || null,
+        termStartDate: termStartById.get(fs.termId || '') || null,
+        feeType: fs.feeType,
+        dueDay,
+        calendarType,
+      });
+      const targetStudentIds =
+        fs.grade == null
+          ? studentIds
+          : studentIds.filter(
+              (studentId) => studentGradeById.get(studentId) === Number(fs.grade),
+            );
+
+      return targetStudentIds.map((studentId) => {
         const discount = this.calculateFamilyDiscountAmount(
           fs.feeType,
           fs.amount,
@@ -1388,28 +1653,96 @@ export class FinanceService {
       page = 1,
       limit = 20,
       studentId,
+      search,
     } = query;
     const skip = (page - 1) * limit;
     const whereBase: any = { schoolId };
     if (status) whereBase.status = status as PaymentStatus;
     if (studentId) whereBase.studentId = studentId;
     if (academicYearId) whereBase.academicYearId = academicYearId;
-    if (academicYearId) {
-      await this.assertAcademicYearInSchool(schoolId, academicYearId);
+    const trimmedSearch = String(search || '').trim();
+    if (trimmedSearch) {
+      whereBase.student = {
+        OR: [
+          { name: { contains: trimmedSearch, mode: 'insensitive' } },
+          { email: { contains: trimmedSearch, mode: 'insensitive' } },
+        ],
+      };
     }
+    const academicYear = academicYearId
+      ? await this.assertAcademicYearInSchool(schoolId, academicYearId)
+      : null;
+    const academicYearWithDates = academicYearId
+      ? await this.prisma.academicYear.findFirst({
+          where: { id: academicYearId, schoolId },
+          select: { startDate: true },
+        })
+      : null;
+    const resolvedCalendarType = await this.getSchoolCalendarType(schoolId);
+    const curriculumType = await this.getFeeCollectionModeInternal(schoolId);
+    const normalizedFeeMode = String(curriculumType || '').toUpperCase();
     if (termId) {
-      await this.assertTermInSchool(schoolId, termId);
-      whereBase.termId = termId;
+      const selectedTerm = await this.assertTermInSchool(schoolId, termId);
+      if (
+        selectedTerm &&
+        ['MONTH', 'MONTHLY'].includes(normalizedFeeMode) &&
+        academicYearWithDates?.startDate
+      ) {
+        const installmentCount = this.getInstallmentCountInternal(curriculumType);
+        const terms = await this.prisma.term.findMany({
+          where: { academicYearId, academicYear: { schoolId } },
+          orderBy: { order: 'asc' },
+        });
+        const selectedTermWithDates =
+          terms.find((term) => term.id === selectedTerm.id) || selectedTerm;
+        const installmentRange =
+          this.getInstallmentRangeForTerm(
+            academicYearWithDates.startDate,
+            selectedTermWithDates,
+            installmentCount,
+          ) ||
+          (terms.length > 0
+            ? {
+                start:
+                  Math.floor(
+                    ((selectedTerm.order - 1) * installmentCount) / terms.length,
+                  ) + 1,
+                end: Math.floor(
+                  (selectedTerm.order * installmentCount) / terms.length,
+                ),
+              }
+            : null);
+
+        if (installmentRange) {
+          whereBase.OR = [
+            { termId },
+            ...Array.from(
+              { length: installmentRange.end - installmentRange.start + 1 },
+              (_, offset) => ({
+                feeStructure: {
+                  feeType: {
+                    endsWith: `_INSTALLMENT_${installmentRange.start + offset}`,
+                  },
+                },
+              }),
+            ),
+          ];
+        } else {
+          whereBase.termId = termId;
+        }
+      } else {
+        whereBase.termId = termId;
+      }
     }
 
     if (grade !== undefined || sectionId) {
       if (academicYearId) {
-        const ay = await this.assertAcademicYearInSchool(
-          schoolId,
-          academicYearId,
-        );
-        const scWhere: any = { schoolId, academicYear: ay.name };
-        if (grade !== undefined) scWhere.class = { grade };
+        const scWhere: any = { schoolId, academicYear: academicYear?.name };
+        if (grade !== undefined) {
+          scWhere.class = {
+            OR: [{ grade }, { name: { equals: `Grade ${grade}` } }],
+          };
+        }
         if (sectionId) scWhere.sectionId = sectionId;
         const studentClasses = await this.prisma.studentClass.findMany({
           where: scWhere,
@@ -1418,7 +1751,7 @@ export class FinanceService {
         const ids = Array.from(
           new Set(studentClasses.map((x) => x.studentId)),
         );
-        if (ids.length > 0) whereBase.studentId = { in: ids };
+        whereBase.studentId = { in: ids };
       }
     }
 
@@ -1443,14 +1776,58 @@ export class FinanceService {
       }),
     ]);
 
+    const studentIds = Array.from(new Set(rows.map((row) => row.studentId)));
+    const studentClasses =
+      academicYear?.name && studentIds.length > 0
+        ? await this.prisma.studentClass.findMany({
+            where: {
+              schoolId,
+              studentId: { in: studentIds },
+              academicYear: academicYear.name,
+            },
+            include: {
+              class: { select: { name: true } },
+              section: { select: { name: true } },
+            },
+          })
+        : [];
+    const classMap = new Map<
+      string,
+      { grade: string | null; section: string | null }
+    >();
+    studentClasses.forEach((studentClass) => {
+      classMap.set(studentClass.studentId, {
+        grade: studentClass.class?.name || null,
+        section: studentClass.section?.name || null,
+      });
+    });
+
     const data = rows.map((sf) => {
       const paid = sf.payments.reduce((s, p) => s + p.amountPaid, 0);
       const remaining = Math.max(0, sf.finalAmount - paid);
+      const installmentIndex = this.getFeeStructureInstallmentIndex(
+        sf.feeStructure.feeType,
+      );
+      const scopeLabel =
+        installmentIndex !== null
+          ? this.getInstallmentPeriodLabel(
+              curriculumType,
+              installmentIndex - 1,
+              academicYearWithDates?.startDate,
+              sf.term || sf.feeStructure.term,
+              resolvedCalendarType,
+            )
+          : sf.term?.name || sf.feeStructure.term?.name || 'Whole Academic Year';
+      const studentClass = classMap.get(sf.studentId);
       return {
         id: sf.id,
         studentId: sf.studentId,
         studentName: sf.student?.name,
+        grade: studentClass?.grade || null,
+        section: studentClass?.section || null,
         feeType: sf.feeStructure.feeType,
+        scopeLabel,
+        installmentIndex,
         totalFee: sf.totalAmount,
         discount: sf.discount,
         discountPercent:
@@ -1466,6 +1843,7 @@ export class FinanceService {
         status: sf.status,
         academicYearId: sf.academicYearId,
         termName: sf.term?.name || sf.feeStructure.term?.name || null,
+        dueDate: sf.dueDate,
         updatedAt: sf.updatedAt,
       };
     });
@@ -1674,12 +2052,12 @@ export class FinanceService {
       const sf = dto.studentFeeId
         ? await tx.studentFee.findUnique({
             where: { id: dto.studentFeeId },
-            include: { payments: true },
+            include: { payments: true, feeStructure: { select: { feeType: true } } },
           })
         : await tx.studentFee.findFirst({
             where: { schoolId: dto.schoolId, studentId: dto.studentId },
             orderBy: { createdAt: 'desc' },
-            include: { payments: true },
+            include: { payments: true, feeStructure: { select: { feeType: true } } },
           });
 
       if (!sf) {
@@ -1694,6 +2072,10 @@ export class FinanceService {
         throw new Error('Fee does not match this student');
       }
       const paymentTermId = dto.termId || sf.termId || null;
+      const feeInstallmentIndex = this.getFeeStructureInstallmentIndex(
+        sf.feeStructure?.feeType,
+      );
+      const isInstallmentFee = feeInstallmentIndex !== null;
       if (dto.termId) {
         const term = await tx.term.findFirst({
           where: {
@@ -1707,14 +2089,16 @@ export class FinanceService {
           throw new Error('Selected payment period does not match this fee academic year');
         }
       }
-      if (!sf.termId && !paymentTermId) {
+      if (!sf.termId && !paymentTermId && !isInstallmentFee) {
         throw new Error('Select the term or semester this annual fee payment is for');
       }
 
       const alreadyPaid = sf.payments.reduce((s, p) => s + p.amountPaid, 0);
-      const isAnnualFeePayment = !sf.termId && Boolean(paymentTermId);
+      const isAnnualFeePayment = !sf.termId && !isInstallmentFee && Boolean(paymentTermId);
       const alreadyPaidForSelectedPeriod =
-        paymentTermId
+        isInstallmentFee
+          ? alreadyPaid
+          : paymentTermId
           ? sf.payments
               .filter((payment) => payment.termId === paymentTermId)
               .reduce((s, payment) => s + payment.amountPaid, 0)
@@ -1745,6 +2129,8 @@ export class FinanceService {
         throw new Error(
           isAnnualFeePayment
             ? 'This annual fee is already fully paid'
+            : isInstallmentFee
+              ? 'This installment is already fully paid'
             : 'This term or semester is already fully paid',
         );
       }
@@ -1752,6 +2138,8 @@ export class FinanceService {
         throw new Error(
           isAnnualFeePayment
             ? `Amount exceeds the remaining annual fee balance. Remaining: ${outstanding}`
+            : isInstallmentFee
+              ? `Amount exceeds the remaining installment balance. Remaining: ${outstanding}`
             : `Amount exceeds outstanding balance for the selected term or semester. Remaining: ${outstanding}`,
         );
 
@@ -2153,7 +2541,6 @@ export class FinanceService {
       where: { academicYearId, academicYear: { schoolId } },
       orderBy: { order: 'asc' },
     });
-
     const where: any = {
       schoolId,
       academicYearId,
@@ -2227,7 +2614,7 @@ export class FinanceService {
       const installmentIndex = this.getFeeStructureInstallmentIndex(
         sf.feeStructure.feeType,
       );
-      const isYearWide = !sf.termId;
+      const isYearWide = !sf.termId && installmentIndex === null;
       const isPeriodView = Boolean(selectedTerm);
 
       if (
@@ -2447,7 +2834,16 @@ export class FinanceService {
     ];
   }
 
-  private getPayrollRunTitle(month: number, year: number) {
+  private getPayrollRunTitle(
+    month: number,
+    year: number,
+    calendarType: CalendarType = 'GREGORIAN',
+  ) {
+    if (calendarType === 'ETHIOPIAN') {
+      const monthName = ETHIOPIAN_MONTH_NAMES[month - 1] || `Month ${month}`;
+      return `${monthName} ${year} E.C. Payroll`;
+    }
+
     return `${new Date(year, month - 1, 1).toLocaleString('en-US', {
       month: 'long',
     })} ${year} Payroll`;
@@ -2478,10 +2874,17 @@ export class FinanceService {
   private async refreshPayrollRunTotals(tx: any, runId: string) {
     const entries = await tx.payrollEntry.findMany({
       where: { runId },
-      select: { grossPay: true, deductions: true, tax: true, netPay: true },
+      select: {
+        grossPay: true,
+        deductions: true,
+        tax: true,
+        netPay: true,
+        status: true,
+      },
     });
 
-    const totals = entries.reduce(
+    const payableEntries = entries.filter((entry) => entry.status !== 'HELD');
+    const totals = payableEntries.reduce(
       (sum, entry) => ({
         grossAmount: sum.grossAmount + Number(entry.grossPay || 0),
         deductionsAmount:
@@ -2499,7 +2902,7 @@ export class FinanceService {
         grossAmount: Math.round(totals.grossAmount * 100) / 100,
         deductionsAmount: Math.round(totals.deductionsAmount * 100) / 100,
         netAmount: Math.round(totals.netAmount * 100) / 100,
-        entryCount: entries.length,
+        entryCount: payableEntries.length,
       },
     });
   }
@@ -2775,14 +3178,23 @@ export class FinanceService {
       );
     }
 
+    const calendarType = await this.getSchoolCalendarType(dto.schoolId);
+
     try {
       const runId = await this.prisma.$transaction(async (tx) => {
         const run = await tx.payrollRun.create({
           data: {
             schoolId: dto.schoolId,
-            title: dto.title || this.getPayrollRunTitle(dto.periodMonth, dto.periodYear),
+            title:
+              dto.title ||
+              this.getPayrollRunTitle(
+                dto.periodMonth,
+                dto.periodYear,
+                calendarType,
+              ),
             periodMonth: dto.periodMonth,
             periodYear: dto.periodYear,
+            periodCalendarType: calendarType,
             paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : null,
             notes: dto.notes || null,
             createdById: user.id,
@@ -2845,13 +3257,29 @@ export class FinanceService {
         throw new NotFoundException('Payroll run not found');
       }
 
-      if (run.status === 'PAID' && dto.status !== 'PAID') {
-        throw new BadRequestException('Paid payroll runs cannot be reopened');
+      if (run.status === 'PAID') {
+        throw new BadRequestException('Paid payroll runs cannot be changed');
+      }
+
+      if (run.status === 'CANCELLED') {
+        throw new BadRequestException('Cancelled payroll runs cannot be changed');
+      }
+
+      if (run.status !== dto.status) {
+        const allowedTransitions: Record<string, string[]> = {
+          DRAFT: ['APPROVED', 'CANCELLED'],
+          APPROVED: ['PAID', 'CANCELLED'],
+        };
+        const allowedNextStatuses = allowedTransitions[run.status] || [];
+        if (!allowedNextStatuses.includes(dto.status)) {
+          throw new BadRequestException(
+            `Payroll run must move from DRAFT to APPROVED before payment`,
+          );
+        }
       }
 
       const statusData: Record<string, any> = {
         status: dto.status,
-        paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : run.paymentDate,
         notes: dto.notes ?? run.notes,
       };
 
@@ -2864,10 +3292,33 @@ export class FinanceService {
       }
 
       if (dto.status === 'PAID') {
+        const entryStatuses = await tx.payrollEntry.groupBy({
+          by: ['status'],
+          where: { runId },
+          _count: { _all: true },
+        });
+        const counts = entryStatuses.reduce<Record<string, number>>(
+          (sum, row) => ({ ...sum, [row.status]: row._count._all }),
+          {},
+        );
+        if (counts.PENDING) {
+          throw new BadRequestException(
+            'Approve the payroll run before marking it paid',
+          );
+        }
+        if (!counts.APPROVED && !counts.PAID) {
+          throw new BadRequestException(
+            'Payroll has no payable entries to mark as paid',
+          );
+        }
+
         statusData.paidById = user.id;
-        statusData.paidAt = dto.paymentDate ? new Date(dto.paymentDate) : new Date();
+        statusData.paymentDate = dto.paymentDate
+          ? new Date(dto.paymentDate)
+          : run.paymentDate || new Date();
+        statusData.paidAt = new Date();
         await tx.payrollEntry.updateMany({
-          where: { runId, status: { in: ['PENDING', 'APPROVED'] } },
+          where: { runId, status: 'APPROVED' },
           data: { status: 'PAID', paidAt: statusData.paidAt },
         });
       }
@@ -2901,10 +3352,27 @@ export class FinanceService {
     return this.prisma.$transaction(async (tx) => {
       const entry = await tx.payrollEntry.findFirst({
         where: { id: entryId, schoolId: dto.schoolId },
+        include: { run: { select: { status: true } } },
       });
 
       if (!entry) {
         throw new NotFoundException('Payroll entry not found');
+      }
+
+      if (entry.run.status === 'PAID' || entry.run.status === 'CANCELLED') {
+        throw new BadRequestException(
+          'Entries cannot be changed after the payroll run is final',
+        );
+      }
+
+      if (entry.status === 'PAID' && dto.status !== 'PAID') {
+        throw new BadRequestException('Paid payroll entries cannot be reopened');
+      }
+
+      if (dto.status === 'PAID' && entry.run.status !== 'APPROVED') {
+        throw new BadRequestException(
+          'Approve the payroll run before paying staff entries',
+        );
       }
 
       const updated = await tx.payrollEntry.update({
@@ -3051,6 +3519,19 @@ export class FinanceService {
       where: { academicYearId, academicYear: { schoolId } },
       orderBy: { order: 'asc' },
     });
+    const selectedTermInstallmentRange =
+      selectedTerm && terms.length > 0 && installmentCount > terms.length
+        ? this.getInstallmentRangeForTerm(
+            academicYear.startDate,
+            terms.find((term) => term.id === selectedTerm.id) || null,
+            installmentCount,
+          ) || {
+            start:
+              Math.floor(((selectedTerm.order - 1) * installmentCount) / terms.length) +
+              1,
+            end: Math.floor((selectedTerm.order * installmentCount) / terms.length),
+          }
+        : null;
 
     const studentFeesWhere: any = {
       studentId: { in: candidateStudentIds },
@@ -3076,13 +3557,22 @@ export class FinanceService {
       },
     });
 
-    const feeItems = studentFees.map((sf) => {
+    const feeItems = studentFees.flatMap((sf) => {
       const paid = sf.payments.reduce((s, p) => s + p.amountPaid, 0);
       const installmentIndex = this.getFeeStructureInstallmentIndex(
         sf.feeStructure.feeType,
       );
-      const isYearWide = !sf.termId;
+      const isYearWide = !sf.termId && installmentIndex === null;
       const isPeriodView = Boolean(selectedTerm);
+
+      if (
+        selectedTermInstallmentRange &&
+        installmentIndex !== null &&
+        (installmentIndex < selectedTermInstallmentRange.start ||
+          installmentIndex > selectedTermInstallmentRange.end)
+      ) {
+        return [];
+      }
 
       let amount = sf.totalAmount;
       let paidAmount = paid;
@@ -3117,7 +3607,7 @@ export class FinanceService {
         termName = `${selectedTerm.name} share`;
       }
 
-      return {
+      return [{
         id: sf.id,
         name: sf.feeStructure.feeType,
         amount,
@@ -3139,13 +3629,21 @@ export class FinanceService {
         termId: sf.termId,
         termName,
         isYearWide,
-      };
+      }];
     });
 
     const payments = studentFees.flatMap((sf) => {
       const installmentIndex = this.getFeeStructureInstallmentIndex(
         sf.feeStructure.feeType,
       );
+      if (
+        selectedTermInstallmentRange &&
+        installmentIndex !== null &&
+        (installmentIndex < selectedTermInstallmentRange.start ||
+          installmentIndex > selectedTermInstallmentRange.end)
+      ) {
+        return [];
+      }
       const termName =
         installmentIndex !== null
           ? this.getInstallmentPeriodLabel(

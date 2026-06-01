@@ -17,6 +17,12 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 
+const parseOptionalNumber = (value?: string) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 @Controller('promotion')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class PromotionController {
@@ -66,8 +72,10 @@ export class PromotionController {
       Number(grade),
       academicYear,
       {
-        minAverageGrade: Number(query.minAverageGrade) || 50,
-        minAttendance: Number(query.minAttendance) || 75,
+        minAverageGrade: parseOptionalNumber(query.minAverageGrade) ?? 50,
+        ...(query.minAttendance !== undefined
+          ? { minAttendance: parseOptionalNumber(query.minAttendance) }
+          : {}),
         allowFailedSubjects: 2,
       },
     );

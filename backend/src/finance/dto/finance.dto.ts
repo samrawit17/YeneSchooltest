@@ -110,6 +110,10 @@ export class StudentFeesQueryDto {
   studentId?: string;
 
   @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(1)
@@ -280,7 +284,7 @@ export class CreatePayrollRunDto {
   periodMonth!: number;
 
   @IsNumber()
-  @Min(2000)
+  @Min(1900)
   periodYear!: number;
 
   @IsOptional()

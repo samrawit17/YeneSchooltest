@@ -113,6 +113,12 @@ enum PracticeExamOption {
   D
 }
 
+enum PracticeExamQuestionType {
+  MCQ
+  TRUE_FALSE
+  SHORT_ANSWER
+}
+
 model PracticeExam {
   id               String                 @id @default(cuid())
   schoolId         String
@@ -147,12 +153,15 @@ model PracticeExamQuestion {
   examId        String
   schoolId      String
   subject       String
+  questionType  PracticeExamQuestionType @default(MCQ)
   questionText  String
-  optionA       String
-  optionB       String
-  optionC       String
-  optionD       String
-  correctOption PracticeExamOption
+  optionA       String?
+  optionB       String?
+  optionC       String?
+  optionD       String?
+  correctOption PracticeExamOption?
+  correctText   String?
+  caseSensitive Boolean              @default(false)
   order         Int                  @default(0)
   isActive      Boolean              @default(true)
   createdAt     DateTime             @default(now())
@@ -200,6 +209,7 @@ model PracticeExamAnswer {
   studentId      String
   questionId     String
   selectedOption PracticeExamOption?
+  textAnswer     String?
   isFlagged      Boolean              @default(false)
   isCorrect      Boolean?
   createdAt      DateTime             @default(now())
@@ -1274,6 +1284,7 @@ model PayrollRun {
   title            String
   periodMonth      Int
   periodYear       Int
+  periodCalendarType String       @default("GREGORIAN")
   status           String         @default("DRAFT")
   grossAmount      Float          @default(0)
   deductionsAmount Float          @default(0)
@@ -1293,7 +1304,7 @@ model PayrollRun {
   paidBy           User?          @relation("PayrollRunPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
   entries          PayrollEntry[]
 
-  @@unique([schoolId, periodYear, periodMonth])
+  @@unique([schoolId, periodCalendarType, periodYear, periodMonth])
   @@index([schoolId, status])
   @@index([createdById])
   @@index([approvedById])

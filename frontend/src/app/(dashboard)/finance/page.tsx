@@ -22,6 +22,11 @@ import {
   formatDateByCalendarType,
   formatDateTimeByCalendarType,
 } from '@/lib/calendar-utils';
+import {
+  formatBaseFeeTypeName,
+  formatFinanceFeeItemLabel,
+  getInstallmentMonthName as getCalendarInstallmentMonthName,
+} from '@/lib/finance-labels';
 import { 
   DollarSign, 
   CreditCard, 
@@ -565,7 +570,7 @@ export default function FinanceDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, selectedTerm, terms, user?.schoolId]);
+  }, [selectedYear, selectedTerm, terms, fromDate, toDate, user?.schoolId]);
 
   // Load dashboard when filters or school context change
   useEffect(() => {
@@ -699,53 +704,26 @@ export default function FinanceDashboardPage() {
     outstandingPage * outstandingLimit,
   );
   const outstandingTotalPages = Math.max(1, Math.ceil(filteredOutstandingFees.length / outstandingLimit));
-  const selectedStudentData = selectedStudentFees.find(
-    (entry) =>
-      entry.student.userId === paymentForm.studentId ||
-      entry.student.id === paymentForm.studentId,
-  );
-  const selectedFee =
-    selectedStudentData?.fees.find((fee) => fee.id === selectedFeeId) ||
-    selectedStudentData?.fees.find((fee) => fee.status !== 'PAID') ||
-    selectedStudentData?.fees[0];
-  const selectedPaymentTermId =
-    selectedFee?.termId ||
-    paymentForm.termId ||
-    (selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined);
-  const selectedPaymentTermName =
-    selectedPaymentTermId
-      ? terms.find((term) => term.id === selectedPaymentTermId)?.name ||
-        selectedFee?.termName ||
-        null
-      : selectedFee?.termName || null;
-  const paymentFeeOptions = (selectedStudentData?.fees || []).filter(
-    (fee) => fee.balance > 0,
-  );
   const formatFeeStructureName = (feeType?: string | null) => {
-    const raw = String(feeType || '').trim();
-    if (!raw) return 'Fee';
-
-    return raw
-      .replace(/_INSTALLMENT_\d+$/i, '')
-      .replace(/_ANNUAL$/i, '')
-      .replace(/_/g, ' ')
-      .toLowerCase()
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+    return formatBaseFeeTypeName(feeType);
   };
 
   const getInstallmentMonthName = (installmentNumber: number) => {
     const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
-    const startDate = selectedAcademicYear?.startDate ? new Date(selectedAcademicYear.startDate) : null;
+    return getCalendarInstallmentMonthName(
+      installmentNumber,
+      selectedAcademicYear?.startDate,
+      activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
+    );
+  };
 
-    if (!startDate || Number.isNaN(startDate.getTime())) {
-      return `Month ${installmentNumber}`;
-    }
-
-    const monthDate = new Date(startDate);
-    monthDate.setMonth(startDate.getMonth() + installmentNumber - 1);
-    return activeCalendarType === 'ETHIOPIAN'
-      ? convertToEthiopian(monthDate).monthName
-      : monthDate.toLocaleDateString('en-US', { month: 'long' });
+  const formatFeeItemDisplay = (feeType?: string | null, periodLabel?: string | null) => {
+    const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
+    return formatFinanceFeeItemLabel(feeType, {
+      academicYearStartDate: selectedAcademicYear?.startDate,
+      calendarType: activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
+      periodLabel,
+    });
   };
 
   const getInstallmentPeriodLabel = (installmentNumber: number) => {
@@ -819,6 +797,53 @@ export default function FinanceDashboardPage() {
 
     return null;
   };
+
+  const isMonthlyBillingMode = feeCollectionMode?.mode === 'MONTHLY' || feeCollectionMode?.mode === 'MONTH';
+  const selectedStudentData = selectedStudentFees.find(
+    (entry) =>
+      entry.student.userId === paymentForm.studentId ||
+      entry.student.id === paymentForm.studentId,
+  );
+  const selectedPaymentTermId =
+    paymentForm.termId ||
+    (selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined);
+  const selectedPaymentInstallmentRange = isMonthlyBillingMode
+    ? getSelectedTermInstallmentRange(selectedPaymentTermId)
+    : null;
+  const paymentFeeOptions = (selectedStudentData?.fees || [])
+    .filter((fee) => {
+      if (!isMonthlyBillingMode && fee.balance <= 0) return false;
+      if (!isMonthlyBillingMode) return true;
+
+      const installmentIndex = getInstallmentIndexFromFee(fee);
+      if (installmentIndex === null) return false;
+      if (!selectedPaymentInstallmentRange) return true;
+
+      return (
+        installmentIndex >= selectedPaymentInstallmentRange.start &&
+        installmentIndex <= selectedPaymentInstallmentRange.end
+      );
+    })
+    .sort((a, b) => {
+      const aIndex = getInstallmentIndexFromFee(a) || 0;
+      const bIndex = getInstallmentIndexFromFee(b) || 0;
+      return aIndex - bIndex;
+    });
+  const unpaidPaymentFeeOptions = paymentFeeOptions.filter((fee) => fee.balance > 0);
+  const selectedFee =
+    paymentFeeOptions.find((fee) => fee.id === selectedFeeId) ||
+    unpaidPaymentFeeOptions[0] ||
+    paymentFeeOptions[0] ||
+    selectedStudentData?.fees.find((fee) => fee.id === selectedFeeId) ||
+    selectedStudentData?.fees.find((fee) => fee.status !== 'PAID') ||
+    selectedStudentData?.fees[0];
+  const paymentTermIdForSubmit = selectedPaymentTermId || selectedFee?.termId;
+  const selectedPaymentTermName =
+    paymentTermIdForSubmit
+      ? terms.find((term) => term.id === paymentTermIdForSubmit)?.name ||
+        selectedFee?.termName ||
+        null
+      : selectedFee?.termName || null;
 
   const getTermMonthRangeLabel = (termId: string) => {
     const term = terms.find((t) => t.id === termId);
@@ -973,8 +998,12 @@ export default function FinanceDashboardPage() {
       toast.error(t.studentAmountRequired);
       return;
     }
-    if (!selectedPaymentTermId) {
+    if (!paymentTermIdForSubmit) {
       toast.error(t.selectTermError);
+      return;
+    }
+    if (isMonthlyBillingMode && (!selectedFeeId || unpaidPaymentFeeOptions.length === 0 || (selectedFee?.balance || 0) <= 0)) {
+      toast.error('Select the unpaid month to pay');
       return;
     }
     
@@ -988,7 +1017,7 @@ export default function FinanceDashboardPage() {
         schoolId: user?.schoolId || '',
         studentFeeId: feeId,
         studentId: paymentForm.studentId,
-        termId: selectedPaymentTermId,
+        termId: paymentTermIdForSubmit,
         amountPaid: paymentForm.amountPaid,
         paymentMethod: paymentForm.paymentMethod,
         transactionReference: paymentForm.transactionReference,
@@ -1326,10 +1355,10 @@ setIsCreatingFeeStructure(true);
   })();
   const billingStatusTone =
     !selectedYear || terms.length === 0
-      ? 'border-l-slate-400 bg-slate-50 text-slate-600'
+      ? 'border-l-slate-400 bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
       : pendingBalanceCount > 0
-        ? 'border-l-amber-500 bg-amber-50 text-amber-600'
-        : 'border-l-emerald-500 bg-emerald-50 text-emerald-600';
+        ? 'border-l-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+        : 'border-l-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400';
   const formatDueDay = (day: number) => {
     const suffix =
       day % 10 === 1 && day !== 11
@@ -1442,7 +1471,7 @@ setIsCreatingFeeStructure(true);
           </Card>
           <Card className="border-l-4 border-l-blue-500 shadow-sm">
             <CardContent className="p-4 flex items-center gap-4">
-              <div className="p-2 bg-blue-50 rounded-full text-blue-600">
+              <div className="p-2 bg-blue-50 rounded-full text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
                 <Activity className="w-5 h-5" />
               </div>
               <div>
@@ -1453,7 +1482,7 @@ setIsCreatingFeeStructure(true);
           </Card>
           <Card className="border-l-4 border-l-amber-500 shadow-sm">
             <CardContent className="p-4 flex items-center gap-4">
-              <div className="p-2 bg-amber-50 rounded-full text-amber-600">
+              <div className="p-2 bg-amber-50 rounded-full text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
                 <AlertCircle className="w-5 h-5" />
               </div>
               <div>
@@ -1465,7 +1494,7 @@ setIsCreatingFeeStructure(true);
           <Card className="border-l-4 border-l-purple-500 shadow-sm md:col-span-3">
             <CardContent className="p-4 flex items-center justify-between gap-4">
                <div className="flex items-center gap-4">
-                <div className="p-2 bg-purple-50 rounded-full text-purple-600">
+                <div className="p-2 bg-purple-50 rounded-full text-purple-600 dark:bg-purple-900/40 dark:text-purple-400">
                   <Wallet className="w-5 h-5" />
                 </div>
                 <div>
@@ -1477,7 +1506,7 @@ setIsCreatingFeeStructure(true);
                         {formatDueDay(billingPolicy.dueDay)}
                       </span>
                     </div>
-                    <div className="h-3 w-px bg-slate-200" />
+                    <div className="h-3 w-px bg-slate-200 dark:bg-slate-600" />
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] text-slate-400 uppercase font-bold">Daily Penalty:</span>
                       <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(billingPolicy.penalty)}</span>
@@ -1733,7 +1762,7 @@ setIsCreatingFeeStructure(true);
                   {displayFeeStructures.map((fee) => (
                     <TableRow key={fee.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <TableCell className="text-sm font-medium text-slate-900 dark:text-white py-3 px-4 w-[30%] text-left">
-                        <div>{formatFeeStructureName(fee.feeType)}</div>
+                        <div>{formatFeeItemDisplay(fee.feeType, formatInstallmentLabel(fee))}</div>
                       </TableCell>
                       <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{fee.gradeLabel}</TableCell>
                       <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">
@@ -1799,7 +1828,7 @@ setIsCreatingFeeStructure(true);
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.className || tx.grade || '-'}</TableCell>
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.section || '-'}</TableCell>
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.termName || 'Unassigned'}</TableCell>
-                        <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.feeType || '-'}</TableCell>
+                        <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{formatFeeItemDisplay(tx.feeType, tx.termName)}</TableCell>
                         <TableCell className="text-xs py-3 px-4">{getPaymentMethodBadge(tx.paymentMethod)}</TableCell>
                         <TableCell className="text-xs font-medium dark:text-white py-3 px-4">{formatCurrency(tx.amountPaid)}</TableCell>
                         <TableCell className="text-xs text-slate-500 dark:text-gray-400 py-3 px-4">{formatDate(tx.paymentDate)}</TableCell>
@@ -2002,10 +2031,11 @@ setIsCreatingFeeStructure(true);
 
             {terms.length > 0 && (
               <div className="space-y-2">
-                <Label>Term / Semester Paid</Label>
+                <Label>{isMonthlyBillingMode ? 'Current Term / Quarter' : 'Term / Semester Paid'}</Label>
                 <Select
-                  value={selectedPaymentTermId || paymentForm.termId}
+                  value={paymentTermIdForSubmit || paymentForm.termId}
                   onValueChange={(value) => {
+                    setSelectedFeeId('');
                     setPaymentForm({ ...paymentForm, termId: value });
                     refreshSelectedStudentFeesForTerm(value);
                   }}
@@ -2026,7 +2056,7 @@ setIsCreatingFeeStructure(true);
 
             {paymentFeeOptions.length > 0 && (
               <div className="space-y-2">
-                <Label>Fee Item</Label>
+                <Label>{isMonthlyBillingMode ? 'Billing Month Paid' : 'Fee Item'}</Label>
                 <Select
                   value={selectedFeeId}
                   onValueChange={(value) => {
@@ -2044,19 +2074,20 @@ setIsCreatingFeeStructure(true);
                   </SelectTrigger>
                   <SelectContent>
                     {paymentFeeOptions.map((fee) => (
-                      <SelectItem key={fee.id} value={fee.id}>
-                        {formatFeeStructureName(fee.name)} • {fee.termName || 'Whole Academic Year'} • {formatCurrency(fee.balance)}
+                      <SelectItem key={fee.id} value={fee.id} disabled={isMonthlyBillingMode && fee.balance <= 0}>
+                        <span className={isMonthlyBillingMode && fee.balance <= 0 ? 'line-through opacity-60' : ''}>
+                          {formatFeeItemDisplay(fee.name, isMonthlyBillingMode ? null : fee.termName)} • {isMonthlyBillingMode ? selectedPaymentTermName || 'Selected period' : fee.termName || 'Whole Academic Year'} • {fee.balance <= 0 ? 'Paid' : `${formatCurrency(fee.balance)} remaining`}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedFee && (
-                  <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                    Recording against {formatFeeStructureName(selectedFee.name)} for {selectedFee.termName || 'Whole Academic Year'}.
-                    Remaining balance: {formatCurrency(selectedFee.balance)}.
-                    {selectedFee.isYearWide ? ' This is the annual fee record.' : ''}
-                  </div>
-                )}
+              </div>
+            )}
+
+            {isMonthlyBillingMode && paymentForm.studentId && paymentTermIdForSubmit && paymentFeeOptions.length === 0 && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                No monthly installments found for {selectedPaymentTermName || 'the selected period'}.
               </div>
             )}
 

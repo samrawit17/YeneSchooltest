@@ -3420,8 +3420,8 @@ export class ReportCardService {
       throw new BadRequestException('Destination grade must be the next grade level');
     }
     const criteria = {
-      minAverageGrade: minAverageGrade || 50,
-      minAttendance: minAttendance || 75,
+      minAverageGrade: minAverageGrade ?? 50,
+      ...(minAttendance !== undefined ? { minAttendance } : {}),
       allowFailedSubjects: 2,
     };
     const candidateResponse = await this.getPromotionCandidatesByGrade(schoolId, fromGrade, fromAcademicYear, criteria);

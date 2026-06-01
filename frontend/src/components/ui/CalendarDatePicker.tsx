@@ -309,7 +309,7 @@ export function CalendarDatePicker({
           ) : null}
 
           <Button
-            className="h-8 w-full bg-gray-900 text-xs text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+            className="h-8 w-full text-xs"
             onClick={() => {
               if (!value) {
                 // If they never clicked a change but just opened and hit confirm

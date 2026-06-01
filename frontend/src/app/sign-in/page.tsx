@@ -16,7 +16,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { announcementsAPI, type Announcement } from "@/lib/api/content";
 import { enrollmentAPI } from "@/lib/api/enrollment";
 import { resolveAssetUrl } from "@/lib/asset-url";
-import { findSchoolByUrlSlug, getHostSchoolSlug, type PublicSchoolSummary } from "@/lib/school-resolver";
+import {
+  findSchoolByUrlSlug,
+  getHostSchoolSlug,
+  readCachedSchoolLoginContext,
+  writeCachedSchoolLoginContext,
+  type PublicSchoolSummary,
+} from "@/lib/school-resolver";
 
 // Shadcn/ui Components
 import { Button } from "@/components/ui/button";
@@ -54,6 +60,8 @@ const languageOptions: Array<{ value: AppLanguage; label: string }> = [
 
 const accentControlClassName =
   "border bg-white/90 text-gray-700 shadow-sm transition-colors hover:bg-white focus:ring-2 focus:ring-offset-2 dark:bg-gray-900/80 dark:text-gray-200 dark:hover:bg-gray-900";
+const defaultLoginImageUrl =
+  "https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2086&auto=format&fit=crop";
 
 const getTranslatedLoginError = (message: string | undefined, fallback: string) => {
   const normalizedMessage = (message || "").trim().toLowerCase();
@@ -81,15 +89,19 @@ const LoginPage = () => {
   const searchParams = useSearchParams();
   const requestedSchoolId = searchParams.get("schoolId");
   const requestedSchoolSlug = searchParams.get("school") || searchParams.get("slug") || getHostSchoolSlug();
-  const [resolvedLoginSchoolId, setResolvedLoginSchoolId] = useState<string | null>(null);
+  const cachedLoginSchool = readCachedSchoolLoginContext({
+    schoolId: requestedSchoolId,
+    slug: requestedSchoolSlug,
+  });
+  const [resolvedLoginSchoolId, setResolvedLoginSchoolId] = useState<string | null>(cachedLoginSchool?.id || null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [announcementsLoading, setAnnouncementsLoading] = useState(true);
-  const [schoolName, setSchoolName] = useState<string | null>(null);
-  const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(null);
-  const [schoolLoginImageUrl, setSchoolLoginImageUrl] = useState<string | null>(null);
-  const [schoolAccentColor, setSchoolAccentColor] = useState<string | null>(null);
-  const [resolvedLoginSchoolSlug, setResolvedLoginSchoolSlug] = useState<string | null>(null);
+  const [schoolName, setSchoolName] = useState<string | null>(cachedLoginSchool?.name || null);
+  const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(cachedLoginSchool?.logoUrl || null);
+  const [schoolLoginImageUrl, setSchoolLoginImageUrl] = useState<string | null>(cachedLoginSchool?.loginImageUrl || null);
+  const [schoolAccentColor, setSchoolAccentColor] = useState<string | null>(cachedLoginSchool?.accentColor || null);
+  const [resolvedLoginSchoolSlug, setResolvedLoginSchoolSlug] = useState<string | null>(cachedLoginSchool?.publicUrlSlug || null);
   const displaySchoolName =
     schoolName ||
     announcements[currentSlide]?.school?.name ||
@@ -98,7 +110,14 @@ const LoginPage = () => {
   const displaySchoolLogoUrl = resolveAssetUrl(schoolLogoUrl);
   const displayLoginImageUrl =
     resolveAssetUrl(schoolLoginImageUrl) ||
-    "https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2086&auto=format&fit=crop";
+    displaySchoolLogoUrl ||
+    defaultLoginImageUrl;
+  const forgotPasswordHref =
+    resolvedLoginSchoolSlug || requestedSchoolSlug
+      ? `/forgot-password?slug=${encodeURIComponent(resolvedLoginSchoolSlug || requestedSchoolSlug || "")}`
+      : resolvedLoginSchoolId || requestedSchoolId
+        ? `/forgot-password?schoolId=${encodeURIComponent(resolvedLoginSchoolId || requestedSchoolId || "")}`
+        : "/forgot-password";
   const brandColor = /^#[0-9a-fA-F]{6}$/.test((schoolAccentColor || "").trim())
     ? schoolAccentColor!.trim()
     : "#e35336";
@@ -131,6 +150,7 @@ const LoginPage = () => {
           : { data: [] };
 
         if (selectedSchool) {
+          writeCachedSchoolLoginContext(selectedSchool);
           setResolvedLoginSchoolId(selectedSchool.id);
           setResolvedLoginSchoolSlug(selectedSchool.publicUrlSlug || null);
           setSchoolName(selectedSchool.name);
@@ -214,6 +234,17 @@ const LoginPage = () => {
         !!data.rememberMe,
         resolvedLoginSchoolId,
       );
+      if (resolvedLoginSchoolId || schoolName) {
+        writeCachedSchoolLoginContext({
+          id: resolvedLoginSchoolId || user.schoolId || "",
+          name: schoolName || user.name,
+          code: null,
+          publicUrlSlug: resolvedLoginSchoolSlug,
+          logoUrl: schoolLogoUrl,
+          accentColor: schoolAccentColor,
+          loginImageUrl: schoolLoginImageUrl,
+        });
+      }
       
       toast.success(t.welcomeToast.replace("{name}", user.name));
       
@@ -257,6 +288,12 @@ const LoginPage = () => {
           src={displayLoginImageUrl}
           alt={`${displaySchoolName} login background`}
           className="absolute inset-0 h-full w-full object-cover"
+          onError={(event) => {
+            const fallbackUrl = displaySchoolLogoUrl || defaultLoginImageUrl;
+            if (event.currentTarget.src !== fallbackUrl) {
+              event.currentTarget.src = fallbackUrl;
+            }
+          }}
         />
         <div className="absolute inset-0 bg-black/60" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
@@ -491,14 +528,14 @@ const LoginPage = () => {
                   className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-0 h-auto"
                   asChild
                 >
-                  <Link href="/forgot-password">{t.forgotPassword}</Link>
+                  <Link href={forgotPasswordHref}>{t.forgotPassword}</Link>
                 </Button>
               </div>
 
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="h-12 w-full bg-[var(--brand-color,#e35336)] text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
+                className="h-12 w-full bg-[var(--brand-color,#e35336)] text-white transition-all hover:brightness-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">

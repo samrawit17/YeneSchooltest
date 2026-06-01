@@ -58,23 +58,22 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Redirect registrars to /registrar
-    if (user?.role === 'REGISTRAR') {
-      router.replace('/registrar');
+    // Redirect users to their role-specific dashboards
+    const roleRoutes: Record<string, string> = {
+      ADMIN: '/admin',
+      SUPER_ADMIN: '/superadmin',
+      TEACHER: '/teacher',
+      STUDENT: '/student',
+      PARENT: '/parent',
+      REGISTRAR: '/registrar',
+      FINANCE: '/finance',
+      IT_MANAGER: '/it-manager',
+    };
+
+    if (user?.role && roleRoutes[user.role]) {
+      router.replace(roleRoutes[user.role]);
       return;
     }
-
-    // Redirect finance to /finance
-    if (user?.role === 'FINANCE') {
-      router.replace('/finance');
-      return;
-    }
-
-    if (user?.role === 'IT_MANAGER') {
-      router.replace('/it-manager');
-      return;
-    }
-
 
     const fetchDashboard = async () => {
       try {

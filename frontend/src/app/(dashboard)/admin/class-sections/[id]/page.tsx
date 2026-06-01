@@ -304,9 +304,6 @@ export default function ClassDetailPage() {
                           <div className="font-mono font-medium">
                             {formatStudentDisplayCode(student.studentCode, student.academicYear)}
                           </div>
-                          {student.studentCode ? (
-                            <div className="text-xs text-gray-400">Login: {student.studentCode}</div>
-                          ) : null}
                         </TableCell>
                         {showStreamColumn && (
                           <TableCell className="px-4 py-3">

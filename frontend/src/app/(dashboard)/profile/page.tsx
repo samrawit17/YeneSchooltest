@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Image from "next/image";
-import { authAPI, notificationsAPI, schoolsAPI, userAPI, timetableSlotsAPI } from "@/lib/api";
+import { authAPI, notificationsAPI, schoolsAPI, userAPI, timetableSlotsAPI, schoolSettingsAPI } from "@/lib/api";
 import type { NotificationPreferences } from "@/lib/api/notifications";
 import { queryKeys } from "@/lib/query-keys";
 import { resolveAssetUrl } from "@/lib/asset-url";
+import { writeCachedSchoolLoginContext } from "@/lib/school-resolver";
 import { useProfileData } from "@/hooks/useProfileData";
 import { useAuth } from "@/context/AuthContext";
 import { useThemeStore } from "@/lib/themeStore";
@@ -274,6 +275,16 @@ const ProfilePage = () => {
     enabled: !!user?.schoolId,
     staleTime: 5 * 60 * 1000,
   });
+  const { data: schoolLoginSettings } = useQuery({
+    queryKey: queryKeys.school.settings(user?.schoolId),
+    queryFn: async () => {
+      if (!user?.schoolId) return {};
+      const response = await schoolSettingsAPI.getAll(user.schoolId);
+      return response.data || {};
+    },
+    enabled: !!user?.schoolId && normalizedRole !== "SUPER_ADMIN",
+    staleTime: 5 * 60 * 1000,
+  });
 
   const handleLogout = () => {
     const redirectTo =
@@ -283,8 +294,22 @@ const ProfilePage = () => {
           ? `/sign-in?schoolId=${encodeURIComponent(user.schoolId)}`
           : "/sign-in";
 
-    logout();
+    if (normalizedRole !== "SUPER_ADMIN" && school && user?.schoolId) {
+      writeCachedSchoolLoginContext({
+        id: user.schoolId,
+        name: school.name || "",
+        code: school.code || null,
+        publicUrlSlug: school.publicUrlSlug || null,
+        logoUrl: school.logoUrl || null,
+        accentColor: typeof schoolLoginSettings?.theme_color === "string" ? schoolLoginSettings.theme_color : null,
+        loginImageUrl:
+          typeof schoolLoginSettings?.login_image_url === "string"
+            ? schoolLoginSettings.login_image_url
+            : null,
+      });
+    }
     sessionStorage.setItem("postLogoutRedirect", redirectTo);
+    logout();
     router.push(redirectTo);
   };
 
