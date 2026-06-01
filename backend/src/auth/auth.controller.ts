@@ -16,33 +16,19 @@ import {
   UploadedFile,
   UploadedFiles,
   Res,
-  UnauthorizedException,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { IsOptional, IsString } from 'class-validator';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { Role } from './types/role.enum';
+import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
-import { Roles } from './decorators/roles.decorator';
+import { AllowSuperAdminMixedRole, Roles } from './decorators/roles.decorator';
 import { Permissions } from './decorators/permissions.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { RateLimit } from '../infrastructure/rate-limit/rate-limit.decorator';
-
-class LoginDto {
-  @IsOptional()
-  @IsString()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  loginIdentifier?: string;
-
-  @IsString()
-  password: string;
-}
 
 @Controller('auth')
 export class AuthController {
@@ -51,20 +37,11 @@ export class AuthController {
     private prismaService: PrismaService,
   ) {}
 
+  @UseGuards(LocalAuthGuard)
   @Post('login')
   @RateLimit({ limit: 5, windowSec: 60 })
-  async login(
-    @Body() body: LoginDto,
-    @Res({ passthrough: true }) res?: Response,
-  ) {
-    const identifier = body.loginIdentifier || body.email;
-
-    if (!identifier || !body.password) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const user = await this.authService.validateUser(identifier, body.password);
-    return this.authService.login(user, res);
+  async login(@Request() req, @Res({ passthrough: true }) res?: Response) {
+    return this.authService.login(req.user, res);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -333,6 +310,7 @@ export class AuthController {
 
   @Get('users')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @Permissions('user:read')
   async getUsers(@Request() req, @Query('role') role?: Role) {
@@ -459,6 +437,7 @@ export class AuthController {
 
   @Get('users/:id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @Permissions('view_users')
   async getUser(@Request() req, @Param('id') id: string) {
@@ -559,6 +538,7 @@ export class AuthController {
 
   @Put('users/:id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @Permissions('update_users')
   async updateUser(
@@ -654,6 +634,7 @@ export class AuthController {
 
   @Delete('users/:id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @Permissions('delete_users')
   async deleteUser(@Request() req, @Param('id') id: string) {

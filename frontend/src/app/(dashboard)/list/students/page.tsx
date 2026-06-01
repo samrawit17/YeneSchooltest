@@ -4,9 +4,10 @@ import { useState } from "react";
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { studentsAPI } from "@/lib/api";
+import { academicYearsAPI, studentsAPI } from "@/lib/api";
 import { bulkUploadAPI } from "@/lib/api/bulk-upload";
 import { queryKeys } from "@/lib/query-keys";
+import { formatStudentDisplayCode } from "@/lib/student-code";
 import { toast } from "sonner";
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
@@ -55,6 +56,7 @@ interface Student {
   studentCode: string;
   enrollmentStatus: "PENDING" | "APPROVED" | "REJECTED";
   academicYear: string;
+  academicYearDisplay?: string | null;
   grade: number;
   gender?: string;
   address?: string;
@@ -84,6 +86,12 @@ interface StudentsResponse {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+interface AcademicYearOption {
+  id: string;
+  name?: string;
+  ethiopianYear?: number | null;
 }
 
 const formatMessage = (template: string, values: Record<string, string | number>) =>
@@ -158,6 +166,25 @@ const StudentsListPage = () => {
     },
     placeholderData: keepPreviousData,
   });
+
+  const { data: academicYearsData } = useQuery<AcademicYearOption[]>({
+    queryKey: queryKeys.academicYears.list(user?.schoolId),
+    queryFn: async () => {
+      const response = await academicYearsAPI.getAll({ schoolId: user?.schoolId });
+      const payload = response.data;
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload?.data)) return payload.data;
+      return [];
+    },
+    enabled: !!user?.schoolId,
+  });
+
+  const academicYearDisplayById = new Map(
+    (academicYearsData || []).map((year) => [
+      year.id,
+      String(year.ethiopianYear || year.name || year.id),
+    ]),
+  );
 
   const updateSearch = (value: string) => {
     setSearchInput(value);
@@ -454,7 +481,14 @@ const StudentsListPage = () => {
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                        {student.studentCode || "-"}
+                        <div className="font-mono font-medium">
+                          {formatStudentDisplayCode(
+                            student.studentCode,
+                            student.academicYearDisplay ||
+                              academicYearDisplayById.get(student.academicYear) ||
+                              student.academicYear,
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                         {student.grade ? `${t.table.grade} ${student.grade}` : "-"}

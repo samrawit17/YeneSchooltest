@@ -14,34 +14,59 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Pagination from '@/components/Pagination';
 import { FormattedDate } from '@/components/ui/FormattedDate';
-import { financeAPI, academicYearsAPI, studentsAPI } from '@/lib/api';
+import { CalendarDatePicker } from '@/components/ui/CalendarDatePicker';
+import { financeAPI, academicYearsAPI, studentsAPI, schoolSettingsAPI, termsAPI } from '@/lib/api';
+import { getGradeNumbersFromSystem } from '@/lib/grade-system';
 import {
   convertToEthiopian,
   formatDateByCalendarType,
   formatDateTimeByCalendarType,
 } from '@/lib/calendar-utils';
+import {
+  formatBaseFeeTypeName,
+  formatFinanceFeeItemLabel,
+  getInstallmentMonthName as getCalendarInstallmentMonthName,
+} from '@/lib/finance-labels';
 import { 
   DollarSign, 
   CreditCard, 
   Plus, 
   Search, 
   Calendar,
-  Receipt,
   Users,
   AlertCircle,
   TrendingUp,
   TrendingDown,
   FileText,
-  Printer,
   Filter,
   Wallet,
   Banknote,
   Clock,
   CheckCircle,
   XCircle,
-  MinusCircle
+  MinusCircle,
+  ArrowRight,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Activity,
+  Settings
 } from 'lucide-react';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+  PieChart,
+  Pie
+} from 'recharts';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { useTranslations } from '@/hooks/useTranslations';
 import type { FinanceMessages } from '@/messages/registry';
 
@@ -120,6 +145,8 @@ interface FeeBreakdown {
 interface Transaction {
   id: string;
   receiptNumber: string;
+  paymentReference?: string;
+  transactionReference?: string | null;
   studentId: string;
   studentName?: string;
   className?: string;
@@ -150,8 +177,6 @@ interface OutstandingFee {
   remaining: number;
   status: 'PAID' | 'PARTIAL' | 'PENDING' | 'UNPAID';
 }
-
-const GRADE_OPTIONS = [1,2,3,4,5,6,7,8,9,10,11,12] as const;
 
 const compressGradeNumbers = (grades: number[]) => {
   const sortedUnique = Array.from(new Set(grades)).sort((a, b) => a - b);
@@ -205,9 +230,12 @@ export default function FinanceDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
+  const [currentTerm, setCurrentTerm] = useState<Term | null>(null);
   const [curriculumType, setCurriculumType] = useState<string>('TERM');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedTerm, setSelectedTerm] = useState<string>('');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
   const [chartView, setChartView] = useState<ChartView>('daily');
   
   // Dashboard data
@@ -230,6 +258,10 @@ export default function FinanceDashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [outstandingFees, setOutstandingFees] = useState<OutstandingFee[]>([]);
   const [feeStructures, setFeeStructures] = useState<any[]>([]);
+  const [billingPolicy, setBillingPolicy] = useState<{
+    dueDay: number;
+    penalty: number;
+  }>({ dueDay: 15, penalty: 0 });
   
   // Pagination & Search
   const [transactionsPage, setTransactionsPage] = useState(1);
@@ -265,6 +297,7 @@ export default function FinanceDashboardPage() {
   const [isSearchingStudents, setIsSearchingStudents] = useState(false);
   const [isSendingReminders, setIsSendingReminders] = useState(false);
   const [reversingPaymentId, setReversingPaymentId] = useState<string | null>(null);
+  const [gradeOptions, setGradeOptions] = useState<number[]>(() => getGradeNumbersFromSystem('1-12'));
   
   // Fee Structure Form State
   const [feeStructureForm, setFeeStructureForm] = useState({
@@ -301,142 +334,6 @@ export default function FinanceDashboardPage() {
     setFeeStructureOpen(true);
   };
 
-  // Print Summary
-  const handlePrintSummary = () => {
-    const periodLabel =
-      selectedTerm && selectedTerm !== 'all'
-        ? terms.find((term) => term.id === selectedTerm)?.name || 'Selected period'
-        : 'All periods';
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Finance Summary Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h1 { font-size: 24px; margin-bottom: 10px; }
-          h2 { font-size: 18px; margin: 20px 0 10px 0; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-          .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
-          .summary-item { border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
-          .summary-item label { display: block; font-size: 12px; color: #666; }
-          .summary-item .value { font-size: 20px; font-weight: bold; margin-top: 5px; }
-          .summary-item.green .value { color: #16a34a; }
-          .summary-item.red .value { color: #dc2626; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background: #f5f5f5; }
-          .footer { margin-top: 20px; font-size: 10px; color: #666; text-align: center; }
-        </style>
-      </head>
-      <body>
-        <h1>Finance Summary Report</h1>
-        <p>Generated: ${formatDate(new Date().toISOString())}</p>
-        <p>Period: ${periodLabel}</p>
-        
-        <h2>Summary</h2>
-        <div class="summary-grid">
-          <div class="summary-item">
-            <label>Total Revenue (Collected)</label>
-            <div class="value green">Brr ${stats.totalRevenue.toLocaleString()}</div>
-          </div>
-          <div class="summary-item">
-            <label>Collected Today</label>
-            <div class="value green">Brr ${stats.collectedToday.toLocaleString()}</div>
-          </div>
-          <div class="summary-item">
-            <label>Outstanding Balance</label>
-            <div class="value red">Brr ${stats.outstandingBalance.toLocaleString()}</div>
-          </div>
-          <div class="summary-item">
-            <label>Fully Paid Students</label>
-            <div class="value">${stats.totalStudentsFullyPaid}</div>
-          </div>
-          <div class="summary-item">
-            <label>Partial Payment Students</label>
-            <div class="value">${stats.studentsPartialPayment}</div>
-          </div>
-          <div class="summary-item">
-            <label>Unpaid Students</label>
-            <div class="value">${stats.unpaidStudentsCount}</div>
-          </div>
-        </div>
-
-        <h2>Outstanding Fees</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Grade</th>
-              <th>Total</th>
-              <th>Paid</th>
-              <th>Balance</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${outstandingFees.slice(0, 50).map(fee => `
-              <tr>
-                <td>${fee.studentName || '-'}</td>
-                <td>${fee.grade ? fee.grade + (fee.section ? ' - ' + fee.section : '') : '-'}</td>
-                <td>Brr ${(fee.total || 0).toLocaleString()}</td>
-                <td>Brr ${(fee.paid || 0).toLocaleString()}</td>
-                <td>Brr ${(fee.remaining || 0).toLocaleString()}</td>
-                <td>${fee.status || '-'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <h2>Recent Payment Transactions</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Receipt</th>
-              <th>Student</th>
-              <th>Class</th>
-              <th>Section</th>
-              <th>Term/Semester</th>
-              <th>Fee</th>
-              <th>Method</th>
-              <th>Amount</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${transactions.slice(0, 50).map(tx => `
-              <tr>
-                <td>${tx.receiptNumber || '-'}</td>
-                <td>${tx.studentName || '-'}</td>
-                <td>${tx.className || tx.grade || '-'}</td>
-                <td>${tx.section || '-'}</td>
-                <td>${tx.termName || 'Unassigned'}</td>
-                <td>${tx.feeType || '-'}</td>
-                <td>${tx.paymentMethod || '-'}</td>
-                <td>Brr ${(tx.amountPaid || 0).toLocaleString()}</td>
-                <td>${formatDate(tx.paymentDate)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <div class="footer">
-          <p>School Management System - Finance Report</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
-    }
-  };
-  
   // Current user (mock - in real app get from auth)
   const currentUser = { name: 'Finance Manager', role: 'FINANCE' };
 
@@ -484,15 +381,45 @@ export default function FinanceDashboardPage() {
     loadSetupData();
   }, [user?.schoolId]);
 
+  useEffect(() => {
+    const loadGradeOptions = async () => {
+      if (!user?.schoolId) return;
+      try {
+        const response = await schoolSettingsAPI.getAll(user.schoolId);
+        setGradeOptions(getGradeNumbersFromSystem(response.data?.grade_system || '1-12'));
+      } catch (error) {
+        setGradeOptions(getGradeNumbersFromSystem('1-12'));
+      }
+    };
+    loadGradeOptions();
+  }, [user?.schoolId]);
+
   // Load curriculum info when academic year changes
   useEffect(() => {
     const loadCurriculumInfo = async () => {
       if (!selectedYear || !user?.schoolId) return;
       try {
-        const [response, collectionModeResponse] = await Promise.all([
+        const [response, collectionModeResponse, settingsResponse, currentTermResponse] = await Promise.all([
           financeAPI.getCurriculumInfo(user.schoolId, selectedYear),
           financeAPI.getFeeCollectionMode(user.schoolId).catch(() => null),
+          schoolSettingsAPI.getAll(user.schoolId).catch(() => null),
+          termsAPI.getCurrent({ schoolId: user.schoolId }).catch(() => null),
         ]);
+        
+        if (settingsResponse?.data) {
+          const dueDaySetting = settingsResponse.data.fee_payment_due_day;
+          const penaltySetting = settingsResponse.data.fee_daily_penalty_amount;
+          const dueDay = Number(dueDaySetting ?? 15);
+          const penalty = Number(penaltySetting ?? 0);
+          setBillingPolicy({
+            dueDay: Number.isInteger(dueDay) && dueDay >= 1 && dueDay <= 31 ? dueDay : 15,
+            penalty: Number.isFinite(penalty) && penalty >= 0 ? penalty : 0,
+          });
+        }
+
+        const resolvedCurrentTerm = currentTermResponse?.data || null;
+        setCurrentTerm(resolvedCurrentTerm);
+
         if (collectionModeResponse?.data?.data) {
           setFeeCollectionMode(collectionModeResponse.data.data);
         }
@@ -506,13 +433,15 @@ export default function FinanceDashboardPage() {
               return currentSelectedTerm;
             }
 
-            const today = new Date();
-            const current = loadedTerms.find(term => {
-              if (!term.startDate || !term.endDate) return false;
-              const start = new Date(term.startDate);
-              const end = new Date(term.endDate);
-              return today >= start && today <= end;
-            });
+            const current =
+              loadedTerms.find(term => term.id === resolvedCurrentTerm?.id) ||
+              loadedTerms.find(term => {
+                if (!term.startDate || !term.endDate) return false;
+                const today = new Date();
+                const start = new Date(term.startDate);
+                const end = new Date(term.endDate);
+                return today >= start && today <= end;
+              });
 
             return current?.id || 'all';
           });
@@ -520,11 +449,26 @@ export default function FinanceDashboardPage() {
       } catch (error) {
         console.error('Error loading curriculum info:', error);
         setTerms([]);
+        setCurrentTerm(null);
         setSelectedTerm('all');
       }
     };
     loadCurriculumInfo();
   }, [selectedYear, user?.schoolId]);
+
+  // Handle auto-updating dates when term changes
+  useEffect(() => {
+    if (selectedTerm && selectedTerm !== 'all') {
+      const term = terms.find(t => t.id === selectedTerm);
+      if (term?.startDate && term?.endDate) {
+        setFromDate(new Date(term.startDate));
+        setToDate(new Date(term.endDate));
+      }
+    } else if (selectedTerm === 'all') {
+       setFromDate(undefined);
+       setToDate(undefined);
+    }
+  }, [selectedTerm, terms]);
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
@@ -535,19 +479,9 @@ export default function FinanceDashboardPage() {
     
     setLoading(true);
     try {
-      // Get date range
-      const today = new Date();
-      let fromDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-      let toDate: string = today.toISOString().split('T')[0];
-      
-      // If a specific term is selected, use its date range instead
-      if (selectedTerm && selectedTerm !== 'all') {
-        const selectedTermData = terms.find(t => t.id === selectedTerm);
-        if (selectedTermData?.startDate && selectedTermData?.endDate) {
-          fromDate = new Date(selectedTermData.startDate).toISOString().split('T')[0];
-          toDate = new Date(selectedTermData.endDate).toISOString().split('T')[0];
-        }
-      }
+      // Get date range from state or defaults
+      const from = fromDate ? fromDate.toISOString().split('T')[0] : (selectedTerm === 'all' ? undefined : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
+      const to = toDate ? toDate.toISOString().split('T')[0] : (selectedTerm === 'all' ? undefined : new Date().toISOString().split('T')[0]);
 
       // Fetch all data in parallel
       const schoolId = user?.schoolId;
@@ -563,10 +497,10 @@ export default function FinanceDashboardPage() {
       const [dailyReport, outstandingResponse, feeStructuresResponse] = await Promise.all([
         financeAPI.getDailyReport({ 
           schoolId: schoolId, 
-          from: fromDate, 
-          to: toDate,
+          academicYearId: selectedYear,
           termId: termFilter,
-          academicYearId: selectedYear
+          from: from,
+          to: to
         }),
         financeAPI.getOutstandingBalances(schoolId, selectedYear, termFilter),
         financeAPI.listFeeStructures(schoolId, selectedYear, termFilter).catch(e => {
@@ -636,7 +570,7 @@ export default function FinanceDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, selectedTerm, terms, user?.schoolId]);
+  }, [selectedYear, selectedTerm, terms, fromDate, toDate, user?.schoolId]);
 
   // Load dashboard when filters or school context change
   useEffect(() => {
@@ -650,7 +584,7 @@ export default function FinanceDashboardPage() {
       console.log('Loading dashboard data...');
       loadDashboardData();
     }
-  }, [selectedYear, selectedTerm, terms, user?.schoolId, loadDashboardData]);
+  }, [selectedYear, selectedTerm, terms, user?.schoolId, loadDashboardData, fromDate, toDate]);
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -668,11 +602,18 @@ export default function FinanceDashboardPage() {
     return `gc-${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
-  // Format date
   const formatDate = (dateString: string) => {
     const parsed = new Date(dateString);
     if (Number.isNaN(parsed.getTime())) return 'N/A';
     return formatDateByCalendarType(parsed, activeCalendarType);
+  };
+
+  const getBillingPeriodLabel = (mode?: string) => {
+    const normalized = String(mode || '').toUpperCase();
+    if (normalized === 'MONTHLY' || normalized === 'MONTH') return 'Billing Month';
+    if (normalized === 'QUARTERLY' || normalized === 'QUARTER') return 'Billing Quarter';
+    if (normalized === 'SEMESTER' || normalized === 'SEMESTERLY') return 'Billing Semester';
+    return 'Billing Term';
   };
 
   // Format date time
@@ -704,7 +645,7 @@ export default function FinanceDashboardPage() {
       case 'BANK_TRANSFER':
         return <Badge variant="outline" className="bg-purple-50 text-purple-700"><CreditCard className="w-3 h-3 mr-1" />Bank</Badge>;
       case 'CHEQUE':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700"><Receipt className="w-3 h-3 mr-1" />Cheque</Badge>;
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700"><FileText className="w-3 h-3 mr-1" />Cheque</Badge>;
       default:
         return <Badge variant="outline">{method}</Badge>;
     }
@@ -713,7 +654,7 @@ export default function FinanceDashboardPage() {
   // Filtered transactions
   const filteredTransactions = transactions.filter(t =>
     (t.studentName || '').toLowerCase().includes(transactionsSearch.toLowerCase()) ||
-    t.receiptNumber.toLowerCase().includes(transactionsSearch.toLowerCase()) ||
+    (t.transactionReference || t.paymentReference || t.receiptNumber || '').toLowerCase().includes(transactionsSearch.toLowerCase()) ||
     (t.termName || '').toLowerCase().includes(transactionsSearch.toLowerCase()) ||
     (t.feeType || '').toLowerCase().includes(transactionsSearch.toLowerCase())
   );
@@ -763,53 +704,26 @@ export default function FinanceDashboardPage() {
     outstandingPage * outstandingLimit,
   );
   const outstandingTotalPages = Math.max(1, Math.ceil(filteredOutstandingFees.length / outstandingLimit));
-  const selectedStudentData = selectedStudentFees.find(
-    (entry) =>
-      entry.student.userId === paymentForm.studentId ||
-      entry.student.id === paymentForm.studentId,
-  );
-  const selectedFee =
-    selectedStudentData?.fees.find((fee) => fee.id === selectedFeeId) ||
-    selectedStudentData?.fees.find((fee) => fee.status !== 'PAID') ||
-    selectedStudentData?.fees[0];
-  const selectedPaymentTermId =
-    selectedFee?.termId ||
-    paymentForm.termId ||
-    (selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined);
-  const selectedPaymentTermName =
-    selectedPaymentTermId
-      ? terms.find((term) => term.id === selectedPaymentTermId)?.name ||
-        selectedFee?.termName ||
-        null
-      : selectedFee?.termName || null;
-  const paymentFeeOptions = (selectedStudentData?.fees || []).filter(
-    (fee) => fee.balance > 0,
-  );
   const formatFeeStructureName = (feeType?: string | null) => {
-    const raw = String(feeType || '').trim();
-    if (!raw) return 'Fee';
-
-    return raw
-      .replace(/_INSTALLMENT_\d+$/i, '')
-      .replace(/_ANNUAL$/i, '')
-      .replace(/_/g, ' ')
-      .toLowerCase()
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+    return formatBaseFeeTypeName(feeType);
   };
 
   const getInstallmentMonthName = (installmentNumber: number) => {
     const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
-    const startDate = selectedAcademicYear?.startDate ? new Date(selectedAcademicYear.startDate) : null;
+    return getCalendarInstallmentMonthName(
+      installmentNumber,
+      selectedAcademicYear?.startDate,
+      activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
+    );
+  };
 
-    if (!startDate || Number.isNaN(startDate.getTime())) {
-      return `Month ${installmentNumber}`;
-    }
-
-    const monthDate = new Date(startDate);
-    monthDate.setMonth(startDate.getMonth() + installmentNumber - 1);
-    return activeCalendarType === 'ETHIOPIAN'
-      ? convertToEthiopian(monthDate).monthName
-      : monthDate.toLocaleDateString('en-US', { month: 'long' });
+  const formatFeeItemDisplay = (feeType?: string | null, periodLabel?: string | null) => {
+    const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
+    return formatFinanceFeeItemLabel(feeType, {
+      academicYearStartDate: selectedAcademicYear?.startDate,
+      calendarType: activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
+      periodLabel,
+    });
   };
 
   const getInstallmentPeriodLabel = (installmentNumber: number) => {
@@ -884,6 +798,74 @@ export default function FinanceDashboardPage() {
     return null;
   };
 
+  const isMonthlyBillingMode = feeCollectionMode?.mode === 'MONTHLY' || feeCollectionMode?.mode === 'MONTH';
+  const selectedStudentData = selectedStudentFees.find(
+    (entry) =>
+      entry.student.userId === paymentForm.studentId ||
+      entry.student.id === paymentForm.studentId,
+  );
+  const selectedPaymentTermId =
+    paymentForm.termId ||
+    (selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined);
+  const selectedPaymentInstallmentRange = isMonthlyBillingMode
+    ? getSelectedTermInstallmentRange(selectedPaymentTermId)
+    : null;
+  const paymentFeeOptions = (selectedStudentData?.fees || [])
+    .filter((fee) => {
+      if (!isMonthlyBillingMode && fee.balance <= 0) return false;
+      if (!isMonthlyBillingMode) return true;
+
+      const installmentIndex = getInstallmentIndexFromFee(fee);
+      if (installmentIndex === null) return false;
+      if (!selectedPaymentInstallmentRange) return true;
+
+      return (
+        installmentIndex >= selectedPaymentInstallmentRange.start &&
+        installmentIndex <= selectedPaymentInstallmentRange.end
+      );
+    })
+    .sort((a, b) => {
+      const aIndex = getInstallmentIndexFromFee(a) || 0;
+      const bIndex = getInstallmentIndexFromFee(b) || 0;
+      return aIndex - bIndex;
+    });
+  const unpaidPaymentFeeOptions = paymentFeeOptions.filter((fee) => fee.balance > 0);
+  const selectedFee =
+    paymentFeeOptions.find((fee) => fee.id === selectedFeeId) ||
+    unpaidPaymentFeeOptions[0] ||
+    paymentFeeOptions[0] ||
+    selectedStudentData?.fees.find((fee) => fee.id === selectedFeeId) ||
+    selectedStudentData?.fees.find((fee) => fee.status !== 'PAID') ||
+    selectedStudentData?.fees[0];
+  const paymentTermIdForSubmit = selectedPaymentTermId || selectedFee?.termId;
+  const selectedPaymentTermName =
+    paymentTermIdForSubmit
+      ? terms.find((term) => term.id === paymentTermIdForSubmit)?.name ||
+        selectedFee?.termName ||
+        null
+      : selectedFee?.termName || null;
+
+  const getTermMonthRangeLabel = (termId: string) => {
+    const term = terms.find((t) => t.id === termId);
+    if (!term || !term.startDate || !term.endDate) return null;
+
+    const academicYear = academicYears.find((y) => y.id === selectedYear);
+    const ayStart = academicYear?.startDate ? new Date(academicYear.startDate) : null;
+    if (!ayStart) return term.name;
+
+    const tStart = new Date(term.startDate);
+    const tEnd = new Date(term.endDate);
+
+    const monthDiff = (d: Date) =>
+      (d.getFullYear() - ayStart.getFullYear()) * 12 + (d.getMonth() - ayStart.getMonth());
+
+    const startIdx = monthDiff(tStart) + 1;
+    const endIdx = monthDiff(tEnd) + 1;
+
+    if (startIdx === endIdx) return getInstallmentMonthName(startIdx);
+    return `${getInstallmentMonthName(startIdx)} - ${getInstallmentMonthName(endIdx)}`;
+  };
+
   const choosePreferredPaymentFee = (fees: StudentFeeItem[], termId?: string) => {
     const unpaidFees = fees.filter((fee) => fee.balance > 0);
     if (unpaidFees.length === 0) return fees[0];
@@ -924,11 +906,18 @@ export default function FinanceDashboardPage() {
 
   const formatInstallmentLabel = (fee: {
     feeType?: string | null;
+    termId?: string | null;
     termName?: string | null;
     description?: string | null;
   }) => {
     const match = String(fee.feeType || '').match(/_INSTALLMENT_(\d+)$/i);
     if (match) return getInstallmentPeriodLabel(Number(match[1]));
+
+    const mode = feeCollectionMode?.mode;
+    if ((mode === 'MONTHLY' || mode === 'MONTH') && fee.termId) {
+      const rangeLabel = getTermMonthRangeLabel(fee.termId);
+      if (rangeLabel) return rangeLabel;
+    }
 
     if (fee.termName) return fee.termName;
 
@@ -1009,8 +998,12 @@ export default function FinanceDashboardPage() {
       toast.error(t.studentAmountRequired);
       return;
     }
-    if (!selectedPaymentTermId) {
+    if (!paymentTermIdForSubmit) {
       toast.error(t.selectTermError);
+      return;
+    }
+    if (isMonthlyBillingMode && (!selectedFeeId || unpaidPaymentFeeOptions.length === 0 || (selectedFee?.balance || 0) <= 0)) {
+      toast.error('Select the unpaid month to pay');
       return;
     }
     
@@ -1024,7 +1017,7 @@ export default function FinanceDashboardPage() {
         schoolId: user?.schoolId || '',
         studentFeeId: feeId,
         studentId: paymentForm.studentId,
-        termId: selectedPaymentTermId,
+        termId: paymentTermIdForSubmit,
         amountPaid: paymentForm.amountPaid,
         paymentMethod: paymentForm.paymentMethod,
         transactionReference: paymentForm.transactionReference,
@@ -1077,7 +1070,7 @@ export default function FinanceDashboardPage() {
     const schoolId = user.schoolId;
 
     toast.warning(t.reverseConfirm, {
-      description: t.reverseDesc.replace('{receipt}', tx.receiptNumber).replace('{amount}', formatCurrency(tx.amountPaid)),
+      description: `Reverse payment ${tx.transactionReference || tx.paymentReference || tx.receiptNumber || tx.id} for ${formatCurrency(tx.amountPaid)}?`,
       duration: 10000,
       cancel: {
         label: t.cancel,
@@ -1233,7 +1226,7 @@ export default function FinanceDashboardPage() {
     let targetGrades: number[] = [];
     if (feeStructureForm.gradeMode === 'single') {
       const parsedGrade = parseInt(feeStructureForm.grade, 10);
-      if (!parsedGrade || parsedGrade < 1 || parsedGrade > 12) {
+      if (!gradeOptions.includes(parsedGrade)) {
         toast.error(t.validGrade);
         return;
       }
@@ -1241,7 +1234,7 @@ export default function FinanceDashboardPage() {
     } else if (feeStructureForm.gradeMode === 'range') {
       const fromGrade = parseInt(feeStructureForm.gradeFrom, 10);
       const toGrade = parseInt(feeStructureForm.gradeTo, 10);
-      if (!fromGrade || !toGrade || fromGrade < 1 || toGrade > 12 || fromGrade > toGrade) {
+      if (!gradeOptions.includes(fromGrade) || !gradeOptions.includes(toGrade) || fromGrade > toGrade) {
         toast.error(t.validGradeRange);
         return;
       }
@@ -1350,6 +1343,33 @@ setIsCreatingFeeStructure(true);
 
   // Calculate chart max value
   const chartMaxValue = Math.max(...chartRevenueData.map(d => d.amount), 1);
+  const selectedTermDetails = terms.find((term) => term.id === selectedTerm) || currentTerm;
+  const pendingBalanceCount = outstandingFees.filter((fee) =>
+    ['PENDING', 'UNPAID', 'PARTIAL'].includes(String(fee.status).toUpperCase()) && fee.remaining > 0,
+  ).length;
+  const billingStatus = (() => {
+    if (!selectedYear) return 'Academic year setup needed';
+    if (terms.length === 0) return 'No billing periods configured';
+    if (pendingBalanceCount > 0) return 'Collections need follow-up';
+    return 'No pending balances';
+  })();
+  const billingStatusTone =
+    !selectedYear || terms.length === 0
+      ? 'border-l-slate-400 bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+      : pendingBalanceCount > 0
+        ? 'border-l-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+        : 'border-l-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400';
+  const formatDueDay = (day: number) => {
+    const suffix =
+      day % 10 === 1 && day !== 11
+        ? 'st'
+        : day % 10 === 2 && day !== 12
+          ? 'nd'
+          : day % 10 === 3 && day !== 13
+            ? 'rd'
+            : 'th';
+    return `${day}${suffix} of month`;
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -1386,141 +1406,291 @@ setIsCreatingFeeStructure(true);
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-1">
+              <CalendarDatePicker 
+                value={fromDate} 
+                onChange={setFromDate} 
+                className="w-[140px] h-8 text-[10px]" 
+                placeholder="From Date"
+              />
+              <span className="text-slate-400 text-xs">-</span>
+              <CalendarDatePicker 
+                value={toDate} 
+                onChange={setToDate} 
+                className="w-[140px] h-8 text-[10px]" 
+                placeholder="To Date"
+              />
+            </div>
 
-            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600" />
+            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1" />
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                className="whitespace-nowrap text-xs h-8 ml-2"
+                disabled={isSendingReminders || !selectedTerm || selectedTerm === 'all'}
+                onClick={handleSendPeriodReminders}
+              >
+                <Clock className="w-3.5 h-3.5 mr-1" />
+                Reminders
+              </Button>
+            </div>
+
+            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1" />
 
             <Button 
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 whitespace-nowrap text-xs h-8"
+              className="bg-[var(--brand-color,#e35336)] hover:opacity-90 whitespace-nowrap text-xs h-8 shadow-sm"
               onClick={() => setRecordPaymentOpen(true)}
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
               {t.recordPayment}
             </Button>
-            <Button 
-              size="sm"
-              variant="outline"
-              className="whitespace-nowrap text-xs h-8"
-              onClick={openFeeStructureDialog}
-            >
-              <FileText className="w-3.5 h-3.5 mr-1" />
-              {t.feeStructure}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="whitespace-nowrap text-xs h-8"
-              disabled={isSendingReminders || !selectedTerm || selectedTerm === 'all'}
-              onClick={handleSendPeriodReminders}
-            >
-              <AlertCircle className="w-3.5 h-3.5 mr-1" />
-              {isSendingReminders ? t.sending : t.sendReminders}
-            </Button>
           </div>
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-4 md:p-6 space-y-6">
+        {/* Billing Health Check Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className={`border-l-4 shadow-sm ${billingStatusTone.split(' ')[0]}`}>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className={`p-2 rounded-full ${billingStatusTone.split(' ').slice(1).join(' ')}`}>
+                {pendingBalanceCount > 0 || !selectedYear || terms.length === 0 ? (
+                  <AlertCircle className="w-5 h-5" />
+                ) : (
+                  <CheckCircle className="w-5 h-5" />
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Billing Status</p>
+                <p className="text-sm font-semibold">{billingStatus}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-blue-500 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-2 bg-blue-50 rounded-full text-blue-600 dark:bg-blue-900/40 dark:text-blue-400">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Active Term</p>
+                <p className="text-sm font-semibold">{selectedTermDetails?.name || 'No active term'}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-amber-500 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-2 bg-amber-50 rounded-full text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Pending Actions</p>
+                <p className="text-sm font-semibold">{pendingBalanceCount} Unpaid Balances</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-purple-500 shadow-sm md:col-span-3">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+               <div className="flex items-center gap-4">
+                <div className="p-2 bg-purple-50 rounded-full text-purple-600 dark:bg-purple-900/40 dark:text-purple-400">
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Billing Policy</p>
+                  <div className="flex items-center gap-4 mt-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">Due Day:</span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        {formatDueDay(billingPolicy.dueDay)}
+                      </span>
+                    </div>
+                    <div className="h-3 w-px bg-slate-200 dark:bg-slate-600" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">Daily Penalty:</span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(billingPolicy.penalty)}</span>
+                    </div>
+                  </div>
+                </div>
+               </div>
+               <div className="text-[10px] text-slate-400 italic">
+                 Managed via School Settings
+               </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-          {/* Total Revenue */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.totalRevenue}</p>
-                  <p className="text-xl font-bold text-slate-900 dark:text-white mt-1">
-                    {formatCurrency(stats.totalRevenue)}
-                  </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+            <CardContent className="p-5">
+              <div className="relative z-10">
+                <p className="text-blue-100 text-xs font-medium uppercase tracking-wider">{t.totalRevenue}</p>
+                <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.totalRevenue)}</h3>
+                <div className="flex items-center mt-4 text-blue-100 text-xs">
+                  <Activity className="w-3.5 h-3.5 mr-1" />
+                  <span>Overall Collection</span>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <DollarSign className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+            <CardContent className="p-5">
+              <div className="relative z-10">
+                <p className="text-emerald-100 text-xs font-medium uppercase tracking-wider">{t.collectedToday}</p>
+                <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.collectedToday)}</h3>
+                <div className="flex items-center mt-4 text-emerald-100 text-xs">
+                  <TrendingUp className="w-3.5 h-3.5 mr-1" />
+                  <span>Daily Velocity</span>
                 </div>
+              </div>
+              <TrendingUp className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-rose-500 to-rose-600 text-white">
+            <CardContent className="p-5">
+              <div className="relative z-10">
+                <p className="text-rose-100 text-xs font-medium uppercase tracking-wider">{t.outstandingBalance}</p>
+                <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.outstandingBalance)}</h3>
+                <div className="flex items-center mt-4 text-rose-100 text-xs">
+                  <AlertCircle className="w-3.5 h-3.5 mr-1" />
+                  <span>Outstanding Dues</span>
+                </div>
+              </div>
+              <FileText className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-slate-700 to-slate-800 text-white">
+            <CardContent className="p-5">
+              <div className="relative z-10">
+                <p className="text-slate-300 text-xs font-medium uppercase tracking-wider">Efficiency Rate</p>
+                <h3 className="text-2xl font-bold mt-1">
+                  {Math.round((stats.totalRevenue / (stats.totalRevenue + stats.outstandingBalance || 1)) * 100)}%
+                </h3>
+                <div className="flex items-center mt-4 text-slate-300 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                  <span>Target Fulfillment</span>
+                </div>
+              </div>
+              <BarChart3 className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Analytics Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-bold">Revenue Trend</CardTitle>
+                <p className="text-xs text-slate-500 mt-1">Daily collection performance for the selected period</p>
+              </div>
+              <Select value={chartView} onValueChange={(v: any) => setChartView(v)}>
+                <SelectTrigger className="w-32 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartRevenueData}>
+                    <defs>
+                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      fontSize={10} 
+                      tickFormatter={(d) => formatDate(d)} 
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      fontSize={10} 
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(val) => `Brr ${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      formatter={(val: number) => [formatCurrency(val), 'Revenue']}
+                      labelFormatter={(label) => formatDate(label)}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="amount" 
+                      stroke="#3b82f6" 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#colorAmount)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
 
-          {/* Collected Today */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.collectedToday}</p>
-                  <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">
-                    {formatCurrency(stats.collectedToday)}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
-                </div>
+          <Card className="shadow-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold">Fee Composition</CardTitle>
+              <p className="text-xs text-slate-500 mt-1">Revenue breakdown by fee type</p>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={[
+                      { name: 'Tuition', value: feeBreakdown.tuition },
+                      { name: 'Reg', value: feeBreakdown.registration },
+                      { name: 'Exam', value: feeBreakdown.examFee },
+                      { name: 'Other', value: feeBreakdown.other + feeBreakdown.library }
+                    ]}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                    <YAxis fontSize={10} axisLine={false} tickLine={false} hide />
+                    <Tooltip 
+                      cursor={{fill: '#f1f5f9'}}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
+                      {[0,1,2,3].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Outstanding Balance */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.outstandingBalance}</p>
-                  <p className="text-xl font-bold text-red-600 dark:text-red-400 mt-1">
-                    {formatCurrency(stats.outstandingBalance)}
-                  </p>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                  <span className="text-[10px] font-medium text-slate-600">Tuition</span>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <span className="text-[10px] font-medium text-slate-600">Registration</span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Fully Paid */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.fullyPaid}</p>
-                  <p className="text-xl font-bold text-green-600 dark:text-green-400 mt-1">
-                    {stats.totalStudentsFullyPaid}
-                  </p>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <span className="text-[10px] font-medium text-slate-600">Exam Fees</span>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Partial Payment */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.partialPayment}</p>
-                  <p className="text-xl font-bold text-orange-600 dark:text-orange-400 mt-1">
-                    {stats.studentsPartialPayment}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
-                  <MinusCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Unpaid */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.unpaid}</p>
-                  <p className="text-xl font-bold text-red-600 dark:text-red-400 mt-1">
-                    {stats.unpaidStudentsCount}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-                  <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                  <span className="text-[10px] font-medium text-slate-600">Other</span>
                 </div>
               </div>
             </CardContent>
@@ -1533,7 +1703,7 @@ setIsCreatingFeeStructure(true);
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold">{t.feeStructuresTitle}</CardTitle>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={async () => {
+                <Button size="sm" variant="destructive" onClick={async () => {
                   if (!user?.schoolId) {
                     toast.error('School ID not found');
                     return;
@@ -1558,6 +1728,7 @@ setIsCreatingFeeStructure(true);
                     const result = await financeAPI.generateStudentFees({
                       schoolId: user.schoolId,
                       academicYearId: selectedYear,
+                      termId: selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined,
                     });
                     console.log('Generate result:', result);
                     toast.success(result.data?.created ? `${t.feesCreated} ${result.data.created}` : t.noFeesCreated);
@@ -1581,83 +1752,36 @@ setIsCreatingFeeStructure(true);
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[40%] text-left">{t.feeType}</TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-left">{t.grade}</TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-right">{t.amount}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-left">{t.feeType}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{t.grade}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{getBillingPeriodLabel(feeCollectionMode?.mode)}</TableHead>
+                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[20%] text-right">{t.amount}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {displayFeeStructures.map((fee) => (
                     <TableRow key={fee.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <TableCell className="text-sm font-medium text-slate-900 dark:text-white py-3 px-4 w-[40%] text-left">
-                        <div>{formatFeeStructureName(fee.feeType)}</div>
-                        {formatInstallmentLabel(fee) && (
-                          <div className="text-xs font-normal text-slate-500 dark:text-gray-400">
-                            {formatInstallmentLabel(fee)}
-                          </div>
-                        )}
+                      <TableCell className="text-sm font-medium text-slate-900 dark:text-white py-3 px-4 w-[30%] text-left">
+                        <div>{formatFeeItemDisplay(fee.feeType, formatInstallmentLabel(fee))}</div>
                       </TableCell>
-                      <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[30%] text-left">{fee.gradeLabel}</TableCell>
-                      <TableCell className="text-sm text-slate-700 dark:text-slate-300 py-3 px-4 w-[30%] text-right">{formatCurrency(fee.amount)}</TableCell>
+                      <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{fee.gradeLabel}</TableCell>
+                      <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">
+                        {formatInstallmentLabel(fee) || '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-700 dark:text-slate-300 py-3 px-4 w-[20%] text-right">{formatCurrency(fee.amount)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                <Receipt className="w-8 h-8 mb-2" />
+                <FileText className="w-8 h-8 mb-2" />
                 <p className="text-sm">{t.noFeeStructures}</p>
                 <p className="text-xs mt-1">{t.addFeeStructureHint}</p>
               </div>
             )}
           </CardContent>
         </Card>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 gap-6 mb-6">
-          {/* Revenue Trend Chart */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">{t.revenueTrend}</CardTitle>
-                <Tabs value={chartView} onValueChange={(v) => setChartView(v as ChartView)}>
-                  <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
-                    <TabsTrigger value="daily" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">{t.daily}</TabsTrigger>
-                    <TabsTrigger value="weekly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">{t.weekly}</TabsTrigger>
-                    <TabsTrigger value="monthly" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm">{t.monthly}</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px] flex items-end gap-2">
-                {chartRevenueData.length > 0 ? (
-                  chartRevenueData.map((item, index) => (
-                    <div key={index} className="flex-1 flex flex-col items-center">
-                      <div 
-                        className="w-full bg-blue-500 dark:bg-blue-600 rounded-t transition-all hover:bg-blue-600 dark:hover:bg-blue-500"
-                        style={{ 
-                          height: `${(item.amount / chartMaxValue) * 200}px`,
-                          minHeight: item.amount > 0 ? '4px' : '0'
-                        }}
-                        title={`${formatDate(item.date)}: ${formatCurrency(item.amount)}`}
-                      />
-                      <FormattedDate
-                        date={item.date}
-                        className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 truncate w-full text-center"
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-slate-400">
-                    {t.noData}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-        </div>
 
         {/* Tables Section */}
         <div className="space-y-6">
@@ -1681,7 +1805,7 @@ setIsCreatingFeeStructure(true);
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.receipt}</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Payment Reference</TableHead>
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.student}</TableHead>
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.class}</TableHead>
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.section}</TableHead>
@@ -1697,20 +1821,22 @@ setIsCreatingFeeStructure(true);
                   {paginatedTransactions.length > 0 ? (
                     paginatedTransactions.map((tx) => (
                       <TableRow key={tx.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <TableCell className="text-xs font-medium dark:text-white py-3 px-4">{tx.receiptNumber}</TableCell>
+                        <TableCell className="text-xs font-medium dark:text-white py-3 px-4">
+                          {tx.transactionReference || tx.paymentReference || tx.receiptNumber || '-'}
+                        </TableCell>
                         <TableCell className="text-xs font-medium dark:text-white py-3 px-4">{tx.studentName}</TableCell>
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.className || tx.grade || '-'}</TableCell>
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.section || '-'}</TableCell>
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.termName || 'Unassigned'}</TableCell>
-                        <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.feeType || '-'}</TableCell>
+                        <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{formatFeeItemDisplay(tx.feeType, tx.termName)}</TableCell>
                         <TableCell className="text-xs py-3 px-4">{getPaymentMethodBadge(tx.paymentMethod)}</TableCell>
                         <TableCell className="text-xs font-medium dark:text-white py-3 px-4">{formatCurrency(tx.amountPaid)}</TableCell>
                         <TableCell className="text-xs text-slate-500 dark:text-gray-400 py-3 px-4">{formatDate(tx.paymentDate)}</TableCell>
                         <TableCell className="text-xs py-3 px-4 text-right">
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="h-7 text-xs border-red-200 text-red-700 hover:bg-red-50"
+                            variant="destructive"
+                            className="h-7 text-xs"
                             disabled={reversingPaymentId === tx.id}
                             onClick={() => handleReversePayment(tx)}
                           >
@@ -1905,10 +2031,11 @@ setIsCreatingFeeStructure(true);
 
             {terms.length > 0 && (
               <div className="space-y-2">
-                <Label>Term / Semester Paid</Label>
+                <Label>{isMonthlyBillingMode ? 'Current Term / Quarter' : 'Term / Semester Paid'}</Label>
                 <Select
-                  value={selectedPaymentTermId || paymentForm.termId}
+                  value={paymentTermIdForSubmit || paymentForm.termId}
                   onValueChange={(value) => {
+                    setSelectedFeeId('');
                     setPaymentForm({ ...paymentForm, termId: value });
                     refreshSelectedStudentFeesForTerm(value);
                   }}
@@ -1929,7 +2056,7 @@ setIsCreatingFeeStructure(true);
 
             {paymentFeeOptions.length > 0 && (
               <div className="space-y-2">
-                <Label>Fee Item</Label>
+                <Label>{isMonthlyBillingMode ? 'Billing Month Paid' : 'Fee Item'}</Label>
                 <Select
                   value={selectedFeeId}
                   onValueChange={(value) => {
@@ -1947,19 +2074,20 @@ setIsCreatingFeeStructure(true);
                   </SelectTrigger>
                   <SelectContent>
                     {paymentFeeOptions.map((fee) => (
-                      <SelectItem key={fee.id} value={fee.id}>
-                        {formatFeeStructureName(fee.name)} • {fee.termName || 'Whole Academic Year'} • {formatCurrency(fee.balance)}
+                      <SelectItem key={fee.id} value={fee.id} disabled={isMonthlyBillingMode && fee.balance <= 0}>
+                        <span className={isMonthlyBillingMode && fee.balance <= 0 ? 'line-through opacity-60' : ''}>
+                          {formatFeeItemDisplay(fee.name, isMonthlyBillingMode ? null : fee.termName)} • {isMonthlyBillingMode ? selectedPaymentTermName || 'Selected period' : fee.termName || 'Whole Academic Year'} • {fee.balance <= 0 ? 'Paid' : `${formatCurrency(fee.balance)} remaining`}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedFee && (
-                  <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                    Recording against {formatFeeStructureName(selectedFee.name)} for {selectedFee.termName || 'Whole Academic Year'}.
-                    Remaining balance: {formatCurrency(selectedFee.balance)}.
-                    {selectedFee.isYearWide ? ' This is the annual fee record.' : ''}
-                  </div>
-                )}
+              </div>
+            )}
+
+            {isMonthlyBillingMode && paymentForm.studentId && paymentTermIdForSubmit && paymentFeeOptions.length === 0 && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                No monthly installments found for {selectedPaymentTermName || 'the selected period'}.
               </div>
             )}
 
@@ -1995,7 +2123,7 @@ setIsCreatingFeeStructure(true);
             
             {/* Transaction Reference */}
             <div className="space-y-2">
-              <Label>Transaction Reference (from bank receipt)</Label>
+              <Label>Bank Transaction Reference</Label>
               <Input 
                 placeholder="eg. TRANS-123456"
                 value={paymentForm.transactionReference}
@@ -2143,7 +2271,7 @@ setIsCreatingFeeStructure(true);
                     <SelectValue placeholder="Select grade" />
                   </SelectTrigger>
                   <SelectContent>
-                    {GRADE_OPTIONS.map(g => (
+                    {gradeOptions.map(g => (
                       <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
                     ))}
                   </SelectContent>
@@ -2162,7 +2290,7 @@ setIsCreatingFeeStructure(true);
                       <SelectValue placeholder="From" />
                     </SelectTrigger>
                     <SelectContent>
-                      {GRADE_OPTIONS.map(g => (
+                      {gradeOptions.map(g => (
                         <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
                       ))}
                     </SelectContent>
@@ -2178,7 +2306,7 @@ setIsCreatingFeeStructure(true);
                       <SelectValue placeholder="To" />
                     </SelectTrigger>
                     <SelectContent>
-                      {GRADE_OPTIONS.map(g => (
+                      {gradeOptions.map(g => (
                         <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
                       ))}
                     </SelectContent>

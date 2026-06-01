@@ -25,9 +25,12 @@ interface CalendarDatePickerProps {
   value?: Date;
   onChange: (date: Date | undefined) => void;
   className?: string;
+  brandColor?: string;
   placeholder?: string;
   disabled?: boolean;
   includeTime?: boolean;
+  minYear?: number; // In Ethiopian year if in Ethiopian mode
+  maxYear?: number;
 }
 
 const toTimeValue = (date?: Date) => {
@@ -47,13 +50,19 @@ const mergeDateAndTime = (date: Date, existingDate: Date | undefined, includeTim
   return applyTimeToDate(date, toTimeValue(existingDate));
 };
 
+const brandedSelectTriggerClassName =
+  "h-8 text-xs border-gray-300 focus:border-gray-500 focus:ring-2 focus:ring-gray-300 data-[state=open]:border-gray-500 dark:border-gray-600 dark:focus:border-gray-400 dark:focus:ring-gray-700 dark:data-[state=open]:border-gray-400";
+
 export function CalendarDatePicker({
   value,
   onChange,
   className,
+  brandColor,
   placeholder = "Select Date",
   disabled = false,
   includeTime = false,
+  minYear,
+  maxYear,
 }: CalendarDatePickerProps) {
   const { user } = useAuth();
   const { t, language } = useTranslations<any>("calendar");
@@ -63,25 +72,39 @@ export function CalendarDatePicker({
   const calendarType = user?.calendarType || "ETHIOPIAN";
   const [open, setOpen] = useState(false);
   const selectedTime = toTimeValue(value);
+  const brandStyle = brandColor
+    ? ({ "--brand-color": brandColor } as React.CSSProperties)
+    : undefined;
 
   // === ETHIOPIAN CALENDAR STATE ===
   const todayEth = convertToEthiopian(new Date());
-  const [ethYear, setEthYear] = useState<number>(todayEth.year);
-  const [ethMonth, setEthMonth] = useState<number>(todayEth.month);
-  const [ethDay, setEthDay] = useState<number>(todayEth.day);
+  
+  // Directly initialize state using the initial value prop if available, to avoid hydration mismatches
+  const initialEth = React.useMemo(() => {
+    return convertToEthiopian(value || new Date());
+  }, [value]);
+
+  const [ethYear, setEthYear] = useState<number>(initialEth.year);
+  const [ethMonth, setEthMonth] = useState<number>(initialEth.month);
+  const [ethDay, setEthDay] = useState<number>(initialEth.day);
 
   const updateTime = (time: string) => {
     const baseDate = value || convertEthiopianToGregorian(ethYear, ethMonth, ethDay);
     onChange(applyTimeToDate(baseDate, time));
   };
 
-  // Sync incoming Gregorian Date to Ethiopian state
+  // Sync incoming Gregorian Date to Ethiopian state, and support resetting/clearing correctly
   useEffect(() => {
     if (value && calendarType === "ETHIOPIAN") {
       const et = convertToEthiopian(value);
       setEthYear(et.year);
       setEthMonth(et.month);
       setEthDay(et.day);
+    } else if (!value) {
+      const today = convertToEthiopian(new Date());
+      setEthYear(today.year);
+      setEthMonth(today.month);
+      setEthDay(today.day);
     }
   }, [value, calendarType]);
 
@@ -103,7 +126,7 @@ export function CalendarDatePicker({
             {value ? format(value, includeTime ? "PPP p" : "PPP") : <span>{displayPlaceholder}</span>}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto space-y-3 p-3" align="start">
+      <PopoverContent className="w-auto space-y-3 p-3" align="start" style={brandStyle}>
           <Calendar
             mode="single"
             selected={value}
@@ -127,7 +150,9 @@ export function CalendarDatePicker({
   }
 
   // === ETHIOPIAN PICKER UI ===
-  const years = Array.from({ length: 20 }, (_, i) => todayEth.year - 10 + i);
+  const startYear = minYear ?? (todayEth.year - 85);
+  const endYear = maxYear ?? (todayEth.year + 15);
+  const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
   // Months are 1-13 (Pagume is 13th month)
   const getDaysInEthMonth = (month: number, year: number) => {
     if (month === 13) {
@@ -190,20 +215,24 @@ export function CalendarDatePicker({
           <span className="truncate">{ethiopianDisplay}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[320px] p-4 bg-white dark:bg-gray-800" align="start">
+      <PopoverContent
+        className="w-[320px] border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+        align="start"
+        style={brandStyle}
+      >
         <div className="space-y-4">
-          <div className="flex items-center justify-between font-semibold text-sm">
+          <div className="flex items-center justify-between text-sm font-semibold text-slate-900 dark:text-slate-100">
             <span>{t.picker.ethiopianCalendar}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">{t.picker.month}</label>
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">{t.picker.month}</label>
               <Select
                 value={ethMonth.toString()}
                 onValueChange={(v) => handleEthChange("month", parseInt(v))}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className={brandedSelectTriggerClassName}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -217,12 +246,12 @@ export function CalendarDatePicker({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">{t.picker.day}</label>
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">{t.picker.day}</label>
               <Select
                 value={ethDay.toString()}
                 onValueChange={(v) => handleEthChange("day", parseInt(v))}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className={brandedSelectTriggerClassName}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,12 +265,12 @@ export function CalendarDatePicker({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">{t.picker.year}</label>
+              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">{t.picker.year}</label>
               <Select
                 value={ethYear.toString()}
                 onValueChange={(v) => handleEthChange("year", parseInt(v))}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className={brandedSelectTriggerClassName}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -280,7 +309,7 @@ export function CalendarDatePicker({
           ) : null}
 
           <Button
-            className="w-full h-8 text-xs"
+            className="h-8 w-full text-xs"
             onClick={() => {
               if (!value) {
                 // If they never clicked a change but just opened and hit confirm

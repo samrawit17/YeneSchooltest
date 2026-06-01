@@ -22,6 +22,7 @@ export interface ReportCard {
   attendancePercentage: number | null;
   teacherRemarks: string | null;
   principalRemarks: string | null;
+  internalRemarks?: string | null;
   gradeDetails: GradeDetail[];
   coCurricular: string | null;
   behavior: string | null;
@@ -210,6 +211,7 @@ export const reportCardsAPI = {
     data: {
       teacherRemarks?: string;
       principalRemarks?: string;
+      internalRemarks?: string;
       coCurricular?: string;
       behavior?: string;
     }
@@ -265,30 +267,48 @@ export const reportCardsAPI = {
 };
 
 export const promotionAPI = {
-  getCandidates: (classId: string, params?: { academicYear?: string }) =>
+  getCandidates: (classId: string, params?: { academicYear?: string; minAverageGrade?: number; minAttendance?: number }) =>
     api.get<{
       className: string;
       academicYear: string;
       totalStudents: number;
       candidates: PromotionCandidate[];
-    }>(`/promotion/candidates/${classId}`, { params }),
+    }>(`/promotion/candidates/${classId}`, { params, skipAuthErrorRedirect: true }),
+  getGradeCandidates: (grade: number, params?: { academicYear?: string; minAverageGrade?: number; minAttendance?: number }) =>
+    api.get<{
+      className: string;
+      academicYear: string;
+      totalStudents: number;
+      candidates: PromotionCandidate[];
+    }>(`/promotion/grade-candidates/${grade}`, { params, skipAuthErrorRedirect: true }),
   getNextClasses: (classId: string, params?: { toAcademicYear?: string }) =>
     api.get<{
       currentClass: { id: string; name: string; grade: number | null };
       nextClasses: { id: string; name: string; grade: number | null }[];
       isLastGrade: boolean;
       graduationEnabled: boolean;
-    }>(`/promotion/next-classes/${classId}`, { params }),
+    }>(`/promotion/next-classes/${classId}`, { params, skipAuthErrorRedirect: true }),
+  getNextGrades: (grade: number, params?: { toAcademicYear?: string }) =>
+    api.get<{
+      currentGrade: number;
+      nextGrades: { grade: number; name: string }[];
+      isLastGrade: boolean;
+      graduationEnabled: boolean;
+    }>(`/promotion/next-grades/${grade}`, { params, skipAuthErrorRedirect: true }),
   promoteSingle: (data: {
     studentId: string;
-    fromClassId: string;
+    fromClassId?: string;
+    fromGrade?: number;
     toClassId?: string | null;
+    toGrade?: number | null;
     fromAcademicYear: string;
     toAcademicYear: string;
   }) => api.post("/promotion/single", data),
   bulkPromote: (data: {
-    fromClassId: string;
+    fromClassId?: string;
+    fromGrade?: number;
     toClassId?: string | null;
+    toGrade?: number | null;
     fromAcademicYear: string;
     toAcademicYear: string;
     studentIds: string[];

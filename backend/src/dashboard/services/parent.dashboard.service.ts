@@ -88,6 +88,8 @@ export class ParentDashboardService {
       };
     }
 
+    const effectiveSchoolId = schoolId || parentProfile.schoolId;
+
     // Get parent's children through the join table
     const parentStudents = await this.prisma.parentStudent.findMany({
       where: {
@@ -102,9 +104,9 @@ export class ParentDashboardService {
       },
     });
 
-    const activeAcademicYear = schoolId
+    const activeAcademicYear = effectiveSchoolId
       ? await this.prisma.academicYear.findFirst({
-          where: { schoolId, isActive: true },
+          where: { schoolId: effectiveSchoolId, isActive: true },
           select: { id: true },
         })
       : null;
@@ -152,7 +154,7 @@ export class ParentDashboardService {
       // Get upcoming exams for child
       const upcomingExams = await this.prisma.exam.count({
         where: {
-          schoolId,
+          schoolId: studentProfile.schoolId || effectiveSchoolId,
           date: {
             gte: tomorrow,
             lte: nextWeek,
@@ -188,7 +190,7 @@ export class ParentDashboardService {
       const approvedGrades = activeAcademicYear?.id
         ? await this.prisma.subjectGrade.findMany({
             where: {
-              schoolId,
+              schoolId: studentProfile.schoolId || effectiveSchoolId,
               studentId: studentProfile.userId,
               academicYear: activeAcademicYear.id,
               status: 'APPROVED',
@@ -264,6 +266,9 @@ export class ParentDashboardService {
 
       childrenData.push({
         id: studentProfile.userId,
+        profileId: studentProfile.id,
+        schoolId: studentProfile.schoolId || effectiveSchoolId,
+        academicYearId: activeAcademicYear?.id,
         name: studentUser.name,
         photoUrl: studentUser.avatarUrl || null,
         avatarUrl: studentUser.avatarUrl || null,
@@ -440,7 +445,7 @@ export class ParentDashboardService {
       quickActions,
       charts,
       metadata: {
-        schoolId,
+        schoolId: effectiveSchoolId,
         academicYear: activeAcademicYear?.id,
         generatedAt: new Date(),
       },

@@ -14,17 +14,20 @@ async function handler(
   const headers = new Headers();
   const auth = req.headers.get('authorization');
   const contentType = req.headers.get('content-type');
+  const cookie = req.headers.get('cookie');
   if (auth) headers.set('authorization', auth);
   if (contentType) headers.set('content-type', contentType);
+  if (cookie) headers.set('cookie', cookie);
 
   const method = req.method.toUpperCase();
   const hasBody = !['GET', 'HEAD'].includes(method);
   let upstream: Response;
   try {
+    const body = hasBody ? await req.arrayBuffer() : undefined;
     upstream = await fetch(targetUrl, {
       method,
       headers,
-      body: hasBody ? await req.text() : undefined,
+      body,
       cache: 'no-store',
     });
   } catch (error) {
@@ -45,6 +48,10 @@ async function handler(
   const upstreamType = upstream.headers.get('content-type');
   if (upstreamType) {
     responseHeaders.set('content-type', upstreamType);
+  }
+  const upstreamCookie = upstream.headers.get('set-cookie');
+  if (upstreamCookie) {
+    responseHeaders.set('set-cookie', upstreamCookie);
   }
 
   return new NextResponse(upstream.body, {

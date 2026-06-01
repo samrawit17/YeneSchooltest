@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { DEFAULT_CACHE_TTL_SECONDS } from '../infrastructure/cache/cache.constants';
 import { CredentialService } from '../credential/credential.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Curriculum type enum
 type CurriculumType = 'SEMESTER' | 'QUARTER' | 'TERM' | 'CUSTOM';
@@ -66,6 +68,10 @@ export const SCHOOL_SETTING_KEYS = {
   FEE_STRUCTURE_MODE: 'fee_structure_mode',
   FEE_PAYMENT_DUE_DAY: 'fee_payment_due_day',
   FEE_DAILY_PENALTY_AMOUNT: 'fee_daily_penalty_amount',
+  FAMILY_DISCOUNT_ENABLED: 'family_discount_enabled',
+  FAMILY_DISCOUNT_MIN_STUDENTS: 'family_discount_min_students',
+  FAMILY_DISCOUNT_PERCENT: 'family_discount_percent',
+  FAMILY_DISCOUNT_FEE_TYPES: 'family_discount_fee_types',
   PARENT_VIEW_GRADES: 'parent_view_grades',
   ATTENDANCE_CUTOFF_TIME: 'ATTENDANCE_CUTOFF_TIME',
   DEFAULT_SECTION_CAPACITY: 'DEFAULT_SECTION_CAPACITY',
@@ -74,6 +80,7 @@ export const SCHOOL_SETTING_KEYS = {
   SCHOOL_PHONE: 'school_phone',
   SCHOOL_EMAIL: 'school_email',
   LOGO_URL: 'logo_url',
+  LOGIN_IMAGE_URL: 'login_image_url',
   THEME_COLOR: 'theme_color',
   BRAND_COLOR_IN_NAVIGATION: 'BRAND_COLOR_IN_NAVIGATION',
   CERTIFICATE_SETTINGS: 'CERTIFICATE_SETTINGS',
@@ -147,6 +154,7 @@ export class SchoolSettingsService {
     SCHOOL_SETTING_KEYS.PARENT_PORTAL_ACCESS,
     SCHOOL_SETTING_KEYS.FINANCE_PORTAL_ACCESS,
     SCHOOL_SETTING_KEYS.REGISTRAR_PORTAL_ACCESS,
+    SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_ENABLED,
     'PARENT_VIEW_ATTENDANCE',
     'SELF_ENROLLMENT_ACTIVE',
   ]);
@@ -253,7 +261,9 @@ export class SchoolSettingsService {
     if (key === SCHOOL_SETTING_KEYS.FEE_PAYMENT_DUE_DAY) {
       const day = Number(value);
       if (!Number.isInteger(day) || day < 1 || day > 31) {
-        throw new BadRequestException(`${key} must be an integer between 1 and 31`);
+        throw new BadRequestException(
+          `${key} must be an integer between 1 and 31`,
+        );
       }
       return day;
     }
@@ -266,6 +276,44 @@ export class SchoolSettingsService {
         );
       }
       return Math.round(amount * 100) / 100;
+    }
+
+    if (key === SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_MIN_STUDENTS) {
+      const count = Number(value);
+      if (!Number.isInteger(count) || count < 2 || count > 20) {
+        throw new BadRequestException(
+          'family_discount_min_students must be an integer between 2 and 20',
+        );
+      }
+      return count;
+    }
+
+    if (key === SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_PERCENT) {
+      const percent = Number(value);
+      if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+        throw new BadRequestException(
+          'family_discount_percent must be a number between 0 and 100',
+        );
+      }
+      return Math.round(percent * 100) / 100;
+    }
+
+    if (key === SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_FEE_TYPES) {
+      const rawValues = Array.isArray(value)
+        ? value
+        : String(value || '')
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+      const normalizedValues = Array.from(
+        new Set(rawValues.map((item) => String(item).trim().toUpperCase())),
+      );
+      if (normalizedValues.length === 0) {
+        throw new BadRequestException(
+          'family_discount_fee_types must include at least one fee type',
+        );
+      }
+      return normalizedValues.join(',');
     }
 
     if (key === SCHOOL_SETTING_KEYS.DEFAULT_SECTION_CAPACITY) {
@@ -300,7 +348,62 @@ export class SchoolSettingsService {
       return normalizedValue;
     }
 
+    if (key === SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL) {
+      const normalizedValue = String(value || '').trim();
+      if (!normalizedValue) return '';
+      const isValidRelativeUpload = /^\/uploads\/[A-Za-z0-9._~/-]+$/.test(
+        normalizedValue,
+      );
+      const isValidHttpUrl = /^https?:\/\/\S+$/i.test(normalizedValue);
+      if (!isValidRelativeUpload && !isValidHttpUrl) {
+        throw new BadRequestException(
+          `${key} must be an uploaded image path or a valid URL`,
+        );
+      }
+      return normalizedValue;
+    }
+
     return value;
+  }
+
+  async uploadLoginImage(
+    schoolId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    if (
+      !['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(
+        file.mimetype,
+      )
+    ) {
+      throw new BadRequestException(
+        'Login image must be PNG, JPG, JPEG, or WEBP',
+      );
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('Login image must be less than 5MB');
+    }
+
+    const extension =
+      file.mimetype === 'image/png'
+        ? '.png'
+        : file.mimetype === 'image/webp'
+          ? '.webp'
+          : '.jpg';
+    const relativeDir = path.join('uploads', 'schools', schoolId, 'branding');
+    const backendPublicDir = path.join(process.cwd(), 'public', relativeDir);
+
+    if (!fs.existsSync(backendPublicDir)) {
+      fs.mkdirSync(backendPublicDir, { recursive: true });
+    }
+
+    const fileName = `login-${Date.now()}${extension}`;
+    const filePath = path.join(backendPublicDir, fileName);
+    fs.writeFileSync(filePath, file.buffer);
+
+    const url = `/${relativeDir.replace(/\\/g, '/')}/${fileName}`;
+    await this.setSetting(schoolId, SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL, url);
+    return url;
   }
 
   private async validateCalendarTypeOneTimeChange(
@@ -526,9 +629,7 @@ export class SchoolSettingsService {
 
         for (let index = 0; index < orderedStudents.length; index++) {
           const item = orderedStudents[index];
-          const sectionName = this.getSectionNameByIndex(
-            index % totalSections,
-          );
+          const sectionName = this.getSectionNameByIndex(index % totalSections);
 
           let cls = await tx.class.findFirst({
             where: {

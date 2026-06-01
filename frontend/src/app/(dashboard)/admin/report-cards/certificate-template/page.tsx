@@ -32,7 +32,7 @@ const defaultForm: CertificateSettingsForm = {
   currentPeriodName: "",
   activeAcademicYearName: "",
   assessmentColumns: [],
-  title: "Student Result Certificate",
+  title: "Official Student Result Certificate",
   themeColor: "#1B4F72",
   principalName: "",
   schoolName: "",
@@ -290,7 +290,7 @@ export default function CertificateTemplatePage() {
         createPortal(
           previewOpen ? (
             <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50 p-4">
-              <div className="max-h-[92vh] w-full max-w-4xl overflow-auto rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+              <div className="max-h-[92vh] w-full max-w-6xl overflow-auto rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-base font-semibold text-slate-900 dark:text-white">Certificate Preview</h3>
                   <button
@@ -316,33 +316,41 @@ function CertificatePreview({ form, large = false }: { form: CertificateSettings
   const previewYear = form.activeAcademicYearName || "Academic Year";
   const previewPeriod = form.currentPeriodName || `${form.curriculumType === "QUARTER" ? "Quarter" : form.curriculumType === "TERM" ? "Term" : "Semester"} 1`;
   const assessmentColumns = form.assessmentColumns.slice(0, 5);
-  const previewRows = ["Report-card subject", "Report-card subject", "Report-card subject"];
-  const gridTemplateColumns = `24px minmax(0,1fr) repeat(${assessmentColumns.length}, minmax(38px,48px)) 48px 48px`;
+  const previewRows = [
+    { subject: "English", scores: ["18", "27", "43"], total: "88", grade: "A" },
+    { subject: "Mathematics", scores: ["16", "25", "40"], total: "81", grade: "A-" },
+    { subject: "Biology", scores: ["15", "24", "38"], total: "77", grade: "B+" },
+    { subject: "Geography", scores: ["17", "26", "41"], total: "84", grade: "A-" },
+  ];
+  const gridTemplateColumns = `28px minmax(140px,1fr) repeat(${assessmentColumns.length}, minmax(56px,64px)) 58px 58px`;
+  const previewSize = large
+    ? { width: "760px", height: "1075px" }
+    : { width: "620px", height: "877px" };
   return (
-    <div className={`rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 ${large ? "" : "xl:sticky xl:top-4"}`}>
+    <div className={`overflow-x-auto rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 ${large ? "" : "xl:sticky xl:top-4"}`}>
       <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
         <Palette className="h-4 w-4" />
-        Ethiopian Report Card Layout
+        Official Result Certificate Layout
       </div>
       <div
-        className="relative aspect-[1/1.414] overflow-hidden rounded-lg border border-slate-300 bg-white text-slate-900 shadow-sm"
-        style={large ? { height: "min(76vh, calc((100vw - 4rem) * 1.414))", maxWidth: "100%", marginInline: "auto" } : undefined}
+        className="relative shrink-0 overflow-hidden rounded-lg border border-slate-300 bg-white text-slate-900 shadow-sm"
+        style={{ ...previewSize, marginInline: large ? "auto" : undefined }}
       >
         {watermarkSrc && (
           <img src={watermarkSrc} alt="" className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-[58%] -translate-x-1/2 -translate-y-1/2 object-contain opacity-10" />
         )}
         <div className="relative z-10 flex items-center gap-4 border-b-2 px-8 py-4" style={{ borderColor: form.themeColor }}>
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-white text-[10px]" style={{ borderColor: form.themeColor, color: form.themeColor }}>
-            {logoSrc ? <img src={logoSrc} alt="" className="h-full w-full object-contain p-1" /> : "LOGO"}
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-white text-[10px]" style={{ color: form.themeColor }}>
+            {logoSrc ? <img src={logoSrc} alt="School logo" className="h-full w-full object-contain" /> : "School Logo"}
           </div>
           <div className="min-w-0 flex-1 text-center">
             <div className="truncate text-base font-semibold" style={{ color: form.themeColor }}>{form.schoolName || "School Name"}</div>
             <div className="truncate text-xs text-slate-500">{[form.schoolAddress, form.schoolPhone].filter(Boolean).join(" • ") || "Address • Phone"}</div>
           </div>
-          <div className="w-28 text-right text-[11px] leading-5 text-slate-600">
-            <div>Year <b style={{ color: form.themeColor }}>{previewYear}</b></div>
-            <div>Period <b style={{ color: form.themeColor }}>{previewPeriod}</b></div>
-            <div>Date <b style={{ color: form.themeColor }}>2026-05-17</b></div>
+          <div className="w-32 text-right text-[10px] leading-5 text-slate-600">
+            <div>Year <b className="break-words" style={{ color: form.themeColor }}>{previewYear}</b></div>
+            <div>Period <b className="break-words" style={{ color: form.themeColor }}>{previewPeriod}</b></div>
+            <div>Issued <b style={{ color: form.themeColor }}>2026-05-26</b></div>
           </div>
         </div>
         <div className="relative z-10 flex justify-center px-8 py-2 text-sm font-semibold uppercase tracking-wide text-white" style={{ backgroundColor: form.themeColor }}>
@@ -355,10 +363,11 @@ function CertificatePreview({ form, large = false }: { form: CertificateSettings
               ["Student ID", "STU-00123"],
               ["Class", "Grade 8 - Section A"],
               ["Academic Year / Period", `${previewYear} / ${previewPeriod}`],
+              ["Issue Date", "2026-05-26"],
             ].map(([label, value]) => (
               <div key={label} className="border-b border-r border-[#BDD7EE] p-2 even:border-r-0">
                 <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
-                <div className="font-semibold">{value}</div>
+                <div className="break-words font-semibold">{value}</div>
               </div>
             ))}
           </div>
@@ -367,19 +376,19 @@ function CertificatePreview({ form, large = false }: { form: CertificateSettings
               className="grid px-2 py-2 text-white"
               style={{ backgroundColor: form.themeColor, gridTemplateColumns }}
             >
-              <span>#</span><span>Subject</span>{assessmentColumns.map((col) => <span key={col.code} className="text-center">{col.name}</span>)}<span className="text-center">Total</span><span className="text-center">Grade</span>
+              <span>#</span><span>Subject</span>{assessmentColumns.map((col) => <span key={col.code} className="text-center leading-tight">{col.name}</span>)}<span className="text-center">Total</span><span className="text-center">Grade</span>
             </div>
             {assessmentColumns.length === 0 ? (
               <div className="px-2 py-3 text-center text-slate-500">
                 Assessment columns load from admin-defined assessment weights.
               </div>
-            ) : previewRows.map((subject, index) => (
+            ) : previewRows.map((row, index) => (
               <div
                 key={index}
                 className="grid px-2 py-1.5 even:bg-[#F4F9FD]"
                 style={{ gridTemplateColumns }}
               >
-                <span>{index + 1}</span><span>{subject}</span>{assessmentColumns.map((col) => <span key={col.code} className="text-center">--</span>)}<span className="text-center font-semibold">--</span><span className="text-center font-semibold">--</span>
+                <span>{index + 1}</span><span>{row.subject}</span>{assessmentColumns.map((col, colIndex) => <span key={col.code} className="text-center">{row.scores[colIndex] || "--"}</span>)}<span className="text-center font-semibold">{row.total}</span><span className="text-center font-semibold">{row.grade}</span>
               </div>
             ))}
           </div>
@@ -396,12 +405,15 @@ function CertificatePreview({ form, large = false }: { form: CertificateSettings
             </div>
             <div className="rounded border border-[#BDD7EE] p-3">
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide" style={{ color: form.themeColor }}>Remarks</div>
-              <div>Teacher remark: from report card record.</div>
-              <div>Principal remark: from report card record.</div>
+              <div>Teacher: Good academic progress.</div>
+              <div>Principal: Promoted to the next level.</div>
             </div>
           </div>
+          <div className="mt-4 rounded border border-[#BDD7EE] bg-[#F8FBFD] p-2 text-center text-[10px] text-slate-600">
+            This certificate is valid only with the principal signature and official school stamp.
+          </div>
           <div className="mt-6 grid grid-cols-3 gap-4 border-t-2 pt-4 text-center text-xs" style={{ borderColor: form.themeColor }}>
-            <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>Class Teacher</b><div className="text-slate-500">Signature</div></div>
+            <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>Prepared By</b><div className="text-slate-500">Registrar / Class Teacher</div></div>
             <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>{form.principalName || "Principal"}</b><div className="text-slate-500">Principal Signature</div></div>
             <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>School Stamp</b><div className="text-slate-500">Official Seal</div></div>
           </div>

@@ -37,11 +37,23 @@ export const studentsAPI = {
   rejectEnrollment: (id: string, rejectionReason: string) =>
     api.post(`/students/enrollments/${id}/reject`, { rejectionReason }),
 
-  assignClass: (id: string, data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string }) =>
+  assignClass: (id: string, data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string; stream?: string | null }) =>
     api.post(`/students/${id}/assign-class`, data),
 
   uploadDocuments: (id: string, documents: any[]) =>
     api.post(`/students/${id}/documents`, { documents }),
+  deleteDocument: (id: string, documentKey: string) =>
+    api.delete(`/students/${id}/documents/${encodeURIComponent(documentKey)}`),
+  uploadDocumentFile: (id: string, data: { file: File; title: string; type?: string; description?: string }) => {
+    const formData = new FormData();
+    formData.append('file', data.file);
+    formData.append('title', data.title);
+    if (data.type) formData.append('type', data.type);
+    if (data.description) formData.append('description', data.description);
+    return api.post(`/students/${id}/documents/file`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 
   getForIdCards: (params?: {
     grade?: string;
@@ -101,7 +113,7 @@ export const registrarAPI = {
   rejectEnrollment: (id: string, rejectionReason: string) =>
     api.post(`/registrar/enrollments/${id}/reject`, { rejectionReason }),
 
-  assignClass: (id: string, data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string }) =>
+  assignClass: (id: string, data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string; stream?: string | null }) =>
     api.post(`/registrar/students/${id}/assign-class`, data),
 
   uploadDocuments: (id: string, documents: any[]) =>

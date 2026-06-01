@@ -33,20 +33,19 @@ import {
   UserCog,
   ClipboardPlus,
   FileBarChart,
+  X,
 } from "lucide-react";
 
 // Shadcn/ui Components
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import { useTranslations } from "@/hooks/useTranslations";
 
 interface DashboardStats {
@@ -94,6 +93,21 @@ interface ChartData {
   }[];
 }
 
+interface TeacherLeaderboardEntry {
+  rank: number;
+  teacherId: string;
+  teacherName: string;
+  teacherEmail: string | null;
+  overallScore: number;
+  gradingScore: number;
+  attendanceScore: number;
+  lessonPlanScore: number;
+  gradingSubmitted: number;
+  gradingOnTime: number;
+  attendanceSubmitted: number;
+  lessonPlans: number;
+}
+
 interface DashboardResponse {
   stats: DashboardStats;
   alerts: DashboardAlert[];
@@ -102,6 +116,7 @@ interface DashboardResponse {
   metadata: {
     schoolId?: string;
     generatedAt: string;
+    teacherLeaderboard?: TeacherLeaderboardEntry[];
   };
 }
 
@@ -179,7 +194,21 @@ const AdminDashboardView = () => {
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCharts, setShowCharts] = useState(false);
+  const [dismissedAlertKeys, setDismissedAlertKeys] = useState<string[]>([]);
+  const dismissedAlertsStorageKey = user?.id
+    ? `admin_dashboard_dismissed_alerts:${dashboardRole}:${user.id}`
+    : null;
   const charts = dashboardData?.charts || {};
+
+  const getAlertKey = useCallback((alert: DashboardAlert) => {
+    return [
+      alert.type,
+      alert.priority,
+      alert.message,
+      alert.actionUrl ?? "",
+      alert.actionLabel ?? "",
+    ].join("|");
+  }, []);
 
   const fetchDashboard = useCallback(async (isRefresh = false) => {
     try {
@@ -207,6 +236,36 @@ const AdminDashboardView = () => {
       fetchDashboard();
     }
   }, [authLoading, isAuthenticated, fetchDashboard]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !dismissedAlertsStorageKey) {
+      setDismissedAlertKeys([]);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(dismissedAlertsStorageKey) || "[]");
+      setDismissedAlertKeys(Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : []);
+    } catch {
+      setDismissedAlertKeys([]);
+    }
+  }, [dismissedAlertsStorageKey]);
+
+  const dismissAlert = useCallback(
+    (alert: DashboardAlert) => {
+      const alertKey = getAlertKey(alert);
+      setDismissedAlertKeys((current) => {
+        if (current.includes(alertKey)) return current;
+
+        const next = [...current, alertKey].slice(-100);
+        if (typeof window !== "undefined" && dismissedAlertsStorageKey) {
+          window.localStorage.setItem(dismissedAlertsStorageKey, JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [dismissedAlertsStorageKey, getAlertKey],
+  );
 
   useEffect(() => {
     setShowCharts(false);
@@ -361,6 +420,8 @@ const AdminDashboardView = () => {
 
   const stats = dashboardData?.stats;
   const alerts = dashboardData?.alerts || [];
+  const dismissedAlertSet = new Set(dismissedAlertKeys);
+  const visibleAlerts = alerts.filter((alert) => !dismissedAlertSet.has(getAlertKey(alert)));
   const metadata = dashboardData?.metadata;
   const isITManagerDashboard = dashboardRole === "IT_MANAGER";
   const visibleCharts = {
@@ -401,15 +462,15 @@ const AdminDashboardView = () => {
           </div>
 
           {/* Alerts Section */}
-          {alerts.length > 0 && (
+          {visibleAlerts.length > 0 && (
             <div className="space-y-3">
-              {alerts.map((alert, index) => {
+              {visibleAlerts.map((alert) => {
                 const alertStyle = getAlertStyles(alert.type);
                 const AlertIcon = alertStyle.icon;
                 return (
                   <div
-                    key={index}
-                    className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center ${alertStyle.bg}`}
+                    key={getAlertKey(alert)}
+                    className={`relative flex flex-col gap-3 rounded-lg border p-3 pr-12 sm:flex-row sm:items-center ${alertStyle.bg}`}
                   >
                     <AlertIcon className={`w-5 h-5 flex-shrink-0 ${alertStyle.iconColor}`} />
                     <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -429,6 +490,16 @@ const AdminDashboardView = () => {
                         <ExternalLink className="w-3 h-3" />
                       </Button>
                     )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => dismissAlert(alert)}
+                      aria-label="Close dashboard reminder"
+                      className="absolute right-2 top-2 h-8 w-8 shrink-0 rounded-full text-gray-500 hover:bg-white/70 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-slate-800/70 dark:hover:text-white sm:top-1/2 sm:-translate-y-1/2"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 );
               })}

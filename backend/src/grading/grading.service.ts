@@ -265,6 +265,13 @@ export class GradingService {
     return Math.round(total * 100) / 100;
   }
 
+  private normalizeAssessmentComponentCode(code: string): string {
+    const normalized = code.toUpperCase().trim();
+    if (normalized === 'MID_EXAM' || normalized === 'MIDTERM') return 'MID';
+    if (normalized === 'FINAL_EXAM') return 'FINAL';
+    return normalized;
+  }
+
   private getEffectiveGradeTotalScore(grade: {
     caScore?: number | null;
     midScore?: number | null;
@@ -1391,8 +1398,14 @@ export class GradingService {
             );
           }
 
-          // Teachers can always edit (including APPROVED to allow corrections)
-          // Only block if grade is locked (term closed)
+          if (
+            existingGrade.status === GradeStatus.SUBMITTED ||
+            existingGrade.status === GradeStatus.APPROVED
+          ) {
+            throw new Error(
+              `Cannot save draft for student ${gradeDto.studentId} - grade is already submitted or approved`,
+            );
+          }
 
           const updated = await tx.subjectGrade.update({
             where: { id: existingGrade.id },
@@ -3399,11 +3412,15 @@ export class GradingService {
         },
       },
       include: {
+        assessment: {
+          select: {
+            type: true,
+          },
+        },
         subject: true,
         class: true,
         section: true,
         teacher: { select: { id: true, name: true } },
-        scores: true,
       },
     });
 
@@ -3437,11 +3454,15 @@ export class GradingService {
         section: string | null;
         totalStudents: number;
         enteredGrades: number;
+        requiredComponents: Set<string>;
       }
     >();
 
     for (const assessmentSubject of assessmentSubjects) {
       const teacherId = assessmentSubject.teacherId ?? 'unassigned';
+      const componentCode = this.normalizeAssessmentComponentCode(
+        assessmentSubject.assessment.type,
+      );
       const key = [
         teacherId,
         assessmentSubject.subjectId,
@@ -3452,9 +3473,6 @@ export class GradingService {
         assessmentSubject.classId,
         assessmentSubject.sectionId,
       );
-      const enteredGrades = assessmentSubject.scores.filter(
-        (score) => score.score !== null || score.isAbsent || score.status === 'SUBMITTED',
-      ).length;
       const existing = progressByAssignment.get(key) ?? {
         teacherId,
         teacherName: assessmentSubject.teacher?.name ?? null,
@@ -3466,18 +3484,79 @@ export class GradingService {
         section: assessmentSubject.section?.name ?? null,
         totalStudents: 0,
         enteredGrades: 0,
+        requiredComponents: new Set<string>(),
       };
 
-      existing.totalStudents += totalStudents;
-      existing.enteredGrades += Math.min(enteredGrades, totalStudents);
+      if (!existing.requiredComponents.has(componentCode)) {
+        existing.requiredComponents.add(componentCode);
+        existing.totalStudents += totalStudents;
+      }
       progressByAssignment.set(key, existing);
     }
 
-    const progress = Array.from(progressByAssignment.values()).map((row) => {
+    const progressRows = Array.from(progressByAssignment.values());
+    await Promise.all(
+      progressRows.map(async (row) => {
+        if (row.totalStudents === 0 || row.requiredComponents.size === 0) return;
+
+        const grades = await this.prisma.subjectGrade.findMany({
+          where: {
+            schoolId,
+            OR: [{ academicYear: academicYearId }, { academicYear: academicYearName }],
+            termId: term,
+            classId: row.classId,
+            ...(row.sectionId ? { sectionId: row.sectionId } : {}),
+            subjectId: row.subjectId,
+            ...(row.teacherId !== 'unassigned' ? { teacherId: row.teacherId } : {}),
+          },
+          include: {
+            gradeScores: {
+              include: {
+                component: {
+                  select: {
+                    code: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const enteredStudentComponents = new Set<string>();
+        grades.forEach((grade) => {
+          row.requiredComponents.forEach((code) => {
+            const componentScore = grade.gradeScores.find(
+              (item) => item.component.code.toUpperCase() === code,
+            );
+            const hasComponentScore =
+              componentScore?.score !== null && componentScore?.score !== undefined;
+            const hasLegacyScore =
+              (code === 'CA' && grade.caScore !== null) ||
+              (code === 'MID' && grade.midScore !== null) ||
+              (code === 'FINAL' && grade.finalScore !== null);
+
+            if (hasComponentScore || hasLegacyScore) {
+              enteredStudentComponents.add(`${grade.studentId}:${code}`);
+            }
+          });
+        });
+        row.enteredGrades = enteredStudentComponents.size;
+      }),
+    );
+
+    const progress = progressRows.map((row) => {
       const enteredGrades =
         row.totalStudents > 0 ? Math.min(row.enteredGrades, row.totalStudents) : row.enteredGrades;
       return {
-        ...row,
+        teacherId: row.teacherId,
+        teacherName: row.teacherName,
+        subjectId: row.subjectId,
+        classId: row.classId,
+        sectionId: row.sectionId,
+        subject: row.subject,
+        class: row.class,
+        section: row.section,
+        totalStudents: row.totalStudents,
         enteredGrades,
         percentage:
           row.totalStudents > 0 ? Math.round((enteredGrades / row.totalStudents) * 100) : 100,

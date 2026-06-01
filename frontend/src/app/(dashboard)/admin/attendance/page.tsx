@@ -178,7 +178,7 @@ function MissingClasses({
           onClick={handleNotifyAllTeachers} 
           disabled={notifying || Boolean(disableNotifyReason)}
           size="sm"
-          className="bg-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.85)] text-white"
+          className="bg-gray-900 hover:bg-gray-800 text-white"
           title={disableNotifyReason}
         >
           {notifying ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Bell className="w-4 h-4 mr-1" />}
@@ -191,17 +191,19 @@ function MissingClasses({
         </div>
       ) : null}
       <ScrollArea className="h-[300px] pr-2">
+        <div className="space-y-2">
         {data.map((c) => (
-        <div key={c.id} className="flex items-center justify-between p-3 bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)] rounded-lg">
+        <div key={c.id} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
           <div>
             <p className="font-medium text-gray-900 dark:text-white">
               {formatClassSectionLabel(t, c.name, c.grade, c.section)}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{formatGradeLabel(t, c.grade, c.name)}</p>
           </div>
-          <Badge variant="outline" className="text-[var(--brand-color,#e35336)] border-[rgba(var(--brand-color-rgb),0.3)]">{t.missing}</Badge>
+          <Badge variant="outline" className="text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">{t.missing}</Badge>
         </div>
       ))}
+      </div>
       </ScrollArea>
     </div>
   );
@@ -965,7 +967,7 @@ export default function AttendanceManagementPage() {
           </Card>
 
           {/* KPI Row */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {/* Attendance Rate */}
             <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
@@ -975,10 +977,10 @@ export default function AttendanceManagementPage() {
                     <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {attendanceRate}%
                     </p>
-                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{t.today}</p>
+                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{t.today}</p>
                   </div>
-                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
-                    <ClipboardCheck className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                    <ClipboardCheck className="w-4 h-4 text-gray-900 dark:text-gray-100" />
                   </div>
                 </div>
               </CardContent>
@@ -990,13 +992,13 @@ export default function AttendanceManagementPage() {
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">{t.present}</p>
-                    <p className="mt-1 text-lg font-bold text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)] sm:text-xl">
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats.present.toLocaleString()}
                     </p>
-                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{presentPercentage}% {t.ofTotal}</p>
+                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{presentPercentage}% {t.ofTotal}</p>
                   </div>
-                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
-                    <UserCheck className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                    <UserCheck className="w-4 h-4 text-gray-900 dark:text-gray-100" />
                   </div>
                 </div>
               </CardContent>
@@ -1008,13 +1010,13 @@ export default function AttendanceManagementPage() {
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">{t.absent}</p>
-                    <p className="mt-1 text-lg font-bold text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)] sm:text-xl">
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats.absent.toLocaleString()}
                     </p>
-                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{absentPercentage}% {t.ofTotal}</p>
+                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{absentPercentage}% {t.ofTotal}</p>
                   </div>
-                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
-                    <UserX className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                    <UserX className="w-4 h-4 text-gray-900 dark:text-gray-100" />
                   </div>
                 </div>
               </CardContent>
@@ -1026,13 +1028,13 @@ export default function AttendanceManagementPage() {
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">{t.late}</p>
-                    <p className="mt-1 text-lg font-bold text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)] sm:text-xl">
+                    <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats.late.toLocaleString()}
                     </p>
-                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{latePercentage}% {t.ofTotal}</p>
+                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{latePercentage}% {t.ofTotal}</p>
                   </div>
-                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
-                    <Clock className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                    <Clock className="w-4 h-4 text-gray-900 dark:text-gray-100" />
                   </div>
                 </div>
               </CardContent>
@@ -1047,10 +1049,10 @@ export default function AttendanceManagementPage() {
                     <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats.submittedSessions}
                     </p>
-                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">/{stats.submittedSessions + stats.notSubmittedSessions} {t.submittedShort}</p>
+                    <p className="mt-1 text-xs text-gray-900 dark:text-white">/{stats.submittedSessions + stats.notSubmittedSessions} {t.submittedShort}</p>
                   </div>
-                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
-                    <LayoutGrid className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                    <LayoutGrid className="w-4 h-4 text-gray-900 dark:text-gray-100" />
                   </div>
                 </div>
               </CardContent>
@@ -1065,10 +1067,10 @@ export default function AttendanceManagementPage() {
                     <p className="mt-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl">
                       {stats.total.toLocaleString()}
                     </p>
-                    <p className="mt-1 text-xs text-[var(--brand-color,#e35336)]">{t.studentsToday}</p>
+                    <p className="mt-1 text-xs text-gray-900 dark:text-white">{t.studentsToday}</p>
                   </div>
-                  <div className="p-2 bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] rounded-lg shrink-0">
-                    <Users className="w-4 h-4 text-[var(--brand-color,#e35336)] dark:text-[var(--brand-color,#e35336)]" />
+                  <div className="p-2 bg-gray-900/10 dark:bg-gray-100/20 rounded-lg shrink-0">
+                    <Users className="w-4 h-4 text-gray-900 dark:text-gray-100" />
                   </div>
                 </div>
               </CardContent>
@@ -1119,9 +1121,9 @@ export default function AttendanceManagementPage() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
             {/* Missing Attendance */}
             <Card className="min-w-0 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardHeader className="border-b border-gray-200 dark:border-slate-700 pb-3">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-[var(--brand-color,#e35336)]" />
+              <CardHeader className="border-b border-red-200 dark:border-red-800 pb-3">
+                <CardTitle className="text-base font-semibold flex items-center gap-2 text-red-600 dark:text-red-400">
+                  <Activity className="w-4 h-4 text-red-500" />
                   {t.missingAttendance}
                 </CardTitle>
               </CardHeader>

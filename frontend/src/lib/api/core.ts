@@ -18,7 +18,9 @@ api.interceptors.response.use(
       console.warn('API request timed out');
     }
 
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    const skipAuthRedirect = (error.config as any)?.skipAuthErrorRedirect === true;
+
+    if (error.response?.status === 401 && typeof window !== 'undefined' && !skipAuthRedirect) {
       const currentPath = window.location.pathname;
       if (currentPath !== '/sign-in' && !currentPath.startsWith('/sign-in')) {
         window.location.href = '/sign-in';
@@ -36,7 +38,6 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 403 && typeof window !== 'undefined') {
-      const skipAuthRedirect = (error.config as any)?.skipAuthErrorRedirect === true;
       if (!currentPath.includes('/access-denied') && !currentPath.includes('/sign-in') && !skipAuthRedirect) {
         sessionStorage.setItem('accessDeniedUrl', currentPath);
         const requestUrl =

@@ -167,8 +167,13 @@ export const credentialsAPI = {
       phone?: string;
       motherName?: string;
       motherPhone?: string;
+      parentName?: string;
+      parentPhone?: string;
+      relation?: string;
       parentEmail?: string;
+      faydaNumber?: string;
       gender?: string;
+      stream?: string;
       generateCredentials?: boolean;
       username?: string;
       password?: string;
@@ -233,6 +238,7 @@ export const dashboardAPI = {
   getStudentDashboard: () => api.get("/dashboard/student"),
   getParentDashboard: () => api.get("/dashboard/parent"),
   getAdminDashboard: () => api.get("/dashboard/admin"),
+  getTeacherLeaderboard: () => api.get("/dashboard/admin"),
   getItManagerDashboard: () => api.get("/dashboard/it-manager"),
   getRegistrarDashboard: () => api.get("/dashboard/registrar"),
   getSuperadminDashboard: () => api.get("/dashboard/superadmin"),

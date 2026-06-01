@@ -236,25 +236,44 @@ export class AttendanceService {
   private async getSchoolAttendanceCutoff(
     schoolId: string,
   ): Promise<{ hour: number; minute: number; formatted: string }> {
+    const calendarType =
+      (await this.schoolSettings.getSetting(
+        schoolId,
+        SCHOOL_SETTING_KEYS.CALENDAR_TYPE,
+      )) || 'ETHIOPIAN';
+
+    const isEthiopian = calendarType === 'ETHIOPIAN';
+
     const cutoffSetting = await this.schoolSettings.getSetting(
       schoolId,
       'ATTENDANCE_CUTOFF_TIME',
     );
-    let hour = 10;
+    // Defaults: Gregorian 10:00 AM, Ethiopian 4:00 (= 10:00 AM international)
+    let rawHour = isEthiopian ? 4 : 10;
     let minute = 0;
 
     if (typeof cutoffSetting === 'string') {
       const [hourPart, minutePart] = cutoffSetting.split(':').map(Number);
       if (Number.isInteger(hourPart) && Number.isInteger(minutePart)) {
-        hour = hourPart;
+        rawHour = hourPart;
         minute = minutePart;
       }
+    }
+
+    // Convert Ethiopian time to international time for accurate comparison
+    let hour = rawHour;
+    let displayHour = rawHour;
+
+    if (isEthiopian) {
+      // Ethiopian daytime hours: 1=7AM, 2=8AM, 3=9AM, 4=10AM, ..., 12=6PM
+      // Formula: internationalHour = ethiopianHour + 6
+      hour = rawHour + 6;
     }
 
     return {
       hour,
       minute,
-      formatted: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+      formatted: `${displayHour}:${String(minute).padStart(2, '0')}`,
     };
   }
 
@@ -3482,7 +3501,7 @@ export class AttendanceService {
                   typeof existingReminder.metadata === 'string'
                     ? JSON.parse(existingReminder.metadata)
                     : existingReminder.metadata;
-                if (metadata?.classId === cls.id && metadata?.section === sectionName) {
+                if (!metadata || (metadata.classId === cls.id && metadata.section === sectionName)) {
                   continue;
                 }
               }
@@ -3571,7 +3590,7 @@ export class AttendanceService {
         : `${missingClasses.length} classes missed attendance after cutoff (${cutoffTime}): ${classPreview}.`;
 
     for (const admin of admins) {
-      // Check if notification was already sent today for this date
+      // Check if notification was already sent today for this admin
       const existingAdminAlert = await this.prisma.notification.findFirst({
         where: {
           schoolId,
@@ -3585,15 +3604,8 @@ export class AttendanceService {
         },
       });
 
-      // Additional check: if notification exists, verify it's for this specific date
       if (existingAdminAlert) {
-        const metadata =
-          typeof existingAdminAlert.metadata === 'string'
-            ? JSON.parse(existingAdminAlert.metadata)
-            : existingAdminAlert.metadata;
-        if (metadata?.date === date) {
-          continue;
-        }
+        continue;
       }
 
       await this.notificationService.createNotification({

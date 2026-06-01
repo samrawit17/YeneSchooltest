@@ -10,11 +10,17 @@ import {
   HttpStatus,
   UseGuards,
   Req,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SchoolSettingsService } from './school-settings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import {
+  AllowSuperAdminMixedRole,
+  Roles,
+} from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 
 @Controller('schools/:schoolId/settings')
@@ -23,6 +29,7 @@ export class SchoolSettingsController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(
     Role.SUPER_ADMIN,
     Role.ADMIN,
@@ -47,6 +54,7 @@ export class SchoolSettingsController {
 
   @Get(':key')
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @AllowSuperAdminMixedRole()
   @Roles(
     Role.SUPER_ADMIN,
     Role.ADMIN,
@@ -91,6 +99,43 @@ export class SchoolSettingsController {
       throw new HttpException(
         'Failed to update setting: ' + error.message,
         HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post('login-image')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadLoginImage(
+    @Param('schoolId') schoolId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    try {
+      if (!file) {
+        throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
+      }
+
+      if (
+        (req.user.role === Role.ADMIN || req.user.role === Role.IT_MANAGER) &&
+        req.user.schoolId !== schoolId
+      ) {
+        throw new HttpException(
+          'You can only update your own school',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
+      const url = await this.schoolSettingsService.uploadLoginImage(
+        schoolId,
+        file,
+      );
+      return { url };
+    } catch (error) {
+      throw new HttpException(
+        'Failed to upload login image: ' + error.message,
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }

@@ -323,6 +323,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
     'finance:payments:reverse',
     // Reports
     'finance:reports:read',
+    // Payroll
+    'finance:payroll:read',
+    'finance:payroll:manage',
+    'finance:payroll:approve',
+    'finance:payroll:pay',
     // Dashboard
     'dashboard:view',
     // Student (read only)

@@ -167,6 +167,7 @@ export class TimetableSlotController {
     @Request() req: AuthenticatedRequest,
     @Param('classId') classId: string,
     @Param('sectionId') sectionId: string,
+    @Query('academicYearId') academicYearId?: string,
   ) {
     const schoolId = req.user.schoolId;
 
@@ -178,6 +179,7 @@ export class TimetableSlotController {
       schoolId,
       classId,
       sectionId,
+      academicYearId,
     );
   }
 

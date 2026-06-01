@@ -24,6 +24,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
+
+const toLocalDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseLocalDateInputValue = (value: string) => {
+  if (!value) return undefined;
+  const [datePart] = value.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
+};
 
 interface TeacherProfile {
   id: string;
@@ -420,11 +436,10 @@ export default function EditTeacherPage() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                  <Input
-                    id="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                  <CalendarDatePicker
+                    value={parseLocalDateInputValue(formData.dateOfBirth)}
+                    onChange={(date) => handleInputChange("dateOfBirth", date ? toLocalDateInputValue(date) : "")}
+                    placeholder="Select date of birth"
                   />
                 </div>
                 
@@ -503,11 +518,10 @@ export default function EditTeacherPage() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="joiningDate">Joining Date</Label>
-                  <Input
-                    id="joiningDate"
-                    type="date"
-                    value={formData.joiningDate}
-                    onChange={(e) => handleInputChange("joiningDate", e.target.value)}
+                  <CalendarDatePicker
+                    value={parseLocalDateInputValue(formData.joiningDate)}
+                    onChange={(date) => handleInputChange("joiningDate", date ? toLocalDateInputValue(date) : "")}
+                    placeholder="Select joining date"
                   />
                 </div>
               </div>

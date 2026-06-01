@@ -10,7 +10,6 @@ const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
 let compiler = null;
 let runtime = null;
-let runtimeRetry = null;
 let distWatcher = null;
 let restartTimer = null;
 let shuttingDown = false;
@@ -28,10 +27,6 @@ function cleanupAndExit(code = 0) {
 
   if (restartTimer) {
     clearTimeout(restartTimer);
-  }
-
-  if (runtimeRetry) {
-    clearInterval(runtimeRetry);
   }
 
   if (distWatcher) {
@@ -55,20 +50,18 @@ function clearIncrementalState() {
   }
 }
 
-function clearStaleEntryPoint() {
-  if (fs.existsSync(distMain)) {
-    fs.rmSync(distMain, { force: true });
-  }
-}
-
 function runBuild(args, onExit) {
   const build = spawnProcess(npxCmd, args);
   build.on('exit', onExit);
 }
 
 function startRuntimeWhenReady() {
-  if (runtime || !fs.existsSync(distMain)) {
+  if (!fs.existsSync(distMain)) {
     return;
+  }
+
+  if (runtime && !runtime.killed) {
+    runtime.kill('SIGTERM');
   }
 
   runtime = spawnProcess(process.execPath, [distMain]);
@@ -81,55 +74,27 @@ function startRuntimeWhenReady() {
   });
 }
 
-function restartRuntimeWhenReady() {
-  if (!fs.existsSync(distMain)) {
-    return;
-  }
-
+function scheduleRuntimeRestart() {
   if (restartTimer) {
     clearTimeout(restartTimer);
   }
 
   restartTimer = setTimeout(() => {
     restartTimer = null;
-
-    if (shuttingDown || !fs.existsSync(distMain)) {
-      return;
-    }
-
-    if (runtime && !runtime.killed) {
-      runtime.once('exit', () => startRuntimeWhenReady());
-      runtime.kill('SIGTERM');
-      return;
-    }
-
     startRuntimeWhenReady();
   }, 250);
 }
 
-function startRuntimeRecoveryLoop() {
-  if (runtimeRetry) {
-    return;
-  }
-
-  runtimeRetry = setInterval(() => {
-    if (!shuttingDown) {
-      startRuntimeWhenReady();
-    }
-  }, 1000);
-}
-
-function watchDistEntryPoint() {
-  if (distWatcher) {
-    return;
-  }
-
+function watchDistMain() {
   const distDir = path.dirname(distMain);
-  fs.mkdirSync(distDir, { recursive: true });
 
-  distWatcher = fs.watch(distDir, (_eventType, filename) => {
+  if (distWatcher || !fs.existsSync(distDir)) {
+    return;
+  }
+
+  distWatcher = fs.watch(distDir, (eventType, filename) => {
     if (filename === 'main.js') {
-      restartRuntimeWhenReady();
+      scheduleRuntimeRestart();
     }
   });
 }
@@ -158,8 +123,9 @@ prismaGenerate.on('exit', (code) => {
     return;
   }
 
-  clearIncrementalState();
-  clearStaleEntryPoint();
+  if (!fs.existsSync(distMain)) {
+    clearIncrementalState();
+  }
 
   runBuild(['tsc', '-p', 'tsconfig.build.json'], (buildCode) => {
     if (buildCode !== 0) {
@@ -177,18 +143,16 @@ prismaGenerate.on('exit', (code) => {
             return;
           }
 
+          watchDistMain();
           startRuntimeWhenReady();
-          watchDistEntryPoint();
-          startRuntimeRecoveryLoop();
           startCompiler();
         },
       );
       return;
     }
 
+    watchDistMain();
     startRuntimeWhenReady();
-    watchDistEntryPoint();
-    startRuntimeRecoveryLoop();
     startCompiler();
   });
 });

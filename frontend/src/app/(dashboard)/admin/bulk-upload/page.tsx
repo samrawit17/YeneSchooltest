@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { useTranslations } from "@/hooks/useTranslations";
+import { formatUserDisplayCode } from "@/lib/student-code";
 import {
   academicYearsAPI,
   classesAPI,
@@ -74,7 +75,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 function getUploadSummary(result: BulkUploadResult | null) {
   if (!result) {
-    return { totalRecords: 0, successfulCount: 0, failedCount: 0 };
+    return { totalRecords: 0, successfulCount: 0, failedCount: 0, skippedCount: 0 };
   }
 
   if (result.summary) {
@@ -85,7 +86,7 @@ function getUploadSummary(result: BulkUploadResult | null) {
     totalRecords: result.totalRecords || 0,
     successfulCount: result.successfulCount || 0,
     failedCount: result.failedCount || 0,
-    skippedCount: result.skippedCount || 0,
+    skippedCount: result.skippedCount || result.skippedRecords?.length || 0,
   };
 }
 
@@ -103,7 +104,7 @@ function normalizeStudentsResponse(raw: any): StudentOption[] {
 
 function normalizeCreatedCredentials(response: any, type: CreateType): CreatedCredential[] {
   if (type === "student") {
-    return response?.students || response?.credentials || [];
+    return response?.credentials || response?.students || [];
   }
 
   if (type === "staff") {
@@ -193,6 +194,10 @@ export default function BulkUploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isLoadingCreds, setIsLoadingCreds] = useState(false);
+  const selectedYearLabel =
+    academicYears.find((year) => year.id === selectedYear)?.ethiopianYear ||
+    academicYears.find((year) => year.id === selectedYear)?.name ||
+    selectedYear;
   const [isDragging, setIsDragging] = useState(false);
 
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -204,10 +209,21 @@ export default function BulkUploadPage() {
   const [createdMessage, setCreatedMessage] = useState("");
 
   const [studentForm, setStudentForm] = useState({
-    name: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
     email: "",
     phone: "",
+    faydaNumber: "",
+    gender: "",
+    motherName: "",
+    motherPhone: "",
+    parentName: "",
+    parentPhone: "",
+    relation: "Father",
     classId: "",
+    sectionId: "",
+    stream: "",
   });
   const [staffForm, setStaffForm] = useState({
     name: "",
@@ -233,6 +249,7 @@ export default function BulkUploadPage() {
     }
 
     setSections([]);
+    setStudentForm((current) => ({ ...current, sectionId: "" }));
 
   }, [studentForm.classId]);
 
@@ -298,12 +315,16 @@ export default function BulkUploadPage() {
     
     const normalizedHeaders = headers.map(h => h.toLowerCase().replace(/\s+/g, '_'));
     const hasStaffFields = normalizedHeaders.some(h => ['full_name', 'name', 'email', 'phone', 'role'].includes(h));
-    const hasStudentFields = normalizedHeaders.some(h => ['first_name', 'middle_name', 'last_name', 'current_class', 'parent_name', 'parent_phone', 'gender'].includes(h));
+    const hasStudentFields = normalizedHeaders.some(h => ['first_name', 'middle_name', 'last_name', 'current_class', 'parent_name', 'parent_phone', 'gender', 'fan', 'fayda_number', 'fayda', 'national_id'].includes(h));
+    const hasFaydaField = normalizedHeaders.some(h => ['fan', 'fayda_number', 'fayda', 'fayda_id', 'national_id', 'national_id_number'].includes(h));
     
     if (uploadType === 'staff' && hasStudentFields) {
       warnings.push("STUDENT_DATA_DETECTED");
     } else if (uploadType === 'students-auto' && hasStaffFields && !hasStudentFields) {
       warnings.push("STAFF_DATA_DETECTED");
+    }
+    if (uploadType === 'students-auto' && !hasFaydaField) {
+      warnings.push("FAYDA_HEADER_MISSING");
     }
 
     const parsed = rows.slice(1).map((row) => {
@@ -377,6 +398,10 @@ export default function BulkUploadPage() {
         toast.error(t.errors.uploadStudentAsStaff);
         return;
       }
+      if (!isStaffUpload && validationWarnings.includes("FAYDA_HEADER_MISSING")) {
+        toast.error("Student CSV must include a FAN column. Use fan or fayda_number.");
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -413,7 +438,13 @@ export default function BulkUploadPage() {
       let response: any;
 
       if (createType === "student") {
-        if (!studentForm.name.trim()) {
+        const studentName = [
+          studentForm.firstName,
+          studentForm.middleName,
+          studentForm.lastName,
+        ].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+
+        if (!studentName) {
           toast.error(t.errors.studentNameRequired);
           return;
         }
@@ -422,14 +453,32 @@ export default function BulkUploadPage() {
           toast.error(t.errors.studentPhoneRequired);
           return;
         }
+        const faydaNumber = studentForm.faydaNumber.replace(/\D/g, "");
+        if (!faydaNumber) {
+          toast.error("Fayda Number (FAN) is required for every student. FCN is not required.");
+          return;
+        }
+        if (!/^\d{12}$/.test(faydaNumber)) {
+          toast.error("Fayda Number (FAN) must be 12 digits.");
+          return;
+        }
 
         response = await credentialsAPI.createStudent({
           academicYear: selectedYear || undefined,
           students: [{
-            name: studentForm.name.trim(),
+            name: studentName,
             email: studentForm.email.trim() || undefined,
             phone: studentForm.phone.trim() || undefined,
+            faydaNumber,
+            gender: studentForm.gender || undefined,
+            motherName: studentForm.motherName.trim() || undefined,
+            motherPhone: studentForm.motherPhone.trim() || undefined,
+            parentName: studentForm.parentName.trim() || undefined,
+            parentPhone: studentForm.parentPhone.trim() || undefined,
+            relation: studentForm.relation || undefined,
             classId: studentForm.classId || undefined,
+            sectionId: studentForm.sectionId || undefined,
+            stream: studentForm.stream || undefined,
             generateCredentials: true,
           }],
         });
@@ -457,7 +506,23 @@ export default function BulkUploadPage() {
       setUploadResult(null);
 
       if (createType === "student") {
-        setStudentForm({ name: "", email: "", phone: "", classId: "" });
+        setStudentForm({
+          firstName: "",
+          middleName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          faydaNumber: "",
+          gender: "",
+          motherName: "",
+          motherPhone: "",
+          parentName: "",
+          parentPhone: "",
+          relation: "Father",
+          classId: "",
+          sectionId: "",
+          stream: "",
+        });
         const studentsResponse = await studentsAPI.getAll({ status: "APPROVED", limit: "200" });
         setStudents(normalizeStudentsResponse(studentsResponse.data));
       } else if (createType === "staff") {
@@ -666,7 +731,9 @@ export default function BulkUploadPage() {
                     <div className="mx-5 mt-3 flex items-start gap-3 rounded-lg bg-amber-50 px-4 py-3 dark:bg-amber-950/30">
                       <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
                       <p className="text-sm text-amber-800 dark:text-amber-200">
-                        {validationWarnings.includes('STUDENT_DATA_DETECTED')
+                        {validationWarnings.includes('FAYDA_HEADER_MISSING')
+                          ? "Student CSV must include a FAN column. Use fan or fayda_number. FCN is not required."
+                          : validationWarnings.includes('STUDENT_DATA_DETECTED')
                           ? t.warnings.studentDataAsStaff
                           : t.warnings.staffDataAsStudent}
                       </p>
@@ -724,7 +791,7 @@ export default function BulkUploadPage() {
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
                   <p className="text-xs font-medium text-amber-600">Skipped</p>
-                  <p className="mt-1 text-2xl font-bold text-amber-600">{uploadSummary.skippedCount || 0}</p>
+                  <p className="mt-1 text-2xl font-bold text-amber-600">{uploadSummary.skippedCount}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
                   <p className="text-xs font-medium text-slate-500">{t.stats.successRate}</p>
@@ -799,14 +866,16 @@ export default function BulkUploadPage() {
 
               {uploadResult.skippedRecords?.length ? (
                 <div className="rounded-xl border border-amber-200 bg-white p-5 dark:border-amber-800 dark:bg-slate-800">
-                  <p className="mb-3 text-sm font-semibold text-amber-700 dark:text-amber-400">Skipped duplicate rows ({uploadResult.skippedRecords.length})</p>
+                  <p className="mb-3 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                    Skipped duplicate rows ({uploadResult.skippedRecords.length})
+                  </p>
                   <div className="space-y-2">
                     {uploadResult.skippedRecords.map((item: any, index: number) => (
                       <div key={index} className="rounded-lg border border-amber-100 bg-amber-50/50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/20">
                         <p className="text-sm font-medium text-slate-900 dark:text-white">
-                          {item.record?.full_name || item.record?.student_code || `Row ${index + 1}`}
+                          {item.record?.full_name || item.record?.email || `Row ${index + 1}`}
                         </p>
-                        <p className="text-sm text-amber-700 dark:text-amber-400">{item.reason}</p>
+                        <p className="text-sm text-amber-600 dark:text-amber-400">{item.reason}</p>
                       </div>
                     ))}
                   </div>
@@ -864,11 +933,27 @@ export default function BulkUploadPage() {
               {createType === "student" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fullName}</Label>
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">First name</Label>
                     <Input
-                      value={studentForm.name}
-                      onChange={(event) => setStudentForm((current) => ({ ...current, name: event.target.value }))}
-                      placeholder={t.studentNamePlaceholder}
+                      value={studentForm.firstName}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, firstName: event.target.value }))}
+                      placeholder="StudentFirstName"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Middle name</Label>
+                    <Input
+                      value={studentForm.middleName}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, middleName: event.target.value }))}
+                      placeholder="MiddleName"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Last name</Label>
+                    <Input
+                      value={studentForm.lastName}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, lastName: event.target.value }))}
+                      placeholder="LastName"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -880,6 +965,32 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Fayda Number (FAN) *</Label>
+                    <Input
+                      value={studentForm.faydaNumber}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, faydaNumber: event.target.value }))}
+                      placeholder="123456789012"
+                      inputMode="numeric"
+                      maxLength={16}
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">FAN is required. FCN is not required.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Gender</Label>
+                    <Select
+                      value={studentForm.gender}
+                      onValueChange={(value) => setStudentForm((current) => ({ ...current, gender: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t.optional} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MALE">Male</SelectItem>
+                        <SelectItem value="FEMALE">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.email}</Label>
                     <Input
                       value={studentForm.email}
@@ -888,10 +999,68 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Mother name</Label>
+                    <Input
+                      value={studentForm.motherName}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, motherName: event.target.value }))}
+                      placeholder="MotherFullName"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Mother phone</Label>
+                    <Input
+                      value={studentForm.motherPhone}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, motherPhone: event.target.value }))}
+                      placeholder="0933000000"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Parent name</Label>
+                    <Input
+                      value={studentForm.parentName}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, parentName: event.target.value }))}
+                      placeholder="ParentFullName"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Parent phone</Label>
+                    <Input
+                      value={studentForm.parentPhone}
+                      onChange={(event) => setStudentForm((current) => ({ ...current, parentPhone: event.target.value }))}
+                      placeholder="0922000000"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Relation</Label>
+                    <Select
+                      value={studentForm.relation}
+                      onValueChange={(value) => setStudentForm((current) => ({ ...current, relation: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t.optional} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Father">Father</SelectItem>
+                        <SelectItem value="Mother">Mother</SelectItem>
+                        <SelectItem value="Guardian">Guardian</SelectItem>
+                        <SelectItem value="Parent">Parent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.class}</Label>
                     <Select
                       value={studentForm.classId}
-                      onValueChange={(value) => setStudentForm((current) => ({ ...current, classId: value }))}
+                      onValueChange={(value) => {
+                        const selectedClass = classes.find((item: any) => item.id === value);
+                        const grade = Number(selectedClass?.grade);
+                        setStudentForm((current) => ({
+                          ...current,
+                          classId: value,
+                          sectionId: "",
+                          stream: [11, 12].includes(grade) ? current.stream : "",
+                        }));
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={isLoadingSetup ? t.loadingClasses : t.optional} />
@@ -905,6 +1074,42 @@ export default function BulkUploadPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Section</Label>
+                    <Select
+                      value={studentForm.sectionId}
+                      onValueChange={(value) => setStudentForm((current) => ({ ...current, sectionId: value }))}
+                      disabled={!studentForm.classId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={!studentForm.classId ? "Select class first" : t.optional} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sections.map((item: any) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            {item.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {[11, 12].includes(Number(classes.find((item: any) => item.id === studentForm.classId)?.grade)) && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Stream</Label>
+                      <Select
+                        value={studentForm.stream}
+                        onValueChange={(value) => setStudentForm((current) => ({ ...current, stream: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select stream" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SOCIAL">Social</SelectItem>
+                          <SelectItem value="NATURAL">Natural</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -960,7 +1165,7 @@ export default function BulkUploadPage() {
                   {isCreating ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t.creating}</>
                   ) : (
-                    <><UserPlus className="mr-2 h-4 w-4" /> {t.createUser}</>
+                    <><UserPlus className="mr-2 h-4 w-4" /> {createType === "student" ? t.createTitle.student : t.createTitle.staff}</>
                   )}
                 </Button>
               </div>
@@ -993,7 +1198,8 @@ export default function BulkUploadPage() {
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.username}</p>
-                        <p className="font-mono text-sm text-slate-900 dark:text-white">{credential.username}</p>
+                        <p className="font-mono text-sm text-slate-900 dark:text-white">{formatUserDisplayCode(credential.username, selectedYearLabel)}</p>
+                        <p className="text-xs text-slate-500">Login: {credential.username}</p>
                       </div>
                       <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.tempPassword}</p>

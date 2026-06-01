@@ -30,6 +30,11 @@ import {
   ReportQueryDto,
   CalculateInstallmentFeesDto,
   GenerateInstallmentFeesDto,
+  CreatePayrollRunDto,
+  PayrollQueryDto,
+  UpdatePayrollEntryStatusDto,
+  UpdatePayrollRunStatusDto,
+  UpsertPayrollSalaryDto,
 } from './dto/finance.dto';
 
 @Controller('finance')
@@ -300,6 +305,8 @@ export class FinanceController {
     @Query('entityType') entityType?: string,
     @Query('entityId') entityId?: string,
     @Query('limit') limit?: number,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
     @Request() req?: any,
   ) {
     const result = await this.financeService.getAuditLogs(
@@ -307,6 +314,117 @@ export class FinanceController {
       entityType,
       entityId,
       limit ? Number(limit) : undefined,
+      from,
+      to,
+    );
+    return { success: true, data: result };
+  }
+
+  @Get('payroll/staff')
+  @Roles(Role.FINANCE)
+  @Permissions('finance:payroll:read')
+  async payrollStaff(@Query('schoolId') schoolId: string, @Request() req: any) {
+    const result = await this.financeService.listPayrollStaff(
+      this.resolveSchoolId(req.user, schoolId),
+    );
+    return { success: true, data: result };
+  }
+
+  @Get('payroll/salaries')
+  @Roles(Role.FINANCE)
+  @Permissions('finance:payroll:read')
+  async payrollSalaries(@Query('schoolId') schoolId: string, @Request() req: any) {
+    const result = await this.financeService.listPayrollSalaries(
+      this.resolveSchoolId(req.user, schoolId),
+    );
+    return { success: true, data: result };
+  }
+
+  @Post('payroll/salaries')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.FINANCE)
+  @Permissions('finance:payroll:manage')
+  async upsertPayrollSalary(
+    @Body() dto: UpsertPayrollSalaryDto,
+    @Request() req: any,
+  ) {
+    const result = await this.financeService.upsertPayrollSalary(req.user, {
+      ...dto,
+      schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+    });
+    return { success: true, data: result };
+  }
+
+  @Get('payroll/runs')
+  @Roles(Role.FINANCE)
+  @Permissions('finance:payroll:read')
+  async payrollRuns(@Query() query: PayrollQueryDto, @Request() req: any) {
+    const result = await this.financeService.listPayrollRuns({
+      ...query,
+      schoolId: this.resolveSchoolId(req.user, query.schoolId),
+    });
+    return { success: true, ...result };
+  }
+
+  @Post('payroll/runs')
+  @Roles(Role.FINANCE)
+  @Permissions('finance:payroll:manage')
+  async createPayrollRun(
+    @Body() dto: CreatePayrollRunDto,
+    @Request() req: any,
+  ) {
+    const result = await this.financeService.createPayrollRun(req.user, {
+      ...dto,
+      schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+    });
+    return { success: true, data: result };
+  }
+
+  @Get('payroll/runs/:id')
+  @Roles(Role.FINANCE)
+  @Permissions('finance:payroll:read')
+  async payrollRun(
+    @Param('id') id: string,
+    @Query('schoolId') schoolId: string,
+    @Request() req: any,
+  ) {
+    const result = await this.financeService.getPayrollRun(
+      this.resolveSchoolId(req.user, schoolId),
+      id,
+    );
+    return { success: true, data: result };
+  }
+
+  @Patch('payroll/runs/:id/status')
+  @Roles(Role.FINANCE)
+  @Permissions('finance:payroll:approve', 'finance:payroll:pay')
+  async updatePayrollRunStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdatePayrollRunStatusDto,
+    @Request() req: any,
+  ) {
+    const result = await this.financeService.updatePayrollRunStatus(req.user, id, {
+      ...dto,
+      schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+    });
+    return { success: true, data: result };
+  }
+
+  @Patch('payroll/entries/:id/status')
+  @Roles(Role.FINANCE)
+  @Permissions('finance:payroll:pay')
+  async updatePayrollEntryStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdatePayrollEntryStatusDto,
+    @Request() req: any,
+  ) {
+    const result = await this.financeService.updatePayrollEntryStatus(
+      req.user,
+      id,
+      {
+        ...dto,
+        schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+      },
     );
     return { success: true, data: result };
   }

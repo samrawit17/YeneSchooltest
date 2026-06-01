@@ -103,9 +103,7 @@ const ClassForm = ({ type, data, onSuccess, onCancel }: ClassFormProps) => {
       );
       queryClient.invalidateQueries({ queryKey: queryKeys.classes.all });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.classSections.academicClasses(
-          data?.academicYearId || formData.academicYearId,
-        ),
+        queryKey: queryKeys.classSections.academicClasses(data?.academicYearId || formData.academicYearId),
       });
       queryClient.invalidateQueries({ queryKey: queryKeys.classSections.academicSections });
       queryClient.invalidateQueries({ queryKey: ["academic-classes"] });

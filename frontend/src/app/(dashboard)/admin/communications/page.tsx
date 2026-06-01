@@ -17,9 +17,32 @@ import {
 } from "lucide-react";
 import { CommunicationStatus } from "@/lib/api/communications";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
 
 // Types
 type DateRange = "all" | "today" | "week" | "month" | "custom";
+
+const toLocalDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const parseLocalDateInputValue = (value: string) => {
+  if (!value) return undefined;
+  const [datePart] = value.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
+};
+
+const getLocalEndOfDay = (value: string) => {
+  const date = parseLocalDateInputValue(value);
+  if (!date) return undefined;
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
 
 interface CommunicationOverview {
   id: string;
@@ -114,8 +137,10 @@ export default function AdminCommunicationDashboard() {
       if (dateRange === "week" && commDate < new Date(now.getTime() - 7*24*60*60*1000)) return false;
       if (dateRange === "month" && commDate < new Date(now.getTime() - 30*24*60*60*1000)) return false;
       if (dateRange === "custom") {
-        if (startDate && commDate < new Date(startDate)) return false;
-        if (endDate && commDate > new Date(endDate)) return false;
+        const start = parseLocalDateInputValue(startDate);
+        const end = getLocalEndOfDay(endDate);
+        if (start && commDate < start) return false;
+        if (end && commDate > end) return false;
       }
     }
     return true;
@@ -219,9 +244,19 @@ export default function AdminCommunicationDashboard() {
 
             {dateRange === "custom" && (
               <div className="flex items-center gap-2">
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm" />
+                <CalendarDatePicker
+                  value={parseLocalDateInputValue(startDate)}
+                  onChange={(date) => setStartDate(date ? toLocalDateInputValue(date) : "")}
+                  placeholder="Start date"
+                  className="h-10 min-w-[150px] border-[#E2E8F0] text-sm"
+                />
                 <span className="text-gray-500">to</span>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm" />
+                <CalendarDatePicker
+                  value={parseLocalDateInputValue(endDate)}
+                  onChange={(date) => setEndDate(date ? toLocalDateInputValue(date) : "")}
+                  placeholder="End date"
+                  className="h-10 min-w-[150px] border-[#E2E8F0] text-sm"
+                />
               </div>
             )}
 

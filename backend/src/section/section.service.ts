@@ -37,11 +37,7 @@ export class SectionService {
           },
         },
       },
-      orderBy: [
-        { class: { grade: 'asc' } },
-        { class: { name: 'asc' } },
-        { name: 'asc' },
-      ],
+      orderBy: { name: 'asc' },
     });
   }
 
@@ -75,11 +71,7 @@ export class SectionService {
           },
         },
       },
-      orderBy: [
-        { class: { grade: 'asc' } },
-        { class: { name: 'asc' } },
-        { name: 'asc' },
-      ],
+      orderBy: { name: 'asc' },
       take: 50,
     });
   }
@@ -108,6 +100,7 @@ export class SectionService {
     schoolId: string,
     data: {
       name?: string;
+      stream?: string | null;
       capacity?: number;
       roomNumber?: string;
       homeroomTeacherId?: string | null;
@@ -145,6 +138,13 @@ export class SectionService {
 
     // Handle homeroomTeacherId - allow setting to null (remove teacher) or valid ID
     const updateData: any = { ...data };
+    if (data.stream !== undefined) {
+      const normalizedStream = String(data.stream || '').trim().toUpperCase();
+      updateData.stream = normalizedStream || null;
+      if (updateData.stream && !['SOCIAL', 'NATURAL'].includes(updateData.stream)) {
+        throw new BadRequestException('Section stream must be SOCIAL or NATURAL');
+      }
+    }
     if (data.homeroomTeacherId !== undefined) {
       updateData.homeroomTeacherId =
         data.homeroomTeacherId === '' ? null : data.homeroomTeacherId;

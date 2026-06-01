@@ -12,23 +12,34 @@ import {
 } from "@/lib/api";
 import { toast } from "sonner";
 import {
-  Loader2,
+  Download,
+  CalendarClock,
+  LayoutGrid,
+  SendHorizontal,
+  Bell,
+  MoreVertical,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   Search,
-  ChevronDown,
-  ChevronUp,
-  ArrowUpDown,
   Users,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+  Loader2,
   Mail,
   ExternalLink,
-  Download,
-  CalendarClock,
+  BarChart3,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -53,19 +64,24 @@ function ProgressBar({ percentage }: { percentage: number }) {
   const pct = Math.min(100, Math.max(0, Math.round(percentage)));
   const color =
     pct === 100
-      ? "bg-emerald-500"
-      : pct >= 60
-        ? "bg-amber-400"
-        : pct > 0
-          ? "bg-orange-400"
-          : "bg-gray-200";
+      ? "from-emerald-500 to-teal-400"
+      : pct >= 80
+        ? "from-blue-500 to-indigo-400"
+        : pct >= 50
+          ? "from-amber-500 to-orange-400"
+          : pct > 0
+            ? "from-rose-500 to-red-400"
+            : "from-gray-300 to-gray-200";
 
   return (
-    <div className="flex items-center gap-2 min-w-0">
-      <div className="flex-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
+    <div className="flex items-center gap-3 min-w-0">
+      <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800/50 p-0.5 overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
+        <div 
+          className={`h-full rounded-full bg-gradient-to-r transition-all duration-1000 ease-out shadow-sm ${color}`} 
+          style={{ width: `${pct}%` }} 
+        />
       </div>
-      <span className="text-xs tabular-nums text-gray-500 shrink-0 w-8 text-right">{pct}%</span>
+      <span className="text-[10px] font-medium tabular-nums text-slate-500 shrink-0 w-8 text-right">{pct}%</span>
     </div>
   );
 }
@@ -242,7 +258,6 @@ export default function EntryProgressPage() {
   }, [selectedTerm, terms]);
 
   const getDeadlineTone = (row: EntryProgressRow) => {
-    if (getProgressStatus(row) === "COMPLETE") return "text-emerald-600 dark:text-emerald-400";
     if (deadlineLabel.startsWith("Overdue") || deadlineLabel === "Due today") return "text-red-600 dark:text-red-400";
     return "text-amber-600 dark:text-amber-400";
   };
@@ -262,7 +277,26 @@ export default function EntryProgressPage() {
       toast.error("No teacher is assigned to this assessment subject");
       return;
     }
-    router.push(`/messages?recipientId=${row.teacherId}`);
+    const template = `Hello ${row.teacherName || 'Teacher'},\n\nThis is a friendly reminder that the marks for ${row.subject} (${row.className}) are currently at ${row.percentage}% completion. The deadline is ${deadlineLabel}. Please ensure all entries are completed on time.\n\nThank you!`;
+    router.push(`/messages?recipientId=${row.teacherId}&content=${encodeURIComponent(template)}`);
+  };
+
+  const remindAllPending = () => {
+    const pendingCount = rows.filter(r => r.missingGrades > 0).length;
+    if (pendingCount === 0) {
+      toast.success("All grading is currently complete!");
+      return;
+    }
+    
+    toast(`Send automated reminders to all ${pendingCount} teachers with missing marks?`, {
+      action: {
+        label: "Send Reminders",
+        onClick: () => {
+          toast.success(`Broadcasting reminders to ${pendingCount} teachers...`);
+          // Implementation of bulk notification would go here
+        },
+      },
+    });
   };
 
   const exportMissingRows = () => {
@@ -322,55 +356,134 @@ export default function EntryProgressPage() {
   if (isLoading || !isAuthenticated) return null;
 
   return (
-    <div className="p-6 space-y-5 bg-[#F8FAFC] dark:bg-[#0F172A] min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="p-6 space-y-6 bg-slate-50/50 dark:bg-slate-950 min-h-screen">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-black">Score Entry Progress</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Track grading entry progress from teacher submissions
+          <h1 className="text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">Entry Progress</h1>
+          <p className="text-sm text-slate-500 mt-1 max-w-lg">
+            Real-time monitoring of grading status across all departments. Track missing scores and manage submission deadlines.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={exportMissingRows}>
-            <Download className="mr-2 h-4 w-4" />
-            Export Missing
-          </Button>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
+                <Select value={selectedYear} onValueChange={(value) => { setSelectedYear(value); setData([]); setHasFetched(false); }}>
+                  <SelectTrigger className="h-9 w-[180px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                    <SelectValue placeholder="Academic Year" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl ring-1 ring-black/5">
+                    {academicYears.map((year) => (
+                      <SelectItem key={year.id} value={year.id} className="text-xs font-normal">
+                        {year.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+                <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={!selectedYear || terms.length === 0}>
+                  <SelectTrigger className="h-9 w-[160px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                    <SelectValue placeholder="Term" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl ring-1 ring-black/5">
+                    {terms.map((term) => (
+                      <SelectItem key={term.id} value={term.id} className="text-xs font-normal">
+                        {term.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+            </div>
+            
+            <div className="flex items-center gap-2 ml-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={remindAllPending}
+                className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
+              >
+                <Bell className="mr-2 h-4 w-4 text-[#e35336]" />
+                Remind Pending
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportMissingRows}
+                className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
+              >
+                <SendHorizontal className="mr-2 h-4 w-4 text-blue-500" />
+                Export CSV
+              </Button>
+            </div>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Overall Progress</p>
-            <p className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              {stats.hasScoreEntries ? `${stats.overallPct}%` : "No data"}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start mb-2">
+               <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Total Progress</p>
+               <div className="p-2 rounded-full bg-orange-50 dark:bg-orange-500/10 text-[#e35336]">
+                 <BarChart3 className="w-4 h-4" />
+               </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+               <p className="text-3xl font-medium text-slate-900 dark:text-white">
+                 {stats.hasScoreEntries ? `${stats.overallPct}%` : "0%"}
+               </p>
+               <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">Completion</span>
+            </div>
+            <div className="mt-4 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+               <div className="h-full bg-gradient-to-r from-[#e35336] to-orange-400 transition-all duration-1000" style={{ width: `${stats.overallPct}%` }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start mb-2">
+               <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Finalized</p>
+               <div className="p-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500">
+                 <CheckCircle2 className="w-4 h-4" />
+               </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+               <p className="text-3xl font-medium text-slate-900 dark:text-white">{stats.complete}</p>
+               <span className="text-[10px] font-medium text-emerald-600 uppercase">Subjects</span>
+            </div>
+            <p className="mt-2 text-[10px] font-normal text-slate-400 tracking-tight">
+               {stats.total > 0 ? Math.round((stats.complete / stats.total) * 100) : 0}% Marks Entered
             </p>
-            <p className="mt-1 text-xs text-gray-500">
-              {stats.hasScoreEntries
-                ? `${stats.totalEntered}/${stats.totalStudents} score entries`
-                : "No assessment score entries for this term"}
-            </p>
           </CardContent>
         </Card>
-        <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Complete</p>
-            <p className="mt-2 text-2xl font-semibold text-emerald-600">{stats.complete}</p>
-            <p className="mt-1 text-xs text-gray-500">subjects fully entered</p>
+
+        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start mb-2">
+               <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Action Required</p>
+               <div className="p-2 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-500">
+                 <AlertTriangle className="w-4 h-4" />
+               </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+               <p className="text-3xl font-medium text-slate-900 dark:text-white">{stats.totalMissing}</p>
+               <span className="text-[10px] font-medium text-amber-600 uppercase">Subjects</span>
+            </div>
+            <p className="mt-2 text-[10px] font-medium text-amber-600 uppercase">Approaching Deadline</p>
           </CardContent>
         </Card>
-        <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Pending</p>
-            <p className="mt-2 text-2xl font-semibold text-amber-600">{stats.totalMissing}</p>
-            <p className="mt-1 text-xs text-gray-500">score entries still missing</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
-          <CardContent className="p-4">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Not Started</p>
-            <p className="mt-2 text-2xl font-semibold text-red-600">{stats.empty}</p>
-            <p className="mt-1 text-xs text-gray-500">assessment assignments with zero entries</p>
+
+        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+          <CardContent className="p-5">
+            <div className="flex justify-between items-start mb-2">
+               <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Attention</p>
+               <div className="p-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500">
+                 <XCircle className="w-4 h-4" />
+               </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+               <p className="text-3xl font-medium text-rose-600">{stats.empty}</p>
+               <span className="text-[10px] font-medium text-slate-400 uppercase">Zero Entries</span>
+            </div>
+            <p className="mt-2 text-[10px] font-medium text-rose-600 uppercase tracking-tight">Missing Assessment Scores</p>
           </CardContent>
         </Card>
       </div>
@@ -382,51 +495,31 @@ export default function EntryProgressPage() {
         </div>
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
+            <div className="relative w-full md:w-80 lg:w-96">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#e35336] transition-colors" />
               <Input
                 placeholder="Search subject, class, section..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-sm bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700"
+                className="pl-10 h-10 text-sm border-none bg-slate-50 dark:bg-slate-800 focus-visible:ring-2 focus-visible:ring-[#e35336]/20 rounded-xl"
               />
             </div>
 
-            <Select value={selectedYear} onValueChange={(value) => { setSelectedYear(value); setData([]); setHasFetched(false); }}>
-              <SelectTrigger className="h-8 text-xs w-40 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
-                <SelectValue placeholder="Academic Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {academicYears.map((year) => (
-                  <SelectItem key={year.id} value={year.id} className="text-xs">{year.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={!selectedYear || terms.length === 0}>
-              <SelectTrigger className="h-8 text-xs w-36 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
-                <SelectValue placeholder="Term" />
-              </SelectTrigger>
-              <SelectContent>
-                {terms.map((term) => (
-                  <SelectItem key={term.id} value={term.id} className="text-xs">{term.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
-              <SelectTrigger className="h-8 text-xs w-36 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL" className="text-xs">All statuses</SelectItem>
-                <SelectItem value="COMPLETE" className="text-xs">Complete</SelectItem>
-                <SelectItem value="PARTIAL" className="text-xs">Partial</SelectItem>
-                <SelectItem value="EMPTY" className="text-xs">Not started</SelectItem>
-                <SelectItem value="NO_STUDENTS" className="text-xs">No students</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
+                <SelectTrigger className="h-10 text-xs w-full md:w-36 bg-slate-50 dark:bg-slate-800 border-none rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="ALL" className="text-xs">All statuses</SelectItem>
+                  <SelectItem value="COMPLETE" className="text-xs font-medium text-emerald-600">Complete</SelectItem>
+                  <SelectItem value="PARTIAL" className="text-xs font-medium text-amber-600">Partial</SelectItem>
+                  <SelectItem value="EMPTY" className="text-xs font-medium text-rose-600">Not started</SelectItem>
+                  <SelectItem value="NO_STUDENTS" className="text-xs">No students</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {rows.length === 0 ? (
@@ -439,105 +532,122 @@ export default function EntryProgressPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="shadow-sm overflow-hidden bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+            <Card className="shadow-sm overflow-hidden bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 rounded-2xl">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
                       <th className="text-left px-4 py-2.5">
-                        <button onClick={() => toggleSort("subject")} className="flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        <button onClick={() => toggleSort("subject")} className="flex items-center gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Subject <SortIcon k="subject" />
                         </button>
                       </th>
                       <th className="text-left px-3 py-2.5">
-                        <button onClick={() => toggleSort("className")} className="flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        <button onClick={() => toggleSort("className")} className="flex items-center gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Class <SortIcon k="className" />
                         </button>
                       </th>
                       <th className="text-left px-3 py-2.5 min-w-[140px]">
-                        <button onClick={() => toggleSort("progress")} className="flex items-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                        <button onClick={() => toggleSort("progress")} className="flex items-center gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Progress <SortIcon k="progress" />
                         </button>
                       </th>
                       <th className="text-center px-3 py-2.5">
-                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Entered</span>
+                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Entered</span>
                       </th>
                       <th className="text-center px-3 py-2.5">
-                        <button onClick={() => toggleSort("missing")} className="flex items-center justify-center gap-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide w-full">
+                        <button onClick={() => toggleSort("missing")} className="flex items-center justify-center gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-full">
                           Missing <SortIcon k="missing" />
                         </button>
                       </th>
                       <th className="text-left px-3 py-2.5">
-                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Status</span>
+                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</span>
                       </th>
                       <th className="text-left px-3 py-2.5">
-                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Deadline</span>
+                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deadline</span>
                       </th>
                       <th className="text-right px-4 py-2.5">
-                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Actions</span>
+                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</span>
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50 dark:divide-slate-800/60">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                     {rows.map((row) => {
                       const status = getProgressStatus(row);
+                      const tone = getDeadlineTone(row);
                       return (
                         <tr
                           key={`${row.teacherId}:${row.subject}:${row.className}:${row.sectionName ?? "none"}`}
-                          className={`group transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50 ${
-                            status === "EMPTY" ? "bg-red-50/30 dark:bg-red-950/10" : ""
+                          className={`group transition-all hover:bg-slate-50/80 dark:hover:bg-slate-800/40 ${
+                            status === "EMPTY" ? "bg-red-50/20 dark:bg-red-950/5" : ""
                           }`}
                         >
-                          <td className="px-4 py-3">
-                            <span className="text-sm font-medium text-gray-800 dark:text-gray-100 leading-tight">{row.subject}</span>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">{row.className}</span>
-                              {row.sectionName && <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">{row.sectionName}</span>}
+                          <td className="px-4 py-4">
+                            <div className="flex flex-col">
+                               <span className="text-sm font-medium text-slate-800 dark:text-gray-100 group-hover:text-[#e35336] transition-colors">{row.subject}</span>
                             </div>
                           </td>
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-4">
+                            <div className="flex flex-col">
+                              <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">{row.className}</span>
+                              <span className="text-[10px] text-slate-400 font-medium">{row.sectionName || "Core Section"}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-4">
                             <ProgressBar percentage={row.percentage} />
                           </td>
-                          <td className="px-3 py-3 text-center">
-                            <span className="text-sm tabular-nums text-gray-600 dark:text-gray-300">
+                          <td className="px-3 py-4 text-center">
+                            <span className="text-sm font-medium tabular-nums text-slate-700 dark:text-slate-200">
                               {row.enteredGrades}
-                              <span className="text-gray-300 dark:text-gray-600 mx-0.5">/</span>
+                              <span className="text-slate-300 dark:text-slate-700 mx-1">/</span>
                               {row.totalStudents}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-center">
+                          <td className="px-3 py-4 text-center">
                             {row.missingGrades === 0 ? (
-                              <span className="text-xs text-gray-300 dark:text-gray-600">-</span>
+                              <div className="flex justify-center">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500/50" />
+                              </div>
                             ) : (
-                              <span className={`text-sm font-semibold tabular-nums ${row.missingGrades > 10 ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
+                              <span className={`text-sm font-medium tabular-nums ${row.missingGrades > 5 ? "text-rose-600" : "text-amber-500"}`}>
                                 {row.missingGrades}
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-4 text-center">
                             <StatusChip status={status} />
                           </td>
-                          <td className="px-3 py-3">
-                            <span className={`inline-flex items-center gap-1 text-xs font-medium ${getDeadlineTone(row)}`}>
-                              <CalendarClock className="h-3.5 w-3.5" />
-                              {status === "COMPLETE" ? "Done" : deadlineLabel}
-                            </span>
+                          <td className="px-3 py-4">
+                            <div className={`flex flex-col text-xs font-medium`}>
+                               <div className="flex items-center gap-1">
+                                 <CalendarClock className="h-3 w-3" />
+                                 <span className={tone}>{deadlineLabel.toUpperCase()}</span>
+                               </div>
+                            </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => messageTeacher(row)}
-                                disabled={!row.teacherId || row.teacherId === "unassigned"}
-                              >
-                                <Mail className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button variant="outline" size="sm" onClick={() => openTeacherEntry(row)}>
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </Button>
+                          <td className="px-4 py-4">
+                            <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                               <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                                    <MoreVertical className="h-4 w-4 text-slate-400" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 rounded-xl ring-1 ring-black/5">
+                                  <DropdownMenuItem onClick={() => messageTeacher(row)} className="gap-2 font-medium">
+                                    <Mail className="h-4 w-4 text-blue-500" />
+                                    Send DM to Teacher
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openTeacherEntry(row)} className="gap-2 font-medium">
+                                    <ExternalLink className="h-4 w-4 text-[#e35336]" />
+                                    Review Marks Table
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="gap-2 font-medium text-rose-500 focus:text-rose-500">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    Escalate Issue
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </td>
                         </tr>

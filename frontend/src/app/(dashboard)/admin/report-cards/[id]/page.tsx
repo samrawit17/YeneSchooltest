@@ -7,15 +7,20 @@ import {
   Award,
   CalendarDays,
   Download,
+  Edit2,
   FileText,
   GraduationCap,
   Loader2,
   Medal,
   RefreshCw,
+  Save,
+  ShieldAlert,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { reportCardsAPI, type GradeDetail, type ReportCard } from "@/lib/api/reporting";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 function valueOrDash(value: unknown) {
   if (value === null || value === undefined || value === "") return "-";
@@ -49,6 +54,13 @@ export default function ReportCardDetailPage() {
   const [reportCard, setReportCard] = useState<ReportCard | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [isEditingRemarks, setIsEditingRemarks] = useState(false);
+  const [savingRemarks, setSavingRemarks] = useState(false);
+  const [editedRemarks, setEditedRemarks] = useState({
+    teacher: "",
+    principal: "",
+    internal: "",
+  });
 
   const gradeRows = useMemo<GradeDetail[]>(() => reportCard?.gradeDetails || [], [reportCard]);
   const assessmentColumns = useMemo(() => {
@@ -67,7 +79,13 @@ export default function ReportCardDetailPage() {
     setLoading(true);
     try {
       const response = await reportCardsAPI.getById(reportCardId);
-      setReportCard(response.data);
+      const data = response.data;
+      setReportCard(data);
+      setEditedRemarks({
+        teacher: data.teacherRemarks || "",
+        principal: data.principalRemarks || "",
+        internal: data.internalRemarks || ""
+      });
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to load report card");
       setReportCard(null);
@@ -96,6 +114,25 @@ export default function ReportCardDetailPage() {
       toast.error(error?.response?.data?.message || "Failed to download report card PDF");
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const saveRemarks = async () => {
+    if (!reportCardId) return;
+    setSavingRemarks(true);
+    try {
+      await reportCardsAPI.updateRemarks(reportCardId, {
+        teacherRemarks: editedRemarks.teacher,
+        principalRemarks: editedRemarks.principal,
+        internalRemarks: editedRemarks.internal
+      });
+      toast.success("Remarks updated successfully");
+      setIsEditingRemarks(false);
+      void fetchReportCard();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to update remarks");
+    } finally {
+      setSavingRemarks(false);
     }
   };
 
@@ -286,14 +323,80 @@ export default function ReportCardDetailPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-            <p className="text-xs font-medium uppercase text-slate-500">Teacher Remarks</p>
-            <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">{reportCard.teacherRemarks || "No teacher remarks recorded."}</p>
+        <div className="rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+            <h2 className="font-semibold text-slate-900 dark:text-white">Governance & Remarks</h2>
+            <div className="flex items-center gap-2">
+              {isEditingRemarks ? (
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditingRemarks(false)} disabled={savingRemarks}>Cancel</Button>
+                  <Button 
+                    size="sm" 
+                    onClick={saveRemarks} 
+                    disabled={savingRemarks}
+                    className="bg-[var(--brand-color,#e35336)] text-white hover:opacity-90"
+                  >
+                    {savingRemarks ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save Changes
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setIsEditingRemarks(true)}>
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Edit Remarks
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-            <p className="text-xs font-medium uppercase text-slate-500">Principal Remarks</p>
-            <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">{reportCard.principalRemarks || "No principal remarks recorded."}</p>
+          
+          <div className="p-4 space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase text-slate-500">Teacher Remarks (Public)</p>
+                {isEditingRemarks ? (
+                  <Textarea 
+                    value={editedRemarks.teacher} 
+                    onChange={e => setEditedRemarks(prev => ({...prev, teacher: e.target.value}))}
+                    placeholder="Enter public teacher remark..."
+                    className="min-h-[100px]"
+                  />
+                ) : (
+                  <p className="text-sm text-slate-700 dark:text-slate-200 italic">{reportCard.teacherRemarks || "No teacher remarks recorded."}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase text-slate-500">Principal Remarks (Public)</p>
+                {isEditingRemarks ? (
+                  <Textarea 
+                    value={editedRemarks.principal} 
+                    onChange={e => setEditedRemarks(prev => ({...prev, principal: e.target.value}))}
+                    placeholder="Enter public principal remark..."
+                    className="min-h-[100px]"
+                  />
+                ) : (
+                  <p className="text-sm text-slate-700 dark:text-slate-200 italic">{reportCard.principalRemarks || "No principal remarks recorded."}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-dashed border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 mb-3">
+                <ShieldAlert className="h-4 w-4 text-amber-500" />
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Internal Advisory Notes (Private)</p>
+              </div>
+              {isEditingRemarks ? (
+                <Textarea 
+                  value={editedRemarks.internal} 
+                  onChange={e => setEditedRemarks(prev => ({...prev, internal: e.target.value}))}
+                  placeholder="Sensitive notes for internal use only (not shown on PDF)..."
+                  className="min-h-[80px] bg-white"
+                />
+              ) : (
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  {reportCard.internalRemarks || "No internal staff notes recorded."}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

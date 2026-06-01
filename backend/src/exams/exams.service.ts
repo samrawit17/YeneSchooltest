@@ -421,6 +421,11 @@ export class ExamsService {
     // 1. Verify term belongs to school
     const term = await this.prisma.term.findFirst({
       where: { id: body.termId, academicYear: { schoolId } },
+      select: {
+        id: true,
+        startDate: true,
+        endDate: true,
+      },
     });
     if (!term) {
       throw new NotFoundException('Term not found');
@@ -431,6 +436,10 @@ export class ExamsService {
       where: {
         schoolId,
         classId: body.classId,
+        date: {
+          gte: term.startDate,
+          lte: term.endDate,
+        },
       },
     });
 
@@ -443,6 +452,10 @@ export class ExamsService {
       where: {
         schoolId,
         classId: body.classId,
+        date: {
+          gte: term.startDate,
+          lte: term.endDate,
+        },
       },
       data: { published: true },
     });

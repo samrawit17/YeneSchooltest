@@ -5,6 +5,7 @@ import {
   IsDateString,
   IsArray,
   IsEnum,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateAnnouncementDto {
@@ -20,6 +21,10 @@ export class CreateAnnouncementDto {
   @IsArray()
   visibleTo?: string[]; // Array of roles like ['admin', 'teacher', 'student', 'parent']
 
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
   @IsDateString()
   @IsNotEmpty()
   startDate: string;
@@ -31,6 +36,10 @@ export class CreateAnnouncementDto {
   @IsOptional()
   @IsEnum(['HIGH', 'MEDIUM', 'LOW'])
   priority?: 'HIGH' | 'MEDIUM' | 'LOW';
+
+  @IsOptional()
+  @IsString()
+  location?: string;
 }
 
 export class UpdateAnnouncementDto {
@@ -47,6 +56,10 @@ export class UpdateAnnouncementDto {
   visibleTo?: string[];
 
   @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
+
+  @IsOptional()
   @IsDateString()
   startDate?: string;
 
@@ -57,4 +70,8 @@ export class UpdateAnnouncementDto {
   @IsOptional()
   @IsEnum(['HIGH', 'MEDIUM', 'LOW'])
   priority?: 'HIGH' | 'MEDIUM' | 'LOW';
+
+  @IsOptional()
+  @IsString()
+  location?: string;
 }

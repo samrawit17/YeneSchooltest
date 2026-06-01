@@ -124,3 +124,12 @@ export {
   type SirenHardwareConfig,
 } from "./api/siren-hardware";
 export { sirenControlAPI } from "./api/siren-control";
+export {
+  practiceExamsAPI,
+  type PracticeExam,
+  type PracticeExamAttempt,
+  type PracticeExamOption,
+  type PracticeExamQuestion,
+  type PracticeExamSubmission,
+  type PracticeExamStatus,
+} from "./api/practice-exams";

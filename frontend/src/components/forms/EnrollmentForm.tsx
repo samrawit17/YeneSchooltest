@@ -7,8 +7,9 @@ import { z } from "zod";
 import InputField from "../InputField";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { registrarAPI } from "@/lib/api";
+import { registrarAPI, schoolSettingsAPI } from "@/lib/api";
 import { enrollmentAPI } from "@/lib/api/enrollment";
+import { getGradeRangeFromSystem } from "@/lib/grade-system";
 import { toast } from "sonner";
 
 const schema = z.object({
@@ -43,6 +44,7 @@ const EnrollmentForm = ({
   const [isLoading, setIsLoading] = useState(false);
   const [schools, setSchools] = useState<any[]>([]);
   const [schoolsLoading, setSchoolsLoading] = useState(true);
+  const [gradeRange, setGradeRange] = useState(() => getGradeRangeFromSystem("1-12"));
 
   useEffect(() => {
     const fetchSchools = async () => {
@@ -63,12 +65,35 @@ const EnrollmentForm = ({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<Inputs>({
     resolver: zodResolver(schema),
   });
 
+  const selectedSchoolId = watch("schoolId") || data?.schoolId;
+
+  useEffect(() => {
+    const loadGradeRange = async () => {
+      if (!selectedSchoolId) {
+        setGradeRange(getGradeRangeFromSystem("1-12"));
+        return;
+      }
+      try {
+        const response = await schoolSettingsAPI.getAll(selectedSchoolId);
+        setGradeRange(getGradeRangeFromSystem(response.data?.grade_system || "1-12"));
+      } catch (error) {
+        setGradeRange(getGradeRangeFromSystem("1-12"));
+      }
+    };
+    loadGradeRange();
+  }, [selectedSchoolId]);
+
   const onSubmit = async (formData: Inputs) => {
+    if (formData.grade < gradeRange.min || formData.grade > gradeRange.max) {
+      toast.error(`Grade must be between ${gradeRange.min} and ${gradeRange.max}`);
+      return;
+    }
     setIsLoading(true);
     try {
       if (type === "create") {
@@ -172,7 +197,7 @@ const EnrollmentForm = ({
           defaultValue={data?.grade}
           register={register}
           error={errors?.grade}
-          inputProps={{ placeholder: "1-12", min: 1, max: 12 }}
+          inputProps={{ placeholder: `${gradeRange.min}-${gradeRange.max}`, min: gradeRange.min, max: gradeRange.max }}
         />
       </div>
 

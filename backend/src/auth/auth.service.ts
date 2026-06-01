@@ -36,6 +36,14 @@ const AVATAR_EXTENSIONS_BY_MIME: Record<string, string> = {
   'image/webp': '.webp',
 };
 
+const shouldUseSecureCookies = () => {
+  if (process.env.COOKIE_SECURE != null) {
+    return process.env.COOKIE_SECURE === 'true';
+  }
+
+  return process.env.NODE_ENV === 'production';
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -53,14 +61,25 @@ export class AuthService {
    * Validate user by username, email, or phone
    * Supports multiple login identifiers
    */
-  async validateUser(loginIdentifier: string, password: string): Promise<any> {
+  async validateUser(
+    loginIdentifier: string,
+    password: string,
+    schoolId?: string,
+  ): Promise<any> {
+    const rawIdentifier = String(loginIdentifier || '').trim();
+    const shortGeneratedUsername = rawIdentifier.match(/(?:^|[-_\s/])((?:STU|TH|AD|PR|FI|RE)-\d+)$/i)?.[1]?.toUpperCase();
+    const loginIdentifiers = Array.from(
+      new Set([rawIdentifier, shortGeneratedUsername].filter(Boolean) as string[]),
+    );
+
     // Try to find user by username, email, or phone (without isActive filter first)
     const user = await this.prismaService.user.findFirst({
       where: {
+        ...(schoolId ? { schoolId } : {}),
         OR: [
-          { email: loginIdentifier },
-          { username: loginIdentifier },
-          { phone: loginIdentifier },
+          { email: { in: loginIdentifiers } },
+          { username: { in: loginIdentifiers } },
+          { phone: { in: loginIdentifiers } },
         ],
       },
       select: {
@@ -100,9 +119,7 @@ export class AuthService {
 
     // Check if account is active
     if (!user.isActive) {
-      throw new UnauthorizedException(
-        'Your account has been deactivated. Please contact school administration for more information.',
-      );
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     // Verify password
@@ -273,9 +290,9 @@ export class AuthService {
     if (res) {
       res.cookie(JWT_COOKIE_NAME, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        secure: shouldUseSecureCookies(),
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: this.parseJwtCookieMaxAge(),
       });
     }
 
@@ -305,6 +322,12 @@ export class AuthService {
       res.clearCookie(JWT_COOKIE_NAME);
     }
     return { message: 'Logged out successfully' };
+  }
+
+  private parseJwtCookieMaxAge() {
+    const rawHours = Number(process.env.JWT_COOKIE_MAX_AGE_HOURS || 8);
+    const hours = Number.isFinite(rawHours) && rawHours > 0 ? rawHours : 8;
+    return hours * 60 * 60 * 1000;
   }
 
   // SUPER_ADMIN creates ADMIN (requires schoolId)
@@ -984,11 +1007,15 @@ export class AuthService {
     if (!normalizedUsername) {
       return { notified: false };
     }
+    const shortGeneratedUsername = normalizedUsername.match(/(?:^|[-_\s/])((?:STU|TH|AD|PR|FI|RE)-\d+)$/i)?.[1]?.toUpperCase();
+    const usernames = Array.from(
+      new Set([normalizedUsername, shortGeneratedUsername].filter(Boolean) as string[]),
+    );
 
     const user = await this.prismaService.user.findFirst({
       where: {
         username: {
-          equals: normalizedUsername,
+          in: usernames,
           mode: 'insensitive',
         },
       },

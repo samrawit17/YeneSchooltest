@@ -17,6 +17,12 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 
+const parseOptionalNumber = (value?: string) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 @Controller('promotion')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class PromotionController {
@@ -31,17 +37,45 @@ export class PromotionController {
   async getPromotionCandidates(
     @Request() req,
     @Param('classId') classId: string,
-    @Query() query: { academicYear?: string },
+    @Query() query: { academicYear?: string; minAverageGrade?: string; minAttendance?: string },
   ) {
     const academicYear =
       query.academicYear ||
       (await this.getActiveAcademicYear(req.user.schoolId));
+    const criteria: any = { allowFailedSubjects: 2 };
+    if (query.minAverageGrade !== undefined) {
+      criteria.minAverageGrade = parseFloat(query.minAverageGrade);
+    }
+    if (query.minAttendance !== undefined) {
+      criteria.minAttendance = parseFloat(query.minAttendance);
+    }
     return this.reportCardService.getPromotionCandidates(
       classId,
       academicYear,
+      criteria,
+    );
+  }
+
+  @Get('grade-candidates/:grade')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Permissions('promotion:read')
+  async getPromotionCandidatesByGrade(
+    @Request() req,
+    @Param('grade') grade: string,
+    @Query() query: { academicYear?: string; minAverageGrade?: string; minAttendance?: string },
+  ) {
+    const academicYear =
+      query.academicYear ||
+      (await this.getActiveAcademicYear(req.user.schoolId));
+    return this.reportCardService.getPromotionCandidatesByGrade(
+      req.user.schoolId,
+      Number(grade),
+      academicYear,
       {
-        minAverageGrade: 50,
-        minAttendance: 75,
+        minAverageGrade: parseOptionalNumber(query.minAverageGrade) ?? 50,
+        ...(query.minAttendance !== undefined
+          ? { minAttendance: parseOptionalNumber(query.minAttendance) }
+          : {}),
         allowFailedSubjects: 2,
       },
     );
@@ -60,6 +94,21 @@ export class PromotionController {
     );
   }
 
+  @Get('next-grades/:grade')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
+  @Permissions('promotion:read')
+  async getNextGradeOptions(
+    @Request() req,
+    @Param('grade') grade: string,
+    @Query() query: { toAcademicYear?: string },
+  ) {
+    return this.reportCardService.getNextGradeOptions(
+      req.user.schoolId,
+      Number(grade),
+      query.toAcademicYear,
+    );
+  }
+
   @Post('single')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('promotion:create')
@@ -69,7 +118,9 @@ export class PromotionController {
     body: {
       studentId: string;
       fromClassId: string;
+      fromGrade?: number;
       toClassId?: string | null;
+      toGrade?: number | null;
       fromAcademicYear: string;
       toAcademicYear: string;
     },
@@ -92,8 +143,10 @@ export class PromotionController {
     @Request() req,
     @Body()
     body: {
-      fromClassId: string;
+      fromClassId?: string;
+      fromGrade?: number;
       toClassId?: string | null;
+      toGrade?: number | null;
       fromAcademicYear: string;
       toAcademicYear: string;
       studentIds: string[];
@@ -105,13 +158,15 @@ export class PromotionController {
     return this.reportCardService.bulkPromoteStudents({
       schoolId: req.user.schoolId,
       fromClassId: body.fromClassId,
+      fromGrade: body.fromGrade,
       toClassId: body.toClassId,
+      toGrade: body.toGrade,
       fromAcademicYear: body.fromAcademicYear,
       toAcademicYear: body.toAcademicYear,
       studentIds: body.studentIds || [],
       promoteAll: body.promoteAll || false,
-      minAverageGrade: body.minAverageGrade || 50,
-      minAttendance: body.minAttendance || 75,
+      minAverageGrade: body.minAverageGrade,
+      minAttendance: body.minAttendance,
     });
   }
 

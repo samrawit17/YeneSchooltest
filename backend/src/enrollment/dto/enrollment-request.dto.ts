@@ -39,8 +39,13 @@ export class CreateEnrollmentRequestDto {
   dateOfBirth!: string;
 
   @IsString()
-  @IsEnum(['MALE', 'FEMALE', 'OTHER'])
+  @IsEnum(['MALE', 'FEMALE'])
   gender!: string;
+
+  @IsString()
+  @MinLength(12)
+  @MaxLength(20)
+  faydaNumber!: string;
 
   @IsOptional()
   @IsString()
@@ -105,6 +110,11 @@ export class CreateEnrollmentRequestDto {
   @Min(1)
   @Max(12)
   requestedGrade!: number;
+
+  @IsOptional()
+  @IsString()
+  @IsEnum(['SOCIAL', 'NATURAL'])
+  requestedStream?: string;
 
   @IsOptional()
   documents?: Record<string, boolean>;

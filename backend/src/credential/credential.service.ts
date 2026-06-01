@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { randomInt } from 'crypto';
 import { Role } from '../auth/types/role.enum';
 
 export interface StudentIdComponents {
@@ -96,14 +97,14 @@ export class CredentialService {
 
     // Ensure at least one of each type
     let password = '';
-    password += uppercase[Math.floor(Math.random() * uppercase.length)];
-    password += lowercase[Math.floor(Math.random() * lowercase.length)];
-    password += numbers[Math.floor(Math.random() * numbers.length)];
-    password += special[Math.floor(Math.random() * special.length)];
+    password += this.securePick(uppercase);
+    password += this.securePick(lowercase);
+    password += this.securePick(numbers);
+    password += this.securePick(special);
 
     // Fill remaining length
     for (let i = password.length; i < length; i++) {
-      password += allChars[Math.floor(Math.random() * allChars.length)];
+      password += this.securePick(allChars);
     }
 
     // Shuffle the password
@@ -480,10 +481,14 @@ export class CredentialService {
   private shuffleString(str: string): string {
     const arr = str.split('');
     for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = randomInt(i + 1);
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr.join('');
+  }
+
+  private securePick(chars: string): string {
+    return chars[randomInt(chars.length)];
   }
 
   /**

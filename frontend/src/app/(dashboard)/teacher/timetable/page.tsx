@@ -253,12 +253,7 @@ const TeacherTimetablePage = () => {
                 Clean daily teaching view for phone use, with a full weekly grid available on larger screens.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="border-[rgba(var(--brand-color-rgb),0.14)] bg-[rgba(var(--brand-color-rgb),0.08)] text-[10px] text-[var(--brand-color,#e35336)] sm:text-xs">
-                School hours {formatTimeRange(schoolStartTime, schoolEndTime)}
-              </Badge>
 
-            </div>
           </div>
         </div>
       </div>
@@ -269,7 +264,7 @@ const TeacherTimetablePage = () => {
       <Card className="overflow-hidden border-none bg-transparent shadow-none lg:hidden">
         <div className="mb-4">
           <h2 className="flex items-center gap-2 text-lg font-semibold dark:text-white">
-            <Clock className="h-5 w-5 text-[#e35336]" />
+            <Clock className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
             Daily Agenda
           </h2>
         </div>
@@ -284,15 +279,15 @@ const TeacherTimetablePage = () => {
                 onClick={() => setSelectedMobileDay(day.value)}
                 className={`flex min-w-[100px] flex-col rounded-2xl border p-3 text-left transition-all ${
                   isActive
-                    ? "border-[#e35336] bg-[#e35336] text-white shadow-lg shadow-[#e35336]/20"
-                    : "border-gray-200 bg-white text-slate-700 hover:border-[#e35336]/50 dark:border-[#334155] dark:bg-[#1E293B] dark:text-gray-300"
+                    ? "border-[var(--brand-color,#e35336)] bg-[var(--brand-color,#e35336)] text-white shadow-lg shadow-[rgba(var(--brand-color-rgb),0.2)]"
+                    : "border-gray-200 bg-white text-slate-700 hover:border-[rgba(var(--brand-color-rgb),0.5)] dark:border-[#334155] dark:bg-[#1E293B] dark:text-gray-300"
                 }`}
               >
                 <span className={`text-xs font-medium ${isActive ? "text-white/80" : "text-slate-500 dark:text-gray-400"}`}>
                   {day.name.slice(0, 3)}
                 </span>
                 <span className="text-sm font-bold">{day.name}</span>
-                <span className={`mt-1 text-[10px] ${isActive ? "text-white/90" : "text-[#e35336]"}`}>
+                <span className={`mt-1 text-[10px] ${isActive ? "text-white/90" : "text-[var(--brand-color,#e35336)]"}`}>
                   {count} {count === 1 ? 'Class' : 'Classes'}
                 </span>
               </button>
@@ -305,19 +300,19 @@ const TeacherTimetablePage = () => {
             {selectedMobileSlots.map((slot) => (
               <div
                 key={slot.id}
-                className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 transition-all hover:border-[#e35336]/30 hover:shadow-md dark:border-[#334155] dark:bg-[#1E293B]"
+                className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 transition-all hover:border-[rgba(var(--brand-color-rgb),0.3)] hover:shadow-md dark:border-[#334155] dark:bg-[#1E293B]"
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-[#e35336]" />
+                      <span className="h-2 w-2 rounded-full bg-[var(--brand-color,#e35336)]" />
                       <h3 className="font-bold text-slate-900 dark:text-white">{slot.subject?.name}</h3>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-gray-400">
                       Class {slot.class?.name} • Section {slot.section?.name}
                     </p>
                   </div>
-                  <Badge variant="outline" className="border-[#e35336]/20 bg-[#e35336]/5 text-[#e35336]">
+                  <Badge variant="outline" className="border-[rgba(var(--brand-color-rgb),0.2)] bg-[rgba(var(--brand-color-rgb),0.05)] text-[var(--brand-color,#e35336)]">
                     {formatSlotTime(slot.startTime)}
                   </Badge>
                 </div>
@@ -340,7 +335,7 @@ const TeacherTimetablePage = () => {
                 {canTakeAttendance(slot) && (
                   <Button
                     size="sm"
-                    className="mt-4 w-full rounded-xl bg-[#e35336] text-white hover:bg-[#c24128]"
+                    className="mt-4 w-full rounded-xl bg-[var(--brand-color,#e35336)] text-white hover:brightness-75"
                     onClick={() => router.push('/teacher/attendance')}
                   >
                     Take Attendance
@@ -367,17 +362,17 @@ const TeacherTimetablePage = () => {
         <CardHeader className="border-b dark:border-[#334155]">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-xl dark:text-white">
-              <Calendar className="h-5 w-5 text-[#e35336]" />
+              <Calendar className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
               Weekly Schedule
             </CardTitle>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#e35336]/10 hover:text-[#e35336]" onClick={handlePreviousWeek}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[rgba(var(--brand-color-rgb),0.1)] hover:text-[var(--brand-color,#e35336)]" onClick={handlePreviousWeek}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <span className="text-xs font-medium dark:text-white sm:text-sm">
                 {formatDate(currentWeekStart)} - {formatDate(new Date(currentWeekStart.getTime() + 4 * 86400000))}
               </span>
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#e35336]/10 hover:text-[#e35336]" onClick={handleNextWeek}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[rgba(var(--brand-color-rgb),0.1)] hover:text-[var(--brand-color,#e35336)]" onClick={handleNextWeek}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -397,7 +392,7 @@ const TeacherTimetablePage = () => {
                       key={day.value}
                       className={`min-w-[150px] p-4 text-center text-xs font-bold uppercase tracking-wider ${
                         todayIsWeekday && day.value === todayDayOfWeek 
-                          ? 'bg-[#e35336]/5 text-[#e35336]' 
+                          ? 'bg-[rgba(var(--brand-color-rgb),0.05)] text-[var(--brand-color,#e35336)]' 
                           : 'text-slate-500 dark:text-slate-400'
                       }`}
                     >
@@ -421,10 +416,10 @@ const TeacherTimetablePage = () => {
                       return (
                         <td 
                           key={`${day.value}-${slot.start}-${slot.end}`}
-                          className={`p-2 transition-colors ${todayIsWeekday && isToday ? 'bg-[#e35336]/5' : ''}`}
+                          className={`p-2 transition-colors ${todayIsWeekday && isToday ? 'bg-[rgba(var(--brand-color-rgb),0.05)]' : ''}`}
                         >
                           {classForSlot ? (
-                            <div className="h-full rounded-xl border border-[#e35336]/10 bg-white p-3 shadow-sm transition-all hover:border-[#e35336]/30 hover:shadow-md dark:bg-[#0F172A]">
+                            <div className="h-full rounded-xl border border-[rgba(var(--brand-color-rgb),0.1)] bg-white p-3 shadow-sm transition-all hover:border-[rgba(var(--brand-color-rgb),0.3)] hover:shadow-md dark:bg-[#0F172A]">
                               <p className="line-clamp-1 text-sm font-bold text-slate-900 dark:text-white">
                                 {classForSlot.class?.name}
                               </p>
@@ -450,73 +445,7 @@ const TeacherTimetablePage = () => {
         </CardContent>
       </Card>
 
-      {/* Today's Schedule (Desktop/Mobile hybrid) */}
-      <Card className="overflow-hidden border-none bg-white p-4 shadow-sm dark:bg-[#1E293B] sm:p-6">
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-lg font-bold dark:text-white sm:text-xl">
-              <Sparkles className="h-5 w-5 text-[#e35336]" />
-              Today's Classes
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-gray-400">
-              {formatDate(new Date())}
-            </p>
-          </div>
-        </div>
 
-        <div className="space-y-3">
-          {todayIsWeekday && getTimetableForDay(todayDayOfWeek).length > 0 ? (
-            getTimetableForDay(todayDayOfWeek).map((slot) => (
-              <div 
-                key={slot.id}
-                className="group relative flex flex-col gap-4 rounded-2xl border border-gray-100 bg-slate-50/50 p-4 transition-all hover:border-[#e35336]/30 hover:bg-white hover:shadow-md dark:border-[#334155] dark:bg-[#0F172A]/50 dark:hover:bg-[#0F172A] sm:flex-row sm:items-center"
-              >
-                <div className="flex items-center gap-4 sm:w-24 sm:flex-col sm:gap-1">
-                  <Badge variant="outline" className="border-[#e35336]/20 bg-[#e35336]/5 text-[#e35336] sm:w-full sm:justify-center">
-                    {formatSlotTime(slot.startTime)}
-                  </Badge>
-                  <span className="text-[10px] font-medium text-slate-400 sm:text-center">to {formatSlotTime(slot.endTime)}</span>
-                </div>
-
-                <div className="flex-1 space-y-1">
-                  <h4 className="font-bold text-slate-900 dark:text-white">
-                    {slot.subject?.name} • Class {slot.class?.name}
-                  </h4>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-[#e35336]" />
-                      Room {slot.room || 'TBD'}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5 text-[#e35336]" />
-                      Section {slot.section?.name}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end">
-                  {canTakeAttendance(slot) && (
-                    <Button
-                      size="sm"
-                      className="rounded-xl bg-[#e35336] text-white hover:bg-[#c24128]"
-                      onClick={() => router.push('/teacher/attendance')}
-                    >
-                      Attendance
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Calendar className="mb-4 h-12 w-12 text-slate-200 dark:text-slate-700" />
-              <p className="text-sm font-medium text-slate-500">
-                {todayIsWeekday ? "No classes scheduled for today" : "Happy weekend! No classes scheduled."}
-              </p>
-            </div>
-          )}
-        </div>
-      </Card>
     </div>
   );
 };

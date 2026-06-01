@@ -1,38 +1,4 @@
-# ===========================================
-# DEVELOPMENT BUILD
-# ===========================================
-
-FROM node:20-slim AS development
-
-ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
-ENV DATABASE_URL=${DATABASE_URL}
-ENV NPM_CONFIG_FETCH_RETRIES=5
-ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
-ENV NPM_CONFIG_FETCH_TIMEOUT=300000
-
-WORKDIR /app
-
-COPY package*.json ./
-
-RUN npm install --legacy-peer-deps --prefer-offline --no-audit --loglevel=error
-
-COPY . .
-
-RUN npx prisma generate
-
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
-
-EXPOSE 5000 9229
-
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["npm", "run", "start:dev"]
-
-# ===========================================
-# PRODUCTION BUILD
-# ===========================================
-
+# Production build stage
 FROM node:20-slim AS builder
 
 ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
@@ -43,6 +9,8 @@ ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
 ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
+
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
@@ -75,6 +43,8 @@ ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
 
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs nodejs
@@ -91,6 +61,7 @@ RUN npx prisma generate
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
@@ -116,3 +87,36 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "dist/main.js"]
+
+# ===========================================
+# DEVELOPMENT BUILD
+# ===========================================
+
+FROM node:20-slim AS development
+
+ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
+ENV DATABASE_URL=${DATABASE_URL}
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ENV NPM_CONFIG_FETCH_TIMEOUT=300000
+
+WORKDIR /app
+
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+
+RUN npm install --legacy-peer-deps --prefer-offline --no-audit --loglevel=error
+
+COPY . .
+
+RUN npx prisma generate
+
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+EXPOSE 5000 9229
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["npm", "run", "start:dev"]

@@ -153,10 +153,15 @@ export default function SchoolAdminForm({
   };
 
   const form = mode === "create" ? createForm : updateForm;
+  const activeForm = form as any;
+  const handleSubmit =
+    mode === "create"
+      ? createForm.handleSubmit(handleCreate)
+      : updateForm.handleSubmit(handleUpdate);
 
   return (
     <form
-      onSubmit={form.handleSubmit(mode === "create" ? handleCreate : handleUpdate)}
+      onSubmit={handleSubmit}
       className="p-6"
     >
       {/* Header */}
@@ -188,13 +193,13 @@ export default function SchoolAdminForm({
               <User className="h-5 w-5 text-gray-400" />
             </div>
             <Input
-              {...form.register("name")}
+              {...activeForm.register("name")}
               placeholder="Enter full name"
               className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>
-          {form.formState.errors.name && (
-            <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>
+          {activeForm.formState.errors.name && (
+            <p className="text-sm text-red-500">{activeForm.formState.errors.name.message}</p>
           )}
         </div>
 
@@ -208,14 +213,14 @@ export default function SchoolAdminForm({
               <Mail className="h-5 w-5 text-gray-400" />
             </div>
             <Input
-              {...form.register("email")}
+              {...activeForm.register("email")}
               type="email"
               placeholder="Enter email address"
               className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
           </div>
-          {form.formState.errors.email && (
-            <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
+          {activeForm.formState.errors.email && (
+            <p className="text-sm text-red-500">{activeForm.formState.errors.email.message}</p>
           )}
         </div>
 
@@ -227,7 +232,7 @@ export default function SchoolAdminForm({
               <Phone className="h-5 w-5 text-gray-400" />
             </div>
             <Input
-              {...form.register("phone")}
+              {...activeForm.register("phone")}
               type="tel"
               placeholder="Enter phone number"
               className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"

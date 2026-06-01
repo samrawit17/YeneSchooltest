@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
@@ -45,26 +45,26 @@ function getStatusMeta(status: ReportPublishSummaryRow["status"]) {
     case "published":
       return {
         label: "Published",
-        icon: <Lock className="h-4 w-4 text-blue-500" />,
-        badge: <Badge className="bg-blue-100 text-blue-700">Published</Badge>,
+        icon: <Lock className="h-4 w-4 text-sky-500" />,
+        badge: <Badge className="bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-800 font-medium tracking-tight">Released</Badge>,
       };
     case "ready":
       return {
         label: "Ready",
         icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-        badge: <Badge className="bg-emerald-100 text-emerald-700">Ready to Publish</Badge>,
+        badge: <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-800 font-medium tracking-tight">Ready to Publish</Badge>,
       };
     case "no_students":
       return {
         label: "No students",
-        icon: <Users className="h-4 w-4 text-slate-500" />,
-        badge: <Badge variant="outline">No students</Badge>,
+        icon: <Users className="h-4 w-4 text-slate-400" />,
+        badge: <Badge variant="outline" className="text-slate-400 border-slate-200 dark:border-slate-800 font-medium tracking-tight">Empty Class</Badge>,
       };
     default:
       return {
-        label: "Has issues",
+        label: "Pending",
         icon: <AlertTriangle className="h-4 w-4 text-amber-500" />,
-        badge: <Badge className="bg-amber-100 text-amber-700">Has Issues</Badge>,
+        badge: <Badge className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-800 font-medium tracking-tight">Blockers Found</Badge>,
       };
   }
 }
@@ -100,7 +100,7 @@ export default function PublishResultsPage() {
         if (active) setSelectedYear(active.id);
       }
     }).catch(() => {});
-  }, []);
+  }, [selectedYear]);
 
   useEffect(() => {
     if (currentAcademicYear?.id && !selectedYear) {
@@ -290,58 +290,68 @@ export default function PublishResultsPage() {
   if (authLoading || !isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="bg-transparent">
-        <div className="w-full px-6 py-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-black dark:text-white">Publish Results</h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Release completed report cards to students and parents, and notify them immediately.
-              </p>
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
+      <div className="w-full px-6 pt-8 pb-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+               <div className="p-1.5 rounded-lg bg-[#e35336]/10 text-[#e35336]">
+                 <Send className="w-5 h-5" />
+               </div>
+               <span className="text-xs font-medium text-[#e35336] uppercase tracking-wider">Academic Governance</span>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="h-9 w-[180px]">
-                  <SelectValue placeholder="Academic Year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYears.map((year) => (
-                    <SelectItem key={year.id} value={year.id}>
-                      {year.name} {year.isActive ? "(Active)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger className="h-9 w-[160px]">
-                  <SelectValue placeholder="Term" />
-                </SelectTrigger>
-                <SelectContent>
-                  {terms.map((term) => (
-                    <SelectItem key={term.id} value={term.id}>
-                      {term.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <h1 className="text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">Publish Results</h1>
+            <p className="text-sm text-slate-500 mt-1 max-w-xl font-normal">
+              Validate assessment completion, finalize rankings, and release end-of-term reports to parents and students in a single click.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="h-9 w-[180px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                    <SelectValue placeholder="Academic Year" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl ring-1 ring-black/5">
+                    {academicYears.map((year) => (
+                      <SelectItem key={year.id} value={year.id} className="text-xs font-normal">
+                        {year.name} {year.isActive ? "(Active)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+                <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                  <SelectTrigger className="h-9 w-[160px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                    <SelectValue placeholder="Term" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl ring-1 ring-black/5">
+                    {terms.map((term) => (
+                      <SelectItem key={term.id} value={term.id} className="text-xs font-normal">
+                        {term.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+            </div>
+            
+            <div className="flex items-center gap-2 ml-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/admin/exams/entry-progress")}
-                className="dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
               >
-                <ClipboardCheck className="mr-2 h-4 w-4" />
+                <ClipboardCheck className="mr-2 h-4 w-4 text-[#e35336]" />
                 Entry Progress
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/admin/report-cards")}
-                className="dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
               >
-                <FileText className="mr-2 h-4 w-4" />
-                Open Report Cards
+                <FileText className="mr-2 h-4 w-4 text-blue-500" />
+                Report Cards
               </Button>
             </div>
           </div>
@@ -369,41 +379,68 @@ export default function PublishResultsPage() {
           </>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              <Card className="dark:border-slate-800 dark:bg-slate-900">
-                <CardContent className="flex items-center gap-3 pt-6">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-                  <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Ready Classes</p>
-                    <p className="text-2xl font-semibold text-slate-900 dark:text-white">{readyRows.length}</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-start mb-2">
+                     <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Ready</p>
+                     <div className="p-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500">
+                       <CheckCircle2 className="w-4 h-4" />
+                     </div>
                   </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-3xl font-medium text-slate-900 dark:text-white">{readyRows.length}</p>
+                    <span className="text-[10px] font-medium text-emerald-600 uppercase">Classes</span>
+                  </div>
+                  <p className="mt-2 text-[10px] font-normal text-slate-400">Validated and ready for release</p>
                 </CardContent>
               </Card>
-              <Card className="dark:border-slate-800 dark:bg-slate-900">
-                <CardContent className="flex items-center gap-3 pt-6">
-                  <Lock className="h-8 w-8 text-blue-500" />
-                  <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Published Classes</p>
-                    <p className="text-2xl font-semibold text-slate-900 dark:text-white">{publishedRows.length}</p>
+
+              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+                <CardContent className="p-5">
+                   <div className="flex justify-between items-start mb-2">
+                     <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Released</p>
+                     <div className="p-2 rounded-full bg-sky-50 dark:bg-sky-500/10 text-sky-500">
+                       <Lock className="h-4 w-4" />
+                     </div>
                   </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-3xl font-medium text-slate-900 dark:text-white">{publishedRows.length}</p>
+                    <span className="text-[10px] font-medium text-sky-600 uppercase">Classes</span>
+                  </div>
+                  <p className="mt-2 text-[10px] font-normal text-slate-400">Viewable by parents and students</p>
                 </CardContent>
               </Card>
-              <Card className="dark:border-slate-800 dark:bg-slate-900">
-                <CardContent className="flex items-center gap-3 pt-6">
-                  <AlertTriangle className="h-8 w-8 text-amber-500" />
-                  <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Classes With Issues</p>
-                    <p className="text-2xl font-semibold text-slate-900 dark:text-white">{issueRows.length}</p>
+
+              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+                <CardContent className="p-5">
+                   <div className="flex justify-between items-start mb-2">
+                     <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Incomplete</p>
+                     <div className="p-2 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-500">
+                       <AlertTriangle className="h-4 w-4" />
+                     </div>
                   </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-3xl font-medium text-amber-600">{issueRows.length}</p>
+                    <span className="text-[10px] font-medium text-slate-400 uppercase">Classes</span>
+                  </div>
+                  <p className="mt-2 text-[10px] font-medium text-amber-600 uppercase">Follow-up Required</p>
                 </CardContent>
               </Card>
-              <Card className="dark:border-slate-800 dark:bg-slate-900">
-                <CardContent className="flex items-center gap-3 pt-6">
-                  <ClipboardCheck className="h-8 w-8 text-violet-500" />
-                  <div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Missing Marks</p>
-                    <p className="text-2xl font-semibold text-slate-900 dark:text-white">{totalMissingMarks}</p>
+
+              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+                <CardContent className="p-5">
+                   <div className="flex justify-between items-start mb-2">
+                     <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Missing</p>
+                     <div className="p-2 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500">
+                       <ClipboardCheck className="h-4 w-4" />
+                     </div>
                   </div>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-3xl font-medium text-indigo-600">{totalMissingMarks}</p>
+                    <span className="text-[10px] font-medium text-slate-400 uppercase">Scores</span>
+                  </div>
+                  <p className="mt-2 text-[10px] font-medium text-indigo-600 uppercase tracking-tight">Across All Subjects</p>
                 </CardContent>
               </Card>
             </div>
@@ -432,24 +469,27 @@ export default function PublishResultsPage() {
               </Card>
             ) : null}
 
-            <Card className="dark:border-slate-800 dark:bg-slate-900">
-              <CardHeader>
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <Card className="bg-white dark:bg-slate-900 border-none shadow-sm rounded-2xl overflow-hidden">
+              <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800/50">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <CardTitle className="dark:text-white">Assessment to Publish Status</CardTitle>
-                    <CardDescription className="dark:text-slate-400">
-                      Publish is available when assessment marks are complete and every enrolled student has a complete report card. Ranking is calculated automatically during publish.
+                    <CardTitle className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                       <BarChart3 className="w-5 h-5 text-[#e35336]" />
+                       Publication Tracker
+                    </CardTitle>
+                    <CardDescription className="dark:text-slate-400 font-normal">
+                      Publishing triggers automatic ranking calculation and instant parent notification via SMS/Portal.
                     </CardDescription>
                   </div>
                   <Button
                     onClick={() => setPublishTarget({ mode: "selected" })}
                     disabled={publishing || selectedClasses.length === 0}
-                    className="bg-[var(--brand-color)] text-white hover:opacity-90"
+                    className="rounded-xl bg-[#e35336] hover:bg-[#c4442b] text-white shadow-lg shadow-[#e35336]/20 transition-all font-medium px-6 h-11"
                   >
                     {publishing ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     ) : (
-                      <Send className="mr-2 h-4 w-4" />
+                      <Send className="mr-2 h-5 w-5" />
                     )}
                     Publish Selected ({selectedClasses.length})
                   </Button>
@@ -466,177 +506,195 @@ export default function PublishResultsPage() {
                 ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">
+                      <TableRow className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <TableHead className="w-12 py-4">
                           <Checkbox
                             checked={readyRows.length > 0 && selectedClasses.length === readyRows.length}
                             onCheckedChange={toggleAll}
+                            className="rounded-md border-slate-300"
                           />
                         </TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Students</TableHead>
-                        <TableHead>Assessment Marks</TableHead>
-                        <TableHead>Report Cards</TableHead>
-                        <TableHead>Ranking</TableHead>
-                        <TableHead>Certificate</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Class & Section</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Students</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-center">Marks Entry</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-center">Generation</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Ranking Status</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Certificate</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Approval Status</TableHead>
+                        <TableHead className="text-right font-medium text-[10px] uppercase tracking-wider text-slate-400">Action</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
+<TableBody>
                       {rows.map((row) => {
                         const status = getStatusMeta(row.status);
+                        const rowKey = `${row.classId}-${row.sectionName || "all"}`;
                         return (
-                          <>
-                          <TableRow key={row.classId}>
-                            <TableCell>
+                          <Fragment key={rowKey}>
+                          <TableRow className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                            <TableCell className="py-4">
                               <Checkbox
                                 checked={selectedClasses.includes(row.classId)}
                                 onCheckedChange={() => toggleClass(row.classId)}
                                 disabled={row.status !== "ready" || publishing}
+                                className="rounded-md border-slate-300 data-[state=checked]:bg-[#e35336] data-[state=checked]:border-[#e35336]"
                               />
                             </TableCell>
-                            <TableCell>
-                              <div className="font-medium text-slate-900 dark:text-white">
-                                {row.className}
-                                {row.sectionName ? ` - ${row.sectionName}` : ""}
-                              </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400">
-                                Grade {row.grade ?? "—"}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium text-slate-900 dark:text-white">{row.expectedEntries}</div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400">
-                                enrolled
+                            <TableCell className="py-4">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-[#e35336] transition-colors">
+                                  {row.className}
+                                  {row.sectionName ? ` - ${row.sectionName}` : ""}
+                                </span>
+                                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+                                  Level Grade {row.grade ?? "—"}
+                                </span>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              <div className="font-medium text-slate-900 dark:text-white">
-                                {row.assessmentEnteredScores}/{row.assessmentExpectedScores}
-                              </div>
-                              <div className={row.assessmentMissingScores > 0 ? "text-xs text-amber-600 dark:text-amber-400" : "text-xs text-slate-500 dark:text-slate-400"}>
-                                {row.assessmentSubjects} subjects, {row.assessmentMissingScores} missing
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium text-slate-900 dark:text-white">
-                                {row.generatedEntries}/{row.expectedEntries}
-                              </div>
-                              <div className={row.missingEntries + row.incompleteEntries > 0 ? "text-xs text-amber-600 dark:text-amber-400" : "text-xs text-slate-500 dark:text-slate-400"}>
-                                {row.publishedEntries} published, {row.incompleteEntries} incomplete
+                            <TableCell className="py-4">
+                              <div className="flex items-center gap-2">
+                                 <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800">
+                                   <Users className="w-3.5 h-3.5 text-slate-500" />
+                                 </div>
+                                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200 tabular-nums">{row.expectedEntries}</span>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-200">
-                                <BarChart3 className="h-3.5 w-3.5 text-slate-400" />
-                                Auto on publish
-                              </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400">
-                                {row.rankingEntries}/{row.expectedEntries} already ranked
+                            <TableCell className="py-4 text-center">
+                              <div className="inline-flex flex-col items-center">
+                                <span className={`text-sm font-medium tabular-nums ${row.assessmentMissingScores > 0 ? "text-amber-500" : "text-emerald-600"}`}>
+                                  {row.assessmentEnteredScores}
+                                  <span className="text-slate-300 dark:text-slate-700 mx-1">/</span>
+                                  {row.assessmentExpectedScores}
+                                </span>
+                                <span className="text-[9px] font-normal text-slate-400 uppercase tracking-tighter">
+                                  {row.assessmentMissingScores} Missing
+                                </span>
                               </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-4 text-center">
+                              <div className="inline-flex flex-col items-center">
+                                <span className={`text-sm font-medium tabular-nums ${row.missingEntries + row.incompleteEntries > 0 ? "text-amber-500" : "text-emerald-600"}`}>
+                                  {row.generatedEntries}
+                                  <span className="text-slate-300 dark:text-slate-700 mx-1">/</span>
+                                  {row.expectedEntries}
+                                </span>
+                                <span className="text-[9px] font-normal text-slate-400 uppercase tracking-tighter">
+                                  {row.incompleteEntries} Pending
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-4">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                                  <BarChart3 className="h-3.5 w-3.5 text-slate-400" />
+                                  AUTO-RANK
+                                </div>
+                                <span className="text-[9px] font-normal text-slate-400 tabular-nums">
+                                  {row.rankingEntries}/{row.expectedEntries} Cached
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-4">
                               {row.certificateReady ? (
-                                <Badge className="bg-emerald-100 text-emerald-700">Ready</Badge>
+                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-950 font-medium text-[9px] uppercase tracking-widest">Cert-Ready</Badge>
                               ) : (
-                                <Badge className="bg-amber-100 text-amber-700">Needs setup</Badge>
+                                <Badge className="bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-950 font-medium text-[9px] uppercase tracking-widest">Setup-Reqd</Badge>
                               )}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-4">
                               <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  {status.icon}
-                                  {status.badge}
-                                </div>
-                                {row.issueReasons.length > 0 ? (
-                                  <div className="max-w-[220px] text-xs text-amber-600 dark:text-amber-400">
-                                    {row.issueReasons.slice(0, 2).join(", ")}
-                                    {row.issueReasons.length > 2 ? ` +${row.issueReasons.length - 2} more` : ""}
-                                  </div>
-                                ) : null}
+                                {status.badge}
                               </div>
                             </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
+                            <TableCell className="py-4 text-right">
+                              <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => openPreview(row)}
-                                className="dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                                className="h-8 w-8 p-0 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-[#e35336]/10 hover:text-[#e35336]"
                               >
-                                <Eye className="mr-1.5 h-3.5 w-3.5" />
-                                Preview
+                                <Eye className="h-4 w-4" />
                               </Button>
                               {row.status === "ready" ? (
                                 <Button
                                   size="sm"
                                   onClick={() => setPublishTarget({ mode: "single", classId: row.classId })}
                                   disabled={publishing}
-                                  className="bg-[var(--brand-color)] text-white hover:opacity-90"
+                                  className="h-8 rounded-lg bg-[#e35336] text-white hover:opacity-90 font-bold text-xs"
                                 >
                                   {publishing ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
-                                    <>
-                                      <Send className="mr-1.5 h-3.5 w-3.5" />
-                                      Publish
-                                    </>
+                                    <Send className="h-3.5 w-3.5" />
                                   )}
                                 </Button>
                               ) : row.status === "published" ? (
-                                <span className="text-sm text-slate-500 dark:text-slate-400">Released</span>
+                                <div className="p-2 rounded-lg bg-sky-50 dark:bg-sky-500/10">
+                                   <Lock className="h-4 w-4 text-sky-500" />
+                                </div>
                               ) : (
                                 <Button
-                                  variant="outline"
+                                  variant="ghost"
                                   size="sm"
                                   onClick={() => setExpandedClassId((prev) => prev === row.classId ? null : row.classId)}
-                                  className="dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                                  className="h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-500 hover:text-white"
                                 >
-                                  {expandedClassId === row.classId ? <ChevronUp className="mr-1.5 h-3.5 w-3.5" /> : <ChevronDown className="mr-1.5 h-3.5 w-3.5" />}
-                                  View Blockers
+                                  {expandedClassId === row.classId ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                 </Button>
                               )}
                               </div>
                             </TableCell>
                           </TableRow>
                           {expandedClassId === row.classId && row.status !== "ready" && row.status !== "published" ? (
-                            <TableRow>
-                              <TableCell colSpan={9} className="bg-amber-50/60 p-4 dark:bg-amber-950/10">
-                                <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
-                                  <div>
-                                    <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Blockers to fix before publishing</p>
-                                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800 dark:text-amber-200">
+                            <TableRow className="bg-amber-50/10 dark:bg-amber-950/5">
+                              <TableCell colSpan={9} className="p-6 border-b border-amber-100 dark:border-amber-900/40">
+                                <div className="flex flex-col lg:flex-row gap-6">
+                                  <div className="flex-1 space-y-4">
+                                    <div className="flex items-center gap-2">
+                                       <div className="p-1.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600">
+                                          <AlertTriangle className="w-5 h-5" />
+                                       </div>
+                                       <p className="text-lg font-semibold text-amber-900 dark:text-amber-100 uppercase tracking-tight">Publication Blockers</p>
+                                    </div>
+                                    <div className="grid gap-2 pl-1.5 border-l-2 border-amber-200 dark:border-amber-800 ml-4">
                                       {describeBlockers(row).map((reason, index) => (
-                                        <li key={`${row.classId}-blocker-${index}`}>{reason}</li>
+                                        <p key={`${row.classId}-blocker-${index}`} className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80 flex items-center gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                          {reason}
+                                        </p>
                                       ))}
-                                    </ul>
-                                    <div className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-3">
-                                      <span>Subjects: {row.assessmentSubjects}</span>
-                                      <span>Scores: {row.assessmentEnteredScores}/{row.assessmentExpectedScores}</span>
-                                      <span>Report cards: {row.generatedEntries}/{row.expectedEntries}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-4 pt-2 ml-4">
+                                      <div className="flex flex-col">
+                                         <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Marks Progress</span>
+                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-200 tabular-nums">{row.assessmentEnteredScores} / {row.assessmentExpectedScores}</span>
+                                      </div>
+                                      <div className="flex flex-col">
+                                         <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Report Generation</span>
+                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-200 tabular-nums">{row.generatedEntries} / {row.expectedEntries}</span>
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => router.push("/admin/exams/entry-progress")}>
-                                      Missing Scores
+                                  <div className="flex flex-row lg:flex-col gap-2 justify-end">
+                                    <Button size="sm" variant="outline" onClick={() => router.push("/admin/exams/entry-progress")} className="rounded-xl border-amber-200 dark:border-amber-800 font-medium text-xs bg-white dark:bg-slate-900">
+                                      Fix Missing Scores
                                     </Button>
-                                    <Button size="sm" variant="outline" onClick={() => router.push("/admin/assessments")}>
-                                      Subjects/Teachers
+                                    <Button size="sm" variant="outline" onClick={() => router.push("/admin/assessments")} className="rounded-xl border-amber-200 dark:border-amber-800 font-medium text-xs bg-white dark:bg-slate-900">
+                                      Configure Subjects
                                     </Button>
-                                    <Button size="sm" variant="outline" onClick={() => openPreview(row)}>
-                                      Report Cards
+                                    <Button size="sm" variant="outline" onClick={() => openPreview(row)} className="rounded-xl border-amber-200 dark:border-amber-800 font-medium text-xs bg-white dark:bg-slate-900">
+                                       Review Incomplete Cards
                                     </Button>
                                   </div>
                                 </div>
                               </TableCell>
                             </TableRow>
                           ) : null}
-                          </>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                          </Fragment>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
                 )}
               </CardContent>
             </Card>
@@ -653,7 +711,7 @@ export default function PublishResultsPage() {
           </AlertDialogHeader>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-900">
             {publishTargetRows.slice(0, 5).map((row) => (
-              <div key={row.classId} className="flex justify-between gap-3 py-1">
+              <div key={`${row.classId}-${row.sectionName || "all"}`} className="flex justify-between gap-3 py-1">
                 <span>{row.className}{row.sectionName ? ` - ${row.sectionName}` : ""}</span>
                 <span className="text-slate-500">{row.expectedEntries} students</span>
               </div>
@@ -662,7 +720,7 @@ export default function PublishResultsPage() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={publishing}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmPublish} disabled={publishing} className="bg-[var(--brand-color)] text-white hover:opacity-90">
+            <AlertDialogAction onClick={confirmPublish} disabled={publishing} className="bg-[#e35336] text-white hover:opacity-90">
               {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
               Publish and Notify
             </AlertDialogAction>

@@ -5,29 +5,18 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { superadminAPI } from "@/lib/api/superadmin";
 import { toast } from "sonner";
-import { 
-  Building2, 
-  Users, 
-  Shield,
-  TrendingUp,
-  CreditCard,
-  Plus,
-  ArrowRight,
-  Settings,
-  Crown,
-  Globe
-} from "lucide-react";
+import { motion } from "framer-motion";
 
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+import DynamicChart from "@/components/charts/DynamicChart";
 
 interface SuperAdminStats {
   totalSchools: number;
@@ -39,18 +28,66 @@ interface SuperAdminStats {
   monthlyRevenue: number;
 }
 
-const QuickActions = [
-  { label: "Add School", icon: Plus, href: "/list/schools", color: "bg-purple-100 text-purple-600" },
-  { label: "School Admins", icon: Users, href: "/superadmin/admins", color: "bg-blue-100 text-blue-600" },
-  { label: "Subscriptions", icon: Crown, href: "/superadmin/subscription", color: "bg-amber-100 text-amber-600" },
-  { label: "Settings", icon: Settings, href: "/platform-settings", color: "bg-gray-100 text-gray-600" },
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: "easeOut" },
+  },
+};
+
+interface StatCard {
+  label: string;
+  getValue: (s: SuperAdminStats) => string | number;
+  getSecondary: (s: SuperAdminStats) => string;
+  showProgress?: boolean;
+  progress?: (s: SuperAdminStats) => number;
+}
+
+const statCards: StatCard[] = [
+  {
+    label: "Total Schools",
+    getValue: (s) => s.totalSchools,
+    getSecondary: (s) => `${s.activeSchools} Active`,
+    showProgress: true,
+    progress: (s) =>
+      s.totalSchools ? Math.round((s.activeSchools / s.totalSchools) * 100) : 0,
+  },
+  {
+    label: "Total Users",
+    getValue: (s) => s.totalUsers.toLocaleString(),
+    getSecondary: (s) => `+${s.newUsersThisMonth} this month`,
+  },
+  {
+    label: "Monthly Revenue",
+    getValue: (s) =>
+      `Birr ${s.monthlyRevenue.toLocaleString()}`,
+    getSecondary: () => "+12% vs last month",
+  },
+  {
+    label: "Total Revenue",
+    getValue: (s) =>
+      `Birr ${s.totalRevenue.toLocaleString()}`,
+    getSecondary: () => "All time earnings",
+  },
 ];
+
 
 const SuperAdminPage = () => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<SuperAdminStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [backupLoading, setBackupLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -60,9 +97,9 @@ const SuperAdminPage = () => {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      if (user?.role?.toLowerCase() !== 'super_admin') {
-        toast.error('Access denied. Super Admin only.');
-        router.push('/dashboard');
+      if (user?.role?.toLowerCase() !== "super_admin") {
+        toast.error("Access denied. Super Admin only.");
+        router.push("/dashboard");
         return;
       }
       fetchStats();
@@ -74,7 +111,6 @@ const SuperAdminPage = () => {
       setLoading(true);
       const response = await superadminAPI.getDashboard();
       const data = response.data;
-      
       setStats({
         totalSchools: data.stats?.totalSchools || 0,
         activeSchools: data.stats?.activeSchools || 0,
@@ -85,7 +121,7 @@ const SuperAdminPage = () => {
         monthlyRevenue: data.stats?.monthlyRevenue || 0,
       });
     } catch (error: any) {
-      console.error('Failed to fetch stats:', error);
+      console.error("Failed to fetch stats:", error);
       setStats({
         totalSchools: 0,
         activeSchools: 0,
@@ -100,15 +136,54 @@ const SuperAdminPage = () => {
     }
   };
 
+  const openBackupsPage = () => {
+    setBackupLoading(true);
+    router.push("/superadmin/backups");
+  };
+
+  const schoolChartData = stats
+    ? {
+        type: "doughnut" as const,
+        title: "School Distribution",
+        labels: ["Active Schools", "Inactive Schools"],
+        datasets: [
+          {
+            label: "Schools",
+            data: [stats.activeSchools, stats.inactiveSchools],
+            backgroundColor: ["#10b981", "#f59e0b"],
+          },
+        ],
+      }
+    : null;
+
+  const revenueChartData = stats
+    ? {
+        type: "bar" as const,
+        title: "Revenue Overview",
+        labels: ["Monthly Revenue", "Total Revenue"],
+        datasets: [
+          {
+            label: "Revenue (Birr)",
+            data: [stats.monthlyRevenue, stats.totalRevenue],
+            backgroundColor: ["#8b5cf6", "#3b82f6"],
+          },
+        ],
+      }
+    : null;
+
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <Skeleton className="h-32 w-full rounded-xl" />
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="min-h-screen bg-white p-6">
+        <div className="w-full space-y-6">
+          <Skeleton className="h-44 w-full rounded-2xl" />
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-32 rounded-xl" />
+              <Skeleton key={i} className="h-36 rounded-2xl" />
             ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Skeleton className="h-80 rounded-2xl lg:col-span-2" />
+            <Skeleton className="h-80 rounded-2xl" />
           </div>
         </div>
       </div>
@@ -116,155 +191,137 @@ const SuperAdminPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <Card className="border-0 shadow-sm bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-700 dark:to-indigo-700">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Shield className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-white">Super Admin</h1>
-                  <p className="text-purple-100 text-sm">Platform Management Dashboard</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge className="bg-white/20 text-white border-0">
-                  <Globe className="w-3.5 h-3.5 mr-1" />
-                  Platform Admin
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Main Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Total Schools */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Schools</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
-                    {stats?.totalSchools || 0}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
-                      {stats?.activeSchools || 0} Active
-                    </Badge>
-                  </div>
-                </div>
-                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  <span>Active Rate</span>
-                  <span>{stats?.totalSchools ? Math.round((stats.activeSchools / stats.totalSchools) * 100) : 0}%</span>
-                </div>
-                <Progress 
-                  value={stats?.totalSchools ? (stats.activeSchools / stats.totalSchools) * 100 : 0} 
-                  className="h-2 dark:bg-gray-700"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Total Users */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Users</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
-                    {(stats?.totalUsers || 0).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-green-600 dark:text-green-400 mt-1 font-medium">
-                    +{stats?.newUsersThisMonth || 0} this month
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Monthly Revenue */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Monthly Revenue</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
-                    ${(stats?.monthlyRevenue || 0).toLocaleString()}
-                  </p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <TrendingUp className="w-4 h-4 text-green-500" />
-                    <span className="text-sm text-green-600 dark:text-green-400 font-medium">+12%</span>
-                  </div>
-                </div>
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
-                  <CreditCard className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Total Revenue */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Revenue</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
-                    ${(stats?.totalRevenue || 0).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">All time</p>
-                </div>
-                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions & Recent Schools */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Quick Actions */}
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {QuickActions.map((action, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="w-full justify-between h-12 dark:bg-gray-700 dark:border-gray-600 dark:hover:bg-gray-600"
-                  onClick={() => router.push(action.href)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${action.color}`}>
-                      <action.icon className="w-4 h-4" />
+    <div className="min-h-screen bg-white">
+      <div className="w-full">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="space-y-6 p-6"
+        >
+          {/* Header */}
+          <motion.div variants={itemVariants}>
+            <Card className="border-0 overflow-hidden rounded-2xl">
+              <div>
+                <CardContent className="p-6 md:p-8">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-5">
+                      <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                          Super Admin
+                        </h1>
+                        <p className="text-gray-500 text-sm mt-1">
+                          Platform Management Dashboard
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge className="bg-gray-100 text-gray-700 border-0 text-xs">
+                            Full Access
+                          </Badge>
+                          <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">
+                            Live
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-gray-900 dark:text-white font-medium">{action.label}</span>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={openBackupsPage}
+                        disabled={backupLoading}
+                      >
+                        {backupLoading ? "Downloading..." : "Download Backup"}
+                      </Button>
+                    </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </Button>
-              ))}
-            </CardContent>
-          </Card>
 
-        </div>
+                  <Separator className="my-5" />
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: "Platform Schools", value: stats?.totalSchools ?? 0 },
+                      { label: "Total Users", value: stats?.totalUsers ?? 0 },
+                      { label: "Monthly Revenue", value: `Birr ${stats?.monthlyRevenue?.toLocaleString() ?? 0}` },
+                      { label: "Active Rate", value: stats?.totalSchools ? `${Math.round((stats.activeSchools / stats.totalSchools) * 100)}%` : "0%" },
+                    ].map((item, i) => (
+                      <div key={i} className="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-100">
+                        <div className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-2">
+                          {item.label}
+                        </div>
+                        <div className="text-xl md:text-2xl font-bold text-gray-900">
+                          {item.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Stats Cards Grid */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5"
+          >
+            {statCards.map((card, index) => {
+              const s = stats!;
+              return (
+                <motion.div key={index} variants={itemVariants}>
+                  <Card className="group relative overflow-hidden rounded-2xl border-0 bg-white shadow-sm hover:shadow-md transition-all duration-300">
+                    <CardContent className="p-5">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                          {card.label}
+                        </p>
+                        <p className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                          {card.getValue(s)}
+                        </p>
+                        <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                          {card.getSecondary(s)}
+                        </p>
+                      </div>
+                      {card.showProgress && card.progress && (
+                        <div className="mt-4">
+                          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+                            <span>Active Rate</span>
+                            <span>{card.progress(s)}%</span>
+                          </div>
+                          <Progress
+                            value={card.progress(s)}
+                            className="h-2 bg-gray-100"
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+
+          {/* Charts + Quick Actions */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          >
+            {/* Revenue Chart */}
+            <motion.div variants={itemVariants} className="lg:col-span-2">
+              <DynamicChart chartData={revenueChartData} height={280} />
+            </motion.div>
+
+            {/* School Distribution */}
+            <motion.div variants={itemVariants}>
+              <DynamicChart chartData={schoolChartData} height={280} />
+            </motion.div>
+          </motion.div>
+
+
+        </motion.div>
       </div>
     </div>
   );

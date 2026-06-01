@@ -68,6 +68,7 @@ interface StudentGrade {
   totalScore: number | null;
   gradeLetter: string | null;
   remark: string | null;
+  internalNote?: string | null;
   registrarComment?: string | null;
   status: string;
   isLocked?: boolean;
@@ -216,6 +217,11 @@ export default function TeacherGradingPage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [selectedClassSectionId, setSelectedClassSectionId] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const isStaffReadOnly = useMemo(() => {
+    const role = user?.role;
+    return role === "ADMIN" || role === "SUPER_ADMIN" || role === "REGISTRAR" || role === "IT_MANAGER";
+  }, [user]);
   
   // Derived: get unique subjects from assignments (prioritize by grade)
   const subjectOptions = useMemo(() => {
@@ -718,6 +724,15 @@ export default function TeacherGradingPage() {
     }));
     setHasUnsavedChanges(true);
   };
+  
+  const handleInternalNoteChange = (studentId: string, value: string) => {
+    if (isStaffReadOnly) return;
+    setStudents(prev => prev.map(student => {
+      if (student.studentId !== studentId) return student;
+      return { ...student, internalNote: value };
+    }));
+    setHasUnsavedChanges(true);
+  };
 
   const isComponentStarted = (code: string) =>
     componentAvailability[code.toUpperCase()]?.started ?? false;
@@ -726,7 +741,7 @@ export default function TeacherGradingPage() {
     assessmentColumns.find((column) => column.code.toUpperCase() === code.toUpperCase())?.maxScore;
 
   const canEditComponent = (code: string) =>
-    isComponentStarted(code) && getComponentMaxScore(code) !== undefined;
+    !isStaffReadOnly && isComponentStarted(code) && getComponentMaxScore(code) !== undefined;
 
   const clampScoreInput = (rawValue: string, code: string) => {
     if (rawValue === "") return "";
@@ -870,6 +885,7 @@ export default function TeacherGradingPage() {
                 componentAvailability[col.code.toUpperCase()]?.assessmentSubjectId,
             })),
           remark: student.remark,
+          internalNote: student.internalNote,
         }));
 
       if (gradesToSave.length === 0) {
@@ -919,6 +935,11 @@ export default function TeacherGradingPage() {
   };
 
   const handleSubmitToRegistrar = async () => {
+    if (hasUnsavedChanges) {
+      toast.error("Save your draft before submitting to registrar");
+      return;
+    }
+
     setSaving(true);
     try {
       const assignment = assignments.find((a) => a.id === selectedClassSectionId);
@@ -1098,17 +1119,19 @@ export default function TeacherGradingPage() {
                 </Badge>
               )}
               <Button 
+                type="button"
                 variant="outline" 
                 onClick={handleSaveDraft} 
-                disabled={saving || isTermLocked || !hasStartedAssessment} 
+                disabled={saving || isTermLocked || !hasStartedAssessment || isStaffReadOnly} 
                 className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600 sm:w-auto"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                 Save Draft
               </Button>
               <Button 
+                type="button"
                 onClick={handleSubmitToRegistrar} 
-                disabled={saving || isTermLocked || !hasStartedAssessment}
+                disabled={saving || isTermLocked || !hasStartedAssessment || isStaffReadOnly || hasUnsavedChanges}
                 className="w-full sm:w-auto"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
@@ -1138,15 +1161,7 @@ export default function TeacherGradingPage() {
                 </div>
               </div>
             )}
-            {students.length > 0 && (
-              <div className="mx-4 mb-4 flex flex-wrap gap-2 sm:mx-6">
-                {componentCompletion.map((item) => (
-                  <Badge key={item.code} variant="outline" className="bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-300">
-                    {formatAssessmentLabel(item.code)}: {item.entered}/{item.total} entered
-                  </Badge>
-                ))}
-              </div>
-            )}
+
             {loading ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1208,6 +1223,17 @@ export default function TeacherGradingPage() {
                             </label>
                           ))}
                         </div>
+                        
+                        <div className="mt-3">
+                          <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Internal Note (Private)</label>
+                          <Input
+                            className="h-8 w-full text-xs dark:bg-gray-700 dark:text-white"
+                            placeholder="Staff-only notes..."
+                            value={student.internalNote || ""}
+                            onChange={(e) => handleInternalNoteChange(student.studentId, e.target.value)}
+                            disabled={student.isLocked || isTermLocked || isStaffReadOnly}
+                          />
+                        </div>
 
                         <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm dark:border-gray-700">
                           <span className="font-medium text-slate-700 dark:text-gray-300">Total: {student.totalScore ?? "-"}</span>
@@ -1233,7 +1259,8 @@ export default function TeacherGradingPage() {
                     ))}
                     <TableHead className="w-[8%] px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Total</TableHead>
                     <TableHead className="w-[8%] px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400">Grade</TableHead>
-                    <TableHead className="w-[10%] px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Status</TableHead>
+                    <TableHead className="w-[15%] px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Internal Note</TableHead>
+                    <TableHead className="w-[8%] px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1287,6 +1314,15 @@ export default function TeacherGradingPage() {
                           <span className={`inline-flex min-w-[40px] justify-center rounded-full px-2 py-1 text-xs font-semibold ${getGradeColor(student.gradeLetter)}`}>
                             {student.gradeLetter || "-"}
                           </span>
+                        </TableCell>
+                        <TableCell className="px-3 py-3">
+                           <Input
+                              className="h-8 w-full border-gray-200 px-2 text-xs dark:border-slate-600 dark:bg-gray-700 dark:text-white"
+                              placeholder="Private note..."
+                              value={student.internalNote || ""}
+                              onChange={(e) => handleInternalNoteChange(student.studentId, e.target.value)}
+                              disabled={student.isLocked || isTermLocked || isStaffReadOnly}
+                            />
                         </TableCell>
                         <TableCell className="px-3 py-3">
                           {getStatusBadge(student.status)}

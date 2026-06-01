@@ -7,6 +7,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { useTranslations } from "@/hooks/useTranslations";
+import { localizeNotificationText } from "@/lib/notification-display";
 import {
   Bell,
   BellRing,
@@ -36,19 +37,15 @@ interface Notification {
   type?: string;
 }
 
-const formatTimeAgo = (dateString: string, t: any) => {
+const formatTimeAgo = (dateString: string, _t: any) => {
   const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return t.justNow;
-  if (diffMins < 60) return t.minAgo.replace("{count}", diffMins);
-  if (diffHours < 24) return t.hoursAgo.replace("{count}", diffHours).replace("{s}", diffHours > 1 ? "s" : "");
-  if (diffDays < 7) return t.daysAgo.replace("{count}", diffDays).replace("{s}", diffDays > 1 ? "s" : "");
-  return date.toLocaleDateString();
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 interface NotificationsMessages {
@@ -74,7 +71,7 @@ const NotificationsPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { t } = useTranslations<NotificationsMessages>("notifications");
+  const { t, language } = useTranslations<NotificationsMessages>("notifications");
   const [pushPermission, setPushPermission] = useState<
     NotificationPermission | "unsupported"
   >("unsupported");
@@ -286,7 +283,9 @@ const NotificationsPage = () => {
           ) : (
             <ScrollArea className="h-[calc(100vh-200px)] sm:h-[calc(100vh-240px)] md:h-[calc(100vh-280px)]">
               <div className="space-y-2">
-                {notifications.map((notification) => (
+                {notifications.map((notification) => {
+                  const localized = localizeNotificationText(notification, language);
+                  return (
                   <div
                     key={notification.id}
                     role="button"
@@ -308,7 +307,7 @@ const NotificationsPage = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <p className={`text-sm sm:text-base break-words ${!notification.isRead ? "font-semibold" : "font-medium"} text-gray-900 dark:text-gray-100`}>
-                            {notification.title}
+                            {localized.title}
                           </p>
                           <div className="flex items-center gap-2 shrink-0">
                             {!notification.isRead && (
@@ -319,15 +318,16 @@ const NotificationsPage = () => {
                             </span>
                           </div>
                         </div>
-                        {notification.message && (
+                        {localized.message && (
                           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                            {notification.message}
+                            {localized.message}
                           </p>
                         )}
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           )}

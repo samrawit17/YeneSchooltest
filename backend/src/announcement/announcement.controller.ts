@@ -31,11 +31,16 @@ interface AuthenticatedRequest extends Request {
 }
 
 @Controller('announcements')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 export class AnnouncementController {
   constructor(private announcementService: AnnouncementService) {}
 
+  @Get('public')
+  async findPublic(@Query('schoolId') schoolId?: string) {
+    return this.announcementService.findPublic(schoolId);
+  }
+
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('announcement:create')
   async create(
@@ -50,6 +55,7 @@ export class AnnouncementController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Permissions('announcement:read')
   async findAll(
     @Request() req: AuthenticatedRequest,
@@ -64,6 +70,7 @@ export class AnnouncementController {
   }
 
   @Get('active-count')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   async getActiveCount(
     @Request() req: AuthenticatedRequest,
     @Query('role') role?: string,
@@ -81,6 +88,7 @@ export class AnnouncementController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Permissions('announcement:read')
   async findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     const schoolId = req.user.schoolId;
@@ -91,6 +99,7 @@ export class AnnouncementController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('announcement:update')
   async update(
@@ -106,6 +115,7 @@ export class AnnouncementController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('announcement:delete')
   async delete(@Param('id') id: string, @Request() req: AuthenticatedRequest) {

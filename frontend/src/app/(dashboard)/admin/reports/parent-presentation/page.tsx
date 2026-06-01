@@ -29,7 +29,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-type Option = { id: string; name: string; isActive?: boolean; section?: string; grade?: number | null };
+type Option = {
+  id: string;
+  name: string;
+  isActive?: boolean;
+  section?: string;
+  grade?: number | null;
+  order?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+};
 
 const ALL_CLASSES = "__all_classes__";
 
@@ -57,7 +66,7 @@ function downloadBlob(data: BlobPart, filename: string, type: string) {
 export default function ParentPresentationReportPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
-  const { periodLabel, periodLabelPlural } = useAcademicYear();
+  const { currentAcademicYear, currentTerm, periodLabel, periodLabelPlural } = useAcademicYear();
   const [academicYears, setAcademicYears] = useState<Option[]>([]);
   const [terms, setTerms] = useState<Option[]>([]);
   const [classes, setClasses] = useState<Option[]>([]);
@@ -80,11 +89,14 @@ export default function ParentPresentationReportPage() {
       .then((res) => {
         const years = Array.isArray(res.data) ? res.data : res.data?.data || [];
         setAcademicYears(years);
-        const active = years.find((year: Option) => year.isActive) || years[0];
+        const active =
+          (currentAcademicYear?.id && years.find((year: Option) => year.id === currentAcademicYear.id)) ||
+          years.find((year: Option) => year.isActive) ||
+          years[0];
         if (active) setSelectedYear(active.id);
       })
       .catch(() => toast.error("Failed to load academic years"));
-  }, []);
+  }, [currentAcademicYear?.id]);
 
   useEffect(() => {
     if (!selectedYear) return;
@@ -102,18 +114,35 @@ export default function ParentPresentationReportPage() {
       .then(([termRes, classRes]) => {
         const nextTerms = Array.isArray(termRes.data) ? termRes.data : termRes.data?.data || [];
         const nextClasses = Array.isArray(classRes.data) ? classRes.data : classRes.data?.data || [];
-        setTerms(nextTerms);
+        const sortedTerms = [...nextTerms].sort((a: Option, b: Option) => {
+          const orderA = typeof a.order === "number" ? a.order : Number.MAX_SAFE_INTEGER;
+          const orderB = typeof b.order === "number" ? b.order : Number.MAX_SAFE_INTEGER;
+          if (orderA !== orderB) return orderA - orderB;
+          return a.name.localeCompare(b.name);
+        });
+
+        setTerms(sortedTerms);
         setClasses(nextClasses);
-        if (nextTerms.length >= 2) {
-          setFromTermId(nextTerms[0].id);
-          setToTermId(nextTerms[1].id);
-        } else if (nextTerms.length === 1) {
-          setFromTermId(nextTerms[0].id);
-          setToTermId(nextTerms[0].id);
+        if (sortedTerms.length >= 2) {
+          const now = new Date();
+          const activePeriodIndex = sortedTerms.findIndex((term: Option) => term.id === currentTerm?.id);
+          const dateMatchedIndex = sortedTerms.findIndex((term: Option) => {
+            if (!term.startDate || !term.endDate) return false;
+            const startDate = new Date(term.startDate);
+            const endDate = new Date(term.endDate);
+            return !Number.isNaN(startDate.getTime()) && !Number.isNaN(endDate.getTime()) && startDate <= now && endDate >= now;
+          });
+          const toIndex = activePeriodIndex >= 0 ? activePeriodIndex : dateMatchedIndex >= 0 ? dateMatchedIndex : 1;
+          const fromIndex = toIndex > 0 ? toIndex - 1 : 0;
+          setFromTermId(sortedTerms[fromIndex].id);
+          setToTermId(sortedTerms[toIndex].id);
+        } else if (sortedTerms.length === 1) {
+          setFromTermId(sortedTerms[0].id);
+          setToTermId(sortedTerms[0].id);
         }
       })
       .catch(() => toast.error("Failed to load report filters"));
-  }, [selectedYear]);
+  }, [currentTerm?.id, selectedYear]);
 
   const query = useMemo(
     () => ({
@@ -213,7 +242,9 @@ export default function ParentPresentationReportPage() {
             <SelectTrigger><SelectValue placeholder="New term" /></SelectTrigger>
             <SelectContent>
               {terms.map((term) => (
-                <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
+                <SelectItem key={term.id} value={term.id}>
+                  {term.name}{term.id === currentTerm?.id ? ` (Current ${periodLabel})` : ""}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -248,17 +279,10 @@ export default function ParentPresentationReportPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <Metric title="Average Result" from={report.summary.from.average} to={report.summary.to.average} change={report.summary.averageChange} />
             <Metric title="Attendance" from={report.summary.from.attendance} to={report.summary.to.attendance} change={report.summary.attendanceChange} />
             <Metric title="Pass Rate" from={report.summary.from.passRate} to={report.summary.to.passRate} />
-            <Card className="dark:border-slate-800 dark:bg-slate-900">
-              <CardContent className="pt-6">
-                <p className="text-sm text-slate-500">Published Students</p>
-                <p className="mt-2 text-2xl font-semibold dark:text-white">{report.summary.to.students}</p>
-                <p className="text-xs text-slate-500">{report.fromTerm.name}: {report.summary.from.students}</p>
-              </CardContent>
-            </Card>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">

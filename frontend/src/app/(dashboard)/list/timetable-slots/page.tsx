@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { timetableSlotsAPI, classesAPI, subjectsAPI } from '@/lib/api';
+import { TimePicker } from "@/components/ui/TimePicker";
 
 interface TimetableSlot {
   id: string;
@@ -307,23 +308,11 @@ export default function TimetableSlotsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">Start Time</label>
-                    <input
-                      type="time"
-                      required
-                      value={formData.startTime}
-                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
+                    <TimePicker value={formData.startTime} onChange={(time) => setFormData({ ...formData, startTime: time })} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">End Time</label>
-                    <input
-                      type="time"
-                      required
-                      value={formData.endTime}
-                      onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                      className="w-full border rounded px-3 py-2"
-                    />
+                    <TimePicker value={formData.endTime} onChange={(time) => setFormData({ ...formData, endTime: time })} />
                   </div>
                 </div>
                 <div>

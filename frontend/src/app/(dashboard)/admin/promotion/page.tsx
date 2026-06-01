@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Users,
   ArrowRight,
@@ -23,12 +23,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface NextClass {
-  id: string;
-  name: string;
-  grade: number | null;
-}
-
 interface PromotionData {
   className: string;
   academicYear: string;
@@ -46,73 +40,89 @@ export default function PromotionPage() {
   const { user } = useAuth();
   const { currentAcademicYear } = useAcademicYear();
 
-  const [classes, setClasses] = useState<any[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [gradeOptions, setGradeOptions] = useState<number[]>([]);
+  const [selectedGrade, setSelectedGrade] = useState<string>("");
   const [promotionData, setPromotionData] = useState<PromotionData | null>(null);
-  const [nextClasses, setNextClasses] = useState<NextClass[]>([]);
-  const [selectedNextClass, setSelectedNextClass] = useState<string>("");
+  const [nextGrades, setNextGrades] = useState<{ grade: number; name: string }[]>([]);
+  const [selectedNextGrade, setSelectedNextGrade] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [promoteAll, setPromoteAll] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [minAverageGrade, setMinAverageGrade] = useState<number>(50);
   const [minAttendance, setMinAttendance] = useState<number>(75);
+  const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(true);
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN";
 
-  useEffect(() => {
-    fetchClasses();
-  }, []);
-
-  useEffect(() => {
-    if (selectedClass) {
-      fetchPromotionData();
-      fetchNextClasses();
-    }
-  }, [selectedClass]);
-
-  const fetchClasses = async () => {
+  const fetchGrades = useCallback(async () => {
     try {
       const response = await classesAPI.getAll({ academicYearId: currentAcademicYear?.id });
       const data = response.data?.data || response.data || [];
-      setClasses(data);
-      if (data.length > 0) {
-        setSelectedClass(data[0].id);
+      const grades = Array.from(
+        new Set<number>(
+          data
+            .map((cls: any) => Number(cls.grade))
+            .filter((grade: number) => Number.isFinite(grade)),
+        ),
+      ).sort((a, b) => a - b);
+      setGradeOptions(grades);
+      if (grades.length > 0) {
+        setSelectedGrade(String(grades[0]));
       }
     } catch (err) {
-      console.error("Failed to fetch classes:", err);
+      console.error("Failed to fetch grades:", err);
     }
-  };
+  }, [currentAcademicYear?.id]);
 
-  const fetchPromotionData = async () => {
+  const fetchPromotionData = useCallback(async () => {
+    if (!selectedGrade) return;
     setLoading(true);
     try {
-      const response = await promotionAPI.getCandidates(selectedClass, {
+      const response = await promotionAPI.getGradeCandidates(Number(selectedGrade), {
         academicYear: currentAcademicYear?.name,
+        minAverageGrade,
+        ...(attendanceEnabled ? { minAttendance } : {}),
       });
       setPromotionData(response.data);
       setSelectedStudents(new Set());
     } catch (err: any) {
       console.error("Failed to fetch candidates:", err);
+      toast.error(err.response?.data?.message || "Failed to load promotion candidates");
+      setPromotionData(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentAcademicYear?.name, selectedGrade, minAverageGrade, attendanceEnabled, minAttendance]);
 
-  const fetchNextClasses = async () => {
+  const fetchNextGrades = useCallback(async () => {
+    if (!selectedGrade) return;
     try {
       const nextYear = String(parseInt(currentAcademicYear?.name || "2026", 10) + 1);
-      const response = await promotionAPI.getNextClasses(selectedClass, {
+      const response = await promotionAPI.getNextGrades(Number(selectedGrade), {
         toAcademicYear: nextYear,
       });
-      setNextClasses(response.data.nextClasses || []);
-      if (response.data.nextClasses?.length > 0) {
-        setSelectedNextClass(response.data.nextClasses[0].id);
-      }
+      const grades = response.data.nextGrades || [];
+      setNextGrades(grades);
+      setSelectedNextGrade(grades.length > 0 ? String(grades[0].grade) : "graduation");
     } catch (err: any) {
-      console.error("Failed to fetch next classes:", err);
+      console.error("Failed to fetch next grades:", err);
+      toast.error(err.response?.data?.message || "Failed to load destination grade");
+      setNextGrades([]);
+      setSelectedNextGrade("");
     }
-  };
+  }, [currentAcademicYear?.name, selectedGrade]);
+
+  useEffect(() => {
+    fetchGrades();
+  }, [fetchGrades]);
+
+  useEffect(() => {
+    if (selectedGrade) {
+      fetchPromotionData();
+      fetchNextGrades();
+    }
+  }, [fetchNextGrades, fetchPromotionData, selectedGrade]);
 
   const handleSelectAll = () => {
     if (!promotionData) return;
@@ -138,8 +148,8 @@ export default function PromotionPage() {
   };
 
   const handlePromote = async () => {
-    if (!selectedNextClass) {
-      toast.error("Please select a destination class");
+    if (!selectedNextGrade) {
+      toast.error("Please select a destination grade");
       return;
     }
 
@@ -149,8 +159,8 @@ export default function PromotionPage() {
     }
 
     const confirmMessage = promoteAll
-      ? `Promote ALL students to the next class?`
-      : `Promote ${selectedStudents.size} selected student(s) to the next class?`;
+      ? `Promote ALL eligible Grade ${selectedGrade} students?`
+      : `Promote ${selectedStudents.size} selected Grade ${selectedGrade} student(s)?`;
 
     toast.warning(confirmMessage, {
       duration: 10000,
@@ -168,14 +178,14 @@ export default function PromotionPage() {
           try {
             const nextYear = String(parseInt(currentAcademicYear?.name || "2026") + 1);
             const result = await promotionAPI.bulkPromote({
-              fromClassId: selectedClass,
-              toClassId: selectedNextClass,
+              fromGrade: Number(selectedGrade),
+              toGrade: selectedNextGrade === "graduation" ? null : Number(selectedNextGrade),
               fromAcademicYear: currentAcademicYear?.name || "",
               toAcademicYear: nextYear,
               studentIds: Array.from(selectedStudents),
               promoteAll,
               minAverageGrade,
-              minAttendance,
+              ...(attendanceEnabled ? { minAttendance } : {}),
             });
 
             toast.success(
@@ -238,7 +248,7 @@ export default function PromotionPage() {
                 Student Promotion
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Promote students to the next class level
+                Promote students to the next grade level
               </p>
             </div>
           </div>
@@ -250,37 +260,37 @@ export default function PromotionPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Source Class
+                Source Grade
               </label>
               <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(e.target.value)}
                 className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="">Select a class</option>
-                {classes.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name} {cls.section && `- Section ${cls.section}`}
+                <option value="">Select a grade</option>
+                {gradeOptions.map((grade) => (
+                  <option key={grade} value={String(grade)}>
+                    Grade {grade}
                   </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Destination Class
+                Destination Grade
               </label>
               <select
-                value={selectedNextClass}
-                onChange={(e) => setSelectedNextClass(e.target.value)}
+                value={selectedNextGrade}
+                onChange={(e) => setSelectedNextGrade(e.target.value)}
                 className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">Select destination</option>
-                {nextClasses.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.name} {cls.grade && `(Grade ${cls.grade})`}
+                {nextGrades.map((grade) => (
+                  <option key={grade.grade} value={String(grade.grade)}>
+                    {grade.name}
                   </option>
                 ))}
-                {nextClasses.length === 0 && (
+                {nextGrades.length === 0 && (
                   <option value="graduation">Graduation (Final Grade)</option>
                 )}
               </select>
@@ -310,16 +320,26 @@ export default function PromotionPage() {
                     value={minAttendance}
                     onChange={(e) => setMinAttendance(Number(e.target.value))}
                     placeholder="Min Attendance"
-                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white"
+                    disabled={!attendanceEnabled}
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white disabled:opacity-50"
                   />
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Min Attendance %</span>
+                  <label htmlFor="attendance-toggle" className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="attendance-toggle"
+                      checked={attendanceEnabled}
+                      onChange={(e) => setAttendanceEnabled(e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    Min Attendance %
+                  </label>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {selectedClass && (
+        {selectedGrade && (
           <>
 
 
@@ -390,7 +410,7 @@ export default function PromotionPage() {
                 <div className="p-12 text-center">
                   <Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                    No students found in this class
+                    No students found in this grade
                   </p>
                 </div>
               ) : (
@@ -549,7 +569,7 @@ export default function PromotionPage() {
                       : `${selectedStudents.size} of ${promotableStudents.length} eligible students selected`}
                   </div>
                   <div className="flex items-center gap-3">
-                    {nextClasses.length > 0 || selectedNextClass === "graduation" ? (
+                    {nextGrades.length > 0 || selectedNextGrade === "graduation" ? (
                       <button
                         onClick={handlePromote}
                         disabled={actionLoading || (!promoteAll && selectedStudents.size === 0)}
@@ -560,13 +580,13 @@ export default function PromotionPage() {
                         ) : (
                           <>
                             <ArrowRight className="w-5 h-5" />
-                            Promote to {nextClasses.find((c) => c.id === selectedNextClass)?.name || "Graduation"}
+                            Promote to {nextGrades.find((grade) => String(grade.grade) === selectedNextGrade)?.name || "Graduation"}
                           </>
                         )}
                       </button>
                     ) : (
                       <span className="text-sm text-slate-500 dark:text-slate-400">
-                        No next class available
+                        No next grade available
                       </span>
                     )}
                   </div>

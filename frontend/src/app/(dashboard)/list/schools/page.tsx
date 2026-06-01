@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { schoolsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
@@ -22,7 +23,10 @@ import {
   Loader2,
   Users,
   School as SchoolIcon,
-  Hash
+  Hash,
+  Copy,
+  ExternalLink,
+  Globe,
 } from "lucide-react";
 
 // Types for school data
@@ -32,6 +36,7 @@ interface School {
   email: string;
   address?: string;
   phone?: string;
+  publicUrlSlug?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,14 +84,19 @@ const SchoolsPage = () => {
       className: "hidden md:table-cell",
     },
     {
+      header: "Public URL",
+      accessor: "publicUrlSlug",
+      className: "hidden xl:table-cell",
+    },
+    {
       header: "Phone",
       accessor: "phone",
-      className: "hidden lg:table-cell",
+      className: "hidden 2xl:table-cell",
     },
     {
       header: "Address",
       accessor: "address",
-      className: "hidden xl:table-cell",
+      className: "hidden 2xl:table-cell",
     },
     {
       header: "Actions",
@@ -95,11 +105,28 @@ const SchoolsPage = () => {
     },
   ];
 
-  const renderRow = (item: School) => (
-    <tr
-      key={item.id}
-      className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-    >
+  const getPublicUrlBase = (slug?: string) => {
+    if (!slug || typeof window === "undefined") return "";
+    return `${window.location.origin}/schools/${encodeURIComponent(slug)}/login`;
+  };
+
+  const copyLink = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
+
+  const renderRow = (item: School) => {
+    const loginUrl = getPublicUrlBase(item.publicUrlSlug);
+
+    return (
+      <tr
+        key={item.id}
+        className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+      >
       <td className="p-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -111,6 +138,22 @@ const SchoolsPage = () => {
               <Hash className="w-3 h-3 text-gray-400" />
               <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">ID: {item.id.slice(0, 8)}...</span>
             </div>
+            {loginUrl && (
+              <div className="mt-2 flex items-center gap-1 xl:hidden">
+                <Globe className="h-3.5 w-3.5 text-gray-400" />
+                <span className="max-w-[220px] truncate font-mono text-xs text-gray-600 dark:text-gray-400">
+                  {loginUrl}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => copyLink("School login", loginUrl)}
+                  className="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title="Copy school login link"
+                >
+                  <Copy className="h-3.5 w-3.5 text-gray-500" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </td>
@@ -120,13 +163,46 @@ const SchoolsPage = () => {
           <span className="font-medium truncate max-w-[180px]">{item.email}</span>
         </div>
       </td>
-      <td className="hidden lg:table-cell p-4">
+      <td className="hidden xl:table-cell p-4">
+        {loginUrl ? (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-gray-400" />
+              <span className="max-w-[220px] truncate font-mono text-xs text-gray-700 dark:text-gray-300">
+                {loginUrl}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => copyLink("School login", loginUrl)}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Login
+              </button>
+              <a
+                href={loginUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open Login
+              </a>
+            </div>
+          </div>
+        ) : (
+          <span className="text-sm text-gray-400">Run migration</span>
+        )}
+      </td>
+      <td className="hidden 2xl:table-cell p-4">
         <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
           <Phone className="w-4 h-4" />
           <span className="font-medium">{item.phone || "-"}</span>
         </div>
       </td>
-      <td className="hidden xl:table-cell p-4">
+      <td className="hidden 2xl:table-cell p-4">
         <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
           <MapPin className="w-4 h-4" />
           <span className="font-medium truncate max-w-[200px]">{item.address || "-"}</span>
@@ -134,12 +210,13 @@ const SchoolsPage = () => {
       </td>
       <td className="p-4">
         <div className="flex items-center gap-1">
-          <button
+          <Link
+            href={`/list/schools/${item.id}/settings`}
             className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
             title="View Details"
           >
             <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          </button>
+          </Link>
           <button
             className="p-2 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-lg transition-colors"
             title="Edit School"
@@ -164,8 +241,9 @@ const SchoolsPage = () => {
           </button>
         </div>
       </td>
-    </tr>
-  );
+      </tr>
+    );
+  };
 
   const handleDelete = () => {
     if (selectedSchool) {

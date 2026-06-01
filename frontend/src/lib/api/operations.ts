@@ -38,6 +38,14 @@ export const examSeatingAPI = {
     api.get(`/exams/seating/plan/${planId}/excel`, { responseType: "blob" }),
 };
 
+export const nationalExamResultsAPI = {
+  listBatches: () => api.get("/national-exam-results/batches"),
+  getBatch: (id: string) => api.get(`/national-exam-results/batches/${id}`),
+  importResults: (data: any) => api.post("/national-exam-results/import", data),
+  publishBatch: (id: string) => api.post(`/national-exam-results/batches/${id}/publish`),
+  getMyResults: () => api.get("/national-exam-results/student/me"),
+};
+
 export interface SearchResult {
   type:
     | "student"

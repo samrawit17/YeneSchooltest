@@ -4,14 +4,16 @@ import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { schoolsAPI, platformSettingsAPI } from "@/lib/api";
+import { schoolsAPI, platformSettingsAPI, schoolSettingsAPI } from "@/lib/api";
 import { notificationsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { resolveAssetUrl } from "@/lib/asset-url";
+import { writeCachedSchoolLoginContext } from "@/lib/school-resolver";
 import { eventsAPI } from "@/lib/api/content";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { formatTimeByCalendarType } from "@/lib/calendar-utils";
 import { useTranslations } from "@/hooks/useTranslations";
+import { localizeNotificationText } from "@/lib/notification-display";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -122,7 +124,7 @@ const Navbar = ({
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { t: navigationText } = useTranslations<NavigationMessages>("navigation");
+  const { t: navigationText, language } = useTranslations<NavigationMessages>("navigation");
   const { t: layoutText } = useTranslations<any>("layout");
   const { formattedYearLabel, displayTermName, formatDate: formatSchoolDate, schoolCalendarType } = useAcademicYear();
   const navLabel = (label: string) => navigationText.labels?.[label] ?? label;
@@ -178,6 +180,17 @@ const Navbar = ({
     enabled: !!user?.schoolId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+  const schoolLogoSrc = resolveAssetUrl(school?.logoUrl);
+  const { data: schoolLoginSettings } = useQuery({
+    queryKey: queryKeys.school.settings(user?.schoolId),
+    queryFn: async () => {
+      if (!user?.schoolId) return {};
+      const response = await schoolSettingsAPI.getAll(user.schoolId);
+      return response.data || {};
+    },
+    enabled: !!user?.schoolId && (user?.role || "").toUpperCase() !== "SUPER_ADMIN",
+    staleTime: 5 * 60 * 1000,
   });
 
   // Use React Query for notifications - cached across navigations but user-specific
@@ -498,6 +511,8 @@ const Navbar = ({
         return <DollarSign className="w-4 h-4 text-red-500" />;
       case 'FEE_PAID':
       case 'PAYMENT_RECEIVED':
+      case 'PAYROLL_PAYMENT_DUE':
+      case 'PAYROLL_RUN_REQUIRED':
         return <CreditCard className="w-4 h-4 text-green-600" />;
 
       // System notifications
@@ -520,39 +535,54 @@ const Navbar = ({
 
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const handleLogout = () => {
+    const redirectTo =
+      normalizedRole !== "SUPER_ADMIN" && school?.publicUrlSlug
+        ? `/sign-in?slug=${encodeURIComponent(school.publicUrlSlug)}`
+        : normalizedRole !== "SUPER_ADMIN" && user?.schoolId
+          ? `/sign-in?schoolId=${encodeURIComponent(user.schoolId)}`
+        : "/sign-in";
+
+    if (normalizedRole !== "SUPER_ADMIN" && school && user?.schoolId) {
+      writeCachedSchoolLoginContext({
+        id: user.schoolId,
+        name: school.name || "",
+        code: school.code || null,
+        publicUrlSlug: school.publicUrlSlug || null,
+        logoUrl: school.logoUrl || null,
+        accentColor: typeof schoolLoginSettings?.theme_color === "string" ? schoolLoginSettings.theme_color : null,
+        loginImageUrl:
+          typeof schoolLoginSettings?.login_image_url === "string"
+            ? schoolLoginSettings.login_image_url
+            : null,
+      });
+    }
+    sessionStorage.setItem("postLogoutRedirect", redirectTo);
     logout();
-    router.push("/sign-in");
+    router.push(redirectTo);
   };
 
   const normalizedRole = user?.role?.toUpperCase() || "";
+  const isSuperAdmin = normalizedRole === "SUPER_ADMIN";
   const isParent = normalizedRole === "PARENT";
   const isTeacher = normalizedRole === "TEACHER";
   const dashboardPath = getDashboardPath(user?.role);
 
   return (
-    <header className={`sticky top-0 z-50 w-full border-b dark:border-[#334155] dark:bg-[#111827] dark:supports-[backdrop-filter]:bg-[#111827]/60 transition-all duration-300 ${
-      useBrandNavigation
-        ? "border-[rgba(var(--brand-color-rgb),0.53)] bg-[rgba(var(--brand-color-rgb),0.42)] supports-[backdrop-filter]:bg-[rgba(var(--brand-color-rgb),0.42)]"
-        : "border-gray-200 bg-[#F1F5F9] supports-[backdrop-filter]:bg-[#F1F5F9]/90"
-    }`}>
-      <div className="w-full h-14 sm:h-16 md:h-18">
-        <div className="flex items-center justify-between h-full gap-1 sm:gap-2 md:gap-4 px-2 sm:px-3 md:px-4 overflow-hidden">
+    <header className="sticky top-0 z-50 w-full max-w-full overflow-x-clip border-b border-gray-200 bg-[#F1F5F9] transition-all duration-300 supports-[backdrop-filter]:bg-[#F1F5F9]/90 dark:border-[#334155] dark:bg-[#111827] dark:supports-[backdrop-filter]:bg-[#111827]/60">
+      <div className="h-14 w-full max-w-full sm:h-16 md:h-18">
+        <div className="flex h-full max-w-full items-center overflow-hidden px-2 sm:px-3 md:px-4">
           {/* Left: Mobile Menu Button and Logo */}
-          <div className="relative z-20 flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0 min-w-0">
+          <div className="relative z-20 flex items-center flex-shrink-0 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -578,8 +608,18 @@ const Navbar = ({
                     ? "border-b border-[rgba(var(--brand-color-rgb),0.14)] bg-white/70"
                     : "border-b border-gray-200 bg-white/95"
                 }`}>
-                  <SheetTitle className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                    <School className="h-5 w-5 sm:h-6 sm:w-6 text-[var(--brand-color,#e35336)] flex-shrink-0" />
+                  <SheetTitle className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white flex min-w-0 items-center gap-2 pr-8">
+                    {schoolLogoSrc ? (
+                      <img
+                        src={schoolLogoSrc}
+                        alt={school?.name || "School Logo"}
+                        className="h-8 w-8 shrink-0 rounded-md bg-white object-contain p-1 shadow-sm ring-1 ring-black/5 dark:bg-white"
+                      />
+                    ) : (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] text-sm font-bold text-white shadow-sm">
+                        {school?.name?.charAt(0) || <School className="h-4 w-4" />}
+                      </span>
+                    )}
                     {schoolLoading ? (
                       <Skeleton className="h-5 sm:h-6 w-24" />
                     ) : (
@@ -621,7 +661,7 @@ const Navbar = ({
                   <Calendar className="h-5 w-5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[min(92vw,360px)] p-2 bg-white dark:bg-gray-800" align="start">
+              <PopoverContent className="w-[min(92vw,360px)] p-2 bg-white dark:bg-gray-800 ml-4" align="start">
                 <WeeklyCalendar events={events} onEventClick={() => { setMobileCalendarOpen(false); router.push('/list/calendar'); }} />
               </PopoverContent>
             </Popover>
@@ -629,7 +669,7 @@ const Navbar = ({
           </div>
 
           {/* Center: Real-time Clock Display - Hidden on small mobile, visible on sm+ */}
-          <div className="hidden sm:flex items-center gap-1 sm:gap-2 md:gap-3 py-1 rounded-lg text-sm ml-2 flex-shrink-0">
+          <div className="hidden sm:flex items-center gap-1 sm:gap-2 md:gap-3 py-1 rounded-lg text-sm flex-shrink-0">
             {isLoading ? (
               <div className="flex items-center gap-2">
                 <Skeleton className="h-4 sm:h-5 w-14 sm:w-16" />
@@ -650,7 +690,7 @@ const Navbar = ({
                       </div>
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[360px] max-w-[92vw] p-2 sm:p-3 bg-white dark:bg-gray-800" align="center">
+                  <PopoverContent className="w-[360px] max-w-[92vw] p-2 sm:p-3 bg-white dark:bg-gray-800 ml-4" align="center">
                     <WeeklyCalendar events={events} onEventClick={() => { setCalendarOpen(false); router.push('/list/calendar'); }} />
                   </PopoverContent>
                 </Popover>
@@ -663,32 +703,32 @@ const Navbar = ({
           </div>
 
           {/* Right Section: Search and User Menu */}
-          <div className="relative z-10 ml-1 flex flex-1 items-center justify-end gap-1.5 sm:ml-0 sm:gap-2 md:gap-4 min-w-0">
+          <div className="relative z-10 ml-2 flex min-w-0 flex-1 items-center justify-end gap-1 sm:ml-3 sm:gap-1.5 md:ml-4 md:gap-2 lg:gap-3">
             {/* Desktop Search - Fluid width that expands/shrinks with available space */}
             {isLoading ? (
               <div className="hidden sm:flex flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl">
                 <Skeleton className="h-9 sm:h-10 w-full rounded-full" />
               </div>
             ) : user && (
-              <div className="hidden sm:flex flex-1 min-w-0 transition-all duration-300 ease-in-out">
+              <div className="hidden min-w-0 flex-1 overflow-hidden sm:flex transition-all duration-300 ease-in-out">
                 <GlobalSearch />
               </div>
             )}
 
           {/* Mobile Search */}
           {isLoading ? (
-            <div className="sm:hidden flex-1 min-w-0 max-w-none">
+            <div className="min-w-0 max-w-none flex-1 overflow-hidden sm:hidden">
               <Skeleton className="h-8 w-full" />
             </div>
           ) : user && (
-            <div className="sm:hidden flex-1 min-w-0 max-w-none">
+            <div className="min-w-0 max-w-none flex-1 overflow-hidden sm:hidden">
               <GlobalSearch />
             </div>
           )}
 
 
           {/* Right: Icons and User Menu */}
-          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center gap-0.5 sm:gap-1 md:gap-2">
             {/* Enroll Button (for unauthenticated users) */}
             {!user && (
               <Button
@@ -704,13 +744,13 @@ const Navbar = ({
 
             {/* Notification and Message Icons */}
             {isLoading ? (
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
                 <Skeleton className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg" />
                 <Skeleton className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg" />
                 <Skeleton className="h-7 w-7 sm:h-9 sm:w-9 rounded-lg" />
               </div>
             ) : user && (
-              <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
                 {/* Notifications Dropdown */}
                 <DropdownMenu
                   open={notificationsOpen}
@@ -730,7 +770,7 @@ const Navbar = ({
                     >
                       <Bell className="h-5 w-5 sm:h-6 sm:w-6 font-bold" />
                       {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-[var(--brand-color,#e35336)] text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
+                        <span className="absolute right-0 top-0 flex h-[16px] min-w-[16px] translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] px-1 text-[9px] font-bold text-white sm:h-[18px] sm:min-w-[18px] sm:text-[10px]">
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                       )}
@@ -753,7 +793,9 @@ const Navbar = ({
                           {navLabel("No notifications")}
                         </div>
                       ) : (
-                        bellNotifications.map((notification: any) => (
+                        bellNotifications.map((notification: any) => {
+                          const localized = localizeNotificationText(notification, language);
+                          return (
                           <div
                             key={notification.id}
                             className={`p-2 sm:p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${!isNotificationRead(notification) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
@@ -771,15 +813,15 @@ const Navbar = ({
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
                                   <p className={`text-xs sm:text-sm ${!isNotificationRead(notification) ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
-                                    {notification.title}
+                                    {localized.title}
                                   </p>
                                   {!isNotificationRead(notification) && (
                                     <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                                   )}
                                 </div>
-                                {notification.message && (
+                                {localized.message && (
                                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                                    {notification.message}
+                                    {localized.message}
                                   </p>
                                 )}
 
@@ -789,7 +831,8 @@ const Navbar = ({
                               </div>
                             </div>
                           </div>
-                        ))
+                          );
+                        })
                       )}
                     </ScrollArea>
                     <DropdownMenuSeparator />
@@ -806,7 +849,7 @@ const Navbar = ({
                 </DropdownMenu>
 
                 {/* Communications Dropdown - Only show if feature is enabled */}
-                {isCommunicationEnabled && (
+                {isCommunicationEnabled && !isSuperAdmin && (
                   <DropdownMenu
                     open={communicationsOpen}
                     onOpenChange={(open) => {
@@ -822,7 +865,7 @@ const Navbar = ({
                     >
                         <MessageSquare className="h-5 w-5 font-bold sm:h-6 sm:w-6" />
                         {unreadCommunicationsCount > 0 && (
-                          <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-[var(--brand-color,#e35336)] text-white text-[9px] sm:text-[10px] font-bold min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] rounded-md flex items-center justify-center px-1">
+                          <span className="absolute right-0 top-0 flex h-[16px] min-w-[16px] translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] px-1 text-[9px] font-bold text-white sm:h-[18px] sm:min-w-[18px] sm:text-[10px]">
                             {unreadCommunicationsCount > 99 ? '99+' : unreadCommunicationsCount}
                           </span>
                         )}
@@ -840,7 +883,9 @@ const Navbar = ({
                             {navLabel("No communication notifications")}
                           </div>
                         ) : (
-                          communicationNotifications.map((notification: any) => (
+                          communicationNotifications.map((notification: any) => {
+                            const localized = localizeNotificationText(notification, language);
+                            return (
                             <div
                               key={notification.id}
                               className={`p-2 sm:p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${!isNotificationRead(notification) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
@@ -856,15 +901,15 @@ const Navbar = ({
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between gap-2">
                                     <p className={`text-xs sm:text-sm ${!isNotificationRead(notification) ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
-                                      {notification.title}
+                                      {localized.title}
                                     </p>
                                     {!isNotificationRead(notification) && (
                                       <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                                     )}
                                   </div>
-                                  {notification.message && (
+                                  {localized.message && (
                                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                                      {notification.message}
+                                      {localized.message}
                                     </p>
                                   )}
                                   <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
@@ -873,7 +918,8 @@ const Navbar = ({
                                 </div>
                               </div>
                             </div>
-                          ))
+                            );
+                          })
                         )}
                       </ScrollArea>
                       <DropdownMenuSeparator />

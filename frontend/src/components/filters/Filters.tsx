@@ -174,20 +174,15 @@ export function Filters({
   }, []);
 
   const fetchSections = useCallback(async () => {
-    if (classes.length === 0) {
+    if (classes.length === 0 || !selectedGrade) {
       setSections([]);
       return;
     }
 
     try {
-      let filteredClasses = classes;
-      
-      // If grade is selected, filter by grade
-      if (selectedGrade) {
-        filteredClasses = classes.filter(
-          (c) => c.grade === parseInt(selectedGrade)
-        );
-      }
+      const filteredClasses = classes.filter(
+        (c) => c.grade === parseInt(selectedGrade)
+      );
       
       const uniqueSections = new Map<string, SectionData>();
       
@@ -228,6 +223,12 @@ export function Filters({
   useEffect(() => {
     fetchSections();
   }, [fetchSections]);
+
+  useEffect(() => {
+    if (!selectedGrade && onSectionChange && selectedSection) {
+      onSectionChange("");
+    }
+  }, [onSectionChange, selectedGrade, selectedSection]);
 
   const handleYearChange = (year: string) => {
     if (year && year !== selectedYear) {
@@ -393,13 +394,17 @@ export function Filters({
         <Select
           value={selectedSection || ""}
           onValueChange={(val) => onSectionChange(val)}
-          disabled={disabled || !selectedYear || loading}
+          disabled={disabled || !selectedYear || !selectedGrade || loading}
         >
-          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled}>
+          <SelectTrigger className="h-9 text-sm w-full" disabled={disabled || !selectedYear || !selectedGrade || loading}>
             <SelectValue placeholder={t.placeholders.section} />
           </SelectTrigger>
           <SelectContent>
-            {sections.length === 0 ? (
+            {!selectedGrade ? (
+              <SelectItem value="select-grade-first" disabled>
+                Select a grade first
+              </SelectItem>
+            ) : sections.length === 0 ? (
               <SelectItem value="no-data" disabled>
                 {t.empty.sections}
               </SelectItem>

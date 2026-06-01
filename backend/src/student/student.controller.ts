@@ -300,4 +300,30 @@ export class StudentController {
     const schoolId = req.user.schoolId;
     return this.studentService.uploadDocuments(studentId, schoolId, documents);
   }
+
+  @Delete(':id/documents/:documentKey')
+  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Permissions('student:update')
+  async deleteDocument(
+    @Param('id') studentId: string,
+    @Param('documentKey') documentKey: string,
+    @Request() req,
+  ) {
+    const schoolId = req.user.schoolId;
+    return this.studentService.deleteDocument(studentId, schoolId, documentKey);
+  }
+
+  @Post(':id/documents/file')
+  @Roles(Role.ADMIN, Role.REGISTRAR)
+  @Permissions('student:update')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadDocumentFile(
+    @Param('id') studentId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { title?: string; type?: string; description?: string },
+    @Request() req,
+  ) {
+    const schoolId = req.user.schoolId;
+    return this.studentService.uploadDocumentFile(studentId, schoolId, file, body);
+  }
 }

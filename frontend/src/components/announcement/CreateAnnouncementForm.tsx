@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
+import { TimePicker } from "@/components/ui/TimePicker";
 import { toast } from "sonner";
 import { Loader2, Clock } from "lucide-react";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -28,6 +29,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
     title: "",
     content: "",
     visibleTo: [],
+    isPublic: false,
     startDate: new Date().toISOString().split("T")[0],
     priority: "MEDIUM",
     location: "",
@@ -77,13 +79,15 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
       startDate = new Date().toISOString();
     }
     
+    const showOnLoginPage = !!formData.isPublic;
     const submitData: CreateAnnouncementDto = {
       title: formData.title,
       content: formData.content,
       startDate,
       visibleTo: selectedRoles,
+      isPublic: showOnLoginPage,
       priority: formData.priority as "LOW" | "MEDIUM" | "HIGH",
-      location: formData.location,
+      location: formData.location || undefined,
     };
     
     // Only include endDate if it has a value
@@ -171,6 +175,16 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
               </label>
             ))}
           </div>
+          <div className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-gray-50 p-3 dark:bg-gray-800 dark:border-gray-600">
+            <div>
+              <p className="font-medium text-gray-900 dark:text-white">Show on login page</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Make this announcement visible before users sign in.</p>
+            </div>
+            <Switch
+              checked={!!formData.isPublic}
+              onCheckedChange={(checked) => setFormData({ ...formData, isPublic: checked })}
+            />
+          </div>
         </div>
       </div>
 
@@ -193,7 +207,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
             />
           </div>
           <div className="space-y-2">
-            <Label>{t.form.location}</Label>
+            <Label>{t.form.location} <span className="text-xs text-gray-400">(optional)</span></Label>
             <Input
               id="location"
               value={formData.location || ""}
@@ -230,7 +244,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
               </div>
               <div className="space-y-2">
                 <Label>{t.form.time}</Label>
-                <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="border-[#E2E8F0] focus-visible:ring-[var(--brand-color,#e35336)]" />
+                <TimePicker value={scheduleTime} onChange={setScheduleTime} />
               </div>
             </div>
           )}

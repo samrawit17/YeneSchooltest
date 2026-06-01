@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
-import { ChevronRight, Home, LayoutDashboard } from "lucide-react";
+import { ChevronRight, ChevronLeft, Home, LayoutDashboard } from "lucide-react";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -317,7 +317,26 @@ const TECHNICAL_LABELS = new Set(["List"]);
 /**
  * Gets the appropriate dashboard URL based on the current user role/path
  */
-function getDashboardHref(pathname: string): string {
+function getRoleDashboardHref(userRole?: string): string | null {
+  const normalizedRole = userRole?.toUpperCase();
+  const roleMap: Record<string, string> = {
+    SUPER_ADMIN: "/superadmin",
+    ADMIN: "/admin",
+    IT_MANAGER: "/it-manager",
+    TEACHER: "/teacher",
+    STUDENT: "/student",
+    PARENT: "/parent",
+    REGISTRAR: "/registrar",
+    FINANCE: "/finance",
+  };
+
+  return normalizedRole ? roleMap[normalizedRole] ?? null : null;
+}
+
+function getDashboardHref(pathname: string, userRole?: string): string {
+  const roleDashboardHref = getRoleDashboardHref(userRole);
+  if (roleDashboardHref) return roleDashboardHref;
+
   // Check path prefixes to determine user role
   // Note: We check more specific paths first before general prefixes
 
@@ -445,11 +464,19 @@ function translateLabel(label: string, messages: BreadcrumbMessages): string {
   return messages.labels[label] ?? label;
 }
 
-function translateBreadcrumbItems(items: BreadcrumbItem[], messages: BreadcrumbMessages): BreadcrumbItem[] {
+function normalizeDashboardBreadcrumbHref(item: BreadcrumbItem, userRole?: string): BreadcrumbItem {
+  const roleDashboardHref = getRoleDashboardHref(userRole);
+  if (!roleDashboardHref || item.href !== "/dashboard") return item;
+
+  const isDashboardLabel = item.label === "Dashboard" || item.label === "ዳሽቦርድ";
+  return isDashboardLabel ? { ...item, href: roleDashboardHref } : item;
+}
+
+function translateBreadcrumbItems(items: BreadcrumbItem[], messages: BreadcrumbMessages, userRole?: string): BreadcrumbItem[] {
   return items
     .filter((item) => !TECHNICAL_LABELS.has(item.label))
     .map((item, index, visibleItems) => ({
-      ...item,
+      ...normalizeDashboardBreadcrumbHref(item, userRole),
       label: translateLabel(item.label, messages),
       isCurrent: item.isCurrent || index === visibleItems.length - 1,
     }));
@@ -465,7 +492,7 @@ function generateBreadcrumbsFromPath(pathname: string, userRole: string | undefi
   const breadcrumbs: BreadcrumbItem[] = [];
 
   // Determine dashboard URL based on path
-  const dashboardHref = getDashboardHref(pathname);
+  const dashboardHref = getDashboardHref(pathname, userRole);
 
   // Start with appropriate dashboard with icon
   breadcrumbs.push({
@@ -565,11 +592,19 @@ export function Breadcrumb({
   items,
   className = "",
   showHomeIcon = true,
-  separator = <ChevronRight className="w-4 h-4 text-gray-400" />
+  separator
 }: BreadcrumbProps) {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { t } = useTranslations<BreadcrumbMessages>("breadcrumb");
+  const { t, language } = useTranslations<BreadcrumbMessages>("breadcrumb");
+
+  const activeSeparator = separator ?? (
+    language === "ar" ? (
+      <ChevronLeft className="w-4 h-4 text-gray-400" />
+    ) : (
+      <ChevronRight className="w-4 h-4 text-gray-400" />
+    )
+  );
   // Get context items if available (may not exist if provider not mounted)
   let contextItems: BreadcrumbItem[] | null = null;
   try {
@@ -584,11 +619,11 @@ export function Breadcrumb({
   const breadcrumbItems = useMemo(() => {
     // Use context items if available (highest priority)
     if (contextItems && contextItems.length > 0) {
-      return translateBreadcrumbItems(contextItems, t);
+      return translateBreadcrumbItems(contextItems, t, user?.role);
     }
     // Use props items if provided
     if (items && items.length > 0) {
-      return translateBreadcrumbItems(items, t);
+      return translateBreadcrumbItems(items, t, user?.role);
     }
     // Auto-generate from path
     return generateBreadcrumbsFromPath(pathname, user?.role, t);
@@ -621,7 +656,7 @@ export function Breadcrumb({
               {/* Separator - only between items */}
               {!isFirst && (
                 <span className="mx-0.5 sm:mx-1.5 text-gray-400" aria-hidden="true">
-                  {separator}
+                  {activeSeparator}
                 </span>
               )}
 

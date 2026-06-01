@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>EduTrack Pro Proposal</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #102033;
+      background: #ffffff;
+      line-height: 1.45;
+    }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      background: #ffffff;
+      page-break-after: always;
+      padding: 22mm 20mm 18mm;
+    }
+
+    .page:last-child {
+      page-break-after: auto;
+    }
+
+    .navy-band {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 17mm;
+      background: #042c53;
+    }
+
+    .top-rule {
+      position: absolute;
+      top: 0;
+      left: 17mm;
+      right: 0;
+      height: 7mm;
+      background: #042c53;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      margin-left: 8mm;
+    }
+
+    .cover-grid {
+      display: grid;
+      grid-template-columns: 1fr 45mm;
+      gap: 12mm;
+      align-items: start;
+    }
+
+    .eyebrow {
+      color: #0b5d95;
+      font-size: 10.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      margin: 0 0 7mm;
+    }
+
+    h1 {
+      color: #042c53;
+      font-size: 36pt;
+      line-height: 1.02;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .tagline {
+      margin: 4mm 0 0;
+      font-size: 15pt;
+      color: #405166;
+      font-weight: 700;
+    }
+
+    .proposal-meta {
+      border: 1px solid #d8e2eb;
+      border-top: 5px solid #042c53;
+      padding: 7mm;
+      font-size: 10.8pt;
+      background: #f7fafc;
+    }
+
+    .meta-row {
+      margin-bottom: 4mm;
+    }
+
+    .meta-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .meta-label {
+      display: block;
+      color: #526273;
+      font-size: 8.8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 1mm;
+    }
+
+    .meta-value {
+      color: #042c53;
+      font-weight: 700;
+    }
+
+    .section {
+      margin-top: 12mm;
+    }
+
+    h2 {
+      color: #042c53;
+      font-size: 17pt;
+      margin: 0 0 4mm;
+    }
+
+    p {
+      font-size: 11.5pt;
+      margin: 0 0 4mm;
+    }
+
+    .benefits {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 3.2mm;
+      margin-top: 5mm;
+    }
+
+    .benefit {
+      display: grid;
+      grid-template-columns: 9mm 1fr;
+      gap: 4mm;
+      align-items: start;
+      padding: 3.8mm 4mm;
+      border: 1px solid #dbe6ef;
+      background: #fbfdff;
+    }
+
+    .benefit-number {
+      width: 9mm;
+      height: 9mm;
+      border-radius: 50%;
+      background: #042c53;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10pt;
+      font-weight: 700;
+    }
+
+    .benefit-text {
+      font-size: 11.2pt;
+      font-weight: 700;
+      color: #102033;
+    }
+
+    .pilot-box,
+    .cta-box {
+      margin-top: 10mm;
+      background: #042c53;
+      color: #ffffff;
+      padding: 8mm;
+      border-radius: 2mm;
+      box-shadow: 0 9px 24px rgba(4, 44, 83, 0.18);
+    }
+
+    .pilot-box strong,
+    .cta-box strong {
+      display: block;
+      font-size: 18pt;
+      line-height: 1.15;
+      margin-bottom: 2mm;
+    }
+
+    .pilot-box span,
+    .cta-box span {
+      font-size: 11.5pt;
+      color: #dbeaf7;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5mm;
+      margin-top: 6mm;
+    }
+
+    .step {
+      min-height: 36mm;
+      border: 1px solid #d8e2eb;
+      padding: 5mm;
+      background: #fbfdff;
+      position: relative;
+    }
+
+    .step-index {
+      color: #0b5d95;
+      font-size: 9.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 3mm;
+    }
+
+    .step-title {
+      color: #042c53;
+      font-size: 13.5pt;
+      font-weight: 700;
+      margin-bottom: 2mm;
+    }
+
+    .step-week {
+      color: #526273;
+      font-size: 11pt;
+      font-weight: 700;
+    }
+
+    .team-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5mm;
+      margin-top: 4mm;
+    }
+
+    .team-card {
+      border-left: 4px solid #042c53;
+      background: #f7fafc;
+      padding: 4.5mm 5mm;
+      min-height: 22mm;
+    }
+
+    .team-card strong {
+      display: block;
+      color: #042c53;
+      font-size: 12pt;
+      margin-bottom: 1mm;
+    }
+
+    .team-card span {
+      display: block;
+      color: #526273;
+      font-size: 10.8pt;
+    }
+
+    .endorsement {
+      margin-top: 7mm;
+      padding: 5mm;
+      border: 1px solid #d8e2eb;
+      font-size: 11.3pt;
+      background: #ffffff;
+    }
+
+    .footer {
+      position: absolute;
+      left: 28mm;
+      right: 20mm;
+      bottom: 10mm;
+      border-top: 1px solid #d8e2eb;
+      padding-top: 4mm;
+      color: #526273;
+      font-size: 9.8pt;
+      display: flex;
+      justify-content: space-between;
+      gap: 8mm;
+    }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <div class="navy-band"></div>
+    <div class="top-rule"></div>
+    <main class="content">
+      <div class="cover-grid">
+        <div>
+          <p class="eyebrow">School Management System Proposal</p>
+          <h1>EduTrack Pro</h1>
+          <p class="tagline">Simple, secure school operations from attendance to report cards.</p>
+        </div>
+        <aside class="proposal-meta">
+          <div class="meta-row">
+            <span class="meta-label">Prepared for</span>
+            <span class="meta-value">[Replace with school name]</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Team</span>
+            <span class="meta-value">[Replace with your names]</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">University</span>
+            <span class="meta-value">[Replace with your university]</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Contact</span>
+            <span class="meta-value">[Replace with your phone/email]</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Date</span>
+            <span class="meta-value">May 22, 2026</span>
+          </div>
+        </aside>
+      </div>
+
+      <section class="section">
+        <h2>Introduction</h2>
+        <p>EduTrack Pro helps schools manage daily work in one clear digital system. Teachers can take attendance, record marks, and prepare report cards faster, while administrators keep fee records and student information organized. Parents can receive important updates and SMS alerts without visiting the school office. The result is less paperwork, faster decisions, and better communication across the school.</p>
+      </section>
+
+      <section class="section">
+        <h2>Key Benefits</h2>
+        <div class="benefits">
+          <div class="benefit">
+            <div class="benefit-number">1</div>
+            <div class="benefit-text">Digital attendance tracking saves teachers time daily.</div>
+          </div>
+          <div class="benefit">
+            <div class="benefit-number">2</div>
+            <div class="benefit-text">Easy fee collection and payment records.</div>
+          </div>
+          <div class="benefit">
+            <div class="benefit-number">3</div>
+            <div class="benefit-text">Automatic report cards and grade management.</div>
+          </div>
+          <div class="benefit">
+            <div class="benefit-number">4</div>
+            <div class="benefit-text">Parent communication portal with SMS alerts.</div>
+          </div>
+          <div class="benefit">
+            <div class="benefit-number">5</div>
+            <div class="benefit-text">Secure student records accessible from any device.</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="pilot-box">
+        <strong>FREE 3-Month Pilot</strong>
+        <span>Zero Cost, Zero Risk</span>
+      </div>
+    </main>
+    <footer class="footer">
+      <span>EduTrack Pro Proposal</span>
+      <span>[Replace with your university]</span>
+    </footer>
+  </section>
+
+  <section class="page">
+    <div class="navy-band"></div>
+    <div class="top-rule"></div>
+    <main class="content">
+      <p class="eyebrow">How It Works</p>
+      <h1 style="font-size: 30pt;">Pilot Plan & Next Steps</h1>
+
+      <section class="section">
+        <h2>4-Step Implementation Timeline</h2>
+        <div class="timeline">
+          <div class="step">
+            <div class="step-index">Step 1</div>
+            <div class="step-title">Setup &amp; branding</div>
+            <div class="step-week">Week 1</div>
+          </div>
+          <div class="step">
+            <div class="step-index">Step 2</div>
+            <div class="step-title">Staff training</div>
+            <div class="step-week">Week 2</div>
+          </div>
+          <div class="step">
+            <div class="step-index">Step 3</div>
+            <div class="step-title">Pilot launch</div>
+            <div class="step-week">Week 3-8</div>
+          </div>
+          <div class="step">
+            <div class="step-index">Step 4</div>
+            <div class="step-title">Full school rollout</div>
+            <div class="step-week">Week 9-12</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Project Team</h2>
+        <div class="team-grid">
+          <div class="team-card">
+            <strong>[Team member name]</strong>
+            <span>Project Lead</span>
+            <span>[Replace with your university]</span>
+          </div>
+          <div class="team-card">
+            <strong>[Team member name]</strong>
+            <span>System Developer</span>
+            <span>[Replace with your university]</span>
+          </div>
+          <div class="team-card">
+            <strong>[Team member name]</strong>
+            <span>Training &amp; Support</span>
+            <span>[Replace with your university]</span>
+          </div>
+          <div class="team-card">
+            <strong>[Team member name]</strong>
+            <span>Documentation</span>
+            <span>[Replace with your university]</span>
+          </div>
+        </div>
+        <div class="endorsement">
+          Supervised by [Name], Dept of Computer Science, [University]
+        </div>
+      </section>
+
+      <div class="cta-box">
+        <strong>Book a Free 30-Minute Demo</strong>
+        <span>Contact us at [phone/email]</span>
+      </div>
+    </main>
+    <footer class="footer">
+      <span>[Replace with your names]</span>
+      <span>[Replace with your university]</span>
+      <span>May 22, 2026</span>
+    </footer>
+  </section>
+</body>
+</html>

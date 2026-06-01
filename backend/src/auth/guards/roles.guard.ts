@@ -1,6 +1,9 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ROLES_KEY } from '../decorators/roles.decorator';
+import {
+  ALLOW_SUPER_ADMIN_MIXED_ROLE_KEY,
+  ROLES_KEY,
+} from '../decorators/roles.decorator';
 import { Role } from '../types/role.enum';
 
 @Injectable()
@@ -20,15 +23,25 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
     const normalizedUserRole = String(user?.role || '').trim().toUpperCase();
+    const normalizedRequiredRoles = requiredRoles.map((role) =>
+      String(role || '').trim().toUpperCase(),
+    );
+    const allowSuperAdminMixedRole = this.reflector.getAllAndOverride<boolean>(
+      ALLOW_SUPER_ADMIN_MIXED_ROLE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
-    // Logging removed for production
+    if (
+      !allowSuperAdminMixedRole &&
+      normalizedUserRole === Role.SUPER_ADMIN &&
+      normalizedRequiredRoles.some((role) => role !== Role.SUPER_ADMIN)
+    ) {
+      return false;
+    }
 
     const isAllowed =
       user &&
-      requiredRoles.some(
-        (role) => String(role || '').trim().toUpperCase() === normalizedUserRole,
-      );
-    // Logging removed for production
+      normalizedRequiredRoles.some((role) => role === normalizedUserRole);
 
     return isAllowed;
   }

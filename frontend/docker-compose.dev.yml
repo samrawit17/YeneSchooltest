@@ -41,7 +41,7 @@ services:
   # Backend API (NestJS) - Development with hot reload
   backend:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: Dockerfile
       target: development
     container_name: sms_backend_dev
@@ -62,7 +62,7 @@ services:
       RATE_LIMIT_WINDOW_SEC: 60
       TRUST_PROXY: 1
     volumes:
-      - ./backend:/app
+      - ../backend:/app
       - /app/node_modules
     ports:
       - "5000:5000"
@@ -88,17 +88,20 @@ services:
   # Frontend (Next.js) - Development with hot reload
   frontend:
     build:
-      context: ./frontend
+      context: .
       dockerfile: Dockerfile
       target: development
     container_name: sms_frontend_dev
     restart: unless-stopped
     environment:
       NODE_ENV: development
+      HOSTNAME: 0.0.0.0
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
       NEXT_PUBLIC_API_URL: http://localhost:5000
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
-      - ./frontend:/app
+      - .:/app
       - /app/node_modules
       - /app/.next
     ports:
@@ -107,12 +110,15 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 45s
-    command: npm run dev
+      start_period: 90s
+    command:
+      - sh
+      - -lc
+      - npm run dev -- --hostname 0.0.0.0
     networks:
       - sms_network
 

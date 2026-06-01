@@ -6,7 +6,10 @@ export function ToastProvider() {
     <div>
       <Toaster
         position="top-right"
+        closeButton
         toastOptions={{
+          closeButton: true,
+          closeButtonAriaLabel: 'Close notification',
           duration: 4000,
           style: {
             background: 'hsl(var(--background))',
@@ -15,7 +18,7 @@ export function ToastProvider() {
             minWidth: '360px',
             maxWidth: 'min(92vw, 640px)',
             borderRadius: '12px',
-            padding: '16px',
+            padding: '16px 48px 16px 16px',
             boxShadow: '0 10px 40px rgba(15, 23, 42, 0.18)',
             border: '1px solid hsl(var(--border))',
           },
@@ -63,12 +66,16 @@ export function ToastProvider() {
         .sonner-toaster [data-close-button] {
           background: hsl(var(--secondary)) !important;
           color: hsl(var(--secondary-foreground)) !important;
-          border-radius: 8px !important;
+          border-radius: 9999px !important;
           width: 28px !important;
           height: 28px !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
+          left: auto !important;
+          right: 10px !important;
+          top: 10px !important;
+          transform: none !important;
           transition: all 0.2s ease !important;
         }
         .sonner-toaster [data-close-button]:hover {

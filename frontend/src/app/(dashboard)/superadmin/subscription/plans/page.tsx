@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { usePlans } from '@/hooks/useSubscription';
@@ -78,7 +78,8 @@ const SubscriptionPlansPage = () => {
   const router = useRouter();
   const { plans, loading, createPlan, updatePlan, deletePlan, fetchPlans } = usePlans();
   const [schools, setSchools] = useState<{ id: string; name: string; email: string; plan: { id: string; name: string; tier: string } | null; _count?: { users?: number } }[]>([]);
-  const [loadingSchools, setLoadingSchools] = useState(true);
+  const [loadingSchools, setLoadingSchools] = useState(false);
+  const [schoolsLoaded, setSchoolsLoaded] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,21 +105,28 @@ const SubscriptionPlansPage = () => {
         router.push('/dashboard');
         return;
       }
-      fetchSchools();
     }
   }, [isAuthenticated, authLoading, user, router]);
 
-  const fetchSchools = async () => {
+  const fetchSchools = useCallback(async () => {
     try {
       setLoadingSchools(true);
       const response = await subscriptionAPI.getSchools();
       setSchools(response.data);
     } catch (error) {
       console.error('Failed to fetch schools:', error);
+      toast.error('Failed to load schools');
     } finally {
       setLoadingSchools(false);
+      setSchoolsLoaded(true);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'schools' && !schoolsLoaded && !loadingSchools) {
+      void fetchSchools();
+    }
+  }, [activeTab, fetchSchools, loadingSchools, schoolsLoaded]);
 
   const getTierIcon = (tier: PlanTier) => {
     switch (tier) {

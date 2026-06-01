@@ -14,6 +14,14 @@ export const schoolSettingsAPI = {
   get: (schoolId: string, key: string) => api.get(`/schools/${schoolId}/settings/${key}`),
   set: (schoolId: string, key: string, value: any) =>
     api.put(`/schools/${schoolId}/settings/${key}`, { value }),
+  uploadLoginImage: async (schoolId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/schools/${schoolId}/settings/login-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
   delete: (schoolId: string, key: string) => api.delete(`/schools/${schoolId}/settings/${key}`),
   batchUpdate: (schoolId: string, settings: Record<string, any>) =>
     api.post(`/schools/${schoolId}/settings/batch`, settings),
@@ -32,6 +40,7 @@ export const schoolsAPI = {
       address?: string;
       phone?: string;
       code?: string;
+      publicUrlSlug?: string;
       logoUrl?: string;
     }
   ) => api.put(`/schools/${id}`, data),
@@ -216,8 +225,8 @@ export const timetableSlotsAPI = {
     room?: string;
     academicYearId?: string;
   }[]) => api.post('/timetable-slots/bulk', { slots }),
-  deleteByClassSection: (classId: string, sectionId: string) =>
-    api.delete(`/timetable-slots/class/${classId}/section/${sectionId}`),
+  deleteByClassSection: (classId: string, sectionId: string, params?: { academicYearId?: string }) =>
+    api.delete(`/timetable-slots/class/${classId}/section/${sectionId}`, { params }),
   getGrid: (classId: string, sectionId?: string, academicYearId?: string) =>
     api.get(`/timetable-slots/grid/class/${classId}`, {
       params: { sectionId, academicYearId },

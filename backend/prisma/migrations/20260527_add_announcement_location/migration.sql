@@ -1,0 +1,1 @@
+ALTER TABLE "Announcement" ADD COLUMN IF NOT EXISTS "location" TEXT;

@@ -72,6 +72,8 @@ export enum NotificationType {
   FEE_DUE = 'FEE_DUE',
   FEE_PAID = 'FEE_PAID',
   PAYMENT_RECEIVED = 'PAYMENT_RECEIVED',
+  PAYROLL_PAYMENT_DUE = 'PAYROLL_PAYMENT_DUE',
+  PAYROLL_RUN_REQUIRED = 'PAYROLL_RUN_REQUIRED',
 
   // System notifications
   SYSTEM_ALERT = 'SYSTEM_ALERT',
@@ -112,13 +114,30 @@ type NotificationPreferenceCategory =
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
+  private readonly platformBackupReminderDays = this.parsePositiveInt(
+    process.env.SUPERADMIN_BACKUP_REMINDER_DAYS,
+    28,
+  );
+  private readonly platformDangerDbSizeMb = this.parsePositiveInt(
+    process.env.SUPERADMIN_DB_DANGER_SIZE_MB,
+    10240,
+  );
 
   private canViewSchoolGlobalNotifications(userRole: string) {
     return userRole === 'ADMIN' || userRole === 'IT_MANAGER';
   }
 
+  private canViewPlatformNotifications(userRole: string) {
+    return userRole === 'SUPER_ADMIN';
+  }
+
   constructor(private prisma: PrismaService) {
     this.configureWebPush();
+  }
+
+  private parsePositiveInt(value: string | undefined, fallback: number): number {
+    const parsed = Number.parseInt(String(value || ''), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
   }
 
   private async getUserLanguage(userId: string): Promise<NotificationLanguage> {
@@ -317,6 +336,8 @@ export class NotificationService {
         NotificationType.FEE_DUE,
         NotificationType.FEE_PAID,
         NotificationType.PAYMENT_RECEIVED,
+        NotificationType.PAYROLL_PAYMENT_DUE,
+        NotificationType.PAYROLL_RUN_REQUIRED,
       ].includes(type as NotificationType)
     ) {
       return 'feesEnabled';
@@ -544,19 +565,25 @@ export class NotificationService {
     // School operational roles that share the admin bell should also receive school-global notifications.
     const canSeeSchoolGlobalNotifications =
       this.canViewSchoolGlobalNotifications(userRole);
+    const canSeePlatformNotifications =
+      this.canViewPlatformNotifications(userRole);
 
     const where: any = {
       userId, // User-specific notifications
     };
 
-    // Add global notifications for both school admins and super admins
     if (canSeeSchoolGlobalNotifications) {
       where.OR = [{ userId }, { userId: null }];
       delete where.userId;
     }
 
-    // Filter by schoolId for school-specific notifications (not for super admin)
-    if (options?.schoolId) {
+    if (canSeePlatformNotifications) {
+      where.OR = [
+        { userId, schoolId: null },
+        { userId: null, schoolId: null },
+      ];
+      delete where.userId;
+    } else if (options?.schoolId) {
       where.schoolId = options.schoolId;
     }
 
@@ -625,7 +652,13 @@ export class NotificationService {
       ],
       communication: ['MESSAGE_RECEIVED', 'ANNOUNCEMENT', 'COMMUNICATION'],
       event: ['EVENT', 'EVENT_UPDATED', 'EVENT_DELETED'],
-      finance: ['FEE_DUE', 'FEE_PAID', 'PAYMENT_RECEIVED'],
+      finance: [
+        'FEE_DUE',
+        'FEE_PAID',
+        'PAYMENT_RECEIVED',
+        'PAYROLL_PAYMENT_DUE',
+        'PAYROLL_RUN_REQUIRED',
+      ],
       system: [
         'SYSTEM_ALERT',
         'SIREN_ALERT',
@@ -648,6 +681,8 @@ export class NotificationService {
   ) {
     const canSeeSchoolGlobalNotifications =
       this.canViewSchoolGlobalNotifications(userRole);
+    const canSeePlatformNotifications =
+      this.canViewPlatformNotifications(userRole);
 
     const where: any = {
       userId,
@@ -658,8 +693,13 @@ export class NotificationService {
       delete where.userId;
     }
 
-    // Filter by schoolId for school-specific notifications
-    if (schoolId) {
+    if (canSeePlatformNotifications) {
+      where.OR = [
+        { userId, schoolId: null },
+        { userId: null, schoolId: null },
+      ];
+      delete where.userId;
+    } else if (schoolId) {
       where.schoolId = schoolId;
     }
 
@@ -742,7 +782,15 @@ export class NotificationService {
       } else if (['EVENT', 'EVENT_UPDATED', 'EVENT_DELETED'].includes(type)) {
         categories.event.total++;
         if (isUnread) categories.event.unread++;
-      } else if (['FEE_DUE', 'FEE_PAID', 'PAYMENT_RECEIVED'].includes(type)) {
+      } else if (
+        [
+          'FEE_DUE',
+          'FEE_PAID',
+          'PAYMENT_RECEIVED',
+          'PAYROLL_PAYMENT_DUE',
+          'PAYROLL_RUN_REQUIRED',
+        ].includes(type)
+      ) {
         categories.finance.total++;
         if (isUnread) categories.finance.unread++;
       } else if (
@@ -772,6 +820,8 @@ export class NotificationService {
   ) {
     const canSeeSchoolGlobalNotifications =
       this.canViewSchoolGlobalNotifications(userRole);
+    const canSeePlatformNotifications =
+      this.canViewPlatformNotifications(userRole);
 
     const where: any = {
       userId,
@@ -787,8 +837,14 @@ export class NotificationService {
       delete where.isRead;
     }
 
-    // Filter by schoolId for school-specific notifications
-    if (schoolId) {
+    if (canSeePlatformNotifications) {
+      where.OR = [
+        { userId, schoolId: null, isRead: false },
+        { userId: null, schoolId: null, isRead: false },
+      ];
+      delete where.userId;
+      delete where.isRead;
+    } else if (schoolId) {
       where.schoolId = schoolId;
     }
 
@@ -1232,6 +1288,237 @@ export class NotificationService {
     });
 
     return notifications;
+  }
+
+  async createPlatformNotification(data: {
+    userId: string;
+    title: string;
+    message: string;
+    type: string;
+    actionUrl?: string;
+    metadata?: any;
+  }) {
+    const id = randomUUID();
+    await this.prisma.$executeRaw(
+      Prisma.sql`
+        INSERT INTO "Notification" (
+          "id",
+          "schoolId",
+          "userId",
+          "title",
+          "message",
+          "type",
+          "actionUrl",
+          "metadata",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES (
+          ${id},
+          NULL,
+          ${data.userId},
+          ${data.title},
+          ${data.message},
+          ${data.type},
+          ${data.actionUrl || null},
+          ${data.metadata ? JSON.stringify(data.metadata) : null},
+          NOW(),
+          NOW()
+        )
+      `,
+    );
+
+    await this.sendPushToUsers([data.userId], {
+      title: data.title,
+      message: data.message,
+      type: data.type,
+      actionUrl: data.actionUrl,
+      notificationId: id,
+      metadata: data.metadata,
+    }).catch((error: any) => {
+      this.logger.warn(
+        `Push delivery lookup failed for platform notification ${id}: ${error?.message || 'unknown error'}`,
+      );
+    });
+
+    return { id, ...data, schoolId: null };
+  }
+
+  @Cron('0 9 * * *')
+  async sendSuperAdminPlatformNotifications() {
+    const superAdmins = await this.prisma.user.findMany({
+      where: {
+        role: 'SUPER_ADMIN' as any,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    if (superAdmins.length === 0) {
+      this.logger.warn('No active SUPER_ADMIN user exists for platform notifications');
+      return;
+    }
+
+    const backupState = await this.getPlatformBackupState();
+    if (backupState.isOverdue) {
+      await this.notifySuperAdminsOnce({
+        userIds: superAdmins.map((user) => user.id),
+        title: backupState.lastBackupAt
+          ? 'Platform backup is overdue'
+          : 'No platform backup has been recorded',
+        message: backupState.lastBackupAt
+          ? `The last full platform backup was ${backupState.daysSinceLastBackup} days ago. Download a fresh backup from Super Admin backups.`
+          : 'No full platform backup download has been recorded yet. Download a full platform backup from Super Admin backups.',
+        type: NotificationType.ALERT,
+        actionUrl: '/superadmin/backups',
+        dedupeKey: 'platform-backup-overdue',
+        dedupeDays: 1,
+        metadata: {
+          lastBackupAt: backupState.lastBackupAt?.toISOString() || null,
+          daysSinceLastBackup: backupState.daysSinceLastBackup,
+          reminderDays: this.platformBackupReminderDays,
+          severity: 'HIGH',
+        },
+      });
+    }
+
+    const dbSize = await this.getDatabaseSizeMb();
+    if (dbSize !== null && dbSize >= this.platformDangerDbSizeMb) {
+      await this.notifySuperAdminsOnce({
+        userIds: superAdmins.map((user) => user.id),
+        title: 'Database size is above danger threshold',
+        message: `The database is about ${Math.round(dbSize)} MB, above the configured ${this.platformDangerDbSizeMb} MB danger threshold. Review storage and backup status.`,
+        type: NotificationType.SYSTEM_ALERT,
+        actionUrl: '/superadmin',
+        dedupeKey: 'database-size-danger',
+        dedupeDays: 1,
+        metadata: {
+          databaseSizeMb: Math.round(dbSize),
+          thresholdMb: this.platformDangerDbSizeMb,
+          severity: 'HIGH',
+        },
+      });
+    }
+
+    if (new Date().getDay() === 1) {
+      const summary = await this.getPlatformSummary(dbSize);
+      await this.notifySuperAdminsOnce({
+        userIds: superAdmins.map((user) => user.id),
+        title: 'Weekly platform status summary',
+        message: `${summary.activeSchools} active schools, ${summary.activeUsers} active users, database ${summary.databaseSizeMb ?? 'unknown'} MB. Last platform backup: ${summary.lastBackupLabel}.`,
+        type: NotificationType.INFO,
+        actionUrl: '/superadmin',
+        dedupeKey: 'weekly-platform-summary',
+        dedupeDays: 6,
+        metadata: summary,
+      });
+    }
+  }
+
+  private async notifySuperAdminsOnce(data: {
+    userIds: string[];
+    title: string;
+    message: string;
+    type: NotificationType;
+    actionUrl: string;
+    dedupeKey: string;
+    dedupeDays: number;
+    metadata?: Record<string, unknown>;
+  }) {
+    const since = new Date(Date.now() - data.dedupeDays * 24 * 60 * 60 * 1000);
+    await Promise.all(
+      data.userIds.map(async (userId) => {
+        const existing = await this.prisma.notification.findFirst({
+          where: {
+            userId,
+            schoolId: null as any,
+            type: data.type,
+            title: data.title,
+            createdAt: { gte: since },
+          },
+          select: { id: true },
+        });
+        if (existing) return;
+
+        await this.createPlatformNotification({
+          userId,
+          title: data.title,
+          message: data.message,
+          type: data.type,
+          actionUrl: data.actionUrl,
+          metadata: {
+            ...data.metadata,
+            dedupeKey: data.dedupeKey,
+          },
+        });
+      }),
+    );
+  }
+
+  private async getPlatformBackupState() {
+    const rows = await this.prisma.$queryRaw<Array<{ lastBackupAt: Date | null }>>(
+      Prisma.sql`
+        SELECT MAX("createdAt") AS "lastBackupAt"
+        FROM "SystemAuditLog"
+        WHERE "action" = 'BACKUP_DOWNLOAD'
+          AND "entityType" = 'PLATFORM_BACKUP'
+      `,
+    );
+    const lastBackupAt = rows[0]?.lastBackupAt || null;
+    const daysSinceLastBackup = lastBackupAt
+      ? Math.floor((Date.now() - new Date(lastBackupAt).getTime()) / (24 * 60 * 60 * 1000))
+      : null;
+
+    return {
+      lastBackupAt: lastBackupAt ? new Date(lastBackupAt) : null,
+      daysSinceLastBackup,
+      isOverdue:
+        !lastBackupAt ||
+        (daysSinceLastBackup !== null &&
+          daysSinceLastBackup >= this.platformBackupReminderDays),
+    };
+  }
+
+  private async getDatabaseSizeMb() {
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ sizeMb: number }>>(
+        Prisma.sql`SELECT pg_database_size(current_database()) / 1024.0 / 1024.0 AS "sizeMb"`,
+      );
+      return Number(rows[0]?.sizeMb ?? null);
+    } catch (error: any) {
+      this.logger.warn(`Unable to check database size: ${error?.message || 'unknown error'}`);
+      return null;
+    }
+  }
+
+  private async getPlatformSummary(databaseSizeMb: number | null) {
+    const [schoolCounts, userCounts, backupState] = await Promise.all([
+      this.prisma.school.groupBy({
+        by: ['isActive'],
+        _count: { _all: true },
+      }),
+      this.prisma.user.groupBy({
+        by: ['isActive'],
+        _count: { _all: true },
+      }),
+      this.getPlatformBackupState(),
+    ]);
+
+    const activeSchools =
+      schoolCounts.find((row) => row.isActive)?._count._all || 0;
+    const activeUsers = userCounts.find((row) => row.isActive)?._count._all || 0;
+
+    return {
+      activeSchools,
+      activeUsers,
+      databaseSizeMb:
+        databaseSizeMb === null ? null : Math.round(databaseSizeMb),
+      lastBackupAt: backupState.lastBackupAt?.toISOString() || null,
+      lastBackupLabel: backupState.lastBackupAt
+        ? `${backupState.daysSinceLastBackup} days ago`
+        : 'never recorded',
+      backupReminderDays: this.platformBackupReminderDays,
+    };
   }
 
   async savePushSubscription(data: {

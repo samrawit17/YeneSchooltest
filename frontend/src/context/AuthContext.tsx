@@ -33,7 +33,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (loginIdentifier: string, password: string, rememberMe?: boolean) => Promise<User>;
+  login: (loginIdentifier: string, password: string, rememberMe?: boolean, schoolId?: string | null) => Promise<User>;
   logout: () => void;
   updateUser: (user: User) => void;
 }
@@ -52,14 +52,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      
      const checkAuth = async () => {
        try {
-         const response = await userAPI.getProfile();
+         const response = await userAPI.getProfile({ skipAuthErrorRedirect: true });
          const profile = response.data;
-         if (profile) {
-           setUser(profile);
-           setToken('cookie-session');
+          if (profile) {
+            setUser(profile);
+            setToken('cookie-session');
+            sessionStorage.setItem('user', JSON.stringify({ id: profile.id }));
+            const userTheme = (profile.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
+           useThemeStore.getState().setTheme(userTheme, profile.id);
          }
        } catch (error: any) {
-         if (error?.response?.status !== 401) {
+         const isCanceledRequest =
+           error?.code === 'ERR_CANCELED' ||
+           error?.name === 'CanceledError' ||
+           error?.message === 'Request aborted';
+         if (error?.response?.status !== 401 && !isCanceledRequest) {
            console.error('Failed to restore authenticated session:', error);
          }
          setUser(null);
@@ -71,7 +78,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
      checkAuth();
      
-     // Initialize theme from Zustand store (which handles persistence)
+     // Initialize guest theme while auth restoration runs. Authenticated users are
+     // re-applied with their own scoped key/server preference after profile load.
      useThemeStore.getState().initializeTheme();
    }, []);
 
@@ -80,17 +88,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      return null;
    }
 
-   const login = async (loginIdentifier: string, password: string, _rememberMe = false): Promise<User> => {
+   const login = async (
+     loginIdentifier: string,
+     password: string,
+     _rememberMe = false,
+     schoolId?: string | null,
+   ): Promise<User> => {
      try {
-       const response = await authAPI.login(loginIdentifier, password);
+       const response = await authAPI.login(loginIdentifier, password, schoolId);
        const { access_token, user: userData } = response.data;
-       // Save user's theme preference to Zustand store
-       const userTheme = (userData.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
-       useThemeStore.getState().setTheme(userTheme);
-       useLanguageStore.getState().initializeLanguage();
+        setToken(access_token || 'cookie-session');
+        setUser(userData);
+        sessionStorage.setItem('user', JSON.stringify({ id: userData.id }));
 
-       setToken(access_token || 'cookie-session');
-       setUser(userData);
+        // Apply the authenticated user's own preference, not the guest key.
+       const userTheme = (userData.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
+       useThemeStore.getState().setTheme(userTheme, userData.id);
+       useLanguageStore.getState().initializeLanguage();
 
        return userData;
      } catch (error: any) {
@@ -102,12 +116,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
    const logout = () => {
      authAPI.logout().catch(() => undefined);
-     // Reset theme to the app default via Zustand store
+     // Reset theme to system default via Zustand store
      useThemeStore.getState().setTheme('light');
-     useLanguageStore.getState().initializeLanguage();
-     setToken(null);
-     setUser(null);
-     const language = useLanguageStore.getState().language;
+       useLanguageStore.getState().initializeLanguage();
+       setToken(null);
+       setUser(null);
+       sessionStorage.removeItem('user');
+       const language = useLanguageStore.getState().language;
      const navigationText = getModuleMessages<{ labels?: Record<string, string> }>(language, 'navigation');
      toast.success(navigationText.labels?.['Logged out successfully'] || 'Logged out successfully');
    };
@@ -162,7 +177,7 @@ export const hasPermission = (user: User | null, permission: string): boolean =>
      STUDENT: ['exam:read', 'result:read', 'announcement:read', 'fee:read', 'attendance:read', 'timetable:read', 'assignment:read'],
      PARENT: ['student:read', 'result:read', 'announcement:read', 'fee:read', 'attendance:read', 'timetable:read', 'assignment:read'],
      REGISTRAR: ['student:create', 'student:read', 'student:update', 'student:approve', 'class:assign', 'document:upload', 'enrollment:read', 'enrollment:approve'],
-     FINANCE: ['fee:create', 'fee:read', 'fee:update', 'fee:pay', 'fee:assign', 'report:read', 'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete', 'finance:student_fees:generate', 'finance:student_fees:read', 'finance:payments:record', 'finance:reports:read'],
+     FINANCE: ['fee:create', 'fee:read', 'fee:update', 'fee:pay', 'fee:assign', 'report:read', 'finance:fee_structure:create', 'finance:fee_structure:read', 'finance:fee_structure:update', 'finance:fee_structure:delete', 'finance:student_fees:generate', 'finance:student_fees:read', 'finance:payments:record', 'finance:reports:read', 'finance:payroll:read', 'finance:payroll:manage', 'finance:payroll:approve', 'finance:payroll:pay'],
    };
 
   const userPermissions = rolePermissions[user.role] || [];

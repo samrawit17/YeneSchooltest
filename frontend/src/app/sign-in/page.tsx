@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, type CSSProperties } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,7 +11,18 @@ import { toast } from "sonner";
 import { useThemeStore } from "@/lib/themeStore";
 import { AppLanguage, useLanguageStore } from "@/lib/languageStore";
 import { useTranslations } from "@/hooks/useTranslations";
-import { Eye, EyeOff, Languages, Lock, LogIn, Moon, School, Sun, User } from "lucide-react";
+import { Eye, EyeOff, Languages, Lock, LogIn, Moon, School, Sun, User, Megaphone } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { announcementsAPI, type Announcement } from "@/lib/api/content";
+import { enrollmentAPI } from "@/lib/api/enrollment";
+import { resolveAssetUrl } from "@/lib/asset-url";
+import {
+  findSchoolByUrlSlug,
+  getHostSchoolSlug,
+  readCachedSchoolLoginContext,
+  writeCachedSchoolLoginContext,
+  type PublicSchoolSummary,
+} from "@/lib/school-resolver";
 
 // Shadcn/ui Components
 import { Button } from "@/components/ui/button";
@@ -48,6 +58,11 @@ const languageOptions: Array<{ value: AppLanguage; label: string }> = [
   { value: "ar", label: "العربية" },
 ];
 
+const accentControlClassName =
+  "border bg-white/90 text-gray-700 shadow-sm transition-colors hover:bg-white focus:ring-2 focus:ring-offset-2 dark:bg-gray-900/80 dark:text-gray-200 dark:hover:bg-gray-900";
+const defaultLoginImageUrl =
+  "https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2086&auto=format&fit=crop";
+
 const getTranslatedLoginError = (message: string | undefined, fallback: string) => {
   const normalizedMessage = (message || "").trim().toLowerCase();
   if (!normalizedMessage) return fallback;
@@ -71,6 +86,109 @@ const LoginPage = () => {
   const setLanguage = useLanguageStore((state) => state.setLanguage);
   const { t } = useTranslations<any>("login");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedSchoolId = searchParams.get("schoolId");
+  const requestedSchoolSlug = searchParams.get("school") || searchParams.get("slug") || getHostSchoolSlug();
+  const cachedLoginSchool = readCachedSchoolLoginContext({
+    schoolId: requestedSchoolId,
+    slug: requestedSchoolSlug,
+  });
+  const [resolvedLoginSchoolId, setResolvedLoginSchoolId] = useState<string | null>(cachedLoginSchool?.id || null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const [schoolName, setSchoolName] = useState<string | null>(cachedLoginSchool?.name || null);
+  const [schoolLogoUrl, setSchoolLogoUrl] = useState<string | null>(cachedLoginSchool?.logoUrl || null);
+  const [schoolLoginImageUrl, setSchoolLoginImageUrl] = useState<string | null>(cachedLoginSchool?.loginImageUrl || null);
+  const [schoolAccentColor, setSchoolAccentColor] = useState<string | null>(cachedLoginSchool?.accentColor || null);
+  const [resolvedLoginSchoolSlug, setResolvedLoginSchoolSlug] = useState<string | null>(cachedLoginSchool?.publicUrlSlug || null);
+  const displaySchoolName =
+    schoolName ||
+    announcements[currentSlide]?.school?.name ||
+    announcements[0]?.school?.name ||
+    t.brand;
+  const displaySchoolLogoUrl = resolveAssetUrl(schoolLogoUrl);
+  const displayLoginImageUrl =
+    resolveAssetUrl(schoolLoginImageUrl) ||
+    displaySchoolLogoUrl ||
+    defaultLoginImageUrl;
+  const forgotPasswordHref =
+    resolvedLoginSchoolSlug || requestedSchoolSlug
+      ? `/forgot-password?slug=${encodeURIComponent(resolvedLoginSchoolSlug || requestedSchoolSlug || "")}`
+      : resolvedLoginSchoolId || requestedSchoolId
+        ? `/forgot-password?schoolId=${encodeURIComponent(resolvedLoginSchoolId || requestedSchoolId || "")}`
+        : "/forgot-password";
+  const brandColor = /^#[0-9a-fA-F]{6}$/.test((schoolAccentColor || "").trim())
+    ? schoolAccentColor!.trim()
+    : "#e35336";
+  const accentControlStyle = {
+    borderColor: "color-mix(in srgb, var(--brand-color, #e35336) 45%, transparent)",
+    "--tw-ring-color": "color-mix(in srgb, var(--brand-color, #e35336) 35%, transparent)",
+  } as CSSProperties;
+  const schoolEnrollHref = resolvedLoginSchoolSlug
+    ? `/enroll?school=${encodeURIComponent(resolvedLoginSchoolSlug)}`
+    : requestedSchoolSlug
+      ? `/enroll?school=${encodeURIComponent(requestedSchoolSlug)}`
+      : resolvedLoginSchoolId
+        ? `/enroll?schoolId=${encodeURIComponent(resolvedLoginSchoolId)}`
+      : "/enroll";
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const schoolsRes = await enrollmentAPI.getSchools();
+        const schools: PublicSchoolSummary[] = schoolsRes.data?.data || [];
+        const selectedSchool =
+          (requestedSchoolId
+            ? schools.find((school) => school.id === requestedSchoolId)
+            : undefined) ||
+          findSchoolByUrlSlug(schools, requestedSchoolSlug) ||
+          (schools.length === 1 ? schools[0] : undefined);
+
+        const announcementResponse = selectedSchool
+          ? await announcementsAPI.getPublic(selectedSchool.id)
+          : { data: [] };
+
+        if (selectedSchool) {
+          writeCachedSchoolLoginContext(selectedSchool);
+          setResolvedLoginSchoolId(selectedSchool.id);
+          setResolvedLoginSchoolSlug(selectedSchool.publicUrlSlug || null);
+          setSchoolName(selectedSchool.name);
+          setSchoolLogoUrl(selectedSchool.logoUrl || null);
+          setSchoolLoginImageUrl(selectedSchool.loginImageUrl || null);
+          setSchoolAccentColor(selectedSchool.accentColor || null);
+        } else {
+          setResolvedLoginSchoolId(null);
+          setResolvedLoginSchoolSlug(null);
+          setSchoolName(null);
+          setSchoolLogoUrl(null);
+          setSchoolLoginImageUrl(null);
+          setSchoolAccentColor(null);
+        }
+        const data = Array.isArray(announcementResponse.data) ? announcementResponse.data : [];
+        setAnnouncements(data);
+      } catch {
+        setAnnouncements([]);
+      } finally {
+        setAnnouncementsLoading(false);
+      }
+    };
+    fetchData();
+  }, [requestedSchoolSlug, requestedSchoolId]);
+
+  useEffect(() => {
+    if (currentSlide >= announcements.length) {
+      setCurrentSlide(0);
+    }
+  }, [announcements.length, currentSlide]);
+
+  useEffect(() => {
+    if (announcements.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % announcements.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [announcements.length]);
 
   const loginSchema = z.object({
     loginIdentifier: z.string().min(1, { message: t.validationIdentifier }),
@@ -110,7 +228,23 @@ const LoginPage = () => {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      const user = await login(data.loginIdentifier, data.password, !!data.rememberMe);
+      const user = await login(
+        data.loginIdentifier,
+        data.password,
+        !!data.rememberMe,
+        resolvedLoginSchoolId,
+      );
+      if (resolvedLoginSchoolId || schoolName) {
+        writeCachedSchoolLoginContext({
+          id: resolvedLoginSchoolId || user.schoolId || "",
+          name: schoolName || user.name,
+          code: null,
+          publicUrlSlug: resolvedLoginSchoolSlug,
+          logoUrl: schoolLogoUrl,
+          accentColor: schoolAccentColor,
+          loginImageUrl: schoolLoginImageUrl,
+        });
+      }
       
       toast.success(t.welcomeToast.replace("{name}", user.name));
       
@@ -144,43 +278,116 @@ const LoginPage = () => {
   };
 
   return (
-    <div className={`flex h-screen w-full overflow-hidden ${resolvedTheme === 'dark' ? 'dark' : ''}`}>
-      {/* Left Side - Full Size School Image */}
+    <div
+      className={`flex h-screen w-full overflow-hidden ${resolvedTheme === 'dark' ? 'dark' : ''}`}
+      style={{ "--brand-color": brandColor } as React.CSSProperties}
+    >
+      {/* Left Side - Full Size School Image with Announcement Slideshow */}
       <div className="hidden lg:block lg:w-1/2 relative">
-        <Image
-          src="https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2086&auto=format&fit=crop"
-          alt="Modern school campus with students"
-          fill
-          className="object-cover"
-          priority
+        <img
+          src={displayLoginImageUrl}
+          alt={`${displaySchoolName} login background`}
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={(event) => {
+            const fallbackUrl = displaySchoolLogoUrl || defaultLoginImageUrl;
+            if (event.currentTarget.src !== fallbackUrl) {
+              event.currentTarget.src = fallbackUrl;
+            }
+          }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/25 to-transparent" />
-        <div className="absolute bottom-12 left-12 text-white max-w-md">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-white/20 backdrop-blur-sm p-2 rounded-xl">
-              <School className="w-8 h-8" />
-            </div>
-            <h1 className="text-3xl font-light tracking-tight">{t.brand}</h1>
+        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+
+        <div className="absolute left-0 right-0 top-8 px-10 text-center text-white">
+          <div className="flex w-full flex-col items-center justify-center gap-4">
+            {displaySchoolLogoUrl && (
+              <img
+                src={displaySchoolLogoUrl}
+                alt={`${displaySchoolName} logo`}
+                className="h-40 w-52 shrink-0 rounded-xl bg-transparent object-contain md:h-48 md:w-64"
+              />
+            )}
+            <h1 className="max-w-full truncate text-3xl font-bold tracking-wide md:text-4xl">
+              {displaySchoolName}
+            </h1>
           </div>
-          <p className="text-4xl font-bold leading-tight mb-4">
-            {t.heroTitle}
-          </p>
-          <p className="text-lg text-white/80">
-            {t.heroSubtitle}
-          </p>
+        </div>
+        
+        <div className="absolute bottom-12 left-12 right-12 text-white max-w-lg">
+          {announcementsLoading ? (
+            <div className="space-y-4">
+              <div className="h-3 w-24 bg-white/20 rounded animate-pulse" />
+              <div className="h-8 w-full bg-white/20 rounded animate-pulse" />
+              <div className="h-4 w-3/4 bg-white/10 rounded animate-pulse" />
+            </div>
+          ) : announcements.length > 0 ? (
+            <>
+              <div className="flex items-center gap-2 mb-4">
+                <Megaphone className="w-5 h-5 text-orange-300" />
+                <span className="text-sm font-medium text-orange-200 uppercase tracking-wider">Announcements</span>
+              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentSlide}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                >
+
+                  <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-3">
+                    {announcements[currentSlide].title}
+                  </h2>
+                  <p className="text-base text-white/80 line-clamp-3">
+                    {announcements[currentSlide].content}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+
+              {announcements.length > 1 && (
+                <div className="flex items-center gap-2 mt-6">
+                  {announcements.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentSlide(i)}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        i === currentSlide ? 'w-8 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/60'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-xl">
+                  <School className="w-8 h-8" />
+                </div>
+                <h1 className="text-3xl font-light tracking-tight">{t.brand}</h1>
+              </div>
+              <p className="text-4xl font-bold leading-tight mb-4">
+                {t.heroTitle}
+              </p>
+              <p className="text-lg text-white/80">
+                {t.heroSubtitle}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
       {/* Right Side - Minimal Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-900 relative">
-        {/* Theme Toggle Button */}
+        {/* Top Right Controls */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
             <SelectTrigger
               aria-label={t.language}
-              className="h-10 w-[132px] rounded-full bg-gray-100 dark:bg-gray-800 border-0 text-gray-700 dark:text-gray-200"
+              className={`h-10 w-[132px] rounded-full ${accentControlClassName}`}
+              style={accentControlStyle}
             >
-              <Languages className="mr-2 h-4 w-4" />
+              <Languages className="mr-2 h-4 w-4 text-[var(--brand-color,#e35336)]" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end">
@@ -195,12 +402,13 @@ const LoginPage = () => {
             variant="ghost"
             size="icon"
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className={`w-10 h-10 rounded-full ${accentControlClassName}`}
+            style={accentControlStyle}
           >
             {resolvedTheme === 'dark' ? (
-              <Sun className="h-5 w-5 text-yellow-500" />
+              <Sun className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
             ) : (
-              <Moon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              <Moon className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
             )}
           </Button>
         </div>
@@ -320,14 +528,14 @@ const LoginPage = () => {
                   className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-0 h-auto"
                   asChild
                 >
-                  <Link href="/forgot-password">{t.forgotPassword}</Link>
+                  <Link href={forgotPasswordHref}>{t.forgotPassword}</Link>
                 </Button>
               </div>
 
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="h-12 w-full bg-[var(--brand-color,#e35336)] text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
+                className="h-12 w-full bg-[var(--brand-color,#e35336)] text-white transition-all hover:brightness-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -352,14 +560,21 @@ const LoginPage = () => {
               className="h-auto p-0 font-medium text-[var(--brand-color,#e35336)] hover:opacity-80"
               asChild
             >
-              <Link href="/enroll">{t.enrollNow}</Link>
+              <Link href={schoolEnrollHref}>{t.enrollNow}</Link>
             </Button>
           </p>
 
-          {/* Footer */}
-          <div className="text-center text-xs text-gray-400 dark:text-gray-500 pt-8">
-            <p>{t.footer}</p>
-          </div>
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+            <Link href="/" className="font-medium text-[var(--brand-color,#e35336)] hover:opacity-80">
+              &larr; Back to Home
+            </Link>
+          </p>
+
+        </div>
+
+        {/* Footer - bottom right */}
+        <div className="absolute bottom-4 right-4 text-xs text-gray-400 dark:text-gray-500">
+          <p>{t.footer}</p>
         </div>
       </div>
     </div>

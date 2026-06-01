@@ -20,6 +20,8 @@ interface PeriodItem {
   feeType: string;
   amount: number;
   discount: number;
+  discountPercent: number;
+  discountLabel: string | null;
   finalAmount: number;
   paid: number;
   balance: number;
@@ -478,8 +480,8 @@ const ParentFeesPage = () => {
                   periodLabel: PARENT_LABELS[childCurriculumType] || "Term",
                   periodCount: shouldSplitAcrossPeriods ? childPeriodCount : 1,
                   amountPerPeriod: shouldSplitAcrossPeriods
-                    ? Math.round(((fee.amount || 0) / Math.max(childPeriodCount, 1)) * 100) / 100
-                    : (fee.amount || 0),
+                    ? Math.round(((fee.finalAmount || fee.amount || 0) / Math.max(childPeriodCount, 1)) * 100) / 100
+                    : (fee.finalAmount || fee.amount || 0),
                   periods: [],
                   totalAmount: 0,
                   paidAmount: 0,
@@ -517,8 +519,10 @@ const ParentFeesPage = () => {
                   group.periods.push({
                     feeId: `${fee.id}-${index}`,
                     feeType: fee.name,
-                    amount: group.amountPerPeriod,
-                    discount: 0,
+                    amount: Math.round(((fee.amount || 0) / Math.max(childPeriodCount, 1)) * 100) / 100,
+                    discount: Math.round(((fee.discount || 0) / Math.max(childPeriodCount, 1)) * 100) / 100,
+                    discountPercent: Number(fee.discountPercent) || 0,
+                    discountLabel: fee.discountLabel || null,
                     finalAmount: group.amountPerPeriod,
                     paid,
                     balance,
@@ -533,8 +537,10 @@ const ParentFeesPage = () => {
                   feeId: fee.id,
                   feeType: cleanFeeTypeName(fee.name),
                   amount: fee.amount || 0,
-                  discount: 0,
-                  finalAmount: fee.amount || 0,
+                  discount: fee.discount || 0,
+                  discountPercent: Number(fee.discountPercent) || 0,
+                  discountLabel: fee.discountLabel || null,
+                  finalAmount: fee.finalAmount || fee.amount || 0,
                   paid: fee.paidAmount || 0,
                   balance: fee.balance || 0,
                   status: fee.status || "PENDING",
@@ -1128,6 +1134,12 @@ const ParentFeesPage = () => {
                                             <div className="text-lg font-bold text-slate-900 dark:text-white">
                                               {formatCurrency(periodAmount)}
                                             </div>
+                                            {periodData?.discount ? (
+                                              <div className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                                                {periodData.discountLabel || "Family discount"}
+                                                {periodData.discountPercent ? ` (${periodData.discountPercent}%)` : ""} -{formatCurrency(periodData.discount)}
+                                              </div>
+                                            ) : null}
 
                                             <div className="mt-2">
                                               {isFullPaid ? (

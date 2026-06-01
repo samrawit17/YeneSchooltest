@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -180,6 +181,12 @@ export class AssessmentsController {
     @Query() query: ListAssessmentsFilterDto,
   ) {
     return this.assessmentsService.listAssessments(req.user.schoolId, query);
+  }
+
+  @Delete('clear')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
+  async clearAssessments(@Request() req: AuthRequest) {
+    return this.assessmentsService.clearAssessments(req.user.schoolId);
   }
 
   @Get(':id')

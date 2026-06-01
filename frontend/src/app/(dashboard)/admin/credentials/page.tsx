@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from "@/hooks/useTranslations";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { formatUserDisplayCode } from "@/lib/student-code";
 import { credentialsAPI, PendingCredential, CredentialStats } from '@/lib/api/admin';
 import { authAPI, userAPI } from '@/lib/api/auth';
 import type { User } from '@/context/AuthContext';
@@ -51,6 +53,8 @@ const roleColors: Record<string, string> = {
 
 export default function CredentialsPage() {
   const { t } = useTranslations<any>("credentials");
+  const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
+  const displayYear = String(currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel || "");
   const [credentials, setCredentials] = useState<PendingCredential[]>([]);
   const [stats, setStats] = useState<CredentialStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -375,8 +379,9 @@ export default function CredentialsPage() {
                         </TableCell>
                         <TableCell className="py-3 px-4">
                           <code className="bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded text-sm text-gray-800 dark:text-gray-200">
-                            {cred.username}
+                            {formatUserDisplayCode(cred.username, displayYear)}
                           </code>
+                          <div className="mt-1 text-xs text-gray-400">Login: {cred.username}</div>
                         </TableCell>
                         <TableCell className="py-3 px-4">
                           <Badge variant="outline" className={roleColors[cred.role] || 'text-gray-700 dark:text-gray-300'}>
@@ -483,7 +488,7 @@ export default function CredentialsPage() {
                   <Label className="text-gray-500 dark:text-gray-400 text-xs">{t.viewDialog.username}</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <code className="flex-1 min-w-0 bg-white dark:bg-slate-700 px-2 sm:px-3 py-2 rounded border dark:border-slate-600 dark:text-white text-xs sm:text-sm break-all leading-relaxed">
-                      {selectedCredential.username}
+                      {formatUserDisplayCode(selectedCredential.username, displayYear)}
                     </code>
                     <Button 
                       variant="outline" 

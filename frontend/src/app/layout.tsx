@@ -23,19 +23,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const fontVariables = {
+    "--font-sans": '"Lexend Deca", "Segoe UI", system-ui, sans-serif',
+    "--font-ethiopic":
+      '"Noto Sans Ethiopic", "Abyssinica SIL", "Nyala", "Ebrima", sans-serif',
+    "--font-arabic":
+      '"Cairo", "Noto Naskh Arabic", "Amiri", sans-serif',
+  } as React.CSSProperties;
+
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        style={
-          {
-            "--font-sans": '"Lexend Deca", "Segoe UI", system-ui, sans-serif',
-            "--font-ethiopic":
-              '"Noto Sans Ethiopic", "Abyssinica SIL", "Nyala", "Ebrima", sans-serif',
-            "--font-arabic":
-              '"Noto Naskh Arabic", "Amiri", "Geeza Pro", "Segoe UI", sans-serif',
-          } as React.CSSProperties
-        }
-      >
+    <html
+      lang="en"
+      suppressHydrationWarning
+      style={fontVariables}
+    >
+      <body>
         <script dangerouslySetInnerHTML={{
           __html: `
             (function() {
@@ -52,7 +54,7 @@ export default function RootLayout({
 
                 var userId = parseUserId(localStorage.getItem('user')) || parseUserId(sessionStorage.getItem('user'));
                 var key = userId ? 'theme-storage:' + userId : 'theme-storage';
-                var stored = localStorage.getItem(key) || localStorage.getItem('theme-storage');
+                var stored = userId ? localStorage.getItem(key) : localStorage.getItem('theme-storage');
                 if (stored) {
                   var parsed = JSON.parse(stored);
                   var t = parsed.theme || (parsed.state && parsed.state.theme);

@@ -35,6 +35,7 @@ export class RegistrarController {
       academicYear: string;
       gradeId: string;
       gender?: string;
+      stream?: string | null;
       address?: string;
       phone?: string;
       emergencyContact?: {
@@ -86,8 +87,13 @@ export class RegistrarController {
     body: {
       name?: string;
       gender?: string;
+      stream?: string | null;
       address?: string;
       phone?: string;
+      motherName?: string;
+      motherPhone?: string;
+      dateOfBirth?: string;
+      faydaNumber?: string | null;
       emergencyContact?: {
         name: string;
         phone: string;
@@ -138,6 +144,9 @@ export class RegistrarController {
       className: string;
       section: string;
       rollNumber: string;
+      classId?: string;
+      sectionId?: string;
+      stream?: string | null;
     },
     @Request() req,
   ) {

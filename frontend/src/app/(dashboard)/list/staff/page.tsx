@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslations } from "@/hooks/useTranslations";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { formatUserDisplayCode } from "@/lib/student-code";
 import {
   Search,
 } from "lucide-react";
@@ -71,6 +73,8 @@ const getInitials = (name: string) => {
 export default function StaffPage() {
   const { t } = useTranslations<any>("peopleLists");
   const router = useRouter();
+  const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
+  const displayYear = String(currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel || "");
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("");
@@ -231,9 +235,15 @@ export default function StaffPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
+                        {(() => {
+                          const loginCode = item.username || item.teacherProfile?.employeeId || "";
+                          const displayCode = formatUserDisplayCode(loginCode, displayYear);
+                          return (
                         <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
-                          {item.username || item.teacherProfile?.employeeId || "-"}
+                          {displayCode}
                         </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-sm text-gray-700 dark:text-gray-300">{item.phone || "-"}</span>

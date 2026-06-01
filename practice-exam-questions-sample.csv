@@ -1,0 +1,9 @@
+subject,question_type,question,option_a,option_b,option_c,option_d,correct_answer,case_sensitive
+Mathematics,MCQ,What is 5 + 7?,10,11,12,13,C,false
+Mathematics,MCQ,Which number is an even number?,7,9,12,15,C,false
+Science,TRUE_FALSE,Water boils at 100 degrees Celsius at sea level.,,,,,True,false
+Science,TRUE_FALSE,Plants do not need sunlight to make food.,,,,,False,false
+English,SHORT_ANSWER,Write one common greeting.,,,,,Hello|Hi|Good morning,false
+English,SHORT_ANSWER,What is the opposite of hot?,,,,,Cold,false
+Civics,TRUE_FALSE,Ethiopia is located in Africa.,,,,,True,false
+Civics,SHORT_ANSWER,What is the capital city of Ethiopia?,,,,,Addis Ababa|Addis,false

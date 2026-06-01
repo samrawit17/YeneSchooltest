@@ -1,8 +1,8 @@
 import api from './core';
 
 export const authAPI = {
-  login: (loginIdentifier: string, password: string) =>
-    api.post('/auth/login', { loginIdentifier, password }),
+  login: (loginIdentifier: string, password: string, schoolId?: string | null) =>
+    api.post('/auth/login', { loginIdentifier, password, ...(schoolId ? { schoolId } : {}) }),
 
   logout: () => api.post('/auth/logout'),
 
@@ -85,7 +85,10 @@ export const authAPI = {
 };
 
 export const userAPI = {
-  getProfile: () => api.get('/auth/users/me'),
+  getProfile: (options?: { skipAuthErrorRedirect?: boolean }) =>
+    api.get('/auth/users/me', {
+      ...(options?.skipAuthErrorRedirect ? { skipAuthErrorRedirect: true } : {}),
+    }),
 
   updateProfile: (data: any) => api.put('/auth/users/me', data),
 

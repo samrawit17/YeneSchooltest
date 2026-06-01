@@ -19,6 +19,7 @@ export interface CreateEnrollmentRequestDto {
   lastName: string;
   dateOfBirth: string;
   gender: string;
+  faydaNumber: string;
   nationality?: string;
   email?: string;
   phone?: string;
@@ -32,6 +33,7 @@ export interface CreateEnrollmentRequestDto {
   parentEmail?: string;
   parentRelation: string;
   requestedGrade: number;
+  requestedStream?: string;
   documents?: Record<string, boolean>;
 }
 
@@ -60,15 +62,16 @@ export class EnrollmentRequestService {
         id: true,
         name: true,
         code: true,
+        publicUrlSlug: true,
         logoUrl: true,
         schoolSettings: {
           where: {
-            key: 'theme_color',
+            key: { in: ['theme_color', 'login_image_url'] },
           },
           select: {
+            key: true,
             value: true,
           },
-          take: 1,
         },
       },
       orderBy: { name: 'asc' },
@@ -78,9 +81,96 @@ export class EnrollmentRequestService {
       id: school.id,
       name: school.name,
       code: school.code,
+      publicUrlSlug: school.publicUrlSlug,
       logoUrl: school.logoUrl,
-      accentColor: school.schoolSettings[0]?.value || null,
+      accentColor:
+        school.schoolSettings.find((setting) => setting.key === 'theme_color')
+          ?.value || null,
+      loginImageUrl:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'login_image_url',
+        )?.value || null,
     }));
+  }
+
+  async getPublicSchoolById(id: string) {
+    const school = await this.prisma.school.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        publicUrlSlug: true,
+        logoUrl: true,
+        email: true,
+        phone: true,
+        address: true,
+        isActive: true,
+        schoolSettings: {
+          where: { key: { in: ['theme_color', 'login_image_url'] } },
+          select: { key: true, value: true },
+        },
+      },
+    });
+    if (!school) return null;
+    return {
+      id: school.id,
+      name: school.name,
+      code: school.code,
+      publicUrlSlug: school.publicUrlSlug,
+      logoUrl: school.logoUrl,
+      email: school.email,
+      phone: school.phone,
+      address: school.address,
+      isActive: school.isActive,
+      accentColor:
+        school.schoolSettings.find((setting) => setting.key === 'theme_color')
+          ?.value || null,
+      loginImageUrl:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'login_image_url',
+        )?.value || null,
+    };
+  }
+
+  async getPublicSchoolByUrlSlug(publicUrlSlug: string) {
+    const school = await this.prisma.school.findUnique({
+      where: { publicUrlSlug },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        publicUrlSlug: true,
+        logoUrl: true,
+        email: true,
+        phone: true,
+        address: true,
+        isActive: true,
+        schoolSettings: {
+          where: { key: { in: ['theme_color', 'login_image_url'] } },
+          select: { key: true, value: true },
+        },
+      },
+    });
+    if (!school) return null;
+    return {
+      id: school.id,
+      name: school.name,
+      code: school.code,
+      publicUrlSlug: school.publicUrlSlug,
+      logoUrl: school.logoUrl,
+      email: school.email,
+      phone: school.phone,
+      address: school.address,
+      isActive: school.isActive,
+      accentColor:
+        school.schoolSettings.find((setting) => setting.key === 'theme_color')
+          ?.value || null,
+      loginImageUrl:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'login_image_url',
+        )?.value || null,
+    };
   }
 
   /**
@@ -186,6 +276,27 @@ export class EnrollmentRequestService {
     return { id: available[0].id, name: available[0].name };
   }
 
+  private normalizeStudentStream(
+    stream?: string | null,
+    grade?: number | null,
+  ) {
+    if (!grade || ![11, 12].includes(grade)) {
+      return null;
+    }
+    const normalized = String(stream || '')
+      .trim()
+      .toUpperCase();
+    if (!normalized) {
+      return null;
+    }
+    if (!['SOCIAL', 'NATURAL'].includes(normalized)) {
+      throw new BadRequestException(
+        'Student stream must be SOCIAL or NATURAL for Grade 11 and 12',
+      );
+    }
+    return normalized;
+  }
+
   /**
    * Create a new enrollment request
    */
@@ -206,6 +317,51 @@ export class EnrollmentRequestService {
     const isOpen = enrollmentOpen === true || enrollmentOpen === 'true';
     if (!isOpen) {
       throw new BadRequestException('Online enrollment is currently closed');
+    }
+
+    const faydaNumber = String(dto.faydaNumber || '').replace(/\D/g, '');
+    if (!/^\d{12}$/.test(faydaNumber)) {
+      throw new BadRequestException('Fayda Number (FAN) must be 12 digits');
+    }
+
+    const existingStudentFayda = await this.prisma.studentProfile.findFirst({
+      where: { schoolId: dto.schoolId, faydaNumber },
+      select: { id: true },
+    });
+    if (existingStudentFayda) {
+      throw new BadRequestException('Fayda Number (FAN) is already registered');
+    }
+
+    const existingEnrollmentFayda =
+      await this.prisma.enrollmentRequest.findFirst({
+        where: {
+          schoolId: dto.schoolId,
+          faydaNumber,
+          status: {
+            in: [
+              EnrollmentRequestStatus.PENDING,
+              EnrollmentRequestStatus.WAITLISTED,
+            ],
+          },
+        },
+        select: { id: true },
+      });
+    if (existingEnrollmentFayda) {
+      throw new BadRequestException(
+        'An active enrollment request already uses this Fayda Number (FAN)',
+      );
+    }
+    const requestedStream = this.normalizeStudentStream(
+      dto.requestedStream,
+      dto.requestedGrade,
+    );
+    if (
+      (dto.requestedGrade === 11 || dto.requestedGrade === 12) &&
+      !requestedStream
+    ) {
+      throw new BadRequestException(
+        'Grade 11 and 12 enrollment requires SOCIAL or NATURAL stream',
+      );
     }
 
     // Check for duplicate email
@@ -264,6 +420,7 @@ export class EnrollmentRequestService {
         lastName: dto.lastName,
         dateOfBirth: new Date(dto.dateOfBirth),
         gender: dto.gender,
+        faydaNumber,
         nationality: dto.nationality,
         email: dto.email,
         phone: dto.phone,
@@ -277,6 +434,7 @@ export class EnrollmentRequestService {
         parentEmail: dto.parentEmail,
         parentRelation: dto.parentRelation,
         requestedGrade: dto.requestedGrade,
+        requestedStream,
         documents: dto.documents ? JSON.stringify(dto.documents) : null,
       },
     });
@@ -378,9 +536,13 @@ export class EnrollmentRequestService {
       throw new NotFoundException('Enrollment request not found');
     }
 
-    if (enrollment.status !== EnrollmentRequestStatus.PENDING) {
+    const approvableStatuses: EnrollmentRequestStatus[] = [
+      EnrollmentRequestStatus.PENDING,
+      EnrollmentRequestStatus.WAITLISTED,
+    ];
+    if (!approvableStatuses.includes(enrollment.status)) {
       throw new BadRequestException(
-        `Enrollment request is not pending. Current status: ${enrollment.status}`,
+        `Enrollment request cannot be approved from status: ${enrollment.status}`,
       );
     }
 
@@ -391,12 +553,26 @@ export class EnrollmentRequestService {
       );
     }
 
-    // Get or create class for the requested grade
+    const requestedStream = this.normalizeStudentStream(
+      enrollment.requestedStream,
+      enrollment.requestedGrade,
+    );
+    if (
+      (enrollment.requestedGrade === 11 || enrollment.requestedGrade === 12) &&
+      !requestedStream
+    ) {
+      throw new BadRequestException(
+        'Grade 11 and 12 enrollment requires SOCIAL or NATURAL stream before approval',
+      );
+    }
+    const className = `Grade ${enrollment.requestedGrade}`;
+
+    // Get or create class for the requested grade and stream
     let classInfo = await this.prisma.class.findFirst({
       where: {
         schoolId,
         academicYearId: enrollment.academicYearId,
-        name: `Grade ${enrollment.requestedGrade}`,
+        name: className,
       },
     });
 
@@ -406,71 +582,48 @@ export class EnrollmentRequestService {
         data: {
           schoolId,
           academicYearId: enrollment.academicYearId,
-          name: `Grade ${enrollment.requestedGrade}`,
+          name: className,
           section: '', // Will be set per section
           grade: enrollment.requestedGrade,
         },
       });
     }
 
-    // Determine which section to use (auto-assign)
-    let sectionName = 'A';
-
-    // Find or create section
-    let section = await this.prisma.section.findFirst({
-      where: {
-        classId: classInfo.id,
-        name: sectionName,
+    const existingSections = await this.prisma.section.findMany({
+      where: { classId: classInfo.id },
+      include: {
+        _count: { select: { studentClasses: true } },
       },
+      orderBy: { name: 'asc' },
     });
 
+    let section: any = existingSections.find(
+      (s) =>
+        (!s.stream || s.stream === requestedStream) &&
+        s._count.studentClasses < s.capacity,
+    );
+
     if (!section) {
-      // Auto-create section with default capacity
+      const nextSectionName = String.fromCharCode(65 + existingSections.length);
       section = await this.prisma.section.create({
         data: {
           classId: classInfo.id,
-          name: sectionName,
-          capacity: 30, // Default capacity
+          name: nextSectionName,
+          stream: requestedStream,
+          capacity: 30,
         },
       });
-    } else {
-      // Check if section has capacity
-      const studentCount = await this.prisma.studentClass.count({
-        where: { sectionId: section.id },
+    } else if (!section.stream) {
+      section = await this.prisma.section.update({
+        where: { id: section.id },
+        data: { stream: requestedStream },
+        include: {
+          _count: { select: { studentClasses: true } },
+        },
       });
-
-      if (studentCount >= section.capacity) {
-        // Find another section with capacity or create new one
-        const existingSections = await this.prisma.section.findMany({
-          where: { classId: classInfo.id },
-          include: {
-            _count: { select: { studentClasses: true } },
-          },
-        });
-
-        const availableSection = existingSections.find(
-          (s) => s._count.studentClasses < s.capacity,
-        );
-
-        if (availableSection) {
-          section = availableSection;
-          sectionName = availableSection.name;
-        } else {
-          // Create new section
-          const nextSectionName = String.fromCharCode(
-            65 + existingSections.length,
-          ); // A, B, C, ...
-          section = await this.prisma.section.create({
-            data: {
-              classId: classInfo.id,
-              name: nextSectionName,
-              capacity: 30,
-            },
-          });
-          sectionName = nextSectionName;
-        }
-      }
     }
+
+    const sectionName = section.name;
 
     const academicYearName =
       (
@@ -573,9 +726,11 @@ export class EnrollmentRequestService {
           enrollmentStatus: 'APPROVED',
           academicYear: academicYearName,
           className: classInfo.name,
+          stream: requestedStream,
           section: sectionName,
           rollNumber: String(rollNumber),
           gender: enrollment.gender,
+          faydaNumber: enrollment.faydaNumber || undefined,
           address: enrollment.address,
           phone: enrollment.phone,
           nationality: enrollment.nationality,
@@ -588,9 +743,11 @@ export class EnrollmentRequestService {
           enrollmentStatus: 'APPROVED',
           academicYear: academicYearName,
           className: classInfo.name,
+          stream: requestedStream,
           section: sectionName,
           rollNumber: String(rollNumber),
           gender: enrollment.gender,
+          faydaNumber: enrollment.faydaNumber || undefined,
           address: enrollment.address,
           phone: enrollment.phone,
           nationality: enrollment.nationality,
@@ -776,8 +933,14 @@ export class EnrollmentRequestService {
       throw new NotFoundException('Enrollment request not found');
     }
 
-    if (enrollment.status !== EnrollmentRequestStatus.PENDING) {
-      throw new BadRequestException('Enrollment request is not pending');
+    const rejectableStatuses: EnrollmentRequestStatus[] = [
+      EnrollmentRequestStatus.PENDING,
+      EnrollmentRequestStatus.WAITLISTED,
+    ];
+    if (!rejectableStatuses.includes(enrollment.status)) {
+      throw new BadRequestException(
+        `Enrollment request cannot be rejected from status: ${enrollment.status}`,
+      );
     }
 
     return this.prisma.enrollmentRequest.update({
