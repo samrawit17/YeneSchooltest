@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -40,6 +41,13 @@ export class MessagingService {
     const participantIds = Array.from(
       new Set([...(dto.participants || []), user.id]),
     );
+    const subject = dto.subject?.trim() || undefined;
+
+    if (participantIds.length < 2) {
+      throw new BadRequestException(
+        'At least one other participant is required',
+      );
+    }
 
     const users = await this.prisma.user.findMany({
       where: { id: { in: participantIds }, schoolId },
@@ -59,10 +67,49 @@ export class MessagingService {
       );
     }
 
+    if (!subject && participantIds.length === 2) {
+      const [firstUserId, secondUserId] = participantIds;
+      const existingDirectConversation =
+        await this.prisma.conversation.findFirst({
+          where: {
+            schoolId,
+            participants: {
+              every: { userId: { in: participantIds } },
+              some: { userId: firstUserId },
+            },
+            AND: [
+              {
+                participants: {
+                  some: { userId: secondUserId },
+                },
+              },
+            ],
+          },
+          include: {
+            participants: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+      if (existingDirectConversation) {
+        return existingDirectConversation;
+      }
+    }
+
     const conversation = await this.prisma.conversation.create({
       data: {
         schoolId,
-        subject: dto.subject,
+        subject,
         participants: {
           create: participantIds.map((userId) => ({ userId })),
         },
@@ -234,12 +281,17 @@ export class MessagingService {
       throw new NotFoundException('Conversation not found');
     }
 
+    const content = dto.content.trim();
+    if (!content) {
+      throw new BadRequestException('Message content is required');
+    }
+
     const [message] = await this.prisma.$transaction([
       this.prisma.message.create({
         data: {
           conversationId,
           senderId: user.id,
-          content: dto.content,
+          content,
         },
         include: {
           sender: {

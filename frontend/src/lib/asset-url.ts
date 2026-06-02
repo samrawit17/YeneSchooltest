@@ -9,6 +9,15 @@ export function resolveAssetUrl(url?: string | null) {
     return url;
   }
 
-  const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/api\/?$/, '').replace(/\/$/, '');
+  const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  if (
+    !configuredApiUrl ||
+    configuredApiUrl.startsWith('/api/proxy') ||
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i.test(configuredApiUrl)
+  ) {
+    return `/api/proxy${url}`;
+  }
+
+  const apiBase = configuredApiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
   return apiBase ? `${apiBase}${url}` : url;
 }

@@ -256,6 +256,8 @@ const ProfilePage = () => {
     profileData?.enrollment?.updatedAt ||
     user?.updatedAt ||
     memberSinceAt;
+  const currentAvatarUrl = user?.avatarUrl || profileData?.avatarUrl || null;
+  const currentAvatarSrc = resolveAssetUrl(currentAvatarUrl) || currentAvatarUrl || undefined;
   const { data: notificationPreferences, isLoading: isLoadingNotificationPreferences } = useQuery({
     queryKey: ["notification-preferences", user?.id],
     queryFn: async () => {
@@ -649,8 +651,8 @@ const ProfilePage = () => {
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative">
                     <Avatar className="w-32 h-32 border-4 border-white dark:border-slate-700 shadow-lg">
-                      {user?.avatarUrl ? (
-                        <AvatarImage src={resolveAssetUrl(user.avatarUrl) || user.avatarUrl} alt={user.name} />
+                      {currentAvatarSrc ? (
+                        <AvatarImage key={currentAvatarSrc} src={currentAvatarSrc} alt={user?.name || "Profile"} />
                       ) : (
                         <AvatarFallback className="text-2xl">
                           {user?.name?.charAt(0)}
@@ -669,6 +671,7 @@ const ProfilePage = () => {
                           <Button
                             size="icon"
                             className="absolute bottom-0 right-0 rounded-full"
+                            aria-label="Update profile picture"
                           >
                             <Camera className="w-4 h-4" />
                           </Button>
@@ -685,8 +688,8 @@ const ProfilePage = () => {
                               <Avatar className="w-32 h-32">
                                 {avatarPreview ? (
                                   <AvatarImage src={avatarPreview} alt="Preview" />
-                                ) : user?.avatarUrl ? (
-                                  <AvatarImage src={resolveAssetUrl(user.avatarUrl) || user.avatarUrl} alt={user.name} />
+                                ) : currentAvatarSrc ? (
+                                  <AvatarImage key={currentAvatarSrc} src={currentAvatarSrc} alt={user?.name || "Profile"} />
                                 ) : (
                                   <AvatarFallback className="text-2xl">
                                     {user?.name?.charAt(0)}
@@ -723,7 +726,18 @@ const ProfilePage = () => {
                                   const response = await authAPI.uploadAvatar(user.id, selectedAvatarFile);
                                   const newAvatarUrl = response.data?.avatarUrl;
                                   if (newAvatarUrl && user) {
-                                    updateUser({ ...user, avatarUrl: newAvatarUrl });
+                                    updateUser({
+                                      avatarUrl: newAvatarUrl,
+                                      updatedAt: response.data?.updatedAt || user.updatedAt,
+                                    });
+                                    queryClient.setQueryData(queryKeys.profile.user, (currentProfile: any) => ({
+                                      ...(currentProfile || profileData || {}),
+                                      avatarUrl: newAvatarUrl,
+                                      updatedAt: response.data?.updatedAt || currentProfile?.updatedAt || profileData?.updatedAt,
+                                    }));
+                                    queryClient.invalidateQueries({ queryKey: queryKeys.profile.user });
+                                  } else {
+                                    throw new Error("Avatar upload did not return a saved image URL");
                                   }
                                   toast.success("Profile picture updated");
                                   setShowAvatarDialog(false);

@@ -1864,6 +1864,7 @@ model Conversation {
   school       School                    @relation(map: "schoolId_fk_129", fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, createdAt])
+  @@index([schoolId, updatedAt])
 }
 
 model ConversationParticipant {
@@ -2153,6 +2154,7 @@ model Communication {
   replies     CommunicationReply[]
 
   @@index([schoolId])
+  @@index([schoolId, createdAt])
   @@index([studentId])
   @@index([createdById])
   @@index([classId])
@@ -2171,6 +2173,7 @@ model CommunicationReply {
   sender          User          @relation("ReplySender", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([communicationId])
+  @@index([communicationId, createdAt])
   @@index([senderId])
   @@index([createdAt])
 }

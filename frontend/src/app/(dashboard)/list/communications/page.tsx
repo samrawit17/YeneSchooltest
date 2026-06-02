@@ -82,6 +82,23 @@ const STATUS_CONFIG: Record<CommunicationStatus, { label: string; bg: string; te
   CLOSED: { label: 'Closed', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
 };
 
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const message = (error as any)?.response?.data?.message;
+  if (Array.isArray(message)) return message.join(", ");
+  return typeof message === "string" && message.trim() ? message : fallback;
+}
+
+function toConversationWithParent(comm: Communication): ConversationWithParent {
+  const lastReply = comm.replies?.at(-1) ?? null;
+  return {
+    ...comm,
+    parentName: getParentDisplayName(comm),
+    teacherName: getTeacherDisplayName(comm),
+    unreadCount: 0,
+    lastMessage: lastReply?.message || comm.message,
+  };
+}
+
 function StatusBadge({ status, compact = false }: { status: CommunicationStatus; compact?: boolean }) {
   const { t } = useTranslations<any>("communications");
   const config = STATUS_CONFIG[status];
@@ -353,7 +370,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
   isAdmin: boolean;
   isTeacher: boolean;
   currentUserId: string;
-  onSendMessage: (msg: string) => void;
+  onSendMessage: (msg: string) => Promise<void>;
   onReopen: () => void;
   onDeleteReply: (id: string) => void;
   onDelete: () => void;
@@ -370,11 +387,17 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
   }, [conversation?.replies]);
 
   const handleSend = async () => {
-    if (!messageInput.trim() || isSending) return;
+    const messageToSend = messageInput.trim();
+    if (!messageToSend || isSending) return;
     setIsSending(true);
-    await onSendMessage(messageInput);
-    setMessageInput("");
-    setIsSending(false);
+    try {
+      await onSendMessage(messageToSend);
+      setMessageInput("");
+    } catch {
+      // The action handler owns the toast; keep the draft for retry.
+    } finally {
+      setIsSending(false);
+    }
   };
 
   if (!conversation) {
@@ -520,16 +543,22 @@ function CommunicationsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<ConversationWithParent | null>(null);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const autoMarkedConversationRef = useRef<string | null>(null);
+  const selectedConversationRef = useRef<ConversationWithParent | null>(null);
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'IT_MANAGER' || user?.role === 'SUPER_ADMIN';
   const isTeacher = user?.role === 'TEACHER';
   const viewerRole = user?.role;
+
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
   // Auto-open new message modal when studentId is passed via URL
   useEffect(() => {
@@ -542,50 +571,64 @@ function CommunicationsContent() {
     try {
       setLoading(page === 1);
       setError(null);
+      setSelectionError(null);
       const response = await communicationsAPI.getAll({ page, limit: 20 });
       const data = response.data.data || [];
       const meta = response.data.meta || { totalPages: 1, page: 1 };
       setTotalPages(meta.totalPages);
       
-      const transformed: ConversationWithParent[] = data.map((comm: Communication) => {
-        const lastReply = comm.replies?.at(-1) ?? null;
-        return {
-          ...comm,
-          parentName: getParentDisplayName(comm),
-          teacherName: getTeacherDisplayName(comm),
-          unreadCount: 0,
-          lastMessage: lastReply?.message || comm.message,
-        };
-      });
+      let transformed: ConversationWithParent[] = data.map(toConversationWithParent);
 
-      setConversations(transformed);
-      if (!selectedConversation && transformed.length > 0) {
-        if (conversationId) {
-          const found = transformed.find(c => c.id === conversationId);
-          if (found) setSelectedConversation(found);
+      if (conversationId) {
+        const found = transformed.find((conversation) => conversation.id === conversationId);
+        if (found) {
+          setSelectedConversation(found);
         } else {
-          setSelectedConversation(transformed[0]);
+          try {
+            const selectedResponse = await communicationsAPI.getById(conversationId);
+            const selected = toConversationWithParent(selectedResponse.data);
+            transformed = [selected, ...transformed.filter((conversation) => conversation.id !== selected.id)];
+            setSelectedConversation(selected);
+          } catch (selectionError) {
+            setSelectedConversation(null);
+            setSelectionError(getApiErrorMessage(selectionError, "This conversation was not found or you no longer have access."));
+          }
+        }
+      } else {
+        const currentSelectedId = selectedConversationRef.current?.id;
+        const refreshedSelected = currentSelectedId
+          ? transformed.find((conversation) => conversation.id === currentSelectedId)
+          : null;
+        if (refreshedSelected) {
+          setSelectedConversation(refreshedSelected);
+        } else {
+          setSelectedConversation(transformed[0] || null);
         }
       }
+
+      setConversations(transformed);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load communications');
+      setError(getApiErrorMessage(err, 'Failed to load communications'));
     } finally {
       setLoading(false);
     }
-  }, [conversationId, selectedConversation]);
+  }, [conversationId]);
 
   useEffect(() => { fetchCommunications(); }, [fetchCommunications]);
 
   const handleSendMessage = async (msg: string) => {
     if (!selectedConversation) return;
+    const message = msg.trim();
+    if (!message) return;
     try {
-      const response = await communicationsAPI.addReply(selectedConversation.id, { message: msg });
+      const response = await communicationsAPI.addReply(selectedConversation.id, { message });
       const updatedReplies = [...(selectedConversation.replies || []), response.data];
-      const updatedConv = { ...selectedConversation, replies: updatedReplies, lastMessage: msg, updatedAt: new Date().toISOString() };
+      const updatedConv = { ...selectedConversation, replies: updatedReplies, lastMessage: message, updatedAt: new Date().toISOString() };
       setConversations(prev => prev.map(c => c.id === selectedConversation.id ? updatedConv : c));
       setSelectedConversation(updatedConv);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to send message');
+      toast.error(getApiErrorMessage(err, 'Failed to send message'));
+      throw err;
     }
   };
 
@@ -597,7 +640,7 @@ function CommunicationsContent() {
       setConversations(prev => prev.map(c => c.id === selectedConversation.id ? updated : c));
       setSelectedConversation(updated);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to reopen');
+      toast.error(getApiErrorMessage(err, 'Failed to reopen'));
     }
   };
 
@@ -629,31 +672,51 @@ function CommunicationsContent() {
       setConversations(prev => prev.map(c => c.id === selectedConversation.id ? updated : c));
       setSelectedConversation(updated);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to delete');
+      toast.error(getApiErrorMessage(err, 'Failed to delete'));
     }
   };
 
   const handleDeleteThread = async () => {
-    if (!selectedConversation || !isAdmin || !confirm("Delete this conversation?")) return;
-    try {
-      await communicationsAPI.delete(selectedConversation.id);
-      setConversations(prev => prev.filter(c => c.id !== selectedConversation.id));
-      setSelectedConversation(null);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to delete');
-    }
+    if (!selectedConversation || !isAdmin) return;
+    const deletedConversationId = selectedConversation.id;
+
+    toast.warning("Delete this conversation?", {
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          try {
+            await communicationsAPI.delete(deletedConversationId);
+            setConversations(prev => {
+              const remaining = prev.filter(c => c.id !== deletedConversationId);
+              setSelectedConversation(remaining[0] || null);
+              return remaining;
+            });
+            if (conversationId === deletedConversationId) {
+              router.replace('/list/communications');
+            }
+          } catch (err: any) {
+            toast.error(getApiErrorMessage(err, 'Failed to delete'));
+          }
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => toast.dismiss(),
+      },
+      duration: 10000,
+    });
   };
 
   const handleSendNewMessage = async (targetUserId: string, subject: string, message: string) => {
     setIsSending(true);
     try {
-      await communicationsAPI.create({ studentId: targetUserId, subject, message });
+      await communicationsAPI.create({ studentId: targetUserId.trim(), subject: subject.trim(), message: message.trim() });
       toast.success(t.states.messageSent);
       setShowNewMessageModal(false);
       router.replace('/list/communications');
-      fetchCommunications(1);
+      await fetchCommunications(1);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to send message');
+      toast.error(getApiErrorMessage(err, 'Failed to send message'));
     } finally {
       setIsSending(false);
     }
@@ -710,17 +773,26 @@ function CommunicationsContent() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 min-h-0 p-0">
-            <ChatPanel
-              conversation={selectedConversation}
-              isAdmin={isAdmin}
-              isTeacher={isTeacher || false}
-              currentUserId={user?.id || ""}
-              onSendMessage={handleSendMessage}
-              onReopen={handleReopen}
-              onDeleteReply={handleDeleteReply}
-              onDelete={handleDeleteThread}
-              viewerRole={viewerRole}
-            />
+            {selectionError ? (
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center text-sm text-gray-600">
+                <div className="text-red-600">{selectionError}</div>
+                <Button variant="outline" size="sm" onClick={() => router.replace('/list/communications')}>
+                  {t.states.selectConversation}
+                </Button>
+              </div>
+            ) : (
+              <ChatPanel
+                conversation={selectedConversation}
+                isAdmin={isAdmin}
+                isTeacher={isTeacher || false}
+                currentUserId={user?.id || ""}
+                onSendMessage={handleSendMessage}
+                onReopen={handleReopen}
+                onDeleteReply={handleDeleteReply}
+                onDelete={handleDeleteThread}
+                viewerRole={viewerRole}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

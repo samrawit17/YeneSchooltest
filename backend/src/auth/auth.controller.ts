@@ -403,7 +403,12 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getCurrentUser(@Request() req) {
     try {
-      const user = req.user;
+      const storedUser = await this.authService.getUserById(req.user.id);
+
+      if (!storedUser) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      const user = { ...req.user, ...storedUser };
 
       // Get student profile if user is a student
       if (user.role === Role.STUDENT) {
@@ -444,7 +449,12 @@ export class AuthController {
     try {
       // Handle special case for 'me'
       if (id === 'me') {
-        const user = req.user;
+        const storedUser = await this.authService.getUserById(req.user.id);
+
+        if (!storedUser) {
+          throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+        }
+        const user = { ...req.user, ...storedUser };
 
         // Get student profile if user is a student
         if (user.role === Role.STUDENT) {

@@ -4,6 +4,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import { PeriodTimeService } from './period-time.service';
+import { CreatePeriodTimeDto, UpdatePeriodTimeDto } from './dto/period-time.dto';
 
 @Controller('api/period-time')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -18,12 +19,12 @@ export class PeriodTimeController {
   }
 
   @Post()
-  async create(@Request() req: any, @Body() data: any) {
+  async create(@Request() req: any, @Body() data: CreatePeriodTimeDto) {
     return this.service.create(data, req.user.schoolId);
   }
 
   @Put(':id')
-  async update(@Request() req: any, @Param('id') id: string, @Body() data: any) {
+  async update(@Request() req: any, @Param('id') id: string, @Body() data: UpdatePeriodTimeDto) {
     return this.service.update(id, req.user.schoolId, data);
   }
 

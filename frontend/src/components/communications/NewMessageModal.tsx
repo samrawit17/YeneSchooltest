@@ -185,7 +185,11 @@ export default function NewMessageModal({
       selectedRecipient?.targetStudentId ||
       studentId;
 
-    if (!targetUserId.trim() || !subject.trim() || !message.trim()) {
+    const trimmedTargetUserId = targetUserId.trim();
+    const trimmedSubject = subject.trim();
+    const trimmedMessage = message.trim();
+
+    if (!trimmedTargetUserId || !trimmedSubject || !trimmedMessage) {
       toast.error(
         isParent
           ? "Please fill in all fields and select a teacher"
@@ -194,7 +198,7 @@ export default function NewMessageModal({
       return;
     }
 
-    onSubmit(targetUserId, subject, message);
+    onSubmit(trimmedTargetUserId, trimmedSubject, trimmedMessage);
   };
 
   const selectedStudent = students.find((student) => student.id === studentId);
