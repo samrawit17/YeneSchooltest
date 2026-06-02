@@ -21,6 +21,8 @@ import {
   Settings,
   Star,
   Loader2,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Card,
@@ -76,7 +78,7 @@ const getFeatureKeysByTier = (tier: PlanTier) =>
 const SubscriptionPlansPage = () => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const { plans, loading, createPlan, updatePlan, deletePlan, fetchPlans } = usePlans();
+  const { plans, loading, error, createPlan, updatePlan, deletePlan, fetchPlans } = usePlans();
   const [schools, setSchools] = useState<{ id: string; name: string; email: string; plan: { id: string; name: string; tier: string } | null; _count?: { users?: number } }[]>([]);
   const [loadingSchools, setLoadingSchools] = useState(false);
   const [schoolsLoaded, setSchoolsLoaded] = useState(false);
@@ -151,6 +153,10 @@ const SubscriptionPlansPage = () => {
   };
 
   const getSchoolsCountForPlan = (planId: string) => {
+    const plan = plans.find((item) => item.id === planId);
+    if (!schoolsLoaded) {
+      return plan?.assignedSchoolsCount || 0;
+    }
     return schools.filter((s: any) => s.plan?.id === planId).length;
   };
 
@@ -247,6 +253,28 @@ const SubscriptionPlansPage = () => {
             ))}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+        <Card className="max-w-2xl dark:bg-gray-800 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Subscription data unavailable
+            </CardTitle>
+            <CardDescription className="dark:text-gray-400">{error}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => fetchPlans()} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

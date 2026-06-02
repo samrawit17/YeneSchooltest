@@ -9,6 +9,7 @@ export interface Plan {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  assignedSchoolsCount?: number;
   subscriptionId?: string;
   subscriptionStatus?: string;
   subscriptionStartDate?: string;
@@ -33,6 +34,7 @@ export interface SchoolWithPlan {
   planAssignedAt: string | null;
   plan?: Plan | null;
   subscription?: Subscription | null;
+  _count?: { users?: number };
 }
 
 export interface CreatePlanInput {

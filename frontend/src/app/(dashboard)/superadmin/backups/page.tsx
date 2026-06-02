@@ -2,14 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, FileArchive, Loader2, ShieldCheck } from "lucide-react";
+import { AlertCircle, Download, FileArchive, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { schoolsAPI } from "@/lib/api";
 import { superadminAPI, type SchoolBackupTypeOption } from "@/lib/api/superadmin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 interface SchoolOption {
   id: string;
@@ -17,6 +15,18 @@ interface SchoolOption {
   code?: string | null;
   email?: string;
   isActive?: boolean;
+}
+
+function extractSchoolOptions(payload: unknown): SchoolOption[] {
+  if (Array.isArray(payload)) {
+    return payload as SchoolOption[];
+  }
+
+  if (payload && typeof payload === "object" && Array.isArray((payload as { data?: unknown }).data)) {
+    return (payload as { data: SchoolOption[] }).data;
+  }
+
+  return [];
 }
 
 export default function SuperAdminBackupsPage() {
@@ -27,6 +37,7 @@ export default function SuperAdminBackupsPage() {
   const [schoolId, setSchoolId] = useState("");
   const [backupType, setBackupType] = useState("FULL_SCHOOL");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -53,18 +64,25 @@ export default function SuperAdminBackupsPage() {
   async function loadOptions() {
     try {
       setLoading(true);
+      setLoadError(null);
       const [schoolsResponse, typesResponse] = await Promise.all([
-        schoolsAPI.getAll(),
+        superadminAPI.getSchools(),
         superadminAPI.getSchoolBackupTypes(),
       ]);
-      const schoolRows = Array.isArray(schoolsResponse.data) ? schoolsResponse.data : [];
+      const schoolRows = extractSchoolOptions(schoolsResponse.data);
       const typeRows = Array.isArray(typesResponse.data) ? typesResponse.data : [];
       setSchools(schoolRows);
       setTypes(typeRows);
-      setSchoolId((current) => current || schoolRows[0]?.id || "");
-      setBackupType((current) => current || typeRows[0]?.value || "FULL_SCHOOL");
-    } catch (error) {
-      toast.error("Failed to load backup options");
+      setSchoolId((current) =>
+        schoolRows.some((school) => school.id === current) ? current : schoolRows[0]?.id || "",
+      );
+      setBackupType((current) =>
+        typeRows.some((type) => type.value === current) ? current : typeRows[0]?.value || "FULL_SCHOOL",
+      );
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Failed to load backup options";
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -126,11 +144,17 @@ export default function SuperAdminBackupsPage() {
                   onChange={(event) => setSchoolId(event.target.value)}
                   disabled={loading || downloading}
                 >
-                  {schools.map((school) => (
-                    <option key={school.id} value={school.id}>
-                      {school.name}{school.code ? ` (${school.code})` : ""}
-                    </option>
-                  ))}
+                  {loading ? (
+                    <option value="">Loading schools...</option>
+                  ) : schools.length === 0 ? (
+                    <option value="">No schools available</option>
+                  ) : (
+                    schools.map((school) => (
+                      <option key={school.id} value={school.id}>
+                        {school.name}{school.code ? ` (${school.code})` : ""}
+                      </option>
+                    ))
+                  )}
                 </select>
               </label>
 
@@ -142,14 +166,33 @@ export default function SuperAdminBackupsPage() {
                   onChange={(event) => setBackupType(event.target.value)}
                   disabled={loading || downloading}
                 >
-                  {types.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
+                  {loading ? (
+                    <option value="">Loading backup types...</option>
+                  ) : types.length === 0 ? (
+                    <option value="">No backup types available</option>
+                  ) : (
+                    types.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               </label>
             </div>
+
+            {loadError ? (
+              <div className="flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
+                <span className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  {loadError}
+                </span>
+                <Button variant="outline" size="sm" onClick={loadOptions} disabled={loading}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
+              </div>
+            ) : null}
 
             <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
               {selectedSchool ? (
