@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { DEFAULT_CACHE_TTL_SECONDS } from '../infrastructure/cache/cache.constants';
@@ -18,6 +18,13 @@ export class PlatformSettingsService {
     return 'platform-settings:all';
   }
 
+  private readonly defaultSettings: Record<string, unknown> = {
+    MAX_SCHOOLS_ALLOWED: null,
+    MAINTENANCE_MODE: false,
+    EMAIL_PROVIDER: {},
+    SMS_PROVIDER: {},
+  };
+
   private async invalidateCache(...keys: string[]) {
     await this.cacheService.del(
       this.getAllSettingsCacheKey(),
@@ -34,7 +41,9 @@ export class PlatformSettingsService {
         const setting = await this.prisma.platformSetting.findUnique({
           where: { key },
         });
-        return setting ? this.parseStoredValue(setting.value) : null;
+        return setting
+          ? this.parseStoredValue(setting.value)
+          : (this.defaultSettings[key] ?? null);
       },
     );
   }
@@ -46,7 +55,7 @@ export class PlatformSettingsService {
       DEFAULT_CACHE_TTL_SECONDS,
       async () => {
         const settings = await this.prisma.platformSetting.findMany();
-        const result: Record<string, any> = {};
+        const result: Record<string, any> = { ...this.defaultSettings };
         for (const setting of settings) {
           result[setting.key] = this.parseStoredValue(setting.value);
         }
@@ -57,7 +66,8 @@ export class PlatformSettingsService {
 
   // Upsert a platform setting
   async setSetting(key: string, value: any) {
-    const storedValue = this.serializeValue(value);
+    const normalizedValue = this.normalizeSettingValue(key, value);
+    const storedValue = this.serializeValue(normalizedValue);
     const setting = await this.prisma.platformSetting.upsert({
       where: { key },
       update: { value: storedValue },
@@ -92,8 +102,14 @@ export class PlatformSettingsService {
 
   // Batch update multiple settings
   async batchUpdate(settings: Record<string, any>) {
+    const normalizedSettings = Object.fromEntries(
+      Object.entries(settings).map(([key, value]) => [
+        key,
+        this.normalizeSettingValue(key, value),
+      ]),
+    );
     const results = await this.prisma.$transaction(
-      Object.entries(settings).map(([key, value]) =>
+      Object.entries(normalizedSettings).map(([key, value]) =>
         this.prisma.platformSetting.upsert({
           where: { key },
           update: { value: this.serializeValue(value) },
@@ -101,7 +117,7 @@ export class PlatformSettingsService {
         }),
       ),
     );
-    await this.invalidateCache(...Object.keys(settings));
+    await this.invalidateCache(...Object.keys(normalizedSettings));
     return results.map((setting) => ({
       ...setting,
       value: this.parseStoredValue(setting.value),
@@ -148,6 +164,65 @@ export class PlatformSettingsService {
       return normalized === 'true' || normalized === '1' || normalized === 'yes';
     }
     return false;
+  }
+
+  private normalizeSettingValue(key: string, value: unknown) {
+    if (!key || typeof key !== 'string') {
+      throw new BadRequestException('Setting key is required');
+    }
+
+    if (key === 'MAX_SCHOOLS_ALLOWED') {
+      if (value === null || value === undefined || value === '') return null;
+      const parsed =
+        typeof value === 'number' ? value : Number(String(value).trim());
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        throw new BadRequestException(
+          'MAX_SCHOOLS_ALLOWED must be a positive whole number or empty for unlimited',
+        );
+      }
+      return parsed;
+    }
+
+    if (key === 'MAINTENANCE_MODE' || key.startsWith('FEATURE_FLAG_')) {
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (['true', '1', 'yes'].includes(normalized)) return true;
+        if (['false', '0', 'no'].includes(normalized)) return false;
+      }
+      if (typeof value === 'boolean') return value;
+      throw new BadRequestException(`${key} must be a boolean value`);
+    }
+
+    if (key === 'EMAIL_PROVIDER' || key === 'SMS_PROVIDER') {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new BadRequestException(`${key} must be a JSON object`);
+      }
+      return value;
+    }
+
+    if (key.startsWith('attendance_cutoff_')) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new BadRequestException('Attendance cutoff must be an object');
+      }
+      const cutoff = value as { hour?: unknown; minute?: unknown };
+      const hour = Number(cutoff.hour);
+      const minute = Number(cutoff.minute);
+      if (
+        !Number.isInteger(hour) ||
+        !Number.isInteger(minute) ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59
+      ) {
+        throw new BadRequestException(
+          'Attendance cutoff requires hour 0-23 and minute 0-59',
+        );
+      }
+      return { hour, minute };
+    }
+
+    throw new BadRequestException(`Unsupported platform setting: ${key}`);
   }
 
   private serializeValue(value: unknown): string {

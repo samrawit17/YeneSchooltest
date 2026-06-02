@@ -15,13 +15,17 @@ export const periodTimeAPI = {
       params: { schoolId },
       skipAuthErrorRedirect: true,
     }),
-  create: (data: Omit<PeriodTime, "id">) =>
-    api.post("/api/period-time", data, {
+  create: (data: Omit<PeriodTime, "id">) => {
+    const { schoolId, ...body } = data;
+    return api.post("/api/period-time", body, {
       params: { schoolId: data.schoolId },
       skipAuthErrorRedirect: true,
-    }),
-  update: (id: string, data: Partial<PeriodTime> & { schoolId?: string }) =>
-    api.put(`/api/period-time/${id}`, data, { skipAuthErrorRedirect: true }),
+    });
+  },
+  update: (id: string, data: Partial<PeriodTime> & { schoolId?: string }) => {
+    const { schoolId: _schoolId, ...body } = data;
+    return api.put(`/api/period-time/${id}`, body, { skipAuthErrorRedirect: true });
+  },
   delete: (id: string) =>
     api.delete(`/api/period-time/${id}`, { skipAuthErrorRedirect: true }),
 };
@@ -48,7 +52,8 @@ export function usePeriodTimeApi() {
   const createPeriod = useCallback(async (data: Omit<PeriodTime, "id">) => {
     setLoading(true);
     try {
-      const res = await api.post("/api/period-time", data, { params: { schoolId: data.schoolId } });
+      const { schoolId, ...body } = data;
+      const res = await api.post("/api/period-time", body, { params: { schoolId } });
       return res.data;
     } finally {
       setLoading(false);
@@ -58,7 +63,8 @@ export function usePeriodTimeApi() {
   const updatePeriod = useCallback(async (id: string, data: Partial<PeriodTime>) => {
     setLoading(true);
     try {
-      const res = await api.put(`/api/period-time/${id}`, data);
+      const { schoolId: _schoolId, ...body } = data;
+      const res = await api.put(`/api/period-time/${id}`, body);
       return res.data;
     } finally {
       setLoading(false);

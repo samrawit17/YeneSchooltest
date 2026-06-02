@@ -35,7 +35,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (loginIdentifier: string, password: string, rememberMe?: boolean, schoolId?: string | null) => Promise<User>;
   logout: () => void;
-  updateUser: (user: User) => void;
+  updateUser: (user: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -127,8 +127,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      toast.success(navigationText.labels?.['Logged out successfully'] || 'Logged out successfully');
    };
 
-  const updateUser = (updatedUser: User) => {
-    setUser(updatedUser);
+  const updateUser = (updatedUser: Partial<User>) => {
+    setUser((currentUser) => {
+      if (!currentUser) {
+        return updatedUser as User;
+      }
+
+      return {
+        ...currentUser,
+        ...updatedUser,
+      };
+    });
   };
 
   return (

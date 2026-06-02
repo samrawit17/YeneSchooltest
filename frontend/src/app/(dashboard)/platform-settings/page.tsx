@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { platformSettingsAPI } from '@/lib/api';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 import { 
   Settings,
   AlertCircle,
@@ -11,6 +13,8 @@ import {
   Wrench,
   Bell,
   Loader2,
+  RefreshCw,
+  Save,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +29,8 @@ interface SettingItem {
   type: 'boolean' | 'string' | 'number' | 'json';
   category: string;
   icon: React.ReactNode;
+  placeholder?: string;
+  requiresConfirmation?: boolean;
 }
 
 const PLATFORM_SETTINGS_CONFIG: SettingItem[] = [
@@ -36,6 +42,7 @@ const PLATFORM_SETTINGS_CONFIG: SettingItem[] = [
     type: 'number',
     category: 'platform',
     icon: <Building2 className="w-5 h-5" />,
+    placeholder: 'Unlimited',
   },
   {
     key: 'MAINTENANCE_MODE',
@@ -44,6 +51,7 @@ const PLATFORM_SETTINGS_CONFIG: SettingItem[] = [
     type: 'boolean',
     category: 'platform',
     icon: <Wrench className="w-5 h-5" />,
+    requiresConfirmation: true,
   },
   // Integrations
   {
@@ -69,41 +77,184 @@ const CATEGORIES = [
   { id: 'integrations', label: 'Integrations', icon: <Settings className="w-4 h-4" /> },
 ];
 
+const formatDraftValue = (setting: SettingItem, value: unknown) => {
+  if (setting.type === 'number') {
+    return value === null || value === undefined ? '' : String(value);
+  }
+
+  if (setting.type === 'json') {
+    if (typeof value === 'string') return value;
+    return JSON.stringify(value ?? {}, null, 2);
+  }
+
+  return value === null || value === undefined ? '' : String(value);
+};
+
 export default function PlatformSettingsPage() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [settings, setSettings] = useState<Record<string, any>>({});
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('platform');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      setLoading(false);
+      router.push('/sign-in');
+      return;
+    }
+    if (user?.role?.toLowerCase() !== 'super_admin') {
+      setLoading(false);
+      toast.error('Access denied. Super Admin only.');
+      router.push('/dashboard');
+      return;
+    }
+    void fetchSettings();
+  }, [authLoading, isAuthenticated, router, user]);
 
   const fetchSettings = async () => {
     try {
       setLoading(true);
       setError(null);
+      setFieldErrors({});
       const response = await platformSettingsAPI.getAll();
-      setSettings(response.data || {});
+      const nextSettings = response.data || {};
+      setSettings(nextSettings);
+      setDrafts(
+        Object.fromEntries(
+          PLATFORM_SETTINGS_CONFIG
+            .filter((setting) => setting.type !== 'boolean')
+            .map((setting) => [
+              setting.key,
+              formatDraftValue(setting, nextSettings[setting.key]),
+            ]),
+        ),
+      );
     } catch (err: any) {
-      setError('Failed to load settings');
+      setError(err?.response?.data?.message || 'Failed to load settings');
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  const updateSetting = async (key: string, value: any) => {
+    setSaving(key);
+    setError(null);
+    const response = await platformSettingsAPI.set(key, value);
+    const savedValue = response.data?.value ?? value;
+    setSettings((prev) => ({ ...prev, [key]: savedValue }));
+    return savedValue;
+  };
+
   const handleSettingChange = async (key: string, value: any) => {
     try {
-      setSaving(key);
-      setError(null);
-      await platformSettingsAPI.set(key, value);
-      setSettings((prev) => ({ ...prev, [key]: value }));
+      await updateSetting(key, value);
       toast.success('Setting updated successfully');
     } catch (err: any) {
-      setError(`Failed to update: ${err.message}`);
-      toast.error('Failed to update setting');
+      const message = err?.response?.data?.message || err.message || 'Failed to update setting';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleBooleanChange = async (setting: SettingItem, checked: boolean) => {
+    if (setting.requiresConfirmation) {
+      const toastId = toast.warning(
+        checked
+          ? 'Enable maintenance mode for the whole platform?'
+          : 'Disable maintenance mode and reopen the platform?',
+        {
+          description: checked
+            ? 'Users may be blocked from normal access until maintenance mode is disabled.'
+            : 'Normal users will be able to access the platform again.',
+          duration: 10000,
+          action: {
+            label: checked ? 'Enable' : 'Disable',
+            onClick: () => {
+              toast.dismiss(toastId);
+              void handleSettingChange(setting.key, checked);
+            },
+          },
+          cancel: {
+            label: 'Cancel',
+            onClick: () => toast.dismiss(toastId),
+          },
+        },
+      );
+      return;
+    }
+
+    await handleSettingChange(setting.key, checked);
+  };
+
+  const handleDraftChange = (key: string, value: string) => {
+    setDrafts((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const handleSaveDraft = async (setting: SettingItem) => {
+    const rawValue = drafts[setting.key] ?? '';
+    let parsedValue: unknown = rawValue;
+
+    if (setting.type === 'number') {
+      if (rawValue.trim() === '') {
+        parsedValue = null;
+      } else {
+        const numericValue = Number(rawValue);
+        if (!Number.isInteger(numericValue) || numericValue < 1) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            [setting.key]: 'Enter a positive whole number, or leave blank for unlimited.',
+          }));
+          return;
+        }
+        parsedValue = numericValue;
+      }
+    }
+
+    if (setting.type === 'json') {
+      try {
+        parsedValue = JSON.parse(rawValue || '{}');
+      } catch {
+        setFieldErrors((prev) => ({
+          ...prev,
+          [setting.key]: 'Enter valid JSON before saving.',
+        }));
+        return;
+      }
+
+      if (!parsedValue || typeof parsedValue !== 'object' || Array.isArray(parsedValue)) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          [setting.key]: 'This setting must be a JSON object.',
+        }));
+        return;
+      }
+    }
+
+    try {
+      const savedValue = await updateSetting(setting.key, parsedValue);
+      setDrafts((prev) => ({
+        ...prev,
+        [setting.key]: formatDraftValue(setting, savedValue),
+      }));
+      toast.success('Setting updated successfully');
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err.message || 'Failed to update setting';
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(null);
     }
@@ -116,13 +267,16 @@ export default function PlatformSettingsPage() {
   const renderSettingInput = (setting: SettingItem) => {
     const value = settings[setting.key] ?? '';
     const isSaving = saving === setting.key;
+    const draftValue = drafts[setting.key] ?? formatDraftValue(setting, value);
+    const savedDraftValue = formatDraftValue(setting, value);
+    const isDirty = draftValue !== savedDraftValue;
 
     if (setting.type === 'boolean') {
       return (
         <div className="flex items-center justify-between">
           <Switch
             checked={!!value}
-            onCheckedChange={(checked) => handleSettingChange(setting.key, checked)}
+            onCheckedChange={(checked) => handleBooleanChange(setting, checked)}
             disabled={isSaving}
           />
           {isSaving && <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-color,#e35336)]" />}
@@ -132,68 +286,81 @@ export default function PlatformSettingsPage() {
 
     if (setting.type === 'number') {
       return (
-        <div className="relative">
+        <div className="space-y-2">
           <Input
             type="number"
-            value={value}
-            onChange={(e) => {
-              const numValue = e.target.value === '' ? '' : parseInt(e.target.value);
-              if (!isNaN(numValue as number)) {
-                handleSettingChange(setting.key, numValue);
-              }
-            }}
+            value={draftValue}
+            onChange={(e) => handleDraftChange(setting.key, e.target.value)}
+            placeholder={setting.placeholder}
             disabled={isSaving}
             className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
           />
-          {isSaving && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-color,#e35336)]" />
-            </div>
-          )}
+          {fieldErrors[setting.key] ? (
+            <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors[setting.key]}</p>
+          ) : null}
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => handleSaveDraft(setting)}
+              disabled={isSaving || !isDirty}
+              className="gap-2"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save
+            </Button>
+          </div>
         </div>
       );
     }
 
     if (setting.type === 'json') {
       return (
-        <div className="relative">
+        <div className="space-y-2">
           <textarea
-            value={typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
-            onChange={(e) => {
-              try {
-                const jsonValue = JSON.parse(e.target.value);
-                handleSettingChange(setting.key, jsonValue);
-              } catch {
-                handleSettingChange(setting.key, e.target.value);
-              }
-            }}
+            value={draftValue}
+            onChange={(e) => handleDraftChange(setting.key, e.target.value)}
             disabled={isSaving}
             rows={4}
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 font-mono text-sm dark:bg-gray-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
           />
-          {isSaving && (
-            <div className="absolute right-3 top-2.5">
-              <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-color,#e35336)]" />
-            </div>
-          )}
+          {fieldErrors[setting.key] ? (
+            <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors[setting.key]}</p>
+          ) : null}
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => handleSaveDraft(setting)}
+              disabled={isSaving || !isDirty}
+              className="gap-2"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save
+            </Button>
+          </div>
         </div>
       );
     }
 
     return (
-      <div className="relative">
+      <div className="space-y-2">
         <Input
           type="text"
-          value={value}
-          onChange={(e) => handleSettingChange(setting.key, e.target.value)}
+          value={draftValue}
+          onChange={(e) => handleDraftChange(setting.key, e.target.value)}
           disabled={isSaving}
           className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
-        {isSaving && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <Loader2 className="w-4 h-4 animate-spin text-[var(--brand-color,#e35336)]" />
-          </div>
-        )}
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={() => handleSaveDraft(setting)}
+            disabled={isSaving || !isDirty}
+            className="gap-2"
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save
+          </Button>
+        </div>
       </div>
     );
   };
@@ -244,7 +411,11 @@ export default function PlatformSettingsPage() {
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
                 <p className="text-red-700 dark:text-red-300 font-medium">{error}</p>
-                <Button variant="ghost" size="sm" onClick={() => setError(null)} className="ml-auto">
+                <Button variant="ghost" size="sm" onClick={fetchSettings} className="ml-auto">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setError(null)}>
                   Dismiss
                 </Button>
               </div>

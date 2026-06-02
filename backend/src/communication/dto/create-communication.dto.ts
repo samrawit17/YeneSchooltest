@@ -6,8 +6,9 @@ import {
   IsInt,
   Min,
   MaxLength,
+  Max,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 // Status enum - includes OPEN, ACKNOWLEDGED, and CLOSED
 export enum CommunicationStatus {
@@ -37,11 +38,13 @@ export class CreateCommunicationDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   subject: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(5000)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   message: string;
 
   @IsEnum(CommunicationCategory)
@@ -53,6 +56,7 @@ export class CreateCommunicationReplyDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(2000)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   message: string;
 }
 
@@ -102,6 +106,7 @@ export class CommunicationQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(100)
   limit?: number;
 
   @IsString()

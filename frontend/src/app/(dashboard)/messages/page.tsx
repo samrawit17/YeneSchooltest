@@ -25,6 +25,16 @@ import { useTranslations } from "@/hooks/useTranslations";
 
 const STAFF_ROLES = new Set(["ADMIN", "REGISTRAR", "TEACHER", "FINANCE", "IT_MANAGER"]);
 
+function getErrorStatus(error: unknown) {
+  return (error as any)?.response?.status;
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const message = (error as any)?.response?.data?.message;
+  if (Array.isArray(message)) return message.join(", ");
+  return typeof message === "string" && message.trim() ? message : fallback;
+}
+
 export default function MessagesPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -58,12 +68,18 @@ export default function MessagesPage() {
     [user?.id, user?.schoolId]
   );
 
-  const { data: conversations = [], isLoading: isLoadingConversations } = useQuery({
+  const {
+    data: conversations = [],
+    isLoading: isLoadingConversations,
+    isError: isConversationsError,
+    refetch: refetchConversations,
+  } = useQuery({
     queryKey: conversationsQueryKey,
     queryFn: async () => (await messagingAPI.listConversations()).data,
     enabled: !!user?.id && !!user?.schoolId && isStaffUser,
     staleTime: 5_000,
     refetchInterval: 10_000,
+    retry: 1,
   });
 
   const filteredConversations = useMemo(() => {
@@ -77,19 +93,32 @@ export default function MessagesPage() {
     });
   }, [conversations, conversationSearch]);
 
-  const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
+  const {
+    data: messages = [],
+    isLoading: isLoadingMessages,
+    isError: isMessagesError,
+    error: messagesError,
+    refetch: refetchMessages,
+  } = useQuery({
     queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
     queryFn: async () => (await messagingAPI.getMessages(selectedConversationId!)).data,
     enabled: !!user?.id && !!user?.schoolId && !!selectedConversationId && isStaffUser,
     staleTime: 0,
-    refetchInterval: 3_000,
+    refetchInterval: (query) => (query.state.status === "error" ? false : 3_000),
+    retry: false,
   });
 
-  const { data: staff = [], isLoading: isLoadingStaff } = useQuery({
+  const {
+    data: staff = [],
+    isLoading: isLoadingStaff,
+    isError: isStaffError,
+    refetch: refetchStaff,
+  } = useQuery({
     queryKey: queryKeys.messages.staff(user?.id, user?.schoolId, staffSearch, newDialogOpen),
     queryFn: async () => (await messagingAPI.listStaff({ search: staffSearch })).data,
     enabled: !!user?.id && !!user?.schoolId && isStaffUser && newDialogOpen,
     staleTime: 30_000,
+    retry: 1,
   });
 
   const createConversationMutation = useMutation({
@@ -108,6 +137,9 @@ export default function MessagesPage() {
       if (conversationId) {
         router.replace(`/messages?conversationId=${conversationId}`);
       }
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, t.states.createConversationFailed));
     },
   });
 
@@ -148,15 +180,24 @@ export default function MessagesPage() {
       }
       const isNetworkError = !navigator.onLine || !err?.response;
       if (isNetworkError && selectedConversationId && context?.newContent) {
-        await syncService.saveMessageDraftOffline({
-          localId: `message:${selectedConversationId}:${Date.now()}`,
-          conversationId: selectedConversationId,
-          content: context.newContent,
-          userId: user?.id,
-        });
-        setDraft("");
-        toast.success(t.states.savedOffline);
+        try {
+          await syncService.saveMessageDraftOffline({
+            localId: `message:${selectedConversationId}:${Date.now()}`,
+            conversationId: selectedConversationId,
+            content: context.newContent,
+            userId: user?.id,
+          });
+          setDraft("");
+          toast.success(t.states.savedOffline);
+        } catch (offlineError) {
+          toast.error(getApiErrorMessage(offlineError, t.states.sendFailed));
+        }
+        return;
       }
+      toast.error(getApiErrorMessage(err, t.states.sendFailed));
+    },
+    onSuccess: () => {
+      toast.success(t.states.messageSent);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
@@ -228,12 +269,16 @@ export default function MessagesPage() {
 
     if (unreadIds.length === 0) return;
 
-    Promise.all(unreadIds.map((id) => messagingAPI.markRead(id))).then(() => {
-      queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+    Promise.all(unreadIds.map((id) => messagingAPI.markRead(id)))
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+        });
+      })
+      .catch((error) => {
+        console.warn("Failed to mark messages as read", error);
       });
-    });
   }, [messages, selectedConversationId, user?.id, queryClient, conversationsQueryKey]);
 
   const getConversationTitle = (c: MessagingConversationListItem) => {
@@ -249,11 +294,26 @@ export default function MessagesPage() {
     return (conversations as MessagingConversationListItem[]).find((c) => c.conversationId === selectedConversationId) || null;
   }, [conversations, selectedConversationId]);
 
+  const isSelectedConversationNotFound = isMessagesError && getErrorStatus(messagesError) === 404;
+  const canUseComposer =
+    !!selectedConversationId &&
+    !!selectedConversation &&
+    !isMessagesError &&
+    !isLoadingMessages &&
+    !sendMessageMutation.isPending;
+
   const toggleStaff = (staffUser: MessagingParticipant) => {
     setSelectedStaffIds((prev) => {
       if (prev.includes(staffUser.id)) return prev.filter((id) => id !== staffUser.id);
       return [...prev, staffUser.id];
     });
+  };
+
+  const handleSend = () => {
+    const contentToSend = draft.trim();
+    if (!contentToSend || !canUseComposer) return;
+    setDraft("");
+    sendMessageMutation.mutate(contentToSend);
   };
 
   if (!isStaffUser) {
@@ -316,6 +376,13 @@ export default function MessagesPage() {
                     <div className="flex items-center gap-2 text-sm text-gray-500 p-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       {t.states.loadingStaff}
+                    </div>
+                  ) : isStaffError ? (
+                    <div className="space-y-2 p-2">
+                      <div className="text-sm text-red-600">{t.states.loadStaffFailed}</div>
+                      <Button size="sm" variant="outline" onClick={() => refetchStaff()}>
+                        {t.actions.tryAgain}
+                      </Button>
                     </div>
                   ) : staff.length === 0 ? (
                     <div className="text-sm text-gray-500 p-2">{t.states.noStaff}</div>
@@ -389,6 +456,13 @@ export default function MessagesPage() {
                   <Loader2 className="w-4 h-4 animate-spin" />
                   {t.states.loadingConversations}
                 </div>
+              ) : isConversationsError ? (
+                <div className="space-y-2 p-4">
+                  <div className="text-sm text-red-600">{t.states.loadConversationsFailed}</div>
+                  <Button size="sm" variant="outline" onClick={() => refetchConversations()}>
+                    {t.actions.tryAgain}
+                  </Button>
+                </div>
               ) : filteredConversations.length === 0 ? (
                 <div className="text-sm text-gray-500 p-4">{t.states.noConversations}</div>
               ) : (
@@ -437,6 +511,23 @@ export default function MessagesPage() {
               <div className="h-full flex items-center justify-center text-sm text-gray-500 p-4 text-center">
                 {t.states.chooseConversation}
               </div>
+            ) : isMessagesError ? (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-sm text-gray-600 p-4 text-center">
+                <div className="text-red-600">
+                  {isSelectedConversationNotFound ? t.states.conversationNotFound : t.states.loadMessagesFailed}
+                </div>
+                <div className="flex items-center gap-2">
+                  {isSelectedConversationNotFound ? (
+                    <Button variant="outline" size="sm" onClick={() => router.replace("/messages")}>
+                      {t.states.selectConversation}
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => refetchMessages()}>
+                      {t.actions.tryAgain}
+                    </Button>
+                  )}
+                </div>
+              </div>
             ) : isLoadingMessages ? (
               <div className="flex items-center gap-2 text-sm text-gray-500 p-4">
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -482,25 +573,18 @@ export default function MessagesPage() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={t.placeholders.typeMessage}
-              disabled={!selectedConversationId || sendMessageMutation.isPending}
+              disabled={!canUseComposer}
               className="text-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  if (!draft.trim() || !selectedConversationId) return;
-                  const contentToSend = draft;
-                  setDraft("");
-                  sendMessageMutation.mutate(contentToSend);
+                  handleSend();
                 }
               }}
             />
             <Button
-              onClick={() => {
-                const contentToSend = draft;
-                setDraft("");
-                sendMessageMutation.mutate(contentToSend);
-              }}
-              disabled={!selectedConversationId || !draft.trim() || sendMessageMutation.isPending}
+              onClick={handleSend}
+              disabled={!canUseComposer || !draft.trim()}
               className="h-9 w-9 border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)] md:h-9 md:w-9"
             >
               {sendMessageMutation.isPending ? (

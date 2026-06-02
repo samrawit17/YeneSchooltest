@@ -23,7 +23,8 @@ export class PlatformSettingsController {
   ) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
   async getAllSettings() {
     try {
       return await this.platformSettingsService.getAllSettings();

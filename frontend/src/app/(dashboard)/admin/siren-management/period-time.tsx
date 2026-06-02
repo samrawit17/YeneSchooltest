@@ -12,7 +12,6 @@ import {
   Edit2,
   Trash2,
   Save,
-  X,
   AlertCircle,
 } from "lucide-react";
 import {
@@ -61,6 +60,44 @@ interface PeriodTime {
   endTime: string;
 }
 
+type ApiErrorLike = {
+  response?: {
+    data?: {
+      message?: string | string[];
+      error?: string;
+    };
+  };
+  message?: string;
+};
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const apiError = error as ApiErrorLike;
+  const message = apiError.response?.data?.message;
+
+  if (Array.isArray(message)) {
+    return message.join(", ");
+  }
+
+  return message || apiError.response?.data?.error || apiError.message || fallback;
+}
+
+function timeToMinutes(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+function timesOverlap(
+  leftStart: string,
+  leftEnd: string,
+  rightStart: string,
+  rightEnd: string
+) {
+  return (
+    timeToMinutes(leftStart) < timeToMinutes(rightEnd) &&
+    timeToMinutes(rightStart) < timeToMinutes(leftEnd)
+  );
+}
+
 export function PeriodTimeManagement() {
   const { user } = useAuth();
   const { schoolCalendarType } = useAcademicYear();
@@ -69,6 +106,8 @@ export function PeriodTimeManagement() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     periodNumber: "",
     startTime: "",
@@ -79,12 +118,16 @@ export function PeriodTimeManagement() {
 
   // Fetch periods
   const fetchPeriods = useCallback(async () => {
-    if (!schoolId) return;
+    if (!schoolId) {
+      setPeriods([]);
+      setLoading(false);
+      return;
+    }
     try {
       const res = await periodTimeAPI.list(schoolId);
       setPeriods(res.data || []);
     } catch (error) {
-      toast.error("Failed to load period times");
+      toast.error(getApiErrorMessage(error, "Failed to load period times"));
     } finally {
       setLoading(false);
     }
@@ -94,27 +137,61 @@ export function PeriodTimeManagement() {
     fetchPeriods();
   }, [fetchPeriods]);
 
-  const handleSave = async () => {
+  const validateForm = () => {
     if (!form.periodNumber || !form.startTime || !form.endTime) {
       toast.error("All fields are required");
-      return;
+      return null;
+    }
+
+    const periodNumber = Number(form.periodNumber);
+    if (!Number.isInteger(periodNumber) || periodNumber < 1 || periodNumber > 12) {
+      toast.error("Period number must be between 1 and 12");
+      return null;
     }
 
     if (form.startTime >= form.endTime) {
       toast.error("Start time must be before end time");
-      return;
+      return null;
     }
+
+    const existingPeriod = periods.find(
+      (period) => period.id !== editingId && period.periodNumber === periodNumber
+    );
+    if (existingPeriod) {
+      toast.error(`Period ${periodNumber} already exists`);
+      return null;
+    }
+
+    const overlappingPeriod = periods.find(
+      (period) =>
+        period.id !== editingId &&
+        timesOverlap(form.startTime, form.endTime, period.startTime, period.endTime)
+    );
+    if (overlappingPeriod) {
+      toast.error(
+        `Time overlaps Period ${overlappingPeriod.periodNumber} (${overlappingPeriod.startTime}-${overlappingPeriod.endTime})`
+      );
+      return null;
+    }
+
+    return periodNumber;
+  };
+
+  const handleSave = async () => {
+    const periodNumber = validateForm();
+    if (!periodNumber) return;
 
     if (!schoolId) {
       toast.error("School not found");
       return;
     }
 
+    setSaving(true);
     try {
       if (editingId) {
         await periodTimeAPI.update(editingId, {
           schoolId,
-          periodNumber: parseInt(form.periodNumber),
+          periodNumber,
           startTime: form.startTime,
           endTime: form.endTime,
         });
@@ -122,7 +199,7 @@ export function PeriodTimeManagement() {
       } else {
         await periodTimeAPI.create({
           schoolId,
-          periodNumber: parseInt(form.periodNumber),
+          periodNumber,
           startTime: form.startTime,
           endTime: form.endTime,
         });
@@ -133,7 +210,9 @@ export function PeriodTimeManagement() {
       setEditingId(null);
       setForm({ periodNumber: "", startTime: "", endTime: "" });
     } catch (error) {
-      toast.error("Failed to save period time");
+      toast.error(getApiErrorMessage(error, "Failed to save period time"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -149,13 +228,16 @@ export function PeriodTimeManagement() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
+    setDeleting(true);
     try {
       await periodTimeAPI.delete(deleteId);
       toast.success("Period time deleted");
       await fetchPeriods();
       setDeleteId(null);
     } catch (error) {
-      toast.error("Failed to delete period time");
+      toast.error(getApiErrorMessage(error, "Failed to delete period time"));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -240,9 +322,9 @@ export function PeriodTimeManagement() {
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleSave} className="gap-2">
+                <Button onClick={handleSave} className="gap-2" disabled={saving}>
                   <Save className="w-4 h-4" />
-                  {editingId ? "Update" : "Create"}
+                  {saving ? "Saving..." : editingId ? "Update" : "Create"}
                 </Button>
               </div>
             </DialogContent>
@@ -351,14 +433,18 @@ export function PeriodTimeManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Period Time?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The period time will be deleted
-              permanently.
+              This can only be deleted when no timetable slots use the same
+              start and end time.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex gap-2 justify-end">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-              Delete
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive"
+            >
+              {deleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>

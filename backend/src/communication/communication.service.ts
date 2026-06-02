@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   ForbiddenException,
   NotFoundException,
@@ -36,6 +37,21 @@ export class CommunicationService {
     creatorRole: string,
     dto: CreateCommunicationDto,
   ) {
+    const targetUserId = dto.studentId?.trim();
+    const subject = dto.subject?.trim();
+    const message = dto.message?.trim();
+    const classId = dto.classId?.trim() || undefined;
+
+    if (!targetUserId) {
+      throw new BadRequestException('A recipient is required');
+    }
+    if (!subject) {
+      throw new BadRequestException('Subject is required');
+    }
+    if (!message) {
+      throw new BadRequestException('Message is required');
+    }
+
     const creator = await this.prisma.user.findUnique({
       where: { id: createdById },
       select: { schoolId: true },
@@ -54,7 +70,7 @@ export class CommunicationService {
 
     let targetUserRecord = await this.prisma.user.findFirst({
       where: {
-        id: dto.studentId,
+        id: targetUserId,
         ...schoolFilter,
       },
       include: {
@@ -76,7 +92,7 @@ export class CommunicationService {
     if (!targetUserRecord) {
       const profile = await this.prisma.studentProfile.findFirst({
         where: {
-          id: dto.studentId,
+          id: targetUserId,
           ...(effectiveSchoolId ? { schoolId: effectiveSchoolId } : {}),
         },
         select: { userId: true },
@@ -246,9 +262,9 @@ export class CommunicationService {
         schoolId: effectiveSchoolId || targetUser.schoolId,
         studentId: targetUser.id,
         createdById,
-        classId: dto.classId,
-        subject: dto.subject,
-        message: dto.message,
+        classId,
+        subject,
+        message,
         status: 'OPEN',
         category: dto.category || CommunicationCategory.GENERAL,
       },
@@ -279,12 +295,12 @@ export class CommunicationService {
             schoolId: effectiveSchoolId || targetUser.schoolId,
             userId: parentRelation.parent.user.id,
             title: 'New Communication Entry',
-            message: `A new note has been added for ${targetUser.name}: ${dto.subject}`,
+            message: `A new note has been added for ${targetUser.name}: ${subject}`,
             type: 'COMMUNICATION',
             actionUrl: `/list/communications?conversationId=${communication.id}`,
             metadata: {
               communicationId: communication.id,
-              studentId: dto.studentId,
+              studentId: targetUserId,
             },
           }),
         );
@@ -297,12 +313,12 @@ export class CommunicationService {
         schoolId: effectiveSchoolId || targetUser.schoolId,
         userId: targetUser.id,
         title: 'New Communication Entry',
-        message: `A new note has been added: ${dto.subject}`,
+        message: `A new note has been added: ${subject}`,
         type: 'COMMUNICATION',
         actionUrl: `/list/communications?conversationId=${communication.id}`,
         metadata: {
           communicationId: communication.id,
-          targetUserId: dto.studentId,
+          targetUserId,
         },
       });
     }
@@ -727,6 +743,11 @@ export class CommunicationService {
     communicationId: string,
     dto: CreateCommunicationReplyDto,
   ) {
+    const message = dto.message?.trim();
+    if (!message) {
+      throw new BadRequestException('Reply message is required');
+    }
+
     const communication = await this.prisma.communication.findUnique({
       where: { id: communicationId },
       include: {
@@ -763,7 +784,7 @@ export class CommunicationService {
       data: {
         communicationId,
         senderId: userId,
-        message: dto.message,
+        message,
       },
       include: {
         sender: {
@@ -784,7 +805,7 @@ export class CommunicationService {
         schoolId,
         userId: communication.createdById,
         title: 'New Reply to Communication',
-        message: `${sender?.name} replied to "${communication.subject}": ${this.previewText(dto.message)}`,
+        message: `${sender?.name} replied to "${communication.subject}": ${this.previewText(message)}`,
         type: 'MESSAGE_RECEIVED',
         actionUrl: `/list/communications?conversationId=${communicationId}`,
         metadata: { communicationId, replyId: reply.id },
@@ -805,7 +826,7 @@ export class CommunicationService {
                 schoolId,
                 userId: parentRelation.parent.user.id,
                 title: 'New Reply to Communication',
-                message: `${sender?.name} replied to "${communication.subject}": ${this.previewText(dto.message)}`,
+                message: `${sender?.name} replied to "${communication.subject}": ${this.previewText(message)}`,
                 type: 'MESSAGE_RECEIVED',
                 actionUrl: `/list/communications?conversationId=${communicationId}`,
                 metadata: { communicationId, replyId: reply.id },
@@ -817,7 +838,7 @@ export class CommunicationService {
           schoolId,
           userId: communication.createdById,
           title: 'New Reply to Communication',
-          message: `${sender?.name} replied to "${communication.subject}": ${this.previewText(dto.message)}`,
+          message: `${sender?.name} replied to "${communication.subject}": ${this.previewText(message)}`,
           type: 'MESSAGE_RECEIVED',
           actionUrl: `/list/communications?conversationId=${communicationId}`,
           metadata: { communicationId, replyId: reply.id },
