@@ -19,6 +19,8 @@ import { TimetableSlotService } from './timetable-slot.service';
 import { Role } from '../auth/types/role.enum';
 import { CreateTimetableSlotDto } from './dto/create-timetable-slot.dto';
 import { UpdateTimetableSlotDto } from './dto/update-timetable-slot.dto';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -29,7 +31,8 @@ interface AuthenticatedRequest extends Request {
 }
 
 @Controller('timetable-slots')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, SubscriptionGuard)
+@RequiresFeature('TIMETABLE_MANAGEMENT')
 export class TimetableSlotController {
   constructor(private timetableSlotService: TimetableSlotService) {}
 

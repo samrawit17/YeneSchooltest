@@ -23,6 +23,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Role } from '../auth/types/role.enum';
 import { EnrollmentRequestStatus } from '@prisma/client';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 @Controller('enrollment')
 export class EnrollmentRequestController {
@@ -129,7 +131,8 @@ export class EnrollmentRequestController {
    * GET /enrollment/requests
    */
   @Get('requests')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+  @RequiresFeature('ENROLLMENT_MANAGEMENT')
   @Roles(Role.ADMIN, Role.REGISTRAR)
   async listRequests(@Query() query: EnrollmentQueryDto) {
     const result = await this.enrollmentService.listEnrollmentRequests(query);
@@ -141,7 +144,8 @@ export class EnrollmentRequestController {
    * GET /enrollment/stats
    */
   @Get('stats')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+  @RequiresFeature('ENROLLMENT_MANAGEMENT')
   @Roles(Role.ADMIN, Role.REGISTRAR)
   async getStats(
     @Query('schoolId') schoolId: string,
@@ -159,7 +163,8 @@ export class EnrollmentRequestController {
    * GET /enrollment/requests/:id
    */
   @Get('requests/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+  @RequiresFeature('ENROLLMENT_MANAGEMENT')
   @Roles(Role.ADMIN, Role.REGISTRAR)
   async getRequest(
     @Param('id') id: string,
@@ -177,7 +182,8 @@ export class EnrollmentRequestController {
    * POST /enrollment/requests/:id/approve
    */
   @Post('requests/:id/approve')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+  @RequiresFeature('ENROLLMENT_MANAGEMENT')
   @Roles(Role.ADMIN, Role.REGISTRAR)
   @HttpCode(HttpStatus.OK)
   async approveEnrollment(
@@ -202,7 +208,8 @@ export class EnrollmentRequestController {
    * POST /enrollment/requests/:id/reject
    */
   @Post('requests/:id/reject')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+  @RequiresFeature('ENROLLMENT_MANAGEMENT')
   @Roles(Role.ADMIN, Role.REGISTRAR)
   @HttpCode(HttpStatus.OK)
   async rejectEnrollment(
@@ -230,7 +237,8 @@ export class EnrollmentRequestController {
    * POST /enrollment/requests/:id/waitlist
    */
   @Post('requests/:id/waitlist')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+  @RequiresFeature('ENROLLMENT_MANAGEMENT')
   @Roles(Role.ADMIN, Role.REGISTRAR)
   @HttpCode(HttpStatus.OK)
   async waitlistEnrollment(

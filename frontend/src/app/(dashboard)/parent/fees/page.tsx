@@ -442,7 +442,13 @@ const ParentFeesPage = () => {
 
             if (childId && schoolId && effectiveYearId) {
               try {
-                const feesRes = await financeAPI.getStudentFees(childId, schoolId, effectiveYearId);
+                const feesRes = await financeAPI.getStudentFees(
+                  childId,
+                  schoolId,
+                  effectiveYearId,
+                  undefined,
+                  { skipAuthErrorRedirect: true },
+                );
                 feeSummary = feesRes.data;
                 curriculumInfo = {
                   curriculumType: feesRes.data?.curriculumType,

@@ -12,6 +12,7 @@ import {
   UseGuards,
   Request,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { SubscriptionService } from './subscription.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -25,7 +26,8 @@ export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
   @Get('plans')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
   async getAllPlans() {
     try {
       return await this.subscriptionService.getAllPlans();
@@ -143,6 +145,7 @@ export class SubscriptionController {
       const plan = await this.subscriptionService.getSchoolPlan(schoolId);
       return plan || { tier: 'CORE', features: [] };
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new HttpException(
         'Failed to get school plan: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -157,6 +160,7 @@ export class SubscriptionController {
       this.assertSameSchoolOrSuperAdmin(req.user, schoolId);
       return await this.subscriptionService.getSchoolSubscription(schoolId);
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new HttpException(
         'Failed to get subscription: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -247,13 +251,17 @@ export class SubscriptionController {
     @Query('feature') feature: string,
   ) {
     try {
+      if (!schoolId || !feature) {
+        throw new BadRequestException('schoolId and feature are required');
+      }
       this.assertSameSchoolOrSuperAdmin(req.user, schoolId);
       const plan = await this.subscriptionService.getSchoolPlan(schoolId);
       const hasAccess = plan
         ? this.subscriptionService.isFeatureAccessible(plan, feature)
         : false;
-      return { hasAccess, feature, tier: plan?.tier || 'CORE' };
+      return { hasAccess, feature: feature.trim().toUpperCase(), tier: plan?.tier || 'CORE' };
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       throw new HttpException(
         'Failed to check feature: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,

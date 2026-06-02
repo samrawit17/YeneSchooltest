@@ -46,6 +46,7 @@ const EventForm = ({ initialData, onSuccess, onCancel }: EventFormProps) => {
     onSuccess: () => {
       toast.success(t.form.created);
       queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.calendarFeed });
       onSuccess?.();
     },
     onError: (error: any) => {
@@ -59,6 +60,7 @@ const EventForm = ({ initialData, onSuccess, onCancel }: EventFormProps) => {
     onSuccess: () => {
       toast.success(t.form.updated);
       queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.events.calendarFeed });
       onSuccess?.();
     },
     onError: (error: any) => {

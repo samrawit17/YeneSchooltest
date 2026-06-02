@@ -104,6 +104,7 @@ export const queryKeys = {
   },
   events: {
     all: ["events"] as const,
+    calendarFeed: ["events", "calendar-feed"] as const,
     navbar: ["events-navbar"] as const,
     menuCount: (userId?: string, schoolId?: string, roleKey?: string) =>
       ["events-count-menu", userId, schoolId, roleKey] as const,

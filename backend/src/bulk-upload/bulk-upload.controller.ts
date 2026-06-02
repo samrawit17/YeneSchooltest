@@ -20,6 +20,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import { AuditService } from '../audit/audit.service';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 export interface BulkUploadDto {
   academicYear?: string;
@@ -36,7 +38,8 @@ const ALLOWED_CSV_MIME_TYPES = new Set([
 ]);
 
 @Controller('bulk-upload')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+@RequiresFeature('BULK_OPERATIONS')
 export class BulkUploadController {
   constructor(
     private readonly bulkUploadService: BulkUploadService,

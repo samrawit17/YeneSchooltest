@@ -102,7 +102,13 @@ const ChildFeesPage = () => {
           return;
         }
 
-        const response = await financeAPI.getStudentFees(childId, schoolId, academicYearId);
+        const response = await financeAPI.getStudentFees(
+          childId,
+          schoolId,
+          academicYearId,
+          undefined,
+          { skipAuthErrorRedirect: true },
+        );
         const data = response.data;
         setFeeItems(data.feeItems || []);
         setPayments(data.payments || []);

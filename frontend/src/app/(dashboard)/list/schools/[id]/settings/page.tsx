@@ -966,6 +966,23 @@ export default function SchoolSettingsPage() {
         toast.error(messageText('validTime', 'Please enter a valid time in HH:mm format'));
         return;
       }
+
+      if (key === 'SCHOOL_START_TIME' || key === 'SCHOOL_END_TIME') {
+        const startTime = String(
+          key === 'SCHOOL_START_TIME'
+            ? value
+            : draftSettings.SCHOOL_START_TIME || settings.SCHOOL_START_TIME || '08:00',
+        );
+        const endTime = String(
+          key === 'SCHOOL_END_TIME'
+            ? value
+            : draftSettings.SCHOOL_END_TIME || settings.SCHOOL_END_TIME || '15:00',
+        );
+        if (startTime >= endTime) {
+          toast.error('School start time must be before school end time');
+          return;
+        }
+      }
     }
 
     try {
@@ -1144,6 +1161,24 @@ export default function SchoolSettingsPage() {
   const hasUnsavedChanges = SETTINGS_CONFIG.some(
     (setting) => !isSettingsReadOnly && hasSettingChanged(setting) && !isSettingLocked(setting.key),
   );
+  const hasPendingPageChanges =
+    hasUnsavedChanges ||
+    Boolean(selectedLogoFile) ||
+    Boolean(selectedLoginImageFile) ||
+    (isEditingCode && schoolCode !== (schoolInfo?.code || '')) ||
+    (isEditingPublicUrlSlug && publicUrlSlug !== (schoolInfo?.publicUrlSlug || ''));
+
+  useEffect(() => {
+    if (!hasPendingPageChanges) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasPendingPageChanges]);
 
   const handleSaveAllChanges = async () => {
     if (isSettingsReadOnly) {
@@ -1159,6 +1194,8 @@ export default function SchoolSettingsPage() {
     try {
       setSavingAll(true);
       setError(null);
+      const updatePayload: Record<string, any> = {};
+      const resetSettings: SettingItem[] = [];
 
       for (const setting of changedSettings) {
         let nextValue: any =
@@ -1178,20 +1215,45 @@ export default function SchoolSettingsPage() {
           areValuesEqual(nextValue, setting.systemDefault ?? '', setting);
 
         if (shouldResetToDefault) {
-          await schoolSettingsAPI.delete(schoolId, setting.key);
-          setSettings((prev) => {
-            const next = { ...prev };
-            delete next[setting.key];
-            return next;
-          });
-          syncSchoolSettingsCaches({}, [setting.key], { remove: true });
-          if (setting.key === 'theme_color') {
-            syncCachedLoginContext({ accentColor: null });
-          }
+          resetSettings.push(setting);
           continue;
         }
 
-        await handleSettingChange(setting.key, nextValue, setting);
+        updatePayload[setting.key] = nextValue;
+      }
+
+      if (Object.keys(updatePayload).length > 0) {
+        await schoolSettingsAPI.batchUpdate(schoolId, updatePayload);
+        setSettings((prev) => ({ ...prev, ...updatePayload }));
+        setDraftSettings((prev) => ({ ...prev, ...updatePayload }));
+        syncSchoolSettingsCaches(updatePayload, Object.keys(updatePayload));
+
+        if (Object.prototype.hasOwnProperty.call(updatePayload, 'theme_color')) {
+          syncCachedLoginContext({ accentColor: updatePayload.theme_color });
+        }
+
+        if (Object.prototype.hasOwnProperty.call(updatePayload, 'calendar_type') && user) {
+          updateUser({ ...user, calendarType: updatePayload.calendar_type });
+        }
+      }
+
+      for (const setting of resetSettings) {
+        await schoolSettingsAPI.delete(schoolId, setting.key);
+        setSettings((prev) => {
+          const next = { ...prev };
+          delete next[setting.key];
+          return next;
+        });
+        setDraftSettings((prev) => {
+          const next = { ...prev };
+          delete next[setting.key];
+          return next;
+        });
+        syncSchoolSettingsCaches({}, [setting.key], { remove: true });
+
+        if (setting.key === 'theme_color') {
+          syncCachedLoginContext({ accentColor: null });
+        }
       }
 
       toast.success(messageText('settingsSaveSuccess', 'School settings saved successfully'));

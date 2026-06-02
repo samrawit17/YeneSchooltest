@@ -1,4 +1,5 @@
 import api from "./core";
+import type { AxiosRequestConfig } from "axios";
 
 export interface Announcement {
   id: string;
@@ -55,8 +56,11 @@ export const announcementsAPI = {
       params: schoolId ? { schoolId } : undefined,
       skipAuthErrorRedirect: true,
     }),
-  getActiveCount: (params?: { role?: string }) =>
-    api.get<{ count: number }>("/announcements/active-count", { params }),
+  getActiveCount: (params?: { role?: string }, config?: AxiosRequestConfig) =>
+    api.get<{ count: number }>("/announcements/active-count", {
+      params,
+      ...config,
+    }),
   getById: (id: string) => api.get<Announcement>(`/announcements/${id}`),
   update: (id: string, data: UpdateAnnouncementDto) =>
     api.put<Announcement>(`/announcements/${id}`, data),
@@ -66,17 +70,18 @@ export const announcementsAPI = {
 export interface Event {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   location?: string;
   startDate: string;
   endDate: string | null;
   allDay?: boolean;
-  eventType?: "ACADEMIC" | "EXTRACURRICULAR" | "ADMINISTRATIVE" | "SPORTS" | "OTHER";
+  eventType?: string;
   visibleTo?: string[] | null;
   audience?: string[] | null;
   category?: "ACADEMIC" | "SPORTS" | "CULTURAL" | "HOLIDAY" | "OTHER";
   color?: string | null;
-  createdById: string;
+  source?: "EVENT" | "TERM" | "FEE_DEADLINE";
+  createdById: string | null;
   createdBy?: { id: string; name: string; email: string };
   school?: { id: string; name: string };
   createdAt: string;
@@ -90,7 +95,7 @@ export interface CreateEventDto {
   startDate: string;
   endDate?: string;
   allDay?: boolean;
-  eventType?: "ACADEMIC" | "EXTRACURRICULAR" | "ADMINISTRATIVE" | "SPORTS" | "OTHER";
+  eventType?: string;
   visibleTo?: string[];
   audience?: string[];
   category?: "ACADEMIC" | "SPORTS" | "CULTURAL" | "HOLIDAY" | "OTHER";
@@ -104,7 +109,7 @@ export interface UpdateEventDto {
   startDate?: string;
   endDate?: string;
   allDay?: boolean;
-  eventType?: "ACADEMIC" | "EXTRACURRICULAR" | "ADMINISTRATIVE" | "SPORTS" | "OTHER";
+  eventType?: string;
   visibleTo?: string[];
   audience?: string[];
   category?: "ACADEMIC" | "SPORTS" | "CULTURAL" | "HOLIDAY" | "OTHER";
@@ -114,8 +119,13 @@ export interface UpdateEventDto {
 export const eventsAPI = {
   create: (data: CreateEventDto) => api.post("/events", data),
   getAll: (params?: { role?: string }) => api.get<Event[]>("/events", { params }),
-  getActiveCount: (params?: { role?: string }) =>
-    api.get<{ count: number }>("/events/active-count", { params }),
+  getCalendarFeed: (params?: { from?: string; to?: string }) =>
+    api.get<Event[]>("/events/calendar-feed", { params }),
+  getActiveCount: (params?: { role?: string }, config?: AxiosRequestConfig) =>
+    api.get<{ count: number }>("/events/active-count", {
+      params,
+      ...config,
+    }),
   getById: (id: string) => api.get<Event>(`/events/${id}`),
   update: (id: string, data: UpdateEventDto) => api.put<Event>(`/events/${id}`, data),
   delete: (id: string) => api.delete(`/events/${id}`),

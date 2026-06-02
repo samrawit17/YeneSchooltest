@@ -26,9 +26,12 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 @Controller('report-cards')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, SubscriptionGuard)
+@RequiresFeature('REPORT_CARDS')
 export class ReportCardController {
   constructor(
     private readonly reportCardService: ReportCardService,
@@ -238,6 +241,7 @@ export class ReportCardController {
   }
 
   @Get('certificate-template')
+  @RequiresFeature('CERTIFICATE_TEMPLATES')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:read')
   async getCertificateTemplate(@Request() req) {
@@ -245,6 +249,7 @@ export class ReportCardController {
   }
 
   @Put('certificate-template')
+  @RequiresFeature('CERTIFICATE_TEMPLATES')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   async saveCertificateTemplate(@Request() req, @Body() body: { template: Record<string, any> }) {
@@ -255,6 +260,7 @@ export class ReportCardController {
   }
 
   @Post('certificate-template/watermark')
+  @RequiresFeature('CERTIFICATE_TEMPLATES')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   @UseInterceptors(FileInterceptor('file'))
@@ -270,12 +276,14 @@ export class ReportCardController {
   }
 
   @Get(':id/certificate')
+  @RequiresFeature('CERTIFICATE_TEMPLATES')
   @Permissions('report_card:read')
   async getCertificatePayload(@Request() req, @Param('id') id: string) {
     return this.reportCardService.getCertificatePayload(id, req.user.schoolId);
   }
 
   @Get(':id/certificate-pdf')
+  @RequiresFeature('CERTIFICATE_TEMPLATES')
   @Permissions('report_card:read')
   async generateCertificatePdf(
     @Request() req,
@@ -289,6 +297,7 @@ export class ReportCardController {
   }
 
   @Post('certificate-pdf/bulk')
+  @RequiresFeature('CERTIFICATE_TEMPLATES')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:read')
   async generateCertificateBulkZip(
@@ -370,6 +379,7 @@ export class ReportCardController {
   }
 
   @Post('calculate-ranks')
+  @RequiresFeature('STUDENT_RANKINGS')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   async calculateRanks(

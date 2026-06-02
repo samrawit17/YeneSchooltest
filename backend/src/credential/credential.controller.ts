@@ -21,6 +21,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import { PrismaService } from '../prisma/prisma.service';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 export interface BulkStudentCreationDto {
   students: Array<{
@@ -63,7 +65,8 @@ export interface CreateStaffDto {
 }
 
 @Controller('credentials')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+@RequiresFeature('CREDENTIAL_MANAGEMENT')
 export class CredentialController {
   constructor(
     private readonly credentialService: CredentialService,

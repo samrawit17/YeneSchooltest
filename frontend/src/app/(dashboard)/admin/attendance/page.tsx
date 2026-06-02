@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
@@ -178,7 +178,7 @@ function MissingClasses({
           onClick={handleNotifyAllTeachers} 
           disabled={notifying || Boolean(disableNotifyReason)}
           size="sm"
-          className="bg-gray-900 hover:bg-gray-800 text-white"
+          className="bg-[var(--brand-color,#e35336)] text-white hover:opacity-90"
           title={disableNotifyReason}
         >
           {notifying ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Bell className="w-4 h-4 mr-1" />}
@@ -400,6 +400,8 @@ export default function AttendanceManagementPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedDashboardRef = useRef(false);
+  const dashboardRequestSeqRef = useRef(0);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -407,7 +409,6 @@ export default function AttendanceManagementPage() {
 
   // Dynamic grades and sections from API
   const [gradeList, setGradeList] = useState<string[]>([]);
-  const [sectionList, setSectionList] = useState<string[]>([]);
 
   // Grades data
   const [gradesData, setGradesData] = useState<any[]>([]);
@@ -443,10 +444,17 @@ export default function AttendanceManagementPage() {
 
   const fetchDashboard = useCallback(async (isRefresh = false) => {
     if (!isAuthenticated || !isAdmin) return;
+
+    const isInitialLoad = !hasLoadedDashboardRef.current;
+    const requestSeq = dashboardRequestSeqRef.current + 1;
+    dashboardRequestSeqRef.current = requestSeq;
     
     try {
-      if (isRefresh) setRefreshing(true);
-      else setLoading(true);
+      if (isRefresh || !isInitialLoad) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       
       const gradeParam = selectedGrade !== "all" ? extractGradeValue(selectedGrade) : undefined;
@@ -458,8 +466,11 @@ export default function AttendanceManagementPage() {
         section: selectedSection !== "all" ? selectedSection : undefined,
         range: timeRange,
       });
+      if (requestSeq !== dashboardRequestSeqRef.current) return;
       setDashboardData(response.data);
+      hasLoadedDashboardRef.current = true;
     } catch (err: any) {
+      if (requestSeq !== dashboardRequestSeqRef.current) return;
       const message = err?.response?.data?.message || 'Failed to load attendance data';
       setError(message);
       toast.error(message);
@@ -479,8 +490,12 @@ export default function AttendanceManagementPage() {
         missingAttendance: [],
         recentAbsences: []
       });
+      hasLoadedDashboardRef.current = true;
     } finally {
-      setLoading(false);
+      if (requestSeq !== dashboardRequestSeqRef.current) return;
+      if (isInitialLoad) {
+        setLoading(false);
+      }
       setRefreshing(false);
     }
   }, [isAuthenticated, isAdmin, selectedDate, selectedGrade, selectedSection, timeRange, viewMode, visibleStartDate, visibleEndDate]);
@@ -536,22 +551,48 @@ export default function AttendanceManagementPage() {
         setClasses(classData);
         
         const gradeMap = new Map<number, boolean>();
-        const sectionMap = new Map<string, boolean>();
         classData.forEach((c: Class) => {
           gradeMap.set(c.grade, true);
-          sectionMap.set(c.section, true);
         });
         const uniqueGrades = Array.from(gradeMap.keys()).sort((a, b) => a - b);
-        const uniqueSections = Array.from(sectionMap.keys()).sort();
         
         setGradeList(uniqueGrades.map(g => String(g)));
-        setSectionList(uniqueSections);
       } catch (error) {
         console.error('Failed to fetch classes:', error);
       }
     };
     fetchClasses();
   }, []);
+
+  const selectedGradeValue = selectedGrade !== "all" ? extractGradeValue(selectedGrade) : "";
+  const sectionList = useMemo(() => {
+    if (!selectedGradeValue) return [];
+
+    const gradeNumber = Number(selectedGradeValue);
+    const sectionMap = new Map<string, boolean>();
+    classes.forEach((classItem) => {
+      if (classItem.grade === gradeNumber && classItem.section) {
+        sectionMap.set(classItem.section, true);
+      }
+    });
+
+    return Array.from(sectionMap.keys()).sort();
+  }, [classes, selectedGradeValue]);
+
+  useEffect(() => {
+    if (!selectedGradeValue && selectedSection !== "all") {
+      setSelectedSection("all");
+      return;
+    }
+
+    if (
+      selectedGradeValue &&
+      selectedSection !== "all" &&
+      !sectionList.includes(selectedSection)
+    ) {
+      setSelectedSection("all");
+    }
+  }, [selectedGradeValue, selectedSection, sectionList]);
 
   // Fetch dashboard data
   useEffect(() => {
@@ -749,7 +790,7 @@ export default function AttendanceManagementPage() {
     }],
   } : null;
 
-  if (isLoading || loading) {
+  if (isLoading || (loading && !hasLoadedDashboardRef.current)) {
     return (
       <div className="min-h-screen overflow-x-hidden bg-gray-50 p-3 dark:bg-slate-900 sm:p-4 md:p-6">
         <div className="w-full space-y-5 md:space-y-6">
@@ -842,7 +883,7 @@ export default function AttendanceManagementPage() {
                         prevDate.setDate(prevDate.getDate() - 1);
                         setSelectedDate(prevDate.toISOString().split('T')[0]);
                       }}
-                      className="h-8 w-8 hover:bg-[#e35336] hover:text-white transition-colors"
+                      className="h-8 w-8 hover:bg-[var(--brand-color,#e35336)] hover:text-white transition-colors"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
@@ -863,7 +904,7 @@ export default function AttendanceManagementPage() {
                         nextDate.setDate(nextDate.getDate() + 1);
                         setSelectedDate(nextDate.toISOString().split('T')[0]);
                       }}
-                      className="h-8 w-8 hover:bg-[#e35336] hover:text-white transition-colors"
+                      className="h-8 w-8 hover:bg-[var(--brand-color,#e35336)] hover:text-white transition-colors"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </Button>
@@ -918,7 +959,10 @@ export default function AttendanceManagementPage() {
                 </Select>
 
                 {/* Grade */}
-                <Select value={selectedGrade || 'all'} onValueChange={setSelectedGrade}>
+                <Select value={selectedGrade || 'all'} onValueChange={(value) => {
+                  setSelectedGrade(value);
+                  setSelectedSection("all");
+                }}>
                   <SelectTrigger className="w-full border-[#E2E8F0] dark:border-gray-600">
                     <SelectValue placeholder={t.grade} />
                   </SelectTrigger>
@@ -935,16 +979,26 @@ export default function AttendanceManagementPage() {
                 </Select>
 
                 {/* Section */}
-                <Select value={selectedSection || 'all'} onValueChange={setSelectedSection}>
-                  <SelectTrigger className="w-full border-[#E2E8F0] dark:border-gray-600">
+                <Select
+                  value={selectedSection || 'all'}
+                  onValueChange={setSelectedSection}
+                  disabled={!selectedGradeValue}
+                >
+                  <SelectTrigger className="w-full border-[#E2E8F0] dark:border-gray-600" disabled={!selectedGradeValue}>
                     <SelectValue placeholder={t.section} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">{t.allSections}</SelectItem>
-                    {sectionList.length > 0 ? (
-                      sectionList.map(section => (
-                        <SelectItem key={section} value={section || '_section_'}>{section || ''}</SelectItem>
-                      ))
+                    {!selectedGradeValue ? (
+                      <SelectItem value="all" disabled>
+                        Select a grade first
+                      </SelectItem>
+                    ) : sectionList.length > 0 ? (
+                      <>
+                        <SelectItem value="all">{t.allSections}</SelectItem>
+                        {sectionList.map(section => (
+                          <SelectItem key={section} value={section || '_section_'}>{section || ''}</SelectItem>
+                        ))}
+                      </>
                     ) : (
                       <SelectItem value="_none_" disabled>{t.noSections}</SelectItem>
                     )}

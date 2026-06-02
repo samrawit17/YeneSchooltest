@@ -60,6 +60,19 @@ export class SubscriptionService {
     return Array.from(new Set(normalized));
   }
 
+  private mergeTierBaselineFeatures(tier: PlanTier, features: string[] = []) {
+    return this.normalizeFeatures([...features, ...this.getTierFeatures(tier)]);
+  }
+
+  private withEffectivePlanFeatures<T extends { tier: PlanTier; features: string[] | null }>(
+    plan: T,
+  ): T & { features: string[] } {
+    return {
+      ...plan,
+      features: this.mergeTierBaselineFeatures(plan.tier, plan.features || []),
+    };
+  }
+
   async getAllPlans() {
     const [plans, subscriptionCounts] = await Promise.all([
       this.prisma.plan.findMany({
@@ -81,22 +94,24 @@ export class SubscriptionService {
     );
 
     return plans.map((plan) => ({
-      ...plan,
+      ...this.withEffectivePlanFeatures(plan),
       assignedSchoolsCount: assignedSchoolsByPlan.get(plan.id) || 0,
     }));
   }
 
   async getPlanById(id: string) {
-    return this.prisma.plan.findUnique({
+    const plan = await this.prisma.plan.findUnique({
       where: { id },
       include: { schools: true },
     });
+    return plan ? this.withEffectivePlanFeatures(plan) : null;
   }
 
   async getPlanByTier(tier: PlanTier) {
-    return this.prisma.plan.findUnique({
+    const plan = await this.prisma.plan.findUnique({
       where: { tier },
     });
+    return plan ? this.withEffectivePlanFeatures(plan) : null;
   }
 
   async createPlan(data: {
@@ -105,7 +120,7 @@ export class SubscriptionService {
     description?: string;
     features: string[];
   }) {
-    const features = this.normalizeFeatures(data.features);
+    const features = this.mergeTierBaselineFeatures(data.tier, data.features);
     return this.prisma.plan.create({
       data: {
         name: data.name.trim(),
@@ -125,17 +140,28 @@ export class SubscriptionService {
       isActive?: boolean;
     },
   ) {
-    if (data.features) {
-      data.features = this.normalizeFeatures(data.features);
+    if (data.features !== undefined) {
+      const existingPlan = await this.prisma.plan.findUnique({
+        where: { id },
+        select: { tier: true },
+      });
+      if (!existingPlan) {
+        throw new NotFoundException('Plan not found');
+      }
+      data.features = this.mergeTierBaselineFeatures(
+        existingPlan.tier,
+        data.features,
+      );
     }
-    if (data.name) {
+    if (typeof data.name === 'string') {
       data.name = data.name.trim();
     }
 
-    return this.prisma.plan.update({
+    const plan = await this.prisma.plan.update({
       where: { id },
       data,
     });
+    return this.withEffectivePlanFeatures(plan);
   }
 
   async deletePlan(id: string) {
@@ -224,14 +250,12 @@ export class SubscriptionService {
       return null;
     }
 
-    const allFeatures = this.getTierFeatures(subscription.plan.tier);
     return {
-      ...subscription.plan,
+      ...this.withEffectivePlanFeatures(subscription.plan),
       subscriptionId: subscription.id,
       subscriptionStatus: subscription.status,
       subscriptionStartDate: subscription.startDate,
       subscriptionEndDate: subscription.endDate,
-      features: [...new Set([...(subscription.plan.features || []), ...allFeatures])],
     };
   }
 
@@ -346,7 +370,9 @@ export class SubscriptionService {
 
     return schools.map((school) => ({
       ...school,
-      plan: school.subscriptions[0]?.plan || null,
+      plan: school.subscriptions[0]?.plan
+        ? this.withEffectivePlanFeatures(school.subscriptions[0].plan)
+        : null,
       subscription: school.subscriptions[0] || null,
     }));
   }
@@ -379,18 +405,35 @@ export class SubscriptionService {
       const activeSubscription = school.subscriptions[0] || null;
       return {
         ...school,
-        plan: activeSubscription?.plan || null,
+        plan: activeSubscription?.plan
+          ? this.withEffectivePlanFeatures(activeSubscription.plan)
+          : null,
         subscription: activeSubscription,
       };
     });
   }
 
-  hasFeature(schoolPlan: { tier: PlanTier } | null, feature: string): boolean {
+  hasFeature(
+    schoolPlan: { tier: PlanTier; features?: string[] } | null,
+    feature: string,
+  ): boolean {
     if (!schoolPlan) {
       return false;
     }
 
-    const requiredTier = this.getFeatureTier(feature);
+    const normalizedFeature = this.normalizeFeatureName(feature);
+    if (!normalizedFeature) {
+      return false;
+    }
+
+    const effectiveFeatures = new Set(
+      (schoolPlan.features || []).map((item) => this.normalizeFeatureName(item)),
+    );
+    if (effectiveFeatures.has(normalizedFeature)) {
+      return true;
+    }
+
+    const requiredTier = this.getFeatureTier(normalizedFeature);
     if (!requiredTier) {
       return false;
     }
@@ -401,14 +444,19 @@ export class SubscriptionService {
   }
 
   getFeatureTier(feature: string): PlanTier | null {
-    return this.featureTiers[feature] || null;
+    const normalizedFeature = this.normalizeFeatureName(feature);
+    return normalizedFeature ? this.featureTiers[normalizedFeature] || null : null;
   }
 
   isFeatureAccessible(
-    schoolPlan: { tier: PlanTier } | null,
+    schoolPlan: { tier: PlanTier; features?: string[] } | null,
     feature: string,
   ): boolean {
     return this.hasFeature(schoolPlan, feature);
+  }
+
+  private normalizeFeatureName(feature?: string | null): string {
+    return (feature || '').trim().toUpperCase();
   }
 
   getSchoolFeatures(

@@ -16,9 +16,12 @@ import { Role } from '../auth/types/role.enum';
 import { MessagingService } from './messaging.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 @Controller('messages')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+@RequiresFeature('MESSAGING')
 export class MessagingController {
   constructor(private readonly messagingService: MessagingService) {}
 

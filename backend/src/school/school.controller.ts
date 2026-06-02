@@ -36,6 +36,34 @@ import { Role } from '../auth/types/role.enum';
 export class SchoolController {
   constructor(private readonly schoolService: SchoolService) {}
 
+  private ensureCanReadSchool(req: any, schoolId: string) {
+    if (req.user?.role === Role.SUPER_ADMIN) return;
+    if (req.user?.schoolId === schoolId) return;
+
+    throw new HttpException(
+      'You can only access your own school',
+      HttpStatus.FORBIDDEN,
+    );
+  }
+
+  private getMutationContext(req: any) {
+    return {
+      actor: {
+        id: req.user?.id || req.user?.sub || null,
+        role: req.user?.role || null,
+        schoolId: req.user?.schoolId || null,
+      },
+      request: {
+        ip:
+          req.ip ||
+          req.headers?.['x-forwarded-for']?.toString().split(',')[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          null,
+        userAgent: req.headers?.['user-agent'] || null,
+      },
+    };
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(Role.SUPER_ADMIN)
@@ -84,9 +112,22 @@ export class SchoolController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @AllowSuperAdminMixedRole()
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.ADMIN,
+    Role.IT_MANAGER,
+    Role.PARENT,
+    Role.TEACHER,
+    Role.STUDENT,
+    Role.REGISTRAR,
+    Role.FINANCE,
+  )
   @Permissions('school:read')
-  async getSchoolById(@Param('id') id: string) {
+  async getSchoolById(@Param('id') id: string, @Request() req: any) {
     try {
+      this.ensureCanReadSchool(req, id);
       const school = await this.schoolService.getSchoolById(id);
       if (!school) {
         throw new HttpException('School not found', HttpStatus.NOT_FOUND);
@@ -137,7 +178,11 @@ export class SchoolController {
         publicUrlSlug: body.publicUrlSlug,
         logoUrl: body.logoUrl ?? body.logo,
       };
-      const school = await this.schoolService.updateSchool(id, updateDto);
+      const school = await this.schoolService.updateSchool(
+        id,
+        updateDto,
+        this.getMutationContext(req),
+      );
       return school;
     } catch (error) {
       throw new HttpException(
@@ -170,7 +215,11 @@ export class SchoolController {
         );
       }
 
-      const logoUrl = await this.schoolService.uploadLogo(id, file);
+      const logoUrl = await this.schoolService.uploadLogo(
+        id,
+        file,
+        this.getMutationContext(req),
+      );
       return { url: logoUrl };
     } catch (error) {
       throw new HttpException(

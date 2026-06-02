@@ -60,6 +60,23 @@ export class EventController {
     return this.eventService.findAll(schoolId, userRole);
   }
 
+  @Get('calendar-feed')
+  @Permissions('event:read')
+  async getCalendarFeed(
+    @Request() req: AuthenticatedRequest,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) {
+      return { success: false, message: 'School ID is required' };
+    }
+    return this.eventService.findCalendarFeed(schoolId, req.user, {
+      from,
+      to,
+    });
+  }
+
   @Get('upcoming-count')
   async getUpcomingCount(
     @Request() req: AuthenticatedRequest,

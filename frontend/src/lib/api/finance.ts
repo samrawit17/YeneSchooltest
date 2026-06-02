@@ -92,8 +92,17 @@ export const financeAPI = {
     }),
   getStudentPaymentHistory: (studentId: string, schoolId: string) =>
     api.get(`/finance/reports/student/${studentId}/history`, { params: { schoolId } }),
-  getStudentFees: (studentId: string, schoolId: string, academicYearId?: string, termId?: string) =>
-    api.get(`/finance/student-fees/${studentId}`, { params: { schoolId, academicYearId, termId } }),
+  getStudentFees: (
+    studentId: string,
+    schoolId: string,
+    academicYearId?: string,
+    termId?: string,
+    options?: { skipAuthErrorRedirect?: boolean },
+  ) =>
+    api.get(`/finance/student-fees/${studentId}`, {
+      params: { schoolId, academicYearId, termId },
+      ...(options?.skipAuthErrorRedirect ? { skipAuthErrorRedirect: true } : {}),
+    }),
   calculateInstallmentFees: (data: {
     schoolId: string;
     academicYearId: string;

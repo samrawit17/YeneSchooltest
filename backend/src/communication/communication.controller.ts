@@ -15,6 +15,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import { CommunicationService } from './communication.service';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 import {
   CreateCommunicationDto,
   CreateCommunicationReplyDto,
@@ -23,7 +25,8 @@ import {
 } from './dto/create-communication.dto';
 
 @Controller('communications')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+@RequiresFeature('COMMUNICATION_BOOK')
 export class CommunicationController {
   constructor(private readonly communicationService: CommunicationService) {}
 

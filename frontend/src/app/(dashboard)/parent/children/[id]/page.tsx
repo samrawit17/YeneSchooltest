@@ -195,7 +195,9 @@ const ChildDetailPage = () => {
             const feeResponse = await financeAPI.getStudentFees(
               childData?.studentId || studentUserId,
               schoolId,
-              academicYearId
+              academicYearId,
+              undefined,
+              { skipAuthErrorRedirect: true },
             );
             feeSummary = {
               total: feeResponse.data?.summary?.totalFees || 0,

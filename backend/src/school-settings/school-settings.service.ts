@@ -3,6 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { DEFAULT_CACHE_TTL_SECONDS } from '../infrastructure/cache/cache.constants';
 import { CredentialService } from '../credential/credential.service';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { AuditRequestContext, AuditService, type AuditActor } from '../audit/audit.service';
+import { PlanTier } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -74,6 +77,8 @@ export const SCHOOL_SETTING_KEYS = {
   FAMILY_DISCOUNT_FEE_TYPES: 'family_discount_fee_types',
   PARENT_VIEW_GRADES: 'parent_view_grades',
   ATTENDANCE_CUTOFF_TIME: 'ATTENDANCE_CUTOFF_TIME',
+  SCHOOL_START_TIME: 'SCHOOL_START_TIME',
+  SCHOOL_END_TIME: 'SCHOOL_END_TIME',
   DEFAULT_SECTION_CAPACITY: 'DEFAULT_SECTION_CAPACITY',
   SCHOOL_NAME: 'school_name',
   SCHOOL_ADDRESS: 'school_address',
@@ -83,6 +88,7 @@ export const SCHOOL_SETTING_KEYS = {
   LOGIN_IMAGE_URL: 'login_image_url',
   THEME_COLOR: 'theme_color',
   BRAND_COLOR_IN_NAVIGATION: 'BRAND_COLOR_IN_NAVIGATION',
+  CUSTOM_BRANDING: 'CUSTOM_BRANDING',
   CERTIFICATE_SETTINGS: 'CERTIFICATE_SETTINGS',
   CERTIFICATE_TEMPLATE: 'certificate_template',
   ID_CARD_TEMPLATE: 'id_card_template',
@@ -97,12 +103,20 @@ const SCHOOL_SETTING_KEY_ALIASES: Record<string, string> = {
   PARENT_VIEW_GRADES: SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES,
 };
 
+type SchoolSettingMutationContext = {
+  actor?: AuditActor | null;
+  request?: AuditRequestContext | null;
+  source?: 'single' | 'batch' | 'upload' | 'delete';
+};
+
 @Injectable()
 export class SchoolSettingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cacheService: CacheService,
     private readonly credentialService: CredentialService,
+    private readonly subscriptionService: SubscriptionService,
+    private readonly auditService: AuditService,
   ) {}
 
   private readonly allowedCalendarTypes = ['GREGORIAN', 'ETHIOPIAN'] as const;
@@ -159,6 +173,52 @@ export class SchoolSettingsService {
     SCHOOL_SETTING_KEYS.FINANCE_PORTAL_ACCESS,
     SCHOOL_SETTING_KEYS.REGISTRAR_PORTAL_ACCESS,
     SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_ENABLED,
+    SCHOOL_SETTING_KEYS.CUSTOM_BRANDING,
+    'PARENT_VIEW_ATTENDANCE',
+    'SELF_ENROLLMENT_ACTIVE',
+  ]);
+
+  private readonly tierLevels: Record<PlanTier, number> = {
+    CORE: 1,
+    STANDARD: 2,
+    ULTIMATE: 3,
+  };
+
+  private readonly settingRequirements = new Map<
+    string,
+    { requiredFeature?: string; requiredTier?: PlanTier }
+  >([
+    ['ATTENDANCE_TRACKING', { requiredFeature: 'ATTENDANCE_TRACKING' }],
+    [SCHOOL_SETTING_KEYS.PARENT_VIEW_GRADES, { requiredFeature: 'REPORT_CARDS' }],
+    [SCHOOL_SETTING_KEYS.FEE_STRUCTURE_MODE, { requiredFeature: 'FINANCE_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.FEE_PAYMENT_DUE_DAY, { requiredFeature: 'FINANCE_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.FEE_DAILY_PENALTY_AMOUNT, { requiredFeature: 'FINANCE_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_ENABLED, { requiredFeature: 'FINANCE_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_MIN_STUDENTS, { requiredFeature: 'FINANCE_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_PERCENT, { requiredFeature: 'FINANCE_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.FAMILY_DISCOUNT_FEE_TYPES, { requiredFeature: 'FINANCE_MANAGEMENT' }],
+    ['ANNOUNCEMENTS_ENABLED', { requiredFeature: 'ANNOUNCEMENTS' }],
+    ['SELF_ENROLLMENT_ACTIVE', { requiredFeature: 'ENROLLMENT_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.TEACHER_PORTAL_ACCESS, { requiredFeature: 'USER_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.STUDENT_PORTAL_ACCESS, { requiredFeature: 'USER_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.PARENT_PORTAL_ACCESS, { requiredFeature: 'PARENT_PORTAL' }],
+    [SCHOOL_SETTING_KEYS.FINANCE_PORTAL_ACCESS, { requiredFeature: 'FINANCE_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.REGISTRAR_PORTAL_ACCESS, { requiredFeature: 'ENROLLMENT_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.DEFAULT_SECTION_CAPACITY, { requiredFeature: 'ACADEMIC_STRUCTURE' }],
+    [SCHOOL_SETTING_KEYS.SCHOOL_START_TIME, { requiredFeature: 'TIMETABLE_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.SCHOOL_END_TIME, { requiredFeature: 'TIMETABLE_MANAGEMENT' }],
+    [SCHOOL_SETTING_KEYS.CUSTOM_BRANDING, { requiredTier: 'ULTIMATE' }],
+    [SCHOOL_SETTING_KEYS.THEME_COLOR, { requiredFeature: 'CUSTOM_BRANDING' }],
+    [SCHOOL_SETTING_KEYS.BRAND_COLOR_IN_NAVIGATION, { requiredFeature: 'CUSTOM_BRANDING' }],
+  ]);
+
+  private readonly allowedSettingKeys = new Set<string>([
+    ...Object.values(SCHOOL_SETTING_KEYS),
+    ...Object.keys(SCHOOL_SETTING_KEY_ALIASES),
+    'ALLOW_SELF_ENROLLMENT',
+    'ATTENDANCE_TRACKING',
+    'LATE_MARKING',
+    'ANNOUNCEMENTS_ENABLED',
     'PARENT_VIEW_ATTENDANCE',
     'SELF_ENROLLMENT_ACTIVE',
   ]);
@@ -191,8 +251,21 @@ export class SchoolSettingsService {
     return JSON.stringify(value);
   }
 
+  private timeToMinutes(time: string) {
+    const [hour, minute] = time.split(':').map(Number);
+    return hour * 60 + minute;
+  }
+
   private canonicalizeSettingKey(key: string) {
     return SCHOOL_SETTING_KEY_ALIASES[key] || key;
+  }
+
+  private assertAllowedSettingKey(key: string) {
+    const canonicalKey = this.canonicalizeSettingKey(key);
+    if (!this.allowedSettingKeys.has(canonicalKey)) {
+      throw new BadRequestException(`Unsupported school setting: ${key}`);
+    }
+    return canonicalKey;
   }
 
   private getSettingKeyAliases(key: string) {
@@ -206,7 +279,7 @@ export class SchoolSettingsService {
   }
 
   private normalizeSettingValue(key: string, value: any) {
-    key = this.canonicalizeSettingKey(key);
+    key = this.assertAllowedSettingKey(key);
 
     if (this.booleanKeys.has(key)) {
       if (typeof value === 'boolean') return value;
@@ -346,12 +419,16 @@ export class SchoolSettingsService {
       return capacity;
     }
 
-    if (key === SCHOOL_SETTING_KEYS.ATTENDANCE_CUTOFF_TIME) {
+    if (
+      key === SCHOOL_SETTING_KEYS.ATTENDANCE_CUTOFF_TIME ||
+      key === SCHOOL_SETTING_KEYS.SCHOOL_START_TIME ||
+      key === SCHOOL_SETTING_KEYS.SCHOOL_END_TIME
+    ) {
       const normalizedValue = String(value || '').trim();
       const isValidTime = /^([01]\d|2[0-3]):([0-5]\d)$/.test(normalizedValue);
       if (!isValidTime) {
         throw new BadRequestException(
-          'ATTENDANCE_CUTOFF_TIME must be in 24-hour HH:mm format',
+          `${key} must be in 24-hour HH:mm format`,
         );
       }
       return normalizedValue;
@@ -386,9 +463,122 @@ export class SchoolSettingsService {
     return value;
   }
 
+  private async enforceSubscriptionAccess(schoolId: string, key: string) {
+    const requirement = this.settingRequirements.get(key);
+    if (!requirement) return;
+
+    const schoolPlan = await this.subscriptionService.getSchoolPlan(schoolId);
+    if (!schoolPlan) {
+      throw new BadRequestException(
+        `Setting ${key} requires an active subscription`,
+      );
+    }
+
+    if (
+      requirement.requiredTier &&
+      this.tierLevels[schoolPlan.tier] < this.tierLevels[requirement.requiredTier]
+    ) {
+      throw new BadRequestException(
+        `Setting ${key} requires the ${requirement.requiredTier} plan`,
+      );
+    }
+
+    if (
+      requirement.requiredFeature &&
+      !schoolPlan.features?.includes(requirement.requiredFeature)
+    ) {
+      throw new BadRequestException(
+        `Setting ${key} requires the ${requirement.requiredFeature} feature`,
+      );
+    }
+  }
+
+  private async validateSchoolDayBounds(
+    schoolId: string,
+    key: string,
+    value: string,
+    pendingSettings?: Record<string, any>,
+  ) {
+    if (
+      key !== SCHOOL_SETTING_KEYS.SCHOOL_START_TIME &&
+      key !== SCHOOL_SETTING_KEYS.SCHOOL_END_TIME
+    ) {
+      return;
+    }
+
+    const pendingStartTime = pendingSettings?.[SCHOOL_SETTING_KEYS.SCHOOL_START_TIME];
+    const pendingEndTime = pendingSettings?.[SCHOOL_SETTING_KEYS.SCHOOL_END_TIME];
+    const storedStartTime =
+      key === SCHOOL_SETTING_KEYS.SCHOOL_START_TIME
+        ? value
+        : pendingStartTime !== undefined && pendingStartTime !== null
+          ? String(pendingStartTime)
+        : ((await this.getSetting(
+            schoolId,
+            SCHOOL_SETTING_KEYS.SCHOOL_START_TIME,
+          )) as string | null) || '08:00';
+    const storedEndTime =
+      key === SCHOOL_SETTING_KEYS.SCHOOL_END_TIME
+        ? value
+        : pendingEndTime !== undefined && pendingEndTime !== null
+          ? String(pendingEndTime)
+        : ((await this.getSetting(
+            schoolId,
+            SCHOOL_SETTING_KEYS.SCHOOL_END_TIME,
+          )) as string | null) || '15:00';
+
+    if (this.timeToMinutes(storedStartTime) >= this.timeToMinutes(storedEndTime)) {
+      throw new BadRequestException(
+        'School start time must be before school end time',
+      );
+    }
+  }
+
+  private async cleanupLocalUpload(url: unknown) {
+    if (typeof url !== 'string' || !url.startsWith('/uploads/')) return;
+
+    const publicRoot = path.resolve(process.cwd(), 'public');
+    const target = path.resolve(publicRoot, url.replace(/^\/+/, ''));
+    if (!target.startsWith(publicRoot + path.sep)) return;
+
+    try {
+      await fs.promises.unlink(target);
+    } catch {
+      // Old upload cleanup is best-effort and must not break a successful save.
+    }
+  }
+
+  private async auditSettingChange(
+    schoolId: string,
+    key: string,
+    oldValue: unknown,
+    newValue: unknown,
+    context: SchoolSettingMutationContext,
+  ) {
+    if (JSON.stringify(oldValue ?? null) === JSON.stringify(newValue ?? null)) {
+      return;
+    }
+
+    await this.auditService.log({
+      actor: context.actor,
+      schoolId,
+      action: 'school_setting.changed',
+      entityType: 'SchoolSetting',
+      entityId: `${schoolId}:${key}`,
+      request: context.request,
+      metadata: {
+        key,
+        oldValue: oldValue ?? null,
+        newValue: newValue ?? null,
+        source: context.source || 'single',
+      },
+    });
+  }
+
   async uploadLoginImage(
     schoolId: string,
     file: Express.Multer.File,
+    context: SchoolSettingMutationContext = {},
   ): Promise<string> {
     if (
       !['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(
@@ -421,8 +611,13 @@ export class SchoolSettingsService {
     const filePath = path.join(backendPublicDir, fileName);
     fs.writeFileSync(filePath, file.buffer);
 
+    const oldUrl = await this.getSetting(schoolId, SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL);
     const url = `/${relativeDir.replace(/\\/g, '/')}/${fileName}`;
-    await this.setSetting(schoolId, SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL, url);
+    await this.setSetting(schoolId, SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL, url, {
+      ...context,
+      source: 'upload',
+    });
+    await this.cleanupLocalUpload(oldUrl);
     return url;
   }
 
@@ -550,10 +745,27 @@ export class SchoolSettingsService {
   }
 
   // Upsert a school setting
-  async setSetting(schoolId: string, key: string, value: any) {
-    const canonicalKey = this.canonicalizeSettingKey(key);
+  async setSetting(
+    schoolId: string,
+    key: string,
+    value: any,
+    context: SchoolSettingMutationContext = {},
+  ) {
+    const canonicalKey = this.assertAllowedSettingKey(key);
+    await this.enforceSubscriptionAccess(schoolId, canonicalKey);
     const normalizedValue = this.normalizeSettingValue(canonicalKey, value);
     const serializedValue = this.serializeSettingValue(normalizedValue);
+
+    if (
+      canonicalKey === SCHOOL_SETTING_KEYS.SCHOOL_START_TIME ||
+      canonicalKey === SCHOOL_SETTING_KEYS.SCHOOL_END_TIME
+    ) {
+      await this.validateSchoolDayBounds(
+        schoolId,
+        canonicalKey,
+        normalizedValue as string,
+      );
+    }
 
     if (canonicalKey === SCHOOL_SETTING_KEYS.CALENDAR_TYPE) {
       await this.validateCalendarTypeOneTimeChange(schoolId, normalizedValue);
@@ -567,6 +779,7 @@ export class SchoolSettingsService {
       await this.validateCurriculumTypeOneTimeChange(schoolId, normalizedValue);
     }
 
+    const oldValue = await this.getSetting(schoolId, canonicalKey);
     const setting = await this.prisma.schoolSetting.upsert({
       where: {
         schoolId_key: {
@@ -615,6 +828,13 @@ export class SchoolSettingsService {
     }
 
     await this.invalidateCache(schoolId, this.getSettingKeyAliases(canonicalKey));
+    await this.auditSettingChange(
+      schoolId,
+      canonicalKey,
+      oldValue,
+      normalizedValue,
+      context,
+    );
 
     return {
       ...setting,
@@ -1078,8 +1298,13 @@ export class SchoolSettingsService {
   }
 
   // Delete a school setting
-  async deleteSetting(schoolId: string, key: string) {
-    const canonicalKey = this.canonicalizeSettingKey(key);
+  async deleteSetting(
+    schoolId: string,
+    key: string,
+    context: SchoolSettingMutationContext = {},
+  ) {
+    const canonicalKey = this.assertAllowedSettingKey(key);
+    await this.enforceSubscriptionAccess(schoolId, canonicalKey);
     if (
       canonicalKey === SCHOOL_SETTING_KEYS.CALENDAR_TYPE ||
       canonicalKey === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE ||
@@ -1090,6 +1315,7 @@ export class SchoolSettingsService {
       );
     }
 
+    const oldValue = await this.getSetting(schoolId, canonicalKey);
     await this.prisma.schoolSetting.deleteMany({
       where: {
         schoolId,
@@ -1097,6 +1323,15 @@ export class SchoolSettingsService {
       },
     });
     await this.invalidateCache(schoolId, this.getSettingKeyAliases(canonicalKey));
+    await this.auditSettingChange(schoolId, canonicalKey, oldValue, null, {
+      ...context,
+      source: context.source || 'delete',
+    });
+
+    if (canonicalKey === SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL) {
+      await this.cleanupLocalUpload(oldValue);
+    }
+
     return { message: 'Setting deleted successfully' };
   }
 
@@ -1123,10 +1358,52 @@ export class SchoolSettingsService {
   }
 
   // Batch update multiple settings for a school
-  async batchUpdate(schoolId: string, settings: Record<string, any>) {
+  async batchUpdate(
+    schoolId: string,
+    settings: Record<string, any>,
+    context: SchoolSettingMutationContext = {},
+  ) {
+    const entries = Object.entries(settings);
+    const currentSettings = await this.getAllSettings(schoolId);
+    const pendingSettings = { ...currentSettings };
+
+    for (const [key, value] of entries) {
+      const canonicalKey = this.assertAllowedSettingKey(key);
+      await this.enforceSubscriptionAccess(schoolId, canonicalKey);
+      const normalizedValue = this.normalizeSettingValue(canonicalKey, value);
+      pendingSettings[canonicalKey] = normalizedValue;
+
+      if (
+        canonicalKey === SCHOOL_SETTING_KEYS.SCHOOL_START_TIME ||
+        canonicalKey === SCHOOL_SETTING_KEYS.SCHOOL_END_TIME
+      ) {
+        await this.validateSchoolDayBounds(
+          schoolId,
+          canonicalKey,
+          normalizedValue as string,
+          pendingSettings,
+        );
+      }
+
+      if (canonicalKey === SCHOOL_SETTING_KEYS.CALENDAR_TYPE) {
+        await this.validateCalendarTypeOneTimeChange(schoolId, normalizedValue);
+      }
+
+      if (canonicalKey === SCHOOL_SETTING_KEYS.GRADE_SYSTEM) {
+        await this.validateGradeSystemOneTimeChange(schoolId, normalizedValue);
+      }
+
+      if (canonicalKey === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE) {
+        await this.validateCurriculumTypeOneTimeChange(schoolId, normalizedValue);
+      }
+    }
+
     const results: any[] = [];
-    for (const [key, value] of Object.entries(settings)) {
-      const result = await this.setSetting(schoolId, key, value);
+    for (const [key, value] of entries) {
+      const result = await this.setSetting(schoolId, key, value, {
+        ...context,
+        source: 'batch',
+      });
       results.push(result);
     }
     await this.invalidateCache(

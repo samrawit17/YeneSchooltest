@@ -53,7 +53,6 @@ const CalendarSkeleton = () => (
 const EventListPage = () => {
   const { t, locale } = useTranslations<any>("calendar");
   const [role, setRole] = useState<string>('admin');
-  const [initialLoad, setInitialLoad] = useState(true);
   
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -63,28 +62,16 @@ const EventListPage = () => {
     }
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setInitialLoad(false), 2000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Fetch events from API
-  const { data: eventsData, isLoading, refetch } = useQuery({
-    queryKey: queryKeys.events.all,
+  // Fetch unified school calendar feed from API.
+  const { data: eventsData, isLoading, isError, error, refetch } = useQuery({
+    queryKey: queryKeys.events.calendarFeed,
     queryFn: async () => {
-      try {
-        const response = await eventsAPI.getAll();
-        const payload = response.data as Event[] | { data?: Event[] };
-        return Array.isArray(payload) ? payload : payload.data || [];
-      } catch (error) {
-        console.error("Failed to fetch events:", error);
-        return [];
-      } finally {
-        setInitialLoad(false);
-      }
+      const response = await eventsAPI.getCalendarFeed();
+      const payload = response.data as Event[] | { data?: Event[] };
+      return Array.isArray(payload) ? payload : payload.data || [];
     },
     staleTime: 30000,
-    retry: 1,
+    retry: 2,
   });
 
   // Filter activities in the next month
@@ -121,8 +108,22 @@ const EventListPage = () => {
       </div>
 
       <div className="min-h-[300px] sm:min-h-[350px] md:min-h-[450px] lg:min-h-[550px]">
-        {initialLoad ? (
+        {isLoading ? (
           <CalendarSkeleton />
+        ) : isError ? (
+          <Card className="border-red-200 bg-red-50 dark:border-red-900/60 dark:bg-red-950/30">
+            <CardContent className="space-y-3 p-4 text-sm text-red-700 dark:text-red-200">
+              <p className="font-medium">Calendar could not load</p>
+              <p>{error instanceof Error ? error.message : "Failed to load calendar feed."}</p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+              >
+                Retry
+              </button>
+            </CardContent>
+          </Card>
         ) : (
           <BigCalendar events={(eventsData || []).map((event) => ({
             ...event,
