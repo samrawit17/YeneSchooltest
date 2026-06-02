@@ -1,4 +1,5 @@
 import api from "./core";
+import type { AxiosRequestConfig } from "axios";
 import type { PlanTier } from "@/types/subscription";
 
 export interface SubscriptionPlan {
@@ -10,6 +11,7 @@ export interface SubscriptionPlan {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  assignedSchoolsCount?: number;
   subscriptionId?: string;
   subscriptionStatus?: string;
   subscriptionStartDate?: string;
@@ -38,7 +40,11 @@ export interface SchoolSubscription {
 }
 
 export const subscriptionAPI = {
-  getAllPlans: () => api.get<SubscriptionPlan[]>("/subscription/plans"),
+  getAllPlans: (config?: AxiosRequestConfig) =>
+    api.get<SubscriptionPlan[]>("/subscription/plans", {
+      timeout: 15000,
+      ...config,
+    }),
   getPlan: (id: string) => api.get<SubscriptionPlan>(`/subscription/plans/${id}`),
   createPlan: (data: { name: string; tier: PlanTier; description?: string; features: string[] }) =>
     api.post<SubscriptionPlan>("/subscription/plans", data),
@@ -52,8 +58,11 @@ export const subscriptionAPI = {
   getSchoolPlan: (schoolId: string) => api.get<SubscriptionPlan>(`/subscription/school/${schoolId}`),
   getSchoolSubscription: (schoolId: string) =>
     api.get<SchoolSubscription>(`/subscription/school/${schoolId}/subscription`),
-  getSchools: (planId?: string) =>
-    api.get<SubscriptionSchool[]>(planId ? `/subscription/schools?planId=${planId}` : "/subscription/schools"),
+  getSchools: (planId?: string, config?: AxiosRequestConfig) =>
+    api.get<SubscriptionSchool[]>(planId ? `/subscription/schools?planId=${planId}` : "/subscription/schools", {
+      timeout: 15000,
+      ...config,
+    }),
   checkFeature: (schoolId: string, feature: string) =>
     api.get("/subscription/check-feature", { params: { schoolId, feature } }),
 };

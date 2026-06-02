@@ -20,6 +20,7 @@ import {
   AlertCircle,
   Users,
   Calendar,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Card,
@@ -76,8 +77,8 @@ import { Plan, PlanTier, SchoolWithPlan, TIER_CONFIG } from '@/types/subscriptio
 const SchoolSubscriptionPage = () => {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const { schools, loading: loadingSchools, fetchSchools, assignPlan } = useSchoolPlans();
-  const { plans, loading: loadingPlans } = usePlans();
+  const { schools, loading: loadingSchools, error: schoolsError, fetchSchools, assignPlan } = useSchoolPlans();
+  const { plans, loading: loadingPlans, error: plansError, fetchPlans } = usePlans();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTier, setFilterTier] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -200,6 +201,35 @@ const SchoolSubscriptionPage = () => {
             </CardContent>
           </Card>
         </div>
+      </div>
+    );
+  }
+
+  const loadError = schoolsError || plansError;
+  if (loadError) {
+    return (
+      <div className="flex-1 p-4 md:p-6">
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              Subscription data unavailable
+            </CardTitle>
+            <CardDescription>{loadError}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={() => {
+                void fetchSchools();
+                void fetchPlans();
+              }}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

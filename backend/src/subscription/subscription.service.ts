@@ -61,10 +61,29 @@ export class SubscriptionService {
   }
 
   async getAllPlans() {
-    return this.prisma.plan.findMany({
-      where: { isActive: true },
-      orderBy: { tier: 'asc' },
-    });
+    const [plans, subscriptionCounts] = await Promise.all([
+      this.prisma.plan.findMany({
+        where: { isActive: true },
+        orderBy: { tier: 'asc' },
+      }),
+      this.prisma.subscription.groupBy({
+        by: ['planId'],
+        where: {
+          status: 'ACTIVE',
+          OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const assignedSchoolsByPlan = new Map(
+      subscriptionCounts.map((row) => [row.planId, row._count._all]),
+    );
+
+    return plans.map((plan) => ({
+      ...plan,
+      assignedSchoolsCount: assignedSchoolsByPlan.get(plan.id) || 0,
+    }));
   }
 
   async getPlanById(id: string) {
@@ -293,19 +312,36 @@ export class SubscriptionService {
 
   async getSchoolsByPlan(planId: string) {
     const schools = await this.prisma.school.findMany({
-      where: { subscriptions: { some: { planId, status: 'ACTIVE' } } },
+      where: {
+        subscriptions: {
+          some: {
+            planId,
+            status: 'ACTIVE',
+            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+          },
+        },
+      },
       select: {
         id: true,
         name: true,
         email: true,
         isActive: true,
         planAssignedAt: true,
+        _count: {
+          select: { users: true },
+        },
         subscriptions: {
-          where: { planId, status: 'ACTIVE' },
+          where: {
+            planId,
+            status: 'ACTIVE',
+            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+          },
           include: { plan: true },
+          orderBy: { startDate: 'desc' },
           take: 1,
         },
       },
+      orderBy: { createdAt: 'desc' },
     });
 
     return schools.map((school) => ({
@@ -317,14 +353,22 @@ export class SubscriptionService {
 
   async getSchoolsWithPlans() {
     const schools = await this.prisma.school.findMany({
-      include: {
-        plan: true,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isActive: true,
+        planAssignedAt: true,
+        _count: {
+          select: { users: true },
+        },
         subscriptions: {
           where: {
             status: 'ACTIVE',
             OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
           },
           include: { plan: true },
+          orderBy: { startDate: 'desc' },
           take: 1,
         },
       },

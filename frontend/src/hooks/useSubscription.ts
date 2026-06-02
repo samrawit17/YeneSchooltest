@@ -11,28 +11,40 @@ import {
   PlanTier,
 } from '@/types/subscription';
 
+const isCanceledRequest = (err: any) =>
+  err?.code === 'ERR_CANCELED' ||
+  err?.name === 'CanceledError' ||
+  err?.message === 'canceled';
+
 export const usePlans = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPlans = useCallback(async () => {
+  const fetchPlans = useCallback(async (options?: { signal?: AbortSignal; showToast?: boolean }) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await subscriptionAPI.getAllPlans();
+      const response = await subscriptionAPI.getAllPlans({ signal: options?.signal });
       setPlans(response.data);
     } catch (err: any) {
+      if (isCanceledRequest(err)) return;
       const message = err.response?.data?.message || 'Failed to fetch plans';
       setError(message);
-      toast.error(message);
+      if (options?.showToast !== false) {
+        toast.error(message);
+      }
     } finally {
-      setLoading(false);
+      if (!options?.signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchPlans();
+    const controller = new AbortController();
+    fetchPlans({ signal: controller.signal });
+    return () => controller.abort();
   }, [fetchPlans]);
 
   const createPlan = async (data: CreatePlanInput): Promise<Plan | null> => {
@@ -90,23 +102,33 @@ export const useSchoolPlans = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSchools = useCallback(async (planId?: string) => {
+  const fetchSchools = useCallback(async (
+    planId?: string,
+    options?: { signal?: AbortSignal; showToast?: boolean },
+  ) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await subscriptionAPI.getSchools(planId);
+      const response = await subscriptionAPI.getSchools(planId, { signal: options?.signal });
       setSchools(response.data);
     } catch (err: any) {
+      if (isCanceledRequest(err)) return;
       const message = err.response?.data?.message || 'Failed to fetch schools';
       setError(message);
-      toast.error(message);
+      if (options?.showToast !== false) {
+        toast.error(message);
+      }
     } finally {
-      setLoading(false);
+      if (!options?.signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchSchools();
+    const controller = new AbortController();
+    fetchSchools(undefined, { signal: controller.signal });
+    return () => controller.abort();
   }, [fetchSchools]);
 
   const assignPlan = async (data: AssignPlanInput): Promise<boolean> => {
