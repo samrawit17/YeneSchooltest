@@ -5,10 +5,13 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import { PeriodTimeService } from './period-time.service';
 import { CreatePeriodTimeDto, UpdatePeriodTimeDto } from './dto/period-time.dto';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 @Controller('api/period-time')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
 @Roles(Role.ADMIN, Role.IT_MANAGER)
+@RequiresFeature('ACADEMIC_STRUCTURE')
 export class PeriodTimeController {
   constructor(private service: PeriodTimeService) {}
 

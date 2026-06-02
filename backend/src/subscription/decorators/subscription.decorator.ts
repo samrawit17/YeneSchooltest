@@ -55,9 +55,9 @@ export const ULTIMATE_FEATURES = [
 
 export const FEATURE_DESCRIPTIONS: Record<string, string> = {
   SCHOOL_PROFILE: 'School profile and settings management',
-  USER_MANAGEMENT: 'Basic user management and authentication',
-  ACADEMIC_STRUCTURE: 'Classes, sections, subjects, assignments, and academic years',
-  ATTENDANCE_TRACKING: 'Student attendance tracking',
+  USER_MANAGEMENT: 'Students, staff, parents, roles, duplicate checks, linking, and account setup',
+  ACADEMIC_STRUCTURE: 'Guided classes, sections, subjects, teacher assignments, terms, and academic years',
+  ATTENDANCE_TRACKING: 'Fast daily attendance with clear save state, class filters, and recovery-friendly tracking',
   ANNOUNCEMENTS: 'School announcements',
   SCHOOL_CALENDAR: 'School calendar and events',
   BASIC_REPORTS: 'Basic reporting capabilities',
@@ -93,7 +93,7 @@ export const FEATURE_DESCRIPTIONS: Record<string, string> = {
 export const TIER_DESCRIPTIONS = {
   CORE: {
     name: 'Core',
-    description: 'Essential features for basic school management',
+    description: 'Guided school setup, reliable user management, daily attendance, calendar, and announcements',
     features: CORE_FEATURES,
   },
   STANDARD: {

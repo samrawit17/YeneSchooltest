@@ -23,6 +23,7 @@ export interface CalendarDisplayEvent {
   start?: string | Date;
   end?: string | Date;
   eventType?: string;
+  color?: string | null;
   resource?: unknown;
 }
 
@@ -190,9 +191,13 @@ const BigCalendar = ({
       ATTENDANCE_LATE: "#ca8a04",
       ATTENDANCE_EXCUSED: "#2563eb",
     };
+    const eventColor =
+      attendanceColors[eventType || ""] ||
+      event.resource?.color ||
+      "var(--brand-color, #e35336)";
     return {
       style: {
-        backgroundColor: attendanceColors[eventType || ""] || "var(--brand-color, #e35336)",
+        backgroundColor: eventColor,
         borderRadius: screenSize === 'xs' ? "2px" : "4px",
         color: "white",
         border: "none",
@@ -210,7 +215,7 @@ const BigCalendar = ({
         <div className="flex items-center gap-1">
           <button
             onClick={goToPrevious}
-            className="p-1.5 sm:p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
+            className="p-1.5 sm:p-2 rounded hover:bg-[var(--brand-color,#e35336)] hover:text-white transition-colors text-gray-700 dark:text-gray-200"
             title={t.controls.previousMonth}
           >
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -218,14 +223,14 @@ const BigCalendar = ({
           
           <button
             onClick={goToToday}
-            className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
+            className="px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium rounded hover:bg-[var(--brand-color,#e35336)] hover:text-white transition-colors text-gray-700 dark:text-gray-200"
           >
             {t.controls.today}
           </button>
           
           <button
             onClick={goToNext}
-            className="p-1.5 sm:p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-gray-700 dark:text-gray-200"
+            className="p-1.5 sm:p-2 rounded hover:bg-[var(--brand-color,#e35336)] hover:text-white transition-colors text-gray-700 dark:text-gray-200"
             title={t.controls.nextMonth}
           >
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />

@@ -303,7 +303,15 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
         requiredRoles: ['student'],
       };
     }
-    if (path.includes('/parent')) {
+    if (path.includes('/list/parents')) {
+      return {
+        title: 'Parent Records Restricted',
+        message: 'You do not have permission to access parent records.',
+        detail: 'This section requires Admin, IT Manager, or Registrar privileges.',
+        requiredRoles: ['admin', 'it_manager', 'registrar'],
+      };
+    }
+    if (path === '/parent' || path.startsWith('/parent/')) {
       return {
         title: 'Parent Area Only',
         message: 'This page is only accessible to parents.',
@@ -323,14 +331,6 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
       return {
         title: 'Staff Management Restricted',
         message: 'You do not have permission to manage staff records.',
-        detail: 'This section requires Admin, IT Manager, or Registrar privileges.',
-        requiredRoles: ['admin', 'it_manager', 'registrar'],
-      };
-    }
-    if (path.includes('/list/parents')) {
-      return {
-        title: 'Parent Records Restricted',
-        message: 'You do not have permission to access parent records.',
         detail: 'This section requires Admin, IT Manager, or Registrar privileges.',
         requiredRoles: ['admin', 'it_manager', 'registrar'],
       };

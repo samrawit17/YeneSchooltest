@@ -10,6 +10,9 @@ import { SubscriptionService } from '../subscription.service';
 import { SUBSCRIPTION_FEATURE_KEY } from '../decorators/subscription.decorator';
 import { PlanTier } from '@prisma/client';
 
+const isSuperAdmin = (user: any): boolean =>
+  String(user?.role || '').toLowerCase() === 'super_admin';
+
 @Injectable()
 export class SubscriptionGuard implements CanActivate {
   constructor(
@@ -29,6 +32,10 @@ export class SubscriptionGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
+
+    if (isSuperAdmin(user)) {
+      return true;
+    }
 
     if (!user || !user.schoolId) {
       throw new HttpException(
@@ -91,6 +98,10 @@ export class MinimumTierGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
+
+    if (isSuperAdmin(user)) {
+      return true;
+    }
 
     if (!user || !user.schoolId) {
       throw new HttpException(

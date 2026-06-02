@@ -29,7 +29,6 @@ import {
   ChevronDown,
   Home,
   FileText,
-  Mail,
   School,
   Calendar,
   CreditCard,
@@ -129,7 +128,6 @@ const Navbar = ({
   const { t: layoutText } = useTranslations<any>("layout");
   const { formattedYearLabel, displayTermName, formatDate: formatSchoolDate, schoolCalendarType } = useAcademicYear();
   const navLabel = (label: string) => navigationText.labels?.[label] ?? label;
-  const navDescription = (key: string, fallback: string) => navigationText.descriptions?.[key] ?? fallback;
   const roleLabel = (role?: string | null) => {
     if (!role) return navLabel("User");
     const normalizedRole = role.toUpperCase();
@@ -978,67 +976,47 @@ const Navbar = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="w-[300px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 shadow-2xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900"
+                  className="w-[280px] overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-lg shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-900"
                   align="end"
                   forceMount
                 >
-                  <div className="border-b border-slate-200 bg-[linear-gradient(135deg,rgba(var(--brand-color-rgb),0.16),rgba(var(--brand-color-rgb),0.04))] p-4 dark:border-slate-700">
-                    <div className="flex items-start gap-3">
-                      <Avatar className="h-12 w-12 border border-white/70 shadow-md dark:border-slate-600">
+                  <div className="border-b border-slate-100 px-4 py-4 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 shrink-0 ring-2 ring-slate-100 dark:ring-slate-800">
                         {user.avatarUrl ? (
                           <AvatarImage src={resolveAssetUrl(user.avatarUrl) || user.avatarUrl} alt={user.name} />
                         ) : (
-                          <AvatarFallback className="text-base font-bold">
+                          <AvatarFallback className="text-sm font-semibold">
                             {user.name?.charAt(0).toUpperCase() || "U"}
                           </AvatarFallback>
                         )}
                       </Avatar>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
-                        {!["PARENT", "STUDENT"].includes(user.role?.toUpperCase() || "") && (
-                          <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                            <Mail className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{user.email}</span>
-                          </div>
-                        )}
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center rounded-full bg-[rgba(var(--brand-color-rgb),0.12)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
-                            {roleLabel(user.role)}
-                          </span>
-                        </div>
+                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{user.name}</p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{roleLabel(user.role)}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-2">
+                  <div className="p-1.5">
                     <DropdownMenuGroup>
                       <DropdownMenuItem
                         asChild
-                        className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                        className="relative flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-700 outline-none transition-all hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                       >
                         <Link href={dashboardPath}>
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]">
-                            <LayoutDashboard className="h-4 w-4" />
-                          </span>
-                          <span className="flex-1">
-                            <span className="block text-sm font-medium">{navLabel("Dashboard")}</span>
-                            <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("dashboard", "Go to your main workspace")}</span>
-                          </span>
+                          <LayoutDashboard className="h-4 w-4 text-slate-400" />
+                          <span>{navLabel("Dashboard")}</span>
                         </Link>
                       </DropdownMenuItem>
 
                       <DropdownMenuItem
                         asChild
-                        className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                        className="relative flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-700 outline-none transition-all hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                       >
                         <Link href="/profile">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.18)]">
-                            <User className="h-4 w-4" />
-                          </span>
-                          <span className="flex-1">
-                            <span className="block text-sm font-medium">{navLabel("Profile")}</span>
-                            <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("profile", "Manage your account details")}</span>
-                          </span>
+                          <User className="h-4 w-4 text-slate-400" />
+                          <span>{navLabel("Profile")}</span>
                         </Link>
                       </DropdownMenuItem>
 
@@ -1046,30 +1024,20 @@ const Navbar = ({
                         <>
                           <DropdownMenuItem
                             asChild
-                            className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                            className="relative flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-700 outline-none transition-all hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                           >
                             <Link href="/parent/children">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-300">
-                                <Users className="h-4 w-4" />
-                              </span>
-                              <span className="flex-1">
-                                <span className="block text-sm font-medium">{navLabel("My Children")}</span>
-                                <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("children", "View student profiles and activity")}</span>
-                              </span>
+                              <Users className="h-4 w-4 text-slate-400" />
+                              <span>{navLabel("My Children")}</span>
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             asChild
-                            className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                            className="relative flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-700 outline-none transition-all hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                           >
                             <Link href="/parent/fees">
-                              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300">
-                                <CreditCard className="h-4 w-4" />
-                              </span>
-                              <span className="flex-1">
-                                <span className="block text-sm font-medium">{navLabel("Fees")}</span>
-                                <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("fees", "Review payments and balances")}</span>
-                              </span>
+                              <CreditCard className="h-4 w-4 text-slate-400" />
+                              <span>{navLabel("Fees")}</span>
                             </Link>
                           </DropdownMenuItem>
                         </>
@@ -1078,49 +1046,34 @@ const Navbar = ({
                       {isTeacher && (
                         <DropdownMenuItem
                           asChild
-                          className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                          className="relative flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-700 outline-none transition-all hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                         >
                           <Link href="/classes">
-                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-300">
-                              <Home className="h-4 w-4" />
-                            </span>
-                            <span className="flex-1">
-                              <span className="block text-sm font-medium">{navLabel("My Classes")}</span>
-                              <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("classes", "Jump into your assigned classes")}</span>
-                            </span>
+                            <Home className="h-4 w-4 text-slate-400" />
+                            <span>{navLabel("My Classes")}</span>
                           </Link>
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuGroup>
 
-                    <DropdownMenuSeparator className="my-2 bg-slate-200 dark:bg-slate-700" />
+                    <DropdownMenuSeparator className="my-1.5 bg-slate-100 dark:bg-slate-800" />
 
                     <DropdownMenuItem
                       asChild
-                      className="mb-1 flex items-center gap-3 rounded-xl px-3 py-3 text-slate-700 outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
+                      className="relative flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-slate-700 outline-none transition-all hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:bg-slate-800"
                     >
                       <Link href="/help">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          <HelpCircle className="h-4 w-4" />
-                        </span>
-                        <span className="flex-1">
-                          <span className="block text-sm font-medium">{navLabel("Help")}</span>
-                          <span className="block text-xs text-slate-500 dark:text-slate-400">{navDescription("help", "Get support and guidance")}</span>
-                        </span>
+                        <HelpCircle className="h-4 w-4 text-slate-400" />
+                        <span>{navLabel("Help")}</span>
                       </Link>
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      className="flex items-center gap-3 rounded-xl px-3 py-3 text-red-600 outline-none transition-colors hover:bg-red-50 focus:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 dark:focus:bg-red-950/30"
+                      className="relative flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-red-600 outline-none transition-all hover:bg-red-50 focus:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 dark:focus:bg-red-950/30"
                       onClick={handleLogout}
                     >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
-                        <LogOut className="h-4 w-4" />
-                      </span>
-                      <span className="flex-1">
-                        <span className="block text-sm font-medium">{navLabel("Logout")}</span>
-                        <span className="block text-xs text-red-500/80 dark:text-red-400/80">{navDescription("logout", "End your current session")}</span>
-                      </span>
+                      <LogOut className="h-4 w-4 text-red-400" />
+                      <span>{navLabel("Logout")}</span>
                     </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>

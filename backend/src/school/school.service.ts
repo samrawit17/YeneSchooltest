@@ -1,7 +1,13 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { AuditRequestContext, AuditService, type AuditActor } from '../audit/audit.service';
 import { generateEnrollmentKey } from '../common/utils/enrollment.util';
 import { Role } from '@prisma/client';
 import * as fs from 'fs';
@@ -24,12 +30,19 @@ export interface UpdateSchoolDto {
   publicUrlSlug?: string;
 }
 
+type SchoolMutationContext = {
+  actor?: AuditActor | null;
+  request?: AuditRequestContext | null;
+  source?: 'profile' | 'logo';
+};
+
 @Injectable()
 export class SchoolService {
   constructor(
     private prismaService: PrismaService,
     private platformSettingsService: PlatformSettingsService,
     private subscriptionService: SubscriptionService,
+    private auditService: AuditService,
   ) {}
 
   async createSchool(createSchoolDto: CreateSchoolDto) {
@@ -175,7 +188,73 @@ export class SchoolService {
     });
   }
 
-  async updateSchool(id: string, data: UpdateSchoolDto) {
+  private async cleanupLocalUpload(url: unknown) {
+    if (typeof url !== 'string' || !url.startsWith('/uploads/')) return;
+
+    const publicRoot = path.resolve(process.cwd(), 'public');
+    const target = path.resolve(publicRoot, url.replace(/^\/+/, ''));
+    if (!target.startsWith(publicRoot + path.sep)) return;
+
+    try {
+      await fs.promises.unlink(target);
+    } catch {
+      // File cleanup should never make a successful school update fail.
+    }
+  }
+
+  private async auditSchoolChange(
+    schoolId: string,
+    oldSchool: Record<string, unknown>,
+    newSchool: Record<string, unknown>,
+    context: SchoolMutationContext,
+  ) {
+    const changed = Object.keys(oldSchool).reduce<Record<string, { oldValue: unknown; newValue: unknown }>>(
+      (acc, key) => {
+        const oldValue = oldSchool[key];
+        const newValue = newSchool[key];
+        if (JSON.stringify(oldValue ?? null) !== JSON.stringify(newValue ?? null)) {
+          acc[key] = { oldValue: oldValue ?? null, newValue: newValue ?? null };
+        }
+        return acc;
+      },
+      {},
+    );
+
+    if (Object.keys(changed).length === 0) return;
+
+    await this.auditService.log({
+      actor: context.actor,
+      schoolId,
+      action: 'school.changed',
+      entityType: 'School',
+      entityId: schoolId,
+      request: context.request,
+      metadata: {
+        changed,
+        source: context.source || 'profile',
+      },
+    });
+  }
+
+  async updateSchool(
+    id: string,
+    data: UpdateSchoolDto,
+    context: SchoolMutationContext = {},
+  ) {
+    const existing = await this.prismaService.school.findUnique({
+      where: { id },
+      select: {
+        name: true,
+        email: true,
+        address: true,
+        phone: true,
+        code: true,
+        logoUrl: true,
+        publicUrlSlug: true,
+      },
+    });
+    if (!existing) throw new HttpException('School not found', HttpStatus.NOT_FOUND);
+
     if (data.publicUrlSlug) {
       data.publicUrlSlug = await this.normalizeUniquePublicUrlSlug(
         data.publicUrlSlug,
@@ -183,10 +262,22 @@ export class SchoolService {
       );
     }
 
-    return this.prismaService.school.update({
+    const school = await this.prismaService.school.update({
       where: { id },
       data,
     });
+
+    await this.auditSchoolChange(id, existing, school, context);
+
+    if (
+      data.logoUrl !== undefined &&
+      existing.logoUrl &&
+      existing.logoUrl !== school.logoUrl
+    ) {
+      await this.cleanupLocalUpload(existing.logoUrl);
+    }
+
+    return school;
   }
 
   async deleteSchool(id: string) {
@@ -198,7 +289,20 @@ export class SchoolService {
   async uploadLogo(
     schoolId: string,
     file: Express.Multer.File,
+    context: SchoolMutationContext = {},
   ): Promise<string> {
+    if (
+      !['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(
+        file.mimetype,
+      )
+    ) {
+      throw new BadRequestException('Logo must be PNG, JPG, JPEG, or WEBP');
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      throw new BadRequestException('Logo must be less than 2MB');
+    }
+
     const backendPublicDir = path.join(
       process.cwd(),
       'public',
@@ -211,7 +315,19 @@ export class SchoolService {
       fs.mkdirSync(backendPublicDir, { recursive: true });
     }
 
-    const fileName = `${schoolId}-${Date.now()}${path.extname(file.originalname)}`;
+    const existing = await this.prismaService.school.findUnique({
+      where: { id: schoolId },
+      select: { logoUrl: true },
+    });
+    if (!existing) throw new HttpException('School not found', HttpStatus.NOT_FOUND);
+
+    const extension =
+      file.mimetype === 'image/png'
+        ? '.png'
+        : file.mimetype === 'image/webp'
+          ? '.webp'
+          : '.jpg';
+    const fileName = `${schoolId}-${Date.now()}${extension}`;
     const backendFilePath = path.join(backendPublicDir, fileName);
 
     // Save to backend
@@ -223,6 +339,14 @@ export class SchoolService {
       where: { id: schoolId },
       data: { logoUrl },
     });
+
+    await this.auditSchoolChange(
+      schoolId,
+      { logoUrl: existing.logoUrl },
+      { logoUrl },
+      { ...context, source: 'logo' },
+    );
+    await this.cleanupLocalUpload(existing.logoUrl);
 
     return logoUrl;
   }

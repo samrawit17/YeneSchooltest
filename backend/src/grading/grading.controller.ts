@@ -30,6 +30,8 @@ import {
   TeacherAssignmentDto,
 } from './dto/grading.dto';
 import { Role } from '../auth/types/role.enum';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 interface AuthRequest {
   user: {
@@ -40,7 +42,8 @@ interface AuthRequest {
 }
 
 @Controller('grading')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard, SubscriptionGuard)
+@RequiresFeature('GRADE_MANAGEMENT')
 export class GradingController {
   constructor(private readonly gradingService: GradingService) {}
 
@@ -376,6 +379,7 @@ export class GradingController {
    * Calculate rankings for curriculum period (usually called when term ends)
    */
   @Post('admin/calculate-rankings')
+  @RequiresFeature('STUDENT_RANKINGS')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async calculateRankings(
     @Request() req: AuthRequest,
@@ -700,6 +704,7 @@ export class GradingController {
    * Get promotion list - students with promotion recommendations
    */
   @Get('admin/promotion-list')
+  @RequiresFeature('STUDENT_PROMOTION')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN, Role.REGISTRAR)
   async getPromotionList(
     @Request() req: AuthRequest,
@@ -714,6 +719,7 @@ export class GradingController {
    * Override promotion recommendation for a student
    */
   @Post('admin/promotion-override')
+  @RequiresFeature('STUDENT_PROMOTION')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async overridePromotion(
     @Request() req: AuthRequest,
@@ -730,6 +736,7 @@ export class GradingController {
    * Confirm promotions for the academic year
    */
   @Post('admin/confirm-promotions')
+  @RequiresFeature('STUDENT_PROMOTION')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async confirmPromotions(
     @Request() req: AuthRequest,
@@ -746,6 +753,7 @@ export class GradingController {
    * Bulk confirm all promotions
    */
   @Post('admin/bulk-confirm-promotions')
+  @RequiresFeature('STUDENT_PROMOTION')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
   async bulkConfirmPromotions(
     @Request() req: AuthRequest,

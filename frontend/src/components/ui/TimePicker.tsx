@@ -17,12 +17,17 @@ import { useTranslations } from "@/hooks/useTranslations";
 
 type EthiopianPeriod = "morning" | "afternoon" | "evening" | "night";
 
+const ETHIOPIAN_PERIODS: EthiopianPeriod[] = ["morning", "afternoon", "evening", "night"];
+
 const ETHIOPIAN_PERIOD_HOURS: Record<EthiopianPeriod, string[]> = {
   morning: ["12", "1", "2", "3", "4", "5"],
   afternoon: ["6", "7", "8", "9", "10", "11"],
   evening: ["12", "1", "2", "3", "4", "5"],
   night: ["6", "7", "8", "9", "10", "11"],
 };
+
+const isEthiopianPeriod = (value: string): value is EthiopianPeriod =>
+  ETHIOPIAN_PERIODS.includes(value as EthiopianPeriod);
 
 const getEthiopianHoursForPeriod = (period: EthiopianPeriod) => ETHIOPIAN_PERIOD_HOURS[period];
 
@@ -76,14 +81,24 @@ export function TimePicker({
   const isEthiopian = activeCalendarType === "ETHIOPIAN";
   const normalized = normalizeTimeValue(value);
   const ethiopianTime = getEthiopianClockParts(`${normalized.hour}:${normalized.minute}`);
+  const normalizedAllowedPeriods = useMemo(() => {
+    if (!allowedEthiopianPeriods?.length) return undefined;
+
+    const validPeriods = allowedEthiopianPeriods.filter(isEthiopianPeriod);
+    return validPeriods.length > 0 ? validPeriods : undefined;
+  }, [allowedEthiopianPeriods]);
   const allowedPeriodSet = useMemo(
-    () => new Set(allowedEthiopianPeriods),
-    [allowedEthiopianPeriods],
+    () => new Set(normalizedAllowedPeriods),
+    [normalizedAllowedPeriods],
   );
+  const fallbackEthiopianPeriod =
+    normalizedAllowedPeriods?.includes(defaultEthiopianPeriod)
+      ? defaultEthiopianPeriod
+      : normalizedAllowedPeriods?.[0] ?? defaultEthiopianPeriod;
   const selectedEthiopianPeriod =
-    !allowedEthiopianPeriods || allowedPeriodSet.has(ethiopianTime.period)
+    !normalizedAllowedPeriods || allowedPeriodSet.has(ethiopianTime.period)
       ? ethiopianTime.period
-      : defaultEthiopianPeriod;
+      : fallbackEthiopianPeriod;
 
   const hours = useMemo(
     () => Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0")),
@@ -98,7 +113,7 @@ export function TimePicker({
     { value: "afternoon", label: t.time.afternoon },
     { value: "evening", label: t.time.evening },
     { value: "night", label: t.time.night },
-  ].filter((period) => !allowedEthiopianPeriods || allowedPeriodSet.has(period.value as EthiopianPeriod)) as {
+  ].filter((period) => !normalizedAllowedPeriods || allowedPeriodSet.has(period.value as EthiopianPeriod)) as {
     value: EthiopianPeriod;
     label: string;
   }[];
@@ -135,19 +150,19 @@ export function TimePicker({
   };
 
   useEffect(() => {
-    if (!isEthiopian || !allowedEthiopianPeriods || allowedPeriodSet.has(ethiopianTime.period)) {
+    if (!isEthiopian || !normalizedAllowedPeriods || allowedPeriodSet.has(ethiopianTime.period)) {
       return;
     }
 
-    onChange(`${toStoredHourFromEthiopian(normalizeHourForPeriod(ethiopianTime.hour12, defaultEthiopianPeriod), defaultEthiopianPeriod)}:${normalized.minute}`);
+    onChange(`${toStoredHourFromEthiopian(normalizeHourForPeriod(ethiopianTime.hour12, fallbackEthiopianPeriod), fallbackEthiopianPeriod)}:${normalized.minute}`);
   }, [
-    allowedEthiopianPeriods,
     allowedPeriodSet,
-    defaultEthiopianPeriod,
     ethiopianTime.hour12,
     ethiopianTime.period,
+    fallbackEthiopianPeriod,
     isEthiopian,
     normalized.minute,
+    normalizedAllowedPeriods,
     onChange,
   ]);
 
@@ -165,7 +180,7 @@ export function TimePicker({
           )}
         >
           <Clock className="mr-2 h-4 w-4 shrink-0 text-slate-500" />
-          <span>{displayValue}</span>
+          <span className="min-w-0 truncate">{displayValue}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 bg-white p-4 dark:bg-slate-800" align="start">

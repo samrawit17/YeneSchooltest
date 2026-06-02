@@ -347,10 +347,13 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
         userId,
         schoolId,
         activeAcademicYear?.id,
+        undefined,
+        { skipAuthErrorRedirect: true },
       );
       return response.data;
     },
     enabled: !!studentId && !!user?.schoolId && !!activeAcademicYear?.id && !isTeacher,
+    retry: false,
   });
 
   // Fetch academic years to map IDs to names

@@ -29,9 +29,11 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import type { Response } from 'express';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 @Controller('students')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, SubscriptionGuard)
 export class StudentController {
   constructor(private readonly studentService: StudentService) {}
 
@@ -112,6 +114,7 @@ export class StudentController {
   }
 
   @Get('id-cards')
+  @RequiresFeature('STUDENT_ID_CARDS')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   async getStudentsForIdCards(
     @Request() req,
@@ -134,18 +137,21 @@ export class StudentController {
   }
 
   @Get('id-cards/template')
+  @RequiresFeature('STUDENT_ID_CARDS')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   async getIdCardTemplate(@Request() req) {
     return this.studentService.getIdCardTemplate(req.user.schoolId);
   }
 
   @Put('id-cards/template')
+  @RequiresFeature('STUDENT_ID_CARDS')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   async saveIdCardTemplate(@Request() req, @Body() body: { template: Record<string, any> }) {
     return this.studentService.saveIdCardTemplate(req.user.schoolId, body.template || {});
   }
 
   @Post('id-cards/template/watermark')
+  @RequiresFeature('STUDENT_ID_CARDS')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @UseInterceptors(FileInterceptor('file'))
   async uploadIdCardWatermark(
@@ -160,6 +166,7 @@ export class StudentController {
   }
 
   @Get('id-cards/:studentId/pdf')
+  @RequiresFeature('STUDENT_ID_CARDS')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   async generateIdCardPdf(
     @Request() req,
@@ -173,6 +180,7 @@ export class StudentController {
   }
 
   @Post('id-cards/bulk-pdf')
+  @RequiresFeature('STUDENT_ID_CARDS')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   async generateIdCardsBulkPdf(
     @Request() req,

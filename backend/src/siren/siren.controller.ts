@@ -17,10 +17,13 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import { SirenService } from './siren.service';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 @Controller('api/siren')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
 @Roles(Role.ADMIN, Role.IT_MANAGER)
+@RequiresFeature('SIREN_ALERT')
 export class SirenController {
   constructor(private readonly sirenService: SirenService) {}
 

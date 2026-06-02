@@ -481,7 +481,7 @@ const menuItems: MenuSection[] = [
         label: "Children Fees",
         href: "/parent/fees",
         visible: ["parent"],
-        subscriptionFeature: "PARENT_PORTAL",
+        subscriptionFeature: "FINANCE_MANAGEMENT",
       },
       {
         icon: <BookText className="w-5 h-5" />,
@@ -510,18 +510,21 @@ const menuItems: MenuSection[] = [
         label: "Finance Management",
         href: "/list/finance",
         visible: ["finance"],
+        subscriptionFeature: "FINANCE_MANAGEMENT",
       },
       {
         icon: <FileText className="w-5 h-5" />,
         label: "Finance Reports",
         href: "/finance/reports",
         visible: ["finance"],
+        subscriptionFeature: "FINANCE_MANAGEMENT",
       },
       {
         icon: <CreditCard className="w-5 h-5" />,
         label: "Payroll",
         href: "/finance/payroll",
         visible: ["finance"],
+        subscriptionFeature: "FINANCE_MANAGEMENT",
       },
       {
         icon: <Megaphone className="w-5 h-5" />,
@@ -668,6 +671,12 @@ const getFeaturesByTierFromConfig = (tier: string): string[] => {
     .map(([key]) => key);
 };
 
+const normalizeFeatureKey = (feature?: string | null) =>
+  (feature || "").trim().toUpperCase();
+
+const normalizeFeatureList = (features?: string[]) =>
+  Array.from(new Set((features || []).map(normalizeFeatureKey).filter(Boolean)));
+
 const textRevealClass = (collapsed: boolean, expandedWidth = "max-w-[220px]") =>
   `overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin] duration-200 ease-out ${
     collapsed ? "max-w-0 opacity-0 pointer-events-none" : `${expandedWidth} opacity-100`
@@ -756,70 +765,6 @@ const Menu = ({
     staleTime: 5 * 60 * 1000, // 5 minutes — curriculum type rarely changes
   });
 
-
-  // Fetch open communications count - use getAll with status=OPEN instead
-  const shouldFetchCommStats = useMemo(() =>
-    // Super admin doesn't have school-specific data - don't fetch
-    userRoleKey === 'super_admin' ? false :
-    ["teacher", "admin", "registrar", "parent", "super-admin"].includes(userRoleKey),
-    [userRoleKey]
-  );
-
-  const { data: commStats, isLoading: isCommStatsLoading } = useQuery({
-    queryKey: queryKeys.menu.communicationStats(user?.id, schoolId, userRoleKey),
-    queryFn: async () => {
-      try {
-        // Use user-specific count endpoint instead of getAll
-        const response = await communicationsAPI.getMyCount('OPEN');
-        return response;
-      } catch (error) {
-        return { data: { count: 0 } };
-      }
-    },
-    enabled: shouldFetchCommStats, // Only fetch for relevant roles
-    refetchInterval: 60000, // Refetch every minute
-    staleTime: 60000, // Consider data fresh for 1 minute
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-  });
-
-  // Get open communications count for badge (user-specific)
-  const openCommunicationsCount = commStats?.data?.count ?? 0;
-
-  // Fetch active announcements count
-  const { data: announcementStats, isLoading: isAnnouncementStatsLoading } = useQuery({
-    queryKey: queryKeys.announcements.menuCount(user?.id, schoolId, userRoleKey),
-    queryFn: async () => {
-      try {
-        const response = await announcementsAPI.getActiveCount({ role: userRoleKey });
-        return response;
-      } catch (error) {
-        return { data: { count: 0 } };
-      }
-    },
-    enabled: shouldFetchCommStats,
-    refetchInterval: 60000,
-    staleTime: 60000,
-  });
-
-  // Fetch active events count
-  const { data: eventStats, isLoading: isEventStatsLoading } = useQuery({
-    queryKey: queryKeys.events.menuCount(user?.id, schoolId, userRoleKey),
-    queryFn: async () => {
-      try {
-        const response = await eventsAPI.getActiveCount({ role: userRoleKey });
-        return response;
-      } catch (error) {
-        return { data: { count: 0 } };
-      }
-    },
-    enabled: shouldFetchCommStats,
-    refetchInterval: 60000,
-    staleTime: 60000,
-  });
-
-  const announcementsCount = announcementStats?.data?.count ?? 0;
-  const eventsCount = eventStats?.data?.count ?? 0;
-
   // Use centralized AcademicYearContext
   const { 
     currentAcademicYear, 
@@ -860,11 +805,10 @@ const Menu = ({
         if (!plan) return null;
         const tierFeatures = getFeaturesByTierFromConfig(plan.tier);
         const existingFeatures = Array.isArray(plan.features) ? plan.features : [];
-        const combinedFeatures = [...existingFeatures, ...tierFeatures];
-        const uniqueFeatures = Array.from(new Set(combinedFeatures));
         return {
           ...plan,
-          features: uniqueFeatures
+          tier: normalizeFeatureKey(plan.tier) as typeof plan.tier,
+          features: normalizeFeatureList([...existingFeatures, ...tierFeatures])
         };
       } catch (error) {
         return null;
@@ -873,6 +817,92 @@ const Menu = ({
     enabled: !!schoolId && userRoleKey !== 'super_admin',
     staleTime: 60000,
   });
+
+  const schoolPlanFeatures = useMemo(
+    () => new Set(normalizeFeatureList(schoolPlan?.features)),
+    [schoolPlan?.features],
+  );
+
+  const canUseMenuFeature = useCallback(
+    (feature: string) =>
+      userRoleKey !== 'super_admin' &&
+      !!schoolPlan &&
+      schoolPlanFeatures.has(normalizeFeatureKey(feature)),
+    [schoolPlan, schoolPlanFeatures, userRoleKey],
+  );
+
+  const isSchoolScopedMenuRole = useMemo(
+    () =>
+      userRoleKey !== 'super_admin' &&
+      ["teacher", "admin", "it_manager", "registrar", "parent", "finance"].includes(userRoleKey),
+    [userRoleKey],
+  );
+
+  const shouldFetchCommunicationStats =
+    isSchoolScopedMenuRole && canUseMenuFeature("COMMUNICATION_BOOK");
+  const shouldFetchAnnouncementStats =
+    isSchoolScopedMenuRole && canUseMenuFeature("ANNOUNCEMENTS");
+  const shouldFetchEventStats =
+    isSchoolScopedMenuRole && canUseMenuFeature("SCHOOL_CALENDAR");
+
+  const { data: commStats, isLoading: isCommStatsLoading } = useQuery({
+    queryKey: queryKeys.menu.communicationStats(user?.id, schoolId, userRoleKey),
+    queryFn: async () => {
+      try {
+        const response = await communicationsAPI.getMyCount('OPEN', {
+          skipAuthErrorRedirect: true,
+        });
+        return response;
+      } catch (error) {
+        return { data: { count: 0 } };
+      }
+    },
+    enabled: shouldFetchCommunicationStats,
+    refetchInterval: 60000,
+    staleTime: 60000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const openCommunicationsCount = commStats?.data?.count ?? 0;
+
+  const { data: announcementStats, isLoading: isAnnouncementStatsLoading } = useQuery({
+    queryKey: queryKeys.announcements.menuCount(user?.id, schoolId, userRoleKey),
+    queryFn: async () => {
+      try {
+        const response = await announcementsAPI.getActiveCount(
+          { role: userRoleKey },
+          { skipAuthErrorRedirect: true },
+        );
+        return response;
+      } catch (error) {
+        return { data: { count: 0 } };
+      }
+    },
+    enabled: shouldFetchAnnouncementStats,
+    refetchInterval: 60000,
+    staleTime: 60000,
+  });
+
+  const { data: eventStats, isLoading: isEventStatsLoading } = useQuery({
+    queryKey: queryKeys.events.menuCount(user?.id, schoolId, userRoleKey),
+    queryFn: async () => {
+      try {
+        const response = await eventsAPI.getActiveCount(
+          { role: userRoleKey },
+          { skipAuthErrorRedirect: true },
+        );
+        return response;
+      } catch (error) {
+        return { data: { count: 0 } };
+      }
+    },
+    enabled: shouldFetchEventStats,
+    refetchInterval: 60000,
+    staleTime: 60000,
+  });
+
+  const announcementsCount = announcementStats?.data?.count ?? 0;
+  const eventsCount = eventStats?.data?.count ?? 0;
 
   // Determine if any critical data is loading
   const isLoading = isSchoolLoading || isSettingsLoading || isAcademicYearLoading || isPlatformSettingsLoading || isPlanLoading;
@@ -910,15 +940,16 @@ const Menu = ({
     if (!subscriptionFeature && !subscriptionTier) return true;
     if (!schoolPlan) return false;
 
-    const schoolTierLevel = TIER_LEVELS[schoolPlan.tier] || 0;
+    const schoolTierLevel = TIER_LEVELS[normalizeFeatureKey(schoolPlan.tier)] || 0;
 
     if (subscriptionTier) {
-      const requiredLevel = TIER_LEVELS[subscriptionTier] || 0;
+      const requiredLevel = TIER_LEVELS[normalizeFeatureKey(subscriptionTier)] || 0;
       if (schoolTierLevel < requiredLevel) return false;
     }
 
     if (subscriptionFeature) {
-      const hasFeature = schoolPlan.features?.includes(subscriptionFeature);
+      const requiredFeature = normalizeFeatureKey(subscriptionFeature);
+      const hasFeature = normalizeFeatureList(schoolPlan.features).includes(requiredFeature);
       if (!hasFeature) return false;
     }
 

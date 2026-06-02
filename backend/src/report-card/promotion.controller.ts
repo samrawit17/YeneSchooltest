@@ -16,6 +16,8 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 const parseOptionalNumber = (value?: string) => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -24,7 +26,8 @@ const parseOptionalNumber = (value?: string) => {
 };
 
 @Controller('promotion')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, SubscriptionGuard)
+@RequiresFeature('STUDENT_PROMOTION')
 export class PromotionController {
   constructor(
     private readonly reportCardService: ReportCardService,

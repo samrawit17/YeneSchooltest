@@ -1,4 +1,5 @@
 import api from "./core";
+import type { AxiosRequestConfig } from "axios";
 
 export type CommunicationStatus = "OPEN" | "ACKNOWLEDGED" | "CLOSED";
 export type CommunicationCategory =
@@ -93,9 +94,13 @@ export const communicationsAPI = {
       "/communications",
       { params }
     ),
-  getUnreadCount: () => api.get<{ count: number }>("/communications/unread-count"),
-  getMyCount: (status?: string) =>
-    api.get<{ count: number }>("/communications/my-count", { params: { status } }),
+  getUnreadCount: (config?: AxiosRequestConfig) =>
+    api.get<{ count: number }>("/communications/unread-count", config),
+  getMyCount: (status?: string, config?: AxiosRequestConfig) =>
+    api.get<{ count: number }>("/communications/my-count", {
+      params: { status },
+      ...config,
+    }),
   getById: (id: string) => api.get<Communication>(`/communications/${id}`),
   updateStatus: (id: string, data: UpdateCommunicationStatusDto) =>
     api.put<Communication>(`/communications/${id}/status`, data),

@@ -65,7 +65,7 @@ export interface FeatureCheck {
 export const TIER_CONFIG = {
   CORE: {
     name: 'Core',
-    description: 'Basic school setup, users, attendance, calendar, and announcements',
+    description: 'Guided school setup, reliable user management, daily attendance, calendar, and announcements',
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: '📦',
   },
@@ -85,9 +85,9 @@ export const TIER_CONFIG = {
 
 export const FEATURE_LIST = [
   { key: 'SCHOOL_PROFILE', name: 'School Profile', description: 'School profile and settings management', tier: 'CORE' },
-  { key: 'USER_MANAGEMENT', name: 'User Management', description: 'Basic students, staff, teachers, parents, and users', tier: 'CORE' },
-  { key: 'ACADEMIC_STRUCTURE', name: 'Academic Structure', description: 'Classes, sections, subjects, assignments, and academic years', tier: 'CORE' },
-  { key: 'ATTENDANCE_TRACKING', name: 'Attendance Tracking', description: 'Student attendance tracking', tier: 'CORE' },
+  { key: 'USER_MANAGEMENT', name: 'User Management', description: 'Students, staff, parents, roles, duplicate checks, linking, and account setup', tier: 'CORE' },
+  { key: 'ACADEMIC_STRUCTURE', name: 'Academic Structure', description: 'Guided classes, sections, subjects, teacher assignments, terms, and academic years', tier: 'CORE' },
+  { key: 'ATTENDANCE_TRACKING', name: 'Attendance Tracking', description: 'Fast daily attendance with clear save state, class filters, and recovery-friendly tracking', tier: 'CORE' },
   { key: 'ANNOUNCEMENTS', name: 'Announcements', description: 'School announcements', tier: 'CORE' },
   { key: 'SCHOOL_CALENDAR', name: 'School Calendar', description: 'School calendar and events', tier: 'CORE' },
   { key: 'BASIC_REPORTS', name: 'Basic Reports', description: 'Basic reporting capabilities', tier: 'CORE' },

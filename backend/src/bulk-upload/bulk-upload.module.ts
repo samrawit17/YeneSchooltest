@@ -5,11 +5,13 @@ import { BulkUploadController } from './bulk-upload.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 import { CredentialModule } from '../credential/credential.module';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
     PrismaModule,
     CredentialModule,
+    SubscriptionModule,
     MulterModule.register({
       limits: {
         fileSize: 10 * 1024 * 1024, // 10MB limit

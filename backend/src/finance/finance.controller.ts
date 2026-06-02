@@ -21,6 +21,8 @@ import { Role } from '../auth/types/role.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 import {
   CreateFeeStructureDto,
   UpdateFeeStructureDto,
@@ -38,7 +40,8 @@ import {
 } from './dto/finance.dto';
 
 @Controller('finance')
-@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, SubscriptionGuard)
+@RequiresFeature('FINANCE_MANAGEMENT')
 export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 

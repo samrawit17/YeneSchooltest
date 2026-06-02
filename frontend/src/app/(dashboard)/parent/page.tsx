@@ -609,7 +609,13 @@ const ParentDashboard = () => {
           
             if (schoolId && academicYearId) {
               try {
-                const feeResponse = await financeAPI.getStudentFees(child.id, schoolId, academicYearId);
+                const feeResponse = await financeAPI.getStudentFees(
+                  child.id,
+                  schoolId,
+                  academicYearId,
+                  undefined,
+                  { skipAuthErrorRedirect: true },
+                );
                 const feeData = feeResponse.data;
                 curriculumType = feeData?.curriculumType;
                 if (feeData.summary) {

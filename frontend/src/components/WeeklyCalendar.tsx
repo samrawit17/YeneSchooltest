@@ -139,19 +139,19 @@ export default function WeeklyCalendar({ events = [], onEventClick }: WeeklyCale
         <div className="flex items-center gap-1">
           <button
             onClick={goToPreviousWeek}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[var(--brand-color,#e35336)] transition-colors"
+            className="p-1 hover:bg-[var(--brand-color,#e35336)] hover:text-white rounded text-gray-600 dark:text-gray-400 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={goToToday}
-            className="px-2 py-1 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[var(--brand-color,#e35336)] transition-colors"
+            className="px-2 py-1 text-xs hover:bg-[var(--brand-color,#e35336)] hover:text-white rounded text-gray-600 dark:text-gray-400 transition-colors"
           >
             {todayLabel}
           </button>
           <button
             onClick={goToNextWeek}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 hover:text-[var(--brand-color,#e35336)] transition-colors"
+            className="p-1 hover:bg-[var(--brand-color,#e35336)] hover:text-white rounded text-gray-600 dark:text-gray-400 transition-colors"
           >
             <ChevronRight className="h-4 w-4" />
           </button>

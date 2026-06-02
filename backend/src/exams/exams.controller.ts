@@ -21,6 +21,8 @@ import {
   GetExamsFilterDto,
 } from './dto/exams.dto';
 import { Role } from '../auth/types/role.enum';
+import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
+import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
 interface AuthRequest {
   user: {
@@ -31,7 +33,8 @@ interface AuthRequest {
 }
 
 @Controller('exams')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
+@RequiresFeature('EXAM_MANAGEMENT')
 export class ExamsController {
   constructor(private readonly examsService: ExamsService) {}
 

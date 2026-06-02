@@ -937,7 +937,7 @@ export default function TeacherAttendancePage() {
                     prevDate.setDate(prevDate.getDate() - 1);
                     setSelectedDate(formatDateInputValue(prevDate));
                   }}
-                  className="h-7 w-7 sm:h-8 sm:w-8 text-[var(--brand-color,#e35336)]"
+                  className="h-7 w-7 sm:h-8 sm:w-8 text-[var(--brand-color,#e35336)] hover:bg-[var(--brand-color,#e35336)] hover:text-white"
                 >
                   <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
@@ -955,7 +955,7 @@ export default function TeacherAttendancePage() {
                     nextDate.setDate(nextDate.getDate() + 1);
                     setSelectedDate(formatDateInputValue(nextDate));
                   }}
-                  className="h-7 w-7 sm:h-8 sm:w-8 text-[var(--brand-color,#e35336)]"
+                  className="h-7 w-7 sm:h-8 sm:w-8 text-[var(--brand-color,#e35336)] hover:bg-[var(--brand-color,#e35336)] hover:text-white"
                 >
                   <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>

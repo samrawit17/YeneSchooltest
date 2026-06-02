@@ -27,6 +27,49 @@ import { Role } from '../auth/types/role.enum';
 export class SchoolSettingsController {
   constructor(private readonly schoolSettingsService: SchoolSettingsService) {}
 
+  private ensureCanReadSchoolSettings(req: any, schoolId: string) {
+    if (req.user?.role === Role.SUPER_ADMIN) return;
+    if (req.user?.schoolId === schoolId) return;
+
+    throw new HttpException(
+      'You can only access your own school settings',
+      HttpStatus.FORBIDDEN,
+    );
+  }
+
+  private ensureCanManageSchoolSettings(req: any, schoolId: string) {
+    if (req.user?.role === Role.SUPER_ADMIN) return;
+    if (
+      (req.user?.role === Role.ADMIN || req.user?.role === Role.IT_MANAGER) &&
+      req.user?.schoolId === schoolId
+    ) {
+      return;
+    }
+
+    throw new HttpException(
+      'You can only update your own school settings',
+      HttpStatus.FORBIDDEN,
+    );
+  }
+
+  private getMutationContext(req: any) {
+    return {
+      actor: {
+        id: req.user?.id || req.user?.sub || null,
+        role: req.user?.role || null,
+        schoolId: req.user?.schoolId || null,
+      },
+      request: {
+        ip:
+          req.ip ||
+          req.headers?.['x-forwarded-for']?.toString().split(',')[0]?.trim() ||
+          req.socket?.remoteAddress ||
+          null,
+        userAgent: req.headers?.['user-agent'] || null,
+      },
+    };
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @AllowSuperAdminMixedRole()
@@ -40,14 +83,14 @@ export class SchoolSettingsController {
     Role.REGISTRAR,
     Role.FINANCE,
   )
-  async getAllSettings(@Param('schoolId') schoolId: string) {
+  async getAllSettings(@Param('schoolId') schoolId: string, @Req() req: any) {
     try {
-      // Admins can only access their own school's settings
+      this.ensureCanReadSchoolSettings(req, schoolId);
       return await this.schoolSettingsService.getAllSettings(schoolId);
     } catch (error) {
       throw new HttpException(
         'Failed to get settings: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -68,14 +111,16 @@ export class SchoolSettingsController {
   async getSetting(
     @Param('schoolId') schoolId: string,
     @Param('key') key: string,
+    @Req() req: any,
   ) {
     try {
+      this.ensureCanReadSchoolSettings(req, schoolId);
       const value = await this.schoolSettingsService.getSetting(schoolId, key);
       return { key, value };
     } catch (error) {
       throw new HttpException(
         'Failed to get setting: ' + error.message,
-        HttpStatus.INTERNAL_SERVER_ERROR,
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -87,18 +132,21 @@ export class SchoolSettingsController {
     @Param('schoolId') schoolId: string,
     @Param('key') key: string,
     @Body() body: { value: any },
+    @Req() req: any,
   ) {
     try {
+      this.ensureCanManageSchoolSettings(req, schoolId);
       const setting = await this.schoolSettingsService.setSetting(
         schoolId,
         key,
         body.value,
+        this.getMutationContext(req),
       );
       return setting;
     } catch (error) {
       throw new HttpException(
         'Failed to update setting: ' + error.message,
-        HttpStatus.BAD_REQUEST,
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -130,6 +178,7 @@ export class SchoolSettingsController {
       const url = await this.schoolSettingsService.uploadLoginImage(
         schoolId,
         file,
+        this.getMutationContext(req),
       );
       return { url };
     } catch (error) {
@@ -146,13 +195,19 @@ export class SchoolSettingsController {
   async deleteSetting(
     @Param('schoolId') schoolId: string,
     @Param('key') key: string,
+    @Req() req: any,
   ) {
     try {
-      return await this.schoolSettingsService.deleteSetting(schoolId, key);
+      this.ensureCanManageSchoolSettings(req, schoolId);
+      return await this.schoolSettingsService.deleteSetting(
+        schoolId,
+        key,
+        this.getMutationContext(req),
+      );
     } catch (error) {
       throw new HttpException(
         'Failed to delete setting: ' + error.message,
-        HttpStatus.BAD_REQUEST,
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -163,13 +218,19 @@ export class SchoolSettingsController {
   async batchUpdate(
     @Param('schoolId') schoolId: string,
     @Body() settings: Record<string, any>,
+    @Req() req: any,
   ) {
     try {
-      return await this.schoolSettingsService.batchUpdate(schoolId, settings);
+      this.ensureCanManageSchoolSettings(req, schoolId);
+      return await this.schoolSettingsService.batchUpdate(
+        schoolId,
+        settings,
+        this.getMutationContext(req),
+      );
     } catch (error) {
       throw new HttpException(
         'Failed to batch update settings: ' + error.message,
-        HttpStatus.BAD_REQUEST,
+        error.status || HttpStatus.BAD_REQUEST,
       );
     }
   }
