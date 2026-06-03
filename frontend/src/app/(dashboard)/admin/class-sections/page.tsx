@@ -86,7 +86,13 @@ type SectionData = {
   name: string;
   capacity: number;
   roomNumber?: string;
-  class?: { id: string; name: string; grade: number };
+  class?: {
+    id: string;
+    name: string;
+    grade: number;
+    academicYearId?: string;
+    academicYear?: { id: string; name: string };
+  };
   homeroomTeacher?: { id: string; name: string; email?: string } | null;
   _count?: { studentClasses: number };
 };
@@ -231,8 +237,13 @@ export default function AcademicStructurePage() {
 
   // Sync section capacity from school settings
   const handleSyncCapacity = async () => {
+    if (!academicYearId) {
+      toast.error("Select an academic year before syncing section capacity");
+      return;
+    }
+
     try {
-      const resp = await sectionsAPI.syncCapacity();
+      const resp = await sectionsAPI.syncCapacity({ academicYearId });
       toast.success(resp.data?.message || "Section capacities synced successfully");
       refetchSections();
     } catch (e: any) {
@@ -248,12 +259,10 @@ export default function AcademicStructurePage() {
   } = useQuery({
     queryKey: queryKeys.classSections.academicClasses(academicYearId),
     queryFn: async () => {
-      const resp = await classesAPI.getAll(
-        academicYearId ? { academicYearId } : undefined
-      );
+      const resp = await classesAPI.getAll({ academicYearId });
       return (resp.data || []) as ClassData[];
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !!academicYearId,
   });
 
   const gradeFilteredClasses = gradeLevels.length
@@ -281,12 +290,12 @@ export default function AcademicStructurePage() {
     isLoading: sectionsLoading,
     refetch: refetchSections,
   } = useQuery({
-    queryKey: queryKeys.classSections.academicSections,
+    queryKey: queryKeys.classSections.academicSections(academicYearId),
     queryFn: async () => {
-      const resp = await sectionsAPI.getAll();
+      const resp = await sectionsAPI.getAll({ academicYearId });
       return (resp.data || []) as SectionData[];
     },
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !!academicYearId,
   });
 
   // Fetch subjects
@@ -337,7 +346,7 @@ export default function AcademicStructurePage() {
       });
       return (resp.data || []) as ClassData[];
     },
-    enabled: isAuthenticated && debouncedSearch.length >= 2,
+    enabled: isAuthenticated && !!academicYearId && debouncedSearch.length >= 2,
   });
 
   const gradeFilteredSearchedClasses = gradeLevels.length
@@ -364,15 +373,15 @@ export default function AcademicStructurePage() {
     data: searchedSections = [],
     isLoading: searchSectionsLoading,
   } = useQuery({
-    queryKey: queryKeys.classSections.sectionSearch(debouncedSearch),
+    queryKey: queryKeys.classSections.sectionSearch(debouncedSearch, academicYearId),
     queryFn: async () => {
       if (!debouncedSearch || debouncedSearch.length < 2) {
         return [];
       }
-      const resp = await sectionsAPI.search({ search: debouncedSearch });
+      const resp = await sectionsAPI.search({ search: debouncedSearch, academicYearId });
       return (resp.data || []) as SectionData[];
     },
-    enabled: isAuthenticated && debouncedSearch.length >= 2,
+    enabled: isAuthenticated && !!academicYearId && debouncedSearch.length >= 2,
   });
 
   // Delete handlers
@@ -666,7 +675,7 @@ export default function AcademicStructurePage() {
                             <EntityActions
                               entityLabel="Section"
                               formTable="section"
-                              data={sec}
+                              data={{ ...sec, selectedAcademicYearId: academicYearId }}
                               onDelete={() => handleDeleteSection(sec.id)}
                             />
                           </TableCell>

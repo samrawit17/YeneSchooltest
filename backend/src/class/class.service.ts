@@ -11,6 +11,24 @@ import { Role } from '../auth/types/role.enum';
 export class ClassService {
   constructor(private prisma: PrismaService) {}
 
+  private async assertAcademicYearBelongsToSchool(
+    schoolId: string,
+    academicYearId: string,
+  ) {
+    if (!academicYearId) {
+      throw new BadRequestException('Academic year is required');
+    }
+
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: academicYearId, schoolId },
+      select: { id: true },
+    });
+
+    if (!academicYear) {
+      throw new BadRequestException('Academic year not found for this school');
+    }
+  }
+
   async create(data: {
     schoolId: string;
     academicYearId: string;
@@ -18,7 +36,12 @@ export class ClassService {
     section: string;
     name?: string;
   }) {
-    // Check if class already exists for this school, academic year, and grade
+    await this.assertAcademicYearBelongsToSchool(
+      data.schoolId,
+      data.academicYearId,
+    );
+
+    // Check if class already exists for this school, academic year, name, and section.
     const existingClass = await this.prisma.class.findFirst({
       where: {
         schoolId: data.schoolId,
@@ -143,24 +166,38 @@ export class ClassService {
       academicYearId?: string;
       grade?: number;
       name?: string;
+      section?: string;
       homeroomTeacherId?: string | null;
     },
   ) {
+    const currentClass = await this.findOne(id, schoolId);
+
+    if (data.academicYearId !== undefined) {
+      await this.assertAcademicYearBelongsToSchool(
+        schoolId,
+        data.academicYearId,
+      );
+    }
+
     // Check if updating would create a duplicate
-    if (data.grade || data.academicYearId) {
-      const currentClass = await this.findOne(id, schoolId);
+    if (
+      data.academicYearId !== undefined ||
+      data.name !== undefined ||
+      data.section !== undefined
+    ) {
       const existingClass = await this.prisma.class.findFirst({
         where: {
           id: { not: id },
           schoolId,
-          academicYearId: data.academicYearId || currentClass.academicYearId,
-          grade: data.grade,
+          academicYearId: data.academicYearId ?? currentClass.academicYearId,
+          name: data.name ?? currentClass.name,
+          section: data.section ?? currentClass.section,
         },
       });
 
       if (existingClass) {
         throw new ConflictException(
-          `Class with grade ${data.grade} and academic year already exists`,
+          `Class ${data.name ?? currentClass.name} section ${data.section ?? currentClass.section} already exists in this academic year`,
         );
       }
     }
@@ -186,6 +223,7 @@ export class ClassService {
       updateData.academicYearId = data.academicYearId;
     if (data.grade !== undefined) updateData.grade = data.grade;
     if (data.name !== undefined) updateData.name = data.name;
+    if (data.section !== undefined) updateData.section = data.section;
     if (data.homeroomTeacherId !== undefined)
       updateData.homeroomTeacherId = data.homeroomTeacherId || null;
 

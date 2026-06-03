@@ -18,6 +18,7 @@ interface SectionFormProps {
 const SectionForm = ({ type, data, onSuccess, onCancel }: SectionFormProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const academicYearId = data?.selectedAcademicYearId || data?.class?.academicYearId;
   const [formData, setFormData] = useState({
     classId: data?.classId || "",
     name: data?.name || "",
@@ -47,14 +48,16 @@ const SectionForm = ({ type, data, onSuccess, onCancel }: SectionFormProps) => {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const response = await classesAPI.getAll();
+        const response = await classesAPI.getAll(
+          academicYearId ? { academicYearId } : undefined,
+        );
         setClasses(response.data);
       } catch (error) {
         console.error("Error fetching classes:", error);
       }
     };
     fetchClasses();
-  }, []);
+  }, [academicYearId]);
 
   const queryClient = useQueryClient();
 
@@ -71,7 +74,7 @@ const SectionForm = ({ type, data, onSuccess, onCancel }: SectionFormProps) => {
         type === "create" ? "Section created successfully" : "Section updated successfully"
       );
       queryClient.invalidateQueries({ queryKey: queryKeys.sections.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.classSections.academicSections });
+      queryClient.invalidateQueries({ queryKey: ["academic-sections"] });
       queryClient.invalidateQueries({ queryKey: ["academic-sections-search"] });
       queryClient.invalidateQueries({ queryKey: ["academic-classes"] });
       if (onSuccess) onSuccess();

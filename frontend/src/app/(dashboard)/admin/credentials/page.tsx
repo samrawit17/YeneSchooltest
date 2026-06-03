@@ -381,7 +381,6 @@ export default function CredentialsPage() {
                           <code className="bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded text-sm text-gray-800 dark:text-gray-200">
                             {formatUserDisplayCode(cred.username, displayYear)}
                           </code>
-                          <div className="mt-1 text-xs text-gray-400">Login: {cred.username}</div>
                         </TableCell>
                         <TableCell className="py-3 px-4">
                           <Badge variant="outline" className={roleColors[cred.role] || 'text-gray-700 dark:text-gray-300'}>

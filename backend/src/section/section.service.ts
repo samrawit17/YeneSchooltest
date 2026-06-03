@@ -13,10 +13,20 @@ export class SectionService {
   // Manual section creation is disabled. Sections are now auto-created during bulk student upload.
   // This ensures randomized and balanced distribution across sections (A, B, C...)
 
-  async findAll(schoolId?: string, classId?: string, classIds?: string[]) {
+  async findAll(
+    schoolId?: string,
+    classId?: string,
+    classIds?: string[],
+    academicYearId?: string,
+  ) {
+    const classWhere = {
+      ...(schoolId ? { schoolId } : {}),
+      ...(academicYearId ? { academicYearId } : {}),
+    };
+
     return this.prisma.section.findMany({
       where: {
-        ...(schoolId ? { class: { schoolId } } : {}),
+        ...(Object.keys(classWhere).length > 0 ? { class: classWhere } : {}),
         ...(classIds && classIds.length > 0 ? { classId: { in: classIds } } : (classId && { classId })),
       },
       include: {
@@ -41,12 +51,15 @@ export class SectionService {
     });
   }
 
-  async search(schoolId: string, query: string) {
+  async search(schoolId: string, query: string, academicYearId?: string) {
     const searchTerm = query.toLowerCase();
 
     return this.prisma.section.findMany({
       where: {
-        class: { schoolId },
+        class: {
+          schoolId,
+          ...(academicYearId ? { academicYearId } : {}),
+        },
         OR: [
           { name: { contains: searchTerm } },
           { roomNumber: { contains: searchTerm } },
