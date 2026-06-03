@@ -87,7 +87,8 @@ export const classesAPI = {
 export const sectionsAPI = {
   create: (data: { classId: string; name: string; capacity: number; roomNumber?: string }) =>
     api.post('/sections', data),
-  getAll: (params?: { classId?: string; search?: string }) => api.get('/sections', { params }),
+  getAll: (params?: { classId?: string; search?: string; academicYearId?: string }) =>
+    api.get('/sections', { params }),
   getById: (id: string) => api.get(`/sections/${id}`),
   update: (id: string, data: { name?: string; capacity?: number; roomNumber?: string }) =>
     api.put(`/sections/${id}`, data),
@@ -96,8 +97,8 @@ export const sectionsAPI = {
     api.post('/sections/auto-create', data),
   setHomeroomTeacher: (sectionId: string, teacherId: string | null) =>
     api.put(`/sections/${sectionId}/homeroom-teacher`, { homeroomTeacherId: teacherId }),
-  syncCapacity: () => api.put('/sections/sync-capacity'),
-  search: (params: { search: string }) => api.get('/sections', { params }),
+  syncCapacity: (params?: { academicYearId?: string }) => api.put('/sections/sync-capacity', null, { params }),
+  search: (params: { search: string; academicYearId?: string }) => api.get('/sections', { params }),
 };
 
 export const academicYearsAPI = {

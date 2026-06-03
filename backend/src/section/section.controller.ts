@@ -45,16 +45,17 @@ export class SectionController {
     @Query('classId') classId?: string,
     @Query('classIds') classIds?: string, // Handle comma-separated list
     @Query('search') search?: string,
+    @Query('academicYearId') academicYearId?: string,
     @Request() req?: AuthenticatedRequest,
   ) {
     const schoolId = req?.user?.schoolId;
 
     if (search && schoolId) {
-      return this.sectionService.search(schoolId, search);
+      return this.sectionService.search(schoolId, search, academicYearId);
     }
 
     const ids = classIds ? classIds.split(',') : undefined;
-    return this.sectionService.findAll(schoolId, classId, ids);
+    return this.sectionService.findAll(schoolId, classId, ids, academicYearId);
   }
 
   @Get(':id')
@@ -63,6 +64,99 @@ export class SectionController {
     const schoolId = req.user.schoolId;
     if (!schoolId) return { success: false, message: 'School ID is required' };
     return this.sectionService.findOne(id, schoolId);
+  }
+
+  /**
+   * Sync section capacities to match school setting DEFAULT_SECTION_CAPACITY.
+   * When academicYearId is supplied, only sections in that academic year are updated.
+   */
+  @Put('sync-capacity')
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
+  @Permissions('section:update')
+  async syncCapacity(
+    @Request() req: AuthenticatedRequest,
+    @Query('academicYearId') academicYearId?: string,
+  ) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) {
+      return { status: 'error', message: 'School ID not found' };
+    }
+
+    if (academicYearId) {
+      const academicYear = await this.prismaService.academicYear.findFirst({
+        where: { id: academicYearId, schoolId },
+        select: { id: true },
+      });
+
+      if (!academicYear) {
+        throw new BadRequestException('Academic year not found for this school');
+      }
+    }
+
+    // Get the configured capacity from school settings
+    const capacitySetting = await this.prismaService.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: 'DEFAULT_SECTION_CAPACITY' } },
+    });
+
+    let newCapacity = 30;
+    if (capacitySetting?.value) {
+      const parsed =
+        typeof capacitySetting.value === 'number'
+          ? capacitySetting.value
+          : parseInt(capacitySetting.value, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        newCapacity = parsed;
+      }
+    }
+
+    const sections = await this.prismaService.section.findMany({
+      where: {
+        class: {
+          schoolId,
+          ...(academicYearId ? { academicYearId } : {}),
+        },
+      },
+      include: {
+        class: true,
+        _count: {
+          select: { studentClasses: true },
+        },
+      },
+    });
+
+    const overCapacitySections = sections.filter(
+      (section) => section._count.studentClasses > newCapacity,
+    );
+
+    if (overCapacitySections.length > 0) {
+      const sectionNames = overCapacitySections
+        .slice(0, 5)
+        .map(
+          (section) =>
+            `${section.class.name}-${section.name} (${section._count.studentClasses})`,
+        )
+        .join(', ');
+
+      throw new BadRequestException(
+        `Cannot sync capacity to ${newCapacity}. Some sections already exceed that enrollment: ${sectionNames}`,
+      );
+    }
+
+    await this.prismaService.$transaction(
+      sections.map((section) =>
+        this.prismaService.section.update({
+          where: { id: section.id },
+          data: { capacity: newCapacity },
+        }),
+      ),
+    );
+
+    return {
+      status: 'success',
+      message: `Updated ${sections.length} sections to capacity ${newCapacity}`,
+      updatedCount: sections.length,
+      newCapacity,
+    };
   }
 
   @Put(':id')
@@ -110,79 +204,5 @@ export class SectionController {
     const schoolId = req.user.schoolId;
     if (!schoolId) return { success: false, message: 'School ID is required' };
     return this.sectionService.delete(id, schoolId);
-  }
-
-  /**
-   * Sync all section capacities to match school setting DEFAULT_SECTION_CAPACITY
-   */
-  @Put('sync-capacity')
-  @Roles(Role.ADMIN, Role.IT_MANAGER)
-  @Permissions('section:update')
-  async syncCapacity(@Request() req: AuthenticatedRequest) {
-    const schoolId = req.user.schoolId;
-    if (!schoolId) {
-      return { status: 'error', message: 'School ID not found' };
-    }
-
-    // Get the configured capacity from school settings
-    const capacitySetting = await this.prismaService.schoolSetting.findUnique({
-      where: { schoolId_key: { schoolId, key: 'DEFAULT_SECTION_CAPACITY' } },
-    });
-
-    let newCapacity = 30;
-    if (capacitySetting?.value) {
-      const parsed =
-        typeof capacitySetting.value === 'number'
-          ? capacitySetting.value
-          : parseInt(capacitySetting.value, 10);
-      if (!isNaN(parsed) && parsed > 0) {
-        newCapacity = parsed;
-      }
-    }
-
-    // Update all sections for this school
-    const sections = await this.prismaService.section.findMany({
-      where: { class: { schoolId } },
-      include: {
-        class: true,
-        _count: {
-          select: { studentClasses: true },
-        },
-      },
-    });
-
-    const overCapacitySections = sections.filter(
-      (section) => section._count.studentClasses > newCapacity,
-    );
-
-    if (overCapacitySections.length > 0) {
-      const sectionNames = overCapacitySections
-        .slice(0, 5)
-        .map(
-          (section) =>
-            `${section.class.name}-${section.name} (${section._count.studentClasses})`,
-        )
-        .join(', ');
-
-      throw new BadRequestException(
-        `Cannot sync capacity to ${newCapacity}. Some sections already exceed that enrollment: ${sectionNames}`,
-      );
-    }
-
-    await this.prismaService.$transaction(
-      sections.map((section) =>
-        this.prismaService.section.update({
-          where: { id: section.id },
-          data: { capacity: newCapacity },
-        }),
-      ),
-    );
-
-    return {
-      status: 'success',
-      message: `Updated ${sections.length} sections to capacity ${newCapacity}`,
-      updatedCount: sections.length,
-      newCapacity,
-    };
   }
 }

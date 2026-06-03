@@ -69,14 +69,6 @@ export class ClassController {
     return this.classService.findAll(schoolId, academicYearId);
   }
 
-  @Get(':id')
-  @Permissions('class:read')
-  async findOne(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
-    const schoolId = req.user.schoolId;
-    if (!schoolId) return { success: false, message: 'School ID is required' };
-    return this.classService.findOne(id, schoolId);
-  }
-
   @Get('grades/list')
   @Permissions('class:read')
   async getGrades(@Request() req: AuthenticatedRequest) {
@@ -111,6 +103,14 @@ export class ClassController {
     return this.classService.search(schoolId, query, academicYearId);
   }
 
+  @Get(':id')
+  @Permissions('class:read')
+  async findOne(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.classService.findOne(id, schoolId);
+  }
+
   @Put(':id')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('class:update')
@@ -124,6 +124,7 @@ export class ClassController {
     return this.classService.update(id, schoolId, {
       academicYearId: body.academicYearId,
       grade: body.grade,
+      section: body.section,
       name: body.name,
       homeroomTeacherId: body.homeroomTeacherId,
     });
@@ -183,5 +184,14 @@ export class ClassController {
     const schoolId = req.user.schoolId;
     if (!schoolId) return { success: false, message: 'School ID is required' };
     return this.classService.getClassStats(schoolId, id, sectionId);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
+  @Permissions('class:delete')
+  async delete(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.classService.delete(id, schoolId);
   }
 }

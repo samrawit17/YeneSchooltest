@@ -133,10 +133,11 @@ export const queryKeys = {
     ) => ["class-students", classId, sectionFilter, search, page] as const,
     globalSearch: (search?: string) => ["global-search", search] as const,
     academicClasses: (academicYearId?: string) => ["academic-classes", academicYearId] as const,
-    academicSections: ["academic-sections"] as const,
+    academicSections: (academicYearId?: string) => ["academic-sections", academicYearId] as const,
     classSearch: (search?: string, academicYearId?: string) =>
       ["academic-classes-search", search, academicYearId] as const,
-    sectionSearch: (search?: string) => ["academic-sections-search", search] as const,
+    sectionSearch: (search?: string, academicYearId?: string) =>
+      ["academic-sections-search", search, academicYearId] as const,
     filterSections: (classId?: string) => ["filter-sections", classId] as const,
   },
   teachers: {
