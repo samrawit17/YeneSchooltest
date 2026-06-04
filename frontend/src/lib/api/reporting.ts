@@ -315,6 +315,7 @@ export const promotionAPI = {
     promoteAll: boolean;
     minAverageGrade?: number;
     minAttendance?: number;
+    streams?: Record<string, "NATURAL" | "SOCIAL">;
   }) =>
     api.post<{ promoted: number; retained: number; failed: number; errors: string[] }>(
       "/promotion/bulk",

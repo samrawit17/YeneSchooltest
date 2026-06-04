@@ -10,6 +10,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { formatStudentDisplayCode } from "@/lib/student-code";
 import {
   Activity,
+  ArrowLeft,
   Award,
   BookOpen,
   Calendar,
@@ -697,6 +698,11 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   return (
     <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
       <div className="w-full space-y-6">
+        <Button variant="outline" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="mr-1.5 h-4 w-4" />
+          Back
+        </Button>
+
         <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <CardContent className="p-0">
             <div className="flex flex-col gap-5 border-b border-slate-100 p-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
@@ -742,7 +748,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                     {t.edit}
                   </Button>
                 ) : null}
-                <Button size="sm" onClick={handleSendMessage} style={{ backgroundColor: "#e35336" }}>
+                <Button size="sm" onClick={handleSendMessage}>
                   <MessageSquare className="mr-1.5 h-4 w-4" />
                   {t.message}
                 </Button>

@@ -156,6 +156,7 @@ export class PromotionController {
       promoteAll: boolean;
       minAverageGrade?: number;
       minAttendance?: number;
+      streams?: Record<string, string>;
     },
   ) {
     return this.reportCardService.bulkPromoteStudents({
@@ -170,6 +171,7 @@ export class PromotionController {
       promoteAll: body.promoteAll || false,
       minAverageGrade: body.minAverageGrade,
       minAttendance: body.minAttendance,
+      streams: body.streams || {},
     });
   }
 

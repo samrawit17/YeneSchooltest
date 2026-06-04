@@ -65,6 +65,7 @@ interface BulkPromotionParams {
   promoteAll: boolean;
   minAverageGrade?: number;
   minAttendance?: number;
+  streams?: Record<string, string>;
 }
 
 interface PromotionCriteria {
@@ -618,6 +619,12 @@ export class ReportCardService {
   private normalizePromotionStream(value?: string | null) {
     const stream = String(value || '').trim().toUpperCase();
     return ['NATURAL', 'SOCIAL'].includes(stream) ? stream : null;
+  }
+
+  private getPromotionSectionName(baseSectionName: string, stream?: string | null) {
+    if (!stream) return baseSectionName;
+    const label = stream === 'NATURAL' ? 'Natural' : 'Social';
+    return `${label} ${baseSectionName}`;
   }
 
   private async getExistingPromotionRecord(input: {
@@ -3394,6 +3401,7 @@ export class ReportCardService {
       promoteAll,
       minAverageGrade,
       minAttendance,
+      streams,
     } = params;
 
     await this.assertAcademicYearEnded(schoolId, fromAcademicYear);
@@ -3409,6 +3417,7 @@ export class ReportCardService {
         promoteAll,
         minAverageGrade,
         minAttendance,
+        streams: streams || {},
       });
     }
 
@@ -3522,6 +3531,7 @@ export class ReportCardService {
     promoteAll: boolean;
     minAverageGrade?: number;
     minAttendance?: number;
+    streams?: Record<string, string>;
   }) {
     const {
       schoolId,
@@ -3533,6 +3543,7 @@ export class ReportCardService {
       promoteAll,
       minAverageGrade,
       minAttendance,
+      streams = {},
     } = params;
 
     const isGraduation = !toGrade;
@@ -3638,6 +3649,27 @@ export class ReportCardService {
       a.student.name.localeCompare(b.student.name, undefined, { sensitivity: 'base' }),
     );
 
+    if ([11, 12].includes(toGrade!)) {
+      const missingStreams = orderedEligible
+        .filter((enrollment) => {
+          const assignedStream =
+            toGrade === 11
+              ? this.normalizePromotionStream(streams[enrollment.studentId])
+              : this.normalizePromotionStream(
+                  enrollment.student.studentProfile?.stream ||
+                    streams[enrollment.studentId],
+                );
+          return !assignedStream;
+        })
+        .map((enrollment) => enrollment.student.name);
+
+      if (missingStreams.length > 0) {
+        throw new BadRequestException(
+          `Promotion blocked: stream is required for ${missingStreams.slice(0, 5).join(', ')}${missingStreams.length > 5 ? ' and others' : ''}`,
+        );
+      }
+    }
+
     await this.prisma.$transaction(async (tx) => {
       let targetClass = await tx.class.findFirst({
         where: {
@@ -3663,7 +3695,12 @@ export class ReportCardService {
       const sectionCounters = new Map<string, number>();
       for (const enrollment of orderedEligible) {
         const targetStream = [11, 12].includes(toGrade!)
-          ? this.normalizePromotionStream(enrollment.student.studentProfile?.stream)
+          ? toGrade === 11
+            ? this.normalizePromotionStream(streams[enrollment.studentId])
+            : this.normalizePromotionStream(
+                enrollment.student.studentProfile?.stream ||
+                  streams[enrollment.studentId],
+              )
           : null;
         if ([11, 12].includes(toGrade!) && !targetStream) {
           throw new BadRequestException(`${enrollment.student.name} is missing stream for Grade ${toGrade}`);
@@ -3671,7 +3708,8 @@ export class ReportCardService {
         const groupKey = targetStream || 'GENERAL';
         const groupIndex = sectionCounters.get(groupKey) || 0;
         sectionCounters.set(groupKey, groupIndex + 1);
-        const sectionName = this.getSectionNameByIndex(Math.floor(groupIndex / sectionCapacity));
+        const baseSectionName = this.getSectionNameByIndex(Math.floor(groupIndex / sectionCapacity));
+        const sectionName = this.getPromotionSectionName(baseSectionName, targetStream);
         let section = await tx.section.findFirst({
           where: { classId: targetClass.id, name: sectionName, ...(targetStream ? { stream: targetStream } : {}) },
         });
