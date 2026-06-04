@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Users,
   ArrowRight,
@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
-import { classesAPI } from "@/lib/api";
+import { academicYearsAPI, classesAPI } from "@/lib/api";
 import { promotionAPI, PromotionCandidate } from "@/lib/api/reporting";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,10 +30,49 @@ interface PromotionData {
   candidates: PromotionCandidate[];
 }
 
+interface AcademicYearOption {
+  id: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  isActive?: boolean;
+}
+
+type PromotionStream = "NATURAL" | "SOCIAL";
+
 const parseRollNumber = (rollNumber?: string | null) => {
   if (!rollNumber) return Number.POSITIVE_INFINITY;
   const parsed = Number.parseInt(rollNumber, 10);
   return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+};
+
+const toTime = (date?: string | null) => {
+  if (!date) return 0;
+  const parsed = new Date(date).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const sortAcademicYears = (years: AcademicYearOption[]) =>
+  years.slice().sort((a, b) => {
+    const dateCompare = toTime(a.startDate) - toTime(b.startDate);
+    if (dateCompare !== 0) return dateCompare;
+    return String(a.name || "").localeCompare(String(b.name || ""), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+  });
+
+const clampPercent = (value: number) => {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(100, Math.max(0, value));
+};
+
+const isYearEnded = (endDate?: string | null) => {
+  if (!endDate) return false;
+  const end = new Date(endDate);
+  if (Number.isNaN(end.getTime())) return false;
+  end.setHours(23, 59, 59, 999);
+  return new Date() > end;
 };
 
 export default function PromotionPage() {
@@ -45,6 +84,8 @@ export default function PromotionPage() {
   const [promotionData, setPromotionData] = useState<PromotionData | null>(null);
   const [nextGrades, setNextGrades] = useState<{ grade: number; name: string }[]>([]);
   const [selectedNextGrade, setSelectedNextGrade] = useState<string>("");
+  const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
+  const [selectedTargetYearId, setSelectedTargetYearId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [promoteAll, setPromoteAll] = useState(false);
@@ -52,8 +93,23 @@ export default function PromotionPage() {
   const [minAverageGrade, setMinAverageGrade] = useState<number>(50);
   const [minAttendance, setMinAttendance] = useState<number>(75);
   const [attendanceEnabled, setAttendanceEnabled] = useState<boolean>(true);
+  const [streamAssignments, setStreamAssignments] = useState<Record<string, PromotionStream | "">>({});
 
-  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN";
+  const currentAcademicYearName = currentAcademicYear?.name || "";
+  const currentAcademicYearEnded = isYearEnded(currentAcademicYear?.endDate);
+  const sortedAcademicYears = useMemo(() => sortAcademicYears(academicYears), [academicYears]);
+  const targetYearOptions = useMemo(() => {
+    if (!currentAcademicYear) return sortedAcademicYears;
+    const currentIndex = sortedAcademicYears.findIndex(
+      (year) => year.id === currentAcademicYear.id || year.name === currentAcademicYear.name,
+    );
+    if (currentIndex >= 0) return sortedAcademicYears.slice(currentIndex + 1);
+    const currentEnd = toTime(currentAcademicYear.endDate);
+    return sortedAcademicYears.filter((year) => toTime(year.startDate) > currentEnd);
+  }, [currentAcademicYear, sortedAcademicYears]);
+  const selectedTargetYear = academicYears.find((year) => year.id === selectedTargetYearId) || null;
+  const selectedTargetYearName = selectedTargetYear?.name || "";
+  const requiresStreamAssignment = Number(selectedNextGrade) === 11;
 
   const fetchGrades = useCallback(async () => {
     try {
@@ -68,24 +124,44 @@ export default function PromotionPage() {
       ).sort((a, b) => a - b);
       setGradeOptions(grades);
       if (grades.length > 0) {
-        setSelectedGrade(String(grades[0]));
+        setSelectedGrade((current) =>
+          grades.some((grade) => String(grade) === current) ? current : String(grades[0]),
+        );
       }
     } catch (err) {
       console.error("Failed to fetch grades:", err);
     }
   }, [currentAcademicYear?.id]);
 
+  const fetchAcademicYears = useCallback(async () => {
+    if (!user?.schoolId) return;
+    try {
+      const response = await academicYearsAPI.getAll({ schoolId: user.schoolId });
+      const data = Array.isArray(response.data?.data)
+        ? response.data.data
+        : Array.isArray(response.data)
+          ? response.data
+          : [];
+      setAcademicYears(data);
+    } catch (err) {
+      console.error("Failed to fetch academic years:", err);
+      toast.error("Failed to load academic years");
+      setAcademicYears([]);
+    }
+  }, [user?.schoolId]);
+
   const fetchPromotionData = useCallback(async () => {
     if (!selectedGrade) return;
     setLoading(true);
     try {
       const response = await promotionAPI.getGradeCandidates(Number(selectedGrade), {
-        academicYear: currentAcademicYear?.name,
+        academicYear: currentAcademicYearName,
         minAverageGrade,
         ...(attendanceEnabled ? { minAttendance } : {}),
       });
       setPromotionData(response.data);
       setSelectedStudents(new Set());
+      setPromoteAll(false);
     } catch (err: any) {
       console.error("Failed to fetch candidates:", err);
       toast.error(err.response?.data?.message || "Failed to load promotion candidates");
@@ -93,14 +169,13 @@ export default function PromotionPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentAcademicYear?.name, selectedGrade, minAverageGrade, attendanceEnabled, minAttendance]);
+  }, [currentAcademicYearName, selectedGrade, minAverageGrade, attendanceEnabled, minAttendance]);
 
   const fetchNextGrades = useCallback(async () => {
     if (!selectedGrade) return;
     try {
-      const nextYear = String(parseInt(currentAcademicYear?.name || "2026", 10) + 1);
       const response = await promotionAPI.getNextGrades(Number(selectedGrade), {
-        toAcademicYear: nextYear,
+        toAcademicYear: selectedTargetYearName,
       });
       const grades = response.data.nextGrades || [];
       setNextGrades(grades);
@@ -111,11 +186,25 @@ export default function PromotionPage() {
       setNextGrades([]);
       setSelectedNextGrade("");
     }
-  }, [currentAcademicYear?.name, selectedGrade]);
+  }, [selectedGrade, selectedTargetYearName]);
 
   useEffect(() => {
     fetchGrades();
   }, [fetchGrades]);
+
+  useEffect(() => {
+    fetchAcademicYears();
+  }, [fetchAcademicYears]);
+
+  useEffect(() => {
+    if (targetYearOptions.length === 0) {
+      setSelectedTargetYearId("");
+      return;
+    }
+    if (!targetYearOptions.some((year) => year.id === selectedTargetYearId)) {
+      setSelectedTargetYearId(targetYearOptions[0].id);
+    }
+  }, [selectedTargetYearId, targetYearOptions]);
 
   useEffect(() => {
     if (selectedGrade) {
@@ -123,6 +212,12 @@ export default function PromotionPage() {
       fetchNextGrades();
     }
   }, [fetchNextGrades, fetchPromotionData, selectedGrade]);
+
+  useEffect(() => {
+    if (!requiresStreamAssignment) {
+      setStreamAssignments({});
+    }
+  }, [requiresStreamAssignment]);
 
   const handleSelectAll = () => {
     if (!promotionData) return;
@@ -147,9 +242,38 @@ export default function PromotionPage() {
     setSelectedStudents(newSelected);
   };
 
+  const setStreamForStudents = (studentIds: string[], stream: PromotionStream) => {
+    setStreamAssignments((current) => {
+      const next = { ...current };
+      for (const studentId of studentIds) {
+        next[studentId] = stream;
+      }
+      return next;
+    });
+  };
+
   const handlePromote = async () => {
+    if (!currentAcademicYearEnded) {
+      toast.error(
+        currentAcademicYearName
+          ? `Promotion is locked until academic year ${currentAcademicYearName} ends`
+          : "Promotion is locked until the current academic year ends",
+      );
+      return;
+    }
+
     if (!selectedNextGrade) {
       toast.error("Please select a destination grade");
+      return;
+    }
+
+    if (!selectedTargetYearName) {
+      toast.error("Please select the destination academic year");
+      return;
+    }
+
+    if (selectedTargetYearName === currentAcademicYearName) {
+      toast.error("Destination academic year must be different from the source academic year");
       return;
     }
 
@@ -157,6 +281,30 @@ export default function PromotionPage() {
       toast.error("Please select students to promote");
       return;
     }
+
+    const selectedPromotable = promoteAll
+      ? promotableStudents
+      : promotableStudents.filter((candidate) => selectedStudents.has(candidate.student.id));
+    const missingStreams = requiresStreamAssignment
+      ? selectedPromotable.filter((candidate) => !streamAssignments[candidate.student.id])
+      : [];
+
+    if (missingStreams.length > 0) {
+      toast.error(
+        `Assign Natural or Social stream for ${missingStreams.slice(0, 3).map((candidate) => candidate.student.name).join(", ")}${missingStreams.length > 3 ? " and others" : ""}`,
+      );
+      return;
+    }
+
+    const streams = requiresStreamAssignment
+      ? selectedPromotable.reduce<Record<string, PromotionStream>>((acc, candidate) => {
+          const stream = streamAssignments[candidate.student.id];
+          if (stream === "NATURAL" || stream === "SOCIAL") {
+            acc[candidate.student.id] = stream;
+          }
+          return acc;
+        }, {})
+      : undefined;
 
     const confirmMessage = promoteAll
       ? `Promote ALL eligible Grade ${selectedGrade} students?`
@@ -176,16 +324,16 @@ export default function PromotionPage() {
         onClick: async () => {
           setActionLoading(true);
           try {
-            const nextYear = String(parseInt(currentAcademicYear?.name || "2026") + 1);
             const result = await promotionAPI.bulkPromote({
               fromGrade: Number(selectedGrade),
               toGrade: selectedNextGrade === "graduation" ? null : Number(selectedNextGrade),
-              fromAcademicYear: currentAcademicYear?.name || "",
-              toAcademicYear: nextYear,
+              fromAcademicYear: currentAcademicYearName,
+              toAcademicYear: selectedTargetYearName,
               studentIds: Array.from(selectedStudents),
               promoteAll,
-              minAverageGrade,
-              ...(attendanceEnabled ? { minAttendance } : {}),
+              minAverageGrade: clampPercent(minAverageGrade),
+              ...(attendanceEnabled ? { minAttendance: clampPercent(minAttendance) } : {}),
+              ...(streams ? { streams } : {}),
             });
 
             toast.success(
@@ -223,7 +371,15 @@ export default function PromotionPage() {
   };
 
   const promotableStudents = promotionData?.candidates.filter((c) => c.status === "PROMOTED") || [];
-  const retainedStudents = promotionData?.candidates.filter((c) => c.status === "RETAINED") || [];
+  const selectedPromotableStudents = promoteAll
+    ? promotableStudents
+    : promotableStudents.filter((candidate) => selectedStudents.has(candidate.student.id));
+  const assignedStreamCount = requiresStreamAssignment
+    ? selectedPromotableStudents.filter((candidate) => streamAssignments[candidate.student.id]).length
+    : 0;
+  const missingStreamCount = requiresStreamAssignment
+    ? Math.max(0, selectedPromotableStudents.length - assignedStreamCount)
+    : 0;
   const sortedCandidates = (promotionData?.candidates || []).slice().sort((a, b) => {
     const rollComparison = parseRollNumber(a.student.rollNumber) - parseRollNumber(b.student.rollNumber);
     if (rollComparison !== 0) return rollComparison;
@@ -256,8 +412,22 @@ export default function PromotionPage() {
       </header>
 
       <div className="p-4 sm:p-6 space-y-6">
+        {!currentAcademicYearEnded ? (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-100">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold">Promotion is locked for the active academic year.</p>
+              <p className="mt-1 text-sm">
+                {currentAcademicYearName
+                  ? `${currentAcademicYearName} must end before students can be promoted.`
+                  : "The current academic year must end before students can be promoted."}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Source Grade
@@ -265,7 +435,7 @@ export default function PromotionPage() {
               <select
                 value={selectedGrade}
                 onChange={(e) => setSelectedGrade(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
               >
                 <option value="">Select a grade</option>
                 {gradeOptions.map((grade) => (
@@ -282,7 +452,7 @@ export default function PromotionPage() {
               <select
                 value={selectedNextGrade}
                 onChange={(e) => setSelectedNextGrade(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
               >
                 <option value="">Select destination</option>
                 {nextGrades.map((grade) => (
@@ -297,6 +467,28 @@ export default function PromotionPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Destination Academic Year
+              </label>
+              <select
+                value={selectedTargetYearId}
+                onChange={(e) => setSelectedTargetYearId(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+              >
+                <option value="">Select target year</option>
+                {targetYearOptions.map((year) => (
+                  <option key={year.id} value={year.id}>
+                    {year.name}
+                  </option>
+                ))}
+              </select>
+              {targetYearOptions.length === 0 ? (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-300">
+                  Create the next academic year before promoting students.
+                </p>
+              ) : null}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Promotion Criteria
               </label>
               <div className="flex gap-2">
@@ -306,7 +498,7 @@ export default function PromotionPage() {
                     min="0"
                     max="100"
                     value={minAverageGrade}
-                    onChange={(e) => setMinAverageGrade(Number(e.target.value))}
+                    onChange={(e) => setMinAverageGrade(clampPercent(Number(e.target.value)))}
                     placeholder="Min Grade"
                     className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white"
                   />
@@ -318,7 +510,7 @@ export default function PromotionPage() {
                     min="0"
                     max="100"
                     value={minAttendance}
-                    onChange={(e) => setMinAttendance(Number(e.target.value))}
+                    onChange={(e) => setMinAttendance(clampPercent(Number(e.target.value)))}
                     placeholder="Min Attendance"
                     disabled={!attendanceEnabled}
                     className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white disabled:opacity-50"
@@ -535,6 +727,79 @@ export default function PromotionPage() {
                 </div>
               )}
 
+              {requiresStreamAssignment && promotionData?.candidates.length ? (
+                <div className="border-t border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                  <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                        Grade 11 Stream Assignment
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Assign Natural or Social stream for every student being promoted into Grade 11.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={selectedPromotableStudents.length === 0}
+                        onClick={() => setStreamForStudents(selectedPromotableStudents.map((candidate) => candidate.student.id), "NATURAL")}
+                        className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.25)] bg-[rgba(var(--brand-color-rgb),0.12)] px-3 py-2 text-xs font-semibold text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Set selected Natural
+                      </button>
+                      <button
+                        type="button"
+                        disabled={selectedPromotableStudents.length === 0}
+                        onClick={() => setStreamForStudents(selectedPromotableStudents.map((candidate) => candidate.student.id), "SOCIAL")}
+                        className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.25)] bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-700"
+                      >
+                        Set selected Social
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+                    {selectedPromotableStudents.length === 0
+                      ? "Select eligible students or choose Promote All Eligible to assign streams."
+                      : `${assignedStreamCount} of ${selectedPromotableStudents.length} selected student(s) assigned${missingStreamCount > 0 ? `, ${missingStreamCount} missing` : ""}.`}
+                  </div>
+
+                  {selectedPromotableStudents.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {selectedPromotableStudents.map((candidate) => (
+                        <div
+                          key={`stream-${candidate.student.id}`}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                              {candidate.student.name}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Roll {candidate.student.rollNumber || "-"} - {candidate.averageGrade.toFixed(1)}%
+                            </p>
+                          </div>
+                          <select
+                            value={streamAssignments[candidate.student.id] || ""}
+                            onChange={(event) =>
+                              setStreamAssignments((current) => ({
+                                ...current,
+                                [candidate.student.id]: event.target.value as PromotionStream,
+                              }))
+                            }
+                            className="h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                          >
+                            <option value="">Stream</option>
+                            <option value="NATURAL">Natural</option>
+                            <option value="SOCIAL">Social</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex flex-wrap items-center gap-2">
@@ -572,8 +837,14 @@ export default function PromotionPage() {
                     {nextGrades.length > 0 || selectedNextGrade === "graduation" ? (
                       <button
                         onClick={handlePromote}
-                        disabled={actionLoading || (!promoteAll && selectedStudents.size === 0)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-emerald-500/30 transition-all disabled:opacity-50"
+                        disabled={
+                          actionLoading ||
+                          !currentAcademicYearEnded ||
+                          !selectedTargetYearName ||
+                          (!promoteAll && selectedStudents.size === 0) ||
+                          (requiresStreamAssignment && missingStreamCount > 0)
+                        }
+                        className="flex items-center gap-2 rounded-xl bg-[var(--brand-color,#e35336)] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/25 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {actionLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin" />

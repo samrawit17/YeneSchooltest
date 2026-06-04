@@ -11,8 +11,8 @@ import { useAcademicYear } from "@/context/AcademicYearContext";
 import { formatUserDisplayCode } from "@/lib/student-code";
 import {
   Activity,
+  ArrowLeft,
   Calendar,
-  CheckCircle,
   Edit2,
   GraduationCap,
   Loader2,
@@ -139,6 +139,11 @@ const SingleParentPage = ({ params }: PageProps) => {
   return (
     <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
       <div className="w-full space-y-6">
+        <Button variant="outline" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="mr-1.5 h-4 w-4" />
+          Back
+        </Button>
+
         <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <CardContent className="p-0">
             <div className="flex flex-col gap-5 border-b border-slate-100 p-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
@@ -183,7 +188,7 @@ const SingleParentPage = ({ params }: PageProps) => {
                   <Edit2 className="mr-1.5 h-4 w-4" />
                   Edit
                 </Button>
-                <Button size="sm" onClick={() => setLinkChildOpen(true)} style={{ backgroundColor: "#e35336" }}>
+                <Button size="sm" onClick={() => setLinkChildOpen(true)}>
                   <Plus className="mr-1.5 h-4 w-4" />
                   Add child
                 </Button>
@@ -223,7 +228,7 @@ const SingleParentPage = ({ params }: PageProps) => {
                   Students connected to this parent account.
                 </p>
               </div>
-              <Button size="sm" onClick={() => setLinkChildOpen(true)} style={{ backgroundColor: "#e35336" }}>
+              <Button size="sm" onClick={() => setLinkChildOpen(true)}>
                 <Plus className="mr-1.5 h-4 w-4" />
                 Add child
               </Button>
@@ -241,7 +246,7 @@ const SingleParentPage = ({ params }: PageProps) => {
                     <Link
                       key={`${child.id}-${child.userId || ""}`}
                       href={`/list/students/${child.id}`}
-                      className="block rounded-xl border border-slate-200 p-4 transition-colors hover:border-[var(--brand-color,#e35336)] hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
+                      className="block rounded-xl border border-slate-200 p-4 transition-colors hover:border-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.06)] dark:border-slate-800 dark:hover:bg-[rgba(var(--brand-color-rgb),0.12)]"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
