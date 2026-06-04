@@ -186,10 +186,9 @@ const LessonDetailPage = () => {
                     <FileText className="w-4 h-4 text-[#e35336]" />
                     Lesson Content
                 </h3>
-                <div
-                  className="prose dark:prose-invert max-w-none text-sm"
-                  dangerouslySetInnerHTML={{ __html: lesson.lessonContent || "<p>No content added yet.</p>" }}
-                />
+                <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                  {lesson.lessonContent || "No content added yet."}
+                </p>
               </div>
 
               {(lesson.homework || lesson.instructions) && (

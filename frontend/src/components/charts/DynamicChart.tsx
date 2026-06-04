@@ -15,7 +15,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import Image from "next/image";
+import { MoreHorizontal } from "lucide-react";
 import { useThemeStore } from "@/lib/themeStore";
 
 interface ChartDataset {
@@ -303,12 +303,9 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
     <div className="bg-white dark:bg-[#1E293B] rounded-xl p-4 h-full shadow-sm border border-gray-100 dark:border-[#334155]">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{title}</h3>
-        <Image 
-          src="/moreDark.png" 
-          alt="Options" 
-          width={20} 
-          height={20} 
-          className="opacity-50 hover:opacity-100 cursor-pointer" 
+        <MoreHorizontal
+          aria-label="Options"
+          className="h-5 w-5 cursor-pointer text-gray-400 opacity-70 hover:opacity-100 dark:text-gray-500"
         />
       </div>
       {renderChart()}

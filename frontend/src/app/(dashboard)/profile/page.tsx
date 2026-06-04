@@ -214,6 +214,19 @@ const formatStream = (stream?: string | null) => {
   return stream || "";
 };
 
+const getNotificationSettings = (settings?: Partial<NotificationPreferences> | null) => ({
+  ...DEFAULT_NOTIFICATION_SETTINGS,
+  ...(settings || {}),
+});
+
+const areNotificationSettingsEqual = (
+  current: typeof DEFAULT_NOTIFICATION_SETTINGS,
+  saved: typeof DEFAULT_NOTIFICATION_SETTINGS,
+) =>
+  (Object.keys(DEFAULT_NOTIFICATION_SETTINGS) as NotificationSettingsKey[]).every(
+    (key) => Boolean(current[key]) === Boolean(saved[key]),
+  );
+
 const ProfilePage = () => {
   const router = useRouter();
   const { user, updateUser, logout } = useAuth();
@@ -396,19 +409,29 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (notificationPreferences) {
-      setNotificationSettings({
-        ...DEFAULT_NOTIFICATION_SETTINGS,
-        ...notificationPreferences,
-      });
+      setNotificationSettings(getNotificationSettings(notificationPreferences));
     }
   }, [notificationPreferences]);
+
+  const savedNotificationSettings = useMemo(
+    () => getNotificationSettings(notificationPreferences),
+    [notificationPreferences],
+  );
+  const hasNotificationChanges = !areNotificationSettingsEqual(
+    notificationSettings,
+    savedNotificationSettings,
+  );
 
   const updateNotificationPreferencesMutation = useMutation({
     mutationFn: async (settings: NotificationPreferences) => {
       await notificationsAPI.updatePreferences(settings);
     },
-    onSuccess: () => {
+    onSuccess: (_data, savedSettings) => {
       toast.success(t.notifications.save);
+      queryClient.setQueryData(
+        ["notification-preferences", user?.id],
+        savedSettings,
+      );
       queryClient.invalidateQueries({ queryKey: ["notification-preferences", user?.id] });
     },
     onError: (error: any) => {
@@ -443,15 +466,27 @@ const ProfilePage = () => {
     }));
   };
 
-  // Initialize form with react-hook-form
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
+  const profileFormDefaults = useMemo(
+    () => ({
       name: user?.name || "",
       email: user?.email || "",
       phone: user?.phone || "",
-    },
+    }),
+    [user?.email, user?.name, user?.phone],
+  );
+
+  // Initialize form with react-hook-form
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: profileFormDefaults,
   });
+  const hasProfileChanges = form.formState.isDirty;
+
+  useEffect(() => {
+    if (!isEditing) {
+      form.reset(profileFormDefaults);
+    }
+  }, [form, isEditing, profileFormDefaults]);
 
   // Update profile mutation
   const updateMutation = useMutation({
@@ -463,6 +498,7 @@ const ProfilePage = () => {
       if (user) {
         updateUser({ ...user, ...form.getValues() });
       }
+      form.reset(form.getValues());
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: queryKeys.profile.user });
     },
@@ -485,6 +521,7 @@ const ProfilePage = () => {
       confirmPassword: "",
     },
   });
+  const hasPasswordChanges = passwordForm.formState.isDirty;
 
   // Change password mutation
   const changePasswordMutation = useMutation({
@@ -628,7 +665,12 @@ const ProfilePage = () => {
                 </div>
                 <Button
                   variant={isEditing ? "outline" : "default"}
-                  onClick={() => setIsEditing(!isEditing)}
+                  onClick={() => {
+                    if (isEditing) {
+                      form.reset(profileFormDefaults);
+                    }
+                    setIsEditing(!isEditing);
+                  }}
                   className="gap-1.5 md:gap-2 text-xs md:text-sm w-full sm:w-auto"
                 >
                   {isEditing ? (
@@ -870,12 +912,15 @@ const ProfilePage = () => {
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => setIsEditing(false)}
+                            onClick={() => {
+                              form.reset(profileFormDefaults);
+                              setIsEditing(false);
+                            }}
                           >
                             <X className="w-4 h-4 mr-2" />
                             {t.info.cancel}
                           </Button>
-                          <Button type="submit" disabled={updateMutation.isPending}>
+                          <Button type="submit" disabled={updateMutation.isPending || !hasProfileChanges}>
                             {updateMutation.isPending ? (
                               <>
                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
@@ -1261,7 +1306,7 @@ const ProfilePage = () => {
                     {t.security.passwordHelp}
                   </div>
                   <div className="border-t pt-4">
-                    <Button type="submit" className="gap-2 w-full md:w-auto" disabled={changePasswordMutation.isPending}>
+                    <Button type="submit" className="gap-2 w-full md:w-auto" disabled={changePasswordMutation.isPending || !hasPasswordChanges}>
                       {changePasswordMutation.isPending ? (
                         <>
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1346,7 +1391,7 @@ const ProfilePage = () => {
               <Button
                 className="gap-2 w-full sm:w-auto"
                 onClick={() => updateNotificationPreferencesMutation.mutate(notificationSettings)}
-                disabled={isLoadingNotificationPreferences || updateNotificationPreferencesMutation.isPending}
+                disabled={isLoadingNotificationPreferences || updateNotificationPreferencesMutation.isPending || !hasNotificationChanges}
               >
                 <Bell className="w-4 h-4" />
                 {t.notifications.save}

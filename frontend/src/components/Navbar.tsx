@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { schoolsAPI, platformSettingsAPI, schoolSettingsAPI } from "@/lib/api";
 import { notificationsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
@@ -88,6 +88,11 @@ interface Notification {
   createdAt: string;
 }
 
+interface NavbarNotification extends Notification {
+  groupedIds?: string[];
+  groupCount?: number;
+}
+
 interface NavbarProps {
   sidebarCollapsed?: boolean;
   useBrandNavigation?: boolean;
@@ -101,6 +106,135 @@ interface NavigationMessages {
 const COMMUNICATION_NOTIFICATION_TYPES = ["COMMUNICATION", "MESSAGE_RECEIVED"];
 const GLOBAL_NOTIFICATION_READS_KEY = "global_notification_reads";
 const BROWSER_NOTIFICATION_SHOWN_KEY = "browser_notification_shown";
+
+const parseNotificationMetadata = (metadata: unknown): Record<string, unknown> => {
+  if (!metadata) return {};
+  if (typeof metadata === "object") return metadata as Record<string, unknown>;
+  if (typeof metadata !== "string") return {};
+
+  try {
+    const parsed = JSON.parse(metadata);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const metadataText = (metadata: Record<string, unknown>, key: string) => {
+  const value = metadata[key];
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+};
+
+const getNavbarGroupKey = (notification: Notification) => {
+  const metadata = parseNotificationMetadata(notification.metadata);
+  const type = String(notification.type || "").toUpperCase();
+  const title = String(notification.title || "");
+  const userKey = notification.userId ?? "global";
+
+  if (type === "ASSESSMENT_CREATED") {
+    const assessmentId = metadataText(metadata, "assessmentId");
+    const assessmentTitle = metadataText(metadata, "assessmentTitle");
+    const assessmentType = metadataText(metadata, "assessmentType");
+    const subjectName = metadataText(metadata, "subjectName");
+    if (assessmentId && subjectName) {
+      return `assessment:${userKey}:${assessmentId}:${assessmentType}:${assessmentTitle}:${subjectName}`;
+    }
+  }
+
+  if (type === "ATTENDANCE_SESSION_OPENED" && title === "Attendance Cutoff Reached") {
+    const cutoffTime = metadataText(metadata, "cutoffTime");
+    const day = Number.isNaN(Date.parse(notification.createdAt))
+      ? ""
+      : new Date(notification.createdAt).toISOString().slice(0, 10);
+    if (cutoffTime) {
+      return `attendance-cutoff:${userKey}:${day}:${cutoffTime}`;
+    }
+  }
+
+  return `single:${notification.id}`;
+};
+
+const groupNavbarNotifications = (notifications: Notification[]): NavbarNotification[] => {
+  const groups = new Map<string, Notification[]>();
+
+  for (const notification of notifications) {
+    const key = getNavbarGroupKey(notification);
+    groups.set(key, [...(groups.get(key) || []), notification]);
+  }
+
+  return Array.from(groups.values())
+    .map((items): NavbarNotification => {
+      if (items.length === 1) return items[0];
+
+      const sorted = [...items].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+      const latest = sorted[0];
+      const type = String(latest.type || "").toUpperCase();
+      const metadataItems = sorted.map((item) => parseNotificationMetadata(item.metadata));
+      const groupedIds = sorted.map((item) => item.id);
+
+      if (type === "ASSESSMENT_CREATED") {
+        const latestMetadata = metadataItems[0];
+        const assessmentType = metadataText(latestMetadata, "assessmentType");
+        const assessmentTitle = metadataText(latestMetadata, "assessmentTitle");
+        const subjectName = metadataText(latestMetadata, "subjectName");
+        const classes = Array.from(
+          new Set(metadataItems.map((metadata) => metadataText(metadata, "className")).filter(Boolean)),
+        );
+
+        return {
+          ...latest,
+          id: groupedIds.join(":"),
+          title: "Assessment Started",
+          message: `${assessmentType} "${assessmentTitle}" is now active for ${classes.join(", ")} - ${subjectName}. Please enter scores.`,
+          metadata: undefined,
+          isRead: sorted.every((item) => item.isRead),
+          createdAt: latest.createdAt,
+          groupedIds,
+          groupCount: items.length,
+        };
+      }
+
+      if (type === "ATTENDANCE_SESSION_OPENED" && latest.title === "Attendance Cutoff Reached") {
+        const latestMetadata = metadataItems[0];
+        const cutoffTime = metadataText(latestMetadata, "cutoffTime");
+        const classes = Array.from(
+          new Set(
+            metadataItems
+              .map((metadata) => {
+                const className = metadataText(metadata, "className");
+                const section = metadataText(metadata, "section");
+                return className ? `${className}${section ? ` (Section ${section})` : ""}` : "";
+              })
+              .filter(Boolean),
+          ),
+        );
+
+        return {
+          ...latest,
+          id: groupedIds.join(":"),
+          title: "Attendance Cutoff Reached",
+          message: `The attendance cutoff time (${cutoffTime}) has passed. Please submit attendance for ${classes.join(", ")} immediately.`,
+          metadata: undefined,
+          isRead: sorted.every((item) => item.isRead),
+          createdAt: latest.createdAt,
+          groupedIds,
+          groupCount: items.length,
+        };
+      }
+
+      return {
+        ...latest,
+        id: groupedIds.join(":"),
+        message: latest.message,
+        isRead: sorted.every((item) => item.isRead),
+        groupedIds,
+        groupCount: items.length,
+      };
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+};
 
 const getDashboardPath = (role: string | undefined): string => {
   const roleMap: Record<string, string> = {
@@ -198,7 +332,7 @@ const Navbar = ({
     queryFn: async () => {
       const communicationTypes = COMMUNICATION_NOTIFICATION_TYPES.join(",");
       const [bellNotificationsRes, communicationNotificationsRes] = await Promise.all([
-        notificationsAPI.getAll({ limit: 10 }),
+        notificationsAPI.getAll({ limit: 30 }),
         notificationsAPI.getAll({ limit: 10, types: communicationTypes }),
       ]);
       return {
@@ -227,6 +361,10 @@ const Navbar = ({
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       return createdAt > oneWeekAgo;
     }
+  );
+  const groupedBellNotifications = useMemo(
+    () => groupNavbarNotifications(bellNotifications),
+    [bellNotifications],
   );
 
   useEffect(() => {
@@ -320,7 +458,18 @@ const Navbar = ({
     return notification.isRead;
   };
 
-  const unreadCount = bellNotifications.filter((notification: Notification) => !isNotificationRead(notification)).length;
+  const isGroupedNotificationRead = (notification: NavbarNotification) => {
+    if (!notification.groupedIds?.length) {
+      return isNotificationRead(notification);
+    }
+
+    return notification.groupedIds.every((id) => {
+      const source = bellNotifications.find((item: Notification) => item.id === id);
+      return source ? isNotificationRead(source) : true;
+    });
+  };
+
+  const unreadCount = groupedBellNotifications.filter((notification: NavbarNotification) => !isGroupedNotificationRead(notification)).length;
   const unreadCommunicationsCount = communicationNotifications.filter((notification: Notification) => !isNotificationRead(notification)).length;
 
   // Fetch platform settings for feature flags - MUST BE FIRST to ensure it's available for other queries
@@ -394,6 +543,15 @@ const Navbar = ({
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
+  };
+
+  const markNavbarNotificationAsRead = async (notification: NavbarNotification) => {
+    if (!notification.groupedIds?.length) {
+      await markAsRead(notification.id);
+      return;
+    }
+
+    await Promise.all(notification.groupedIds.map((id) => markAsRead(id)));
   };
 
   const markBellNotificationsAsSeen = async () => {
@@ -787,19 +945,20 @@ const Navbar = ({
                         <div className="p-4 flex items-center justify-center">
                           <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-color,#e35336)]" />
                         </div>
-                      ) : bellNotifications.length === 0 ? (
+                      ) : groupedBellNotifications.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 dark:text-slate-400 text-sm">
                           {navLabel("No notifications")}
                         </div>
                       ) : (
-                        bellNotifications.map((notification: any) => {
+                        groupedBellNotifications.map((notification: NavbarNotification) => {
                           const localized = localizeNotificationText(notification, language);
+                          const isRead = isGroupedNotificationRead(notification);
                           return (
                           <div
                             key={notification.id}
-                            className={`p-2 sm:p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${!isNotificationRead(notification) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
+                            className={`p-2 sm:p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${!isRead ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
                             onClick={() => {
-                              markAsRead(notification.id);
+                              void markNavbarNotificationAsRead(notification);
                               if (notification.actionUrl) {
                                 router.push(notification.actionUrl);
                               }
@@ -811,10 +970,10 @@ const Navbar = ({
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className={`text-xs sm:text-sm ${!isNotificationRead(notification) ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
+                                  <p className={`text-xs sm:text-sm ${!isRead ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
                                     {localized.title}
                                   </p>
-                                  {!isNotificationRead(notification) && (
+                                  {!isRead && (
                                     <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
                                   )}
                                 </div>

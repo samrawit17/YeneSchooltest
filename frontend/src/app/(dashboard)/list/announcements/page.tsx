@@ -303,67 +303,50 @@ const AnnouncementListPage = () => {
             return (
               <div
                 key={announcement.id}
-                className="border rounded-lg bg-card p-4 hover:shadow-sm transition-shadow"
+                className="border rounded-xl bg-card p-4 hover:shadow-sm transition-shadow"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${getPriorityColor(announcement.priority)}`}>
-                        {announcement.priority === "HIGH" ? (
-                          <AlertTriangle className="h-3 w-3" />
-                        ) : (
-                          <Info className="h-3 w-3" />
-                        )}
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${getPriorityColor(announcement.priority)}`}>
                         {announcement.priority === "HIGH" ? t.urgent : announcement.priority === "MEDIUM" ? t.important : t.normal}
                       </span>
                       
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-muted">
-                        <Users className="h-3 w-3" />
-                        {announcement.visibleTo?.length ? 
-                          announcement.visibleTo.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join(", ") : 
-                          t.all
-                        }
-                      </span>
+                      {isAdmin && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border bg-muted">
+                          {announcement.visibleTo?.length ? 
+                            announcement.visibleTo.map(v => v.charAt(0).toUpperCase() + v.slice(1)).join(", ") : 
+                            t.all
+                          }
+                        </span>
+                      )}
                       
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${statusInfo.className}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${statusInfo.className}`}>
                         {statusInfo.label}
                       </span>
 
                       {announcement.isPublic && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800">
-                          <Globe2 className="h-3 w-3" />
-                          Login page
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800">
+                          Public
                         </span>
                       )}
                     </div>
 
-                    <h3 className="font-medium mb-1 line-clamp-1">{announcement.title}</h3>
+                    <h3 className="font-medium mb-1">{announcement.title}</h3>
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                       {announcement.content}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {announcement.createdBy?.name || t.system}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {formatDateByCalendarType(announcement.startDate, user?.calendarType || 'ETHIOPIAN')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatDateTimeByCalendarType(announcement.startDate, user?.calendarType || 'ETHIOPIAN').split(' ').slice(-2).join(' ')}
-                      </span>
+                      <span>{announcement.createdBy?.name || t.system}</span>
+                      <span>{formatDateByCalendarType(announcement.startDate, user?.calendarType || 'ETHIOPIAN')}</span>
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/list/announcements/${announcement.id}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
                     >
                       <Eye className="h-4 w-4" />
                       <span>{t.view}</span>
@@ -371,11 +354,11 @@ const AnnouncementListPage = () => {
                     
                     {isAdmin && (
                       <>
-                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded transition-colors">
+                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 rounded-lg transition-colors">
                           <Edit2 className="h-4 w-4" />
                           <span>{t.edit}</span>
                         </button>
-                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded transition-colors">
+                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30 rounded-lg transition-colors">
                           <Trash2 className="h-4 w-4" />
                           <span>{t.delete}</span>
                         </button>

@@ -39,6 +39,7 @@ import {
 
 interface TeacherClass {
   id: string;
+  sectionId?: string;
   classSubjectId: string;
   name: string;
   grade: number;
@@ -140,6 +141,7 @@ const MyClassesPage = () => {
 
           classesWithSchedule.push({
             id: hc.id,
+            sectionId: hs.id,
             classSubjectId: '',
             name: hc.name,
             grade: hc.grade,
@@ -173,6 +175,7 @@ const MyClassesPage = () => {
         
         classesWithSchedule.push({
           id: hc.id,
+          sectionId: undefined,
           classSubjectId: '',
           name: hc.name,
           grade: hc.grade,
@@ -199,6 +202,7 @@ const MyClassesPage = () => {
 
         classesWithSchedule.push({
           id: ta.class?.id || ta.id,
+          sectionId: ta.section?.id,
           classSubjectId: ta.id,
           name: ta.class?.name || "Unknown",
           grade: ta.class?.grade || 0,
@@ -278,12 +282,12 @@ const MyClassesPage = () => {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => router.push(`/teacher/my-class/${cls.id}`)}>
+                      <DropdownMenuItem onClick={() => router.push(`/teacher/my-class/${cls.id}${cls.sectionId ? `?sectionId=${cls.sectionId}` : ""}`)}>
                         <Eye className="w-4 h-4 mr-2" />
                         View Details
                       </DropdownMenuItem>
                       {cls.type === 'homeroom' && (
-                        <DropdownMenuItem onClick={() => router.push(`/teacher/attendance?slotId=${cls.id}`)}>
+                        <DropdownMenuItem onClick={() => router.push(`/teacher/attendance?classId=${cls.id}${cls.sectionId ? `&sectionId=${cls.sectionId}` : ""}`)}>
                           <Calendar className="w-4 h-4 mr-2" />
                           Take Attendance
                         </DropdownMenuItem>
@@ -331,7 +335,7 @@ const MyClassesPage = () => {
                     variant="outline" 
                     size="sm" 
                     className="flex-1"
-                    onClick={() => router.push(`/teacher/my-class/${cls.id}`)}
+                    onClick={() => router.push(`/teacher/my-class/${cls.id}${cls.sectionId ? `?sectionId=${cls.sectionId}` : ""}`)}
                   >
                     <Eye className="w-4 h-4 mr-1" />
                     View
@@ -340,7 +344,7 @@ const MyClassesPage = () => {
                     <Button 
                       size="sm" 
                       className="flex-1"
-                      onClick={() => router.push(`/teacher/attendance?slotId=${cls.id}`)}
+                      onClick={() => router.push(`/teacher/attendance?classId=${cls.id}${cls.sectionId ? `&sectionId=${cls.sectionId}` : ""}`)}
                     >
                       <Calendar className="w-4 h-4 mr-1" />
                       Attendance

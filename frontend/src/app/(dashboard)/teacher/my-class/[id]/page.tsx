@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { classesAPI } from "@/lib/api";
 import { toast } from "sonner";
@@ -61,6 +62,7 @@ interface ClassData {
   grade: number;
   section: string;
   homeroomTeacherId?: string | null;
+  sectionHomeroomTeacherId?: string | null;
 }
 
 interface StudentsResponse {
@@ -78,7 +80,9 @@ const ClassStudentsPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const classId = params.id as string;
+  const sectionId = searchParams.get("sectionId") || undefined;
 
   const [students, setStudents] = useState<Student[]>([]);
   const [classData, setClassData] = useState<ClassData | null>(null);
@@ -104,12 +108,13 @@ const ClassStudentsPage = () => {
     if (isAuthenticated && !isLoading && classId) {
       fetchStudents();
     }
-  }, [isAuthenticated, isLoading, classId]);
+  }, [isAuthenticated, isLoading, classId, sectionId]);
 
   const fetchStudents = async (search?: string, showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
       const response = await classesAPI.getStudents(classId, {
+        sectionId,
         search: search || searchTerm || undefined,
         limit: "100",
       });
@@ -208,11 +213,11 @@ const ClassStudentsPage = () => {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-4 text-sm text-gray-500">
             </div>
-            {classData?.homeroomTeacherId === user?.id && (
+            {(classData?.sectionHomeroomTeacherId === user?.id || classData?.homeroomTeacherId === user?.id) && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => router.push(`/teacher/attendance?classId=${classId}`)}
+                onClick={() => router.push(`/teacher/attendance?classId=${classId}${sectionId ? `&sectionId=${sectionId}` : ""}`)}
                 className="h-9"
               >
                 Attendance

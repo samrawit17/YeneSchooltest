@@ -111,6 +111,28 @@ export class PracticeExamsService {
     return exam;
   }
 
+  private async assertExamCanBeActivated(schoolId: string, examId: string) {
+    const activeQuestions = await this.prisma.practiceExamQuestion.count({
+      where: { schoolId, examId, isActive: true },
+    });
+    if (activeQuestions === 0) {
+      throw new BadRequestException('Add at least one active question before activating this online exam');
+    }
+  }
+
+  private async assertQuestionBankEditable(schoolId: string, examId: string, userId?: string, role?: string) {
+    const exam = await this.assertCanManageExam(schoolId, examId, userId, role, {
+      _count: { select: { attempts: true } },
+    });
+    if (exam.status === 'ACTIVE') {
+      throw new BadRequestException('Question changes are locked while the online exam is active');
+    }
+    if (((exam as any)._count?.attempts || 0) > 0) {
+      throw new BadRequestException('Question changes are locked after students start this online exam');
+    }
+    return exam;
+  }
+
   private normalizeOption(value: any): PracticeExamOption {
     const option = String(value || '').trim().toUpperCase();
     if (!allowedOptions.has(option)) {
@@ -364,8 +386,8 @@ export class PracticeExamsService {
     const title = String(body.title || '').trim();
     if (!title) throw new BadRequestException('Exam title is required');
     const status = this.normalizeStatus(body.status);
-    if (!this.isAdminRole(role) && status === 'ACTIVE') {
-      throw new ForbiddenException('Only admins can make an online exam active');
+    if (status === 'ACTIVE') {
+      throw new BadRequestException('Create the online exam as draft or ready, add questions, then activate it');
     }
     return this.prisma.practiceExam.create({
       data: {
@@ -397,12 +419,23 @@ export class PracticeExamsService {
   }
 
   async updateExam(schoolId: string, examId: string, body: any, userId?: string, role?: string) {
-    const existing = await this.assertCanManageExam(schoolId, examId, userId, role);
+    const existing = await this.assertCanManageExam(schoolId, examId, userId, role, {
+      _count: { select: { attempts: true } },
+    });
     const grade = body.grade !== undefined ? this.normalizeGrade(body.grade) : existing.grade;
     await this.assertGradeAllowedForSchool(schoolId, grade);
     const status = body.status !== undefined ? this.normalizeStatus(body.status) : undefined;
     if (!this.isAdminRole(role) && status === 'ACTIVE') {
       throw new ForbiddenException('Only admins can make an online exam active');
+    }
+    const lockedFieldUpdate = ['grade', 'stream', 'accessCode', 'durationMinutes', 'passMark', 'shuffleQuestions'].some((field) =>
+      Object.prototype.hasOwnProperty.call(body, field),
+    );
+    if (lockedFieldUpdate && (existing.status === 'ACTIVE' || ((existing as any)._count?.attempts || 0) > 0)) {
+      throw new BadRequestException('Exam setup fields are locked once the online exam is active or students have started');
+    }
+    if (status === 'ACTIVE') {
+      await this.assertExamCanBeActivated(schoolId, examId);
     }
     return this.prisma.practiceExam.update({
       where: { id: examId },
@@ -421,13 +454,18 @@ export class PracticeExamsService {
   }
 
   async deleteExam(schoolId: string, examId: string, userId?: string, role?: string) {
-    await this.assertCanManageExam(schoolId, examId, userId, role);
+    const exam = await this.assertCanManageExam(schoolId, examId, userId, role, {
+      _count: { select: { attempts: true } },
+    });
+    if (((exam as any)._count?.attempts || 0) > 0) {
+      throw new BadRequestException('Online exams with student attempts cannot be deleted. Archive it instead.');
+    }
     await this.prisma.practiceExam.delete({ where: { id: examId } });
     return { message: 'Practice exam deleted' };
   }
 
   async addQuestion(schoolId: string, examId: string, body: any, userId?: string, role?: string) {
-    await this.assertCanManageExam(schoolId, examId, userId, role);
+    await this.assertQuestionBankEditable(schoolId, examId, userId, role);
     return this.prisma.practiceExamQuestion.create({
       data: {
         schoolId,
@@ -438,7 +476,7 @@ export class PracticeExamsService {
   }
 
   async updateQuestion(schoolId: string, examId: string, questionId: string, body: any, userId?: string, role?: string) {
-    await this.assertCanManageExam(schoolId, examId, userId, role);
+    await this.assertQuestionBankEditable(schoolId, examId, userId, role);
     const question = await this.prisma.practiceExamQuestion.findFirst({ where: { id: questionId, examId, schoolId } });
     if (!question) throw new NotFoundException('Question not found');
     return this.prisma.practiceExamQuestion.update({
@@ -448,7 +486,7 @@ export class PracticeExamsService {
   }
 
   async deleteQuestion(schoolId: string, examId: string, questionId: string, userId?: string, role?: string) {
-    await this.assertCanManageExam(schoolId, examId, userId, role);
+    await this.assertQuestionBankEditable(schoolId, examId, userId, role);
     const question = await this.prisma.practiceExamQuestion.findFirst({ where: { id: questionId, examId, schoolId } });
     if (!question) throw new NotFoundException('Question not found');
     await this.prisma.practiceExamQuestion.delete({ where: { id: questionId } });
@@ -478,7 +516,7 @@ export class PracticeExamsService {
   }
 
   async importQuestions(schoolId: string, examId: string, csv: string, userId?: string, role?: string) {
-    await this.assertCanManageExam(schoolId, examId, userId, role);
+    await this.assertQuestionBankEditable(schoolId, examId, userId, role);
     const lines = csv.split(/\r?\n/).filter((line) => line.trim());
     if (lines.length < 2) throw new BadRequestException('CSV must include a header and at least one question');
     const headers = this.parseCsvLine(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, '_'));
@@ -653,7 +691,7 @@ export class PracticeExamsService {
       include: { exam: { include: { questions: { where: { isActive: true } } } } },
     });
     if (!attempt) throw new NotFoundException('Attempt not found');
-    if (attempt.status !== 'IN_PROGRESS') throw new BadRequestException('Attempt is already submitted');
+    if (attempt.status !== 'IN_PROGRESS') return this.getAttemptForStudent(schoolId, studentId, attemptId);
     if (this.isAttemptExpired(attempt)) {
       await this.finalizeAttempt(attempt, [], 'EXPIRED', false);
       throw new BadRequestException('Exam time is up');

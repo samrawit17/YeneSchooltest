@@ -108,6 +108,13 @@ const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
   8: { start: "2:15 PM", end: "3:00 PM" },
 };
 
+type PeriodOption = {
+  value: number;
+  label: string;
+  start?: string;
+  end?: string;
+};
+
 const getLessonDateValue = (lesson: Lesson) => lesson.lessonDate || lesson.date || "";
 
 const getDateKey = (date: Date | string) => {
@@ -157,6 +164,7 @@ const TeacherLessonsPage = () => {
   const { schoolCalendarType } = useAcademicYear();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [periodTimes, setPeriodTimes] = useState<Record<number, { start: string; end: string }>>({});
+  const [configuredPeriodOptions, setConfiguredPeriodOptions] = useState<PeriodOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -170,6 +178,7 @@ const TeacherLessonsPage = () => {
   const [formGrade, setFormGrade] = useState<string>("");
   const [formSection, setFormSection] = useState<string>("");
   const [formAcademicYearId, setFormAcademicYearId] = useState<string>("");
+  const [formAssignmentId, setFormAssignmentId] = useState<string>("");
   const [formSubjectId, setFormSubjectId] = useState<string>("");
   const [formLessonDate, setFormLessonDate] = useState("");
   const [formPeriodNumber, setFormPeriodNumber] = useState<string>("");
@@ -198,7 +207,7 @@ const TeacherLessonsPage = () => {
       fetchFormData();
       fetchPeriodTimes();
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, schoolCalendarType, user?.schoolId]);
 
   useEffect(() => {
     if (createModalOpen && formDataResponse) {
@@ -207,10 +216,24 @@ const TeacherLessonsPage = () => {
       setFormContent("");
       setFormHomework("");
       setFormLessonDate(new Date().toISOString().split("T")[0]);
+      setFormAssignmentId("");
+      setFormSubjectId("");
+      setFormGrade("");
+      setFormSection("");
       if (formDataResponse.activeAcademicYearId) setFormAcademicYearId(formDataResponse.activeAcademicYearId);
       else if (formDataResponse.academicYears?.length) setFormAcademicYearId(formDataResponse.academicYears[0].id);
-      if (formDataResponse.grades?.length && !formGrade) setFormGrade(formDataResponse.grades[0].toString());
-      if (formDataResponse.periods?.length) setFormPeriodNumber(formDataResponse.periods[0].value.toString());
+      if (formDataResponse.teacherSubjects?.length === 1) {
+        const onlyAssignment = formDataResponse.teacherSubjects[0];
+        setFormAssignmentId(onlyAssignment.assignmentId || `${onlyAssignment.id}:${onlyAssignment.grade}:${onlyAssignment.section}`);
+        setFormSubjectId(onlyAssignment.id);
+        if (onlyAssignment.academicYearId) setFormAcademicYearId(onlyAssignment.academicYearId);
+        if (onlyAssignment.grade) setFormGrade(onlyAssignment.grade.toString());
+        if (onlyAssignment.section) setFormSection(onlyAssignment.section);
+      } else if (formDataResponse.grades?.length) {
+        setFormGrade(formDataResponse.grades[0].toString());
+      }
+      const firstPeriod = configuredPeriodOptions[0] || formDataResponse.periods?.[0];
+      if (firstPeriod) setFormPeriodNumber(firstPeriod.value.toString());
     }
   }, [createModalOpen]);
 
@@ -224,9 +247,12 @@ const TeacherLessonsPage = () => {
       else if (data.academicYears?.length) setFormAcademicYearId(data.academicYears[0].id);
       if (data.grades?.length) setFormGrade(data.grades[0].toString());
       if (data.teacherSubjects?.length === 1) {
-        setFormSubjectId(data.teacherSubjects[0].id);
-        if (data.teacherSubjects[0].grade) setFormGrade(data.teacherSubjects[0].grade.toString());
-        if (data.teacherSubjects[0].section) setFormSection(data.teacherSubjects[0].section);
+        const onlyAssignment = data.teacherSubjects[0];
+        setFormAssignmentId(onlyAssignment.assignmentId || `${onlyAssignment.id}:${onlyAssignment.grade}:${onlyAssignment.section}`);
+        setFormSubjectId(onlyAssignment.id);
+        if (onlyAssignment.academicYearId) setFormAcademicYearId(onlyAssignment.academicYearId);
+        if (onlyAssignment.grade) setFormGrade(onlyAssignment.grade.toString());
+        if (onlyAssignment.section) setFormSection(onlyAssignment.section);
       }
       if (data.periods?.length) setFormPeriodNumber(data.periods[0].value.toString());
       setFormLessonDate(new Date().toISOString().split("T")[0]);
@@ -255,7 +281,10 @@ const TeacherLessonsPage = () => {
     if (!user?.schoolId) return;
     try {
       const response = await periodTimeAPI.list(user.schoolId);
-      const mapped = (response.data || []).reduce(
+      const periods = ((response.data || []) as PeriodTime[])
+        .filter((period) => Number.isInteger(Number(period.periodNumber)) && Number(period.periodNumber) > 0)
+        .sort((left, right) => Number(left.periodNumber) - Number(right.periodNumber));
+      const mapped = periods.reduce(
         (acc: Record<number, { start: string; end: string }>, period: PeriodTime) => {
           acc[period.periodNumber] = {
             start: formatConfiguredTime(period.startTime, schoolCalendarType),
@@ -265,29 +294,85 @@ const TeacherLessonsPage = () => {
         },
         {},
       );
+      const options = periods.map((period) => ({
+        value: Number(period.periodNumber),
+        label: `Period ${period.periodNumber}`,
+        start: mapped[period.periodNumber]?.start,
+        end: mapped[period.periodNumber]?.end,
+      }));
       setPeriodTimes(mapped);
+      setConfiguredPeriodOptions(options);
+      if (options.length > 0) {
+        setFormPeriodNumber((current) =>
+          options.some((option) => option.value.toString() === current)
+            ? current
+            : options[0].value.toString(),
+        );
+      }
     } catch (error) {
       setPeriodTimes({});
+      setConfiguredPeriodOptions([]);
     }
   };
 
+  const periodOptions: PeriodOption[] =
+    configuredPeriodOptions.length > 0
+      ? configuredPeriodOptions
+      : (formDataResponse?.periods || [])
+          .map((period: any) => {
+            const value = Number(period.value);
+            const start = period.startTime
+              ? formatConfiguredTime(period.startTime, schoolCalendarType)
+              : period.start;
+            const end = period.endTime
+              ? formatConfiguredTime(period.endTime, schoolCalendarType)
+              : period.end;
+            return {
+              value,
+              label: period.label || `Period ${value}`,
+              start,
+              end,
+            };
+          })
+          .filter((period: PeriodOption) => Number.isInteger(period.value) && period.value > 0);
+
+  const formatPeriodOptionLabel = (period: PeriodOption) => {
+    if (period.start && period.end) {
+      return `${period.label} (${period.start} - ${period.end})`;
+    }
+    return period.label;
+  };
+
   const handleCreateLesson = async () => {
-    if (!formTitle || !formSubjectId || !formGrade || !formSection || !formAcademicYearId) {
+    if (!formTitle.trim() || !formSubjectId || !formGrade || !formSection || !formAcademicYearId || !formLessonDate || !formPeriodNumber) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+    const parsedDate = new Date(formLessonDate);
+    if (Number.isNaN(parsedDate.getTime())) {
+      toast.error("Please select a valid lesson date");
+      return;
+    }
+    const selectedPeriodNumber = Number(formPeriodNumber);
+    if (
+      !Number.isInteger(selectedPeriodNumber) ||
+      !periodOptions.some((period) => period.value === selectedPeriodNumber)
+    ) {
+      toast.error("Please select a valid configured period");
       return;
     }
     try {
       setSubmitting(true);
       await lessonsAPI.create({
-        title: formTitle,
+        title: formTitle.trim(),
         objective: formObjective || undefined,
         lessonContent: formContent || undefined,
         grade: parseInt(formGrade),
         section: formSection,
         academicYearId: formAcademicYearId,
         subjectId: formSubjectId,
-        lessonDate: new Date(formLessonDate).toISOString(),
-        periodNumber: parseInt(formPeriodNumber) || 1,
+        lessonDate: parsedDate.toISOString(),
+        periodNumber: selectedPeriodNumber,
         status: "DRAFT",
         homework: formHomework ? { title: formTitle, description: formHomework } : undefined,
       });
@@ -299,6 +384,7 @@ const TeacherLessonsPage = () => {
       setFormHomework("");
       setFormGrade("");
       setFormSection("");
+      setFormAssignmentId("");
       setFormSubjectId("");
       await fetchLessons();
     } catch (error: any) {
@@ -567,20 +653,24 @@ const TeacherLessonsPage = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Subject *</Label>
-                <Select value={formSubjectId} onValueChange={(val) => {
-                  setFormSubjectId(val);
-                  const sub = formDataResponse?.teacherSubjects?.find((s: any) => s.id === val);
+                <Label>Assignment *</Label>
+                <Select value={formAssignmentId} onValueChange={(val) => {
+                  setFormAssignmentId(val);
+                  const sub = formDataResponse?.teacherSubjects?.find((s: any) =>
+                    (s.assignmentId || `${s.id}:${s.grade}:${s.section}`) === val
+                  );
+                  if (sub?.id) setFormSubjectId(sub.id);
+                  if (sub?.academicYearId) setFormAcademicYearId(sub.academicYearId);
                   if (sub?.grade) setFormGrade(sub.grade.toString());
                   if (sub?.section) setFormSection(sub.section);
                 }}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
+                    <SelectValue placeholder="Select assignment" />
                   </SelectTrigger>
                   <SelectContent>
                     {(formDataResponse?.teacherSubjects || []).map((subject: any) => (
-                      <SelectItem key={subject.id} value={subject.id}>
-                        {subject.name} {subject.code && `(${subject.code})`}
+                      <SelectItem key={subject.assignmentId || `${subject.id}:${subject.grade}:${subject.section}`} value={subject.assignmentId || `${subject.id}:${subject.grade}:${subject.section}`}>
+                        Grade {subject.grade} - Section {subject.section} - {subject.name} {subject.code && `(${subject.code})`}{subject.academicYearName && ` - ${subject.academicYearName}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -588,7 +678,7 @@ const TeacherLessonsPage = () => {
               </div>
               <div className="space-y-2">
                 <Label>Grade *</Label>
-                <Select value={formGrade} onValueChange={setFormGrade}>
+                <Select value={formGrade} disabled>
                   <SelectTrigger>
                     <SelectValue placeholder="Select grade" />
                   </SelectTrigger>
@@ -601,7 +691,7 @@ const TeacherLessonsPage = () => {
               </div>
               <div className="space-y-2">
                 <Label>Section *</Label>
-                <Select value={formSection} onValueChange={setFormSection}>
+                <Select value={formSection} disabled>
                   <SelectTrigger>
                     <SelectValue placeholder="Select section" />
                   </SelectTrigger>
@@ -622,13 +712,13 @@ const TeacherLessonsPage = () => {
               </div>
               <div className="space-y-2">
                 <Label>Period Number</Label>
-                <Select value={formPeriodNumber} onValueChange={setFormPeriodNumber}>
+                <Select value={formPeriodNumber} onValueChange={setFormPeriodNumber} disabled={periodOptions.length === 0}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select period" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(formDataResponse?.periods || []).map((p: any) => (
-                      <SelectItem key={p.value} value={p.value.toString()}>{p.label}</SelectItem>
+                    {periodOptions.map((p) => (
+                      <SelectItem key={p.value} value={p.value.toString()}>{formatPeriodOptionLabel(p)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -677,7 +767,7 @@ const TeacherLessonsPage = () => {
               <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateLesson} disabled={submitting}>
+              <Button onClick={handleCreateLesson} disabled={submitting || !formTitle.trim() || !formAssignmentId || !formLessonDate || !formPeriodNumber || periodOptions.length === 0}>
                 <Save className="w-4 h-4 mr-2" />
                 {submitting ? "Saving..." : "Save Lesson"}
               </Button>

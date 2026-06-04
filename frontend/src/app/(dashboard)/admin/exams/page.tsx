@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -430,37 +431,35 @@ function AssessmentCard({
   onToggle: () => void;
 }) {
   const { t } = useTranslations<any>("exams");
-  const type = getTypeMeta(assessment.type);
   const status = STATUS_META[assessment.status];
   const totalScored = assessment.subjects.reduce((sum, s) => sum + s._count.scores, 0);
   const totalExpected = assessment.subjects.length;
 
   return (
     <Card className="overflow-hidden transition-shadow hover:shadow-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
-      <div
-        className="flex items-center justify-between px-6 py-5 cursor-pointer select-none bg-white dark:bg-slate-900"
-        onClick={onToggle}
-      >
-        <div className="flex items-center gap-4">
-          <div className={`p-2 rounded-lg ${type.bg} ${type.color}`}>{type.icon}</div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-base text-gray-900 dark:text-white">
-                {assessment.title}
-              </span>
+      <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-slate-900">
+        <Link
+          href={`/admin/assessments/${assessment.id}`}
+          className="min-w-0 flex flex-1 items-center rounded-md outline-none transition-colors hover:text-[var(--brand-color)] focus-visible:ring-2 focus-visible:ring-[var(--brand-color,#e35336)]"
+        >
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="truncate font-semibold text-base text-gray-900 dark:text-white">
+                  {assessment.title}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                <span className="text-sm text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
+                  <CalendarDays className="w-4 h-4" />
+                  {new Date(assessment.startDate).toLocaleDateString()} –{" "}
+                  {new Date(assessment.endDate).toLocaleDateString()}
+                </span>
+                {assessment.term && (
+                  <span className="text-sm text-gray-400 dark:text-gray-500">{assessment.term.name}</span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-4 mt-1">
-              <span className="text-sm text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
-                <CalendarDays className="w-4 h-4" />
-                {new Date(assessment.startDate).toLocaleDateString()} –{" "}
-                {new Date(assessment.endDate).toLocaleDateString()}
-              </span>
-              {assessment.term && (
-                <span className="text-sm text-gray-400 dark:text-gray-500">{assessment.term.name}</span>
-              )}
-            </div>
-          </div>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
@@ -484,11 +483,18 @@ function AssessmentCard({
               <Lock className="w-3.5 h-3.5" />
             </button>
           )}
-          {expanded ? (
-            <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-          )}
+          <button
+            type="button"
+            onClick={onToggle}
+            className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-slate-800 dark:hover:text-gray-200"
+            aria-label={expanded ? "Collapse assessment subjects" : "Expand assessment subjects"}
+          >
+            {expanded ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
         </div>
       </div>
 

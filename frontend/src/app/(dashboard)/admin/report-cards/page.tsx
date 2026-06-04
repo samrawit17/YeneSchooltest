@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileText,
@@ -23,10 +23,20 @@ import {
   ReportCardStatus,
   reportCardsAPI,
 } from "@/lib/api/reporting";
-import { classesAPI } from "@/lib/api";
+import { academicYearsAPI, classesAPI } from "@/lib/api";
 import { termsAPI } from "@/lib/api";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ClassStatsResponse = {
   totalStudents?: number;
@@ -37,6 +47,14 @@ const normalizeSectionLabel = (value: string | null | undefined) =>
     .trim()
     .toLowerCase()
     .replace(/^section\s+/, "");
+
+const toDownloadFileName = (value: string | null | undefined, fallback: string) => {
+  const cleaned = String(value || "")
+    .replace(/[<>:"/\\|?*\x00-\x1F]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || fallback;
+};
 
 function GradeBadge({ grade }: { grade: string | null }) {
   const configs: Record<string, { bg: string; text: string }> = {
@@ -79,8 +97,10 @@ export default function ReportCardsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("");
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedTerm, setSelectedTerm] = useState<string>("");
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [filterStatus, setFilterStatus] = useState<ReportCardStatus | "all">("all");
@@ -88,15 +108,29 @@ export default function ReportCardsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [bulkGenerateLoading, setBulkGenerateLoading] = useState(false);
   const [selectedClassStudentCount, setSelectedClassStudentCount] = useState<number | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ type: "unpublish" } | { type: "delete"; id: string } | null>(null);
+  const initialQueryApplied = useRef(false);
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN";
 
-  const resolvedAcademicYearId = currentAcademicYear?.id || "";
-  const resolvedAcademicYearName = currentAcademicYear?.name || "";
+  const selectedAcademicYearRecord = useMemo(
+    () => academicYears.find((year) => year.id === selectedAcademicYear) || null,
+    [academicYears, selectedAcademicYear],
+  );
+  const resolvedAcademicYearId = selectedAcademicYearRecord?.id || selectedAcademicYear || currentAcademicYear?.id || "";
+  const resolvedAcademicYearName = selectedAcademicYearRecord?.name || currentAcademicYear?.name || "";
 
   const selectedTermRecord = useMemo(
     () => terms.find((term) => term.id === selectedTerm) || null,
     [terms, selectedTerm],
+  );
+  const selectedVisibleCardIds = useMemo(() => reportCards.map((card) => card.id), [reportCards]);
+  const selectedPublishedCardIds = useMemo(
+    () =>
+      reportCards
+        .filter((card) => selectedCards.has(card.id) && card.status === "PUBLISHED")
+        .map((card) => card.id),
+    [reportCards, selectedCards],
   );
 
   const resolveSectionRecord = (classRecord: any) => {
@@ -112,16 +146,43 @@ export default function ReportCardsPage() {
   };
 
   useEffect(() => {
+    academicYearsAPI
+      .getAll()
+      .then((response) => {
+        const data = Array.isArray(response.data) ? response.data : response.data?.data || [];
+        setAcademicYears(data);
+        const query = new URLSearchParams(window.location.search);
+        const queryAcademicYearId = query.get("academicYearId");
+        const active = data.find((year: any) => year.isActive) || data[0];
+        setSelectedAcademicYear((prev) => prev || queryAcademicYearId || currentAcademicYear?.id || active?.id || "");
+      })
+      .catch(() => {
+        if (currentAcademicYear?.id) setSelectedAcademicYear(currentAcademicYear.id);
+      });
+  }, [currentAcademicYear?.id]);
+
+  useEffect(() => {
+    if (!initialQueryApplied.current && typeof window !== "undefined") {
+      const query = new URLSearchParams(window.location.search);
+      const queryClassId = query.get("classId");
+      const queryTermId = query.get("termId");
+      if (queryClassId) setSelectedClass(queryClassId);
+      if (queryTermId) setSelectedTerm(queryTermId);
+      initialQueryApplied.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
     if (!resolvedAcademicYearId) return;
     fetchClasses(resolvedAcademicYearId);
     fetchTerms(resolvedAcademicYearId);
   }, [resolvedAcademicYearId]);
 
   useEffect(() => {
-    if (currentAcademicYear) {
+    if (resolvedAcademicYearName) {
       fetchReportCards();
     }
-  }, [selectedClass, selectedTerm, filterStatus, currentAcademicYear]);
+  }, [selectedClass, selectedTerm, filterStatus, resolvedAcademicYearName]);
 
   useEffect(() => {
     const fetchSelectedClassStats = async () => {
@@ -158,8 +219,8 @@ export default function ReportCardsPage() {
       }
 
       const hasSelectedClass = data.some((item: { id: string }) => item.id === selectedClass);
-      if (!hasSelectedClass) {
-        setSelectedClass(data[0].id);
+      if (selectedClass && !hasSelectedClass) {
+        setSelectedClass("");
       }
     } catch (err) {
       console.error("Failed to fetch classes:", err);
@@ -186,9 +247,6 @@ export default function ReportCardsPage() {
         data[0];
 
       setSelectedTerm((prev) => {
-        if (currentYearTerm?.id) {
-          return currentYearTerm.id;
-        }
         if (prev && data.some((term: { id: string }) => term.id === prev)) {
           return prev;
         }
@@ -210,7 +268,13 @@ export default function ReportCardsPage() {
       if (resolvedAcademicYearName) params.academicYear = resolvedAcademicYearName;
 
       const response = await reportCardsAPI.getAll(params);
-      setReportCards(response.data || []);
+      const data = response.data || [];
+      setReportCards(data);
+      setSelectedCards((prev) => {
+        if (prev.size === 0) return prev;
+        const visibleIds = new Set(data.map((card) => card.id));
+        return new Set(Array.from(prev).filter((id) => visibleIds.has(id)));
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to load report cards");
     } finally {
@@ -219,10 +283,13 @@ export default function ReportCardsPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedCards.size === reportCards.length) {
+    if (
+      selectedVisibleCardIds.length > 0 &&
+      selectedVisibleCardIds.every((id) => selectedCards.has(id))
+    ) {
       setSelectedCards(new Set());
     } else {
-      setSelectedCards(new Set(reportCards.map((rc) => rc.id)));
+      setSelectedCards(new Set(selectedVisibleCardIds));
     }
   };
 
@@ -307,15 +374,17 @@ export default function ReportCardsPage() {
   };
 
   const handleUnpublish = async () => {
-    if (selectedCards.size === 0) {
-      toast.error("Please select report cards to unpublish");
+    if (selectedPublishedCardIds.length === 0) {
+      toast.error("Please select published report cards to unpublish");
       return;
     }
-    if (!confirm(`Revert ${selectedCards.size} report card(s) to draft?`)) return;
+    setPendingAction({ type: "unpublish" });
+  };
 
+  const executeUnpublish = async () => {
     setActionLoading(true);
     try {
-      const result = await reportCardsAPI.unpublish(Array.from(selectedCards));
+      const result = await reportCardsAPI.unpublish(selectedPublishedCardIds);
       toast.success(`Unpublished ${result.data.unpublished} report card(s)`);
       setSelectedCards(new Set());
       fetchReportCards();
@@ -323,29 +392,41 @@ export default function ReportCardsPage() {
       toast.error(err.response?.data?.message || "Failed to unpublish");
     } finally {
       setActionLoading(false);
+      setPendingAction(null);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this report card? This cannot be undone.")) return;
+    setPendingAction({ type: "delete", id });
+  };
 
+  const executeDelete = async (id: string) => {
+    setActionLoading(true);
     try {
       await reportCardsAPI.delete(id);
       toast.success("Report card deleted");
+      setSelectedCards((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       fetchReportCards();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to delete");
+    } finally {
+      setActionLoading(false);
+      setPendingAction(null);
     }
   };
 
-  const handleDownloadCertificate = async (id: string) => {
+  const handleDownloadCertificate = async (card: ReportCard) => {
     try {
-      const resp = await reportCardsAPI.downloadCertificatePdf(id);
+      const resp = await reportCardsAPI.downloadCertificatePdf(card.id);
       const blob = new Blob([resp.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `certificate-${id}.pdf`;
+      a.download = `${toDownloadFileName(card.student?.name, `report-card-${card.id}`)}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
@@ -377,13 +458,14 @@ export default function ReportCardsPage() {
 
   const filteredCards = reportCards;
 
+  const cardsWithPercentage = reportCards.filter((rc) => rc.percentage !== null && rc.percentage !== undefined);
   const stats = {
     total: reportCards.length,
     draft: reportCards.filter((rc) => rc.status === "DRAFT").length,
     published: reportCards.filter((rc) => rc.status === "PUBLISHED").length,
     avgPercentage:
-      reportCards.length > 0
-        ? reportCards.reduce((sum, rc) => sum + (rc.percentage || 0), 0) / reportCards.length
+      cardsWithPercentage.length > 0
+        ? cardsWithPercentage.reduce((sum, rc) => sum + (rc.percentage || 0), 0) / cardsWithPercentage.length
         : 0,
   };
 
@@ -407,6 +489,26 @@ export default function ReportCardsPage() {
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex flex-1 gap-3">
+                <select
+                  value={selectedAcademicYear}
+                  onChange={(e) => {
+                    setSelectedAcademicYear(e.target.value);
+                    setSelectedClass("");
+                    setSelectedTerm("");
+                    setSelectedCards(new Set());
+                  }}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                >
+                  {academicYears.length === 0 ? (
+                    <option value="">Academic Year</option>
+                  ) : (
+                    academicYears.map((year) => (
+                      <option key={year.id} value={year.id}>
+                        {year.name} {year.isActive ? "(Active)" : ""}
+                      </option>
+                    ))
+                  )}
+                </select>
                 <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
@@ -451,14 +553,14 @@ export default function ReportCardsPage() {
                     Download Report Cards ({selectedCards.size > 0 ? selectedCards.size : filteredCards.length})
                   </button>
                 )}
-                {isAdmin && selectedCards.size > 0 && (
+                {isAdmin && selectedPublishedCardIds.length > 0 && (
                   <button
                     onClick={handleUnpublish}
                     disabled={actionLoading}
                     className="flex items-center gap-2 px-3 py-2 bg-amber-500 text-white rounded-lg text-sm hover:bg-amber-600 disabled:opacity-50"
                   >
                     <XCircle className="w-4 h-4" />
-                    Unpublish ({selectedCards.size})
+                    Unpublish ({selectedPublishedCardIds.length})
                   </button>
                 )}
                 {isAdmin && (
@@ -495,7 +597,10 @@ export default function ReportCardsPage() {
                   <TableHead className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedCards.size === reportCards.length && reportCards.length > 0}
+                      checked={
+                        selectedVisibleCardIds.length > 0 &&
+                        selectedVisibleCardIds.every((id) => selectedCards.has(id))
+                      }
                       onChange={handleSelectAll}
                       className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-[var(--brand-color,#e35336)] focus:ring-[var(--brand-color,#e35336)]"
                     />
@@ -576,7 +681,7 @@ export default function ReportCardsPage() {
                         <GradeBadge grade={card.overallGrade} />
                       </TableCell>
                       <TableCell className="px-4 py-3 text-center text-sm font-medium text-slate-900 dark:text-white">
-                        {card.rank || "-"}
+                        {card.rank ?? card.rankInClass ?? "-"}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-center text-sm text-slate-600 dark:text-slate-400">
                         {card.attendancePercentage?.toFixed(1) || "0"}%
@@ -587,7 +692,7 @@ export default function ReportCardsPage() {
                       <TableCell className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => handleDownloadCertificate(card.id)}
+                            onClick={() => handleDownloadCertificate(card)}
                             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
                             title="Download Certificate"
                           >
@@ -619,6 +724,37 @@ export default function ReportCardsPage() {
           </div>
         </div>
       </div>
+      <AlertDialog open={!!pendingAction} onOpenChange={(open) => { if (!open && !actionLoading) setPendingAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingAction?.type === "delete" ? "Delete report card?" : "Revert selected report cards?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction?.type === "delete"
+                ? "This deletes the draft report card. This action cannot be undone."
+                : `This will move ${selectedPublishedCardIds.length} published report card${selectedPublishedCardIds.length === 1 ? "" : "s"} back to draft and remove parent/student visibility until they are published again.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={actionLoading}
+              onClick={() => {
+                if (pendingAction?.type === "delete") {
+                  void executeDelete(pendingAction.id);
+                } else {
+                  void executeUnpublish();
+                }
+              }}
+              className={pendingAction?.type === "delete" ? "bg-red-600 text-white hover:bg-red-700" : "bg-amber-600 text-white hover:bg-amber-700"}
+            >
+              {actionLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {pendingAction?.type === "delete" ? "Delete" : "Revert to Draft"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

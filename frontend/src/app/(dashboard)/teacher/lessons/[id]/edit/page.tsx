@@ -5,6 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { lessonsAPI, Lesson, UpdateLessonBundleDto } from "@/lib/api/content";
+import { periodTimeAPI, type PeriodTime } from "@/lib/api/siren-period-time";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { formatTimeByCalendarType } from "@/lib/calendar-utils";
 import { toast } from "sonner";
 import { ArrowLeft, Save, Send } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,8 +32,14 @@ type FormState = {
   status: "DRAFT" | "PUBLISHED" | "PENDING_REVIEW" | "COVERED" | "MISSED" | "RESCHEDULED";
 };
 
+type PeriodOption = {
+  value: number;
+  label: string;
+};
+
 export default function EditLessonPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const { schoolCalendarType } = useAcademicYear();
   const { setItems } = useBreadcrumb();
   const router = useRouter();
   const params = useParams();
@@ -39,6 +48,7 @@ export default function EditLessonPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [periodOptions, setPeriodOptions] = useState<PeriodOption[]>([]);
   const [form, setForm] = useState<FormState>({
     title: "",
     objective: "",
@@ -69,8 +79,36 @@ export default function EditLessonPage() {
 
       try {
         setLoading(true);
-        const response = await lessonsAPI.getById(lessonId);
+        const [lessonResponse, periodsResponse] = await Promise.all([
+          lessonsAPI.getById(lessonId),
+          user?.schoolId ? periodTimeAPI.list(user.schoolId) : Promise.resolve({ data: [] }),
+        ]);
+        const configuredPeriods = ((periodsResponse.data || []) as PeriodTime[])
+          .filter((period) => Number.isInteger(Number(period.periodNumber)) && Number(period.periodNumber) > 0)
+          .sort((left, right) => Number(left.periodNumber) - Number(right.periodNumber))
+          .map((period) => {
+            const start = formatTimeByCalendarType(period.startTime, schoolCalendarType);
+            const end = formatTimeByCalendarType(period.endTime, schoolCalendarType);
+            return {
+              value: Number(period.periodNumber),
+              label: `Period ${period.periodNumber} (${start} - ${end})`,
+            };
+          });
+        setPeriodOptions(
+          configuredPeriods.length
+            ? configuredPeriods
+            : Array.from({ length: 8 }, (_, index) => ({
+                value: index + 1,
+                label: `Period ${index + 1}`,
+              })),
+        );
+        const response = lessonResponse;
         const data = response.data;
+        if (data.status === "PUBLISHED" || data.status === "PENDING_REVIEW") {
+          toast.error("This lesson can no longer be edited");
+          router.push(`/teacher/lessons/${lessonId}`);
+          return;
+        }
         setLesson(data);
         setForm({
           title: data.title || "",
@@ -92,7 +130,7 @@ export default function EditLessonPage() {
     };
 
     load();
-  }, [lessonId, isAuthenticated, isLoading, router]);
+  }, [lessonId, isAuthenticated, isLoading, router, schoolCalendarType, user?.schoolId]);
 
   const handleChange = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -101,6 +139,13 @@ export default function EditLessonPage() {
   const handleSubmit = async (submitForReview: boolean) => {
     if (!form.title.trim()) {
       toast.error("Title is required");
+      return;
+    }
+    if (
+      form.periodNumber !== null &&
+      !periodOptions.some((period) => period.value === form.periodNumber)
+    ) {
+      toast.error("Please select a valid configured period");
       return;
     }
 
@@ -243,13 +288,22 @@ export default function EditLessonPage() {
               </div>
               <div className="space-y-2">
                 <Label>Period</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={8}
-                  value={form.periodNumber || ""}
-                  onChange={(e) => handleChange("periodNumber", e.target.value ? Number(e.target.value) : null)}
-                />
+                <Select
+                  value={form.periodNumber?.toString() || ""}
+                  onValueChange={(value) => handleChange("periodNumber", Number(value))}
+                  disabled={periodOptions.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periodOptions.map((period) => (
+                      <SelectItem key={period.value} value={period.value.toString()}>
+                        {period.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>

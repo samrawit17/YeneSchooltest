@@ -20,6 +20,7 @@ import {
   CreateAssessmentDto,
   ListAssessmentsFilterDto,
   SaveAssessmentScoresDto,
+  UpdateAssessmentDto,
   UpdateAssessmentWeightsDto,
 } from './dto/assessments.dto';
 
@@ -196,6 +197,22 @@ export class AssessmentsController {
     @Param('id') id: string,
   ) {
     return this.assessmentsService.getAssessmentById(req.user.schoolId, id);
+  }
+
+  @Put(':id')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
+  async updateAssessment(
+    @Request() req: AuthRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateAssessmentDto,
+  ) {
+    return this.assessmentsService.updateAssessment(
+      req.user.schoolId,
+      req.user.id,
+      req.user.role,
+      id,
+      dto,
+    );
   }
 
   @Post(':id/subjects')

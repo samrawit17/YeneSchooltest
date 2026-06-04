@@ -290,9 +290,12 @@ export class ReportCardController {
     @Param('id') id: string,
     @Res() res: Response,
   ) {
-    const pdf = await this.reportCardService.generateCertificatePdf(req.user.schoolId, id);
+    const [pdf, fileName] = await Promise.all([
+      this.reportCardService.generateCertificatePdf(req.user.schoolId, id),
+      this.reportCardService.getCertificateDownloadFileName(req.user.schoolId, id),
+    ]);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="certificate-${id}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}.pdf"`);
     res.send(pdf);
   }
 

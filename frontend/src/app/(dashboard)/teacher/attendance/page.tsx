@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -126,6 +127,7 @@ const getTodayDate = () => formatDateInputValue(new Date());
 
 export default function TeacherAttendancePage() {
   const { isLoading, user } = useAuth();
+  const searchParams = useSearchParams();
   const { isOnline, wasOffline } = useNetworkStatus();
   const { setItems } = useBreadcrumb();
   const { language } = useTranslations("navigation");
@@ -188,6 +190,8 @@ export default function TeacherAttendancePage() {
   // Teacher's assigned classes and subjects
   const [classOptions, setClassOptions] = useState<ClassOption[]>([]);
   const [subjectOptions, setSubjectOptions] = useState<{ id: string; name: string }[]>([]);
+  const requestedClassId = searchParams.get("classId") || "";
+  const requestedSectionId = searchParams.get("sectionId") || "";
 
   // Fetch teacher's assigned classes and subjects
   const fetchTeacherClasses = useCallback(async () => {
@@ -261,9 +265,27 @@ export default function TeacherAttendancePage() {
         setClassOptions(classOptionsData);
       }
 
-      // Set default selections
-      if (classOptionsData.length > 0 && !selectedClass) {
-        setSelectedClass(classOptionsData[0].key);
+      // Set default selection. Respect deep links from /teacher/my-class and
+      // avoid guessing when a class has multiple homeroom sections.
+      if (classOptionsData.length > 0) {
+        const selectedStillExists = classOptionsData.some((item) => item.key === selectedClass);
+        const requestedMatches = requestedClassId
+          ? classOptionsData.filter((item) => item.id === requestedClassId)
+          : [];
+        const requestedExactMatch = requestedSectionId
+          ? requestedMatches.find((item) => item.sectionId === requestedSectionId)
+          : undefined;
+
+        if (requestedExactMatch && selectedClass !== requestedExactMatch.key) {
+          setSelectedClass(requestedExactMatch.key);
+        } else if (requestedClassId && !requestedSectionId && requestedMatches.length === 1 && selectedClass !== requestedMatches[0].key) {
+          setSelectedClass(requestedMatches[0].key);
+        } else if (requestedClassId && !requestedSectionId && requestedMatches.length > 1 && !selectedStillExists) {
+          setSelectedClass("");
+          toast.error("Select the section for this class before taking attendance.", { dismissible: true });
+        } else if (!selectedStillExists && !requestedClassId) {
+          setSelectedClass(classOptionsData[0].key);
+        }
       }
 
       const homeroomSubject = [{ id: "homeroom", name: "Homeroom Attendance" }];
@@ -278,7 +300,7 @@ export default function TeacherAttendancePage() {
     } finally {
       setIsLoadingClasses(false);
     }
-  }, [user?.id, selectedClass, selectedSubject]);
+  }, [user?.id, selectedClass, selectedSubject, requestedClassId, requestedSectionId]);
 
   // Fetch students for selected class
   const fetchStudents = useCallback(async () => {
@@ -337,6 +359,7 @@ export default function TeacherAttendancePage() {
               lastUpdated: new Date().toISOString()
             }));
             setStudents(attendanceStudents);
+            setHasChanges(false);
             await syncService.cacheStudents(rawStudents.map((student: any) => {
               const id = student.userId || student.id;
               const name = student.user?.name || student.name || '';
@@ -357,6 +380,7 @@ export default function TeacherAttendancePage() {
             }));
           } else {
             setStudents([]);
+            setHasChanges(false);
           }
         } catch (err) {
           const cachedStudents = await syncService.getCachedStudents(clsId, sectId);
@@ -371,9 +395,11 @@ export default function TeacherAttendancePage() {
               remark: '',
               lastUpdated: new Date(student.updatedAt || student.cachedAt).toISOString()
             })));
+            setHasChanges(false);
             toast.info('Loaded cached student roster from this device', { dismissible: true });
           } else {
             setStudents([]);
+            setHasChanges(false);
           }
         }
       };
@@ -411,6 +437,7 @@ export default function TeacherAttendancePage() {
               lastUpdated: record.updatedAt || new Date().toISOString()
             }));
             setStudents(attendanceStudents);
+            setHasChanges(false);
           } else {
             // No explicit marks yet - get fresh students and set to UNMARKED
             await fetchStudentsDirectly(classId, sectionName, sectionId);
@@ -714,13 +741,14 @@ export default function TeacherAttendancePage() {
     try {
       const selectedClassData = classOptions.find(c => c.key === selectedClass);
       const classId = selectedClassData?.id;
+      const sectionId = selectedClassData?.sectionId;
 
-      if (!classId) {
-        throw new Error('No class ID found');
+      if (!classId || !sectionId) {
+        throw new Error('Class and section are required');
       }
 
       // Create or get session first
-      const slotId = `homeroom-${classId}`;
+      const slotId = `homeroom-${classId}:${sectionId}`;
 
       // Open session
       const sessionResponse = await attendanceAPI.openSession(slotId, selectedDate);

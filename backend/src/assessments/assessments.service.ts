@@ -12,12 +12,14 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notification/notification.service';
+import { CacheService } from '../infrastructure/cache/cache.service';
 import {
   AddAssessmentSubjectsDto,
   CreateAssessmentDto,
   CreateAssessmentSubjectDto,
   ListAssessmentsFilterDto,
   SaveAssessmentScoresDto,
+  UpdateAssessmentDto,
   UpdateAssessmentWeightsDto,
 } from './dto/assessments.dto';
 
@@ -44,7 +46,104 @@ export class AssessmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly cacheService: CacheService,
   ) {}
+
+  private getTeacherGradesNamespace(teacherId: string) {
+    return `grades:teacher:${teacherId}`;
+  }
+
+  private getSchoolGradesNamespace(schoolId: string) {
+    return `grades:school:${schoolId}`;
+  }
+
+  private async invalidateAssessmentGradeCaches(
+    schoolId: string,
+    teacherIds: Array<string | null | undefined> = [],
+  ) {
+    const uniqueTeacherIds = Array.from(
+      new Set(
+        teacherIds.filter((teacherId): teacherId is string =>
+          Boolean(teacherId),
+        ),
+      ),
+    );
+
+    await Promise.all([
+      this.cacheService.bumpVersion(this.getSchoolGradesNamespace(schoolId)),
+      this.cacheService.bumpVersion(`dashboard:school:${schoolId}`),
+      ...uniqueTeacherIds.flatMap((teacherId) => [
+        this.cacheService.bumpVersion(this.getTeacherGradesNamespace(teacherId)),
+        this.cacheService.bumpVersion(`dashboard:user:${teacherId}`),
+      ]),
+    ]);
+  }
+
+  private async getAssessmentAffectedTeacherIds(
+    schoolId: string,
+    assessmentId?: string,
+  ) {
+    const rows = await this.prisma.assessmentSubject.findMany({
+      where: {
+        assessment: {
+          schoolId,
+          ...(assessmentId ? { id: assessmentId } : {}),
+        },
+      },
+      select: {
+        teacherId: true,
+        subjectId: true,
+        classId: true,
+        sectionId: true,
+        assessment: {
+          select: { academicYearId: true },
+        },
+      },
+    });
+
+    const teacherIds = new Set(
+      rows
+        .map((row) => row.teacherId)
+        .filter((teacherId): teacherId is string => Boolean(teacherId)),
+    );
+
+    const criteria = rows.map((row) => ({
+      academicYear: row.assessment.academicYearId,
+      classId: row.classId,
+      sectionId: row.sectionId ?? undefined,
+      subjectId: row.subjectId,
+    }));
+
+    if (criteria.length > 0) {
+      const [teacherAssignments, classSubjectAssignments] = await Promise.all([
+        this.prisma.teacherSubjectAssignment.findMany({
+          where: {
+            schoolId,
+            isActive: true,
+            OR: criteria,
+          },
+          select: { teacherId: true },
+        }),
+        this.prisma.classSubject.findMany({
+          where: {
+            teacherId: { not: null },
+            class: { schoolId },
+            OR: criteria,
+          },
+          select: { teacherId: true },
+        }),
+      ]);
+
+      for (const assignment of teacherAssignments) {
+        teacherIds.add(assignment.teacherId);
+      }
+      for (const assignment of classSubjectAssignments) {
+        if (assignment.teacherId) teacherIds.add(assignment.teacherId);
+      }
+    }
+
+    return Array.from(teacherIds);
+  }
 
   private async getWeightMap(schoolId: string) {
     const configured = await this.prisma.assessmentWeight.findMany({
@@ -361,6 +460,71 @@ export class AssessmentsService {
     }
   }
 
+  private assessmentSubjectTargetKey(subject: {
+    classId: string;
+    sectionId?: string | null;
+    subjectId: string;
+  }) {
+    return `${subject.classId}:${subject.sectionId ?? 'all'}:${subject.subjectId}`;
+  }
+
+  private async assertNoDuplicateAssessmentTargets(
+    assessment: {
+      id: string;
+      schoolId: string;
+      academicYearId: string;
+      termId?: string | null;
+      type: string;
+    },
+    subjects: CreateAssessmentSubjectDto[],
+  ) {
+    const requestTargets = new Set<string>();
+    for (const subject of subjects) {
+      const key = this.assessmentSubjectTargetKey(subject);
+      if (requestTargets.has(key)) {
+        throw new BadRequestException(
+          'The same class, section, and subject was selected more than once',
+        );
+      }
+      requestTargets.add(key);
+    }
+
+    if (requestTargets.size === 0) return;
+
+    const conflicts = await this.prisma.assessmentSubject.findMany({
+      where: {
+        classId: { in: subjects.map((subject) => subject.classId) },
+        subjectId: { in: subjects.map((subject) => subject.subjectId) },
+        assessment: {
+          schoolId: assessment.schoolId,
+          academicYearId: assessment.academicYearId,
+          termId: assessment.termId ?? null,
+          type: String(assessment.type).toUpperCase() as any,
+          status: { notIn: [AssessmentStatus.COMPLETED, AssessmentStatus.LOCKED] },
+        },
+      },
+      include: {
+        assessment: { select: { id: true, title: true, type: true } },
+        class: { select: { name: true } },
+        section: { select: { name: true } },
+        subject: { select: { name: true } },
+      },
+    });
+
+    const conflict = conflicts.find((item) =>
+      requestTargets.has(this.assessmentSubjectTargetKey(item)),
+    );
+
+    if (conflict) {
+      const sectionName = conflict.section?.name
+        ? ` (${conflict.section.name})`
+        : '';
+      throw new BadRequestException(
+        `${String(conflict.assessment.type).toUpperCase()} assessment already exists for ${conflict.class.name}${sectionName} - ${conflict.subject.name}. Complete or lock "${conflict.assessment.title}" before creating another one.`,
+      );
+    }
+  }
+
   private async resolveTeacherAssignment(
     teacherId: string,
     academicYearId: string,
@@ -617,8 +781,13 @@ if (
   }
 
   private async createAssessmentSubjects(
-    assessmentId: string,
-    academicYearId: string,
+    assessment: {
+      id: string;
+      schoolId: string;
+      academicYearId: string;
+      termId?: string | null;
+      type: string;
+    },
     subjects: CreateAssessmentSubjectDto[],
     actorId: string,
     role: string,
@@ -665,9 +834,11 @@ if (
 
     if (role === 'TEACHER') {
       for (const item of subjects) {
-        await this.resolveTeacherAssignment(actorId, academicYearId, item);
+        await this.resolveTeacherAssignment(actorId, assessment.academicYearId, item);
       }
     }
+
+    await this.assertNoDuplicateAssessmentTargets(assessment, subjects);
 
     const [subjectsWithNames, classesWithNames] = await Promise.all([
       this.prisma.subject.findMany({
@@ -692,7 +863,7 @@ if (
         const classRecord = classMap.get(item.classId)!;
         return this.prisma.assessmentSubject.create({
           data: {
-            assessmentId,
+            assessmentId: assessment.id,
             subjectId: item.subjectId,
             classId: item.classId,
             sectionId: item.sectionId,
@@ -770,6 +941,117 @@ if (
     }));
   }
 
+  private assessmentSubjectScoreKey(input: {
+    assessmentType: string;
+    academicYearId: string;
+    termId?: string | null;
+    classId: string;
+    sectionId?: string | null;
+    subjectId: string;
+  }) {
+    return [
+      String(input.assessmentType).toUpperCase(),
+      input.academicYearId,
+      input.termId ?? 'none',
+      input.classId,
+      input.sectionId ?? 'none',
+      input.subjectId,
+    ].join(':');
+  }
+
+  private async attachEffectiveScoreCountsToAssessments(
+    schoolId: string,
+    assessments: any[],
+  ) {
+    const targets = assessments.flatMap((assessment) =>
+      (assessment.subjects || []).map((subject: any) => ({
+        assessmentType: String(assessment.type).toUpperCase(),
+        academicYearId: assessment.academicYearId,
+        termId: assessment.termId ?? null,
+        classId: subject.classId,
+        sectionId: subject.sectionId ?? null,
+        subjectId: subject.subjectId,
+      })),
+    );
+
+    if (targets.length === 0) return assessments;
+
+    const componentCodes = Array.from(
+      new Set(targets.map((target) => target.assessmentType)),
+    );
+    const gradeCriteria = targets.map((target) => ({
+      academicYear: target.academicYearId,
+      termId: target.termId,
+      classId: target.classId,
+      sectionId: target.sectionId,
+      subjectId: target.subjectId,
+    }));
+
+    const gradeScores = await this.prisma.gradeScore.findMany({
+      where: {
+        component: {
+          schoolId,
+          code: { in: componentCodes },
+        },
+        subjectGrade: {
+          OR: gradeCriteria,
+        },
+      },
+      select: {
+        id: true,
+        component: { select: { code: true } },
+        subjectGrade: {
+          select: {
+            academicYear: true,
+            termId: true,
+            classId: true,
+            sectionId: true,
+            subjectId: true,
+          },
+        },
+      },
+    });
+
+    const gradeScoreCounts = new Map<string, number>();
+    for (const row of gradeScores) {
+      const key = this.assessmentSubjectScoreKey({
+        assessmentType: row.component.code,
+        academicYearId: row.subjectGrade.academicYear,
+        termId: row.subjectGrade.termId,
+        classId: row.subjectGrade.classId,
+        sectionId: row.subjectGrade.sectionId,
+        subjectId: row.subjectGrade.subjectId,
+      });
+      gradeScoreCounts.set(key, (gradeScoreCounts.get(key) ?? 0) + 1);
+    }
+
+    return assessments.map((assessment) => ({
+      ...assessment,
+      subjects: (assessment.subjects || []).map((subject: any) => {
+        const key = this.assessmentSubjectScoreKey({
+          assessmentType: assessment.type,
+          academicYearId: assessment.academicYearId,
+          termId: assessment.termId,
+          classId: subject.classId,
+          sectionId: subject.sectionId,
+          subjectId: subject.subjectId,
+        });
+        const assessmentScoreCount = subject._count?.scores ?? 0;
+        const gradingScoreCount = gradeScoreCounts.get(key) ?? 0;
+
+        return {
+          ...subject,
+          _count: {
+            ...subject._count,
+            scores: Math.max(assessmentScoreCount, gradingScoreCount),
+            assessmentScores: assessmentScoreCount,
+            gradingScores: gradingScoreCount,
+          },
+        };
+      }),
+    }));
+  }
+
   async createAssessment(
     schoolId: string,
     userId: string,
@@ -786,6 +1068,19 @@ if (
     }
 
     await this.validateAssessmentContext(schoolId, dto);
+
+    if (dto.subjects?.length) {
+      await this.assertNoDuplicateAssessmentTargets(
+        {
+          id: '',
+          schoolId,
+          academicYearId: dto.academicYearId,
+          termId: dto.termId ?? null,
+          type: dto.type,
+        },
+        dto.subjects,
+      );
+    }
 
     const assessmentData: Prisma.AssessmentUncheckedCreateInput = {
       schoolId,
@@ -831,14 +1126,23 @@ if (
 
     if (dto.subjects?.length) {
       const createdSubjects = await this.createAssessmentSubjects(
-        assessment.id,
-        dto.academicYearId,
+        assessment,
         dto.subjects,
         userId,
         role,
       );
 
       await this.notifyTeachersForAssessmentStart(schoolId, assessment, createdSubjects);
+      const affectedTeacherIds = await this.getAssessmentAffectedTeacherIds(
+        schoolId,
+        assessment.id,
+      );
+      await this.invalidateAssessmentGradeCaches(
+        schoolId,
+        affectedTeacherIds,
+      );
+    } else {
+      await this.invalidateAssessmentGradeCaches(schoolId);
     }
 
     return this.getAssessmentById(schoolId, assessment.id);
@@ -859,14 +1163,21 @@ if (
     );
 
     const createdSubjects = await this.createAssessmentSubjects(
-      assessment.id,
-      assessment.academicYearId,
+      assessment,
       dto.subjects,
       userId,
       role,
     );
 
     await this.notifyTeachersForAssessmentStart(schoolId, assessment, createdSubjects);
+    const affectedTeacherIds = await this.getAssessmentAffectedTeacherIds(
+      schoolId,
+      assessment.id,
+    );
+    await this.invalidateAssessmentGradeCaches(
+      schoolId,
+      affectedTeacherIds,
+    );
 
     return this.getAssessmentById(schoolId, assessmentId);
   }
@@ -894,7 +1205,119 @@ if (
       throw new NotFoundException('Assessment not found');
     }
 
-    return assessment;
+    const [withCounts] = await this.attachEffectiveScoreCountsToAssessments(
+      schoolId,
+      [assessment],
+    );
+
+    return withCounts;
+  }
+
+  async updateAssessment(
+    schoolId: string,
+    userId: string,
+    role: string,
+    id: string,
+    dto: UpdateAssessmentDto,
+  ) {
+    const assessment = await this.ensureAssessmentWriteAccess(
+      schoolId,
+      userId,
+      role,
+      id,
+    );
+
+    const startDate = dto.startDate
+      ? new Date(dto.startDate)
+      : assessment.startDate;
+    const endDate = dto.endDate ? new Date(dto.endDate) : assessment.endDate;
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      throw new BadRequestException('Assessment dates are invalid');
+    }
+
+    if (endDate < startDate) {
+      throw new BadRequestException('End date cannot be before start date');
+    }
+
+    const data: Prisma.AssessmentUpdateInput = {};
+    if (dto.title !== undefined) data.title = dto.title.trim();
+    if (dto.startDate !== undefined) data.startDate = startDate;
+    if (dto.endDate !== undefined) data.endDate = endDate;
+
+    if (Object.keys(data).length === 0 && dto.addToCalendar === undefined) {
+      return this.getAssessmentById(schoolId, id);
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const next = Object.keys(data).length
+        ? await tx.assessment.update({
+            where: { id },
+            data,
+          })
+        : assessment;
+
+      if (dto.addToCalendar === true) {
+        if (next.calendarEventId) {
+          await tx.schoolEvent.updateMany({
+            where: { id: next.calendarEventId, schoolId },
+            data: {
+              title: next.title,
+              startDate: next.startDate,
+              endDate: next.endDate,
+            },
+          });
+        } else {
+          const calendarEvent = await tx.schoolEvent.create({
+            data: {
+              schoolId,
+              createdById: userId,
+              title: next.title,
+              description: `${this.formatAssessmentTypeLabel(next.type)} scheduled for score entry and school calendar visibility.`,
+              startDate: next.startDate,
+              endDate: next.endDate,
+              audience: JSON.stringify(['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']),
+              category: 'ACADEMIC',
+              color: '#e35336',
+            },
+            select: { id: true },
+          });
+
+          return tx.assessment.update({
+            where: { id },
+            data: { calendarEventId: calendarEvent.id },
+          });
+        }
+      } else if (dto.addToCalendar === false && next.calendarEventId) {
+        await tx.schoolEvent.deleteMany({
+          where: { id: next.calendarEventId, schoolId },
+        });
+
+        return tx.assessment.update({
+          where: { id },
+          data: { calendarEventId: null },
+        });
+      } else if (next.calendarEventId && Object.keys(data).length > 0) {
+        await tx.schoolEvent.updateMany({
+          where: { id: next.calendarEventId, schoolId },
+          data: {
+            title: next.title,
+            startDate: next.startDate,
+            endDate: next.endDate,
+          },
+        });
+      }
+
+      return next;
+    });
+
+    const affectedTeacherIds = await this.getAssessmentAffectedTeacherIds(
+      schoolId,
+      updated.id,
+    );
+    await this.invalidateAssessmentGradeCaches(schoolId, affectedTeacherIds);
+
+    return this.getAssessmentById(schoolId, id);
   }
 
   async listAssessments(schoolId: string, query: ListAssessmentsFilterDto) {
@@ -922,13 +1345,16 @@ if (
       orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
     });
 
-    return this.attachFallbackTeachersToAssessments(assessments);
+    const withTeachers = await this.attachFallbackTeachersToAssessments(assessments);
+    return this.attachEffectiveScoreCountsToAssessments(schoolId, withTeachers);
   }
 
   async clearAssessments(schoolId: string) {
+    const teacherIds = await this.getAssessmentAffectedTeacherIds(schoolId);
     const result = await this.prisma.assessment.deleteMany({
       where: { schoolId },
     });
+    await this.invalidateAssessmentGradeCaches(schoolId, teacherIds);
 
     return {
       success: true,
@@ -1305,13 +1731,19 @@ if (
       throw new NotFoundException('Assessment not found');
     }
 
-    return this.prisma.assessment.update({
+    const teacherIds = await this.getAssessmentAffectedTeacherIds(
+      schoolId,
+      assessmentId,
+    );
+    const updated = await this.prisma.assessment.update({
       where: { id: assessmentId },
       data: {
         status: AssessmentStatus.LOCKED,
         lockAt: new Date(),
       },
     });
+    await this.invalidateAssessmentGradeCaches(schoolId, teacherIds);
+    return updated;
   }
 
   async getMissingMarks(schoolId: string, query: ListAssessmentsFilterDto & { page?: number; limit?: number }) {
@@ -1439,6 +1871,8 @@ if (
         }),
       ),
     );
+    const teacherIds = await this.getAssessmentAffectedTeacherIds(schoolId);
+    await this.invalidateAssessmentGradeCaches(schoolId, teacherIds);
 
     return this.getWeights(schoolId);
   }

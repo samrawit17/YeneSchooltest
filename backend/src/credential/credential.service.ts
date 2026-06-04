@@ -800,6 +800,23 @@ export class CredentialService {
   }
 
   /**
+   * Send all pending credentials for a school
+   */
+  async sendBulkCredentials(schoolId: string, userId: string) {
+    const pending = await this.prismaService.pendingCredential.findMany({
+      where: { schoolId, isSent: false },
+    });
+
+    let sentCount = 0;
+    for (const credential of pending) {
+      await this.markCredentialSent(credential.id, schoolId, 'BULK_SEND');
+      sentCount++;
+    }
+
+    return { message: `Sent ${sentCount} credentials`, count: sentCount };
+  }
+
+  /**
    * Delete pending credential
    */
   async deletePendingCredential(id: string, schoolId: string) {

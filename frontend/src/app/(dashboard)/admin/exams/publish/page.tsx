@@ -168,6 +168,11 @@ export default function PublishResultsPage() {
     () => rows.reduce((sum, row) => sum + (row.assessmentMissingScores || 0), 0),
     [rows],
   );
+  const readyClassIds = useMemo(() => readyRows.map((row) => row.classId), [readyRows]);
+  const selectedReadyClasses = useMemo(
+    () => selectedClasses.filter((classId) => readyClassIds.includes(classId)),
+    [readyClassIds, selectedClasses],
+  );
   const certificateIssue = useMemo(
     () => rows.find((row) => !row.certificateReady)?.certificateIssue || null,
     [rows],
@@ -177,19 +182,19 @@ export default function PublishResultsPage() {
     if (publishTarget.mode === "single") {
       return rows.filter((row) => row.classId === publishTarget.classId);
     }
-    return rows.filter((row) => selectedClasses.includes(row.classId));
-  }, [publishTarget, rows, selectedClasses]);
+    return rows.filter((row) => selectedReadyClasses.includes(row.classId));
+  }, [publishTarget, rows, selectedReadyClasses]);
 
   const toggleClass = (classId: string) => {
+    if (!readyClassIds.includes(classId)) return;
     setSelectedClasses((prev) =>
       prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId],
     );
   };
 
   const toggleAll = () => {
-    const selectable = readyRows.map((row) => row.classId);
     setSelectedClasses((prev) =>
-      prev.length === selectable.length ? [] : selectable,
+      readyClassIds.length > 0 && readyClassIds.every((id) => prev.includes(id)) ? [] : readyClassIds,
     );
   };
 
@@ -212,6 +217,15 @@ export default function PublishResultsPage() {
     return Array.from(new Set([...blockers, ...row.issueReasons].filter(Boolean)));
   };
 
+  const refreshPublishSummary = async () => {
+    if (!selectedYear || !selectedTerm) return;
+    const summary = await reportCardsAPI.getPublishSummary({
+      academicYearId: selectedYear,
+      termId: selectedTerm,
+    });
+    setRows(Array.isArray(summary.data) ? summary.data : []);
+  };
+
   const publishClass = async (classId: string) => {
     if (!selectedYear || !selectedTerm) return;
     setPublishing(true);
@@ -226,51 +240,56 @@ export default function PublishResultsPage() {
       toast.success(
         `Ranked ${res.data.ranked || 0} students and published ${res.data.published} report cards. Notifications sent to ${res.data.notifiedStudents} students and ${res.data.notifiedParents} parents.`,
       );
-      const summary = await reportCardsAPI.getPublishSummary({
-        academicYearId: selectedYear,
-        termId: selectedTerm,
-      });
-      setRows(Array.isArray(summary.data) ? summary.data : []);
+      await refreshPublishSummary();
       setSelectedClasses((prev) => prev.filter((id) => id !== classId));
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to publish results");
+      await refreshPublishSummary().catch(() => null);
     } finally {
       setPublishing(false);
     }
   };
 
   const publishSelected = async () => {
-    if (selectedClasses.length === 0) return;
+    const targetClassIds = selectedReadyClasses;
+    if (targetClassIds.length === 0 || !selectedYear || !selectedTerm) return;
     setPublishing(true);
+    const publishedClassIds: string[] = [];
     try {
       let published = 0;
       let ranked = 0;
       let notifiedStudents = 0;
       let notifiedParents = 0;
-      for (const classId of selectedClasses) {
-        const res = await reportCardsAPI.publishClassResults({
-          academicYearId: selectedYear,
-          termId: selectedTerm,
-          classId,
-          notifyStudents: true,
-          notifyParents: true,
-        });
-        published += res.data.published;
-        ranked += res.data.ranked || 0;
-        notifiedStudents += res.data.notifiedStudents;
-        notifiedParents += res.data.notifiedParents;
+      const failures: string[] = [];
+      for (const classId of targetClassIds) {
+        try {
+          const res = await reportCardsAPI.publishClassResults({
+            academicYearId: selectedYear,
+            termId: selectedTerm,
+            classId,
+            notifyStudents: true,
+            notifyParents: true,
+          });
+          published += res.data.published;
+          ranked += res.data.ranked || 0;
+          notifiedStudents += res.data.notifiedStudents;
+          notifiedParents += res.data.notifiedParents;
+          publishedClassIds.push(classId);
+        } catch (error: any) {
+          const className = rows.find((row) => row.classId === classId)?.className || "Class";
+          failures.push(`${className}: ${error?.response?.data?.message || "failed"}`);
+        }
       }
-      toast.success(
-        `Ranked ${ranked} students and published ${published} report cards. Notifications sent to ${notifiedStudents} students and ${notifiedParents} parents.`,
-      );
-      const summary = await reportCardsAPI.getPublishSummary({
-        academicYearId: selectedYear,
-        termId: selectedTerm,
-      });
-      setRows(Array.isArray(summary.data) ? summary.data : []);
-      setSelectedClasses([]);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to publish selected classes");
+      if (publishedClassIds.length > 0) {
+        toast.success(
+          `Ranked ${ranked} students and published ${published} report cards. Notifications sent to ${notifiedStudents} students and ${notifiedParents} parents.`,
+        );
+      }
+      if (failures.length > 0) {
+        toast.error(`Failed to publish ${failures.length} class${failures.length === 1 ? "" : "es"}: ${failures.slice(0, 2).join("; ")}`);
+      }
+      await refreshPublishSummary();
+      setSelectedClasses((prev) => prev.filter((id) => !publishedClassIds.includes(id)));
     } finally {
       setPublishing(false);
     }
@@ -294,12 +313,6 @@ export default function PublishResultsPage() {
       <div className="w-full px-6 pt-8 pb-4">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-               <div className="p-1.5 rounded-lg bg-[#e35336]/10 text-[#e35336]">
-                 <Send className="w-5 h-5" />
-               </div>
-               <span className="text-xs font-medium text-[#e35336] uppercase tracking-wider">Academic Governance</span>
-            </div>
             <h1 className="text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">Publish Results</h1>
             <p className="text-sm text-slate-500 mt-1 max-w-xl font-normal">
               Validate assessment completion, finalize rankings, and release end-of-term reports to parents and students in a single click.
@@ -341,7 +354,7 @@ export default function PublishResultsPage() {
                 onClick={() => router.push("/admin/exams/entry-progress")}
                 className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
               >
-                <ClipboardCheck className="mr-2 h-4 w-4 text-[#e35336]" />
+                <ClipboardCheck className="mr-2 h-4 w-4 text-[var(--brand-color)]" />
                 Entry Progress
               </Button>
               <Button
@@ -380,71 +393,34 @@ export default function PublishResultsPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
                 <CardContent className="p-5">
-                  <div className="flex justify-between items-start mb-2">
-                     <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Ready</p>
-                     <div className="p-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500">
-                       <CheckCircle2 className="w-4 h-4" />
-                     </div>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-3xl font-medium text-slate-900 dark:text-white">{readyRows.length}</p>
-                    <span className="text-[10px] font-medium text-emerald-600 uppercase">Classes</span>
-                  </div>
-                  <p className="mt-2 text-[10px] font-normal text-slate-400">Validated and ready for release</p>
+                  <p className="text-xs text-slate-400 mb-1">Ready</p>
+                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">{readyRows.length}</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
                 <CardContent className="p-5">
-                   <div className="flex justify-between items-start mb-2">
-                     <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Released</p>
-                     <div className="p-2 rounded-full bg-sky-50 dark:bg-sky-500/10 text-sky-500">
-                       <Lock className="h-4 w-4" />
-                     </div>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-3xl font-medium text-slate-900 dark:text-white">{publishedRows.length}</p>
-                    <span className="text-[10px] font-medium text-sky-600 uppercase">Classes</span>
-                  </div>
-                  <p className="mt-2 text-[10px] font-normal text-slate-400">Viewable by parents and students</p>
+                  <p className="text-xs text-slate-400 mb-1">Released</p>
+                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">{publishedRows.length}</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
                 <CardContent className="p-5">
-                   <div className="flex justify-between items-start mb-2">
-                     <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Incomplete</p>
-                     <div className="p-2 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-500">
-                       <AlertTriangle className="h-4 w-4" />
-                     </div>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-3xl font-medium text-amber-600">{issueRows.length}</p>
-                    <span className="text-[10px] font-medium text-slate-400 uppercase">Classes</span>
-                  </div>
-                  <p className="mt-2 text-[10px] font-medium text-amber-600 uppercase">Follow-up Required</p>
+                  <p className="text-xs text-slate-400 mb-1">Incomplete</p>
+                  <p className="text-2xl font-semibold text-amber-600">{issueRows.length}</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
                 <CardContent className="p-5">
-                   <div className="flex justify-between items-start mb-2">
-                     <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">Missing</p>
-                     <div className="p-2 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500">
-                       <ClipboardCheck className="h-4 w-4" />
-                     </div>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <p className="text-3xl font-medium text-indigo-600">{totalMissingMarks}</p>
-                    <span className="text-[10px] font-medium text-slate-400 uppercase">Scores</span>
-                  </div>
-                  <p className="mt-2 text-[10px] font-medium text-indigo-600 uppercase tracking-tight">Across All Subjects</p>
+                  <p className="text-xs text-slate-400 mb-1">Missing</p>
+                  <p className="text-2xl font-semibold text-indigo-600">{totalMissingMarks}</p>
                 </CardContent>
               </Card>
             </div>
-
             {certificateIssue ? (
               <Card className="border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30">
                 <CardContent className="flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
@@ -474,7 +450,7 @@ export default function PublishResultsPage() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <CardTitle className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                       <BarChart3 className="w-5 h-5 text-[#e35336]" />
+                       <BarChart3 className="w-5 h-5 text-[var(--brand-color)]" />
                        Publication Tracker
                     </CardTitle>
                     <CardDescription className="dark:text-slate-400 font-normal">
@@ -483,15 +459,15 @@ export default function PublishResultsPage() {
                   </div>
                   <Button
                     onClick={() => setPublishTarget({ mode: "selected" })}
-                    disabled={publishing || selectedClasses.length === 0}
-                    className="rounded-xl bg-[#e35336] hover:bg-[#c4442b] text-white shadow-lg shadow-[#e35336]/20 transition-all font-medium px-6 h-11"
+                    disabled={publishing || selectedReadyClasses.length === 0}
+                    className="rounded-xl bg-[var(--brand-color)] hover:opacity-90 text-white shadow-lg shadow-[var(--brand-color)]/20 transition-all font-medium px-6 h-11"
                   >
                     {publishing ? (
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     ) : (
                       <Send className="mr-2 h-5 w-5" />
                     )}
-                    Publish Selected ({selectedClasses.length})
+                    Publish Selected ({selectedReadyClasses.length})
                   </Button>
                 </div>
               </CardHeader>
@@ -509,7 +485,7 @@ export default function PublishResultsPage() {
                       <TableRow className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
                         <TableHead className="w-12 py-4">
                           <Checkbox
-                            checked={readyRows.length > 0 && selectedClasses.length === readyRows.length}
+                            checked={readyClassIds.length > 0 && readyClassIds.every((id) => selectedClasses.includes(id))}
                             onCheckedChange={toggleAll}
                             className="rounded-md border-slate-300"
                           />
@@ -536,12 +512,12 @@ export default function PublishResultsPage() {
                                 checked={selectedClasses.includes(row.classId)}
                                 onCheckedChange={() => toggleClass(row.classId)}
                                 disabled={row.status !== "ready" || publishing}
-                                className="rounded-md border-slate-300 data-[state=checked]:bg-[#e35336] data-[state=checked]:border-[#e35336]"
+                                className="rounded-md border-slate-300 data-[state=checked]:bg-[var(--brand-color)] data-[state=checked]:border-[var(--brand-color)]"
                               />
                             </TableCell>
                             <TableCell className="py-4">
                               <div className="flex flex-col">
-                                <span className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-[#e35336] transition-colors">
+                                <span className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-[var(--brand-color)] transition-colors">
                                   {row.className}
                                   {row.sectionName ? ` - ${row.sectionName}` : ""}
                                 </span>
@@ -611,7 +587,7 @@ export default function PublishResultsPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openPreview(row)}
-                                className="h-8 w-8 p-0 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-[#e35336]/10 hover:text-[#e35336]"
+                                className="h-8 w-8 p-0 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-[var(--brand-color)]/10 hover:text-[var(--brand-color)]"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -620,7 +596,7 @@ export default function PublishResultsPage() {
                                   size="sm"
                                   onClick={() => setPublishTarget({ mode: "single", classId: row.classId })}
                                   disabled={publishing}
-                                  className="h-8 rounded-lg bg-[#e35336] text-white hover:opacity-90 font-bold text-xs"
+                                  className="h-8 rounded-lg bg-[var(--brand-color)] text-white hover:opacity-90 font-bold text-xs"
                                 >
                                   {publishing ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -720,7 +696,7 @@ export default function PublishResultsPage() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={publishing}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmPublish} disabled={publishing} className="bg-[#e35336] text-white hover:opacity-90">
+            <AlertDialogAction onClick={confirmPublish} disabled={publishing} className="bg-[var(--brand-color)] text-white hover:opacity-90">
               {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
               Publish and Notify
             </AlertDialogAction>

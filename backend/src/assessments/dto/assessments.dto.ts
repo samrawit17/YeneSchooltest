@@ -85,6 +85,25 @@ export class CreateAssessmentDto {
   subjects?: CreateAssessmentSubjectDto[];
 }
 
+export class UpdateAssessmentDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  title?: string;
+
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  addToCalendar?: boolean;
+}
+
 export class AddAssessmentSubjectsDto {
   @IsArray()
   @ArrayMinSize(1)

@@ -76,24 +76,33 @@ export default function PracticeExamAttemptPage() {
     }
     try {
       const rawDraft = window.localStorage.getItem(localDraftKey);
+      if (rawDraft && attempt.status !== "IN_PROGRESS") {
+        window.localStorage.removeItem(localDraftKey);
+      }
       if (rawDraft && attempt.status === "IN_PROGRESS") {
         const draft = JSON.parse(rawDraft) as { answers?: AnswerState; currentIndex?: number };
-        const merged = { ...next };
-        for (const question of attempt.questions || []) {
-          const draftAnswer = draft.answers?.[question.id];
-          if (draftAnswer) {
-            merged[question.id] = {
-              selectedOption: draftAnswer.selectedOption || next[question.id]?.selectedOption || null,
-              textAnswer: draftAnswer.textAnswer ?? next[question.id]?.textAnswer ?? "",
-              isFlagged: Boolean(draftAnswer.isFlagged || next[question.id]?.isFlagged),
-            };
+        const draftUpdatedAt = Date.parse(String((draft as any).updatedAt || ""));
+        const serverUpdatedAt = Date.parse(attempt.updatedAt || attempt.startedAt || "");
+        const draftIsNewer = Number.isFinite(draftUpdatedAt) && (!Number.isFinite(serverUpdatedAt) || draftUpdatedAt >= serverUpdatedAt);
+        if (draftIsNewer) {
+          const merged = { ...next };
+          for (const question of attempt.questions || []) {
+            const draftAnswer = draft.answers?.[question.id];
+            if (draftAnswer) {
+              merged[question.id] = {
+                selectedOption: draftAnswer.selectedOption || next[question.id]?.selectedOption || null,
+                textAnswer: draftAnswer.textAnswer ?? next[question.id]?.textAnswer ?? "",
+                isFlagged: Boolean(draftAnswer.isFlagged || next[question.id]?.isFlagged),
+              };
+            }
           }
+          setAnswers(merged);
+          if (Number.isInteger(draft.currentIndex)) {
+            setCurrentIndex(Math.min(Math.max(0, draft.currentIndex || 0), Math.max(0, questions.length - 1)));
+          }
+          return;
         }
-        setAnswers(merged);
-        if (Number.isInteger(draft.currentIndex)) {
-          setCurrentIndex(Math.min(Math.max(0, draft.currentIndex || 0), Math.max(0, questions.length - 1)));
-        }
-        return;
+        window.localStorage.removeItem(localDraftKey);
       }
     } catch {
       window.localStorage.removeItem(localDraftKey);
@@ -143,7 +152,10 @@ export default function PracticeExamAttemptPage() {
       toast.success("Online exam submitted");
       queryClient.invalidateQueries({ queryKey: ["practice-exam-attempt", attemptId] });
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || "Failed to submit exam"),
+    onError: (error: any) => {
+      submittedRef.current = false;
+      toast.error(error.response?.data?.message || "Failed to submit exam");
+    },
   });
 
   useEffect(() => {
@@ -232,11 +244,13 @@ export default function PracticeExamAttemptPage() {
   };
 
   const openReview = () => {
+    if (submittedRef.current || submitAttempt.isPending) return;
     autosave.mutate();
     setShowReview(true);
   };
 
   const confirmFinalSubmit = () => {
+    if (submittedRef.current || submitAttempt.isPending) return;
     setShowSubmitConfirm(true);
   };
 

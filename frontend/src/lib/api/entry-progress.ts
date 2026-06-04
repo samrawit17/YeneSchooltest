@@ -72,4 +72,13 @@ export const entryProgressAPI = {
 
     return { data: rows };
   },
+  sendReminder: (params: EntryProgressQuery) =>
+    api.post<{
+      remindersSent: number;
+      teachers: string[];
+      skippedUnassigned?: number;
+    }>("/grading/admin/send-reminder", {
+      academicYear: params.academicYearId,
+      term: params.termId,
+    }),
 };

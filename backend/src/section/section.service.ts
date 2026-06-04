@@ -10,8 +10,74 @@ import { PrismaService } from '../prisma/prisma.service';
 export class SectionService {
   constructor(private prisma: PrismaService) {}
 
-  // Manual section creation is disabled. Sections are now auto-created during bulk student upload.
-  // This ensures randomized and balanced distribution across sections (A, B, C...)
+  async create(
+    schoolId: string,
+    data: {
+      classId: string;
+      name: string;
+      stream?: string | null;
+      capacity: number;
+      roomNumber?: string;
+      homeroomTeacherId?: string | null;
+    },
+  ) {
+    const classExists = await this.prisma.class.findFirst({
+      where: { id: data.classId, schoolId },
+      select: { id: true },
+    });
+
+    if (!classExists) {
+      throw new BadRequestException('Class not found for this school');
+    }
+
+    const existingSection = await this.prisma.section.findFirst({
+      where: { classId: data.classId, name: data.name },
+    });
+
+    if (existingSection) {
+      throw new ConflictException(
+        `Section ${data.name} already exists for this class`,
+      );
+    }
+
+    if (data.capacity < 1) {
+      throw new BadRequestException('Capacity must be at least 1');
+    }
+
+    const createData: any = {
+      classId: data.classId,
+      name: data.name,
+      capacity: data.capacity,
+    };
+
+    if (data.stream !== undefined) {
+      const normalizedStream = String(data.stream || '').trim().toUpperCase();
+      createData.stream = normalizedStream || null;
+      if (createData.stream && !['SOCIAL', 'NATURAL'].includes(createData.stream)) {
+        throw new BadRequestException('Section stream must be SOCIAL or NATURAL');
+      }
+    }
+
+    if (data.roomNumber !== undefined) {
+      createData.roomNumber = data.roomNumber;
+    }
+
+    if (data.homeroomTeacherId !== undefined) {
+      createData.homeroomTeacherId =
+        data.homeroomTeacherId === '' ? null : data.homeroomTeacherId;
+    }
+
+    return this.prisma.section.create({
+      data: createData,
+      include: {
+        class: {
+          include: {
+            school: true,
+          },
+        },
+      },
+    });
+  }
 
   async findAll(
     schoolId?: string,
