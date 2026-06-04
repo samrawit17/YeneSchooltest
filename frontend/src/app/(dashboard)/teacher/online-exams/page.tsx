@@ -225,6 +225,15 @@ export default function TeacherOnlineExamsPage() {
   const questions = examDetailQuery.data?.questions || [];
   const questionType = questionForm.questionType || "MCQ";
   const optionLabels = questionType === "TRUE_FALSE" ? (["A", "B"] as const) : (["A", "B", "C", "D"] as const);
+  const selectedExamAttemptCount = selectedExam?._count?.attempts ?? 0;
+  const setupLocked = Boolean(selectedExam && (selectedExam.status === "ACTIVE" || selectedExamAttemptCount > 0));
+  const questionBankLocked = setupLocked;
+  const lockReason =
+    selectedExamAttemptCount > 0
+      ? "Students have already started this exam, so setup and question changes are locked."
+      : selectedExam?.status === "ACTIVE"
+        ? "This exam is active, so setup and question changes are locked."
+        : "";
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-950">
@@ -346,21 +355,26 @@ export default function TeacherOnlineExamsPage() {
               <Card>
                 <CardHeader><CardTitle className="text-base">Edit Exam</CardTitle></CardHeader>
                 <CardContent className="grid gap-3 md:grid-cols-2">
+                  {setupLocked ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200 md:col-span-2">
+                      {lockReason}
+                    </div>
+                  ) : null}
                   <div className="space-y-1.5 md:col-span-2">
                     <Label htmlFor="edit-online-exam-title">Exam title</Label>
                     <Input id="edit-online-exam-title" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-online-exam-code">Exam code</Label>
-                    <Input id="edit-online-exam-code" value={editForm.accessCode} onChange={(e) => setEditForm({ ...editForm, accessCode: e.target.value.toUpperCase() })} className="uppercase" />
+                    <Input id="edit-online-exam-code" value={editForm.accessCode} disabled={setupLocked} onChange={(e) => setEditForm({ ...editForm, accessCode: e.target.value.toUpperCase() })} className="uppercase" />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-online-exam-duration">Duration</Label>
-                    <Input id="edit-online-exam-duration" type="number" min="1" value={editForm.durationMinutes} onChange={(e) => setEditForm({ ...editForm, durationMinutes: e.target.value })} />
+                    <Input id="edit-online-exam-duration" type="number" min="1" value={editForm.durationMinutes} disabled={setupLocked} onChange={(e) => setEditForm({ ...editForm, durationMinutes: e.target.value })} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="edit-online-exam-pass">Pass mark</Label>
-                    <Input id="edit-online-exam-pass" type="number" min="0" max="100" value={editForm.passMark} onChange={(e) => setEditForm({ ...editForm, passMark: e.target.value })} />
+                    <Input id="edit-online-exam-pass" type="number" min="0" max="100" value={editForm.passMark} disabled={setupLocked} onChange={(e) => setEditForm({ ...editForm, passMark: e.target.value })} />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Status</Label>
@@ -374,7 +388,7 @@ export default function TeacherOnlineExamsPage() {
                     </Select>
                   </div>
                   <div className="flex items-end">
-                    <Button disabled={updateExam.isPending || !editForm.title.trim()} onClick={() => updateExam.mutate()}>
+                    <Button disabled={updateExam.isPending || !editForm.title.trim() || setupLocked} onClick={() => updateExam.mutate()}>
                       {updateExam.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                       Save Changes
                     </Button>
@@ -385,14 +399,20 @@ export default function TeacherOnlineExamsPage() {
               <Card>
                 <CardHeader><CardTitle className="text-base">Add Question</CardTitle></CardHeader>
                 <CardContent className="grid gap-3 md:grid-cols-2">
+                  {questionBankLocked ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200 md:col-span-2">
+                      {lockReason}
+                    </div>
+                  ) : null}
                   <div className="space-y-1.5 md:col-span-2">
                     <Label htmlFor="online-question-subject">Subject label</Label>
-                    <Input id="online-question-subject" value={questionForm.subject} onChange={(e) => setQuestionForm({ ...questionForm, subject: e.target.value })} placeholder="Mathematics" />
+                    <Input id="online-question-subject" value={questionForm.subject} disabled={questionBankLocked} onChange={(e) => setQuestionForm({ ...questionForm, subject: e.target.value })} placeholder="Mathematics" />
                   </div>
                   <div className="space-y-1.5 md:col-span-2">
                     <Label>Question type</Label>
                     <Select
                       value={questionType}
+                      disabled={questionBankLocked}
                       onValueChange={(nextType) =>
                         setQuestionForm({
                           ...questionForm,
@@ -415,19 +435,19 @@ export default function TeacherOnlineExamsPage() {
                   </div>
                   <div className="space-y-1.5 md:col-span-2">
                     <Label htmlFor="online-question-text">Question</Label>
-                    <Textarea id="online-question-text" value={questionForm.questionText} onChange={(e) => setQuestionForm({ ...questionForm, questionText: e.target.value })} />
+                    <Textarea id="online-question-text" value={questionForm.questionText} disabled={questionBankLocked} onChange={(e) => setQuestionForm({ ...questionForm, questionText: e.target.value })} />
                   </div>
                   {questionType !== "SHORT_ANSWER" ? (
                     <>
                       {optionLabels.map((option) => (
                         <div key={option} className="space-y-1.5">
                           <Label htmlFor={`online-option-${option}`}>{questionType === "TRUE_FALSE" ? (option === "A" ? "True label" : "False label") : `Option ${option}`}</Label>
-                          <Input id={`online-option-${option}`} value={questionForm[`option${option}`]} disabled={questionType === "TRUE_FALSE"} onChange={(e) => setQuestionForm({ ...questionForm, [`option${option}`]: e.target.value })} />
+                          <Input id={`online-option-${option}`} value={questionForm[`option${option}`]} disabled={questionBankLocked || questionType === "TRUE_FALSE"} onChange={(e) => setQuestionForm({ ...questionForm, [`option${option}`]: e.target.value })} />
                         </div>
                       ))}
                       <div className="space-y-1.5">
                         <Label>{questionType === "TRUE_FALSE" ? "Correct answer" : "Correct option"}</Label>
-                        <Select value={questionForm.correctOption} onValueChange={(correctOption) => setQuestionForm({ ...questionForm, correctOption })}>
+                        <Select value={questionForm.correctOption} disabled={questionBankLocked} onValueChange={(correctOption) => setQuestionForm({ ...questionForm, correctOption })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {optionLabels.map((option) => <SelectItem key={option} value={option}>{questionType === "TRUE_FALSE" ? (option === "A" ? "True" : "False") : option}</SelectItem>)}
@@ -439,16 +459,16 @@ export default function TeacherOnlineExamsPage() {
                     <>
                       <div className="space-y-1.5">
                         <Label htmlFor="online-short-answer">Accepted answer</Label>
-                        <Input id="online-short-answer" value={questionForm.correctText} onChange={(e) => setQuestionForm({ ...questionForm, correctText: e.target.value })} placeholder="Exact answer or variants separated by |" />
+                        <Input id="online-short-answer" value={questionForm.correctText} disabled={questionBankLocked} onChange={(e) => setQuestionForm({ ...questionForm, correctText: e.target.value })} placeholder="Exact answer or variants separated by |" />
                       </div>
                       <label className="flex items-end gap-2 pb-2 text-sm text-slate-700 dark:text-slate-200">
-                        <input type="checkbox" checked={!!questionForm.caseSensitive} onChange={(e) => setQuestionForm({ ...questionForm, caseSensitive: e.target.checked })} />
+                        <input type="checkbox" checked={!!questionForm.caseSensitive} disabled={questionBankLocked} onChange={(e) => setQuestionForm({ ...questionForm, caseSensitive: e.target.checked })} />
                         Case sensitive
                       </label>
                     </>
                   )}
                   <div className="flex items-end">
-                    <Button disabled={addQuestion.isPending || !selectedExam} onClick={() => addQuestion.mutate()}>
+                    <Button disabled={addQuestion.isPending || !selectedExam || questionBankLocked} onClick={() => addQuestion.mutate()}>
                       {addQuestion.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                       Add Question
                     </Button>
@@ -464,12 +484,13 @@ export default function TeacherOnlineExamsPage() {
                     rows={6}
                     placeholder={"subject,question_type,question,option_a,option_b,option_c,option_d,correct_answer,case_sensitive\nMathematics,MCQ,What is 5+7?,10,11,12,13,C,false\nCivics,TRUE_FALSE,The capital city of Ethiopia is Addis Ababa.,,,,,True,false\nEnglish,SHORT_ANSWER,Write a greeting.,,,,,Hello|Hi,false"}
                     value={csv}
+                    disabled={questionBankLocked}
                     onChange={(event) => setCsv(event.target.value)}
                   />
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     Use question_type MCQ, TRUE_FALSE, or SHORT_ANSWER. Short answers can include accepted variants separated by |.
                   </p>
-                  <Button variant="outline" disabled={importQuestions.isPending || !csv.trim()} onClick={() => importQuestions.mutate()}>
+                  <Button variant="outline" disabled={importQuestions.isPending || !csv.trim() || questionBankLocked} onClick={() => importQuestions.mutate()}>
                     {importQuestions.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                     Import Questions
                   </Button>
@@ -498,7 +519,7 @@ export default function TeacherOnlineExamsPage() {
                                   : `Answer: ${question.correctOption}`}
                             </p>
                           </div>
-                          <Button variant="outline" size="icon" onClick={() => deleteQuestion.mutate(question.id)}>
+                          <Button variant="outline" size="icon" disabled={questionBankLocked || deleteQuestion.isPending} onClick={() => deleteQuestion.mutate(question.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>

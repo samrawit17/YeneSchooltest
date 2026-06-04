@@ -83,6 +83,13 @@ interface PromotionReadinessParams {
   criteria?: PromotionCriteria;
 }
 
+interface AssessmentPublishReadiness {
+  assessmentSubjects: number;
+  expectedScores: number;
+  enteredScores: number;
+  missingScores: number;
+}
+
 @Injectable()
 export class ReportCardService {
   constructor(
@@ -250,6 +257,54 @@ export class ReportCardService {
       throw new NotFoundException('Term not found');
     }
     return term.name;
+  }
+
+  private buildAssessmentReadinessByClass(
+    assessmentSubjects: Array<{
+      classId: string;
+      sectionId: string | null;
+      scores: Array<{
+        studentId: string;
+        score: number | null;
+        isAbsent: boolean;
+        status: string;
+      }>;
+    }>,
+    studentIdsByClass: Map<string, Set<string>>,
+    studentIdsByClassSection: Map<string, Set<string>>,
+  ) {
+    const readinessByClass = new Map<string, AssessmentPublishReadiness>();
+    for (const assessmentSubject of assessmentSubjects) {
+      const classStudentIds = studentIdsByClass.get(assessmentSubject.classId) ?? new Set<string>();
+      const sectionStudentIds = assessmentSubject.sectionId
+        ? studentIdsByClassSection.get(`${assessmentSubject.classId}:${assessmentSubject.sectionId}`) ?? new Set<string>()
+        : classStudentIds;
+      const expectedScoreStudentIds = sectionStudentIds.size > 0
+        ? sectionStudentIds
+        : classStudentIds;
+      const enteredScoreStudentIds = new Set(
+        assessmentSubject.scores
+          .filter((score) => score.score !== null || score.isAbsent || score.status === 'SUBMITTED')
+          .map((score) => score.studentId),
+      );
+      const readiness =
+        readinessByClass.get(assessmentSubject.classId) ?? {
+          assessmentSubjects: 0,
+          expectedScores: 0,
+          enteredScores: 0,
+          missingScores: 0,
+        };
+      const expectedScores = expectedScoreStudentIds.size;
+      const enteredScores = Array.from(expectedScoreStudentIds).filter(
+        (studentId) => enteredScoreStudentIds.has(studentId),
+      ).length;
+      readiness.assessmentSubjects += 1;
+      readiness.expectedScores += expectedScores;
+      readiness.enteredScores += enteredScores;
+      readiness.missingScores += Math.max(expectedScores - enteredScores, 0);
+      readinessByClass.set(assessmentSubject.classId, readiness);
+    }
+    return readinessByClass;
   }
 
   private parseGradeDetails(gradeDetails?: string | null): Array<Record<string, any>> {
@@ -1079,8 +1134,24 @@ export class ReportCardService {
       generatedById,
     } = params;
 
+    const academicYearRecord = await this.prisma.academicYear.findFirst({
+      where: {
+        schoolId,
+        OR: [{ id: academicYear }, { name: academicYear }],
+      },
+      select: { id: true, name: true },
+    });
+    const academicYearKeys = Array.from(
+      new Set([academicYear, academicYearRecord?.id, academicYearRecord?.name].filter(Boolean) as string[]),
+    );
+
     const students = await this.prisma.studentClass.findMany({
-      where: { schoolId, classId, sectionId, academicYear },
+      where: {
+        schoolId,
+        classId,
+        sectionId,
+        academicYear: { in: academicYearKeys },
+      },
       include: {
         student: { select: { id: true, name: true } },
       },
@@ -1355,47 +1426,11 @@ export class ReportCardService {
       enrollmentStudentIdsByClassSection.set(key, bucket);
     }
 
-    const assessmentReadinessByClass = new Map<
-      string,
-      {
-        assessmentSubjects: number;
-        expectedScores: number;
-        enteredScores: number;
-        missingScores: number;
-      }
-    >();
-    for (const assessmentSubject of assessmentSubjects) {
-      const classStudentIds = studentIdsByClass.get(assessmentSubject.classId) ?? new Set<string>();
-      const sectionStudentIds = assessmentSubject.sectionId
-        ? enrollmentStudentIdsByClassSection.get(
-            `${assessmentSubject.classId}:${assessmentSubject.sectionId}`,
-          ) ?? new Set<string>()
-        : classStudentIds;
-      const expectedScoreStudentIds = sectionStudentIds.size > 0
-        ? sectionStudentIds
-        : classStudentIds;
-      const enteredScoreStudentIds = new Set(
-        assessmentSubject.scores
-          .filter((score) => score.score !== null || score.isAbsent || score.status === 'SUBMITTED')
-          .map((score) => score.studentId),
-      );
-      const classReadiness =
-        assessmentReadinessByClass.get(assessmentSubject.classId) ?? {
-          assessmentSubjects: 0,
-          expectedScores: 0,
-          enteredScores: 0,
-          missingScores: 0,
-        };
-      const expectedScores = expectedScoreStudentIds.size;
-      const enteredScores = Array.from(expectedScoreStudentIds).filter(
-        (studentId) => enteredScoreStudentIds.has(studentId),
-      ).length;
-      classReadiness.assessmentSubjects += 1;
-      classReadiness.expectedScores += expectedScores;
-      classReadiness.enteredScores += enteredScores;
-      classReadiness.missingScores += Math.max(expectedScores - enteredScores, 0);
-      assessmentReadinessByClass.set(assessmentSubject.classId, classReadiness);
-    }
+    const assessmentReadinessByClass = this.buildAssessmentReadinessByClass(
+      assessmentSubjects,
+      studentIdsByClass,
+      enrollmentStudentIdsByClassSection,
+    );
 
     const cardsByClass = new Map<string, typeof reportCards>();
     for (const card of reportCards) {
@@ -2048,6 +2083,14 @@ export class ReportCardService {
     return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : fallback;
   }
 
+  private toDownloadFileName(value: string | null | undefined, fallback: string) {
+    const cleaned = String(value || '')
+      .replace(/[<>:"/\\|?*\x00-\x1F]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleaned || fallback;
+  }
+
   private hexToRgbColor(value: string) {
     const raw = this.normalizeHexColor(value, '#1B4F72').replace('#', '');
     return rgb(
@@ -2352,6 +2395,19 @@ export class ReportCardService {
   async generateCertificateBulkZip(schoolId: string, reportCardIds: string[]): Promise<Buffer> {
     const ids = (reportCardIds || []).filter(Boolean);
     if (!ids.length) throw new BadRequestException('No report card IDs provided');
+    const reportCards = await this.prisma.reportCard.findMany({
+      where: { id: { in: ids }, schoolId },
+      select: {
+        id: true,
+        student: { select: { name: true } },
+      },
+    });
+    const reportCardNameById = new Map(
+      reportCards.map((card) => [
+        card.id,
+        this.toDownloadFileName(card.student?.name, `report-card-${card.id}`),
+      ]),
+    );
     const chunks: Buffer[] = [];
     const archive = new ZipArchive({ zlib: { level: 9 } });
     const done = new Promise<Buffer>((resolve, reject) => {
@@ -2364,10 +2420,15 @@ export class ReportCardService {
       archive.on('end', () => resolve(Buffer.concat(chunks)));
     });
     const failures: string[] = [];
+    const usedFileNames = new Map<string, number>();
     for (const id of ids) {
       try {
         const pdf = await this.generateCertificatePdf(schoolId, id);
-        archive.append(pdf, { name: `report-card-${id}.pdf` });
+        const baseName = reportCardNameById.get(id) || `report-card-${id}`;
+        const nextCount = (usedFileNames.get(baseName) || 0) + 1;
+        usedFileNames.set(baseName, nextCount);
+        const fileName = nextCount === 1 ? `${baseName}.pdf` : `${baseName}-${nextCount}.pdf`;
+        archive.append(pdf, { name: fileName });
       } catch (error: any) {
         failures.push(`${id}: ${error?.message || 'Failed to generate PDF'}`);
       }
@@ -2380,6 +2441,17 @@ export class ReportCardService {
     }
     await archive.finalize();
     return done;
+  }
+
+  async getCertificateDownloadFileName(schoolId: string, reportCardId: string) {
+    const reportCard = await this.prisma.reportCard.findFirst({
+      where: { id: reportCardId, schoolId },
+      select: {
+        id: true,
+        student: { select: { name: true } },
+      },
+    });
+    return this.toDownloadFileName(reportCard?.student?.name, `report-card-${reportCardId}`);
   }
 
   /**
@@ -2438,14 +2510,14 @@ export class ReportCardService {
       throw new NotFoundException('Class not found');
     }
 
-    const [enrollments, reportCards] = await Promise.all([
+    const [enrollments, reportCards, assessmentSubjects] = await Promise.all([
       this.prisma.studentClass.findMany({
         where: {
           schoolId,
           classId,
           academicYear: { in: academicYearKeys },
         },
-        select: { studentId: true },
+        select: { studentId: true, classId: true, sectionId: true },
       }),
       this.prisma.reportCard.findMany({
         where: {
@@ -2477,6 +2549,30 @@ export class ReportCardService {
           },
         },
       }),
+      this.prisma.assessmentSubject.findMany({
+        where: {
+          classId,
+          assessment: {
+            schoolId,
+            academicYearId,
+            termId,
+            status: { in: ['ACTIVE', 'COMPLETED'] },
+          },
+        },
+        select: {
+          id: true,
+          classId: true,
+          sectionId: true,
+          scores: {
+            select: {
+              studentId: true,
+              score: true,
+              isAbsent: true,
+              status: true,
+            },
+          },
+        },
+      }),
     ]);
     const uniqueEnrollmentStudentIds = new Set(
       enrollments.map((enrollment) => enrollment.studentId),
@@ -2486,8 +2582,41 @@ export class ReportCardService {
       throw new BadRequestException('No enrolled students found for this class');
     }
 
+    const studentIdsByClass = new Map<string, Set<string>>();
+    const studentIdsByClassSection = new Map<string, Set<string>>();
+    for (const enrollment of enrollments) {
+      const classBucket = studentIdsByClass.get(enrollment.classId) ?? new Set<string>();
+      classBucket.add(enrollment.studentId);
+      studentIdsByClass.set(enrollment.classId, classBucket);
+
+      const sectionKey = `${enrollment.classId}:${enrollment.sectionId ?? 'all'}`;
+      const sectionBucket = studentIdsByClassSection.get(sectionKey) ?? new Set<string>();
+      sectionBucket.add(enrollment.studentId);
+      studentIdsByClassSection.set(sectionKey, sectionBucket);
+    }
+    const assessmentReadiness =
+      this.buildAssessmentReadinessByClass(
+        assessmentSubjects,
+        studentIdsByClass,
+        studentIdsByClassSection,
+      ).get(classId) ?? {
+        assessmentSubjects: 0,
+        expectedScores: 0,
+        enteredScores: 0,
+        missingScores: 0,
+      };
+
+    if (assessmentReadiness.missingScores > 0) {
+      throw new BadRequestException(
+        `Results cannot be published yet because ${assessmentReadiness.missingScores} assessment marks are missing`,
+      );
+    }
+
+    const enrolledReportCards = reportCards.filter((card) =>
+      uniqueEnrollmentStudentIds.has(card.studentId),
+    );
     const reportCardStudentIds = new Set(
-      reportCards.map((card) => card.studentId),
+      enrolledReportCards.map((card) => card.studentId),
     );
     const missingReportCardStudentIds = Array.from(
       uniqueEnrollmentStudentIds,
@@ -2507,7 +2636,7 @@ export class ReportCardService {
     };
 
     const completeCardsByStudent = new Map<string, (typeof reportCards)[number]>();
-    for (const card of reportCards) {
+    for (const card of enrolledReportCards) {
       if (!isCompleteReportCard(card)) continue;
       const existing = completeCardsByStudent.get(card.studentId);
       if (
@@ -2545,9 +2674,9 @@ export class ReportCardService {
       });
     }
 
-    const reportCardIds = reportCards.map((card) => card.id);
+    const reportCardIds = rankedReportCards.map((card) => card.id);
     await this.prisma.reportCard.updateMany({
-      where: { id: { in: reportCardIds } },
+      where: { id: { in: reportCardIds }, schoolId },
       data: {
         status: ReportCardStatus.PUBLISHED,
         publishedAt: new Date(),
@@ -2559,11 +2688,11 @@ export class ReportCardService {
       : classRecord.name;
 
     const studentUserIds = Array.from(
-      new Set(reportCards.map((card) => card.studentId).filter(Boolean)),
+      new Set(rankedReportCards.map((card) => card.studentId).filter(Boolean)),
     );
     const parentUserIds = Array.from(
       new Set(
-        reportCards.flatMap((card) =>
+        rankedReportCards.flatMap((card) =>
           card.student.studentProfile?.parents.map((relation) => relation.parent.userId) ?? [],
         ),
       ),

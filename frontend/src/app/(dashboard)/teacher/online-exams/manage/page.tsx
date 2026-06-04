@@ -129,8 +129,13 @@ export default function TeacherManageOnlineExamsPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            disabled={deleteExam.isPending}
-                            onClick={() => deleteExam.mutate(exam.id)}
+                            disabled={deleteExam.isPending || (exam._count?.attempts ?? 0) > 0}
+                            title={(exam._count?.attempts ?? 0) > 0 ? "Archive attempted exams instead of deleting them" : "Delete exam"}
+                            onClick={() => {
+                              if ((exam._count?.attempts ?? 0) > 0) return;
+                              if (!window.confirm(`Delete "${exam.title}"? This cannot be undone.`)) return;
+                              deleteExam.mutate(exam.id);
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

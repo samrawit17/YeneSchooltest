@@ -453,6 +453,19 @@ export class TimetableSlotService {
     });
   }
 
+  async getByStudent(schoolId: string, studentId: string) {
+    const enrollment = await this.prisma.studentClass.findFirst({
+      where: { studentId, schoolId },
+      select: { classId: true },
+    });
+
+    if (!enrollment) {
+      throw new NotFoundException('Student enrollment not found');
+    }
+
+    return this.findByClass(schoolId, enrollment.classId);
+  }
+
   async findByClass(schoolId: string, classId: string) {
     return this.prisma.timetableSlot.findMany({
       where: {

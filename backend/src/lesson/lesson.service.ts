@@ -26,77 +26,269 @@ export class LessonService {
     private notificationService: NotificationService,
   ) {}
 
+  private getDefaultPeriodOptions() {
+    return Array.from({ length: 8 }, (_, index) => ({
+      value: index + 1,
+      label: `Period ${index + 1}`,
+    }));
+  }
+
+  private async getLessonPeriodOptions(schoolId: string) {
+    const configuredPeriods = await this.prisma.periodTime.findMany({
+      where: { schoolId },
+      select: {
+        periodNumber: true,
+        startTime: true,
+        endTime: true,
+      },
+      orderBy: { periodNumber: 'asc' },
+    });
+
+    if (configuredPeriods.length === 0) {
+      return this.getDefaultPeriodOptions();
+    }
+
+    return configuredPeriods.map((period) => ({
+      value: period.periodNumber,
+      label: `Period ${period.periodNumber}`,
+      startTime: period.startTime,
+      endTime: period.endTime,
+    }));
+  }
+
+  private async assertValidLessonPeriod(
+    schoolId: string,
+    periodNumber: number | undefined,
+  ) {
+    if (!Number.isInteger(periodNumber) || (periodNumber ?? 0) < 1) {
+      throw new BadRequestException('A valid period number is required');
+    }
+
+    const configuredPeriods = await this.prisma.periodTime.findMany({
+      where: { schoolId },
+      select: { periodNumber: true },
+      orderBy: { periodNumber: 'asc' },
+    });
+
+    if (configuredPeriods.length === 0) {
+      if ((periodNumber ?? 0) > 8) {
+        throw new BadRequestException(
+          'This period is not available. Configure school period times first.',
+        );
+      }
+      return;
+    }
+
+    const isConfigured = configuredPeriods.some(
+      (period) => period.periodNumber === periodNumber,
+    );
+    if (!isConfigured) {
+      const availablePeriods = configuredPeriods
+        .map((period) => period.periodNumber)
+        .join(', ');
+      throw new BadRequestException(
+        `Period ${periodNumber} is not configured for this school. Available periods: ${availablePeriods}`,
+      );
+    }
+  }
+
+  private async getTeacherLessonAssignments(
+    teacherId: string,
+    schoolId: string,
+  ) {
+    const [classSubjects, timetableSlots] = await Promise.all([
+      this.prisma.classSubject.findMany({
+        where: {
+          teacherId,
+          class: { schoolId },
+        },
+        include: {
+          academicYearRelation: { select: { id: true, name: true, isActive: true } },
+          class: { select: { id: true, grade: true, academicYearId: true } },
+          section: { select: { id: true, name: true } },
+          subject: { select: { id: true, name: true, code: true } },
+        },
+      }),
+      this.prisma.timetableSlot.findMany({
+        where: {
+          schoolId,
+          teacherId,
+        },
+        include: {
+          academicYear: { select: { id: true, name: true, isActive: true } },
+          class: {
+            select: {
+              id: true,
+              grade: true,
+              academicYearId: true,
+              academicYear: { select: { id: true, name: true, isActive: true } },
+            },
+          },
+          section: { select: { id: true, name: true } },
+          subject: { select: { id: true, name: true, code: true } },
+        },
+      }),
+    ]);
+
+    const assignmentMap = new Map<
+      string,
+      {
+        id: string;
+        assignmentId: string;
+        source: 'CLASS_SUBJECT' | 'TIMETABLE_SLOT';
+        name: string;
+        code?: string;
+        grade: number;
+        section: string;
+        sectionId: string;
+        classId: string;
+        academicYearId: string;
+        academicYearName?: string;
+        isActiveAcademicYear?: boolean;
+      }
+    >();
+
+    for (const assignment of classSubjects) {
+      if (assignment.class.grade === null) continue;
+      const key = [
+        assignment.classId,
+        assignment.sectionId,
+        assignment.subjectId,
+        assignment.academicYear,
+      ].join(':');
+
+      assignmentMap.set(key, {
+        id: assignment.subject.id,
+        assignmentId: assignment.id,
+        source: 'CLASS_SUBJECT',
+        name: assignment.subject.name,
+        code: assignment.subject.code || undefined,
+        grade: assignment.class.grade,
+        section: assignment.section.name,
+        sectionId: assignment.section.id,
+        classId: assignment.class.id,
+        academicYearId: assignment.academicYear,
+        academicYearName: assignment.academicYearRelation.name,
+        isActiveAcademicYear: assignment.academicYearRelation.isActive,
+      });
+    }
+
+    for (const slot of timetableSlots) {
+      if (slot.class.grade === null) continue;
+      const academicYear = slot.academicYear || slot.class.academicYear;
+      const academicYearId = slot.academicYearId || slot.class.academicYearId;
+      const key = [slot.classId, slot.sectionId, slot.subjectId, academicYearId].join(':');
+
+      if (assignmentMap.has(key)) continue;
+
+      assignmentMap.set(key, {
+        id: slot.subject.id,
+        assignmentId: `timetable:${slot.id}`,
+        source: 'TIMETABLE_SLOT',
+        name: slot.subject.name,
+        code: slot.subject.code || undefined,
+        grade: slot.class.grade,
+        section: slot.section.name,
+        sectionId: slot.section.id,
+        classId: slot.class.id,
+        academicYearId,
+        academicYearName: academicYear?.name,
+        isActiveAcademicYear: academicYear?.isActive,
+      });
+    }
+
+    return Array.from(assignmentMap.values()).sort((left, right) =>
+      Number(right.isActiveAcademicYear) - Number(left.isActiveAcademicYear) ||
+      left.grade - right.grade ||
+      left.section.localeCompare(right.section) ||
+      left.name.localeCompare(right.name),
+    );
+  }
+
+  private async teacherCanCreateLessonForAssignment(
+    teacherId: string,
+    schoolId: string,
+    classId: string,
+    sectionId: string,
+    subjectId: string,
+    academicYearId: string,
+  ) {
+    const classSubject = await this.prisma.classSubject.findFirst({
+      where: {
+        classId,
+        sectionId,
+        subjectId,
+        teacherId,
+        academicYear: academicYearId,
+      },
+    });
+    if (classSubject) return true;
+
+    const timetableSlot = await this.prisma.timetableSlot.findFirst({
+      where: {
+        schoolId,
+        classId,
+        sectionId,
+        subjectId,
+        teacherId,
+        OR: [
+          { academicYearId },
+          { academicYearId: null, class: { academicYearId } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    return Boolean(timetableSlot);
+  }
+
   async getFormData(teacherId: string, schoolId: string) {
-    const activeYear = await this.prisma.academicYear.findFirst({
-      where: { schoolId, isActive: true },
+    const [activeYear, periods] = await Promise.all([
+      this.prisma.academicYear.findFirst({
+        where: { schoolId, isActive: true },
+      }),
+      this.getLessonPeriodOptions(schoolId),
+    ]);
+
+    const [teacherSubjects, academicYears] = await Promise.all([
+      this.getTeacherLessonAssignments(teacherId, schoolId),
+      this.prisma.academicYear.findMany({
+        where: { schoolId },
+        orderBy: { startDate: 'desc' },
+      }),
+    ]);
+
+    const teacherGrades = [
+      ...new Set(teacherSubjects.map((assignment) => assignment.grade)),
+    ].sort((left, right) => left - right);
+
+    const sectionsByGrade: Record<number, { id: string; name: string; classId: string }[]> = {};
+    teacherSubjects.forEach((assignment) => {
+      if (!sectionsByGrade[assignment.grade]) sectionsByGrade[assignment.grade] = [];
+      const existing = sectionsByGrade[assignment.grade].some(
+        (section) => section.id === assignment.sectionId,
+      );
+      if (!existing) {
+        sectionsByGrade[assignment.grade].push({
+          id: assignment.sectionId,
+          name: assignment.section,
+          classId: assignment.classId,
+        });
+      }
     });
 
     if (!activeYear) {
       return {
-        academicYears: [],
+        academicYears: academicYears.map(ay => ({ id: ay.id, name: ay.name, isActive: ay.isActive })),
         activeAcademicYearId: null,
         terms: [],
-        grades: [],
-        sectionsByGrade: {},
-        allSubjects: [],
-        teacherSubjects: [],
-        periods: [
-          { value: 1, label: 'Period 1' },
-          { value: 2, label: 'Period 2' },
-          { value: 3, label: 'Period 3' },
-          { value: 4, label: 'Period 4' },
-          { value: 5, label: 'Period 5' },
-          { value: 6, label: 'Period 6' },
-          { value: 7, label: 'Period 7' },
-          { value: 8, label: 'Period 8' },
-        ],
+        grades: teacherGrades,
+        sectionsByGrade,
+        allSubjects: teacherSubjects,
+        teacherSubjects,
+        periods,
       };
     }
-
-    const classSubjects = await this.prisma.classSubject.findMany({
-      where: { teacherId, academicYear: activeYear.id },
-      include: {
-        class: { select: { id: true, grade: true } },
-        section: { select: { id: true, name: true } },
-        subject: { select: { id: true, name: true, code: true } },
-      },
-    });
-
-    const teacherGrades = [...new Set(classSubjects.map(cs => cs.class.grade).filter(Boolean))].sort();
-    const teacherSections = classSubjects.map(cs => ({
-      id: cs.section.id,
-      name: cs.section.name,
-      classId: cs.class.id,
-      grade: cs.class.grade,
-    })).filter(s => s.grade !== null);
-
-    const subjectMap = new Map<string, { id: string; name: string; code?: string; grade: number; section: string }>();
-    classSubjects.forEach(cs => {
-      if (cs.class.grade === null) return;
-      if (!subjectMap.has(cs.subject.id)) {
-        subjectMap.set(cs.subject.id, {
-          id: cs.subject.id,
-          name: cs.subject.name,
-          code: cs.subject.code || undefined,
-          grade: cs.class.grade,
-          section: cs.section.name,
-        });
-      }
-    });
-    const teacherSubjects = Array.from(subjectMap.values());
-
-    const sectionsByGrade: Record<number, { id: string; name: string; classId: string }[]> = {};
-    teacherSections.forEach(s => {
-      if (s.grade === null) return;
-      if (!sectionsByGrade[s.grade]) sectionsByGrade[s.grade] = [];
-      sectionsByGrade[s.grade].push({ id: s.id, name: s.name, classId: s.classId });
-    });
-
-    const academicYears = await this.prisma.academicYear.findMany({
-      where: { schoolId },
-      orderBy: { startDate: 'desc' },
-      take: 5,
-    });
 
     const terms = await this.prisma.term.findMany({
       where: { academicYearId: activeYear.id },
@@ -111,22 +303,13 @@ export class LessonService {
       sectionsByGrade,
       allSubjects: teacherSubjects,
       teacherSubjects,
-      periods: [
-        { value: 1, label: 'Period 1' },
-        { value: 2, label: 'Period 2' },
-        { value: 3, label: 'Period 3' },
-        { value: 4, label: 'Period 4' },
-        { value: 5, label: 'Period 5' },
-        { value: 6, label: 'Period 6' },
-        { value: 7, label: 'Period 7' },
-        { value: 8, label: 'Period 8' },
-      ],
+      periods,
     };
   }
 
   /**
    * PERIOD GUARD: Verify teacher is assigned to this period in timetable
-   * Ethiopian schools run on a strict 1-8 period schedule
+   * Period numbers are validated against the school's configured period times.
    */
   async validatePeriodAssignment(
     teacherId: string,
@@ -183,31 +366,38 @@ export class LessonService {
       where: {
         grade: data.grade,
         schoolId,
+        academicYearId: data.academicYearId,
       },
     });
     if (!classRecord)
       throw new NotFoundException(`Class not found for grade ${data.grade}`);
 
-    let sectionRecord = await this.prisma.section.findFirst({
-      where: { 
-        OR: [
-          { name: data.section, classId: classRecord.id },
-          { name: data.section, class: { grade: data.grade, schoolId } },
-        ]
+    const sectionRecord = await this.prisma.section.findFirst({
+      where: {
+        name: data.section,
+        classId: classRecord.id,
       },
     });
-    if (!sectionRecord) {
-      sectionRecord = await this.prisma.section.create({
-        data: {
-          name: data.section,
-          classId: classRecord.id,
-          capacity: 50,
-        },
-      });
+    if (!sectionRecord)
+      throw new NotFoundException(`Section ${data.section} not found for grade ${data.grade}`);
+
+    const canCreateForAssignment = await this.teacherCanCreateLessonForAssignment(
+      teacherId,
+      schoolId,
+      classRecord.id,
+      sectionRecord.id,
+      data.subjectId,
+      data.academicYearId,
+    );
+    if (!canCreateForAssignment) {
+      throw new ForbiddenException(
+        'You can only create lessons for your assigned class, section, and subject',
+      );
     }
 
     const lessonDate = new Date(data.lessonDate);
     const dayOfWeek = this.getDayOfWeek(lessonDate);
+    await this.assertValidLessonPeriod(schoolId, data.periodNumber);
     await this.validatePeriodAssignment(
       teacherId,
       classRecord.id,
@@ -297,8 +487,11 @@ export class LessonService {
       throw new NotFoundException('Lesson not found');
     if (lesson.teacherId !== teacherId)
       throw new ForbiddenException('Only creator can update');
-    if (lesson.status === LessonStatus.PUBLISHED)
-      throw new BadRequestException('Cannot update published lesson');
+    if ([LessonStatus.PUBLISHED, 'PENDING_REVIEW'].includes(lesson.status as any))
+      throw new BadRequestException('Cannot update lessons that are pending review or published');
+    if (data.periodNumber !== undefined) {
+      await this.assertValidLessonPeriod(schoolId, data.periodNumber);
+    }
 
     const updated = await this.prisma.content.update({
       where: { id: lessonId },
@@ -1087,6 +1280,9 @@ export class LessonService {
       throw new NotFoundException('Not found');
     if (lesson.teacherId !== teacherId)
       throw new ForbiddenException('Only creator');
+    if (data.periodNumber !== undefined) {
+      await this.assertValidLessonPeriod(schoolId, data.periodNumber);
+    }
     return this.prisma.content.update({
       where: { id },
       data: {
@@ -1114,8 +1310,8 @@ export class LessonService {
       throw new NotFoundException('Not found');
     if (lesson.teacherId !== teacherId)
       throw new ForbiddenException('Only creator');
-    if (lesson.status === LessonStatus.PUBLISHED)
-      throw new BadRequestException('Cannot delete published');
+    if ([LessonStatus.PUBLISHED, 'PENDING_REVIEW'].includes(lesson.status as any))
+      throw new BadRequestException('Cannot delete lessons that are pending review or published');
     await this.prisma.content.delete({ where: { id } });
     return { message: 'Deleted' };
   }

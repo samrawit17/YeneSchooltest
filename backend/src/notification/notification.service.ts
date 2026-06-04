@@ -987,7 +987,7 @@ export class NotificationService {
     const since = this.getNotificationCreateDedupeSince();
 
     const result = await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw(
+      await tx.$executeRaw(
         Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${this.getNotificationCreateLockKey({
           schoolId: data.schoolId,
           userId: data.userId || null,
@@ -1069,7 +1069,7 @@ export class NotificationService {
     const since = this.getNotificationCreateDedupeSince();
 
     const result = await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw(
+      await tx.$executeRaw(
         Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${this.getNotificationCreateLockKey({
           schoolId: data.schoolId,
           userId: 'bulk',
@@ -1608,7 +1608,7 @@ export class NotificationService {
       data.userIds.map(async (userId) => {
         return this.prisma.$transaction(async (tx) => {
           const lockKey = `platform-notification:${userId}:${data.dedupeKey}`;
-          await tx.$queryRaw(
+          await tx.$executeRaw(
             Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`,
           );
 

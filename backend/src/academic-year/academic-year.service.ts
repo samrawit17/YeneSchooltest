@@ -84,6 +84,33 @@ const DEFAULT_PERIOD_CONFIGS = {
   ],
 };
 
+const CURRICULUM_TYPES = ['SEMESTER', 'QUARTER', 'TERM', 'CUSTOM'] as const;
+const CALENDAR_TYPES = ['GREGORIAN', 'ETHIOPIAN'] as const;
+
+const isCurriculumType = (value: unknown): value is CurriculumType =>
+  typeof value === 'string' &&
+  CURRICULUM_TYPES.includes(value as CurriculumType);
+
+const isCalendarType = (value: unknown): value is CalendarType =>
+  typeof value === 'string' && CALENDAR_TYPES.includes(value as CalendarType);
+
+const parseValidDate = (value: Date | string | undefined, label: string) => {
+  if (!value) {
+    throw new BadRequestException(`${label} is required`);
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestException(`${label} must be a valid date`);
+  }
+  return date;
+};
+
+const assertDateRange = (startDate: Date, endDate: Date) => {
+  if (startDate >= endDate) {
+    throw new BadRequestException('Start date must be before end date');
+  }
+};
+
 const STANDARD_PERIOD_DURATIONS: Partial<
   Record<CurriculumType, Array<{ months: number; days?: number }>>
 > = {
@@ -192,6 +219,94 @@ export class AcademicYearService {
     private schoolSettingsService: SchoolSettingsService,
   ) {}
 
+  private requireSchoolId(schoolId?: string | null) {
+    if (!schoolId) {
+      throw new BadRequestException('schoolId is required');
+    }
+    return schoolId;
+  }
+
+  private assertSchoolAccess(
+    recordSchoolId: string,
+    expectedSchoolId?: string,
+  ) {
+    if (expectedSchoolId && recordSchoolId !== expectedSchoolId) {
+      throw new NotFoundException('Academic year not found');
+    }
+  }
+
+  private async assertTermSchoolAccess(
+    termId: string,
+    expectedSchoolId?: string,
+  ) {
+    const term = await this.prismaService.term.findUnique({
+      where: { id: termId },
+      include: { academicYear: true },
+    });
+
+    if (!term) {
+      throw new NotFoundException('Term not found');
+    }
+
+    this.assertSchoolAccess(term.academicYear.schoolId, expectedSchoolId);
+    return term;
+  }
+
+  private async assertTermDatesDoNotOverlap(
+    academicYearId: string,
+    startDate: Date,
+    endDate: Date,
+    excludeTermId?: string,
+  ) {
+    const overlappingTerm = await this.prismaService.term.findFirst({
+      where: {
+        academicYearId,
+        ...(excludeTermId ? { id: { not: excludeTermId } } : {}),
+        startDate: { lte: endDate },
+        endDate: { gte: startDate },
+      },
+      select: { name: true },
+    });
+
+    if (overlappingTerm) {
+      throw new BadRequestException(
+        `Period dates overlap with ${overlappingTerm.name}`,
+      );
+    }
+  }
+
+  private assertPeriodWeight(percentageWeight: number | undefined) {
+    if (percentageWeight === undefined) return;
+    if (
+      typeof percentageWeight !== 'number' ||
+      Number.isNaN(percentageWeight) ||
+      percentageWeight < 0 ||
+      percentageWeight > 100
+    ) {
+      throw new BadRequestException('Period weight must be between 0 and 100');
+    }
+  }
+
+  private async assertTotalWeightDoesNotExceed100(
+    academicYearId: string,
+    nextWeight: number,
+    excludeTermId?: string,
+  ) {
+    const terms = await this.prismaService.term.findMany({
+      where: {
+        academicYearId,
+        ...(excludeTermId ? { id: { not: excludeTermId } } : {}),
+      },
+      select: { percentageWeight: true },
+    });
+    const total =
+      terms.reduce((sum, term) => sum + term.percentageWeight, 0) + nextWeight;
+
+    if (total > 100.01) {
+      throw new BadRequestException('Total period weight cannot exceed 100%');
+    }
+  }
+
   async createAcademicYear(createDto: CreateAcademicYearDto) {
     const {
       name,
@@ -201,18 +316,29 @@ export class AcademicYearService {
       curriculumType,
       calendarType = 'ETHIOPIAN',
     } = createDto;
+    const finalSchoolId = this.requireSchoolId(schoolId);
+    const trimmedName = name?.trim();
 
-    // Validate dates
-    if (new Date(startDate) >= new Date(endDate)) {
-      throw new BadRequestException('Start date must be before end date');
+    if (!trimmedName) {
+      throw new BadRequestException('Academic year name is required');
     }
+    if (curriculumType && !isCurriculumType(curriculumType)) {
+      throw new BadRequestException('Invalid curriculum type');
+    }
+    if (calendarType && !isCalendarType(calendarType)) {
+      throw new BadRequestException('Invalid calendar type');
+    }
+
+    const parsedStartDate = parseValidDate(startDate, 'Start date');
+    const parsedEndDate = parseValidDate(endDate, 'End date');
+    assertDateRange(parsedStartDate, parsedEndDate);
 
     // Check if academic year with same name exists for this school
     const existing = await this.prismaService.academicYear.findUnique({
       where: {
         schoolId_name: {
-          schoolId,
-          name,
+          schoolId: finalSchoolId,
+          name: trimmedName,
         },
       },
     });
@@ -227,10 +353,10 @@ export class AcademicYearService {
     let finalCurriculumType = curriculumType || 'SEMESTER';
     if (!curriculumType) {
       const schoolSetting = await this.schoolSettingsService.getSetting(
-        schoolId,
+        finalSchoolId,
         'curriculum_type',
       );
-      if (schoolSetting) {
+      if (isCurriculumType(schoolSetting)) {
         finalCurriculumType = schoolSetting;
       }
     }
@@ -238,13 +364,13 @@ export class AcademicYearService {
     // Create academic year with curriculum type and ethiopian year
     const academicYear = await this.prismaService.academicYear.create({
       data: {
-        name,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        schoolId,
+        name: trimmedName,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+        schoolId: finalSchoolId,
         curriculumType: finalCurriculumType as any,
         calendarType: calendarType as any,
-        ethiopianYear: getEthiopianYear(new Date(startDate)),
+        ethiopianYear: getEthiopianYear(parsedStartDate),
       } as any,
       include: {
         terms: {
@@ -260,8 +386,8 @@ export class AcademicYearService {
       if (periodConfig) {
         const termsData = buildPeriodDateRanges(
           finalCurriculumType,
-          new Date(startDate),
-          new Date(endDate),
+          parsedStartDate,
+          parsedEndDate,
           periodConfig,
         ).map((config) => ({
           academicYearId: academicYear.id,
@@ -280,7 +406,7 @@ export class AcademicYearService {
     }
 
     await this.schoolSettingsService.ensureDefaultClassesForAcademicYear(
-      schoolId,
+      finalSchoolId,
       academicYear.id,
     );
 
@@ -297,8 +423,9 @@ export class AcademicYearService {
   }
 
   async getAcademicYears(schoolId: string) {
+    const finalSchoolId = this.requireSchoolId(schoolId);
     return this.prismaService.academicYear.findMany({
-      where: { schoolId },
+      where: { schoolId: finalSchoolId },
       include: {
         terms: {
           orderBy: { order: 'asc' },
@@ -308,7 +435,7 @@ export class AcademicYearService {
     });
   }
 
-  async getAcademicYearById(id: string) {
+  async getAcademicYearById(id: string, schoolId?: string) {
     const academicYear = await this.prismaService.academicYear.findUnique({
       where: { id },
       include: {
@@ -323,13 +450,16 @@ export class AcademicYearService {
       throw new NotFoundException('Academic year not found');
     }
 
+    this.assertSchoolAccess(academicYear.schoolId, schoolId);
+
     return academicYear;
   }
 
   async getActiveAcademicYear(schoolId: string) {
+    const finalSchoolId = this.requireSchoolId(schoolId);
     // Attempt to get default from school settings
     const settings = await this.prismaService.schoolSettings.findUnique({
-      where: { schoolId },
+      where: { schoolId: finalSchoolId },
     });
 
     if (settings && settings.defaultAcademicYearId) {
@@ -346,7 +476,7 @@ export class AcademicYearService {
 
     const activeYear = await this.prismaService.academicYear.findFirst({
       where: {
-        schoolId,
+        schoolId: finalSchoolId,
         isActive: true,
       },
       include: {
@@ -362,7 +492,7 @@ export class AcademicYearService {
     }
 
     return this.prismaService.academicYear.findFirst({
-      where: { schoolId },
+      where: { schoolId: finalSchoolId },
       include: {
         terms: {
           orderBy: { order: 'asc' },
@@ -376,13 +506,15 @@ export class AcademicYearService {
     schoolId: string,
     providedAcademicYearId?: string | null,
   ): Promise<string> {
+    const finalSchoolId = this.requireSchoolId(schoolId);
     if (providedAcademicYearId) {
+      await this.getAcademicYearById(providedAcademicYearId, finalSchoolId);
       return providedAcademicYearId;
     }
 
     // Attempt to get default from school settings
     const settings = await this.prismaService.schoolSettings.findUnique({
-      where: { schoolId },
+      where: { schoolId: finalSchoolId },
     });
 
     if (settings && settings.defaultAcademicYearId) {
@@ -390,7 +522,7 @@ export class AcademicYearService {
     }
 
     // Fallback to active academic year
-    const activeInfo = await this.getActiveAcademicYear(schoolId);
+    const activeInfo = await this.getActiveAcademicYear(finalSchoolId);
     if (!activeInfo) {
       throw new BadRequestException(
         'No academic year provided and no default/active academic year found for the school',
@@ -400,22 +532,41 @@ export class AcademicYearService {
     return activeInfo.id;
   }
 
-  async updateAcademicYear(id: string, updateDto: UpdateAcademicYearDto) {
-    const academicYear = await this.getAcademicYearById(id);
+  async updateAcademicYear(
+    id: string,
+    updateDto: UpdateAcademicYearDto,
+    schoolId?: string,
+  ) {
+    const academicYear = await this.getAcademicYearById(id, schoolId);
+    const nextStartDate = updateDto.startDate
+      ? parseValidDate(updateDto.startDate, 'Start date')
+      : academicYear.startDate;
+    const nextEndDate = updateDto.endDate
+      ? parseValidDate(updateDto.endDate, 'End date')
+      : academicYear.endDate;
+    assertDateRange(nextStartDate, nextEndDate);
 
-    if (updateDto.startDate && updateDto.endDate) {
-      if (new Date(updateDto.startDate) >= new Date(updateDto.endDate)) {
-        throw new BadRequestException('Start date must be before end date');
-      }
+    if (
+      updateDto.curriculumType &&
+      !isCurriculumType(updateDto.curriculumType)
+    ) {
+      throw new BadRequestException('Invalid curriculum type');
+    }
+    if (updateDto.calendarType && !isCalendarType(updateDto.calendarType)) {
+      throw new BadRequestException('Invalid calendar type');
     }
 
     // If updating name, check for duplicates
-    if (updateDto.name && updateDto.name !== academicYear.name) {
+    const trimmedName = updateDto.name?.trim();
+    if (updateDto.name !== undefined && !trimmedName) {
+      throw new BadRequestException('Academic year name is required');
+    }
+    if (trimmedName && trimmedName !== academicYear.name) {
       const existing = await this.prismaService.academicYear.findUnique({
         where: {
           schoolId_name: {
             schoolId: academicYear.schoolId,
-            name: updateDto.name,
+            name: trimmedName,
           },
         },
       });
@@ -432,20 +583,24 @@ export class AcademicYearService {
       updateDto.curriculumType &&
       updateDto.curriculumType !== academicYear.curriculumType
     ) {
-      await this.updateCurriculumType(id, {
-        curriculumType: updateDto.curriculumType,
-      });
+      await this.updateCurriculumType(
+        id,
+        {
+          curriculumType: updateDto.curriculumType,
+        },
+        schoolId,
+      );
     }
 
     return this.prismaService.academicYear.update({
       where: { id },
       data: {
-        ...(updateDto.name && { name: updateDto.name }),
+        ...(trimmedName && { name: trimmedName }),
         ...(updateDto.startDate && {
-          startDate: new Date(updateDto.startDate),
-          ethiopianYear: getEthiopianYear(new Date(updateDto.startDate)),
+          startDate: nextStartDate,
+          ethiopianYear: getEthiopianYear(nextStartDate),
         }),
-        ...(updateDto.endDate && { endDate: new Date(updateDto.endDate) }),
+        ...(updateDto.endDate && { endDate: nextEndDate }),
         ...(updateDto.calendarType && {
           calendarType: updateDto.calendarType as any,
         }),
@@ -458,8 +613,16 @@ export class AcademicYearService {
     });
   }
 
-  async updateCurriculumType(id: string, dto: UpdateCurriculumTypeDto) {
-    const academicYear = await this.getAcademicYearById(id);
+  async updateCurriculumType(
+    id: string,
+    dto: UpdateCurriculumTypeDto,
+    schoolId?: string,
+  ) {
+    if (!isCurriculumType(dto.curriculumType)) {
+      throw new BadRequestException('Invalid curriculum type');
+    }
+
+    const academicYear = await this.getAcademicYearById(id, schoolId);
 
     // Check if grading has already started for this academic year
     const existingGrades = await this.prismaService.subjectGrade.findFirst({
@@ -494,66 +657,72 @@ export class AcademicYearService {
       );
     }
 
-    // Delete existing terms and create new ones based on new curriculum type
-    await this.prismaService.term.deleteMany({
-      where: { academicYearId: id },
-    });
+    return this.prismaService.$transaction(async (tx) => {
+      await tx.term.deleteMany({
+        where: { academicYearId: id },
+      });
 
-    // Create new terms with default configuration
-    if (dto.curriculumType !== 'CUSTOM') {
-      const periodConfig = DEFAULT_PERIOD_CONFIGS[dto.curriculumType];
-      if (periodConfig) {
-        await this.prismaService.term.createMany({
-          data: buildPeriodDateRanges(
-            dto.curriculumType,
-            academicYear.startDate,
-            academicYear.endDate,
-            periodConfig,
-          ).map((config) => ({
-            academicYearId: id,
-            name: config.name,
-            order: config.order,
-            percentageWeight: config.percentageWeight,
-            startDate: config.startDate,
-            endDate: config.endDate,
-            isLocked: false,
-          })),
-        });
+      if (dto.curriculumType !== 'CUSTOM') {
+        const periodConfig = DEFAULT_PERIOD_CONFIGS[dto.curriculumType];
+        if (periodConfig) {
+          await tx.term.createMany({
+            data: buildPeriodDateRanges(
+              dto.curriculumType,
+              academicYear.startDate,
+              academicYear.endDate,
+              periodConfig,
+            ).map((config) => ({
+              academicYearId: id,
+              name: config.name,
+              order: config.order,
+              percentageWeight: config.percentageWeight,
+              startDate: config.startDate,
+              endDate: config.endDate,
+              isLocked: false,
+            })),
+          });
+        }
       }
-    }
 
-    return this.prismaService.academicYear.update({
-      where: { id },
-      data: { curriculumType: dto.curriculumType as any },
-      include: {
-        terms: {
-          orderBy: { order: 'asc' },
+      return tx.academicYear.update({
+        where: { id },
+        data: { curriculumType: dto.curriculumType as any },
+        include: {
+          terms: {
+            orderBy: { order: 'asc' },
+          },
         },
-      },
+      });
     });
   }
 
-  async activateAcademicYear(id: string) {
-    const academicYear = await this.getAcademicYearById(id);
+  async activateAcademicYear(id: string, schoolId?: string) {
+    const academicYear = await this.getAcademicYearById(id, schoolId);
+    const weightsValid = await this.validatePeriodWeights(id, schoolId);
+    if (!weightsValid) {
+      throw new BadRequestException(
+        'Period weights must total 100% before activating an academic year',
+      );
+    }
 
-    // Deactivate all other academic years for this school
-    await this.prismaService.academicYear.updateMany({
-      where: {
-        schoolId: academicYear.schoolId,
-        id: { not: id },
-      },
-      data: { isActive: false },
-    });
-
-    // Activate the specified academic year
-    const activated = await this.prismaService.academicYear.update({
-      where: { id },
-      data: { isActive: true },
-      include: {
-        terms: {
-          orderBy: { order: 'asc' },
+    const activated = await this.prismaService.$transaction(async (tx) => {
+      await tx.academicYear.updateMany({
+        where: {
+          schoolId: academicYear.schoolId,
+          id: { not: id },
         },
-      },
+        data: { isActive: false },
+      });
+
+      return tx.academicYear.update({
+        where: { id },
+        data: { isActive: true },
+        include: {
+          terms: {
+            orderBy: { order: 'asc' },
+          },
+        },
+      });
     });
 
     await this.schoolSettingsService.ensureDefaultClassesForAcademicYear(
@@ -564,8 +733,8 @@ export class AcademicYearService {
     return activated;
   }
 
-  async deleteAcademicYear(id: string) {
-    const academicYear = await this.getAcademicYearById(id);
+  async deleteAcademicYear(id: string, schoolId?: string) {
+    const academicYear = await this.getAcademicYearById(id, schoolId);
 
     // Guard: Check for enrollments, enrollment requests, classes, and grades
     const [enrollments, enrollmentRequests, classes, grades] =
@@ -604,10 +773,11 @@ export class AcademicYearService {
   }
 
   async getCurrentTerm(schoolId: string) {
+    const finalSchoolId = this.requireSchoolId(schoolId);
     const now = new Date();
 
     const schoolSettings = await this.prismaService.schoolSettings.findUnique({
-      where: { schoolId },
+      where: { schoolId: finalSchoolId },
     });
 
     const activeYear = schoolSettings?.defaultAcademicYearId
@@ -616,7 +786,7 @@ export class AcademicYearService {
         })
       : await this.prismaService.academicYear.findFirst({
           where: {
-            schoolId,
+            schoolId: finalSchoolId,
             isActive: true,
           },
           orderBy: { startDate: 'desc' },
@@ -625,7 +795,7 @@ export class AcademicYearService {
     const fallbackYear =
       activeYear ||
       (await this.prismaService.academicYear.findFirst({
-        where: { schoolId },
+        where: { schoolId: finalSchoolId },
         orderBy: { startDate: 'desc' },
       }));
 
@@ -664,8 +834,8 @@ export class AcademicYearService {
    * Get periods with their weights for an academic year
    * Used for grade calculations
    */
-  async getPeriodWeights(id: string) {
-    const academicYear = await this.getAcademicYearById(id);
+  async getPeriodWeights(id: string, schoolId?: string) {
+    const academicYear = await this.getAcademicYearById(id, schoolId);
 
     return academicYear.terms.map((term) => ({
       id: term.id,
@@ -679,8 +849,8 @@ export class AcademicYearService {
   /**
    * Check if period weights total 100%
    */
-  async validatePeriodWeights(id: string): Promise<boolean> {
-    const academicYear = await this.getAcademicYearById(id);
+  async validatePeriodWeights(id: string, schoolId?: string): Promise<boolean> {
+    const academicYear = await this.getAcademicYearById(id, schoolId);
     const totalWeight = academicYear.terms.reduce(
       (sum, term) => sum + term.percentageWeight,
       0,
@@ -692,14 +862,32 @@ export class AcademicYearService {
    * Create a custom term/period for an academic year
    * Used for CUSTOM curriculum type or adding extra periods
    */
-  async createTerm(academicYearId: string, dto: CreateTermDto) {
-    const academicYear = await this.getAcademicYearById(academicYearId);
+  async createTerm(
+    academicYearId: string,
+    dto: CreateTermDto,
+    schoolId?: string,
+  ) {
+    const academicYear = await this.getAcademicYearById(
+      academicYearId,
+      schoolId,
+    );
+    const name = dto.name?.trim();
+    if (!name) {
+      throw new BadRequestException('Period name is required');
+    }
+    if (!Number.isInteger(dto.order) || dto.order < 1) {
+      throw new BadRequestException('Period order must be a positive integer');
+    }
+    this.assertPeriodWeight(dto.percentageWeight);
+    const startDate = parseValidDate(dto.startDate, 'Start date');
+    const endDate = parseValidDate(dto.endDate, 'End date');
+    assertDateRange(startDate, endDate);
 
     // Check if term with same name already exists
     const existingTerm = await this.prismaService.term.findFirst({
       where: {
         academicYearId,
-        name: dto.name,
+        name,
       },
     });
 
@@ -708,14 +896,16 @@ export class AcademicYearService {
     }
 
     // Validate dates are within academic year
-    if (
-      new Date(dto.startDate) < academicYear.startDate ||
-      new Date(dto.endDate) > academicYear.endDate
-    ) {
+    if (startDate < academicYear.startDate || endDate > academicYear.endDate) {
       throw new BadRequestException(
         'Term dates must be within the academic year',
       );
     }
+    await this.assertTermDatesDoNotOverlap(academicYearId, startDate, endDate);
+    await this.assertTotalWeightDoesNotExceed100(
+      academicYearId,
+      dto.percentageWeight,
+    );
 
     // Validate order is unique
     const existingOrder = await this.prismaService.term.findFirst({
@@ -734,11 +924,11 @@ export class AcademicYearService {
     return this.prismaService.term.create({
       data: {
         academicYearId,
-        name: dto.name,
+        name,
         order: dto.order,
         percentageWeight: dto.percentageWeight,
-        startDate: new Date(dto.startDate),
-        endDate: new Date(dto.endDate),
+        startDate,
+        endDate,
         isLocked: false,
       },
     });
@@ -747,21 +937,63 @@ export class AcademicYearService {
   /**
    * Update a term/period
    */
-  async updateTerm(termId: string, dto: UpdateTermDto) {
-    const term = await this.prismaService.term.findUnique({
-      where: { id: termId },
-      include: { academicYear: true },
-    });
-
-    if (!term) {
-      throw new NotFoundException('Term not found');
-    }
+  async updateTerm(termId: string, dto: UpdateTermDto, schoolId?: string) {
+    const term = await this.assertTermSchoolAccess(termId, schoolId);
 
     // Check if term is locked - cannot modify locked terms
     if (term.isLocked) {
       throw new ForbiddenException(
         'Cannot modify a locked period. Please unlock it first.',
       );
+    }
+    const name = dto.name?.trim();
+    if (dto.name !== undefined && !name) {
+      throw new BadRequestException('Period name is required');
+    }
+    if (
+      dto.order !== undefined &&
+      (!Number.isInteger(dto.order) || dto.order < 1)
+    ) {
+      throw new BadRequestException('Period order must be a positive integer');
+    }
+    this.assertPeriodWeight(dto.percentageWeight);
+
+    const nextStartDate = dto.startDate
+      ? parseValidDate(dto.startDate, 'Start date')
+      : term.startDate;
+    const nextEndDate = dto.endDate
+      ? parseValidDate(dto.endDate, 'End date')
+      : term.endDate;
+    assertDateRange(nextStartDate, nextEndDate);
+
+    if (
+      nextStartDate < term.academicYear.startDate ||
+      nextEndDate > term.academicYear.endDate
+    ) {
+      throw new BadRequestException(
+        'Term dates must be within the academic year',
+      );
+    }
+
+    await this.assertTermDatesDoNotOverlap(
+      term.academicYearId,
+      nextStartDate,
+      nextEndDate,
+      termId,
+    );
+
+    if (name && name !== term.name) {
+      const existingName = await this.prismaService.term.findFirst({
+        where: {
+          academicYearId: term.academicYearId,
+          name,
+          id: { not: termId },
+        },
+      });
+
+      if (existingName) {
+        throw new BadRequestException('A period with this name already exists');
+      }
     }
 
     // Check if term has grades - prevent weight changes if grades exist
@@ -775,6 +1007,11 @@ export class AcademicYearService {
           'Cannot change weight after grading has begun',
         );
       }
+      await this.assertTotalWeightDoesNotExceed100(
+        term.academicYearId,
+        dto.percentageWeight,
+        termId,
+      );
     }
 
     // If updating order, check uniqueness
@@ -797,13 +1034,13 @@ export class AcademicYearService {
     return this.prismaService.term.update({
       where: { id: termId },
       data: {
-        ...(dto.name && { name: dto.name }),
+        ...(name && { name }),
         ...(dto.order !== undefined && { order: dto.order }),
         ...(dto.percentageWeight !== undefined && {
           percentageWeight: dto.percentageWeight,
         }),
-        ...(dto.startDate && { startDate: new Date(dto.startDate) }),
-        ...(dto.endDate && { endDate: new Date(dto.endDate) }),
+        ...(dto.startDate && { startDate: nextStartDate }),
+        ...(dto.endDate && { endDate: nextEndDate }),
       },
     });
   }
@@ -812,15 +1049,8 @@ export class AcademicYearService {
    * Lock or unlock a term/period
    * Locking prevents further modifications
    */
-  async lockTerm(termId: string, isLocked: boolean) {
-    const term = await this.prismaService.term.findUnique({
-      where: { id: termId },
-      include: { academicYear: true },
-    });
-
-    if (!term) {
-      throw new NotFoundException('Term not found');
-    }
+  async lockTerm(termId: string, isLocked: boolean, schoolId?: string) {
+    await this.assertTermSchoolAccess(termId, schoolId);
 
     return this.prismaService.term.update({
       where: { id: termId },
@@ -832,14 +1062,8 @@ export class AcademicYearService {
    * Delete a term/period
    * Only allowed if no grades exist and term is not locked
    */
-  async deleteTerm(termId: string) {
-    const term = await this.prismaService.term.findUnique({
-      where: { id: termId },
-    });
-
-    if (!term) {
-      throw new NotFoundException('Term not found');
-    }
+  async deleteTerm(termId: string, schoolId?: string) {
+    const term = await this.assertTermSchoolAccess(termId, schoolId);
 
     if (term.isLocked) {
       throw new ForbiddenException('Cannot delete a locked period');
@@ -862,16 +1086,7 @@ export class AcademicYearService {
   /**
    * Get a specific term by ID
    */
-  async getTermById(termId: string) {
-    const term = await this.prismaService.term.findUnique({
-      where: { id: termId },
-      include: { academicYear: true },
-    });
-
-    if (!term) {
-      throw new NotFoundException('Term not found');
-    }
-
-    return term;
+  async getTermById(termId: string, schoolId?: string) {
+    return this.assertTermSchoolAccess(termId, schoolId);
   }
 }

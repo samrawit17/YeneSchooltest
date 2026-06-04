@@ -49,6 +49,7 @@ export interface PracticeExamAttempt {
   startedAt: string;
   expiresAt: string;
   submittedAt?: string | null;
+  updatedAt?: string;
   score?: number | null;
   percentage?: number | null;
   correctCount: number;

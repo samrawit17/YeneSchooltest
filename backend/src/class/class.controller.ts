@@ -169,6 +169,7 @@ export class ClassController {
       sectionId,
       search,
       pagination,
+      { id: req.user.id, role: req.user.role },
     );
   }
 

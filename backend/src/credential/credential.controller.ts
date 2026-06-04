@@ -18,7 +18,9 @@ import type { Response as ExpressResponse } from 'express';
 import { CredentialService, BulkCredentialResult } from './credential.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Role } from '../auth/types/role.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
@@ -1318,6 +1320,18 @@ export class CredentialController {
   async getCredentialStats(@Request() req: any) {
     const schoolId = req.user.schoolId;
     return this.credentialService.getCredentialStats(schoolId);
+  }
+
+  /**
+   * Send all pending credentials in bulk
+   * POST /credentials/send/bulk
+   */
+  @Post('send/bulk')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(Role.ADMIN, Role.IT_MANAGER)
+  @Permissions('credentials:send')
+  async sendBulkCredentials(@Request() req) {
+    return this.credentialService.sendBulkCredentials(req.user.schoolId, req.user.id);
   }
 
   /**

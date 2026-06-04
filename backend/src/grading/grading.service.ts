@@ -7,6 +7,7 @@ import {
 import { 
   AssessmentStatus, 
   AssessmentScoreStatus, 
+  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AcademicYearService } from '../academic-year/academic-year.service';
@@ -200,15 +201,31 @@ export class GradingService {
       score?: number | null;
       assessmentSubjectId?: string;
     }>,
+    context?: {
+      teacherId: string;
+      academicYear: string;
+      termId: string;
+      classId: string;
+      sectionId: string;
+      subjectId: string;
+    },
   ) {
     if (!componentScores || componentScores.length === 0) {
       return [];
     }
 
     const componentMap = await this.getSchoolGradingComponentsMap(schoolId);
+    const dedupedComponentScores = Array.from(
+      componentScores
+        .filter((item) => item && item.code)
+        .reduce((map, item) => {
+          map.set(String(item.code).toUpperCase(), item);
+          return map;
+        }, new Map<string, { code: string; score?: number | null; assessmentSubjectId?: string }>())
+        .values(),
+    );
 
-    return Promise.all(componentScores
-      .filter((item) => item && item.code)
+    return Promise.all(dedupedComponentScores
       .map(async (item) => {
         const code = String(item.code).toUpperCase();
         const component = componentMap.get(code);
@@ -221,6 +238,12 @@ export class GradingService {
         let maxScore = Number(component.percentage);
         const score = item.score ?? null;
 
+        if (context && score !== null && !item.assessmentSubjectId) {
+          throw new BadRequestException(
+            `${code} is not scheduled for this class, section, subject, and term`,
+          );
+        }
+
         if (item.assessmentSubjectId) {
           const assessmentSubject = await this.prisma.assessmentSubject.findFirst({
             where: {
@@ -228,19 +251,69 @@ export class GradingService {
               assessment: {
                 schoolId,
                 type: code as any,
+                ...(context
+                  ? {
+                      academicYearId: context.academicYear,
+                      termId: context.termId,
+                    }
+                  : {}),
               },
+              ...(context
+                ? {
+                    classId: context.classId,
+                    sectionId: context.sectionId,
+                    subjectId: context.subjectId,
+                  }
+                : {}),
             },
             select: {
               maxScore: true,
+              teacherId: true,
+              assessment: {
+                select: {
+                  status: true,
+                  startDate: true,
+                  endDate: true,
+                },
+              },
             },
           });
 
-          if (assessmentSubject) {
-            maxScore = this.getEffectiveAssessmentMaxScore(
-              assessmentSubject.maxScore,
-              component?.percentage,
+          if (!assessmentSubject) {
+            throw new BadRequestException(
+              `${code} is not scheduled for this class, section, subject, and term`,
             );
           }
+
+          if (
+            context &&
+            assessmentSubject.teacherId &&
+            assessmentSubject.teacherId !== context.teacherId
+          ) {
+            throw new ForbiddenException(
+              `You are not assigned to this ${code} assessment`,
+            );
+          }
+
+          if (assessmentSubject.assessment.status === AssessmentStatus.LOCKED) {
+            throw new ForbiddenException(`${code} assessment is locked`);
+          }
+
+          if (assessmentSubject.assessment.startDate > new Date()) {
+            throw new ForbiddenException(`${code} assessment has not started yet`);
+          }
+
+          if (
+            assessmentSubject.assessment.status === AssessmentStatus.COMPLETED ||
+            assessmentSubject.assessment.endDate < new Date()
+          ) {
+            throw new ForbiddenException(`${code} assessment entry period is over`);
+          }
+
+          maxScore = this.getEffectiveAssessmentMaxScore(
+            assessmentSubject.maxScore,
+            component?.percentage,
+          );
         }
 
         if (score !== null && (score < 0 || score > maxScore)) {
@@ -264,6 +337,138 @@ export class GradingService {
 
     const total = componentScores.reduce((sum, item) => sum + (item.score ?? 0), 0);
     return Math.round(total * 100) / 100;
+  }
+
+  private mergeComponentScores(
+    existingScores: Array<{
+      code: string;
+      score: number | null | undefined;
+      maxScore: number;
+      componentId: string | null;
+    }>,
+    incomingScores: Array<{
+      code: string;
+      score: number | null | undefined;
+      maxScore: number;
+      componentId: string | null;
+    }>,
+  ) {
+    const byCode = new Map<
+      string,
+      {
+        code: string;
+        score: number | null | undefined;
+        maxScore: number;
+        componentId: string | null;
+      }
+    >();
+
+    for (const item of existingScores) {
+      byCode.set(String(item.code).toUpperCase(), {
+        ...item,
+        code: String(item.code).toUpperCase(),
+      });
+    }
+
+    for (const item of incomingScores) {
+      byCode.set(String(item.code).toUpperCase(), {
+        ...item,
+        code: String(item.code).toUpperCase(),
+      });
+    }
+
+    return Array.from(byCode.values());
+  }
+
+  private async upsertGradeScores(
+    client: Prisma.TransactionClient | PrismaService,
+    subjectGradeId: string,
+    componentScores: Array<{
+      score: number | null | undefined;
+      maxScore: number;
+      componentId: string | null;
+    }>,
+  ) {
+    const rows = componentScores.filter((item) => item.componentId);
+
+    for (const item of rows) {
+      await client.gradeScore.upsert({
+        where: {
+          subjectGradeId_gradingComponentId: {
+            subjectGradeId,
+            gradingComponentId: item.componentId as string,
+          },
+        },
+        update: {
+          score: item.score ?? null,
+          maxScore: item.maxScore,
+        },
+        create: {
+          subjectGradeId,
+          gradingComponentId: item.componentId as string,
+          score: item.score ?? null,
+          maxScore: item.maxScore,
+        },
+      });
+    }
+  }
+
+  private buildMergedLegacyScores(
+    mergedComponentScores: Array<{ code: string; score: number | null | undefined }>,
+    existingGrade?: {
+      caScore: number | null;
+      midScore: number | null;
+      finalScore: number | null;
+      gradeScores?: Array<{ component: { code: string } }>;
+    } | null,
+  ) {
+    if (mergedComponentScores.length === 0) {
+      return {
+        caScore: existingGrade?.caScore ?? null,
+        midScore: existingGrade?.midScore ?? null,
+        finalScore: existingGrade?.finalScore ?? null,
+      };
+    }
+
+    const derived = this.buildLegacyScoresFromComponents(mergedComponentScores);
+    const componentCodes = new Set(
+      mergedComponentScores.map((item) => String(item.code).toUpperCase()),
+    );
+    const hasContinuousComponents = Array.from(componentCodes).some(
+      (code) => code !== 'MID' && code !== 'FINAL',
+    );
+
+    return {
+      caScore:
+        hasContinuousComponents
+          ? derived.caScore
+          : existingGrade?.caScore ?? derived.caScore,
+      midScore:
+        componentCodes.has('MID')
+          ? derived.midScore
+          : existingGrade?.midScore ?? derived.midScore,
+      finalScore:
+        componentCodes.has('FINAL')
+          ? derived.finalScore
+          : existingGrade?.finalScore ?? derived.finalScore,
+    };
+  }
+
+  private calculateTotalFromLegacyScores(scores: {
+    caScore: number | null;
+    midScore: number | null;
+    finalScore: number | null;
+  }) {
+    const hasAny =
+      scores.caScore !== null ||
+      scores.midScore !== null ||
+      scores.finalScore !== null;
+
+    if (!hasAny) return null;
+
+    return Math.round(
+      ((scores.caScore ?? 0) + (scores.midScore ?? 0) + (scores.finalScore ?? 0)) * 100,
+    ) / 100;
   }
 
   private normalizeAssessmentComponentCode(code: string): string {
@@ -452,6 +657,116 @@ export class GradingService {
         'Student is not enrolled in the selected class/section for this academic year',
       );
     }
+  }
+
+  private async getProfileRosterWhere(
+    client: Prisma.TransactionClient | PrismaService,
+    input: {
+      studentId?: string;
+      schoolId: string;
+      classId: string;
+      sectionId: string;
+      academicYear: string;
+    },
+  ) {
+    const [classData, sectionData, academicYearData] = await Promise.all([
+      client.class.findFirst({
+        where: {
+          id: input.classId,
+          schoolId: input.schoolId,
+        },
+        select: { name: true },
+      }),
+      client.section.findFirst({
+        where: {
+          id: input.sectionId,
+          classId: input.classId,
+        },
+        select: { name: true },
+      }),
+      client.academicYear.findFirst({
+        where: {
+          id: input.academicYear,
+          schoolId: input.schoolId,
+        },
+        select: { id: true, name: true, ethiopianYear: true },
+      }),
+    ]);
+
+    if (!classData || !sectionData) return null;
+
+    const className = classData.name || '';
+    const sectionName = sectionData.name || '';
+    const possibleClassNames = [
+      className,
+      className.replace('Grade ', ''),
+      `Grade ${className.replace('Grade ', '')}`,
+    ].filter((value, index, values) => value && values.indexOf(value) === index);
+    const possibleSections = [
+      sectionName,
+      sectionName.toUpperCase(),
+      sectionName.toLowerCase(),
+    ].filter((value, index, values) => value && values.indexOf(value) === index);
+    const possibleAcademicYears = [
+      academicYearData?.id,
+      academicYearData?.name,
+      academicYearData?.ethiopianYear?.toString(),
+    ].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
+
+    return {
+      schoolId: input.schoolId,
+      deletedAt: null,
+      ...(input.studentId ? { userId: input.studentId } : {}),
+      ...(possibleAcademicYears.length > 0
+        ? { academicYear: { in: possibleAcademicYears } }
+        : {}),
+      OR: possibleClassNames.flatMap((classNameCandidate) =>
+        possibleSections.length > 0
+          ? possibleSections.map((sectionCandidate) => ({
+              className: classNameCandidate,
+              section: sectionCandidate,
+            }))
+          : [{ className: classNameCandidate }],
+      ),
+    };
+  }
+
+  private async assertStudentInGradeEntryRoster(
+    client: Prisma.TransactionClient | PrismaService,
+    input: {
+      studentId: string;
+      schoolId: string;
+      classId: string;
+      sectionId: string;
+      academicYear: string;
+    },
+  ) {
+    const enrollment = await client.studentClass.findFirst({
+      where: {
+        schoolId: input.schoolId,
+        studentId: input.studentId,
+        classId: input.classId,
+        sectionId: input.sectionId,
+        academicYear: input.academicYear,
+      },
+      select: { id: true },
+    });
+
+    if (enrollment) return;
+
+    const profileWhere = await this.getProfileRosterWhere(client, input);
+    if (profileWhere) {
+      const profile = await client.studentProfile.findFirst({
+        where: profileWhere,
+        select: { id: true },
+      });
+
+      if (profile) return;
+    }
+
+    throw new BadRequestException(
+      'Student is not enrolled in the selected class/section for this academic year',
+    );
   }
 
   private assertReviewStatus(status: GradeStatus) {
@@ -719,6 +1034,7 @@ export class GradingService {
             sectionId,
             subjectId,
             assessment: {
+              schoolId: access.schoolId,
               academicYearId: academicYear,
               termId,
             },
@@ -728,6 +1044,7 @@ export class GradingService {
               select: {
                 type: true,
                 startDate: true,
+                endDate: true,
                 status: true,
               },
             },
@@ -738,17 +1055,44 @@ export class GradingService {
         const componentAvailability = Array.from(
           assessmentSubjects.reduce((map, item) => {
             const code = String(item.assessment.type).toUpperCase();
-            const started = item.assessment.startDate <= new Date();
+            const now = new Date();
+            const started = item.assessment.startDate <= now;
+            const ended = item.assessment.endDate < now;
             const existing = map.get(code);
+            const isOpen =
+              started &&
+              !ended &&
+              item.assessment.status === AssessmentStatus.ACTIVE;
+            const existingOpen =
+              Boolean(existing) &&
+              existing!.started &&
+              !existing!.ended &&
+              existing!.status === AssessmentStatus.ACTIVE;
+            const existingStart = existing
+              ? new Date(existing.startDate)
+              : null;
+            const useThisAssessment =
+              !existing ||
+              (!existingOpen && isOpen) ||
+              (existing.ended && !ended) ||
+              (!existing.started && started) ||
+              (
+                existing.started === started &&
+                existing.ended === ended &&
+                existingStart !== null &&
+                item.assessment.startDate > existingStart
+              );
 
-            if (!existing || (!existing.started && started)) {
+            if (useThisAssessment) {
               const component = gradingComponentMap.get(code);
               map.set(code, {
                 code,
                 assessmentSubjectId: item.id,
                 startDate: item.assessment.startDate.toISOString(),
+                endDate: item.assessment.endDate.toISOString(),
                 status: item.assessment.status,
                 started,
+                ended,
                 maxScore: this.getEffectiveAssessmentMaxScore(
                   item.maxScore,
                   component?.percentage,
@@ -761,14 +1105,17 @@ export class GradingService {
             code: string;
             assessmentSubjectId: string;
             startDate: string;
+            endDate: string;
             status: string;
             started: boolean;
+            ended: boolean;
             maxScore: number;
           }>()),
         ).map(([_, value]) => value);
 
         const studentClasses = await this.prisma.studentClass.findMany({
           where: {
+            schoolId: access.schoolId,
             academicYear,
             classId,
             sectionId,
@@ -802,37 +1149,17 @@ export class GradingService {
 
         // If no studentClasses, fallback to StudentProfile matching
         if (studentClasses.length === 0) {
-          const classData = await this.prisma.class.findUnique({
-            where: { id: classId },
-            select: { name: true },
+          const profileWhere = await this.getProfileRosterWhere(this.prisma, {
+            schoolId: access.schoolId,
+            classId,
+            sectionId,
+            academicYear,
           });
-          if (classData) {
-            const sectionData = await this.prisma.section.findUnique({
-              where: { id: sectionId },
-              select: { name: true },
-            });
-            const sectionName = sectionData?.name || '';
-            const className = classData.name || '';
-
-            const possibleClassNames = [
-              className,
-              className.replace('Grade ', ''),
-              `Grade ${className.replace('Grade ', '')}`,
-            ].filter((v, i, a) => a.indexOf(v) === i);
-
-            const orConditions = possibleClassNames.flatMap((cn) => {
-              if (sectionName) {
-                return [
-                  { className: cn, section: sectionName },
-                  { className: cn, section: sectionName.toUpperCase() },
-                ];
-              }
-              return [{ className: cn }];
-            });
-
+          if (profileWhere) {
             const profileStudents = await this.prisma.studentProfile.findMany({
-              where: { OR: orConditions },
+              where: profileWhere,
               include: { user: { select: { id: true, name: true } } },
+              orderBy: { rollNumber: 'asc' },
             });
 
             const students = profileStudents.map((sp) => {
@@ -1079,17 +1406,25 @@ export class GradingService {
       dto.subjectId,
     );
 
-    await this.assertStudentInClassSection(
-      dto.studentId,
-      access.schoolId,
-      dto.classId,
-      dto.sectionId,
-      dto.academicYear,
-    );
+    await this.assertStudentInGradeEntryRoster(this.prisma, {
+      studentId: dto.studentId,
+      schoolId: access.schoolId,
+      classId: dto.classId,
+      sectionId: dto.sectionId,
+      academicYear: dto.academicYear,
+    });
 
     const normalizedComponentScores = await this.normalizeComponentPayload(
       access.schoolId,
       dto.componentScores,
+      {
+        teacherId,
+        academicYear: dto.academicYear,
+        termId: dto.termId,
+        classId: dto.classId,
+        sectionId: dto.sectionId,
+        subjectId: dto.subjectId,
+      },
     );
 
     const derivedLegacyScores =
@@ -1133,6 +1468,13 @@ export class GradingService {
           termId: dto.termId,
         },
       },
+      include: {
+        gradeScores: {
+          include: {
+            component: true,
+          },
+        },
+      },
     });
 
     if (existingGrade) {
@@ -1142,79 +1484,102 @@ export class GradingService {
         );
       }
 
-      // Only allow editing if status is DRAFT or REJECTED
-      if (
-        existingGrade.status === GradeStatus.SUBMITTED ||
-        existingGrade.status === GradeStatus.APPROVED
-      ) {
+      if (existingGrade.status === GradeStatus.APPROVED) {
         throw new ForbiddenException(
-          'Cannot edit grades that are already submitted or approved',
+          'Cannot edit grades that are already approved',
         );
       }
+
+      const existingComponentScores =
+        existingGrade.gradeScores?.map((item) => ({
+          code: item.component.code,
+          score: item.score,
+          maxScore: item.maxScore,
+          componentId: item.gradingComponentId,
+        })) ?? [];
+      const mergedComponentScores =
+        normalizedComponentScores.length > 0
+          ? this.mergeComponentScores(existingComponentScores, normalizedComponentScores)
+          : normalizedComponentScores;
+      const updateLegacyScores =
+        normalizedComponentScores.length > 0
+          ? this.buildMergedLegacyScores(mergedComponentScores, existingGrade)
+          : derivedLegacyScores;
+      const updateTotalScore =
+        normalizedComponentScores.length > 0
+          ? this.calculateTotalFromLegacyScores(updateLegacyScores)
+          : totalScore;
+      const {
+        gradeLetter: updateGradeLetter,
+        gradePoint: updateGradePoint,
+      } =
+        updateTotalScore === null
+          ? { gradeLetter: null, gradePoint: null }
+          : await this.getGradeFromScore(access.schoolId, updateTotalScore);
 
       // Update existing grade with audit logging
       const updated = await this.prisma.$transaction(async (tx) => {
         // Log changes for each field
-        if (existingGrade.caScore !== derivedLegacyScores.caScore) {
+        if (existingGrade.caScore !== updateLegacyScores.caScore) {
           await this.logGradeChange(
             tx,
             existingGrade.id,
             'caScore',
             existingGrade.caScore,
-            derivedLegacyScores.caScore,
+            updateLegacyScores.caScore,
             teacherId,
           );
         }
-        if (existingGrade.midScore !== derivedLegacyScores.midScore) {
+        if (existingGrade.midScore !== updateLegacyScores.midScore) {
           await this.logGradeChange(
             tx,
             existingGrade.id,
             'midScore',
             existingGrade.midScore,
-            derivedLegacyScores.midScore,
+            updateLegacyScores.midScore,
             teacherId,
           );
         }
-        if (existingGrade.finalScore !== derivedLegacyScores.finalScore) {
+        if (existingGrade.finalScore !== updateLegacyScores.finalScore) {
           await this.logGradeChange(
             tx,
             existingGrade.id,
             'finalScore',
             existingGrade.finalScore,
-            derivedLegacyScores.finalScore,
+            updateLegacyScores.finalScore,
             teacherId,
           );
         }
-        if (existingGrade.totalScore !== totalScore) {
+        if (existingGrade.totalScore !== updateTotalScore) {
           await this.logGradeChange(
             tx,
             existingGrade.id,
             'totalScore',
             existingGrade.totalScore,
-            totalScore,
+            updateTotalScore,
             teacherId,
           );
         }
-        if (existingGrade.gradeLetter !== gradeLetter) {
+        if (existingGrade.gradeLetter !== updateGradeLetter) {
           await this.logGradeChange(
             tx,
             existingGrade.id,
             'gradeLetter',
             existingGrade.gradeLetter,
-            gradeLetter,
+            updateGradeLetter,
             teacherId,
           );
         }
 
-        return tx.subjectGrade.update({
+        const updated = await tx.subjectGrade.update({
           where: { id: existingGrade.id },
           data: {
-            caScore: derivedLegacyScores.caScore,
-            midScore: derivedLegacyScores.midScore,
-            finalScore: derivedLegacyScores.finalScore,
-            totalScore,
-            gradeLetter,
-            gradePoint,
+            caScore: updateLegacyScores.caScore,
+            midScore: updateLegacyScores.midScore,
+            finalScore: updateLegacyScores.finalScore,
+            totalScore: updateTotalScore,
+            gradeLetter: updateGradeLetter,
+            gradePoint: updateGradePoint,
             remark: dto.remark,
             teacherId,
             status: GradeStatus.DRAFT,
@@ -1227,23 +1592,13 @@ export class GradingService {
             subject: true,
           },
         });
-      });
 
-      if (normalizedComponentScores.length > 0) {
-        await this.prisma.gradeScore.deleteMany({
-          where: { subjectGradeId: updated.id },
-        });
-        await this.prisma.gradeScore.createMany({
-          data: normalizedComponentScores
-            .filter((item) => item.componentId)
-            .map((item) => ({
-              subjectGradeId: updated.id,
-              gradingComponentId: item.componentId as string,
-              score: item.score ?? null,
-              maxScore: item.maxScore,
-            })),
-        });
-      }
+        if (normalizedComponentScores.length > 0) {
+          await this.upsertGradeScores(tx, updated.id, mergedComponentScores);
+        }
+
+        return updated;
+      });
 
       await this.invalidateGradeCaches({
         schoolId: access.schoolId,
@@ -1280,16 +1635,18 @@ export class GradingService {
     });
 
     if (normalizedComponentScores.length > 0) {
-      await this.prisma.gradeScore.createMany({
-        data: normalizedComponentScores
-          .filter((item) => item.componentId)
-          .map((item) => ({
-            subjectGradeId: grade.id,
-            gradingComponentId: item.componentId as string,
-            score: item.score ?? null,
-            maxScore: item.maxScore,
-          })),
-      });
+      if (normalizedComponentScores.some((item) => item.componentId)) {
+        await this.prisma.gradeScore.createMany({
+          data: normalizedComponentScores
+            .filter((item) => item.componentId)
+            .map((item) => ({
+              subjectGradeId: grade.id,
+              gradingComponentId: item.componentId as string,
+              score: item.score ?? null,
+              maxScore: item.maxScore,
+            })),
+        });
+      }
     }
 
     await this.invalidateGradeCaches({
@@ -1337,22 +1694,25 @@ export class GradingService {
       }[] = [];
 
       for (const gradeDto of dto.grades) {
-        // Check enrollment with fallback to allow grade entry for students fetched via profile fallback
-        const enrollment = await tx.studentClass.findFirst({
-          where: {
-            schoolId: access.schoolId,
-            studentId: gradeDto.studentId,
-            classId: gradeDto.classId,
-            sectionId: gradeDto.sectionId,
-            academicYear: gradeDto.academicYear,
-          },
+        await this.assertStudentInGradeEntryRoster(tx, {
+          studentId: gradeDto.studentId,
+          schoolId: access.schoolId,
+          classId: gradeDto.classId,
+          sectionId: gradeDto.sectionId,
+          academicYear: gradeDto.academicYear,
         });
-        
-        // Skip enrollment check since students are loaded via profile-based fallback for grade entry
 
         const normalizedComponentScores = await this.normalizeComponentPayload(
           access.schoolId,
           gradeDto.componentScores,
+          {
+            teacherId,
+            academicYear: gradeDto.academicYear,
+            termId: gradeDto.termId,
+            classId: gradeDto.classId,
+            sectionId: gradeDto.sectionId,
+            subjectId: gradeDto.subjectId,
+          },
         );
         const derivedLegacyScores =
           normalizedComponentScores.length > 0
@@ -1390,33 +1750,64 @@ export class GradingService {
               termId: gradeDto.termId,
             },
           },
+          include: {
+            gradeScores: {
+              include: {
+                component: true,
+              },
+            },
+          },
         });
 
         if (existingGrade) {
           if (existingGrade.isLocked) {
-            throw new Error(
+            throw new ForbiddenException(
               `Cannot edit grade for student ${gradeDto.studentId} - grade is locked`,
             );
           }
 
-          if (
-            existingGrade.status === GradeStatus.SUBMITTED ||
-            existingGrade.status === GradeStatus.APPROVED
-          ) {
-            throw new Error(
-              `Cannot save draft for student ${gradeDto.studentId} - grade is already submitted or approved`,
+          if (existingGrade.status === GradeStatus.APPROVED) {
+            throw new ForbiddenException(
+              `Cannot save draft for student ${gradeDto.studentId} - grade is already approved`,
             );
           }
+
+          const existingComponentScores =
+            existingGrade.gradeScores?.map((item) => ({
+              code: item.component.code,
+              score: item.score,
+              maxScore: item.maxScore,
+              componentId: item.gradingComponentId,
+            })) ?? [];
+          const mergedComponentScores =
+            normalizedComponentScores.length > 0
+              ? this.mergeComponentScores(existingComponentScores, normalizedComponentScores)
+              : normalizedComponentScores;
+          const updateLegacyScores =
+            normalizedComponentScores.length > 0
+              ? this.buildMergedLegacyScores(mergedComponentScores, existingGrade)
+              : derivedLegacyScores;
+          const updateTotalScore =
+            normalizedComponentScores.length > 0
+              ? this.calculateTotalFromLegacyScores(updateLegacyScores)
+              : totalScore;
+          const {
+            gradeLetter: updateGradeLetter,
+            gradePoint: updateGradePoint,
+          } =
+            updateTotalScore === null
+              ? { gradeLetter: null, gradePoint: null }
+              : await this.getGradeFromScore(access.schoolId, updateTotalScore);
 
           const updated = await tx.subjectGrade.update({
             where: { id: existingGrade.id },
             data: {
-              caScore: derivedLegacyScores.caScore,
-              midScore: derivedLegacyScores.midScore,
-              finalScore: derivedLegacyScores.finalScore,
-              totalScore,
-              gradeLetter,
-              gradePoint,
+              caScore: updateLegacyScores.caScore,
+              midScore: updateLegacyScores.midScore,
+              finalScore: updateLegacyScores.finalScore,
+              totalScore: updateTotalScore,
+              gradeLetter: updateGradeLetter,
+              gradePoint: updateGradePoint,
               remark: gradeDto.remark,
               teacherId,
               status: GradeStatus.DRAFT,
@@ -1426,23 +1817,7 @@ export class GradingService {
             },
           });
           if (normalizedComponentScores.length > 0) {
-            await tx.gradeScore.deleteMany({
-              where: { subjectGradeId: existingGrade.id },
-            });
-            if (
-              normalizedComponentScores.some((item) => item.componentId)
-            ) {
-              await tx.gradeScore.createMany({
-                data: normalizedComponentScores
-                  .filter((item) => item.componentId)
-                  .map((item) => ({
-                    subjectGradeId: existingGrade.id,
-                    gradingComponentId: item.componentId as string,
-                    score: item.score ?? null,
-                    maxScore: item.maxScore,
-                  })),
-              });
-            }
+            await this.upsertGradeScores(tx, existingGrade.id, mergedComponentScores);
           }
           gradeResults.push({
             success: true,
@@ -3416,6 +3791,7 @@ export class GradingService {
         assessment: {
           select: {
             type: true,
+            academicYearId: true,
           },
         },
         subject: true,
@@ -3434,13 +3810,68 @@ export class GradingService {
             schoolId,
             classId,
             ...(sectionId ? { sectionId } : {}),
-            academicYear: academicYearName,
+            academicYear: {
+              in: Array.from(new Set([academicYearId, academicYearName])),
+            },
           },
         });
         studentCountByClassSection.set(key, count);
       }
       return studentCountByClassSection.get(key) ?? 0;
     };
+
+    const assignmentKey = (item: {
+      academicYear: string;
+      classId: string;
+      sectionId?: string | null;
+      subjectId: string;
+    }) =>
+      [
+        item.academicYear,
+        item.classId,
+        item.sectionId ?? 'all',
+        item.subjectId,
+      ].join(':');
+
+    const missingTeacherCriteria = assessmentSubjects
+      .filter((item) => !item.teacherId && item.sectionId)
+      .map((item) => ({
+        academicYear: item.assessment.academicYearId,
+        classId: item.classId,
+        sectionId: item.sectionId!,
+        subjectId: item.subjectId,
+      }));
+
+    const fallbackTeacherMap = new Map<string, { id: string; name: string }>();
+    if (missingTeacherCriteria.length > 0) {
+      const [teacherAssignments, classSubjectAssignments] = await Promise.all([
+        this.prisma.teacherSubjectAssignment.findMany({
+          where: {
+            schoolId,
+            isActive: true,
+            OR: missingTeacherCriteria,
+          },
+          include: { teacher: { select: { id: true, name: true } } },
+        }),
+        this.prisma.classSubject.findMany({
+          where: {
+            teacherId: { not: null },
+            class: { schoolId },
+            OR: missingTeacherCriteria,
+          },
+          include: { teacher: { select: { id: true, name: true } } },
+        }),
+      ]);
+
+      for (const assignment of teacherAssignments) {
+        fallbackTeacherMap.set(assignmentKey(assignment), assignment.teacher);
+      }
+      for (const assignment of classSubjectAssignments) {
+        if (assignment.teacher) {
+          fallbackTeacherMap.set(assignmentKey(assignment), assignment.teacher);
+        }
+      }
+    }
 
     const progressByAssignment = new Map<
       string,
@@ -3460,7 +3891,16 @@ export class GradingService {
     >();
 
     for (const assessmentSubject of assessmentSubjects) {
-      const teacherId = assessmentSubject.teacherId ?? 'unassigned';
+      const fallbackTeacher = fallbackTeacherMap.get(
+        assignmentKey({
+          academicYear: assessmentSubject.assessment.academicYearId,
+          classId: assessmentSubject.classId,
+          sectionId: assessmentSubject.sectionId,
+          subjectId: assessmentSubject.subjectId,
+        }),
+      );
+      const teacherId =
+        assessmentSubject.teacherId ?? fallbackTeacher?.id ?? 'unassigned';
       const componentCode = this.normalizeAssessmentComponentCode(
         assessmentSubject.assessment.type,
       );
@@ -3476,7 +3916,7 @@ export class GradingService {
       );
       const existing = progressByAssignment.get(key) ?? {
         teacherId,
-        teacherName: assessmentSubject.teacher?.name ?? null,
+        teacherName: assessmentSubject.teacher?.name ?? fallbackTeacher?.name ?? null,
         subjectId: assessmentSubject.subjectId,
         classId: assessmentSubject.classId,
         sectionId: assessmentSubject.sectionId ?? null,
@@ -3572,11 +4012,36 @@ export class GradingService {
    */
   async sendReminder(schoolId: string, academicYear: string, term: string) {
     const progress = await this.getEntryProgress(schoolId, academicYear, term);
-    const pendingTeachers = progress.filter((p) => p.percentage < 100);
+    const pendingTeachers = progress.filter(
+      (p) => p.percentage < 100 && p.teacherId !== 'unassigned',
+    );
+    const teacherIds = Array.from(new Set(pendingTeachers.map((p) => p.teacherId)));
+
+    const notification =
+      teacherIds.length > 0
+        ? await this.notificationService.createBulkNotifications({
+            schoolId,
+            userIds: teacherIds,
+            title: 'Marks entry reminder',
+            message:
+              'Some marks are still missing for the selected term. Please complete and submit your marks before the deadline.',
+            type: NotificationType.WARNING,
+            actionUrl: `/teacher/grading?academicYear=${encodeURIComponent(academicYear)}&termId=${encodeURIComponent(term)}`,
+            metadata: {
+              academicYear,
+              term,
+              source: 'entry-progress',
+              pendingRows: pendingTeachers.length,
+            },
+          })
+        : { count: 0 };
 
     return {
-      remindersSent: pendingTeachers.length,
-      teachers: [...new Set(pendingTeachers.map((p) => p.teacherId))],
+      remindersSent: notification.count,
+      teachers: teacherIds,
+      skippedUnassigned: progress.filter(
+        (p) => p.percentage < 100 && p.teacherId === 'unassigned',
+      ).length,
     };
   }
 

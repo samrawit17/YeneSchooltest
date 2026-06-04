@@ -78,6 +78,23 @@ export class TimetableSlotController {
     });
   }
 
+  @Get('student/:studentId')
+  @Permissions('timetable:read')
+  async findByStudent(
+    @Request() req: AuthenticatedRequest,
+    @Param('studentId') studentId: string,
+  ) {
+    const schoolId = req.user.schoolId;
+
+    if (!schoolId) {
+      return { success: false, message: 'School ID is required' };
+    }
+
+    const resolvedStudentId = studentId === 'me' ? req.user.id : studentId;
+
+    return this.timetableSlotService.getByStudent(schoolId, resolvedStudentId);
+  }
+
   @Get('class/:classId')
   @Permissions('timetable:read')
   async findByClass(

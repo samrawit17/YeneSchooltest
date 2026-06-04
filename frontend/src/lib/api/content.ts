@@ -278,9 +278,9 @@ export const lessonsAPI = {
       terms: Array<{ id: string; name: string }>;
       grades: number[];
       sectionsByGrade: Record<number, Array<{ id: string; name: string; classId: string }>>;
-      allSubjects: Array<{ id: string; name: string; code?: string }>;
-      teacherSubjects: Array<{ id: string; name: string; code?: string }>;
-      periods: Array<{ value: number; label: string }>;
+      allSubjects: Array<{ id: string; name: string; code?: string; assignmentId?: string; source?: string; grade?: number; section?: string; sectionId?: string; classId?: string; academicYearId?: string; academicYearName?: string; isActiveAcademicYear?: boolean }>;
+      teacherSubjects: Array<{ id: string; name: string; code?: string; assignmentId?: string; source?: string; grade?: number; section?: string; sectionId?: string; classId?: string; academicYearId?: string; academicYearName?: string; isActiveAcademicYear?: boolean }>;
+      periods: Array<{ value: number; label: string; startTime?: string; endTime?: string }>;
     }>("/lessons/form-data"),
   getForStudent: () => api.get<{ data: Lesson[]; meta: any }>("/lessons"),
   getForParent: (studentId?: string) =>

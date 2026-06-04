@@ -143,7 +143,7 @@ export class CreateLessonBundleDto {
   @IsNumber()
   @IsNotEmpty()
   @Min(1)
-  @Max(8) // Ethiopian period schedule (1-8 periods)
+  @Max(12)
   periodNumber: number;
 
   // Embedded Homework (optional)
@@ -218,7 +218,7 @@ export class UpdateLessonBundleDto {
   @IsNumber()
   @IsOptional()
   @Min(1)
-  @Max(8)
+  @Max(12)
   periodNumber?: number;
 
   @IsNumber()

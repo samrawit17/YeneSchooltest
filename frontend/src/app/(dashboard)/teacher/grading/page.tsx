@@ -80,8 +80,10 @@ interface ComponentAvailability {
   code: string;
   assessmentSubjectId: string;
   startDate: string;
+  endDate?: string;
   status: string;
   started: boolean;
+  ended?: boolean;
   maxScore: number;
 }
 
@@ -133,10 +135,6 @@ const normalizeAssignments = (payload: any): TeacherAssignment[] => {
   const root = payload?.data ?? payload;
   if (Array.isArray(root)) return root as TeacherAssignment[];
 
-  console.log("Raw API response:", root);
-  console.log("Subject Assignments:", root?.subjectAssignments);
-  console.log("Homeroom Assignments:", root?.homeroomAssignments);
-
   const subjectAssignments = Array.isArray(root?.subjectAssignments)
     ? root.subjectAssignments.map((a: any) => ({ 
         ...a, 
@@ -146,7 +144,6 @@ const normalizeAssignments = (payload: any): TeacherAssignment[] => {
         section: a.sectionId ? { id: a.sectionId, name: a.sectionName || a.section?.name || 'Unknown Section' } : a.section,
       }))
     : [];
-  console.log("Normalized subject assignments:", subjectAssignments.length);
    
   // Process homeroom - if no subjects, still create an entry with the homeroom class/section
   let homeroomAssignments: any[] = [];
@@ -218,14 +215,29 @@ export default function TeacherGradingPage() {
   const [selectedClassSectionId, setSelectedClassSectionId] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  const normalizedRole = (user?.role || "").toUpperCase();
+  const isTeacherUser = normalizedRole === "TEACHER";
   const isStaffReadOnly = useMemo(() => {
-    const role = user?.role;
+    const role = (user?.role || "").toUpperCase();
     return role === "ADMIN" || role === "SUPER_ADMIN" || role === "REGISTRAR" || role === "IT_MANAGER";
   }, [user]);
+
+  const normalizeGradeStatus = (status?: string | null) =>
+    String(status || "").toUpperCase();
+
+  const isStudentDraftEditable = (student: StudentGrade) => {
+    const status = normalizeGradeStatus(student.status);
+    return (
+      isTeacherUser &&
+      !isStaffReadOnly &&
+      !isTermLocked &&
+      !student.isLocked &&
+      status !== "APPROVED"
+    );
+  };
   
   // Derived: get unique subjects from assignments (prioritize by grade)
   const subjectOptions = useMemo(() => {
-    console.log("Computing subjectOptions, assignments:", assignments);
     if (!assignments || assignments.length === 0) return [];
     
     // Filter out homeroom assignments - only show actual subjects
@@ -234,7 +246,6 @@ export default function TeacherGradingPage() {
     // First get unique subjects with their class info
     const subjectMap = new Map();
     subjectOnlyAssignments.forEach((a) => {
-      console.log("Assignment:", a);
       if (!subjectMap.has(a.subject.id)) {
         subjectMap.set(a.subject.id, { 
           id: a.subject.id, 
@@ -255,7 +266,6 @@ export default function TeacherGradingPage() {
 
   // Derived: get unique class-sections from assignments filtered by selected subject
   const classSectionOptions = useMemo(() => {
-    console.log("Computing classSectionOptions, selectedSubjectId:", selectedSubjectId, "assignments:", assignments?.length);
     if (!assignments || assignments.length === 0) return [];
     
     // Filter out homeroom assignments
@@ -264,7 +274,6 @@ export default function TeacherGradingPage() {
     const filtered = selectedSubjectId 
       ? nonHomeroomAssignments.filter((a) => a.subject.id === selectedSubjectId)
       : nonHomeroomAssignments;
-    console.log("Filtered assignments:", filtered.length);
     // Sort by class name and section
     return [...filtered].sort((a, b) => {
       const gradeA = parseInt(a.class?.name?.replace('Grade ', '') || '0') || 0;
@@ -413,13 +422,13 @@ export default function TeacherGradingPage() {
       return;
     }
 
-    if (user?.role !== "TEACHER") {
+    if (normalizedRole && normalizedRole !== "TEACHER") {
       router.push("/");
       return;
     }
 
     fetchInitialData();
-  }, [user, authLoading, router, fetchInitialData]);
+  }, [user, authLoading, router, fetchInitialData, normalizedRole]);
 
   useEffect(() => {
     if (!selectedYear || !queryAssignment.classId || !queryAssignment.subjectId) return;
@@ -502,21 +511,9 @@ export default function TeacherGradingPage() {
   const fetchStudents = useCallback(async () => {
     const assignment = assignments.find((a) => a.id === selectedClassSectionId);
     if (!assignment) {
-      console.log("No assignment found for selectedClassSectionId:", selectedClassSectionId);
       setStudents([]);
       return;
     }
-
-    console.log("Fetching students with:", { 
-      academicYear: selectedYear, 
-      termId: selectedTerm, 
-      classId: assignment.class.id,
-      className: assignment.class.name,
-      sectionId: assignment.section.id,
-      sectionName: assignment.section.name,
-      subjectId: assignment.subject.id,
-      subjectName: assignment.subject.name,
-    });
 
     setLoading(true);
     try {
@@ -541,8 +538,6 @@ export default function TeacherGradingPage() {
               maxScore: c.percentage,
             }));
       
-      console.log("API Response data:", data);
-      
       // Handle both {students, isTermLocked} format and direct array response
       const studentData = data?.students || (Array.isArray(data) ? data : (data.data || []));
       const availabilityData = Array.isArray(data?.componentAvailability)
@@ -550,7 +545,6 @@ export default function TeacherGradingPage() {
         : [];
       const locked = data?.isTermLocked || false;
       
-      console.log("Student data:", studentData);
       setComponentAvailability(
         Object.fromEntries(
           availabilityData.map((item: ComponentAvailability) => [
@@ -570,20 +564,24 @@ export default function TeacherGradingPage() {
               ]),
             );
 
-            if (persistedComponentScores.length === 0) {
-              let assignedCa = false;
-              for (const column of currentColumns) {
-                const code = column.code.toUpperCase();
-                if (code === "MID") {
-                  normalizedComponentScores[code] = student.midScore ?? null;
-                } else if (code === "FINAL") {
-                  normalizedComponentScores[code] = student.finalScore ?? null;
-                } else if (!assignedCa) {
-                  normalizedComponentScores[code] = student.caScore ?? null;
-                  assignedCa = true;
-                } else {
-                  normalizedComponentScores[code] = null;
-                }
+            const hasGranularCaScores = persistedComponentScores.some((item) => {
+              const code = String(item.code).toUpperCase();
+              return code !== "MID" && code !== "FINAL" && item.score !== null && item.score !== undefined;
+            });
+            let assignedLegacyCa = false;
+            for (const column of currentColumns) {
+              const code = column.code.toUpperCase();
+              if (normalizedComponentScores[code] !== undefined) continue;
+
+              if (code === "MID") {
+                normalizedComponentScores[code] = student.midScore ?? null;
+              } else if (code === "FINAL") {
+                normalizedComponentScores[code] = student.finalScore ?? null;
+              } else if (!hasGranularCaScores && !assignedLegacyCa) {
+                normalizedComponentScores[code] = student.caScore ?? null;
+                assignedLegacyCa = true;
+              } else {
+                normalizedComponentScores[code] = null;
               }
             }
 
@@ -635,9 +633,11 @@ export default function TeacherGradingPage() {
   }, [selectedYear, selectedTerm, selectedClassSectionId, fetchStudents]);
 
   useEffect(() => {
+    if (!isTeacherUser) return;
+
     syncService.startAutoSync();
     return () => syncService.stopAutoSync();
-  }, []);
+  }, [isTeacherUser]);
 
   function calculateTotal(componentScores?: Record<string, number | null>, ca?: number | null, mid?: number | null, final?: number | null): number | null {
     if (componentScores && Object.keys(componentScores).length > 0) {
@@ -677,6 +677,11 @@ export default function TeacherGradingPage() {
   }
 
   const handleScoreChange = (studentId: string, componentCode: string, value: string) => {
+    if (!isTeacherUser || isStaffReadOnly) return;
+
+    const currentStudent = students.find((student) => student.studentId === studentId);
+    if (!currentStudent || !isStudentDraftEditable(currentStudent)) return;
+
     const normalizedCode = componentCode.toUpperCase();
     const availability = componentAvailability[normalizedCode];
     if (availability && !availability.started) {
@@ -727,6 +732,9 @@ export default function TeacherGradingPage() {
   
   const handleInternalNoteChange = (studentId: string, value: string) => {
     if (isStaffReadOnly) return;
+    const currentStudent = students.find((student) => student.studentId === studentId);
+    if (!currentStudent || !isStudentDraftEditable(currentStudent)) return;
+
     setStudents(prev => prev.map(student => {
       if (student.studentId !== studentId) return student;
       return { ...student, internalNote: value };
@@ -737,11 +745,32 @@ export default function TeacherGradingPage() {
   const isComponentStarted = (code: string) =>
     componentAvailability[code.toUpperCase()]?.started ?? false;
 
+  const isComponentEnded = (code: string) => {
+    const availability = componentAvailability[code.toUpperCase()];
+    if (!availability) return false;
+    if (availability.ended === true) return true;
+    if (!availability.endDate) return false;
+
+    const endDate = new Date(availability.endDate);
+    return Number.isFinite(endDate.getTime()) && endDate < new Date();
+  };
+
   const getComponentMaxScore = (code: string) =>
     assessmentColumns.find((column) => column.code.toUpperCase() === code.toUpperCase())?.maxScore;
 
-  const canEditComponent = (code: string) =>
-    !isStaffReadOnly && isComponentStarted(code) && getComponentMaxScore(code) !== undefined;
+  const canEditComponent = (code: string) => {
+    const availability = componentAvailability[code.toUpperCase()];
+    return (
+      isTeacherUser &&
+      !isStaffReadOnly &&
+      Boolean(availability) &&
+      availability.status !== "LOCKED" &&
+      availability.status !== "COMPLETED" &&
+      isComponentStarted(code) &&
+      !isComponentEnded(code) &&
+      getComponentMaxScore(code) !== undefined
+    );
+  };
 
   const clampScoreInput = (rawValue: string, code: string) => {
     if (rawValue === "") return "";
@@ -760,8 +789,38 @@ export default function TeacherGradingPage() {
   const getComponentStartLabel = (code: string) => {
     const availability = componentAvailability[code.toUpperCase()];
     if (!availability) return "Not scheduled";
+    if (availability.status === "LOCKED") return "Locked";
+    if (availability.status === "COMPLETED") return "Completed";
+    if (isComponentEnded(code)) return "Entry closed";
     if (availability.started) return "Started";
     return `Starts ${formatDate(availability.startDate) || new Date(availability.startDate).toLocaleDateString()}`;
+  };
+
+  const lockExpiredComponentFromError = (message: string) => {
+    if (!/assessment entry period is over/i.test(message)) return false;
+
+    const expiredColumn = assessmentColumns.find((column) => {
+      const code = column.code.toUpperCase();
+      const label = column.label.toUpperCase();
+      const normalizedMessage = message.toUpperCase();
+      return normalizedMessage.includes(`${code} ASSESSMENT`) || normalizedMessage.includes(`${label} ASSESSMENT`);
+    });
+
+    if (!expiredColumn) return false;
+
+    setComponentAvailability((prev) => {
+      const code = expiredColumn.code.toUpperCase();
+      const current = prev[code];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [code]: {
+          ...current,
+          ended: true,
+        },
+      };
+    });
+    return true;
   };
 
   const hasStartedAssessment = assessmentColumns.some((col) =>
@@ -772,11 +831,17 @@ export default function TeacherGradingPage() {
     (col) => componentAvailability[col.code.toUpperCase()] && !isComponentStarted(col.code),
   );
 
+  const hasEditableAssessment = assessmentColumns.some((col) =>
+    canEditComponent(col.code),
+  );
+
   const lockedOrUpcomingColumns = assessmentColumns.filter((col) => !canEditComponent(col.code));
 
   const gradeEntryStatusMessage = !hasStartedAssessment && hasPendingAssessmentStart
     ? "Marks entry is locked until the scheduled assessment start date. Check the column status below for when each assessment opens."
-    : "Enter marks for the assessments that are currently active.";
+    : hasEditableAssessment
+      ? "Enter marks for the assessments that are currently active."
+      : "Marks entry is closed for the current assessment window.";
 
   const componentCompletion = useMemo(() => {
     return assessmentColumns.map((column) => {
@@ -809,6 +874,7 @@ export default function TeacherGradingPage() {
       rows.forEach((row, rowOffset) => {
         const targetStudent = next[startStudentIndex + rowOffset];
         if (!targetStudent) return;
+        if (!isStudentDraftEditable(targetStudent)) return;
 
         row.forEach((cell, columnOffset) => {
           const column = assessmentColumns[startColumnIndex + columnOffset];
@@ -851,6 +917,11 @@ export default function TeacherGradingPage() {
   }, [hasUnsavedChanges]);
 
   const handleSaveDraft = async () => {
+    if (!isTeacherUser) {
+      toast.error("Only teachers can save grade drafts");
+      return;
+    }
+
     setSaving(true);
     let offlinePayload: Record<string, unknown> | null = null;
     try {
@@ -859,12 +930,15 @@ export default function TeacherGradingPage() {
 
       // Filter students with at least one score entered
       const gradesToSave = students
+        .filter((student) => isStudentDraftEditable(student))
         .filter(s => {
-          const componentValues = Object.values(s.componentScores || {});
+          const componentValues = assessmentColumns
+            .filter((col) => canEditComponent(col.code))
+            .map((col) => s.componentScores?.[col.code.toUpperCase()]);
           if (componentValues.some(value => value !== null && value !== undefined)) {
             return true;
           }
-          return s.caScore !== null || s.midScore !== null || s.finalScore !== null;
+          return false;
         })
         .map(student => ({
           studentId: student.studentId,
@@ -889,7 +963,7 @@ export default function TeacherGradingPage() {
         }));
 
       if (gradesToSave.length === 0) {
-        toast.error("No grades to save");
+        toast.error("No editable draft grades to save");
         setSaving(false);
         return;
       }
@@ -927,7 +1001,12 @@ export default function TeacherGradingPage() {
         toast.success("Grades saved offline. They will sync when online.");
         setHasUnsavedChanges(false);
       } else {
-        toast.error(error?.response?.data?.message || "Failed to save draft");
+        const message = error?.response?.data?.message || "Failed to save draft";
+        if (lockExpiredComponentFromError(message)) {
+          setHasUnsavedChanges(false);
+          fetchStudents();
+        }
+        toast.error(message);
       }
     } finally {
       setSaving(false);
@@ -935,6 +1014,11 @@ export default function TeacherGradingPage() {
   };
 
   const handleSubmitToRegistrar = async () => {
+    if (!isTeacherUser) {
+      toast.error("Only teachers can submit grades to registrar");
+      return;
+    }
+
     if (hasUnsavedChanges) {
       toast.error("Save your draft before submitting to registrar");
       return;
@@ -994,7 +1078,7 @@ export default function TeacherGradingPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch (normalizeGradeStatus(status)) {
       case "DRAFT":
         return <Badge variant="outline" className="bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">Draft</Badge>;
       case "SUBMITTED":
@@ -1122,7 +1206,7 @@ export default function TeacherGradingPage() {
                 type="button"
                 variant="outline" 
                 onClick={handleSaveDraft} 
-                disabled={saving || isTermLocked || !hasStartedAssessment || isStaffReadOnly} 
+                disabled={saving || isTermLocked || !hasEditableAssessment || isStaffReadOnly}
                 className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600 sm:w-auto"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
@@ -1131,7 +1215,7 @@ export default function TeacherGradingPage() {
               <Button 
                 type="button"
                 onClick={handleSubmitToRegistrar} 
-                disabled={saving || isTermLocked || !hasStartedAssessment || isStaffReadOnly || hasUnsavedChanges}
+                disabled={saving || isTermLocked || !hasEditableAssessment || isStaffReadOnly || hasUnsavedChanges}
                 className="w-full sm:w-auto"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
@@ -1217,7 +1301,7 @@ export default function TeacherGradingPage() {
                                     handlePasteScores(student.studentId, col.code, text);
                                   }
                                 }}
-                                disabled={student.isLocked || isTermLocked || !canEditComponent(col.code)}
+                                disabled={!isStudentDraftEditable(student) || !canEditComponent(col.code)}
                                 placeholder={getComponentMaxScore(col.code) !== undefined ? `0-${getComponentMaxScore(col.code)}` : "N/A"}
                               />
                             </label>
@@ -1231,7 +1315,7 @@ export default function TeacherGradingPage() {
                             placeholder="Staff-only notes..."
                             value={student.internalNote || ""}
                             onChange={(e) => handleInternalNoteChange(student.studentId, e.target.value)}
-                            disabled={student.isLocked || isTermLocked || isStaffReadOnly}
+                            disabled={!isStudentDraftEditable(student)}
                           />
                         </div>
 
@@ -1302,7 +1386,7 @@ export default function TeacherGradingPage() {
                                     handlePasteScores(student.studentId, col.code, text);
                                   }
                                 }}
-                              disabled={student.isLocked || isTermLocked || !canEditComponent(col.code)}
+                              disabled={!isStudentDraftEditable(student) || !canEditComponent(col.code)}
                               placeholder={getComponentMaxScore(col.code) !== undefined ? `0-${getComponentMaxScore(col.code)}` : "N/A"}
                             />
                           </TableCell>
@@ -1321,7 +1405,7 @@ export default function TeacherGradingPage() {
                               placeholder="Private note..."
                               value={student.internalNote || ""}
                               onChange={(e) => handleInternalNoteChange(student.studentId, e.target.value)}
-                              disabled={student.isLocked || isTermLocked || isStaffReadOnly}
+                              disabled={!isStudentDraftEditable(student)}
                             />
                         </TableCell>
                         <TableCell className="px-3 py-3">

@@ -30,6 +30,8 @@ import {
   Mail,
   ExternalLink,
   BarChart3,
+  ClipboardCheck,
+  Send,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +49,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useFilters } from "@/components/filters/Filters";
 
 type SortKey = "subject" | "className" | "progress" | "missing";
@@ -135,6 +145,7 @@ export default function EntryProgressPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [sortKey, setSortKey] = useState<SortKey>("missing");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [reminding, setReminding] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push("/sign-in");
@@ -262,14 +273,12 @@ export default function EntryProgressPage() {
     return "text-amber-600 dark:text-amber-400";
   };
 
-  const openTeacherEntry = (row: EntryProgressRow) => {
+  const openReview = (row: EntryProgressRow) => {
     const params = new URLSearchParams();
-    params.set("academicYear", selectedYear);
+    params.set("academicYearId", selectedYear);
     if (selectedTerm) params.set("termId", selectedTerm);
-    if (row.classId) params.set("classId", row.classId);
-    if (row.sectionId) params.set("sectionId", row.sectionId);
-    if (row.subjectId) params.set("subjectId", row.subjectId);
-    router.push(`/teacher/grading?${params.toString()}`);
+    params.set("classId", row.classId);
+    router.push(`/admin/report-cards?${params.toString()}`);
   };
 
   const messageTeacher = (row: EntryProgressRow) => {
@@ -281,19 +290,39 @@ export default function EntryProgressPage() {
     router.push(`/messages?recipientId=${row.teacherId}&content=${encodeURIComponent(template)}`);
   };
 
-  const remindAllPending = () => {
-    const pendingCount = rows.filter(r => r.missingGrades > 0).length;
-    if (pendingCount === 0) {
-      toast.success("All grading is currently complete!");
+  const remindAllPending = async () => {
+    if (!selectedYear || !selectedTerm) {
+      toast.error("Select an academic year and term first");
       return;
     }
-    
+    const pendingCount = rows.filter((r) => r.missingGrades > 0 && r.teacherId !== "unassigned").length;
+    if (pendingCount === 0) {
+      toast.success("No assigned teachers have pending marks");
+      return;
+    }
+
     toast(`Send automated reminders to all ${pendingCount} teachers with missing marks?`, {
       action: {
         label: "Send Reminders",
-        onClick: () => {
-          toast.success(`Broadcasting reminders to ${pendingCount} teachers...`);
-          // Implementation of bulk notification would go here
+        onClick: async () => {
+          setReminding(true);
+          try {
+            const res = await entryProgressAPI.sendReminder({
+              academicYearId: selectedYear,
+              termId: selectedTerm,
+            });
+            const sent = Number(res.data?.remindersSent ?? 0);
+            const skipped = Number(res.data?.skippedUnassigned ?? 0);
+            toast.success(
+              sent > 0
+                ? `Sent reminders to ${sent} teacher${sent === 1 ? "" : "s"}${skipped > 0 ? `; ${skipped} unassigned row${skipped === 1 ? "" : "s"} skipped` : ""}`
+                : "No new reminders were sent",
+            );
+          } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to send reminders");
+          } finally {
+            setReminding(false);
+          }
         },
       },
     });
@@ -356,134 +385,89 @@ export default function EntryProgressPage() {
   if (isLoading || !isAuthenticated) return null;
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50/50 dark:bg-slate-950 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">Entry Progress</h1>
-          <p className="text-sm text-slate-500 mt-1 max-w-lg">
-            Real-time monitoring of grading status across all departments. Track missing scores and manage submission deadlines.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
+      <div className="w-full px-6 pt-8 pb-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">Entry Progress</h1>
+            <p className="text-sm text-slate-500 mt-1 max-w-xl font-normal">
+              Real-time monitoring of grading status across all departments. Track missing scores and manage submission deadlines.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
-                <Select value={selectedYear} onValueChange={(value) => { setSelectedYear(value); setData([]); setHasFetched(false); }}>
-                  <SelectTrigger className="h-9 w-[180px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
-                    <SelectValue placeholder="Academic Year" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl ring-1 ring-black/5">
-                    {academicYears.map((year) => (
-                      <SelectItem key={year.id} value={year.id} className="text-xs font-normal">
-                        {year.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
-                <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={!selectedYear || terms.length === 0}>
-                  <SelectTrigger className="h-9 w-[160px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
-                    <SelectValue placeholder="Term" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl ring-1 ring-black/5">
-                    {terms.map((term) => (
-                      <SelectItem key={term.id} value={term.id} className="text-xs font-normal">
-                        {term.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Select value={selectedYear} onValueChange={(value) => { setSelectedYear(value); setData([]); setHasFetched(false); }}>
+                <SelectTrigger className="h-9 w-[180px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                  <SelectValue placeholder="Academic Year" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl ring-1 ring-black/5">
+                  {academicYears.map((year) => (
+                    <SelectItem key={year.id} value={year.id} className="text-xs font-normal">
+                      {year.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+              <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={!selectedYear || terms.length === 0}>
+                <SelectTrigger className="h-9 w-[160px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                  <SelectValue placeholder="Term" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl ring-1 ring-black/5">
+                  {terms.map((term) => (
+                    <SelectItem key={term.id} value={term.id} className="text-xs font-normal">
+                      {term.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
+
             <div className="flex items-center gap-2 ml-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={remindAllPending}
+                disabled={reminding}
                 className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
               >
-                <Bell className="mr-2 h-4 w-4 text-[#e35336]" />
-                Remind Pending
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={exportMissingRows}
-                className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
-              >
-                <SendHorizontal className="mr-2 h-4 w-4 text-blue-500" />
-                Export CSV
+                {reminding ? <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#e35336]" /> : <Bell className="mr-2 h-4 w-4 text-[#e35336]" />}
+                {reminding ? "Sending..." : "Remind Pending"}
               </Button>
             </div>
+          </div>
         </div>
       </div>
 
+      <div className="w-full px-6 py-6 space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
           <CardContent className="p-5">
-            <div className="flex justify-between items-start mb-2">
-               <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Total Progress</p>
-               <div className="p-2 rounded-full bg-orange-50 dark:bg-orange-500/10 text-[#e35336]">
-                 <BarChart3 className="w-4 h-4" />
-               </div>
-            </div>
-            <div className="flex items-baseline gap-2">
-               <p className="text-3xl font-medium text-slate-900 dark:text-white">
-                 {stats.hasScoreEntries ? `${stats.overallPct}%` : "0%"}
-               </p>
-               <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">Completion</span>
-            </div>
-            <div className="mt-4 h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-               <div className="h-full bg-gradient-to-r from-[#e35336] to-orange-400 transition-all duration-1000" style={{ width: `${stats.overallPct}%` }} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
-          <CardContent className="p-5">
-            <div className="flex justify-between items-start mb-2">
-               <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Finalized</p>
-               <div className="p-2 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500">
-                 <CheckCircle2 className="w-4 h-4" />
-               </div>
-            </div>
-            <div className="flex items-baseline gap-2">
-               <p className="text-3xl font-medium text-slate-900 dark:text-white">{stats.complete}</p>
-               <span className="text-[10px] font-medium text-emerald-600 uppercase">Subjects</span>
-            </div>
-            <p className="mt-2 text-[10px] font-normal text-slate-400 tracking-tight">
-               {stats.total > 0 ? Math.round((stats.complete / stats.total) * 100) : 0}% Marks Entered
+            <p className="text-xs text-slate-400 mb-1">Total Progress</p>
+            <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+              {stats.hasScoreEntries ? `${stats.overallPct}%` : "0%"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
           <CardContent className="p-5">
-            <div className="flex justify-between items-start mb-2">
-               <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Action Required</p>
-               <div className="p-2 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-500">
-                 <AlertTriangle className="w-4 h-4" />
-               </div>
-            </div>
-            <div className="flex items-baseline gap-2">
-               <p className="text-3xl font-medium text-slate-900 dark:text-white">{stats.totalMissing}</p>
-               <span className="text-[10px] font-medium text-amber-600 uppercase">Subjects</span>
-            </div>
-            <p className="mt-2 text-[10px] font-medium text-amber-600 uppercase">Approaching Deadline</p>
+            <p className="text-xs text-slate-400 mb-1">Finalized</p>
+            <p className="text-2xl font-semibold text-slate-900 dark:text-white">{stats.complete}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm overflow-hidden group">
+        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
           <CardContent className="p-5">
-            <div className="flex justify-between items-start mb-2">
-               <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Attention</p>
-               <div className="p-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500">
-                 <XCircle className="w-4 h-4" />
-               </div>
-            </div>
-            <div className="flex items-baseline gap-2">
-               <p className="text-3xl font-medium text-rose-600">{stats.empty}</p>
-               <span className="text-[10px] font-medium text-slate-400 uppercase">Zero Entries</span>
-            </div>
-            <p className="mt-2 text-[10px] font-medium text-rose-600 uppercase tracking-tight">Missing Assessment Scores</p>
+            <p className="text-xs text-slate-400 mb-1">Action Required</p>
+            <p className="text-2xl font-semibold text-slate-900 dark:text-white">{stats.totalMissing}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
+          <CardContent className="p-5">
+            <p className="text-xs text-slate-400 mb-1">Attention</p>
+            <p className="text-2xl font-semibold text-rose-600">{stats.empty}</p>
           </CardContent>
         </Card>
       </div>
@@ -495,8 +479,8 @@ export default function EntryProgressPage() {
         </div>
       ) : (
         <>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md">
-            <div className="relative w-full md:w-80 lg:w-96">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="relative w-full md:w-[26rem] lg:w-[32rem]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#e35336] transition-colors" />
               <Input
                 placeholder="Search subject, class, section..."
@@ -534,76 +518,74 @@ export default function EntryProgressPage() {
           ) : (
             <Card className="shadow-sm overflow-hidden bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 rounded-2xl">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
-                      <th className="text-left px-4 py-2.5">
-                        <button onClick={() => toggleSort("subject")} className="flex items-center gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">
+                        <button onClick={() => toggleSort("subject")} className="flex items-center gap-1">
                           Subject <SortIcon k="subject" />
                         </button>
-                      </th>
-                      <th className="text-left px-3 py-2.5">
-                        <button onClick={() => toggleSort("className")} className="flex items-center gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      </TableHead>
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">
+                        <button onClick={() => toggleSort("className")} className="flex items-center gap-1">
                           Class <SortIcon k="className" />
                         </button>
-                      </th>
-                      <th className="text-left px-3 py-2.5 min-w-[140px]">
-                        <button onClick={() => toggleSort("progress")} className="flex items-center gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      </TableHead>
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 min-w-[140px]">
+                        <button onClick={() => toggleSort("progress")} className="flex items-center gap-1">
                           Progress <SortIcon k="progress" />
                         </button>
-                      </th>
-                      <th className="text-center px-3 py-2.5">
-                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Entered</span>
-                      </th>
-                      <th className="text-center px-3 py-2.5">
-                        <button onClick={() => toggleSort("missing")} className="flex items-center justify-center gap-1 text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-full">
+                      </TableHead>
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-center">
+                        Entered
+                      </TableHead>
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-center">
+                        <button onClick={() => toggleSort("missing")} className="flex items-center justify-center gap-1 w-full">
                           Missing <SortIcon k="missing" />
                         </button>
-                      </th>
-                      <th className="text-left px-3 py-2.5">
-                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</span>
-                      </th>
-                      <th className="text-left px-3 py-2.5">
-                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deadline</span>
-                      </th>
-                      <th className="text-right px-4 py-2.5">
-                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                      </TableHead>
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">
+                        Status
+                      </TableHead>
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">
+                        Deadline
+                      </TableHead>
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-right">
+                        Actions
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {rows.map((row) => {
                       const status = getProgressStatus(row);
                       const tone = getDeadlineTone(row);
                       return (
-                        <tr
+                        <TableRow
                           key={`${row.teacherId}:${row.subject}:${row.className}:${row.sectionName ?? "none"}`}
-                          className={`group transition-all hover:bg-slate-50/80 dark:hover:bg-slate-800/40 ${
-                            status === "EMPTY" ? "bg-red-50/20 dark:bg-red-950/5" : ""
-                          }`}
+                          className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/40"
                         >
-                          <td className="px-4 py-4">
+                          <TableCell className="py-4">
                             <div className="flex flex-col">
-                               <span className="text-sm font-medium text-slate-800 dark:text-gray-100 group-hover:text-[#e35336] transition-colors">{row.subject}</span>
+                               <span className="text-sm font-medium text-slate-800 dark:text-gray-100">{row.subject}</span>
                             </div>
-                          </td>
-                          <td className="px-3 py-4">
+                          </TableCell>
+                          <TableCell className="py-4">
                             <div className="flex flex-col">
                               <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">{row.className}</span>
                               <span className="text-[10px] text-slate-400 font-medium">{row.sectionName || "Core Section"}</span>
                             </div>
-                          </td>
-                          <td className="px-3 py-4">
+                          </TableCell>
+                          <TableCell className="py-4">
                             <ProgressBar percentage={row.percentage} />
-                          </td>
-                          <td className="px-3 py-4 text-center">
+                          </TableCell>
+                          <TableCell className="py-4 text-center">
                             <span className="text-sm font-medium tabular-nums text-slate-700 dark:text-slate-200">
                               {row.enteredGrades}
                               <span className="text-slate-300 dark:text-slate-700 mx-1">/</span>
                               {row.totalStudents}
                             </span>
-                          </td>
-                          <td className="px-3 py-4 text-center">
+                          </TableCell>
+                          <TableCell className="py-4 text-center">
                             {row.missingGrades === 0 ? (
                               <div className="flex justify-center">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-500/50" />
@@ -613,48 +595,48 @@ export default function EntryProgressPage() {
                                 {row.missingGrades}
                               </span>
                             )}
-                          </td>
-                          <td className="px-3 py-4 text-center">
+                          </TableCell>
+                          <TableCell className="py-4">
                             <StatusChip status={status} />
-                          </td>
-                          <td className="px-3 py-4">
-                            <div className={`flex flex-col text-xs font-medium`}>
+                          </TableCell>
+                          <TableCell className="py-4">
+                            <div className="flex flex-col text-xs font-medium">
                                <div className="flex items-center gap-1">
                                  <CalendarClock className="h-3 w-3" />
                                  <span className={tone}>{deadlineLabel.toUpperCase()}</span>
                                </div>
                             </div>
-                          </td>
-                          <td className="px-4 py-4">
+                          </TableCell>
+                          <TableCell className="py-4">
                             <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
-                                    <MoreVertical className="h-4 w-4 text-slate-400" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48 rounded-xl ring-1 ring-black/5">
-                                  <DropdownMenuItem onClick={() => messageTeacher(row)} className="gap-2 font-medium">
-                                    <Mail className="h-4 w-4 text-blue-500" />
-                                    Send DM to Teacher
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openTeacherEntry(row)} className="gap-2 font-medium">
-                                    <ExternalLink className="h-4 w-4 text-[#e35336]" />
-                                    Review Marks Table
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="gap-2 font-medium text-rose-500 focus:text-rose-500">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    Escalate Issue
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                 <DropdownMenuTrigger asChild>
+                                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                                     <MoreVertical className="h-4 w-4 text-slate-400" />
+                                   </Button>
+                                 </DropdownMenuTrigger>
+                                 <DropdownMenuContent align="end" className="w-48 rounded-xl ring-1 ring-black/5">
+                                   <DropdownMenuItem onClick={() => messageTeacher(row)} className="gap-2 font-medium">
+                                     <Mail className="h-4 w-4 text-blue-500" />
+                                     Send DM to Teacher
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem onClick={() => openReview(row)} className="gap-2 font-medium">
+                                     <ExternalLink className="h-4 w-4 text-[#e35336]" />
+                                     Review Report Cards
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem className="gap-2 font-medium text-rose-500 focus:text-rose-500">
+                                     <AlertTriangle className="h-4 w-4" />
+                                     Escalate Issue
+                                   </DropdownMenuItem>
+                                 </DropdownMenuContent>
+                               </DropdownMenu>
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
 
               <div className="px-4 py-2.5 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 flex items-center justify-between">
@@ -672,6 +654,7 @@ export default function EntryProgressPage() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

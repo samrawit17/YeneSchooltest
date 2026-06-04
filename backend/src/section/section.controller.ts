@@ -36,6 +36,26 @@ export class SectionController {
     private prismaService: PrismaService,
   ) {}
 
+  @Post()
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
+  @Permissions('section:create')
+  async create(
+    @Request() req: AuthenticatedRequest,
+    @Body()
+    body: {
+      classId: string;
+      name: string;
+      stream?: string;
+      capacity: number;
+      roomNumber?: string;
+      homeroomTeacherId?: string;
+    },
+  ) {
+    const schoolId = req.user.schoolId;
+    if (!schoolId) return { success: false, message: 'School ID is required' };
+    return this.sectionService.create(schoolId, body);
+  }
+
   // Note: Section creation is now handled automatically via bulk upload
   // Manual section creation is disabled to maintain randomized distribution
 

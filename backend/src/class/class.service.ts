@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '../auth/types/role.enum';
@@ -360,9 +361,20 @@ export class ClassService {
     sectionId?: string,
     search?: string,
     pagination?: { page: number; limit: number; orderBy?: string },
+    requester?: { id: string; role: Role },
   ) {
     // First verify the class exists
     const classData = await this.findOne(classId, schoolId);
+    const teacherScope =
+      requester?.role === Role.TEACHER
+        ? await this.resolveTeacherClassStudentScope(
+            schoolId,
+            classId,
+            requester.id,
+            sectionId,
+            classData,
+          )
+        : null;
 
     // Calculate pagination
     const page = pagination?.page || 1;
@@ -374,6 +386,8 @@ export class ClassService {
     const where: any = { schoolId, classId };
     if (sectionId) {
       where.sectionId = sectionId;
+    } else if (teacherScope?.sectionIds?.length) {
+      where.sectionId = { in: teacherScope.sectionIds };
     }
 
     const studentClassCount = await this.prisma.studentClass.count({ where });
@@ -459,7 +473,14 @@ export class ClassService {
     } else {
       // Fall back to StudentProfile - match by className and section
       const className = classData.name || '';
-      const sectionName = classData.section || '';
+      const scopedSections = teacherScope?.sectionIds?.length
+        ? classData.sections.filter((section) =>
+            teacherScope.sectionIds!.includes(section.id),
+          )
+        : sectionId
+          ? classData.sections.filter((section) => section.id === sectionId)
+          : [];
+      const sectionName = scopedSections[0]?.name || classData.section || '';
 
       // Try different class name formats to match StudentProfile.className
       const possibleClassNames = [
@@ -469,13 +490,18 @@ export class ClassService {
       ].filter((v, i, a) => a.indexOf(v) === i);
 
       // Build OR conditions for className and section matching
+      const sectionNames = scopedSections.length
+        ? scopedSections.map((section) => section.name).filter(Boolean)
+        : sectionName
+          ? [sectionName]
+          : [];
       const orConditions = possibleClassNames.flatMap((cn) => {
-        if (sectionName) {
-          return [
-            { className: cn, section: sectionName },
-            { className: cn, section: sectionName.toUpperCase() },
-            { className: cn, section: sectionName.toLowerCase() },
-          ];
+        if (sectionNames.length) {
+          return sectionNames.flatMap((name) => [
+            { className: cn, section: name },
+            { className: cn, section: name.toUpperCase() },
+            { className: cn, section: name.toLowerCase() },
+          ]);
         }
         return [{ className: cn }];
       });
@@ -559,7 +585,17 @@ export class ClassService {
         id: classData.id,
         name: classData.name,
         grade: classData.grade,
-        section: classData.section,
+        section:
+          sectionId
+            ? classData.sections.find((section) => section.id === sectionId)
+                ?.name || classData.section
+            : classData.section,
+        homeroomTeacherId: classData.homeroomTeacher?.id || null,
+        sectionHomeroomTeacherId:
+          (sectionId
+            ? classData.sections.find((section) => section.id === sectionId)
+                ?.homeroomTeacher?.id
+            : null) || null,
       },
       students,
       pagination: {
@@ -569,6 +605,63 @@ export class ClassService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  private async resolveTeacherClassStudentScope(
+    schoolId: string,
+    classId: string,
+    teacherId: string,
+    sectionId: string | undefined,
+    classData: any,
+  ) {
+    const allowedSectionIds = new Set<string>();
+    let classLevelAccess = classData.homeroomTeacher?.id === teacherId;
+
+    for (const section of classData.sections || []) {
+      if (section.homeroomTeacher?.id === teacherId) {
+        allowedSectionIds.add(section.id);
+      }
+    }
+
+    const classSubjects = await this.prisma.classSubject.findMany({
+      where: {
+        classId,
+        teacherId,
+        class: { schoolId },
+      },
+      select: { sectionId: true },
+    });
+
+    for (const assignment of classSubjects) {
+      if (assignment.sectionId) {
+        allowedSectionIds.add(assignment.sectionId);
+      } else {
+        classLevelAccess = true;
+      }
+    }
+
+    if (sectionId) {
+      const sectionBelongsToClass = (classData.sections || []).some(
+        (section) => section.id === sectionId,
+      );
+      if (!sectionBelongsToClass) {
+        throw new NotFoundException('Section not found for this class');
+      }
+      if (!classLevelAccess && !allowedSectionIds.has(sectionId)) {
+        throw new ForbiddenException(
+          'You can only view students in your assigned class or homeroom section',
+        );
+      }
+      return classLevelAccess ? null : { sectionIds: [sectionId] };
+    }
+
+    if (classLevelAccess) return null;
+    if (allowedSectionIds.size === 0) {
+      throw new ForbiddenException(
+        'You can only view students in your assigned class or homeroom section',
+      );
+    }
+    return { sectionIds: Array.from(allowedSectionIds) };
   }
 
   async getClassStats(schoolId: string, classId: string, sectionId?: string) {

@@ -26,6 +26,12 @@ export const assessmentsAPI = {
       passMark?: number;
     }>;
   }) => api.post('/assessments', data),
+  update: (id: string, data: {
+    title?: string;
+    startDate?: string;
+    endDate?: string;
+    addToCalendar?: boolean;
+  }) => api.put(`/assessments/${id}`, data),
   addSubjects: (id: string, data: any) => api.post(`/assessments/${id}/subjects`, data),
   clear: () => api.delete('/assessments/clear', { skipAuthErrorRedirect: true } as any),
   lock: (id: string) => api.post(`/assessments/${id}/lock`),
@@ -100,16 +106,18 @@ export const gradingAPI = {
     classId: string;
     sectionId: string;
     subjectId: string;
-  }) => api.get('/grading/teacher/students', { params }),
-  enterGrade: (data: any) => api.post('/grading/teacher/grades', data),
-  bulkEnterGrades: (data: any) => api.post('/grading/teacher/grades/bulk', data),
+  }) => api.get('/grading/teacher/students', { params, skipAuthErrorRedirect: true }),
+  enterGrade: (data: any) =>
+    api.post('/grading/teacher/grades', data, { skipAuthErrorRedirect: true }),
+  bulkEnterGrades: (data: any) =>
+    api.post('/grading/teacher/grades/bulk', data, { skipAuthErrorRedirect: true }),
   submitAllGrades: (params: {
     academicYear: string;
     termId: string;
     classId: string;
     sectionId: string;
     subjectId: string;
-  }) => api.post('/grading/teacher/grades/submit-all', {}, { params }),
+  }) => api.post('/grading/teacher/grades/submit-all', {}, { params, skipAuthErrorRedirect: true }),
   getGradingComponents: () =>
     api.get('/grading/admin/grading-components', { skipAuthErrorRedirect: true }),
   getAssessmentTypes: () =>

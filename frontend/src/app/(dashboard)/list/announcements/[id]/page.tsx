@@ -126,134 +126,25 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
   // Loading state with skeletons matching the exact structure
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
-        <div className="w-full">
-          {/* Header Skeleton */}
-          <div className="bg-white border-b border-[#E2E8F0] px-4 md:px-6 py-4">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Skeleton className="w-8 h-8 rounded" />
-                <div className="h-6 w-px bg-gray-300" />
-                <Skeleton className="h-6 w-48" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-9 w-20" />
-                <Skeleton className="h-9 w-20" />
-              </div>
+      <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
+        <div className="w-full px-6 pt-8 pb-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="w-8 h-8 rounded-lg" />
+            <div>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64 mt-1" />
             </div>
           </div>
-
-          {/* Content Skeleton */}
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main Content */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Announcement Card Skeleton */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-6 w-16 rounded-full" />
-                      <Skeleton className="h-6 w-16 rounded-full" />
-                      <Skeleton className="h-6 w-20 rounded-full" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-8 w-3/4 mb-4" />
-                  <div className="flex items-center gap-4 mb-6 pb-6 border-b border-[#E2E8F0]">
-                    <div className="flex items-center gap-1">
-                      <Skeleton className="h-6 w-6 rounded-full" />
-                      <Skeleton className="h-4 w-24" />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Skeleton className="h-3 w-3" />
-                      <Skeleton className="h-4 w-24" />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Skeleton className="h-3 w-3" />
-                      <Skeleton className="h-4 w-20" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                  </div>
-                  <div className="mt-6 pt-6 border-t border-[#E2E8F0]">
-                    <Skeleton className="h-9 w-32" />
-                  </div>
-                </div>
-
-                {/* Comments Section Skeleton */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Skeleton className="h-5 w-5" />
-                    <Skeleton className="h-6 w-32" />
-                  </div>
-                  <div className="mb-6">
-                    <Skeleton className="h-24 w-full mb-2" />
-                    <div className="flex justify-end">
-                      <Skeleton className="h-9 w-32" />
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    {[1, 2].map((i) => (
-                      <div key={i} className="flex gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Skeleton className="h-4 w-24" />
-                            <Skeleton className="h-3 w-20" />
-                          </div>
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-3/4 mt-1" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Sidebar Skeleton */}
-              <div className="space-y-6">
-                {/* Quick Info Skeleton */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <Skeleton className="h-5 w-24 mb-4" />
-                  <div className="space-y-4">
-                    <div>
-                      <Skeleton className="h-3 w-12 mb-2" />
-                      <Skeleton className="h-7 w-20 rounded-full" />
-                    </div>
-                    <div>
-                      <Skeleton className="h-3 w-12 mb-2" />
-                      <Skeleton className="h-7 w-20 rounded-full" />
-                    </div>
-                    <div>
-                      <Skeleton className="h-3 w-16 mb-2" />
-                      <Skeleton className="h-5 w-32" />
-                    </div>
-                    <div>
-                      <Skeleton className="h-3 w-20 mb-2" />
-                      <div className="flex items-center gap-2">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <div>
-                          <Skeleton className="h-4 w-28 mb-1" />
-                          <Skeleton className="h-3 w-32" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Related Actions Skeleton */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <Skeleton className="h-5 w-16 mb-4" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-9 w-full" />
-                    <Skeleton className="h-9 w-full" />
-                  </div>
-                </div>
-              </div>
-            </div>
+        </div>
+        <div className="w-full px-6 py-6 space-y-6">
+          <div className="flex gap-2">
+            <Skeleton className="h-5 w-16 rounded" />
+            <Skeleton className="h-5 w-16 rounded" />
           </div>
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
         </div>
       </div>
     );
@@ -261,12 +152,12 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
 
   if (!announcement) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-center bg-gray-50 dark:bg-gray-900">
-        <Bell className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Announcement not found</h2>
-        <p className="text-gray-500 dark:text-gray-400 mb-4">The announcement you're looking for doesn't exist or has been deleted.</p>
+      <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col items-center justify-center min-h-[400px] text-center">
+        <Bell className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Announcement not found</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">The announcement you're looking for doesn't exist or has been deleted.</p>
         <Link href="/list/announcements">
-          <Button className="bg-[#e35336] hover:bg-[#1e3a8a]/90">
+          <Button className="rounded-xl bg-[var(--brand-color)] text-white hover:opacity-90">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Announcements
           </Button>
