@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { enrollmentAPI } from '@/lib/api/enrollment';
@@ -14,6 +14,7 @@ import { CalendarDatePicker } from '@/components/ui/CalendarDatePicker';
 import { useThemeStore } from '@/lib/themeStore';
 import { AppLanguage, useLanguageStore } from '@/lib/languageStore';
 import { useTranslations } from '@/hooks/useTranslations';
+import { resolveAssetUrl } from '@/lib/asset-url';
 import {
   GraduationCap,
   User,
@@ -141,6 +142,7 @@ export default function EnrollmentPage() {
   const [referenceNumber, setReferenceNumber] = useState('');
   const [enrollmentStatus, setEnrollmentStatus] = useState<{ isOpen: boolean; message: string } | null>(null);
   const { schoolId: preselectedSchoolId, enrollmentKey, schoolSlug } = useEnrollmentContext();
+  const initialDocumentTitleRef = useRef<string | null>(null);
 
   const [formData, setFormData] = useState({
     schoolId: '',
@@ -176,12 +178,56 @@ export default function EnrollmentPage() {
       : '/sign-in';
   const brandColor = normalizeBrandColor(selectedSchool?.accentColor);
   const brandColorRgb = hexToRgb(brandColor);
-  const schoolLogoUrl = resolveMediaUrl(selectedSchool?.logoUrl);
+  const schoolLogoUrl = resolveAssetUrl(selectedSchool?.logoUrl);
+  const enrollmentPageTitle = selectedSchool?.name
+    ? `${selectedSchool.name} - ${t.title}`
+    : `${t.titleFallback} - ${t.title}`;
   const pageStyle = {
     '--enroll-brand': brandColor,
     '--enroll-brand-rgb': `${brandColorRgb.r}, ${brandColorRgb.g}, ${brandColorRgb.b}`,
     '--brand-color': brandColor,
   } as CSSProperties;
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    initialDocumentTitleRef.current ??= document.title;
+    document.title = enrollmentPageTitle;
+
+    return () => {
+      if (initialDocumentTitleRef.current) {
+        document.title = initialDocumentTitleRef.current;
+      }
+    };
+  }, [enrollmentPageTitle]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || !schoolLogoUrl) return;
+
+    const faviconHref = `${schoolLogoUrl}${schoolLogoUrl.includes('?') ? '&' : '?'}school-favicon=${encodeURIComponent(formData.schoolId || 'selected')}`;
+    const existingLinks = Array.from(document.head.querySelectorAll<HTMLLinkElement>('link[rel*="icon"]'));
+    const previousLinks = existingLinks.map((link) => link.cloneNode(true) as HTMLLinkElement);
+    existingLinks.forEach((link) => link.remove());
+
+    const iconLink = document.createElement('link');
+    const shortcutIconLink = document.createElement('link');
+
+    iconLink.rel = 'icon';
+    iconLink.href = faviconHref;
+    iconLink.setAttribute('data-school-favicon', 'true');
+
+    shortcutIconLink.rel = 'shortcut icon';
+    shortcutIconLink.href = faviconHref;
+    shortcutIconLink.setAttribute('data-school-favicon', 'true');
+
+    document.head.prepend(iconLink, shortcutIconLink);
+
+    return () => {
+      iconLink.remove();
+      shortcutIconLink.remove();
+      previousLinks.reverse().forEach((link) => document.head.prepend(link));
+    };
+  }, [formData.schoolId, schoolLogoUrl]);
 
   useEffect(() => {
     const resolveSchool = async () => {
@@ -1072,16 +1118,4 @@ function hexToRgb(hex: string) {
     g: parseInt(value.slice(2, 4), 16),
     b: parseInt(value.slice(4, 6), 16),
   };
-}
-
-function resolveMediaUrl(path?: string | null) {
-  if (!path) return null;
-  if (/^https?:\/\//i.test(path)) return path;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) return path;
-  try {
-    return new URL(path, apiUrl).toString();
-  } catch {
-    return path;
-  }
 }
