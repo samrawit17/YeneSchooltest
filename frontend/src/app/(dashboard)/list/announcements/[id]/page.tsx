@@ -46,6 +46,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 interface AnnouncementPageProps {
   params: {
@@ -236,9 +237,12 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
                 </div>
 
                 {/* Title */}
-                <h1 className="text-2xl font-bold text-[#e35336] mb-4">
-                  {announcement.title}
-                </h1>
+                <TranslatedText
+                  as="h1"
+                  text={announcement.title}
+                  textClassName="text-2xl font-bold text-[#e35336]"
+                  className="mb-4"
+                />
 
                 {/* Meta Info */}
                 <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
@@ -263,7 +267,10 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
 
                 {/* Content */}
                 <div className="prose prose-sm max-w-none">
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{announcement.content}</p>
+                  <TranslatedText
+                    text={announcement.content}
+                    textClassName="text-gray-700 dark:text-gray-300"
+                  />
                 </div>
               </div>
             </div>

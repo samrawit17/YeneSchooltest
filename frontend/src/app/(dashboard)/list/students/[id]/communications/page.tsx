@@ -23,6 +23,7 @@ import {
 } from "@/lib/api/communications";
 import { useAuth } from "@/context/AuthContext";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 // Types
 type DateRange = "all" | "today" | "week" | "month" | "custom";
@@ -447,7 +448,12 @@ function CommunicationsContent({ studentId }: { studentId: string }) {
                 className={`w-full p-4 border-b border-[#E2E8F0] text-left hover:bg-[#F8FAFC] ${selectedCommunication?.id === comm.id ? "bg-[#F8FAFC] border-l-4 border-l-[#1E3A8A]" : ""}`}>
                 <div className="flex items-center justify-between mb-2"><span className="font-medium text-sm">{comm.subject}</span><StatusBadge status={comm.status} /></div>
                 <div className="flex items-center gap-2 mb-2"><User className="w-3 h-3 text-gray-400" /><span className="text-xs text-gray-500">{comm.teacherName}</span></div>
-                <p className="text-xs text-gray-600 line-clamp-2 mb-2">{comm.message}</p>
+                <TranslatedText
+                  text={comm.message}
+                  textClassName="text-xs text-gray-600 line-clamp-2"
+                  className="mb-2"
+                  showControls={false}
+                />
                 <div className="flex items-center gap-1 text-xs text-gray-400"><Clock className="w-3 h-3" />{formatDate(comm.createdAt)}</div>
               </button>
             ))
@@ -458,7 +464,7 @@ function CommunicationsContent({ studentId }: { studentId: string }) {
           {selectedCommunication ? (
             <div className="bg-white rounded-lg border border-[#E2E8F0] p-6">
               <div className="flex items-start justify-between mb-6 pb-4 border-b border-[#E2E8F0]">
-                <div><h2 className="text-lg font-semibold mb-1">{selectedCommunication.subject}</h2>
+                <div><TranslatedText as="h2" text={selectedCommunication.subject} textClassName="text-lg font-semibold mb-1" />
                   <div className="flex items-center gap-4 text-sm text-gray-500">
                     <span className="flex items-center gap-1"><User className="w-4 h-4" />{selectedCommunication.teacherName}</span>
                     <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{formatDate(selectedCommunication.createdAt)}</span>
@@ -471,7 +477,7 @@ function CommunicationsContent({ studentId }: { studentId: string }) {
                   <div className="flex items-center gap-2 mb-2"><span className="font-medium text-sm">{selectedCommunication.teacherName}</span>
                     <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Teacher</span>
                   </div>
-                  <p className="text-sm text-gray-700">{selectedCommunication.message}</p>
+                  <TranslatedText text={selectedCommunication.message} textClassName="text-sm text-gray-700" />
                   <div className="flex items-center gap-1 mt-3 text-xs text-gray-400"><Clock className="w-3 h-3" />{formatDate(selectedCommunication.createdAt)} at {formatTime(selectedCommunication.createdAt)}</div>
                 </div>
               </div>
@@ -483,7 +489,7 @@ function CommunicationsContent({ studentId }: { studentId: string }) {
                         <div className="flex items-center gap-2 mb-2"><span className="font-medium text-sm">{reply.sender?.name}</span>
                           <span className={`px-2 py-0.5 text-xs rounded ${reply.sender?.role === "Teacher" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-600"}`}>{reply.sender?.role}</span>
                         </div>
-                        <p className="text-sm text-gray-700">{reply.message}</p>
+                        <TranslatedText text={reply.message} textClassName="text-sm text-gray-700" />
                         <div className="flex items-center gap-1 mt-3 text-xs text-gray-400"><Clock className="w-3 h-3" />{formatDate(reply.createdAt)} at {formatTime(reply.createdAt)}</div>
                       </div>
                     ))}

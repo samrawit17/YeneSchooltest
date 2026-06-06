@@ -61,15 +61,6 @@ api.interceptors.response.use(
         }
 
         const redirectParams = new URLSearchParams({ type: '403' });
-        if (requestUrl) {
-          redirectParams.set('api', requestUrl);
-        }
-        if (currentPath) {
-          redirectParams.set('from', currentPath);
-        }
-        if (requiredPermission) {
-          redirectParams.set('permission', requiredPermission);
-        }
 
         window.location.href = `/access-denied?${redirectParams.toString()}`;
       }
@@ -101,12 +92,6 @@ api.interceptors.response.use(
           'Resource not found or you do not have permission to access this page.';
         sessionStorage.setItem('accessDeniedMessage', notFoundMessage);
         const redirectParams = new URLSearchParams({ type: '404' });
-        if (requestUrl) {
-          redirectParams.set('api', requestUrl);
-        }
-        if (currentPath) {
-          redirectParams.set('from', currentPath);
-        }
 
         window.location.href = `/access-denied?${redirectParams.toString()}`;
       }

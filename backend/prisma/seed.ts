@@ -27,7 +27,11 @@ const pool = new Pool({
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) } as any);
 
 const SUPERADMIN_EMAIL = 'lemari1121@gmail.com';
-const SUPERADMIN_PASSWORD = process.env.SEED_SUPERADMIN_PASSWORD || '12345678';
+const SUPERADMIN_PASSWORD = process.env.SEED_SUPERADMIN_PASSWORD;
+
+if (!SUPERADMIN_PASSWORD) {
+  throw new Error('SEED_SUPERADMIN_PASSWORD is required for seeding');
+}
 
 function permissionMeta(name: string) {
   const [module, ...actionParts] = name.split(':');
@@ -117,7 +121,7 @@ async function main() {
 
   console.log('Seeded superadmin:', user);
   console.log(`Seeded permissions: ${permissionNames.length}`);
-  console.log(`Temporary password: ${SUPERADMIN_PASSWORD}`);
+  console.log('Seeded superadmin password from SEED_SUPERADMIN_PASSWORD');
 }
 
 main()

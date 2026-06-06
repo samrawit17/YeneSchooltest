@@ -58,6 +58,7 @@ export class EnrollmentRequestService {
 
   async getPublicSchools() {
     const schools = await this.prisma.school.findMany({
+      where: { isActive: true },
       select: {
         id: true,
         name: true,
@@ -171,6 +172,32 @@ export class EnrollmentRequestService {
           (setting) => setting.key === 'login_image_url',
         )?.value || null,
     };
+  }
+
+  async getAvailableGrades(schoolId: string) {
+    const school = await this.prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { id: true },
+    });
+    if (!school) {
+      throw new NotFoundException('School not found');
+    }
+
+    const gradeLevels =
+      await this.schoolSettings.getGradeLevelsForSchool(schoolId);
+
+    return gradeLevels
+      .filter((gradeLevel) => gradeLevel.level >= 1)
+      .map((gradeLevel) => ({ grade: gradeLevel.level }));
+  }
+
+  private async assertRequestedGradeAllowed(schoolId: string, grade: number) {
+    const availableGrades = await this.getAvailableGrades(schoolId);
+    if (!availableGrades.some((available) => available.grade === grade)) {
+      throw new BadRequestException(
+        `Grade ${grade} is not available for this school's grade system`,
+      );
+    }
   }
 
   /**
@@ -308,6 +335,9 @@ export class EnrollmentRequestService {
     if (!schoolData) {
       throw new NotFoundException('School not found');
     }
+    if (!schoolData.isActive) {
+      throw new BadRequestException('School is not active');
+    }
 
     // Check if enrollment is open
     const enrollmentOpen = await this.schoolSettings.getSetting(
@@ -318,6 +348,8 @@ export class EnrollmentRequestService {
     if (!isOpen) {
       throw new BadRequestException('Online enrollment is currently closed');
     }
+
+    await this.assertRequestedGradeAllowed(dto.schoolId, dto.requestedGrade);
 
     const faydaNumber = String(dto.faydaNumber || '').replace(/\D/g, '');
     if (!/^\d{12}$/.test(faydaNumber)) {
@@ -390,6 +422,11 @@ export class EnrollmentRequestService {
     });
     if (!academicYear) {
       throw new NotFoundException('Academic year not found');
+    }
+    if (academicYear.schoolId !== dto.schoolId) {
+      throw new BadRequestException(
+        'Academic year does not belong to the selected school',
+      );
     }
 
     // Count existing enrollments for this school and academic year to generate sequence
@@ -557,6 +594,7 @@ export class EnrollmentRequestService {
       enrollment.requestedStream,
       enrollment.requestedGrade,
     );
+    await this.assertRequestedGradeAllowed(schoolId, enrollment.requestedGrade);
     if (
       (enrollment.requestedGrade === 11 || enrollment.requestedGrade === 12) &&
       !requestedStream

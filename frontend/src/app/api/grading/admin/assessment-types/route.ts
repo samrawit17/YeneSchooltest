@@ -1,28 +1,29 @@
 import { NextResponse } from 'next/server';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import {
+  API_URL,
+  getCookieAuthHeaders,
+  readBackendJson,
+  unauthorizedResponse,
+} from '../../proxy-utils';
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const authHeaders = getCookieAuthHeaders(request);
     
-    if (!token) {
+    if (!authHeaders) {
       return NextResponse.json(DEFAULT_ASSESSMENT_TYPES, { status: 200 });
     }
 
     const response = await fetch(`${API_URL}/grading/admin/assessment-types`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders,
     });
 
     if (!response.ok) {
       return NextResponse.json(DEFAULT_ASSESSMENT_TYPES, { status: 200 });
     }
 
-    const data = await response.json();
+    const data = await readBackendJson(response);
     if (!data || !Array.isArray(data) || data.length === 0) {
       return NextResponse.json(DEFAULT_ASSESSMENT_TYPES, { status: 200 });
     }
@@ -42,27 +43,21 @@ const DEFAULT_ASSESSMENT_TYPES = [
 
 export async function POST(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    const authHeaders = getCookieAuthHeaders(request);
     
-    if (!token) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (!authHeaders) {
+      return unauthorizedResponse();
     }
 
     const body = await request.json();
 
     const response = await fetch(`${API_URL}/grading/admin/assessment-types`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders,
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data = await readBackendJson(response);
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('Error saving assessment types:', error);

@@ -293,11 +293,11 @@ export class AuthService {
         secure: shouldUseSecureCookies(),
         sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
         maxAge: this.parseJwtCookieMaxAge(),
+        path: '/',
       });
     }
 
     return {
-      access_token: token,
       user: {
         id: user.id,
         email: user.email,
@@ -319,7 +319,12 @@ export class AuthService {
 
   async logout(@Res({ passthrough: true }) res?: Response) {
     if (res) {
-      res.clearCookie(JWT_COOKIE_NAME);
+      res.clearCookie(JWT_COOKIE_NAME, {
+        httpOnly: true,
+        secure: shouldUseSecureCookies(),
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        path: '/',
+      });
     }
     return { message: 'Logged out successfully' };
   }

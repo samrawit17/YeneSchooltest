@@ -77,6 +77,7 @@ model School {
   timetableSlots            TimetableSlot[]
   users                     User[]
   schoolSettings            SchoolSetting[]
+  translationCaches         TranslationCache[]
   DiscountPolicy            DiscountPolicy[]
   SchoolSettings            SchoolSettings?
   contents                  Content[]
@@ -249,6 +250,26 @@ model PlatformSetting {
   updatedAt DateTime @updatedAt
 
   @@map("platform_settings")
+}
+
+model TranslationCache {
+  id                 String    @id @default(cuid())
+  schoolId           String?
+  provider           String
+  sourceLanguage     String
+  targetLanguage     String
+  textHash           String
+  translatedText     String
+  reviewedText       String?
+  reviewedById       String?
+  reviewedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  school             School?   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, provider, sourceLanguage, targetLanguage, textHash])
+  @@index([schoolId, targetLanguage])
+  @@map("translation_caches")
 }
 
 enum PlanTier {

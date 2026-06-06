@@ -4,6 +4,13 @@ export default api;
 
 export { authAPI, userAPI } from "./api/auth";
 export { notificationsAPI } from "./api/notifications";
+export {
+  translationAPI,
+  type AppTranslationLanguage,
+  type TranslationConfig,
+  type TranslationProvider,
+  type TranslationResult,
+} from "./api/translation";
 export { studentsAPI, registrarAPI } from "./api/students";
 export {
   academicYearsAPI,

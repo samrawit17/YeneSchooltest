@@ -52,7 +52,7 @@ export default function RootLayout({
                   }
                 };
 
-                var userId = parseUserId(localStorage.getItem('user')) || parseUserId(sessionStorage.getItem('user'));
+                var userId = parseUserId(sessionStorage.getItem('user')) || parseUserId(localStorage.getItem('user'));
                 var key = userId ? 'theme-storage:' + userId : 'theme-storage';
                 var stored = userId ? localStorage.getItem(key) : localStorage.getItem('theme-storage');
                 if (stored) {
@@ -64,7 +64,7 @@ export default function RootLayout({
                 }
 
                 var brandSettingsRaw = localStorage.getItem('sms-brand-settings');
-                var userRaw = localStorage.getItem('user');
+                var userRaw = sessionStorage.getItem('user') || localStorage.getItem('user');
                 if (brandSettingsRaw && userRaw) {
                   var brandSettings = JSON.parse(brandSettingsRaw);
                   var user = JSON.parse(userRaw);

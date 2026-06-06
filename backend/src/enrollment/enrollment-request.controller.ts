@@ -11,6 +11,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import { EnrollmentRequestService } from './enrollment-request.service';
 import {
@@ -29,6 +30,14 @@ import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 @Controller('enrollment')
 export class EnrollmentRequestController {
   constructor(private readonly enrollmentService: EnrollmentRequestService) {}
+
+  private getAuthenticatedSchoolId(req: any): string {
+    const schoolId = req?.user?.schoolId;
+    if (!schoolId) {
+      throw new ForbiddenException('School not found in authenticated user');
+    }
+    return schoolId;
+  }
 
   /**
    * PUBLIC ENDPOINTS - No authentication required
@@ -105,10 +114,7 @@ export class EnrollmentRequestController {
    */
   @Get('grades')
   async getAvailableGrades(@Query('schoolId') schoolId: string) {
-    // Return all grades 1-12 since enrollment happens before capacity is set
-    const grades = Array.from({ length: 12 }, (_, i) => ({
-      grade: i + 1,
-    }));
+    const grades = await this.enrollmentService.getAvailableGrades(schoolId);
     return { success: true, data: grades };
   }
 
@@ -134,8 +140,11 @@ export class EnrollmentRequestController {
   @UseGuards(JwtAuthGuard, RolesGuard, SubscriptionGuard)
   @RequiresFeature('ENROLLMENT_MANAGEMENT')
   @Roles(Role.ADMIN, Role.REGISTRAR)
-  async listRequests(@Query() query: EnrollmentQueryDto) {
-    const result = await this.enrollmentService.listEnrollmentRequests(query);
+  async listRequests(@Query() query: EnrollmentQueryDto, @Request() req: any) {
+    const result = await this.enrollmentService.listEnrollmentRequests({
+      ...query,
+      schoolId: this.getAuthenticatedSchoolId(req),
+    });
     return { success: true, ...result };
   }
 
@@ -148,11 +157,11 @@ export class EnrollmentRequestController {
   @RequiresFeature('ENROLLMENT_MANAGEMENT')
   @Roles(Role.ADMIN, Role.REGISTRAR)
   async getStats(
-    @Query('schoolId') schoolId: string,
+    @Request() req: any,
     @Query('academicYearId') academicYearId?: string,
   ) {
     const stats = await this.enrollmentService.getEnrollmentStats(
-      schoolId,
+      this.getAuthenticatedSchoolId(req),
       academicYearId,
     );
     return { success: true, data: stats };
@@ -168,11 +177,11 @@ export class EnrollmentRequestController {
   @Roles(Role.ADMIN, Role.REGISTRAR)
   async getRequest(
     @Param('id') id: string,
-    @Query('schoolId') schoolId: string,
+    @Request() req: any,
   ) {
     const enrollment = await this.enrollmentService.getEnrollmentRequest(
       id,
-      schoolId,
+      this.getAuthenticatedSchoolId(req),
     );
     return { success: true, data: enrollment };
   }
@@ -188,12 +197,11 @@ export class EnrollmentRequestController {
   @HttpCode(HttpStatus.OK)
   async approveEnrollment(
     @Param('id') id: string,
-    @Query('schoolId') schoolId: string,
     @Request() req: any,
   ) {
     const result = await this.enrollmentService.approveEnrollment(
       id,
-      schoolId,
+      this.getAuthenticatedSchoolId(req),
       req.user.id,
     );
     return {
@@ -214,15 +222,15 @@ export class EnrollmentRequestController {
   @HttpCode(HttpStatus.OK)
   async rejectEnrollment(
     @Param('id') id: string,
-    @Query('schoolId') schoolId: string,
     @Body('reason') reason: string,
+    @Request() req: any,
   ) {
     if (!reason) {
       return { success: false, message: 'Rejection reason is required' };
     }
     const enrollment = await this.enrollmentService.rejectEnrollment(
       id,
-      schoolId,
+      this.getAuthenticatedSchoolId(req),
       reason,
     );
     return {
@@ -243,11 +251,11 @@ export class EnrollmentRequestController {
   @HttpCode(HttpStatus.OK)
   async waitlistEnrollment(
     @Param('id') id: string,
-    @Query('schoolId') schoolId: string,
+    @Request() req: any,
   ) {
     const enrollment = await this.enrollmentService.waitlistEnrollment(
       id,
-      schoolId,
+      this.getAuthenticatedSchoolId(req),
     );
     return {
       success: true,
@@ -265,11 +273,11 @@ export class EnrollmentRequestController {
   @HttpCode(HttpStatus.OK)
   async cancelEnrollment(
     @Param('id') id: string,
-    @Query('schoolId') schoolId: string,
+    @Request() req: any,
   ) {
     const enrollment = await this.enrollmentService.cancelEnrollment(
       id,
-      schoolId,
+      this.getAuthenticatedSchoolId(req),
     );
     return {
       success: true,
@@ -288,12 +296,12 @@ export class EnrollmentRequestController {
   @HttpCode(HttpStatus.OK)
   async sendCredentials(
     @Param('id') id: string,
-    @Query('schoolId') schoolId: string,
     @Body() body: { sendEmail?: boolean; sendSms?: boolean },
+    @Request() req: any,
   ) {
     const enrollment = await this.enrollmentService.getEnrollmentRequest(
       id,
-      schoolId,
+      this.getAuthenticatedSchoolId(req),
     );
 
     if (enrollment.status !== EnrollmentRequestStatus.APPROVED) {

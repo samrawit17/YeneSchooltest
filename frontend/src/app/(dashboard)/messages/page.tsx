@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Plus, Search, Send } from "lucide-react";
 import { useTranslations } from "@/hooks/useTranslations";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 const STAFF_ROLES = new Set(["ADMIN", "REGISTRAR", "TEACHER", "FINANCE", "IT_MANAGER"]);
 
@@ -555,7 +556,7 @@ export default function MessagesPage() {
                                 {m.sender?.name}
                               </p>
                             )}
-                            <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                            <TranslatedText text={m.content} />
                           </div>
                         </div>
                       );

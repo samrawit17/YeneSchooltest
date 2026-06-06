@@ -51,14 +51,14 @@ export default function PracticeExamAttemptPage() {
   const currentQuestion = questions[currentIndex];
   const examSubjectLabel = useMemo(() => {
     if (attempt?.exam.subject?.name) return attempt.exam.subject.name;
-    return attempt?.exam.title || "Online Exam";
+    return attempt?.exam.title || "Online Examination";
   }, [attempt?.exam.subject?.name, attempt?.exam.title]);
 
   useEffect(() => {
     if (!attempt) return;
     setBreadcrumbItems([
       { label: "Student Portal", href: "/student" },
-      { label: "Online Exam", href: "/student/practice-exams" },
+      { label: "Online Examination", href: "/student/practice-exams" },
       { label: examSubjectLabel, isCurrent: true },
     ]);
     return () => setBreadcrumbItems(null);
@@ -336,7 +336,7 @@ export default function PracticeExamAttemptPage() {
   }
 
   if (!attempt) {
-    return <div className="p-6"><Card><CardContent className="py-12 text-center text-sm text-slate-500">Online exam attempt not found.</CardContent></Card></div>;
+    return <div className="p-6"><Card><CardContent className="py-12 text-center text-sm text-slate-500">Online examination attempt not found.</CardContent></Card></div>;
   }
 
   if (!isOpen) {
@@ -348,9 +348,9 @@ export default function PracticeExamAttemptPage() {
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{attempt.exam.title}</h1>
-            <p className="text-sm text-slate-500">Online exam result for Grade {attempt.exam.grade}</p>
+            <p className="text-sm text-slate-500">Online examination result for Grade {attempt.exam.grade}</p>
           </div>
-          <Button variant="outline" onClick={() => router.push("/student/practice-exams")}>Back to Online Exam</Button>
+          <Button variant="outline" onClick={() => router.push("/student/practice-exams")}>Back to Online Examination</Button>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           <Card><CardContent className="p-5"><div className="text-sm text-slate-500">Score</div><div className="mt-2 text-3xl font-bold">{percentage}%</div></CardContent></Card>

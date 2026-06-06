@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 export default function StudentLessonDetailPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -102,7 +103,11 @@ export default function StudentLessonDetailPage() {
           </Button>
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-bold text-[#e35336]">{lesson.title}</h1>
+              <TranslatedText
+                as="h1"
+                text={lesson.title}
+                textClassName="text-2xl font-bold text-[#e35336]"
+              />
               <Badge variant={lesson.status === "PUBLISHED" ? "default" : "secondary"}>
                 {lesson.status}
               </Badge>
@@ -125,7 +130,7 @@ export default function StudentLessonDetailPage() {
                     <BookOpen className="h-5 w-5" />
                     Learning Objective
                   </h3>
-                  <p className="text-gray-700 dark:text-gray-300">{lesson.objective}</p>
+                  <TranslatedText text={lesson.objective} textClassName="text-gray-700 dark:text-gray-300" />
                 </div>
               )}
 
@@ -146,11 +151,17 @@ export default function StudentLessonDetailPage() {
                 <div>
                   <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold">
                     <FileText className="h-5 w-5" />
-                    {homework.title || "Homework"}
+                    {homework.title ? (
+                      <TranslatedText as="span" text={homework.title} showControls={false} />
+                    ) : (
+                      "Homework"
+                    )}
                   </h3>
-                  <p className="text-gray-700 dark:text-gray-300">
-                    {homework.description || "No homework details added."}
-                  </p>
+                  {homework.description ? (
+                    <TranslatedText text={homework.description} textClassName="text-gray-700 dark:text-gray-300" />
+                  ) : (
+                    <p className="text-gray-700 dark:text-gray-300">No homework details added.</p>
+                  )}
                 </div>
               )}
 

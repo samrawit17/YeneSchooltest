@@ -10,6 +10,7 @@ import { useTranslations } from "@/hooks/useTranslations";
 import BigCalendar from '@/components/BigCalendar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
+import { TranslatedText } from '@/components/translation/TranslatedText';
 
 const getEventCategoryBadge = (category: string) => {
   switch (category) {
@@ -55,7 +56,7 @@ const EventListPage = () => {
   const [role, setRole] = useState<string>('admin');
   
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
     if (userStr) {
       const user = JSON.parse(userStr);
       setRole(user.role?.toLowerCase() || 'admin');
@@ -151,7 +152,12 @@ const EventListPage = () => {
                 className="p-2.5 sm:p-3 md:p-4 rounded-lg border-2 border-[var(--brand-color,#e35336)]/30 hover:border-[var(--brand-color,#e35336)] hover:shadow-md transition-all bg-white dark:bg-[#1E293B] dark:border-[#334155] cursor-pointer active:scale-[0.98] touch-manipulation"
               >
                 <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-                  <h3 className="font-semibold text-xs sm:text-sm text-gray-800 dark:text-white line-clamp-1 flex-1">{event.title}</h3>
+                  <TranslatedText
+                    as="h3"
+                    text={event.title}
+                    textClassName="font-semibold text-xs sm:text-sm text-gray-800 dark:text-white line-clamp-1"
+                    className="flex-1"
+                  />
                     <span className={`px-1 py-0.5 rounded-full text-[9px] sm:text-xs flex-shrink-0 leading-tight ${getEventCategoryBadge(event.category || "OTHER")}`}>
                     {t.categories[event.category || "OTHER"]}
                   </span>
@@ -169,7 +175,13 @@ const EventListPage = () => {
                     <span className="truncate">{event.location}</span>
                   </div>
                 )}
-                <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 line-clamp-2 hidden sm:block">{event.description}</p>
+                {event.description && (
+                  <TranslatedText
+                    text={event.description}
+                    textClassName="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 line-clamp-2"
+                    className="hidden sm:block"
+                  />
+                )}
               </div>
             ))}
           </div>

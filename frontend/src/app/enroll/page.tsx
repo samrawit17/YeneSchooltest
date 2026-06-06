@@ -297,7 +297,18 @@ export default function EnrollmentPage() {
         setEnrollmentStatus(status);
 
         const gradesResponse = await enrollmentAPI.getAvailableGrades(formData.schoolId);
-        setAvailableGrades(gradesResponse.data?.data || []);
+        const grades = gradesResponse.data?.data || [];
+        setAvailableGrades(grades);
+        setFormData((prev) => {
+          if (grades.some((grade: GradeCapacity) => grade.grade === prev.requestedGrade)) {
+            return prev;
+          }
+          return {
+            ...prev,
+            requestedGrade: grades[0]?.grade || 1,
+            requestedStream: '',
+          };
+        });
 
         setSelectedSchoolData({
           id: formData.schoolId,
@@ -334,6 +345,7 @@ export default function EnrollmentPage() {
         return Boolean(
           formData.schoolId &&
           formData.requestedGrade &&
+          availableGrades.some((grade) => grade.grade === formData.requestedGrade) &&
           (![11, 12].includes(formData.requestedGrade) || formData.requestedStream)
         );
       case 'student':

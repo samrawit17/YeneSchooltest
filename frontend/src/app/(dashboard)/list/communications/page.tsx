@@ -48,6 +48,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslations } from "@/hooks/useTranslations";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 type FilterOption = "all" | "unread" | "open" | "closed" | "today" | "this_week";
 type ViewMode = "inbox" | "starred" | "archived" | "trash";
@@ -248,7 +249,10 @@ function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelet
     <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[75%] group relative ${isMe ? "order-2" : "order-1"}`}>
         <div className={`rounded-lg border px-3 py-2 text-sm ${isMe ? "border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.10)] text-[var(--brand-color,#e35336)] dark:border-[rgba(var(--brand-color-rgb),0.24)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "border-gray-200 bg-gray-100 text-gray-900 dark:border-slate-700 dark:bg-slate-700 dark:text-white"}`}>
-          <p className={`whitespace-pre-wrap break-words ${isMe ? "text-[var(--brand-color,#e35336)] dark:text-white/90" : "text-gray-900 dark:text-white"}`}>{message}</p>
+          <TranslatedText
+            text={message}
+            textClassName={isMe ? "text-[var(--brand-color,#e35336)] dark:text-white/90" : "text-gray-900 dark:text-white"}
+          />
           <div className={`mt-2 flex items-center gap-1 ${isMe ? "justify-end" : "justify-start"}`}>
             <span className={`text-xs ${isMe ? "text-[rgba(var(--brand-color-rgb),0.75)] dark:text-white/60" : "text-slate-400 dark:text-slate-500"}`}>
               {formatTime(timestamp)}
@@ -341,9 +345,13 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
                     <p className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">
                       {getConversationSubtitle(conv, viewerRole) || conv.subject}
                     </p>
-                    <p className="mt-1 truncate text-xs text-gray-400 dark:text-gray-500">
-                      {conv.lastMessage || conv.message}
-                    </p>
+                    <TranslatedText
+                      as="div"
+                      text={conv.lastMessage || conv.message}
+                      textClassName="truncate text-xs text-gray-400 dark:text-gray-500"
+                      className="mt-1"
+                      showControls={false}
+                    />
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { academicYearsAPI } from '@/lib/api';
+import { academicYearsAPI, schoolSettingsAPI } from '@/lib/api';
 import { formatUserDisplayCode } from '@/lib/student-code';
+import { getGradeNumbersFromSystem } from '@/lib/grade-system';
 import {
   enrollmentAPI,
   EnrollmentRequest,
@@ -90,6 +91,7 @@ export default function AdminEnrollmentPage() {
     academicYears.find((year) => year.id === selectedYear)?.name ||
     selectedYear;
   const [searchTerm, setSearchTerm] = useState('');
+  const [gradeOptions, setGradeOptions] = useState<number[]>(Array.from({ length: 12 }, (_, i) => i + 1));
 
   // Dialogs
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -119,6 +121,25 @@ export default function AdminEnrollmentPage() {
     };
     loadYears();
   }, []);
+
+  useEffect(() => {
+    const loadGradeOptions = async () => {
+      if (!user?.schoolId) return;
+
+      try {
+        const response = await schoolSettingsAPI.getAll(user.schoolId);
+        const options = getGradeNumbersFromSystem(response.data?.grade_system || '1-12');
+        setGradeOptions(options);
+        setSelectedGrade((current) =>
+          current === 'all' || options.includes(Number(current)) ? current : 'all',
+        );
+      } catch (error) {
+        console.error('Failed to load school grade settings:', error);
+      }
+    };
+
+    loadGradeOptions();
+  }, [user?.schoolId]);
 
   const hasInitiallyLoaded = useRef(false);
 
@@ -289,7 +310,7 @@ export default function AdminEnrollmentPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Grades</SelectItem>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map(g => (
+                    {gradeOptions.map(g => (
                       <SelectItem key={g} value={String(g)}>Grade {g}</SelectItem>
                     ))}
                   </SelectContent>

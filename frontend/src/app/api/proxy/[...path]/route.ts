@@ -12,10 +12,8 @@ async function handler(
   const targetUrl = `${BACKEND_URL}/${targetPath}${query}`;
 
   const headers = new Headers();
-  const auth = req.headers.get('authorization');
   const contentType = req.headers.get('content-type');
   const cookie = req.headers.get('cookie');
-  if (auth) headers.set('authorization', auth);
   if (contentType) headers.set('content-type', contentType);
   if (cookie) headers.set('cookie', cookie);
 

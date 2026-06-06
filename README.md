@@ -44,6 +44,9 @@ npm run dev
 ```
 DATABASE_URL="postgresql://user:pass@localhost:5432/sms"
 JWT_SECRET="your-secret-key"
+TRANSLATION_PROVIDER="disabled" # azure | google | disabled
+AZURE_TRANSLATOR_KEY=""         # required when provider is azure
+GOOGLE_TRANSLATE_API_KEY=""     # required when provider is google
 ```
 
 **Frontend** (`.env.local`):

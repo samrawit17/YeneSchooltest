@@ -11,6 +11,20 @@ import {
 } from '../constants/default-permissions.constant';
 import { Role } from '../types/role.enum';
 
+function buildJwtExtractors(allowBearerAuth: boolean) {
+  const extractors = [
+    (req) => {
+      return req?.cookies?.[JWT_COOKIE_NAME];
+    },
+  ];
+
+  if (allowBearerAuth) {
+    extractors.push(ExtractJwt.fromAuthHeaderAsBearerToken());
+  }
+
+  return extractors;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -18,14 +32,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private prismaService: PrismaService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        // Extract from cookie first
-        (req) => {
-          return req?.cookies?.Authentication;
-        },
-        // Fallback to Bearer token
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ]),
+      jwtFromRequest: ExtractJwt.fromExtractors(
+        buildJwtExtractors(configService.get<string>('ALLOW_BEARER_AUTH') === 'true'),
+      ),
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET'),
     });

@@ -32,6 +32,41 @@ import type { Response } from 'express';
 import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
 import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
+const IMAGE_FILE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const STUDENT_DOCUMENT_FILE_TYPES = new Set([
+  ...IMAGE_FILE_TYPES,
+  'application/pdf',
+]);
+
+function imageFileFilter(
+  _req: unknown,
+  file: Express.Multer.File,
+  callback: (error: Error | null, acceptFile: boolean) => void,
+) {
+  if (IMAGE_FILE_TYPES.has(file.mimetype)) {
+    callback(null, true);
+    return;
+  }
+
+  callback(new BadRequestException('File must be a JPG, PNG, or WEBP image'), false);
+}
+
+function studentDocumentFileFilter(
+  _req: unknown,
+  file: Express.Multer.File,
+  callback: (error: Error | null, acceptFile: boolean) => void,
+) {
+  if (STUDENT_DOCUMENT_FILE_TYPES.has(file.mimetype)) {
+    callback(null, true);
+    return;
+  }
+
+  callback(
+    new BadRequestException('Document must be a PDF, JPG, PNG, or WEBP file'),
+    false,
+  );
+}
+
 @Controller('students')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, SubscriptionGuard)
 export class StudentController {
@@ -153,7 +188,12 @@ export class StudentController {
   @Post('id-cards/template/watermark')
   @RequiresFeature('STUDENT_ID_CARDS')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 2 * 1024 * 1024 },
+      fileFilter: imageFileFilter,
+    }),
+  )
   async uploadIdCardWatermark(
     @Request() req,
     @UploadedFile() file: Express.Multer.File,
@@ -324,7 +364,12 @@ export class StudentController {
   @Post(':id/documents/file')
   @Roles(Role.ADMIN, Role.REGISTRAR)
   @Permissions('student:update')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: studentDocumentFileFilter,
+    }),
+  )
   async uploadDocumentFile(
     @Param('id') studentId: string,
     @UploadedFile() file: Express.Multer.File,

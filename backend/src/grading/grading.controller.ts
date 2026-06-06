@@ -33,6 +33,27 @@ import { Role } from '../auth/types/role.enum';
 import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
 import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
+const CSV_FILE_TYPES = new Set([
+  'text/csv',
+  'text/plain',
+  'application/csv',
+  'application/vnd.ms-excel',
+  'application/octet-stream',
+]);
+
+function csvFileFilter(
+  _req: unknown,
+  file: Express.Multer.File,
+  callback: (error: Error | null, acceptFile: boolean) => void,
+) {
+  if (CSV_FILE_TYPES.has(file.mimetype)) {
+    callback(null, true);
+    return;
+  }
+
+  callback(new BadRequestException('File must be a CSV file'), false);
+}
+
 interface AuthRequest {
   user: {
     id: string;
@@ -120,7 +141,12 @@ export class GradingController {
   @Post('teacher/grades/bulk-csv')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.TEACHER)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 2 * 1024 * 1024 },
+      fileFilter: csvFileFilter,
+    }),
+  )
   async bulkUploadFromCsv(
     @Request() req: AuthRequest,
     @UploadedFile() file: Express.Multer.File,

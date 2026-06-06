@@ -13,7 +13,7 @@ interface AccessDeniedProps {
 export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { logout } = useAuth();
+  const { logout, user: currentUser } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [attemptedUrl, setAttemptedUrl] = useState<string>('');
@@ -32,27 +32,15 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
     const apiUrl = sessionStorage.getItem('accessDeniedApiUrl') || '';
     const code = sessionStorage.getItem('accessDeniedCode') || type;
     const message = sessionStorage.getItem('accessDeniedMessage') || '';
-    const permission =
-      sessionStorage.getItem('accessDeniedPermission') ||
-      searchParams.get('permission') ||
-      '';
-    const queryApiUrl = searchParams.get('api') || '';
+    const permission = sessionStorage.getItem('accessDeniedPermission') || '';
 
     setAttemptedUrl(url);
-    setAttemptedApiUrl(apiUrl || queryApiUrl);
+    setAttemptedApiUrl(apiUrl);
     setErrorCode(code);
     setErrorMessage(message);
     setRequiredPermission(permission);
 
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        setUserRole(user?.role?.toLowerCase() || null);
-      } catch (e) {
-        setUserRole(null);
-      }
-    }
+    setUserRole(currentUser?.role?.toLowerCase() || null);
 
     return () => {
       sessionStorage.removeItem('accessDeniedUrl');
@@ -61,7 +49,7 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
       sessionStorage.removeItem('accessDeniedMessage');
       sessionStorage.removeItem('accessDeniedPermission');
     };
-  }, [searchParams, type]);
+  }, [currentUser, searchParams, type]);
 
   if (!mounted) {
     return (
