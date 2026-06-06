@@ -34,7 +34,7 @@ export default function StudentPracticeExamsPage() {
       setAccessCode("");
       router.push(`/student/practice-exams/${res.data.id}`);
     },
-    onError: (error: any) => toast.error(error.response?.data?.message || "Failed to start online exam"),
+    onError: (error: any) => toast.error(error.response?.data?.message || "Failed to start online examination"),
   });
 
   const exams = examsQuery.data || [];
@@ -43,8 +43,8 @@ export default function StudentPracticeExamsPage() {
     <div className="space-y-6 p-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Online Exam</h1>
-          <p className="text-sm text-slate-500">Multiple-choice online exams for your grade and stream.</p>
+          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Online Examination</h1>
+          <p className="text-sm text-slate-500">Available online examinations for your grade and stream.</p>
         </div>
         <Badge variant="outline" className="w-fit">Online</Badge>
       </div>
@@ -99,7 +99,7 @@ export default function StudentPracticeExamsPage() {
       ) : (
         <Card>
           <CardContent className="py-16 text-center text-sm text-slate-500">
-            No active online exams are available for your grade right now.
+            No active online examinations are available for your grade right now.
           </CardContent>
         </Card>
       )}

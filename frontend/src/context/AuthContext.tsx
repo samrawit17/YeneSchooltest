@@ -30,7 +30,6 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (loginIdentifier: string, password: string, rememberMe?: boolean, schoolId?: string | null) => Promise<User>;
@@ -40,24 +39,40 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function getSessionUser(user: Pick<User, 'id' | 'role' | 'schoolId'>) {
+  return JSON.stringify({
+    id: user.id,
+    role: user.role,
+    schoolId: user.schoolId || null,
+  });
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
    // Check for existing auth on mount
    useEffect(() => {
      setMounted(true);
+
+     if (typeof window !== 'undefined' && window.location.pathname === '/enroll') {
+       setUser(null);
+       sessionStorage.removeItem('user');
+       localStorage.removeItem('user');
+       setIsLoading(false);
+       useThemeStore.getState().initializeTheme();
+       return;
+     }
      
      const checkAuth = async () => {
        try {
+         localStorage.removeItem('user');
          const response = await userAPI.getProfile({ skipAuthErrorRedirect: true });
          const profile = response.data;
           if (profile) {
             setUser(profile);
-            setToken('cookie-session');
-            sessionStorage.setItem('user', JSON.stringify({ id: profile.id }));
+            sessionStorage.setItem('user', getSessionUser(profile));
             const userTheme = (profile.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
            useThemeStore.getState().setTheme(userTheme, profile.id);
          }
@@ -70,7 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            console.error('Failed to restore authenticated session:', error);
          }
          setUser(null);
-         setToken(null);
+         sessionStorage.removeItem('user');
        } finally {
          setIsLoading(false);
        }
@@ -96,10 +111,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
    ): Promise<User> => {
      try {
        const response = await authAPI.login(loginIdentifier, password, schoolId);
-       const { access_token, user: userData } = response.data;
-        setToken(access_token || 'cookie-session');
+       const { user: userData } = response.data;
         setUser(userData);
-        sessionStorage.setItem('user', JSON.stringify({ id: userData.id }));
+        localStorage.removeItem('user');
+        sessionStorage.setItem('user', getSessionUser(userData));
 
         // Apply the authenticated user's own preference, not the guest key.
        const userTheme = (userData.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
@@ -119,9 +134,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
      // Reset theme to system default via Zustand store
      useThemeStore.getState().setTheme('light');
        useLanguageStore.getState().initializeLanguage();
-       setToken(null);
        setUser(null);
        sessionStorage.removeItem('user');
+       localStorage.removeItem('user');
        const language = useLanguageStore.getState().language;
      const navigationText = getModuleMessages<{ labels?: Record<string, string> }>(language, 'navigation');
      toast.success(navigationText.labels?.['Logged out successfully'] || 'Logged out successfully');
@@ -144,7 +159,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
-        token,
         isLoading,
         isAuthenticated: !!user,
         login,

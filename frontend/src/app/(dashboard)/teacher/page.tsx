@@ -33,6 +33,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -475,12 +476,18 @@ const TeacherDashboard = () => {
                       <AlertCircle className={`w-4 h-4 ${announcement.isUrgent ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-400'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className={`text-sm font-semibold ${announcement.isUrgent ? 'text-red-700 dark:text-red-300' : 'text-slate-900 dark:text-white'}`}>
-                        {announcement.title}
-                      </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
-                        {announcement.content}
-                      </p>
+                      <TranslatedText
+                        as="h4"
+                        text={announcement.title}
+                        textClassName={`text-sm font-semibold ${announcement.isUrgent ? 'text-red-700 dark:text-red-300' : 'text-slate-900 dark:text-white'}`}
+                        showControls={false}
+                      />
+                      <TranslatedText
+                        text={announcement.content}
+                        textClassName="text-xs text-slate-600 dark:text-slate-400 line-clamp-2"
+                        className="mt-1"
+                        showControls={false}
+                      />
                       <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                         {formatDateLocal(announcement.date)}
                       </p>

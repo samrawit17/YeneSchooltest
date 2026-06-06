@@ -16,6 +16,7 @@ import {
   UploadedFile,
   UploadedFiles,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
@@ -29,6 +30,29 @@ import { AllowSuperAdminMixedRole, Roles } from './decorators/roles.decorator';
 import { Permissions } from './decorators/permissions.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { RateLimit } from '../infrastructure/rate-limit/rate-limit.decorator';
+
+const SELF_REGISTRATION_FILE_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+function selfRegistrationFileFilter(
+  _req: unknown,
+  file: Express.Multer.File,
+  callback: (error: Error | null, acceptFile: boolean) => void,
+) {
+  if (SELF_REGISTRATION_FILE_TYPES.has(file.mimetype)) {
+    callback(null, true);
+    return;
+  }
+
+  callback(
+    new BadRequestException('Uploaded files must be PDF, JPG, PNG, or WEBP'),
+    false,
+  );
+}
 
 @Controller('auth')
 export class AuthController {
@@ -247,7 +271,15 @@ export class AuthController {
 
   // STUDENT self-registration and enrollment
   @Post('register/student-self')
-  @UseInterceptors(FilesInterceptor('files', 10)) // Allow up to 10 files
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      limits: {
+        files: 10,
+        fileSize: 5 * 1024 * 1024,
+      },
+      fileFilter: selfRegistrationFileFilter,
+    }),
+  )
   async registerStudentSelf(
     @Body()
     body: {

@@ -23,6 +23,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 const LessonDetailPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -129,9 +130,11 @@ const LessonDetailPage = () => {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-[#e35336]">
-                {lesson.title}
-              </h1>
+              <TranslatedText
+                as="h1"
+                text={lesson.title}
+                textClassName="text-2xl font-bold text-[#e35336]"
+              />
               <Badge
                 variant={lesson.status === "PUBLISHED" ? "default" : "secondary"}
               >
@@ -177,7 +180,7 @@ const LessonDetailPage = () => {
                     <BookOpen className="w-4 h-4 text-[#e35336]" />
                     Learning Objective
                   </h3>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">{lesson.objective}</p>
+                  <TranslatedText text={lesson.objective} textClassName="text-sm text-slate-700 dark:text-slate-300" />
                 </div>
               )}
 
@@ -186,9 +189,11 @@ const LessonDetailPage = () => {
                     <FileText className="w-4 h-4 text-[#e35336]" />
                     Lesson Content
                 </h3>
-                <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
-                  {lesson.lessonContent || "No content added yet."}
-                </p>
+                {lesson.lessonContent ? (
+                  <TranslatedText text={lesson.lessonContent} textClassName="text-sm text-slate-700 dark:text-slate-300" />
+                ) : (
+                  <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">No content added yet.</p>
+                )}
               </div>
 
               {(lesson.homework || lesson.instructions) && (
@@ -197,14 +202,24 @@ const LessonDetailPage = () => {
                     <FileText className="w-4 h-4 text-[#e35336]" />
                     Homework
                   </h3>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">
-                    {typeof lesson.homework === "string"
-                      ? lesson.homework
-                      : (lesson.homework as any)?.description ||
-                        (lesson.homework as any)?.title ||
-                        lesson.instructions ||
-                        "No homework assigned."}
-                  </p>
+                  {typeof lesson.homework === "string" ||
+                  (lesson.homework as any)?.description ||
+                  (lesson.homework as any)?.title ||
+                  lesson.instructions ? (
+                    <TranslatedText
+                      text={
+                        typeof lesson.homework === "string"
+                          ? lesson.homework
+                          : (lesson.homework as any)?.description ||
+                            (lesson.homework as any)?.title ||
+                            lesson.instructions ||
+                            ""
+                      }
+                      textClassName="text-sm text-slate-700 dark:text-slate-300"
+                    />
+                  ) : (
+                    <p className="text-sm text-slate-700 dark:text-slate-300">No homework assigned.</p>
+                  )}
                 </div>
               )}
             </CardContent>

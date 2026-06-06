@@ -121,8 +121,9 @@ export class CreateEnrollmentRequestDto {
 }
 
 export class EnrollmentQueryDto {
+  @IsOptional()
   @IsString()
-  schoolId!: string;
+  schoolId?: string;
 
   @IsOptional()
   @IsString()

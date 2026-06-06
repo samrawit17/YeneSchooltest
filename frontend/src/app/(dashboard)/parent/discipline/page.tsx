@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { disciplineAPI, parentsAPI } from "@/lib/api/people";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, AlertTriangle, User, Clock, CheckCircle, Shield } from "lucide-react";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 interface ChildDiscipline {
   id: string;
@@ -163,16 +164,19 @@ export default function ParentDisciplinePage() {
                             <User className="h-5 w-5 text-slate-500" />
                           </div>
                           <div>
-                            <p className="font-medium dark:text-white">
-                              {incident.title}
-                            </p>
+                            <TranslatedText
+                              text={incident.title}
+                              textClassName="font-medium dark:text-white"
+                            />
                             <p className="text-sm text-slate-500 dark:text-slate-400">
                               {incident.childName} •{" "}
                               {new Date(incident.incidentDate).toLocaleDateString()}
                             </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                              {incident.description}
-                            </p>
+                            <TranslatedText
+                              text={incident.description}
+                              textClassName="text-sm text-gray-600 dark:text-gray-300"
+                              className="mt-1"
+                            />
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
@@ -197,10 +201,10 @@ export default function ParentDisciplinePage() {
                       </div>
                       {incident.outcome && (
                         <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                          <p className="text-sm text-gray-600 dark:text-gray-300">
-                            <span className="font-medium">Outcome:</span>{" "}
-                            {incident.outcome}
-                          </p>
+                          <div className="text-sm text-gray-600 dark:text-gray-300">
+                            <span className="font-medium">Outcome:</span>
+                            <TranslatedText text={incident.outcome} className="mt-1" />
+                          </div>
                         </div>
                       )}
                     </div>

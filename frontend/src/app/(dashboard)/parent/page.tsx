@@ -37,6 +37,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -1232,9 +1233,17 @@ const ParentDashboard = () => {
                         }`} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{notice.title}</p>
+                        <TranslatedText
+                          text={notice.title}
+                          textClassName="text-sm font-medium text-slate-900 dark:text-white truncate"
+                          showControls={false}
+                        />
                         {notice.description && (
-                          <p className="text-xs text-slate-500 truncate">{notice.description}</p>
+                          <TranslatedText
+                            text={notice.description}
+                            textClassName="text-xs text-slate-500 truncate"
+                            showControls={false}
+                          />
                         )}
                         <p className="text-xs text-slate-400 mt-0.5">
                           {formatDate(notice.date)}

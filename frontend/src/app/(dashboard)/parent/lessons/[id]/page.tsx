@@ -21,6 +21,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 const ParentLessonDetailPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -107,9 +108,11 @@ const ParentLessonDetailPage = () => {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                {lesson.title}
-              </h1>
+              <TranslatedText
+                as="h1"
+                text={lesson.title}
+                textClassName="text-2xl font-bold text-slate-900 dark:text-white"
+              />
               <Badge
                 variant={lesson.status === "PUBLISHED" ? "default" : "secondary"}
               >
@@ -142,7 +145,7 @@ const ParentLessonDetailPage = () => {
                     <BookOpen className="w-4 h-4" />
                     Learning Objective
                   </h3>
-                  <p className="text-gray-700 dark:text-gray-300">{lesson.objective}</p>
+                  <TranslatedText text={lesson.objective} textClassName="text-gray-700 dark:text-gray-300" />
                 </div>
               )}
               <div 
@@ -158,13 +161,19 @@ const ParentLessonDetailPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  {homework.title || "Homework"}
+                  {homework.title ? (
+                    <TranslatedText as="span" text={homework.title} showControls={false} />
+                  ) : (
+                    "Homework"
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 dark:text-gray-300">
-                  {homework.description || "No homework details added."}
-                </p>
+                {homework.description ? (
+                  <TranslatedText text={homework.description} textClassName="text-gray-700 dark:text-gray-300" />
+                ) : (
+                  <p className="text-gray-700 dark:text-gray-300">No homework details added.</p>
+                )}
               </CardContent>
             </Card>
           )}

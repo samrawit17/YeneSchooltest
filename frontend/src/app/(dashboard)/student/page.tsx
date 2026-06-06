@@ -36,6 +36,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -677,9 +678,17 @@ const StudentPage = () => {
                         </span>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{event.title}</p>
+                        <TranslatedText
+                          text={event.title}
+                          textClassName="text-sm font-medium text-slate-900 dark:text-white truncate"
+                          showControls={false}
+                        />
                         {event.description && (
-                          <p className="text-xs text-slate-500 truncate">{event.description}</p>
+                          <TranslatedText
+                            text={event.description}
+                            textClassName="text-xs text-slate-500 truncate"
+                            showControls={false}
+                          />
                         )}
                         {event.type && (
                           <Badge variant="outline" className="text-[10px] mt-0.5 px-1.5 py-0">{event.type}</Badge>

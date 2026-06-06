@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, AlertTriangle, ArrowLeft, User, Calendar, FileText } from "lucide-react";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 interface IncidentDetail {
   id: string;
@@ -151,9 +152,10 @@ export default function IncidentDetailPage() {
                 <h1 className="text-2xl font-bold text-[#e35336]">
                   Incident Details
                 </h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {incident.title}
-                </p>
+                <TranslatedText
+                  text={incident.title}
+                  textClassName="mt-1 text-sm text-slate-500 dark:text-slate-400"
+                />
               </div>
             </div>
             <Button variant="destructive" onClick={handleDelete}>
@@ -205,13 +207,13 @@ export default function IncidentDetailPage() {
 
             <div>
               <Label className="text-gray-500">Description</Label>
-              <p className="mt-1 dark:text-white">{incident.description}</p>
+              <TranslatedText text={incident.description} textClassName="mt-1 dark:text-white" />
             </div>
 
             {incident.actionTaken && (
               <div>
                 <Label className="text-gray-500">Action Taken</Label>
-                <p className="mt-1 dark:text-white">{incident.actionTaken}</p>
+                <TranslatedText text={incident.actionTaken} textClassName="mt-1 dark:text-white" />
               </div>
             )}
 

@@ -148,8 +148,10 @@ export default function TimetableSlotsPage() {
   };
 
   const resetForm = () => {
-    // Get schoolId from localStorage
-    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    const userStr =
+      typeof window !== 'undefined'
+        ? sessionStorage.getItem('user') || localStorage.getItem('user')
+        : null;
     const schoolId = userStr ? JSON.parse(userStr).schoolId || '' : '';
     
     setFormData({

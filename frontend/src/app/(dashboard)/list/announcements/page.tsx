@@ -55,6 +55,7 @@ import { format, parseISO, isAfter, isBefore } from "date-fns";
 import { formatDateByCalendarType, formatDateTimeByCalendarType } from "@/lib/calendar-utils";
 import Link from "next/link";
 import { useTranslations } from "@/hooks/useTranslations";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 type AudienceFilter = "all" | "students" | "parents" | "staff";
 type StatusFilter = "all" | "active" | "scheduled" | "expired";
@@ -332,10 +333,17 @@ const AnnouncementListPage = () => {
                       )}
                     </div>
 
-                    <h3 className="font-medium mb-1">{announcement.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                      {announcement.content}
-                    </p>
+                    <TranslatedText
+                      as="h3"
+                      text={announcement.title}
+                      textClassName="font-medium"
+                      className="mb-1"
+                    />
+                    <TranslatedText
+                      text={announcement.content}
+                      textClassName="text-sm text-muted-foreground line-clamp-2"
+                      className="mb-2"
+                    />
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span>{announcement.createdBy?.name || t.system}</span>

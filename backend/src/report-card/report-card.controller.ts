@@ -29,6 +29,25 @@ import { Role } from '../auth/types/role.enum';
 import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
 import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
 
+const CERTIFICATE_WATERMARK_FILE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+function certificateWatermarkFileFilter(
+  _req: unknown,
+  file: Express.Multer.File,
+  callback: (error: Error | null, acceptFile: boolean) => void,
+) {
+  if (CERTIFICATE_WATERMARK_FILE_TYPES.has(file.mimetype)) {
+    callback(null, true);
+    return;
+  }
+
+  callback(new BadRequestException('Watermark must be a JPG, PNG, or WEBP image'), false);
+}
+
 @Controller('report-cards')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, SubscriptionGuard)
 @RequiresFeature('REPORT_CARDS')
@@ -263,7 +282,12 @@ export class ReportCardController {
   @RequiresFeature('CERTIFICATE_TEMPLATES')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 2 * 1024 * 1024 },
+      fileFilter: certificateWatermarkFileFilter,
+    }),
+  )
   async uploadCertificateWatermark(
     @Request() req,
     @UploadedFile() file: Express.Multer.File,

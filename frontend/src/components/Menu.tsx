@@ -156,7 +156,7 @@ const menuItems: MenuSection[] = [
       },
       {
         icon: <BookOpen className="w-5 h-5" />,
-        label: "Online Exams",
+        label: "Online Examination",
         href: "/teacher/online-exams",
         visible: ["teacher"],
         featureFlag: "FEATURE_FLAG_EXAMS",
@@ -213,7 +213,7 @@ const menuItems: MenuSection[] = [
       },
       {
         icon: <BookOpen className="w-5 h-5" />,
-        label: "My Exams",
+        label: "Online Examination",
         href: "/student/practice-exams",
         visible: ["student"],
         featureFlag: "FEATURE_FLAG_EXAMS",

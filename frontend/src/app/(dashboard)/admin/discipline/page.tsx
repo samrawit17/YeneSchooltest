@@ -28,6 +28,7 @@ import {
   User,
   Loader2,
 } from "lucide-react";
+import { TranslatedText } from "@/components/translation/TranslatedText";
 
 interface DisciplineIncident {
   id: string;
@@ -280,9 +281,11 @@ export default function DisciplinePage() {
                           <User className="h-5 w-5 text-slate-500" />
                         </div>
                         <div>
-                          <p className="font-medium dark:text-white">
-                            {incident.title}
-                          </p>
+                          <TranslatedText
+                            text={incident.title}
+                            textClassName="font-medium dark:text-white"
+                            showControls={false}
+                          />
                           <p className="text-sm text-slate-500 dark:text-slate-400">
                             {incident.student.user.name} •{" "}
                             {incident.student.studentCode} •{" "}

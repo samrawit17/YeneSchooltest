@@ -47,6 +47,7 @@ import { DataQualityModule } from './data-quality/data-quality.module';
 import { PracticeExamsModule } from './practice-exams/practice-exams.module';
 import { BackupModule } from './backup/backup.module';
 import { AuditModule } from './audit/audit.module';
+import { TranslationModule } from './translation/translation.module';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { AuditModule } from './audit/audit.module';
     DataQualityModule,
     PracticeExamsModule,
     BackupModule,
+    TranslationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
