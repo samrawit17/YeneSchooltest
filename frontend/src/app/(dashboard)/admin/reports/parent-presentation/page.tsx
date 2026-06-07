@@ -24,6 +24,7 @@ import {
   FileSpreadsheet,
   FileText,
   Loader2,
+  Printer,
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
@@ -51,6 +52,14 @@ function formatChange(value: number | null | undefined) {
   return `${value > 0 ? "+" : ""}${value}%`;
 }
 
+function formatNumber(value: number | null | undefined) {
+  return typeof value === "number" ? value.toLocaleString() : "-";
+}
+
+function classLabel(row: ParentPresentationReport["classSummaries"][number]) {
+  return `${row.className}${row.sectionName ? ` ${row.sectionName}` : ""}`;
+}
+
 function downloadBlob(data: BlobPart, filename: string, type: string) {
   const blob = new Blob([data], { type });
   const url = URL.createObjectURL(blob);
@@ -61,6 +70,55 @@ function downloadBlob(data: BlobPart, filename: string, type: string) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+const isRecord = (value: unknown): value is Record<string, any> =>
+  typeof value === "object" && value !== null;
+
+const emptyTermSummary: ParentPresentationReport["summary"]["from"] = {
+  students: 0,
+  average: null,
+  attendance: null,
+  passRate: null,
+};
+
+function normalizeReportPayload(payload: ParentPresentationReport): ParentPresentationReport {
+  const summary: Record<string, any> = isRecord(payload?.summary) ? payload.summary : {};
+  const insights: Record<string, any> = isRecord(payload?.insights) ? payload.insights : {};
+
+  return {
+    ...payload,
+    summary: {
+      from: isRecord(summary.from) ? (summary.from as ParentPresentationReport["summary"]["from"]) : emptyTermSummary,
+      to: isRecord(summary.to) ? (summary.to as ParentPresentationReport["summary"]["to"]) : emptyTermSummary,
+      averageChange: typeof summary.averageChange === "number" ? summary.averageChange : null,
+      attendanceChange: typeof summary.attendanceChange === "number" ? summary.attendanceChange : null,
+    },
+    classSummaries: Array.isArray(payload?.classSummaries) ? payload.classSummaries : [],
+    subjectSummaries: Array.isArray(payload?.subjectSummaries) ? payload.subjectSummaries : [],
+    insights: {
+      improvedClasses: Array.isArray(insights.improvedClasses) ? insights.improvedClasses : [],
+      decliningClasses: Array.isArray(insights.decliningClasses) ? insights.decliningClasses : [],
+      weakSubjects: Array.isArray(insights.weakSubjects) ? insights.weakSubjects : [],
+      improvedSubjects: Array.isArray(insights.improvedSubjects) ? insights.improvedSubjects : [],
+    },
+  };
+}
+
+async function getApiErrorMessage(error: any, fallback: string) {
+  const data = error?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const text = await data.text();
+      if (!text) return fallback;
+      const parsed = JSON.parse(text);
+      return parsed?.message || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  return data?.message || error?.message || fallback;
 }
 
 export default function ParentPresentationReportPage() {
@@ -161,9 +219,9 @@ export default function ParentPresentationReportPage() {
     setLoading(true);
     try {
       const res = await reportCardsAPI.getParentPresentationReport(query);
-      setReport(res.data);
+      setReport(normalizeReportPayload(res.data));
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to generate term performance brief");
+      toast.error(await getApiErrorMessage(error, "Failed to generate term performance brief"));
       setReport(null);
     } finally {
       setLoading(false);
@@ -191,11 +249,48 @@ export default function ParentPresentationReportPage() {
       );
       toast.success(`${type === "pdf" ? "PDF" : "Excel"} downloaded`);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || `Failed to download ${type}`);
+      toast.error(await getApiErrorMessage(error, `Failed to download ${type}`));
     } finally {
       setDownloading(null);
     }
   };
+
+  const selectedYearLabel = academicYears.find((year) => year.id === selectedYear)?.name || report?.academicYear.name || "-";
+  const selectedClass = classes.find((item) => item.id === classId);
+  const selectedClassLabel =
+    classId === ALL_CLASSES
+      ? "All classes"
+      : selectedClass
+        ? `${selectedClass.name}${selectedClass.section ? ` ${selectedClass.section}` : ""}`
+        : "Selected class";
+
+  const reportHasPublishedData = Boolean(report && (report.summary.from.students > 0 || report.summary.to.students > 0));
+  const decliningClassCount = report?.classSummaries.filter((row) => typeof row.change === "number" && row.change < 0).length || 0;
+  const improvingClassCount = report?.classSummaries.filter((row) => typeof row.change === "number" && row.change > 0).length || 0;
+  const weakSubjectCount = report?.subjectSummaries.filter((row) => typeof row.toAverage === "number" && row.toAverage < 50).length || 0;
+  const sortedClassSummaries = useMemo(
+    () =>
+      [...(report?.classSummaries || [])].sort((a, b) => {
+        const aMissingComparison = typeof a.change !== "number";
+        const bMissingComparison = typeof b.change !== "number";
+        if (aMissingComparison !== bMissingComparison) return aMissingComparison ? 1 : -1;
+        if (typeof a.change === "number" && typeof b.change === "number" && a.change !== b.change) {
+          return a.change - b.change;
+        }
+        return classLabel(a).localeCompare(classLabel(b));
+      }),
+    [report],
+  );
+  const sortedSubjectSummaries = useMemo(
+    () =>
+      [...(report?.subjectSummaries || [])].sort((a, b) => {
+        const aAverage = typeof a.toAverage === "number" ? a.toAverage : Number.MAX_SAFE_INTEGER;
+        const bAverage = typeof b.toAverage === "number" ? b.toAverage : Number.MAX_SAFE_INTEGER;
+        if (aAverage !== bAverage) return aAverage - bAverage;
+        return a.subjectName.localeCompare(b.subjectName);
+      }),
+    [report],
+  );
 
   if (isLoading || !isAuthenticated) return null;
 
@@ -209,6 +304,10 @@ export default function ParentPresentationReportPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => window.print()} disabled={!report}>
+            <Printer className="mr-2 h-4 w-4" />
+            Print
+          </Button>
           <Button variant="outline" onClick={() => downloadReport("excel")} disabled={!report || downloading !== null}>
             {downloading === "excel" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
             Excel
@@ -279,6 +378,27 @@ export default function ParentPresentationReportPage() {
         </Card>
       ) : (
         <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-4">
+            <SummaryTile title="Academic Year" value={selectedYearLabel} detail={`${report.fromTerm.name} to ${report.toTerm.name}`} />
+            <SummaryTile title="Scope" value={selectedClassLabel} detail={`${formatNumber(report.summary.to.students)} current student reports`} />
+            <SummaryTile title="Classes Covered" value={formatNumber(report.classSummaries.length)} detail={`${improvingClassCount} improving, ${decliningClassCount} declining`} />
+            <SummaryTile title="Subjects Reviewed" value={formatNumber(report.subjectSummaries.length)} detail={`${weakSubjectCount} below 50%`} />
+          </div>
+
+          {!reportHasPublishedData && (
+            <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+              <CardContent className="flex gap-3 pt-6 text-sm text-amber-900 dark:text-amber-100">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+                <div>
+                  <p className="font-semibold">No published report cards found for this selection.</p>
+                  <p className="mt-1 text-amber-800 dark:text-amber-200">
+                    Publish report cards for the selected periods before using this brief for parent meetings.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid gap-4 md:grid-cols-3">
             <Metric title="Average Result" from={report.summary.from.average} to={report.summary.to.average} change={report.summary.averageChange} />
             <Metric title="Attendance" from={report.summary.from.attendance} to={report.summary.to.attendance} change={report.summary.attendanceChange} />
@@ -286,8 +406,8 @@ export default function ParentPresentationReportPage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <InsightCard title="Top Improving Classes" icon={<TrendingUp className="h-5 w-5 text-emerald-500" />} rows={report.insights.improvedClasses.map((row) => `${row.className}${row.sectionName ? ` ${row.sectionName}` : ""}: ${formatChange(row.change)}`)} />
-            <InsightCard title="Classes Needing Attention" icon={<TrendingDown className="h-5 w-5 text-red-500" />} rows={report.insights.decliningClasses.map((row) => `${row.className}${row.sectionName ? ` ${row.sectionName}` : ""}: ${formatChange(row.change)}`)} />
+            <InsightCard title="Top Improving Classes" icon={<TrendingUp className="h-5 w-5 text-emerald-500" />} rows={report.insights.improvedClasses.map((row) => `${classLabel(row)}: ${formatChange(row.change)}`)} />
+            <InsightCard title="Classes Needing Attention" icon={<TrendingDown className="h-5 w-5 text-red-500" />} rows={report.insights.decliningClasses.map((row) => `${classLabel(row)}: ${formatChange(row.change)}`)} />
             <InsightCard title="Improving Subjects" icon={<TrendingUp className="h-5 w-5 text-emerald-500" />} rows={report.insights.improvedSubjects.map((row) => `${row.subjectName}: ${formatChange(row.change)}`)} />
             <InsightCard title="Weak Subjects" icon={<AlertTriangle className="h-5 w-5 text-amber-500" />} rows={report.insights.weakSubjects.map((row) => `${row.subjectName}: ${formatPercent(row.toAverage)}`)} />
           </div>
@@ -295,7 +415,7 @@ export default function ParentPresentationReportPage() {
           <Card className="dark:border-slate-800 dark:bg-slate-900">
             <CardHeader>
               <CardTitle>Class Comparison</CardTitle>
-              <CardDescription>{report.fromTerm.name} compared with {report.toTerm.name}</CardDescription>
+              <CardDescription>Sorted by largest decline first for faster review.</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -310,9 +430,15 @@ export default function ParentPresentationReportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.classSummaries.map((row) => (
+                  {sortedClassSummaries.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-sm text-slate-500">
+                        No class comparison rows for this selection.
+                      </td>
+                    </tr>
+                  ) : sortedClassSummaries.map((row) => (
                     <tr key={row.classId} className="border-b last:border-0 dark:border-slate-800">
-                      <td className="py-3 font-medium dark:text-white">{row.className}{row.sectionName ? ` ${row.sectionName}` : ""}</td>
+                      <td className="py-3 font-medium dark:text-white">{classLabel(row)}</td>
                       <td>{formatPercent(row.fromAverage)}</td>
                       <td>{formatPercent(row.toAverage)}</td>
                       <td><ChangeBadge value={row.change} /></td>
@@ -324,9 +450,56 @@ export default function ParentPresentationReportPage() {
               </table>
             </CardContent>
           </Card>
+
+          <Card className="dark:border-slate-800 dark:bg-slate-900">
+            <CardHeader>
+              <CardTitle>Subject Comparison</CardTitle>
+              <CardDescription>Lowest current averages are listed first.</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs uppercase text-slate-500 dark:border-slate-800">
+                    <th className="py-2">Subject</th>
+                    <th className="py-2">{report.fromTerm.name}</th>
+                    <th className="py-2">{report.toTerm.name}</th>
+                    <th className="py-2">Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedSubjectSummaries.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-sm text-slate-500">
+                        No subject rows for this selection.
+                      </td>
+                    </tr>
+                  ) : sortedSubjectSummaries.map((row) => (
+                    <tr key={row.subjectId} className="border-b last:border-0 dark:border-slate-800">
+                      <td className="py-3 font-medium dark:text-white">{row.subjectName}</td>
+                      <td>{formatPercent(row.fromAverage)}</td>
+                      <td>{formatPercent(row.toAverage)}</td>
+                      <td><ChangeBadge value={row.change} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
+  );
+}
+
+function SummaryTile({ title, value, detail }: { title: string; value: string; detail: string }) {
+  return (
+    <Card className="dark:border-slate-800 dark:bg-slate-900">
+      <CardContent className="pt-6">
+        <p className="text-xs font-semibold uppercase text-slate-500">{title}</p>
+        <p className="mt-2 truncate text-lg font-semibold text-slate-950 dark:text-white">{value}</p>
+        <p className="mt-1 text-xs text-slate-500">{detail}</p>
+      </CardContent>
+    </Card>
   );
 }
 

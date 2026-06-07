@@ -291,7 +291,7 @@ const menuItems: MenuSection[] = [
       },
       {
         icon: <Shield className="w-5 h-5" />,
-        label: "Student Data Health",
+        label: "School Data Health",
         href: "/admin/reports/data-consistency",
         visible: ["admin", "registrar", "it_manager"],
       },

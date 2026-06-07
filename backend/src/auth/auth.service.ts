@@ -217,17 +217,17 @@ export class AuthService {
 
     const roleListSql = Prisma.join(effectiveRoles.map((value) => Prisma.sql`${value}`));
     const schoolSql = schoolId
-      ? Prisma.sql`AND "schoolId" = ${schoolId}`
+      ? Prisma.sql`AND u."schoolId" = ${schoolId}`
       : Prisma.empty;
     const searchSql = searchPattern
-      ? Prisma.sql`AND ("name" ILIKE ${searchPattern} OR "email" ILIKE ${searchPattern} OR "username" ILIKE ${searchPattern})`
+      ? Prisma.sql`AND (u."name" ILIKE ${searchPattern} OR u."email" ILIKE ${searchPattern} OR u."username" ILIKE ${searchPattern})`
       : Prisma.empty;
 
     const countRows = await this.prismaService.$queryRaw<Array<{ count: number }>>(
       Prisma.sql`
         SELECT COUNT(*)::int AS count
-        FROM "User"
-        WHERE "role"::text IN (${roleListSql})
+        FROM "User" u
+        WHERE u."role"::text IN (${roleListSql})
         ${schoolSql}
         ${searchSql}
       `,
@@ -246,35 +246,65 @@ export class AuthService {
         avatarUrl: string | null;
         createdAt: Date;
         updatedAt: Date;
+        teacherProfileId: string | null;
+        teacherEmployeeId: string | null;
+        teacherDesignation: string | null;
+        teacherSpecialization: string | null;
       }>
     >(
       Prisma.sql`
         SELECT
-          "id",
-          "email",
-          "username",
-          "name",
-          "role",
-          "schoolId",
-          "isActive",
-          "phone",
-          "avatarUrl",
-          "createdAt",
-          "updatedAt"
-        FROM "User"
-        WHERE "role"::text IN (${roleListSql})
+          u."id",
+          u."email",
+          u."username",
+          u."name",
+          u."role",
+          u."schoolId",
+          u."isActive",
+          u."phone",
+          u."avatarUrl",
+          u."createdAt",
+          u."updatedAt",
+          tp."id" AS "teacherProfileId",
+          tp."employeeId" AS "teacherEmployeeId",
+          tp."designation" AS "teacherDesignation",
+          tp."specialization" AS "teacherSpecialization"
+        FROM "User" u
+        LEFT JOIN "TeacherProfile" tp ON tp."userId" = u."id"
+        WHERE u."role"::text IN (${roleListSql})
         ${schoolSql}
         ${searchSql}
-        ORDER BY "createdAt" DESC
+        ORDER BY u."createdAt" DESC
         OFFSET ${skip}
         LIMIT ${limit}
       `,
     );
 
     const total = countRows[0]?.count || 0;
+    const normalizedUsers = users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      name: user.name,
+      role: user.role,
+      schoolId: user.schoolId,
+      isActive: user.isActive,
+      phone: user.phone,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      teacherProfile: user.teacherProfileId
+        ? {
+            id: user.teacherProfileId,
+            employeeId: user.teacherEmployeeId,
+            designation: user.teacherDesignation,
+            specialization: user.teacherSpecialization,
+          }
+        : null,
+    }));
 
     return {
-      data: users,
+      data: normalizedUsers,
       total,
       page,
       limit,
@@ -711,6 +741,14 @@ export class AuthService {
         avatarUrl: true,
         createdAt: true,
         updatedAt: true,
+        teacherProfile: {
+          select: {
+            id: true,
+            employeeId: true,
+            designation: true,
+            specialization: true,
+          },
+        },
       },
       skip,
       take: limit,
@@ -771,6 +809,14 @@ export class AuthService {
         avatarUrl: true,
         createdAt: true,
         updatedAt: true,
+        teacherProfile: {
+          select: {
+            id: true,
+            employeeId: true,
+            designation: true,
+            specialization: true,
+          },
+        },
       },
       skip,
       take: limit,

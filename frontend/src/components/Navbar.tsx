@@ -1,10 +1,12 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
+import { useSubscription } from "@/context/SubscriptionContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
-import { schoolsAPI, platformSettingsAPI, schoolSettingsAPI } from "@/lib/api";
+import { schoolsAPI, platformSettingsAPI, schoolSettingsAPI, messagingAPI } from "@/lib/api";
+import type { MessagingConversationListItem } from "@/lib/api";
 import { notificationsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { resolveAssetUrl } from "@/lib/asset-url";
@@ -104,6 +106,7 @@ interface NavigationMessages {
 }
 
 const COMMUNICATION_NOTIFICATION_TYPES = ["COMMUNICATION", "MESSAGE_RECEIVED"];
+const STAFF_MESSAGE_ROLES = new Set(["ADMIN", "REGISTRAR", "TEACHER", "FINANCE", "IT_MANAGER"]);
 const GLOBAL_NOTIFICATION_READS_KEY = "global_notification_reads";
 const BROWSER_NOTIFICATION_SHOWN_KEY = "browser_notification_shown";
 
@@ -256,6 +259,7 @@ const Navbar = ({
   useBrandNavigation = false,
 }: NavbarProps) => {
   const { user, logout, isLoading } = useAuth();
+  const { hasFeature } = useSubscription();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { t: navigationText, language } = useTranslations<NavigationMessages>("navigation");
@@ -277,6 +281,11 @@ const Navbar = ({
   const [mobileCalendarOpen, setMobileCalendarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [communicationsOpen, setCommunicationsOpen] = useState(false);
+  const normalizedRole = user?.role?.toUpperCase() || "";
+  const isSuperAdmin = normalizedRole === "SUPER_ADMIN";
+  const isParent = normalizedRole === "PARENT";
+  const isTeacher = normalizedRole === "TEACHER";
+  const canUseStaffMessages = STAFF_MESSAGE_ROLES.has(normalizedRole) && hasFeature("MESSAGING");
 
   // Fetch events for calendar popover
   const { data: eventsData } = useQuery({
@@ -362,6 +371,28 @@ const Navbar = ({
       return createdAt > oneWeekAgo;
     }
   );
+  const communicationBookNotifications = communicationNotifications.filter((notification: Notification) => {
+    const actionUrl = notification.actionUrl || "";
+    return !actionUrl.startsWith("/messages");
+  });
+
+  const { data: messagingConversations = [] } = useQuery({
+    queryKey: queryKeys.messages.conversations(user?.id, user?.schoolId),
+    queryFn: async () => (await messagingAPI.listConversations()).data,
+    enabled: !!user?.id && !!user?.schoolId && canUseStaffMessages,
+    staleTime: 5 * 1000,
+    gcTime: 60 * 1000,
+    refetchInterval: 10 * 1000,
+    retry: false,
+  });
+
+  const staffMessageUnreadCount = messagingConversations.reduce(
+    (total: number, conversation: MessagingConversationListItem) => total + (conversation.unreadCount || 0),
+    0,
+  );
+  const recentStaffMessageConversations = messagingConversations
+    .filter((conversation: MessagingConversationListItem) => conversation.lastMessage || conversation.unreadCount > 0)
+    .slice(0, 5);
   const groupedBellNotifications = useMemo(
     () => groupNavbarNotifications(bellNotifications),
     [bellNotifications],
@@ -470,7 +501,9 @@ const Navbar = ({
   };
 
   const unreadCount = groupedBellNotifications.filter((notification: NavbarNotification) => !isGroupedNotificationRead(notification)).length;
-  const unreadCommunicationsCount = communicationNotifications.filter((notification: Notification) => !isNotificationRead(notification)).length;
+  const unreadCommunicationsCount =
+    staffMessageUnreadCount +
+    communicationBookNotifications.filter((notification: Notification) => !isNotificationRead(notification)).length;
 
   // Fetch platform settings for feature flags - MUST BE FIRST to ensure it's available for other queries
   const { data: platformSettings } = useQuery({
@@ -727,12 +760,15 @@ const Navbar = ({
     logout();
     router.push(redirectTo);
   };
-
-  const normalizedRole = user?.role?.toUpperCase() || "";
-  const isSuperAdmin = normalizedRole === "SUPER_ADMIN";
-  const isParent = normalizedRole === "PARENT";
-  const isTeacher = normalizedRole === "TEACHER";
   const dashboardPath = getDashboardPath(user?.role);
+
+  const getStaffMessageConversationTitle = (conversation: MessagingConversationListItem) => {
+    if (conversation.subject) return conversation.subject;
+    const others = conversation.participants.filter((participant) => participant.id !== user?.id);
+    if (others.length === 1) return others[0].name;
+    if (others.length > 1) return `${others[0].name} +${others.length - 1}`;
+    return navLabel("Messages");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full max-w-full overflow-x-clip border-b border-gray-200 bg-[#F1F5F9] transition-all duration-300 supports-[backdrop-filter]:bg-[#F1F5F9]/90 dark:border-[#334155] dark:bg-[#111827] dark:supports-[backdrop-filter]:bg-[#111827]/60">
@@ -1036,12 +1072,46 @@ const Navbar = ({
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <ScrollArea className="h-[250px] sm:h-[300px]">
-                        {communicationNotifications.length === 0 ? (
+                        {communicationBookNotifications.length === 0 && recentStaffMessageConversations.length === 0 ? (
                           <div className="p-4 text-center text-gray-500 dark:text-slate-400 text-sm">
                             {navLabel("No communication notifications")}
                           </div>
                         ) : (
-                          communicationNotifications.map((notification: any) => {
+                          <>
+                          {recentStaffMessageConversations.map((conversation: MessagingConversationListItem) => (
+                            <div
+                              key={`message-${conversation.conversationId}`}
+                              className={`p-2 sm:p-3 border-b last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${conversation.unreadCount > 0 ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
+                              onClick={() => router.push(`/messages?conversationId=${conversation.conversationId}`)}
+                            >
+                              <div className="flex gap-2 sm:gap-3">
+                                <div className="flex-shrink-0 mt-0.5">
+                                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-[#1E3A8A]" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className={`text-xs sm:text-sm ${conversation.unreadCount > 0 ? 'font-semibold' : 'font-medium'} text-gray-900 dark:text-white truncate`}>
+                                      {getStaffMessageConversationTitle(conversation)}
+                                    </p>
+                                    {conversation.unreadCount > 0 && (
+                                      <span className="rounded-md bg-[var(--brand-color,#e35336)] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                        {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {conversation.lastMessage?.content && (
+                                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                                      {conversation.lastMessage.content}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                                    {formatTimeAgo(conversation.updatedAt)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {communicationBookNotifications.map((notification: any) => {
                             const localized = localizeNotificationText(notification, language);
                             return (
                             <div
@@ -1077,7 +1147,8 @@ const Navbar = ({
                               </div>
                             </div>
                             );
-                          })
+                          })}
+                          </>
                         )}
                       </ScrollArea>
                       <DropdownMenuSeparator />

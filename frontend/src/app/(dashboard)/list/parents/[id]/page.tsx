@@ -65,6 +65,8 @@ const SingleParentPage = ({ params }: PageProps) => {
   const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
   const displayYear = String(currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel || "");
   const currentRole = String(user?.role || '').toUpperCase();
+  const canManageParent = ['ADMIN', 'REGISTRAR'].includes(currentRole);
+  const canReturnToList = ['ADMIN', 'IT_MANAGER', 'REGISTRAR'].includes(currentRole);
 
   const { data: parent, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.parents.detail(parentId),
@@ -77,18 +79,17 @@ const SingleParentPage = ({ params }: PageProps) => {
   // Set breadcrumbs with parent name
   useEffect(() => {
     const parentName = parent?.user?.name || parent?.name || "Parent Profile";
-    const isAdmin = ['ADMIN', 'IT_MANAGER', 'SUPER_ADMIN'].includes(currentRole);
     
     if (parent) {
       setItems([
         { label: "Dashboard", href: "/dashboard", isCurrent: false },
         { label: "List", isCurrent: false },
-        { label: "Parents", href: isAdmin ? "/list/parents" : undefined, isCurrent: false },
+        { label: "Parents", href: canReturnToList ? "/list/parents" : undefined, isCurrent: false },
         { label: parentName, isCurrent: true },
       ]);
     }
     return () => setItems(null);
-  }, [parent, setItems, currentRole]);
+  }, [parent, setItems, canReturnToList]);
 
   if (isLoading) {
     return (
@@ -113,9 +114,8 @@ const SingleParentPage = ({ params }: PageProps) => {
 
   const userData = parent.user || {};
   const parentUserId = userData.id || parent.userId;
-  const canUploadPhoto = ['ADMIN', 'REGISTRAR', 'IT_MANAGER', 'SUPER_ADMIN'].includes(currentRole);
   const children = (parent.children || []).map((c: any) => ({
-    id: c.studentId || c.student?.id || c.id,
+    id: c.student?.user?.id || c.student?.userId || c.studentId || c.student?.id || c.id,
     userId: c.student?.userId || c.student?.user?.id,
     name: c.student?.user?.name || c.studentName || "Unknown",
     studentCode: c.student?.studentCode || c.studentCode,
@@ -177,21 +177,25 @@ const SingleParentPage = ({ params }: PageProps) => {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {canUploadPhoto && parentUserId ? (
-            <UserAvatarUpload
-              userId={parentUserId}
+                {canManageParent && parentUserId ? (
+                  <UserAvatarUpload
+                    userId={parentUserId}
                     currentAvatarUrl={avatarUrl}
-              onUploaded={() => refetch()}
-            />
+                    onUploaded={() => refetch()}
+                  />
                 ) : null}
-                <Button variant="outline" size="sm" onClick={() => router.push(`/list/parents/${parentId}/edit`)}>
-                  <Edit2 className="mr-1.5 h-4 w-4" />
-                  Edit
-                </Button>
-                <Button size="sm" onClick={() => setLinkChildOpen(true)}>
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Add child
-                </Button>
+                {canManageParent ? (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/list/parents/${parentId}/edit`)}>
+                      <Edit2 className="mr-1.5 h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button size="sm" onClick={() => setLinkChildOpen(true)}>
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Add child
+                    </Button>
+                  </>
+                ) : null}
               </div>
             </div>
 
@@ -228,10 +232,12 @@ const SingleParentPage = ({ params }: PageProps) => {
                   Students connected to this parent account.
                 </p>
               </div>
-              <Button size="sm" onClick={() => setLinkChildOpen(true)}>
-                <Plus className="mr-1.5 h-4 w-4" />
-                Add child
-              </Button>
+              {canManageParent ? (
+                <Button size="sm" onClick={() => setLinkChildOpen(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Add child
+                </Button>
+              ) : null}
             </CardHeader>
             <CardContent>
               {children.length === 0 ? (
@@ -272,20 +278,22 @@ const SingleParentPage = ({ params }: PageProps) => {
           </Card>
         </div>
 
-      <ParentChildLinkForm
-        isOpen={linkChildOpen}
-        onClose={() => setLinkChildOpen(false)}
-        mode="link"
-        parentData={{
-          id: parent.id,
-          userId: parent.user?.id || "",
-          name: parent.user?.name || parent.name || "Unknown Parent",
-          email: parent.user?.email || parent.email || "",
-          phone: parent.user?.phone || parent.phone,
-          children: parent.children || [],
-        }}
-        onSuccess={() => refetch()}
-      />
+      {canManageParent ? (
+        <ParentChildLinkForm
+          isOpen={linkChildOpen}
+          onClose={() => setLinkChildOpen(false)}
+          mode="link"
+          parentData={{
+            id: parent.id,
+            userId: parent.user?.id || "",
+            name: parent.user?.name || parent.name || "Unknown Parent",
+            email: parent.user?.email || parent.email || "",
+            phone: parent.user?.phone || parent.phone,
+            children: parent.children || [],
+          }}
+          onSuccess={() => refetch()}
+        />
+      ) : null}
       </div>
     </div>
   );

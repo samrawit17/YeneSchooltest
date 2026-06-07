@@ -33,6 +33,14 @@ import { Role } from '../auth/types/role.enum';
 export class ParentController {
   constructor(private readonly parentService: ParentService) {}
 
+  private requireSchoolId(req: any): string {
+    const schoolId = req.user?.schoolId;
+    if (!schoolId) {
+      throw new BadRequestException('School context is required');
+    }
+    return schoolId;
+  }
+
   // ==================== PARENT ENDPOINTS (for own profile) ====================
 
   /**
@@ -42,7 +50,10 @@ export class ParentController {
   @Get('me/profile')
   @Roles(Role.PARENT)
   async getMyProfile(@Request() req) {
-    return this.parentService.getParentByUserId(req.user.id, req.user.schoolId);
+    return this.parentService.getParentByUserId(
+      req.user.id,
+      this.requireSchoolId(req),
+    );
   }
 
   /**
@@ -54,7 +65,7 @@ export class ParentController {
   async getMyChildren(@Request() req) {
     const children = await this.parentService.getChildrenByParentUserId(
       req.user.id,
-      req.user.schoolId,
+      this.requireSchoolId(req),
     );
     return { children };
   }
@@ -64,7 +75,7 @@ export class ParentController {
   async getMyRelatedTeachers(@Request() req) {
     const teachers = await this.parentService.getRelatedTeachersByParentUserId(
       req.user.id,
-      req.user.schoolId,
+      this.requireSchoolId(req),
     );
     return { teachers };
   }
@@ -79,7 +90,7 @@ export class ParentController {
     return this.parentService.getChildByIdForParent(
       req.user.id,
       childId,
-      req.user.schoolId,
+      this.requireSchoolId(req),
     );
   }
 
@@ -90,20 +101,24 @@ export class ParentController {
    * School read roles can view parent directory
    */
   @Get()
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('parent:read')
   async getParents(
     @Request() req,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('children') children?: string,
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.parentService.getParents(req.user.schoolId, {
+    return this.parentService.getParents(this.requireSchoolId(req), {
       search,
       page: pageNum,
       limit: limitNum,
+      status,
+      children,
     });
   }
 
@@ -112,43 +127,41 @@ export class ParentController {
    * School read roles can view parent profiles
    */
   @Get(':id')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('parent:read')
   async getParentById(@Param('id') parentId: string, @Request() req) {
-    return this.parentService.getParentById(parentId, req.user.schoolId);
+    return this.parentService.getParentById(parentId, this.requireSchoolId(req));
   }
 
   /**
    * Update parent profile
-   * Only ADMIN can update parent profiles
+   * ADMIN and REGISTRAR can update parent profiles
    */
   @Put(':id')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR)
   @Permissions('parent:update')
   async updateParent(
     @Param('id') parentId: string,
     @Body() updateDto: UpdateParentDto,
     @Request() req,
   ) {
+    const schoolId = this.requireSchoolId(req);
     return this.parentService.updateParent(
       parentId,
-      req.user.schoolId,
+      schoolId,
       updateDto,
     );
   }
 
   /**
    * Create a new parent (without linking to student)
-   * Only ADMIN can create parents
+   * ADMIN and REGISTRAR can create parents
    */
   @Post()
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR)
   @Permissions('parent:create')
   async createParent(@Body() createParentDto: CreateParentDto, @Request() req) {
-    const schoolId = req.user.schoolId;
-    if (!schoolId) {
-      throw new BadRequestException('School context is required');
-    }
+    const schoolId = this.requireSchoolId(req);
 
     return this.parentService.createParent(
       { ...createParentDto, schoolId },
@@ -159,10 +172,10 @@ export class ParentController {
   /**
    * Create parent and link to student in one operation
    * This is the recommended flow for adding parents
-   * Only ADMIN can perform this action
+   * ADMIN and REGISTRAR can perform this action
    */
   @Post('create-and-link')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR)
   @Permissions('parent:create', 'parent:link_student')
   async createParentAndLink(
     @Body() createParentAndLinkDto: CreateParentAndLinkDto,
@@ -171,30 +184,33 @@ export class ParentController {
     return this.parentService.createParentAndLink(
       createParentAndLinkDto,
       req.user.id,
-      req.user.schoolId,
+      this.requireSchoolId(req),
     );
   }
 
   /**
    * Link existing parent to student
-   * Only ADMIN can perform this action
+   * ADMIN and REGISTRAR can perform this action
    */
   @Post('link')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR)
   @Permissions('parent:link_student')
   async linkParentToStudent(
     @Body() linkDto: LinkParentToStudentDto,
     @Request() req,
   ) {
-    return this.parentService.linkParentToStudent(linkDto, req.user.schoolId);
+    return this.parentService.linkParentToStudent(
+      linkDto,
+      this.requireSchoolId(req),
+    );
   }
 
   /**
    * Unlink parent from student
-   * Only ADMIN can perform this action
+   * ADMIN and REGISTRAR can perform this action
    */
   @Delete('unlink/:parentId/:studentId')
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR)
   @Permissions('parent:unlink_student')
   async unlinkParentFromStudent(
     @Param('parentId') parentId: string,
@@ -204,7 +220,7 @@ export class ParentController {
     return this.parentService.unlinkParentFromStudent(
       parentId,
       studentId,
-      req.user.schoolId,
+      this.requireSchoolId(req),
     );
   }
 }

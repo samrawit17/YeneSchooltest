@@ -62,6 +62,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useTranslations } from "@/hooks/useTranslations";
 
 interface SirenSchedule {
   id: string;
@@ -125,6 +126,7 @@ function getCountdown(ringTime: string, daysOfWeek: number[]): string {
 
 export function SirenScheduleManagement() {
   const { user } = useAuth();
+  const { t } = useTranslations<any>("sirenManagement");
   const [schedules, setSchedules] = useState<SirenSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -149,11 +151,11 @@ export function SirenScheduleManagement() {
       const res = await sirenScheduleAPI.list(schoolId);
       setSchedules(res.data || []);
     } catch (error) {
-      toast.error("Failed to load siren schedules");
+      toast.error(t.schedule.toasts.loadFailed);
     } finally {
       setLoading(false);
     }
-  }, [schoolId]);
+  }, [schoolId, t.schedule.toasts.loadFailed]);
 
   useEffect(() => {
     fetchSchedules();
@@ -178,22 +180,22 @@ export function SirenScheduleManagement() {
 
   const handleSave = async () => {
     if (!form.name || !form.ringTime || form.daysOfWeek.length === 0) {
-      toast.error("All fields are required");
+      toast.error(t.schedule.toasts.fieldsRequired);
       return;
     }
 
     if (!schoolId) {
-      toast.error("School not found");
+      toast.error(t.schedule.toasts.schoolNotFound);
       return;
     }
 
     try {
       if (editingId) {
         await sirenScheduleAPI.update(editingId, { schoolId, ...form });
-        toast.success("Schedule updated");
+        toast.success(t.schedule.toasts.updated);
       } else {
         await sirenScheduleAPI.create({ schoolId, ...form });
-        toast.success("Schedule created");
+        toast.success(t.schedule.toasts.created);
       }
       await fetchSchedules();
       setIsOpen(false);
@@ -206,7 +208,7 @@ export function SirenScheduleManagement() {
         isActive: true,
       });
     } catch (error) {
-      toast.error("Failed to save schedule");
+      toast.error(t.schedule.toasts.saveFailed);
     }
   };
 
@@ -235,20 +237,20 @@ export function SirenScheduleManagement() {
     if (!deleteId) return;
     try {
       await sirenScheduleAPI.delete(deleteId);
-      toast.success("Schedule deleted");
+      toast.success(t.schedule.toasts.deleted);
       await fetchSchedules();
       setDeleteId(null);
     } catch (error) {
-      toast.error("Failed to delete schedule");
+      toast.error(t.schedule.toasts.deleteFailed);
     }
   };
   const handleToggleActive = async (schedule: SirenSchedule) => {
     try {
       await sirenScheduleAPI.update(schedule.id, { ...schedule, isActive: !schedule.isActive });
-      toast.success("Schedule updated");
+      toast.success(t.schedule.toasts.updated);
       await fetchSchedules();
     } catch (error) {
-      toast.error("Failed to update schedule");
+      toast.error(t.schedule.toasts.updateFailed);
     }
   };
 
@@ -273,35 +275,35 @@ export function SirenScheduleManagement() {
           <div className="min-w-0">
             <CardTitle className="flex min-w-0 items-center gap-2">
               <Bell className="h-5 w-5 shrink-0" />
-              Siren Schedules
+              {t.schedule.title}
             </CardTitle>
             <CardDescription className="break-words">
-              Manage static siren triggers (assembly, breaks, lunch, etc.)
+              {t.schedule.description}
             </CardDescription>
           </div>
           <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2 self-start sm:self-auto">
                 <Plus className="h-4 w-4 shrink-0" />
-                Add Schedule
+                {t.schedule.addSchedule}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
-                  {editingId ? "Edit Schedule" : "Add Siren Schedule"}
+                  {editingId ? t.schedule.editSchedule : t.schedule.addSirenSchedule}
                 </DialogTitle>
                 <DialogDescription>
-                  Set up manual siren schedules for recurring events
+                  {t.schedule.dialogDescription}
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="name">{t.schedule.name}</Label>
                   <Input
                     id="name"
-                    placeholder="e.g., Morning Assembly"
+                    placeholder={t.schedule.namePlaceholder}
                     value={form.name}
                     onChange={(e) =>
                       setForm({ ...form, name: e.target.value })
@@ -311,15 +313,15 @@ export function SirenScheduleManagement() {
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="type">Type</Label>
+                    <Label htmlFor="type">{t.schedule.type}</Label>
                     <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {SCHEDULE_TYPES.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {t}
+                        {SCHEDULE_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {t.schedule.typeLabels[type] ?? type}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -327,13 +329,13 @@ export function SirenScheduleManagement() {
                   </div>
 
                   <div>
-                    <Label htmlFor="ringTime">Ring Time</Label>
+                    <Label htmlFor="ringTime">{t.schedule.ringTime}</Label>
                     <TimePicker value={form.ringTime} onChange={(time) => setForm({ ...form, ringTime: time })} />
                   </div>
                 </div>
 
                 <div>
-                  <Label>Days</Label>
+                  <Label>{t.schedule.days}</Label>
                   <div className="grid grid-cols-1 gap-3 rounded-md border bg-muted/50 p-3 sm:grid-cols-2">
                     {DAYS.map((day) => (
                       <div key={day.value} className="flex items-center gap-2">
@@ -346,7 +348,7 @@ export function SirenScheduleManagement() {
                           htmlFor={`day-${day.value}`}
                           className="cursor-pointer text-sm"
                         >
-                          {day.label}
+                          {t.schedule.dayNames[day.value] ?? day.label}
                         </label>
                       </div>
                     ))}
@@ -359,11 +361,11 @@ export function SirenScheduleManagement() {
                   variant="outline"
                   onClick={() => handleOpenChange(false)}
                 >
-                  Cancel
+                  {t.schedule.cancel}
                 </Button>
                 <Button onClick={handleSave} className="gap-2">
                   <Save className="w-4 h-4" />
-                  {editingId ? "Update" : "Create"}
+                  {editingId ? t.schedule.update : t.schedule.create}
                 </Button>
               </div>
             </DialogContent>
@@ -377,12 +379,12 @@ export function SirenScheduleManagement() {
             <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Days</TableHead>
-                  <TableHead>Active</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.schedule.name}</TableHead>
+                  <TableHead>{t.schedule.type}</TableHead>
+                  <TableHead>{t.schedule.time}</TableHead>
+                  <TableHead>{t.schedule.tableDays}</TableHead>
+                  <TableHead>{t.schedule.active}</TableHead>
+                  <TableHead className="text-right">{t.schedule.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -403,7 +405,10 @@ export function SirenScheduleManagement() {
           <div className="text-center py-8">
             <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
             <p className="text-muted-foreground">
-              No schedules configured yet
+              {t.schedule.noSchedules}
+            </p>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+              {t.schedule.emptyHint}
             </p>
           </div>
         ) : (
@@ -411,13 +416,13 @@ export function SirenScheduleManagement() {
             <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead>Days</TableHead>
-                  <TableHead>Countdown</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.schedule.name}</TableHead>
+                  <TableHead>{t.schedule.type}</TableHead>
+                  <TableHead>{t.schedule.time}</TableHead>
+                  <TableHead>{t.schedule.tableDays}</TableHead>
+                  <TableHead>{t.schedule.countdown}</TableHead>
+                  <TableHead>{t.schedule.status}</TableHead>
+                  <TableHead className="text-right">{t.schedule.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -425,14 +430,14 @@ export function SirenScheduleManagement() {
                   <TableRow key={schedule.id}>
                     <TableCell className="font-medium">{schedule.name}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{schedule.type}</Badge>
+                      <Badge variant="secondary">{t.schedule.typeLabels[schedule.type] ?? schedule.type}</Badge>
                     </TableCell>
                     <TableCell className="font-mono">
                       {schedule.ringTime}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
-                        {schedule.daysOfWeek.length} days
+                        {t.schedule.daysCount.replace("{count}", String(schedule.daysOfWeek.length))}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -457,12 +462,12 @@ export function SirenScheduleManagement() {
                         {schedule.isActive ? (
                           <>
                             <ToggleRight className="w-4 h-4 text-green-600" />
-                            Active
+                            {t.schedule.active}
                           </>
                         ) : (
                           <>
                             <ToggleLeft className="w-4 h-4 text-gray-400" />
-                            Inactive
+                            {t.schedule.inactive}
                           </>
                         )}
                       </Button>
@@ -496,16 +501,15 @@ export function SirenScheduleManagement() {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Schedule?</AlertDialogTitle>
+            <AlertDialogTitle>{t.schedule.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The schedule will be deleted
-              permanently.
+              {t.schedule.deleteDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex gap-2 justify-end">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t.schedule.cancel}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-              Delete
+              {t.schedule.delete}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>

@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { periodTimeAPI } from "@/lib/api/siren-period-time";
+import { schoolSettingsAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { formatTimeByCalendarType } from "@/lib/calendar-utils";
@@ -52,13 +53,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "@/hooks/useTranslations";
 
 interface PeriodTime {
   id: string;
   periodNumber: number;
   startTime: string;
   endTime: string;
+  timetableSlotCount?: number;
+  canDelete?: boolean;
 }
+
+const DEFAULT_MAX_PERIODS_PER_DAY = 7;
 
 type ApiErrorLike = {
   response?: {
@@ -101,6 +107,7 @@ function timesOverlap(
 export function PeriodTimeManagement() {
   const { user } = useAuth();
   const { schoolCalendarType } = useAcademicYear();
+  const { t } = useTranslations<any>("sirenManagement");
   const [periods, setPeriods] = useState<PeriodTime[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -108,6 +115,7 @@ export function PeriodTimeManagement() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [maxPeriodsPerDay, setMaxPeriodsPerDay] = useState(DEFAULT_MAX_PERIODS_PER_DAY);
   const [form, setForm] = useState({
     periodNumber: "",
     startTime: "",
@@ -115,6 +123,9 @@ export function PeriodTimeManagement() {
   });
 
   const schoolId = user?.schoolId;
+  const editingPeriod = editingId ? periods.find((period) => period.id === editingId) : null;
+  const deletePeriod = deleteId ? periods.find((period) => period.id === deleteId) : null;
+  const hasReachedMaxPeriods = periods.length >= maxPeriodsPerDay;
 
   // Fetch periods
   const fetchPeriods = useCallback(async () => {
@@ -124,14 +135,25 @@ export function PeriodTimeManagement() {
       return;
     }
     try {
-      const res = await periodTimeAPI.list(schoolId);
+      const [res, settingsRes] = await Promise.all([
+        periodTimeAPI.list(schoolId),
+        schoolSettingsAPI.getAll(schoolId, { skipAuthErrorRedirect: true }).catch(() => null),
+      ]);
+      const configuredMaxPeriods = Number(settingsRes?.data?.MAX_PERIODS_PER_DAY);
+      setMaxPeriodsPerDay(
+        Number.isInteger(configuredMaxPeriods) &&
+          configuredMaxPeriods >= 1 &&
+          configuredMaxPeriods <= 12
+          ? configuredMaxPeriods
+          : DEFAULT_MAX_PERIODS_PER_DAY,
+      );
       setPeriods(res.data || []);
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to load period times"));
+      toast.error(getApiErrorMessage(error, t.period.toasts.loadFailed));
     } finally {
       setLoading(false);
     }
-  }, [schoolId]);
+  }, [schoolId, t.period.toasts.loadFailed]);
 
   useEffect(() => {
     fetchPeriods();
@@ -139,18 +161,23 @@ export function PeriodTimeManagement() {
 
   const validateForm = () => {
     if (!form.periodNumber || !form.startTime || !form.endTime) {
-      toast.error("All fields are required");
+      toast.error(t.period.toasts.fieldsRequired);
       return null;
     }
 
     const periodNumber = Number(form.periodNumber);
-    if (!Number.isInteger(periodNumber) || periodNumber < 1 || periodNumber > 12) {
-      toast.error("Period number must be between 1 and 12");
+    if (!Number.isInteger(periodNumber) || periodNumber < 1 || periodNumber > maxPeriodsPerDay) {
+      toast.error(t.period.toasts.periodRange.replace("{max}", String(maxPeriodsPerDay)));
+      return null;
+    }
+
+    if (!editingId && hasReachedMaxPeriods) {
+      toast.error(t.period.toasts.maxReached.replace("{max}", String(maxPeriodsPerDay)));
       return null;
     }
 
     if (form.startTime >= form.endTime) {
-      toast.error("Start time must be before end time");
+      toast.error(t.period.toasts.startBeforeEnd);
       return null;
     }
 
@@ -158,7 +185,7 @@ export function PeriodTimeManagement() {
       (period) => period.id !== editingId && period.periodNumber === periodNumber
     );
     if (existingPeriod) {
-      toast.error(`Period ${periodNumber} already exists`);
+      toast.error(t.period.toasts.periodExists.replace("{number}", String(periodNumber)));
       return null;
     }
 
@@ -169,7 +196,10 @@ export function PeriodTimeManagement() {
     );
     if (overlappingPeriod) {
       toast.error(
-        `Time overlaps Period ${overlappingPeriod.periodNumber} (${overlappingPeriod.startTime}-${overlappingPeriod.endTime})`
+        t.period.toasts.timeOverlaps
+          .replace("{number}", String(overlappingPeriod.periodNumber))
+          .replace("{start}", overlappingPeriod.startTime)
+          .replace("{end}", overlappingPeriod.endTime)
       );
       return null;
     }
@@ -182,7 +212,7 @@ export function PeriodTimeManagement() {
     if (!periodNumber) return;
 
     if (!schoolId) {
-      toast.error("School not found");
+      toast.error(t.period.toasts.schoolNotFound);
       return;
     }
 
@@ -195,7 +225,7 @@ export function PeriodTimeManagement() {
           startTime: form.startTime,
           endTime: form.endTime,
         });
-        toast.success("Period time updated");
+        toast.success(t.period.toasts.updated);
       } else {
         await periodTimeAPI.create({
           schoolId,
@@ -203,14 +233,14 @@ export function PeriodTimeManagement() {
           startTime: form.startTime,
           endTime: form.endTime,
         });
-        toast.success("Period time created");
+        toast.success(t.period.toasts.created);
       }
       await fetchPeriods();
       setIsOpen(false);
       setEditingId(null);
       setForm({ periodNumber: "", startTime: "", endTime: "" });
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to save period time"));
+      toast.error(getApiErrorMessage(error, t.period.toasts.saveFailed));
     } finally {
       setSaving(false);
     }
@@ -231,11 +261,11 @@ export function PeriodTimeManagement() {
     setDeleting(true);
     try {
       await periodTimeAPI.delete(deleteId);
-      toast.success("Period time deleted");
+      toast.success(t.period.toasts.deleted);
       await fetchPeriods();
       setDeleteId(null);
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Failed to delete period time"));
+      toast.error(getApiErrorMessage(error, t.period.toasts.deleteFailed));
     } finally {
       setDeleting(false);
     }
@@ -256,37 +286,55 @@ export function PeriodTimeManagement() {
           <div className="min-w-0">
             <CardTitle className="flex min-w-0 items-center gap-2">
               <Clock className="h-5 w-5 shrink-0" />
-              Period Times
+              {t.period.title}
             </CardTitle>
             <CardDescription className="break-words">
-              Configure school periods and their time slots
+              {t.period.description}
             </CardDescription>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t.period.maxConfigured.replace("{max}", String(maxPeriodsPerDay))}
+            </p>
           </div>
           <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2 self-start sm:self-auto">
+              <Button
+                size="sm"
+                className="gap-2 self-start sm:self-auto"
+                disabled={hasReachedMaxPeriods}
+                title={hasReachedMaxPeriods ? t.period.toasts.maxReached.replace("{max}", String(maxPeriodsPerDay)) : undefined}
+              >
                 <Plus className="h-4 w-4 shrink-0" />
-                Add Period
+                {t.period.addPeriod}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
-                  {editingId ? "Edit Period" : "Add Period Time"}
+                  {editingId ? t.period.editPeriod : t.period.addPeriodTime}
                 </DialogTitle>
                 <DialogDescription>
-                  Set up period numbers and their time slots
+                  {t.period.dialogDescription}
                 </DialogDescription>
               </DialogHeader>
 
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                <div className="font-medium">{t.period.impactTitle}</div>
+                <div className="mt-1">
+                  {editingPeriod?.timetableSlotCount
+                    ? t.period.impactWithUsage.replace("{count}", String(editingPeriod.timetableSlotCount))
+                    : t.period.impactWithoutUsage}
+                </div>
+              </div>
+
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="period">Period Number</Label>
+                  <Label htmlFor="period">{t.period.periodNumber}</Label>
                   <Input
                     id="period"
                     type="number"
                     min="1"
-                    placeholder="e.g., 1, 2, 3"
+                    max={maxPeriodsPerDay}
+                    placeholder={t.period.periodPlaceholder}
                     value={form.periodNumber}
                     onChange={(e) =>
                       setForm({ ...form, periodNumber: e.target.value })
@@ -295,21 +343,21 @@ export function PeriodTimeManagement() {
                 </div>
 
                 <div>
-                  <Label htmlFor="startTime">Start Time</Label>
+                  <Label htmlFor="startTime">{t.period.startTime}</Label>
                   <TimePicker
                     value={form.startTime}
                     onChange={(time) => setForm({ ...form, startTime: time })}
-                    placeholder="Select start time"
+                    placeholder={t.period.startPlaceholder}
                     calendarType={schoolCalendarType}
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="endTime">End Time</Label>
+                  <Label htmlFor="endTime">{t.period.endTime}</Label>
                   <TimePicker
                     value={form.endTime}
                     onChange={(time) => setForm({ ...form, endTime: time })}
-                    placeholder="Select end time"
+                    placeholder={t.period.endPlaceholder}
                     calendarType={schoolCalendarType}
                   />
                 </div>
@@ -320,11 +368,11 @@ export function PeriodTimeManagement() {
                   variant="outline"
                   onClick={() => handleOpenChange(false)}
                 >
-                  Cancel
+                  {t.period.cancel}
                 </Button>
                 <Button onClick={handleSave} className="gap-2" disabled={saving}>
                   <Save className="w-4 h-4" />
-                  {saving ? "Saving..." : editingId ? "Update" : "Create"}
+                  {saving ? t.period.saving : editingId ? t.period.update : t.period.create}
                 </Button>
               </div>
             </DialogContent>
@@ -335,14 +383,15 @@ export function PeriodTimeManagement() {
       <CardContent className="min-w-0">
         {loading ? (
           <div className="max-w-full overflow-x-auto">
-            <Table className="min-w-[560px]">
+            <Table className="min-w-[680px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Start Time</TableHead>
-                  <TableHead>End Time</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.period.period}</TableHead>
+                  <TableHead>{t.period.startTime}</TableHead>
+                  <TableHead>{t.period.endTime}</TableHead>
+                  <TableHead>{t.period.duration}</TableHead>
+                  <TableHead>{t.period.usage}</TableHead>
+                  <TableHead className="text-right">{t.period.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -352,6 +401,7 @@ export function PeriodTimeManagement() {
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))}
@@ -361,31 +411,37 @@ export function PeriodTimeManagement() {
         ) : periods.length === 0 ? (
           <div className="text-center py-8">
             <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">No periods configured yet</p>
+            <p className="text-muted-foreground">{t.period.noPeriods}</p>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+              {t.period.emptyHint}
+            </p>
           </div>
         ) : (
           <div className="max-w-full overflow-x-auto">
-            <Table className="min-w-[560px]">
+            <Table className="min-w-[680px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Start Time</TableHead>
-                  <TableHead>End Time</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t.period.period}</TableHead>
+                  <TableHead>{t.period.startTime}</TableHead>
+                  <TableHead>{t.period.endTime}</TableHead>
+                  <TableHead>{t.period.duration}</TableHead>
+                  <TableHead>{t.period.usage}</TableHead>
+                  <TableHead className="text-right">{t.period.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {periods.map((period) => {
                   const duration = calculateDuration(
                     period.startTime,
-                    period.endTime
+                    period.endTime,
+                    t.period.durationHoursMinutes,
+                    t.period.durationMinutes
                   );
                   return (
                     <TableRow key={period.id}>
                       <TableCell>
                         <Badge variant="outline">
-                          Period {period.periodNumber}
+                          {t.period.periodLabel.replace("{number}", String(period.periodNumber))}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -401,6 +457,13 @@ export function PeriodTimeManagement() {
                         <div className="text-xs text-muted-foreground">{period.endTime}</div>
                       </TableCell>
                       <TableCell>{duration}</TableCell>
+                      <TableCell>
+                        <Badge variant={period.timetableSlotCount ? "secondary" : "outline"}>
+                          {period.timetableSlotCount
+                            ? t.period.usedBySlots.replace("{count}", String(period.timetableSlotCount))
+                            : t.period.notUsed}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -414,6 +477,8 @@ export function PeriodTimeManagement() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setDeleteId(period.id)}
+                            disabled={period.canDelete === false}
+                            title={period.canDelete === false ? t.period.deleteBlocked : undefined}
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
@@ -431,20 +496,21 @@ export function PeriodTimeManagement() {
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Period Time?</AlertDialogTitle>
+            <AlertDialogTitle>{t.period.deleteTitle}</AlertDialogTitle>
             <AlertDialogDescription>
-              This can only be deleted when no timetable slots use the same
-              start and end time.
+              {deletePeriod?.timetableSlotCount
+                ? t.period.deleteBlockedWithUsage.replace("{count}", String(deletePeriod.timetableSlotCount))
+                : t.period.deleteDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="flex gap-2 justify-end">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t.period.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={deleting}
+              disabled={deleting || deletePeriod?.canDelete === false}
               className="bg-destructive"
             >
-              {deleting ? "Deleting..." : "Delete"}
+              {deleting ? t.period.deleting : t.period.delete}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>
@@ -453,7 +519,12 @@ export function PeriodTimeManagement() {
   );
 }
 
-function calculateDuration(startTime: string, endTime: string): string {
+function calculateDuration(
+  startTime: string,
+  endTime: string,
+  hoursMinutesTemplate: string,
+  minutesTemplate: string
+): string {
   const [startH, startM] = startTime.split(":").map(Number);
   const [endH, endM] = endTime.split(":").map(Number);
 
@@ -462,7 +533,9 @@ function calculateDuration(startTime: string, endTime: string): string {
   minutes = minutes % 60;
 
   if (hours > 0) {
-    return `${hours}h ${minutes}m`;
+    return hoursMinutesTemplate
+      .replace("{hours}", String(hours))
+      .replace("{minutes}", String(minutes));
   }
-  return `${minutes}m`;
+  return minutesTemplate.replace("{minutes}", String(minutes));
 }

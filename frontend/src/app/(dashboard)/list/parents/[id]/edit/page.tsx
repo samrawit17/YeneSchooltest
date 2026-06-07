@@ -3,48 +3,24 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { authAPI } from "@/lib/api";
 import { parentsAPI } from "@/lib/api/people";
 import { queryKeys } from "@/lib/query-keys";
-import { ArrowLeft, Loader2, Save, User, Users, Phone, Mail, MapPin, Briefcase } from "lucide-react";
+import { ArrowLeft, Loader2, Save, User, Users, Phone, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
+import { useAuth } from "@/context/AuthContext";
 
 // Shadcn/ui Components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
-
-const toLocalDateInputValue = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const parseLocalDateInputValue = (value: string) => {
-  if (!value) return undefined;
-  const [datePart] = value.split("T");
-  const [year, month, day] = datePart.split("-").map(Number);
-  if (!year || !month || !day) return undefined;
-  return new Date(year, month - 1, day);
-};
 
 interface ParentProfile {
   id: string;
   phone: string;
-  gender: string;
   address: string;
   occupation?: string;
   relation?: string;
@@ -58,8 +34,6 @@ interface User {
   avatarUrl?: string;
   isActive: boolean;
   address?: string;
-  gender?: string;
-  dateOfBirth?: string;
 }
 
 interface Child {
@@ -79,6 +53,9 @@ export default function EditParentPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const parentId = params.id as string;
+  const { user } = useAuth();
+  const currentRole = String(user?.role || "").toUpperCase();
+  const canManageParent = ["ADMIN", "REGISTRAR"].includes(currentRole);
 
   const [activeTab, setActiveTab] = useState("personal");
   const { setItems: setBreadcrumb } = useBreadcrumb();
@@ -89,9 +66,7 @@ export default function EditParentPage() {
     name: "",
     email: "",
     phone: "",
-    gender: "MALE",
     address: "",
-    dateOfBirth: "",
     occupation: "",
   });
 
@@ -104,32 +79,6 @@ export default function EditParentPage() {
     },
   });
 
-  // Fetch user data using the user ID from parent profile
-  const { data: userData } = useQuery({
-    queryKey: queryKeys.users.detail(parentProfile?.userId),
-    queryFn: async () => {
-      if (!parentProfile?.userId) return null;
-      const response = await authAPI.getUserById(parentProfile.userId);
-      return response.data as User;
-    },
-    enabled: !!parentProfile?.userId,
-  });
-
-  // Update user mutation - use userId from parent profile
-  const updateUserMutation = useMutation({
-    mutationFn: async (data: any) => {
-      if (!parentProfile?.userId) return;
-      await authAPI.updateUser(parentProfile.userId, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(parentProfile?.userId) });
-      toast.success("User updated successfully");
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to update user");
-    },
-  });
-
   // Update parent mutation
   const updateParentMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -137,12 +86,15 @@ export default function EditParentPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.parents.profile(parentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.parents.detail(parentId) });
       toast.success("Parent profile updated successfully");
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to update parent profile");
     },
   });
+
+  const userData = parentProfile?.user as User | undefined;
 
   // Update breadcrumb when parent data loads
   useEffect(() => {
@@ -166,9 +118,7 @@ export default function EditParentPage() {
         name: user.name || "",
         email: user.email || "",
         phone: profile.phone || user.phone || "",
-        gender: profile.gender || "MALE",
         address: profile.address || user.address || "",
-        dateOfBirth: user.dateOfBirth || "",
         occupation: profile.occupation || "",
       });
       setIsLoading(false);
@@ -177,19 +127,18 @@ export default function EditParentPage() {
 
   // Handle personal info save
   const handlePersonalSave = () => {
-    updateUserMutation.mutate({
+    updateParentMutation.mutate({
       name: form.name,
       email: form.email,
       phone: form.phone,
+      occupation: form.occupation,
     });
   };
 
   // Handle parent info save
   const handleParentSave = () => {
     updateParentMutation.mutate({
-      gender: form.gender,
       address: form.address,
-      dateOfBirth: form.dateOfBirth,
       phone: form.phone,
       occupation: form.occupation,
     });
@@ -211,6 +160,30 @@ export default function EditParentPage() {
           <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
           <p className="text-gray-600 font-medium">Loading parent data...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!canManageParent) {
+    return (
+      <div className="flex-1 p-4 flex items-center justify-center" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-amber-600" />
+              Read-only access
+            </CardTitle>
+            <CardDescription>
+              Parent editing is limited to school admins and registrars.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" onClick={() => router.push(`/list/parents/${parentId}`)}>
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
+              Back to parent profile
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -295,22 +268,6 @@ export default function EditParentPage() {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="gender">Gender</Label>
-                    <Select
-                      value={form.gender}
-                      onValueChange={(value) => setForm({ ...form, gender: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="MALE">Male</SelectItem>
-                        <SelectItem value="FEMALE">Female</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
                     <Label htmlFor="occupation">Occupation</Label>
                     <Input
                       id="occupation"
@@ -319,24 +276,15 @@ export default function EditParentPage() {
                       placeholder="Enter occupation"
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="dob">Date of Birth</Label>
-                    <CalendarDatePicker
-                      value={parseLocalDateInputValue(form.dateOfBirth)}
-                      onChange={(date) => setForm({ ...form, dateOfBirth: date ? toLocalDateInputValue(date) : "" })}
-                      placeholder="Select date of birth"
-                    />
-                  </div>
                 </div>
                 
                 <div className="flex justify-end pt-4">
                   <Button 
                     onClick={handlePersonalSave}
-                    disabled={updateUserMutation.isPending}
+                    disabled={updateParentMutation.isPending}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
-                    {updateUserMutation.isPending ? (
+                    {updateParentMutation.isPending ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Saving...

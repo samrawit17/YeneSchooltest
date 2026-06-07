@@ -7,6 +7,8 @@ export interface PeriodTime {
   periodNumber: number;
   startTime: string;
   endTime: string;
+  timetableSlotCount?: number;
+  canDelete?: boolean;
 }
 
 export const periodTimeAPI = {

@@ -9,13 +9,14 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTimetableSlotDto } from './dto/create-timetable-slot.dto';
 import { UpdateTimetableSlotDto } from './dto/update-timetable-slot.dto';
+import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
 
 @Injectable()
 export class TimetableSlotService {
   constructor(private prisma: PrismaService) {}
 
   private readonly teachingWeekDays = [1, 2, 3, 4, 5];
-  private readonly maxPeriodsPerDay = 7;
+  private readonly defaultMaxPeriodsPerDay = 7;
 
   private buildAutoGenerateSlotKey(dayOfWeek: number, startTime: string) {
     return `${dayOfWeek}:${startTime}`;
@@ -293,16 +294,36 @@ export class TimetableSlotService {
     }
   }
 
-  private validatePeriodCapacity(periodTimes: Array<{ id?: string }>) {
+  private async getMaxPeriodsPerDay(schoolId: string) {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: {
+        schoolId_key: {
+          schoolId,
+          key: SCHOOL_SETTING_KEYS.MAX_PERIODS_PER_DAY,
+        },
+      },
+      select: { value: true },
+    });
+
+    const parsed = Number(setting?.value);
+    return Number.isInteger(parsed) && parsed >= 1 && parsed <= 12
+      ? parsed
+      : this.defaultMaxPeriodsPerDay;
+  }
+
+  private validatePeriodCapacity(
+    periodTimes: Array<{ id?: string }>,
+    maxPeriodsPerDay: number,
+  ) {
     if (periodTimes.length === 0) {
       throw new BadRequestException(
         'Create period times before auto-generating a timetable',
       );
     }
 
-    if (periodTimes.length > this.maxPeriodsPerDay) {
+    if (periodTimes.length > maxPeriodsPerDay) {
       throw new BadRequestException(
-        `Ethiopian schools support a maximum of ${this.maxPeriodsPerDay} periods per day`,
+        `This school supports a maximum of ${maxPeriodsPerDay} periods per day`,
       );
     }
   }
@@ -775,7 +796,7 @@ export class TimetableSlotService {
       throw new BadRequestException('No valid period requirements were provided');
     }
 
-    const [periodTimes, classSubjects, existingSlots] = await Promise.all([
+    const [periodTimes, classSubjects, existingSlots, maxPeriodsPerDay] = await Promise.all([
       this.prisma.periodTime.findMany({
         where: { schoolId },
         orderBy: { periodNumber: 'asc' },
@@ -808,9 +829,10 @@ export class TimetableSlotService {
           startTime: true,
         },
       }),
+      this.getMaxPeriodsPerDay(schoolId),
     ]);
 
-    this.validatePeriodCapacity(periodTimes);
+    this.validatePeriodCapacity(periodTimes, maxPeriodsPerDay);
     this.validateAutoGenerationLoads(normalizedRequirements, periodTimes.length);
 
     const classSubjectMap = new Map(classSubjects.map((item) => [item.id, item]));

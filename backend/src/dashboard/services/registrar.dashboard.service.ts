@@ -5,8 +5,28 @@ import { UniversalDashboardResponseDto } from '../dto/dashboard-response.dto';
 @Injectable()
 export class RegistrarDashboardService {
   private readonly logger = new Logger(RegistrarDashboardService.name);
+  private readonly gradeSystemRanges: Record<string, { min: number; max: number }> = {
+    KG_TO_12: { min: 0, max: 12 },
+    'KG-12': { min: 0, max: 12 },
+    'K-8': { min: 0, max: 8 },
+    'K-12': { min: 0, max: 12 },
+    'PRE-K-12': { min: -1, max: 12 },
+    '1-8': { min: 1, max: 8 },
+    '1-10': { min: 1, max: 10 },
+    '1-12': { min: 1, max: 12 },
+    '9-12': { min: 9, max: 12 },
+  };
 
   constructor(private prisma: PrismaService) {}
+
+  private async getSchoolGradeRange(schoolId: string) {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: 'grade_system' } },
+      select: { value: true },
+    });
+    const normalized = String(setting?.value || '1-12').trim().toUpperCase();
+    return this.gradeSystemRanges[normalized] || this.gradeSystemRanges['1-12'];
+  }
 
   private getEmptyDashboard(schoolId?: string): UniversalDashboardResponseDto {
     return {
@@ -82,6 +102,7 @@ export class RegistrarDashboardService {
         where: { schoolId, isActive: true },
         include: { terms: true },
       });
+      const gradeRange = await this.getSchoolGradeRange(schoolId);
 
       // Get enrollment statistics
       const [
@@ -127,13 +148,15 @@ export class RegistrarDashboardService {
             class: { grade: 8 },
           },
         }),
-        this.prisma.studentClass.count({
-          where: {
-            schoolId,
-            academicYear: academicYear?.name,
-            class: { grade: 12 },
-          },
-        }),
+        gradeRange.min <= 12 && gradeRange.max >= 12
+          ? this.prisma.studentClass.count({
+              where: {
+                schoolId,
+                academicYear: academicYear?.name,
+                class: { grade: 12 },
+              },
+            })
+          : Promise.resolve(0),
         this.prisma.studentProfile.count({
           where: {
             schoolId,
@@ -246,7 +269,10 @@ export class RegistrarDashboardService {
       );
 
       const nearCapacitySections = sectionCapacityData.filter(
-        (section) => section.capacity > 0 && section.occupancy >= 90,
+        (section) =>
+          section.capacity > 0 &&
+          section.enrolled < section.capacity &&
+          section.occupancy >= 90,
       );
       const fullSections = sectionCapacityData.filter(
         (section) => section.capacity > 0 && section.enrolled >= section.capacity,
@@ -325,15 +351,7 @@ export class RegistrarDashboardService {
         });
       }
 
-      if (fullSections.length > 0) {
-        alerts.push({
-          message: `${fullSections.length} section(s) are at or above capacity`,
-          type: 'error',
-          priority: 'high',
-          actionUrl: '/admin/class-sections',
-          actionLabel: 'Manage capacity',
-        });
-      } else if (nearCapacitySections.length > 0) {
+      if (nearCapacitySections.length > 0) {
         alerts.push({
           message: `${nearCapacitySections.length} section(s) are near MoE capacity limits`,
           type: 'warning',
@@ -368,7 +386,7 @@ export class RegistrarDashboardService {
           message: `${inactiveStudents} inactive student account(s)`,
           type: 'info',
           priority: 'low',
-          actionUrl: '/students?status=inactive',
+          actionUrl: '/list/students?status=inactive',
           actionLabel: 'View',
         });
       }
@@ -378,7 +396,7 @@ export class RegistrarDashboardService {
           message: 'No classes created yet',
           type: 'warning',
           priority: 'medium',
-          actionUrl: '/classes/new',
+          actionUrl: '/admin/class-sections',
           actionLabel: 'Create Class',
         });
       }

@@ -4,19 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { parentsAPI } from "@/lib/api/people";
 import { toast } from "sonner";
-import { useAuth } from "@/context/AuthContext";
-import FormModal from "@/components/FormModal";
 import TableSearch from "@/components/TableSearch";
 import Pagination from "@/components/Pagination";
 import { useTranslations } from "@/hooks/useTranslations";
 import { resolveAssetUrl } from "@/lib/asset-url";
+import useDebounce from "@/hooks/useDebounce";
 
 // Shadcn/ui Components
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,21 +23,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 // Icons
 import {
   Users,
-  UserPlus,
-  Edit2,
-  Trash2,
-  Link2,
-  Upload,
-  Search,
   Phone,
   CheckCircle,
   XCircle,
-  UserCircle,
 } from "lucide-react";
 
 type LinkedChild = {
   id: string;
   studentId: string;
+  studentUserId?: string;
   studentName: string;
   studentCode: string;
   className?: string;
@@ -72,22 +64,16 @@ const formatMessage = (template: string, values: Record<string, string | number>
 
 const ParentListPage = () => {
   const { t } = useTranslations<any>("peopleLists");
-  const { user } = useAuth();
   const router = useRouter();
   const hasLoadedRef = useRef(false);
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 300);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [limit] = useState(10);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
-  const [modalType, setModalType] = useState<"create" | "update">("create");
-  const [showLinkModal, setShowLinkModal] = useState(false);
-  
-  // Filter states
   const [statusFilter, setStatusFilter] = useState("");
   const [childrenFilter, setChildrenFilter] = useState("");
 
@@ -99,9 +85,11 @@ const ParentListPage = () => {
           setLoading(true);
         }
         const response = await parentsAPI.getAll({
-          search: searchInput,
+          search: debouncedSearch || undefined,
           page: currentPage,
           limit,
+          status: statusFilter || undefined,
+          children: childrenFilter || undefined,
         });
 
         const result = response?.data;
@@ -124,15 +112,16 @@ const ParentListPage = () => {
               occupation: p.occupation ?? "",
               avatarUrl: p.user?.img ?? p.user?.avatarUrl ?? "",
               isActive: p.user?.isActive ?? true,
-	              children: (p.children || []).map((c: any) => ({
-	                id: c.id,
-	                studentId: c.studentId,
-	                studentName: c.student?.user?.name ?? c.studentName ?? c.student?.className ?? c.student?.studentCode ?? "Unknown",
-	                studentCode: c.student?.studentCode ?? "",
-	                className: c.student?.className ?? c.className ?? c.grade ?? "",
-	                section: c.student?.section ?? c.section ?? "",
-	                relation: c.relation,
-	                isPrimary: c.isPrimary,
+              children: (p.children || []).map((c: any) => ({
+                id: c.id,
+                studentId: c.studentId,
+                studentUserId: c.student?.user?.id ?? "",
+                studentName: c.student?.user?.name ?? c.studentName ?? c.student?.studentCode ?? "Unknown",
+                studentCode: c.student?.studentCode ?? "",
+                className: c.student?.className ?? c.className ?? c.grade ?? "",
+                section: c.student?.section ?? c.section ?? "",
+                relation: c.relation,
+                isPrimary: c.isPrimary,
                 emergencyContact: c.emergencyContact,
               })),
               createdAt: p.createdAt,
@@ -151,7 +140,7 @@ const ParentListPage = () => {
     };
 
     fetchParents();
-  }, [searchInput, currentPage, limit, t.messages.fetchParentsFailed]);
+  }, [debouncedSearch, currentPage, limit, statusFilter, childrenFilter, t.messages.fetchParentsFailed]);
 
   const updateSearch = (value: string) => {
     setSearchInput(value);
@@ -166,39 +155,6 @@ const ParentListPage = () => {
   const updateChildrenFilter = (value: string) => {
     setChildrenFilter(value);
     setCurrentPage(1);
-  };
-
-  // Filter parents locally
-  const filteredParents = parents.filter((parent) => {
-    if (statusFilter === "Active" && !parent.isActive) return false;
-    if (statusFilter === "Inactive" && parent.isActive) return false;
-    if (childrenFilter === "With Children" && parent.children.length === 0) return false;
-    if (childrenFilter === "Without Children" && parent.children.length > 0) return false;
-    return true;
-  });
-
-  const handleDeleteParent = async (parentId: string) => {
-    if (window.confirm(t.messages.deleteParentConfirm)) {
-      try {
-        await parentsAPI.delete(parentId);
-        setParents(parents.filter((p) => p.id !== parentId));
-        toast.success(t.messages.parentDeleted);
-      } catch (error) {
-        console.error("Failed to delete parent:", error);
-        toast.error(t.messages.deleteParentFailed);
-      }
-    }
-  };
-
-  const handleEditParent = (parent: Parent) => {
-    setSelectedParent(parent);
-    setModalType("update");
-    setIsModalOpen(true);
-  };
-
-  const handleLinkChild = (parent: Parent) => {
-    setSelectedParent(parent);
-    setShowLinkModal(true);
   };
 
   const getStatusBadge = (isActive: boolean) => {
@@ -238,7 +194,6 @@ const ParentListPage = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors w-full">
       <div className="p-4 md:p-6 w-full min-w-0 max-w-full">
         <div className="space-y-6 w-full min-w-0">
-          {/* Top Section - Title and Buttons */}
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 w-full min-w-0">
             <div>
               <h1 className="text-2xl font-bold text-black dark:text-white">{t.titles.parents}</h1>
@@ -246,15 +201,11 @@ const ParentListPage = () => {
                 {t.subtitles.parents}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-            </div>
           </div>
 
-          {/* Filters Section */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 w-full">
             <CardContent className="p-3 sm:p-4">
               <div className="flex flex-row flex-wrap items-center gap-3">
-                {/* Search Bar */}
                 <div className="flex-1 min-w-[160px]">
                   <TableSearch
                     search={searchInput}
@@ -264,7 +215,6 @@ const ParentListPage = () => {
                   />
                 </div>
 
-                {/* Filter Dropdowns */}
                 <div className="flex flex-row flex-wrap gap-2">
                   <select
                     value={statusFilter}
@@ -290,16 +240,17 @@ const ParentListPage = () => {
             </CardContent>
           </Card>
 
-          {/* Main Data Table */}
           <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden w-full">
             <div className="overflow-x-auto w-full">
-              {filteredParents.length === 0 ? (
+              {parents.length === 0 ? (
                 <div className="p-8 text-center">
                   <Users className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-600 dark:text-gray-400 font-semibold">{t.empty.noParents}</p>
                   <p className="text-gray-500 dark:text-gray-500 text-sm mt-2">
                     {statusFilter || childrenFilter
                       ? t.empty.adjustFilters
+                      : debouncedSearch
+                      ? formatMessage(t.empty.noParentSearch, { query: debouncedSearch })
                       : t.empty.addFirstParent}
                   </p>
                 </div>
@@ -307,17 +258,17 @@ const ParentListPage = () => {
                 <Table className="w-full">
                   <TableHeader className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
                     <TableRow className="border-b border-gray-100 dark:border-slate-700">
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.photo}</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.parentName}</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.phone}</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.children}</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.grade}</TableHead>
-	                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.section}</TableHead>
-	                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.status}</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.photo}</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.parentName}</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.phone}</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.children}</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.grade}</TableHead>
+                      <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.section}</TableHead>
+                      <TableHead className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.status}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="w-full">
-                    {filteredParents.map((parent) => (
+                    {parents.map((parent) => (
                       <TableRow
                         key={parent.id}
                         className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
@@ -340,8 +291,8 @@ const ParentListPage = () => {
                             <p className="text-xs text-gray-500 dark:text-gray-400">{parent.email}</p>
                           </div>
                         </TableCell>
-	                        <TableCell className="px-4 py-3">
-	                          {parent.phone ? (
+                        <TableCell className="px-4 py-3">
+                          {parent.phone ? (
                             <div className="flex items-center gap-2">
                               <Phone className="w-4 h-4 text-gray-400" />
                               <span className="text-sm text-gray-700 dark:text-gray-300">{parent.phone}</span>
@@ -354,12 +305,12 @@ const ParentListPage = () => {
                           <div className="flex flex-wrap gap-1">
                             {parent.children.length > 0 ? (
                               <>
-	                                {parent.children.slice(0, 2).map((child, idx) => (
-	                                  <Badge key={idx} variant="outline" className="text-xs">
-	                                    {child.studentName}
-	                                    {child.isPrimary && " ★"}
-	                                  </Badge>
-	                                ))}
+                                {parent.children.slice(0, 2).map((child, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {child.studentName}
+                                    {child.isPrimary && " ★"}
+                                  </Badge>
+                                ))}
                                 {parent.children.length > 2 && (
                                   <Badge variant="outline" className="text-xs">
                                     +{parent.children.length - 2}
@@ -369,49 +320,49 @@ const ParentListPage = () => {
                             ) : (
                               <span className="text-sm text-gray-400">{t.empty.noChildrenLinked}</span>
                             )}
-	                          </div>
-	                        </TableCell>
-	                        <TableCell className="px-4 py-3">
-	                          <div className="flex flex-wrap gap-1">
-	                            {parent.children.length > 0 ? (
-	                              <>
-	                                {parent.children.slice(0, 2).map((child, idx) => (
-	                                  <Badge key={idx} variant="outline" className="text-xs">
-	                                    {child.className || "—"}
-	                                  </Badge>
-	                                ))}
-	                                {parent.children.length > 2 && (
-	                                  <Badge variant="outline" className="text-xs">
-	                                    +{parent.children.length - 2}
-	                                  </Badge>
-	                                )}
-	                              </>
-	                            ) : (
-	                              <span className="text-sm text-gray-400">—</span>
-	                            )}
-	                          </div>
-	                        </TableCell>
-	                        <TableCell className="px-4 py-3">
-	                          <div className="flex flex-wrap gap-1">
-	                            {parent.children.length > 0 ? (
-	                              <>
-	                                {parent.children.slice(0, 2).map((child, idx) => (
-	                                  <Badge key={idx} variant="outline" className="text-xs">
-	                                    {child.section || "—"}
-	                                  </Badge>
-	                                ))}
-	                                {parent.children.length > 2 && (
-	                                  <Badge variant="outline" className="text-xs">
-	                                    +{parent.children.length - 2}
-	                                  </Badge>
-	                                )}
-	                              </>
-	                            ) : (
-	                              <span className="text-sm text-gray-400">—</span>
-	                            )}
-	                          </div>
-	                        </TableCell>
-	                        <TableCell className="px-4 py-3 text-center">
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {parent.children.length > 0 ? (
+                              <>
+                                {parent.children.slice(0, 2).map((child, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {child.className || "—"}
+                                  </Badge>
+                                ))}
+                                {parent.children.length > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{parent.children.length - 2}
+                                  </Badge>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-sm text-gray-400">—</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {parent.children.length > 0 ? (
+                              <>
+                                {parent.children.slice(0, 2).map((child, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs">
+                                    {child.section || "—"}
+                                  </Badge>
+                                ))}
+                                {parent.children.length > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{parent.children.length - 2}
+                                  </Badge>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-sm text-gray-400">—</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-center">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium border inline-flex items-center gap-1 ${getStatusBadge(parent.isActive)}`}
                           >
@@ -432,7 +383,7 @@ const ParentListPage = () => {
           </Card>
 
           {/* Bottom - Pagination */}
-          {filteredParents.length > 0 && (
+          {parents.length > 0 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {formatMessage(t.pagination.parents, { start: startItem, end: endItem, total })}
@@ -447,26 +398,6 @@ const ParentListPage = () => {
           )}
         </div>
       </div>
-
-      {/* Create/Update Modal */}
-      <FormModal
-        isOpen={isModalOpen}
-        setIsOpen={setIsModalOpen}
-        title={modalType === "create" ? t.actions.addNewParent : t.actions.editParent}
-        type={modalType}
-        table="parent"
-        data={selectedParent}
-      />
-
-      {/* Link Child Modal */}
-      <FormModal
-        isOpen={showLinkModal}
-        setIsOpen={setShowLinkModal}
-        title={t.actions.linkChild}
-        type="create"
-        table="parent_child_link"
-        data={selectedParent}
-      />
     </div>
   );
 };

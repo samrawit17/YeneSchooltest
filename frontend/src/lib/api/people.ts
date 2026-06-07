@@ -34,14 +34,19 @@ export const parentsAPI = {
     occupation?: string;
     schoolId?: string;
   }) => api.post("/parents", data),
-  getAll: (params?: { search?: string; page?: number; limit?: number }) =>
+  getAll: (params?: {
+    search?: string;
+    page?: number;
+    limit?: number;
+    status?: string;
+    children?: string;
+  }) =>
     api.get("/parents", { params }),
   getById: (id: string) => api.get(`/parents/${id}`),
   update: (
     id: string,
-    data: { name?: string; phone?: string; address?: string; occupation?: string }
+    data: { email?: string; name?: string; phone?: string; address?: string; occupation?: string }
   ) => api.put(`/parents/${id}`, data),
-  delete: (id: string) => api.delete(`/parents/${id}`),
   linkToStudent: (data: {
     parentProfileId: string;
     studentProfileId: string;

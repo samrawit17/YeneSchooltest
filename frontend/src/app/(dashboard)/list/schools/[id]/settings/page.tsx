@@ -325,6 +325,19 @@ const SETTINGS_CONFIG: SettingItem[] = [
       max: 200,
     },
   },
+  {
+    key: 'MAX_PERIODS_PER_DAY',
+    label: 'Max Periods Per Day',
+    description: 'Maximum number of class periods allowed in one school day',
+    type: 'number',
+    category: 'classes',
+    systemDefault: 7,
+    requiredFeature: 'ACADEMIC_STRUCTURE',
+    validation: {
+      min: 1,
+      max: 12,
+    },
+  },
 
   // Schedule Settings
   {

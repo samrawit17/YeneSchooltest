@@ -8,11 +8,13 @@ import TableSearch from "@/components/TableSearch";
 import Pagination from "@/components/Pagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslations } from "@/hooks/useTranslations";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { formatUserDisplayCode } from "@/lib/student-code";
+import useDebounce from "@/hooks/useDebounce";
+import { resolveAssetUrl } from "@/lib/asset-url";
 import {
   Search,
 } from "lucide-react";
@@ -77,15 +79,16 @@ export default function StaffPage() {
   const displayYear = String(currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel || "");
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 300);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const { data, isLoading, error } = useQuery<UsersResponse>({
-    queryKey: ["users", "staff", page, searchInput, selectedRole],
+    queryKey: ["users", "staff", page, debouncedSearch, selectedRole],
     queryFn: async () => {
       const response = await authAPI.getUsers({
         roles: selectedRole ? [selectedRole] : STAFF_ROLES,
         page,
         limit: 10,
-        search: searchInput || undefined,
+        search: debouncedSearch || undefined,
       });
       return response.data;
     },
@@ -211,14 +214,11 @@ export default function StaffPage() {
                         <div className="flex items-center gap-3">
                           <Avatar className="w-10 h-10">
                             {item.avatarUrl ? (
-                              <AvatarFallback className="text-sm">
-                                {getInitials(item.name)}
-                              </AvatarFallback>
-                            ) : (
-                              <AvatarFallback className="text-sm">
-                                {getInitials(item.name)}
-                              </AvatarFallback>
-                            )}
+                              <AvatarImage src={resolveAssetUrl(item.avatarUrl) || item.avatarUrl} alt={item.name} />
+                            ) : null}
+                            <AvatarFallback className="text-sm">
+                              {getInitials(item.name)}
+                            </AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
@@ -264,8 +264,8 @@ export default function StaffPage() {
                     {t.empty.noStaff}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {searchInput
-                      ? formatMessage(t.empty.noStaffSearch, { query: searchInput })
+                    {debouncedSearch
+                      ? formatMessage(t.empty.noStaffSearch, { query: debouncedSearch })
                       : selectedRole
                       ? t.empty.noStaffRole
                       : t.empty.noStaffRecords}
@@ -279,8 +279,8 @@ export default function StaffPage() {
           {staffList.length > 0 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {searchInput
-                  ? formatMessage(t.pagination.staffSearch, { start: startItem, end: Math.min(endItem, total), total, query: searchInput })
+                {debouncedSearch
+                  ? formatMessage(t.pagination.staffSearch, { start: startItem, end: Math.min(endItem, total), total, query: debouncedSearch })
                   : formatMessage(t.pagination.staff, { start: startItem, end: endItem, total })}
               </p>
               <Pagination

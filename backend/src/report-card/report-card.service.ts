@@ -3283,6 +3283,25 @@ export class ReportCardService {
       toClassId,
       sourceEnrollment?.section?.name,
     );
+    const targetSection = await this.prisma.section.findUnique({
+      where: { id: sectionId },
+      select: { name: true, capacity: true },
+    });
+    const targetEnrollmentCount = await this.prisma.studentClass.count({
+      where: {
+        sectionId,
+        academicYear: toAcademicYear,
+        studentId: { not: studentId },
+      },
+    });
+    if (
+      targetSection?.capacity &&
+      targetEnrollmentCount >= targetSection.capacity
+    ) {
+      throw new BadRequestException(
+        `Section ${targetSection.name} is already at capacity`,
+      );
+    }
 
     if (existingEnrollment) {
       await this.prisma.studentClass.update({
