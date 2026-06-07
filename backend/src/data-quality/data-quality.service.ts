@@ -13,6 +13,10 @@ type DataQualityIssue = {
   studentName?: string | null;
   className?: string | null;
   section?: string | null;
+  placementClassName?: string | null;
+  placementSection?: string | null;
+  placementAcademicYear?: string | null;
+  recommendation?: string;
   detail: string;
 };
 
@@ -27,8 +31,21 @@ export class DataQualityService {
       orderBy: { startDate: 'desc' },
     });
 
-    const academicYearId = activeAcademicYear?.id || null;
+    const activeAcademicYearKeys = activeAcademicYear
+      ? Array.from(
+          new Set(
+            [activeAcademicYear.id, activeAcademicYear.name].filter(Boolean),
+          ),
+        )
+      : [];
     const issues: DataQualityIssue[] = [];
+    const warnings: string[] = [];
+
+    if (!activeAcademicYear) {
+      warnings.push(
+        'No active academic year is configured, so active-year placement checks are limited to the latest student placement.',
+      );
+    }
 
     const students = await this.prisma.$queryRaw<
       Array<{
@@ -40,6 +57,7 @@ export class DataQualityService {
         profileClassName: string | null;
         profileSection: string | null;
         parentCount: number;
+        parentSchoolMismatchCount: number;
         classId: string | null;
         className: string | null;
         classSection: string | null;
@@ -55,7 +73,18 @@ export class DataQualityService {
         sp."enrollmentStatus"::text AS "enrollmentStatus",
         sp."className" AS "profileClassName",
         sp.section AS "profileSection",
-        COUNT(ps.id)::int AS "parentCount",
+        (
+          SELECT COUNT(*)::int
+          FROM "ParentStudent" ps
+          WHERE ps."studentId" = sp.id
+            AND ps."schoolId" = sp."schoolId"
+        ) AS "parentCount",
+        (
+          SELECT COUNT(*)::int
+          FROM "ParentStudent" ps
+          WHERE ps."studentId" = sp.id
+            AND ps."schoolId" <> sp."schoolId"
+        ) AS "parentSchoolMismatchCount",
         sc."classId" AS "classId",
         c.name AS "className",
         c.section AS "classSection",
@@ -63,30 +92,39 @@ export class DataQualityService {
         sc."academicYear" AS "academicYear"
       FROM "StudentProfile" sp
       JOIN "User" u ON u.id = sp."userId"
-      LEFT JOIN "ParentStudent" ps ON ps."studentId" = sp.id
-      LEFT JOIN "StudentClass" sc
-        ON sc."studentId" = sp."userId"
-        ${academicYearId ? Prisma.sql`AND sc."academicYear" = ${academicYearId}` : Prisma.empty}
+      LEFT JOIN LATERAL (
+        SELECT sc.*
+        FROM "StudentClass" sc
+        WHERE sc."studentId" = sp."userId"
+          AND sc."schoolId" = sp."schoolId"
+          ${
+            activeAcademicYearKeys.length > 0
+              ? Prisma.sql`AND sc."academicYear" IN (${Prisma.join(activeAcademicYearKeys)})`
+              : Prisma.empty
+          }
+        ORDER BY
+          ${
+            activeAcademicYear
+              ? Prisma.sql`
+                CASE
+                  WHEN sc."academicYear" = ${activeAcademicYear.name} THEN 0
+                  WHEN sc."academicYear" = ${activeAcademicYear.id} THEN 1
+                  ELSE 2
+                END,
+              `
+              : Prisma.empty
+          }
+          sc."updatedAt" DESC
+        LIMIT 1
+      ) sc ON TRUE
       LEFT JOIN "Class" c ON c.id = sc."classId"
       LEFT JOIN "Section" sec ON sec.id = sc."sectionId"
       WHERE sp."schoolId" = ${schoolId}
-      GROUP BY
-        sp.id,
-        sp."userId",
-        sp."studentCode",
-        u.name,
-        sp."enrollmentStatus",
-        sp."className",
-        sp.section,
-        sc."classId",
-        c.name,
-        c.section,
-        sec.name,
-        sc."academicYear"
       ORDER BY sp."studentCode" ASC
     `);
 
     for (const student of students) {
+      const placementSection = student.sectionName || student.classSection || null;
       const base = {
         studentProfileId: student.studentProfileId,
         studentUserId: student.studentUserId,
@@ -94,6 +132,9 @@ export class DataQualityService {
         studentName: student.studentName,
         className: student.profileClassName,
         section: student.profileSection,
+        placementClassName: student.className,
+        placementSection,
+        placementAcademicYear: student.academicYear,
       };
 
       if (student.parentCount === 0) {
@@ -102,10 +143,24 @@ export class DataQualityService {
           type: 'MISSING_PARENT_LINK',
           severity: 'high',
           detail: 'Student has no linked parent or guardian.',
+          recommendation:
+            'Link at least one parent or guardian before publishing parent-facing records.',
+        });
+      }
+
+      if (student.parentSchoolMismatchCount > 0) {
+        issues.push({
+          ...base,
+          type: 'PARENT_LINK_SCHOOL_MISMATCH',
+          severity: 'high',
+          detail: `Student has ${student.parentSchoolMismatchCount} parent link${student.parentSchoolMismatchCount === 1 ? '' : 's'} attached to another school.`,
+          recommendation:
+            'Remove the cross-school parent link and recreate it under this school.',
         });
       }
 
       if (
+        activeAcademicYear &&
         student.enrollmentStatus === 'APPROVED' &&
         !student.classId &&
         !student.profileClassName
@@ -114,18 +169,22 @@ export class DataQualityService {
           ...base,
           type: 'MISSING_CLASS_PLACEMENT',
           severity: 'high',
-          detail: activeAcademicYear
-            ? `Approved student has no class placement for ${activeAcademicYear.name}.`
-            : 'Approved student has no class placement and no active academic year was found.',
+          detail: `Approved student has no class placement for ${activeAcademicYear.name}.`,
+          recommendation:
+            'Assign the student to a class and section for the active academic year.',
         });
-      } else if (student.enrollmentStatus === 'APPROVED' && !student.classId) {
+      } else if (
+        activeAcademicYear &&
+        student.enrollmentStatus === 'APPROVED' &&
+        !student.classId
+      ) {
         issues.push({
           ...base,
           type: 'MISSING_CANONICAL_STUDENT_CLASS',
           severity: 'medium',
-          detail: activeAcademicYear
-            ? `Profile shows ${student.profileClassName || 'class'} ${student.profileSection || ''}, but no StudentClass row exists for ${activeAcademicYear.name}.`
-            : 'Profile has a class value, but no StudentClass row exists and no active academic year was found.',
+          detail: `Profile shows ${student.profileClassName || 'class'} ${student.profileSection || ''}, but no StudentClass row exists for ${activeAcademicYear.name}.`,
+          recommendation:
+            'Create or repair the canonical StudentClass placement for this active year.',
         });
       }
 
@@ -140,11 +199,11 @@ export class DataQualityService {
             type: 'PROFILE_CLASS_MISMATCH',
             severity: 'medium',
             detail: `Profile class is "${student.profileClassName}" but placement class is "${student.className}".`,
+            recommendation:
+              'Update the profile class label or the canonical placement so both show the same class.',
           });
         }
 
-        const placementSection =
-          student.sectionName || student.classSection || null;
         if (
           student.profileSection &&
           placementSection &&
@@ -155,6 +214,8 @@ export class DataQualityService {
             type: 'PROFILE_SECTION_MISMATCH',
             severity: 'medium',
             detail: `Profile section is "${student.profileSection}" but placement section is "${placementSection}".`,
+            recommendation:
+              'Update the profile section label or the canonical placement so both show the same section.',
           });
         }
       }
@@ -172,6 +233,10 @@ export class DataQualityService {
         u.name AS "studentName",
         sp."className" AS "className",
         sp.section AS section,
+        NULL AS "placementClassName",
+        NULL AS "placementSection",
+        NULL AS "placementAcademicYear",
+        'Create the missing class/section for the active year or update the profile to an existing class.' AS recommendation,
         CONCAT('Profile references "', sp."className", ' ', COALESCE(sp.section, ''), '" but no matching Class exists for the active academic year.') AS detail
       FROM "StudentProfile" sp
       JOIN "User" u ON u.id = sp."userId"
@@ -179,14 +244,51 @@ export class DataQualityService {
         ON c."schoolId" = sp."schoolId"
         AND c.name = sp."className"
         AND c.section = sp.section
-        ${academicYearId ? Prisma.sql`AND c."academicYearId" = ${academicYearId}` : Prisma.empty}
+        ${
+          activeAcademicYear
+            ? Prisma.sql`AND c."academicYearId" = ${activeAcademicYear.id}`
+            : Prisma.empty
+        }
       WHERE sp."schoolId" = ${schoolId}
         AND sp."className" IS NOT NULL
         AND sp.section IS NOT NULL
+        ${activeAcademicYear ? Prisma.empty : Prisma.sql`AND FALSE`}
         AND c.id IS NULL
     `);
 
     issues.push(...classNameWithoutClass);
+
+    if (activeAcademicYearKeys.length > 1) {
+      const duplicateActiveYearPlacements = await this.prisma.$queryRaw<
+        DataQualityIssue[]
+      >(Prisma.sql`
+        SELECT
+          'DUPLICATE_ACTIVE_YEAR_PLACEMENT' AS type,
+          'medium' AS severity,
+          sp.id AS "studentProfileId",
+          sp."userId" AS "studentUserId",
+          sp."studentCode" AS "studentCode",
+          u.name AS "studentName",
+          sp."className" AS "className",
+          sp.section AS section,
+          NULL AS "placementClassName",
+          NULL AS "placementSection",
+          NULL AS "placementAcademicYear",
+          'Keep one active-year StudentClass row using the current year format and remove the duplicate.' AS recommendation,
+          CONCAT('Student has ', COUNT(sc.id)::int, ' placement rows for active academic year ', ${activeAcademicYear?.name || ''}, '.') AS detail
+        FROM "StudentProfile" sp
+        JOIN "User" u ON u.id = sp."userId"
+        JOIN "StudentClass" sc
+          ON sc."studentId" = sp."userId"
+          AND sc."schoolId" = sp."schoolId"
+          AND sc."academicYear" IN (${Prisma.join(activeAcademicYearKeys)})
+        WHERE sp."schoolId" = ${schoolId}
+        GROUP BY sp.id, sp."userId", sp."studentCode", u.name, sp."className", sp.section
+        HAVING COUNT(sc.id) > 1
+      `);
+
+      issues.push(...duplicateActiveYearPlacements);
+    }
 
     const duplicateCodes = await this.prisma.$queryRaw<
       Array<{
@@ -212,6 +314,8 @@ export class DataQualityService {
         severity: 'high',
         studentCode: duplicate.studentCode,
         detail: `Student code appears ${duplicate.count} times: ${duplicate.studentNames}.`,
+        recommendation:
+          'Assign unique student codes before generating credentials or reports.',
       });
     }
 
@@ -231,7 +335,9 @@ export class DataQualityService {
 
     return {
       academicYear: activeAcademicYear,
+      academicYearKeysChecked: activeAcademicYearKeys,
       checkedStudents: students.length,
+      warnings,
       summary,
       issues,
     };

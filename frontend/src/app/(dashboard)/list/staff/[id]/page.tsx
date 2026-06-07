@@ -48,7 +48,7 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
   const { currentAcademicYear, formattedYearLabel } = useAcademicYear();
   const displayYear = String(currentAcademicYear?.ethiopianYear || currentAcademicYear?.name || formattedYearLabel || "");
   const currentRole = String(currentUser?.role || "").toUpperCase();
-  const canManageStaff = ["ADMIN", "REGISTRAR", "IT_MANAGER", "SUPER_ADMIN"].includes(currentRole);
+  const canManageStaff = ["ADMIN", "REGISTRAR"].includes(currentRole);
 
   const { data: staff, isLoading, error } = useQuery({
     queryKey: queryKeys.users.detail(staffId),
@@ -109,7 +109,6 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
   const isActive = staff.isActive ?? true;
   const canUploadPhoto =
     currentUser?.id === staff.id ||
-    currentRole === "SUPER_ADMIN" ||
     (canManageStaff && isTeacher);
   const homeroomSections = assignments?.homeroomSections || [];
   const teachingClasses = assignments?.teachingClasses || [];

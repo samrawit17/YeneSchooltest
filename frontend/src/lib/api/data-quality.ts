@@ -11,12 +11,18 @@ export type DataQualityIssue = {
   studentName?: string | null;
   className?: string | null;
   section?: string | null;
+  placementClassName?: string | null;
+  placementSection?: string | null;
+  placementAcademicYear?: string | null;
+  recommendation?: string;
   detail: string;
 };
 
 export type StudentConsistencyReport = {
   academicYear: { id: string; name: string } | null;
+  academicYearKeysChecked: string[];
   checkedStudents: number;
+  warnings: string[];
   summary: {
     total: number;
     bySeverity: Record<DataQualitySeverity, number>;

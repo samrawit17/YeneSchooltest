@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
@@ -11,20 +11,14 @@ import {
   AlertTriangle,
   Award,
   BarChart3,
-  BookOpen,
   CalendarCheck,
   CheckCircle,
   CheckCircle2,
-  ChevronRight,
   ClipboardList,
   ExternalLink,
   FileCheck,
-  FileSpreadsheet,
-  FileText,
   GraduationCap,
   Info,
-  Languages,
-  Landmark,
   LineChart,
   Printer,
   School,
@@ -88,51 +82,6 @@ interface DashboardResponse {
   };
 }
 
-const workflowGroups = [
-  {
-    title: "Student Registration & Enrollment",
-    description: "Register students, review applications, enforce capacity, and manage transfers.",
-    icon: UserCheck,
-    href: "/admin/enrollment",
-    actions: ["National or school ID intake", "MoE capacity-aware placement", "Transfer and re-enrollment review", "Bilingual student records"],
-  },
-  {
-    title: "Academic Records",
-    description: "Maintain Ethiopian curriculum records, grade completeness, and registrar review.",
-    icon: BookOpen,
-    href: "/admin/exams/entry-progress",
-    actions: ["0-100 result tracking", "Term and semester records", "Missing mark follow-up", "Registrar grade verification"],
-  },
-  {
-    title: "Report Cards & Transcripts",
-    description: "Prepare semester reports, annual reports, transcripts, and certificates.",
-    icon: FileText,
-    href: "/registrar/school-leaving",
-    actions: ["Report cards", "Promotion or repetition records", "Leaving certificates", "Official transcripts"],
-  },
-  {
-    title: "Attendance & Dropout Risk",
-    description: "Track MoE attendance expectations and identify students needing intervention.",
-    icon: CalendarCheck,
-    href: "/admin/attendance",
-    actions: ["Daily attendance follow-up", "Monthly attendance review", "Dropout-risk flags", "Missing session checks"],
-  },
-  {
-    title: "National Exam Coordination",
-    description: "Prepare Grade 8 regional and Grade 12 ESLCE candidate lists.",
-    icon: Award,
-    href: "/registrar/national-exams",
-    actions: ["Grade 8 candidate list", "Grade 12 candidate list", "NEAEA coordination", "Regional bureau submission"],
-  },
-  {
-    title: "Authority & EMIS Reporting",
-    description: "Generate school-level records for woreda, regional bureau, and EMIS reporting.",
-    icon: Landmark,
-    href: "/list/students",
-    actions: ["Enrollment statistics", "Class and section counts", "Government/private records", "Support-program records"],
-  },
-];
-
 const statCards = [
   { key: "totalStudents", label: "Total Students", icon: Users, color: "blue" },
   { key: "pendingApplications", label: "Pending Applications", icon: ClipboardList, color: "amber" },
@@ -161,7 +110,18 @@ export default function RegistrarDashboard() {
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+  const [dismissedAlertKeys, setDismissedAlertKeys] = useState<string[]>([]);
+  const dismissedAlertsStorageKey = user?.id ? `registrar_dashboard_dismissed_alerts:${user.id}` : null;
+
+  const getAlertKey = useCallback((alert: DashboardAlert) => {
+    return [
+      alert.type,
+      alert.priority,
+      alert.message,
+      alert.actionUrl ?? "",
+      alert.actionLabel ?? "",
+    ].join("|");
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.push("/sign-in");
@@ -185,6 +145,36 @@ export default function RegistrarDashboard() {
 
     fetchDashboardData();
   }, [isAuthenticated, isLoading]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !dismissedAlertsStorageKey) {
+      setDismissedAlertKeys([]);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(dismissedAlertsStorageKey) || "[]");
+      setDismissedAlertKeys(Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : []);
+    } catch {
+      setDismissedAlertKeys([]);
+    }
+  }, [dismissedAlertsStorageKey]);
+
+  const dismissAlert = useCallback(
+    (alert: DashboardAlert) => {
+      const alertKey = getAlertKey(alert);
+      setDismissedAlertKeys((current) => {
+        if (current.includes(alertKey)) return current;
+
+        const next = [...current, alertKey].slice(-100);
+        if (typeof window !== "undefined" && dismissedAlertsStorageKey) {
+          window.localStorage.setItem(dismissedAlertsStorageKey, JSON.stringify(next));
+        }
+        return next;
+      });
+    },
+    [dismissedAlertsStorageKey, getAlertKey],
+  );
 
   const primaryActions = useMemo(
     () => [
@@ -316,18 +306,10 @@ export default function RegistrarDashboard() {
 
   const stats = dashboardData?.stats || {};
   const charts = dashboardData?.charts || {};
-  const getAlertKey = (alert: DashboardAlert, index: number) =>
-    `${alert.type}:${alert.priority}:${alert.message}:${alert.actionUrl || ""}:${index}`;
+  const dismissedAlertSet = new Set(dismissedAlertKeys);
   const alerts = (dashboardData?.alerts || [])
-    .map((alert, index) => ({ alert, key: getAlertKey(alert, index) }))
-    .filter(({ key }) => !dismissedAlerts.has(key));
-  const dismissAlert = (key: string) => {
-    setDismissedAlerts((prev) => {
-      const next = new Set(prev);
-      next.add(key);
-      return next;
-    });
-  };
+    .map((alert) => ({ alert, key: getAlertKey(alert) }))
+    .filter(({ key }) => !dismissedAlertSet.has(key));
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 dark:bg-gray-900">
@@ -384,7 +366,7 @@ export default function RegistrarDashboard() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => dismissAlert(key)}
+                    onClick={() => dismissAlert(alert)}
                     className="h-8 w-8 shrink-0 self-end text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white sm:self-auto"
                     title="Dismiss notification"
                     aria-label="Dismiss notification"

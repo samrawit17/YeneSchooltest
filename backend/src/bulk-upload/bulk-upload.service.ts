@@ -1145,6 +1145,19 @@ export class BulkUploadService {
                   tx,
                 );
 
+              const currentEnrollment = await tx.studentClass.count({
+                where: {
+                  schoolId,
+                  sectionId: sec.id,
+                  academicYear: yearName,
+                },
+              });
+              if (sec.capacity && currentEnrollment >= sec.capacity) {
+                throw new BadRequestException(
+                  `Section ${sec.name} is already at capacity`,
+                );
+              }
+
               await tx.studentClass.create({
                 data: {
                   studentId: user.id,

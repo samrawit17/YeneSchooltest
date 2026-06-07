@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePeriodTimeDto, UpdatePeriodTimeDto } from './dto/period-time.dto';
+import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
 
 type PeriodTimePayload = {
   periodNumber: number;
@@ -25,6 +26,8 @@ type TimetableSlotForPeriodValidation = {
 @Injectable()
 export class PeriodTimeService {
   constructor(private prisma: PrismaService) {}
+
+  private readonly defaultMaxPeriodsPerDay = 7;
 
   private timeToMinutes(time: string) {
     const [hour, minute] = time.split(':').map(Number);
@@ -46,6 +49,50 @@ export class PeriodTimeService {
   private validatePeriodPayload(data: PeriodTimePayload) {
     if (data.startTime >= data.endTime) {
       throw new BadRequestException('Start time must be before end time');
+    }
+  }
+
+  private async getMaxPeriodsPerDay(schoolId: string) {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: {
+        schoolId_key: {
+          schoolId,
+          key: SCHOOL_SETTING_KEYS.MAX_PERIODS_PER_DAY,
+        },
+      },
+      select: { value: true },
+    });
+
+    const parsed = Number(setting?.value);
+    return Number.isInteger(parsed) && parsed >= 1 && parsed <= 12
+      ? parsed
+      : this.defaultMaxPeriodsPerDay;
+  }
+
+  private async validateMaxPeriodsPerDay(
+    schoolId: string,
+    data: PeriodTimePayload,
+    excludeId?: string,
+  ) {
+    const maxPeriods = await this.getMaxPeriodsPerDay(schoolId);
+
+    if (data.periodNumber > maxPeriods) {
+      throw new BadRequestException(
+        `Period number must be between 1 and ${maxPeriods}`,
+      );
+    }
+
+    const existingPeriodCount = await this.prisma.periodTime.count({
+      where: {
+        schoolId,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+    });
+
+    if (existingPeriodCount >= maxPeriods) {
+      throw new BadRequestException(
+        `This school is limited to ${maxPeriods} period${maxPeriods === 1 ? '' : 's'} per day`,
+      );
     }
   }
 
@@ -181,10 +228,28 @@ export class PeriodTimeService {
   }
 
   async findAll(schoolId: string) {
-    return this.prisma.periodTime.findMany({
+    const periods = await this.prisma.periodTime.findMany({
       where: { schoolId },
       orderBy: { periodNumber: 'asc' },
     });
+
+    return Promise.all(
+      periods.map(async (period) => {
+        const timetableSlotCount = await this.prisma.timetableSlot.count({
+          where: {
+            schoolId,
+            startTime: period.startTime,
+            endTime: period.endTime,
+          },
+        });
+
+        return {
+          ...period,
+          timetableSlotCount,
+          canDelete: timetableSlotCount === 0,
+        };
+      }),
+    );
   }
 
   async create(data: CreatePeriodTimeDto, schoolId: string) {
@@ -195,6 +260,7 @@ export class PeriodTimeService {
     };
 
     this.validatePeriodPayload(payload);
+    await this.validateMaxPeriodsPerDay(schoolId, payload);
     await this.validatePeriodUniquenessAndOverlap(schoolId, payload);
 
     return this.prisma.periodTime.create({
@@ -219,6 +285,7 @@ export class PeriodTimeService {
     };
 
     this.validatePeriodPayload(payload);
+    await this.validateMaxPeriodsPerDay(schoolId, payload, id);
     await this.validatePeriodUniquenessAndOverlap(schoolId, payload, id);
     await this.validateTimetableCascade(
       schoolId,

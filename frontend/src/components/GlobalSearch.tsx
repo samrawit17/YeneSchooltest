@@ -336,6 +336,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         
         return links
             .filter(link => 
+                // Keep route/action matching English-only even when labels are displayed translated.
                 link.label.toLowerCase().includes(lowerQuery) || 
                 link.href.toLowerCase().includes(lowerQuery)
             )

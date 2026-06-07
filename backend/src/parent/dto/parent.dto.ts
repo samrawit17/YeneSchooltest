@@ -40,6 +40,10 @@ export class CreateParentDto {
 }
 
 export class UpdateParentDto {
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
   @IsString()
   @IsOptional()
   @MinLength(2)

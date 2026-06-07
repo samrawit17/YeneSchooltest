@@ -30,6 +30,7 @@ import {
   AlertTitle,
 } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { useTranslations } from "@/hooks/useTranslations";
 
 interface HardwareConfig {
   id: string;
@@ -40,6 +41,7 @@ interface HardwareConfig {
 
 export function SirenHardwareConfig() {
   const { user } = useAuth();
+  const { t } = useTranslations<any>("sirenManagement");
   const [config, setConfig] = useState<HardwareConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,11 +75,11 @@ export function SirenHardwareConfig() {
         setConfig(null);
         return;
       }
-      toast.error("Failed to load hardware config");
+      toast.error(t.hardware.toasts.loadFailed);
     } finally {
       setLoading(false);
     }
-  }, [schoolId]);
+  }, [schoolId, t.hardware.toasts.loadFailed]);
 
   useEffect(() => {
     fetchConfig();
@@ -85,19 +87,19 @@ export function SirenHardwareConfig() {
 
   const handleSave = async () => {
     if (!form.webhookUrl) {
-      toast.error("Webhook URL is required");
+      toast.error(t.hardware.toasts.webhookRequired);
       return;
     }
 
     try {
       new URL(form.webhookUrl);
     } catch {
-      toast.error("Invalid webhook URL");
+      toast.error(t.hardware.toasts.invalidWebhook);
       return;
     }
 
     if (!schoolId) {
-      toast.error("School not found");
+      toast.error(t.hardware.toasts.schoolNotFound);
       return;
     }
     setSaving(true);
@@ -107,10 +109,10 @@ export function SirenHardwareConfig() {
       } else {
         await sirenHardwareAPI.create({ schoolId, ...form });
       }
-      toast.success("Hardware config saved");
+      toast.success(t.hardware.toasts.saved);
       await fetchConfig();
     } catch (error) {
-      toast.error("Failed to save hardware config");
+      toast.error(t.hardware.toasts.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -118,16 +120,16 @@ export function SirenHardwareConfig() {
 
   const handleTestWebhook = async () => {
     if (!form.webhookUrl) {
-      toast.error("Please configure webhook URL first");
+      toast.error(t.hardware.toasts.configureFirst);
       return;
     }
 
     setTesting(true);
     try {
       await sirenHardwareAPI.test({ webhookUrl: form.webhookUrl, timeout: form.timeout });
-      toast.success("Webhook test successful");
+      toast.success(t.hardware.toasts.testSuccess);
     } catch (error) {
-      toast.error("Webhook test failed - check URL and connectivity");
+      toast.error(t.hardware.toasts.testFailed);
     } finally {
       setTesting(false);
     }
@@ -187,30 +189,28 @@ export function SirenHardwareConfig() {
         <CardHeader className="min-w-0">
           <CardTitle className="flex min-w-0 items-center gap-2 break-words">
             <Zap className="h-5 w-5 shrink-0" />
-            Electric Siren Configuration
+            {t.hardware.title}
           </CardTitle>
           <CardDescription className="break-words">
-            Configure webhook for electric siren integration via relay
+            {t.hardware.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="min-w-0 space-y-6">
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>How it works</AlertTitle>
+            <AlertTitle>{t.hardware.howItWorks}</AlertTitle>
             <AlertDescription>
-              When a siren is triggered, we'll send HTTP requests to your
-              webhook endpoint with POST /on (activate) and POST /off
-              (deactivate) commands.
+              {t.hardware.howItWorksDescription}
             </AlertDescription>
           </Alert>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="webhookUrl">Webhook URL</Label>
+              <Label htmlFor="webhookUrl">{t.hardware.webhookUrl}</Label>
               <Input
                 id="webhookUrl"
                 type="url"
-                placeholder="https://your-relay-server.com/api/siren"
+                placeholder={t.hardware.webhookPlaceholder}
                 value={form.webhookUrl}
                 onChange={(e) =>
                   setForm({ ...form, webhookUrl: e.target.value })
@@ -218,13 +218,12 @@ export function SirenHardwareConfig() {
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Must be HTTPS. The endpoint will receive POST requests with
-                {"{"}"action": "on" | "off"{"}"} body.
+                {t.hardware.webhookHelp}
               </p>
             </div>
 
             <div>
-              <Label htmlFor="timeout">Timeout (ms)</Label>
+              <Label htmlFor="timeout">{t.hardware.timeout}</Label>
               <Input
                 id="timeout"
                 type="number"
@@ -238,12 +237,12 @@ export function SirenHardwareConfig() {
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Maximum time to wait for webhook response (default: 5000ms)
+                {t.hardware.timeoutHelp}
               </p>
             </div>
 
             <div>
-              <Label>Status</Label>
+              <Label>{t.hardware.status}</Label>
               <div className="mt-2 flex flex-col gap-3 rounded-md border bg-muted/50 p-3 sm:flex-row sm:items-center">
                 <Button
                   variant="ghost"
@@ -256,19 +255,19 @@ export function SirenHardwareConfig() {
                   {form.isEnabled ? (
                     <>
                       <ToggleRight className="w-5 h-5 text-green-600" />
-                      Enabled
+                      {t.hardware.enabled}
                     </>
                   ) : (
                     <>
                       <ToggleLeft className="w-5 h-5 text-gray-400" />
-                      Disabled
+                      {t.hardware.disabled}
                     </>
                   )}
                 </Button>
                 <p className="break-words text-sm text-muted-foreground">
                   {form.isEnabled
-                    ? "Hardware integration is active"
-                    : "Hardware integration is inactive"}
+                    ? t.hardware.activeDescription
+                    : t.hardware.inactiveDescription}
                 </p>
               </div>
             </div>
@@ -280,7 +279,7 @@ export function SirenHardwareConfig() {
             <Button onClick={handleSave} disabled={saving} className="gap-2">
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               <Save className="w-4 h-4" />
-              Save Configuration
+              {t.hardware.saveConfiguration}
             </Button>
             <Button
               variant="outline"
@@ -290,7 +289,7 @@ export function SirenHardwareConfig() {
             >
               {testing && <Loader2 className="w-4 h-4 animate-spin" />}
               <TestTube className="w-4 h-4" />
-              Test Webhook
+              {t.hardware.testWebhook}
             </Button>
           </div>
         </CardContent>
@@ -299,46 +298,32 @@ export function SirenHardwareConfig() {
       {/* Webhook Format Reference */}
       <Card className="max-w-full overflow-hidden">
         <CardHeader className="min-w-0">
-          <CardTitle className="text-lg">Webhook Format Reference</CardTitle>
+          <CardTitle className="text-lg">{t.hardware.formatReference}</CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
           <div>
-            <h4 className="font-semibold mb-2">Activation Request</h4>
+            <h4 className="font-semibold mb-2">{t.hardware.activationRequest}</h4>
             <pre className="max-w-full overflow-x-auto rounded bg-muted p-3 text-xs">
-              {`POST /api/siren
-Content-Type: application/json
-
-{
-  "action": "on",
-  "type": "PERIOD_START",
-  "timestamp": "2026-04-26T14:30:00Z"
-}`}
+              {`POST {webhookUrl}/on`}
             </pre>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-2">Deactivation Request</h4>
+            <h4 className="font-semibold mb-2">{t.hardware.deactivationRequest}</h4>
             <pre className="max-w-full overflow-x-auto rounded bg-muted p-3 text-xs">
-              {`POST /api/siren
-Content-Type: application/json
-
-{
-  "action": "off",
-  "type": "PERIOD_END",
-  "timestamp": "2026-04-26T14:30:30Z"
-}`}
+              {`POST {webhookUrl}/off`}
             </pre>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-2">Expected Response</h4>
+            <h4 className="font-semibold mb-2">{t.hardware.expectedResponse}</h4>
             <pre className="max-w-full overflow-x-auto rounded bg-muted p-3 text-xs">
               {`HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
   "status": "ok",
-  "message": "Siren turned on",
+  "message": "${t.hardware.responseMessage}",
   "timestamp": "2026-04-26T14:30:00Z"
 }`}
             </pre>
@@ -349,11 +334,9 @@ Content-Type: application/json
       {/* Safety Information */}
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Safety First</AlertTitle>
+        <AlertTitle>{t.hardware.safetyTitle}</AlertTitle>
         <AlertDescription>
-          Always test webhook connectivity before enabling production. Ensure
-          your relay endpoint handles timeouts gracefully and never leaves
-          sirens in activated state if connection fails.
+          {t.hardware.safetyDescription}
         </AlertDescription>
       </Alert>
     </div>

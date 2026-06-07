@@ -208,7 +208,7 @@ const SUBJECT_COLORS = [
 ];
 
 const buildAutoSlotKey = (dayOfWeek: number, startTime: string) => `${dayOfWeek}:${startTime}`;
-const MAX_PERIODS_PER_DAY = 7;
+const DEFAULT_MAX_PERIODS_PER_DAY = 7;
 
 const shuffleAutoItems = <T,>(items: T[]) => {
   const next = [...items];
@@ -346,6 +346,12 @@ const AdminTimetablePage = () => {
   const [fetchingData, setFetchingData] = useState(true);
 
   const { startTime: schoolStartTime, endTime: schoolEndTime } = getSchoolTimeBounds(schoolSettings);
+  const maxPeriodsPerDay = useMemo(() => {
+    const configured = Number(schoolSettings?.MAX_PERIODS_PER_DAY);
+    return Number.isInteger(configured) && configured >= 1 && configured <= 12
+      ? configured
+      : DEFAULT_MAX_PERIODS_PER_DAY;
+  }, [schoolSettings]);
   const fallbackSlotRanges = getSlotRanges(schoolStartTime, schoolEndTime);
   const slotRanges = useMemo(
     () =>
@@ -744,8 +750,8 @@ const AdminTimetablePage = () => {
         return;
       }
 
-      if (periodTimes.length > MAX_PERIODS_PER_DAY) {
-        toast.error(`Ethiopian schools support a maximum of ${MAX_PERIODS_PER_DAY} periods per day`);
+      if (periodTimes.length > maxPeriodsPerDay) {
+        toast.error(`This school supports a maximum of ${maxPeriodsPerDay} periods per day`);
         return;
       }
 
@@ -957,7 +963,7 @@ const AdminTimetablePage = () => {
     } finally {
       setAutoGenerating(false);
     }
-  }, [classSubjects, periodRequirements, selectedClassId, selectedSectionId, selectedYear, totalRequestedPeriods, user?.schoolId]);
+  }, [classSubjects, maxPeriodsPerDay, periodRequirements, selectedClassId, selectedSectionId, selectedYear, totalRequestedPeriods, user?.schoolId]);
 
   const handleSubjectChange = (day: number, time: string, subjectId: string) => {
     const teacherId = getTeacherForSubject(subjectId);

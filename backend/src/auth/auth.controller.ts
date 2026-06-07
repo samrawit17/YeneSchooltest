@@ -342,8 +342,7 @@ export class AuthController {
 
   @Get('users')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @AllowSuperAdminMixedRole()
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('user:read')
   async getUsers(@Request() req, @Query('role') role?: Role) {
     try {
@@ -359,10 +358,6 @@ export class AuthController {
         ? String(req.query.search)
         : undefined;
 
-      if (req.user.role === Role.SUPER_ADMIN) {
-        return this.authService.getUsers(role, roles, { page, limit, search });
-      }
-
       if (!req.user.schoolId) {
         throw new HttpException(
           'User is not associated with any school',
@@ -376,6 +371,9 @@ export class AuthController {
         search,
       });
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         'Failed to get users: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -474,8 +472,7 @@ export class AuthController {
 
   @Get('users/:id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @AllowSuperAdminMixedRole()
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('view_users')
   async getUser(@Request() req, @Param('id') id: string) {
     try {
@@ -518,14 +515,15 @@ export class AuthController {
         throw new HttpException('User not found', HttpStatus.NOT_FOUND);
       }
 
-      if (req.user.role !== Role.SUPER_ADMIN) {
-        if (!req.user.schoolId || user.schoolId !== req.user.schoolId) {
-          throw new HttpException('Forbidden resource', HttpStatus.FORBIDDEN);
-        }
+      if (!req.user.schoolId || user.schoolId !== req.user.schoolId) {
+        throw new HttpException('Forbidden resource', HttpStatus.FORBIDDEN);
       }
 
       return user;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new HttpException(
         'Failed to get user: ' + error.message,
         HttpStatus.INTERNAL_SERVER_ERROR,

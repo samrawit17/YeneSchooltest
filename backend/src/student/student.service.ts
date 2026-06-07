@@ -16,6 +16,8 @@ import { ClassService } from '../class/class.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
 
+const MAX_ID_CARD_BULK_COUNT = 200;
+
 export interface CreateStudentDto {
   email?: string;
   name: string;
@@ -141,6 +143,53 @@ export class StudentService {
   private extractGradeFromClassName(className?: string | null) {
     const match = String(className || '').match(/\d+/);
     return match ? Number(match[0]) : null;
+  }
+
+  private async resolveSectionWithCapacity(
+    schoolId: string,
+    academicYear: string,
+    className: string,
+    sectionName: string,
+    studentId?: string,
+  ) {
+    const targetClass = await this.prismaService.class.findFirst({
+      where: {
+        schoolId,
+        name: className,
+        academicYear: { name: academicYear },
+      },
+      include: {
+        sections: {
+          where: { name: sectionName },
+        },
+      },
+    });
+
+    const targetSection = targetClass?.sections[0];
+    if (!targetClass || !targetSection) {
+      throw new BadRequestException(
+        'Selected class and section are not valid for this academic year',
+      );
+    }
+
+    const enrolledCount = await this.prismaService.studentClass.count({
+      where: {
+        schoolId,
+        classId: targetClass.id,
+        sectionId: targetSection.id,
+        academicYear,
+        ...(studentId ? { studentId: { not: studentId } } : {}),
+      },
+    });
+
+    if (targetSection.capacity && enrolledCount >= targetSection.capacity) {
+      throw new BadRequestException('Selected section is already at capacity');
+    }
+
+    return {
+      class: targetClass,
+      section: targetSection,
+    };
   }
 
   private getStudentListNamespace(schoolId: string) {
@@ -1245,20 +1294,36 @@ export class StudentService {
   }
 
   async generateIdCardBulkZip(schoolId: string, studentIds: string[]): Promise<Buffer> {
-    const ids = studentIds.filter(Boolean);
+    const ids = Array.from(
+      new Set(
+        (Array.isArray(studentIds) ? studentIds : [])
+          .map((id) => String(id || '').trim())
+          .filter(Boolean),
+      ),
+    );
     if (!ids.length) throw new BadRequestException('No student IDs provided');
+    if (ids.length > MAX_ID_CARD_BULK_COUNT) {
+      throw new BadRequestException(
+        `You can generate up to ${MAX_ID_CARD_BULK_COUNT} ID cards per ZIP download`,
+      );
+    }
+
     const chunks: Buffer[] = [];
     const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.on('data', (d) => chunks.push(d));
-    await Promise.all(ids.map(async (id) => {
-      const pdf = await this.generateIdCardPdf(schoolId, id);
-      archive.append(pdf, { name: `id-card-${id}.pdf` });
-    }));
-    await archive.finalize();
-    return await new Promise<Buffer>((resolve, reject) => {
+    const done = new Promise<Buffer>((resolve, reject) => {
       archive.on('end', () => resolve(Buffer.concat(chunks)));
       archive.on('error', reject);
     });
+
+    archive.on('data', (d) => chunks.push(d));
+
+    for (const id of ids) {
+      const pdf = await this.generateIdCardPdf(schoolId, id);
+      archive.append(pdf, { name: `id-card-${id}.pdf` });
+    }
+
+    await archive.finalize();
+    return done;
   }
 
   async updateStudent(
@@ -1471,12 +1536,40 @@ export class StudentService {
     }
 
     const { className, section, rollNumber } = approveData;
+    const placement = await this.resolveSectionWithCapacity(
+      schoolId,
+      enrollment.academicYear,
+      className,
+      section,
+      enrollment.studentId,
+    );
 
     // Update enrollment status
     await this.prismaService.enrollment.update({
       where: { id: enrollmentId },
       data: {
         status: EnrollmentStatus.APPROVED,
+      },
+    });
+
+    await this.prismaService.studentClass.upsert({
+      where: {
+        studentId_academicYear: {
+          studentId: enrollment.studentId,
+          academicYear: enrollment.academicYear,
+        },
+      },
+      create: {
+        studentId: enrollment.studentId,
+        classId: placement.class.id,
+        sectionId: placement.section.id,
+        schoolId,
+        academicYear: enrollment.academicYear,
+      },
+      update: {
+        classId: placement.class.id,
+        sectionId: placement.section.id,
+        schoolId,
       },
     });
 

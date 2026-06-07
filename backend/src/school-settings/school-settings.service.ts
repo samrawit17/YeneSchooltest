@@ -79,6 +79,7 @@ export const SCHOOL_SETTING_KEYS = {
   ATTENDANCE_CUTOFF_TIME: 'ATTENDANCE_CUTOFF_TIME',
   SCHOOL_START_TIME: 'SCHOOL_START_TIME',
   SCHOOL_END_TIME: 'SCHOOL_END_TIME',
+  MAX_PERIODS_PER_DAY: 'MAX_PERIODS_PER_DAY',
   DEFAULT_SECTION_CAPACITY: 'DEFAULT_SECTION_CAPACITY',
   SCHOOL_NAME: 'school_name',
   SCHOOL_ADDRESS: 'school_address',
@@ -205,6 +206,7 @@ export class SchoolSettingsService {
     [SCHOOL_SETTING_KEYS.FINANCE_PORTAL_ACCESS, { requiredFeature: 'FINANCE_MANAGEMENT' }],
     [SCHOOL_SETTING_KEYS.REGISTRAR_PORTAL_ACCESS, { requiredFeature: 'ENROLLMENT_MANAGEMENT' }],
     [SCHOOL_SETTING_KEYS.DEFAULT_SECTION_CAPACITY, { requiredFeature: 'ACADEMIC_STRUCTURE' }],
+    [SCHOOL_SETTING_KEYS.MAX_PERIODS_PER_DAY, { requiredFeature: 'ACADEMIC_STRUCTURE' }],
     [SCHOOL_SETTING_KEYS.SCHOOL_START_TIME, { requiredFeature: 'TIMETABLE_MANAGEMENT' }],
     [SCHOOL_SETTING_KEYS.SCHOOL_END_TIME, { requiredFeature: 'TIMETABLE_MANAGEMENT' }],
     [SCHOOL_SETTING_KEYS.CUSTOM_BRANDING, { requiredTier: 'ULTIMATE' }],
@@ -419,6 +421,16 @@ export class SchoolSettingsService {
       return capacity;
     }
 
+    if (key === SCHOOL_SETTING_KEYS.MAX_PERIODS_PER_DAY) {
+      const maxPeriods = Number(value);
+      if (!Number.isInteger(maxPeriods) || maxPeriods < 1 || maxPeriods > 12) {
+        throw new BadRequestException(
+          'MAX_PERIODS_PER_DAY must be an integer between 1 and 12',
+        );
+      }
+      return maxPeriods;
+    }
+
     if (
       key === SCHOOL_SETTING_KEYS.ATTENDANCE_CUTOFF_TIME ||
       key === SCHOOL_SETTING_KEYS.SCHOOL_START_TIME ||
@@ -530,6 +542,18 @@ export class SchoolSettingsService {
     if (this.timeToMinutes(storedStartTime) >= this.timeToMinutes(storedEndTime)) {
       throw new BadRequestException(
         'School start time must be before school end time',
+      );
+    }
+  }
+
+  private async validateMaxPeriodsPerDay(schoolId: string, maxPeriods: number) {
+    const existingPeriodCount = await this.prisma.periodTime.count({
+      where: { schoolId },
+    });
+
+    if (existingPeriodCount > maxPeriods) {
+      throw new BadRequestException(
+        `MAX_PERIODS_PER_DAY cannot be lower than the ${existingPeriodCount} period times already configured`,
       );
     }
   }
@@ -777,6 +801,10 @@ export class SchoolSettingsService {
 
     if (canonicalKey === SCHOOL_SETTING_KEYS.CURRICULUM_TYPE) {
       await this.validateCurriculumTypeOneTimeChange(schoolId, normalizedValue);
+    }
+
+    if (canonicalKey === SCHOOL_SETTING_KEYS.MAX_PERIODS_PER_DAY) {
+      await this.validateMaxPeriodsPerDay(schoolId, normalizedValue as number);
     }
 
     const oldValue = await this.getSetting(schoolId, canonicalKey);

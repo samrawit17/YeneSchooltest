@@ -106,6 +106,53 @@ export class RegistrarService {
     return match ? Number(match[0]) : null;
   }
 
+  private async resolveSectionWithCapacity(
+    schoolId: string,
+    academicYear: string,
+    className: string,
+    sectionName: string,
+    studentId?: string,
+  ) {
+    const targetClass = await this.prismaService.class.findFirst({
+      where: {
+        schoolId,
+        name: className,
+        academicYear: { name: academicYear },
+      },
+      include: {
+        sections: {
+          where: { name: sectionName },
+        },
+      },
+    });
+
+    const targetSection = targetClass?.sections[0];
+    if (!targetClass || !targetSection) {
+      throw new BadRequestException(
+        'Selected class and section are not valid for this academic year',
+      );
+    }
+
+    const enrolledCount = await this.prismaService.studentClass.count({
+      where: {
+        schoolId,
+        classId: targetClass.id,
+        sectionId: targetSection.id,
+        academicYear,
+        ...(studentId ? { studentId: { not: studentId } } : {}),
+      },
+    });
+
+    if (targetSection.capacity && enrolledCount >= targetSection.capacity) {
+      throw new BadRequestException('Selected section is already at capacity');
+    }
+
+    return {
+      class: targetClass,
+      section: targetSection,
+    };
+  }
+
   async createStudent(
     createStudentDto: CreateStudentDto,
     schoolId: string,
@@ -459,11 +506,39 @@ export class RegistrarService {
     }
 
     const { className, section, rollNumber } = approveData;
+    const placement = await this.resolveSectionWithCapacity(
+      schoolId,
+      enrollment.academicYear,
+      className,
+      section,
+      enrollment.studentId,
+    );
 
     await this.prismaService.enrollment.update({
       where: { id: enrollmentId },
       data: {
         status: EnrollmentStatus.APPROVED,
+      },
+    });
+
+    await this.prismaService.studentClass.upsert({
+      where: {
+        studentId_academicYear: {
+          studentId: enrollment.studentId,
+          academicYear: enrollment.academicYear,
+        },
+      },
+      create: {
+        studentId: enrollment.studentId,
+        classId: placement.class.id,
+        sectionId: placement.section.id,
+        schoolId,
+        academicYear: enrollment.academicYear,
+      },
+      update: {
+        classId: placement.class.id,
+        sectionId: placement.section.id,
+        schoolId,
       },
     });
 

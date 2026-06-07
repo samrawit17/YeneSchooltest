@@ -32,6 +32,7 @@ export interface CreateParentDto {
 }
 
 export interface UpdateParentDto {
+  email?: string;
   name?: string;
   phone?: string;
   address?: string;
@@ -318,54 +319,107 @@ export class ParentService {
 
   async getParents(
     schoolId: string,
-    options: { search?: string; page?: number; limit?: number },
+    options: {
+      search?: string;
+      page?: number;
+      limit?: number;
+      status?: string;
+      children?: string;
+    },
   ) {
     return this.listParents(schoolId, options);
   }
 
   async listParents(
     schoolId: string,
-    options: { search?: string; page?: number; limit?: number },
+    options: {
+      search?: string;
+      page?: number;
+      limit?: number;
+      status?: string;
+      children?: string;
+    },
   ) {
-    const { search, page = 1, limit = 20 } = options;
+    const { search, page = 1, limit = 20, status, children } = options;
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const safeLimit =
+      Number.isFinite(limit) && limit > 0 ? Math.min(limit, 100) : 20;
+    const trimmedSearch = search?.trim();
+    const normalizedStatus = status?.toLowerCase();
+    const normalizedChildren = children?.toLowerCase();
     const where: any = { schoolId };
+    const andFilters: any[] = [];
 
-    if (search) {
-      where.OR = [
-        { user: { name: { contains: search, mode: 'insensitive' } } },
-        { user: { email: { contains: search, mode: 'insensitive' } } },
-      ];
+    if (trimmedSearch) {
+      andFilters.push({
+        OR: [
+          { user: { name: { contains: trimmedSearch, mode: 'insensitive' } } },
+          { user: { email: { contains: trimmedSearch, mode: 'insensitive' } } },
+          { user: { phone: { contains: trimmedSearch, mode: 'insensitive' } } },
+        ],
+      });
     }
 
-    const skip = (page - 1) * limit;
+    if (normalizedStatus === 'active') {
+      andFilters.push({ user: { isActive: true } });
+    } else if (normalizedStatus === 'inactive') {
+      andFilters.push({ user: { isActive: false } });
+    }
+
+    if (normalizedChildren === 'with children') {
+      andFilters.push({ children: { some: {} } });
+    } else if (normalizedChildren === 'without children') {
+      andFilters.push({ children: { none: {} } });
+    }
+
+    if (andFilters.length > 0) {
+      where.AND = andFilters;
+    }
+
+    const skip = (safePage - 1) * safeLimit;
 
     const total = await this.prismaService.parentProfile.count({ where });
     const parents = await this.prismaService.parentProfile.findMany({
       where,
       include: {
         user: {
-          select: { id: true, name: true, email: true, username: true, phone: true, avatarUrl: true, isActive: true },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            username: true,
+            phone: true,
+            avatarUrl: true,
+            isActive: true,
+          },
         },
         children: {
           include: {
             student: {
               select: {
                 user: {
-                  select: { name: true },
-	                },
-	                className: true,
-	                section: true,
-	              },
-	            },
+                  select: { id: true, name: true },
+                },
+                studentCode: true,
+                className: true,
+                section: true,
+              },
+            },
           },
         },
       },
       skip,
-      take: limit,
+      take: safeLimit,
       orderBy: { createdAt: 'desc' },
     });
 
-    return { total, data: parents, page, limit };
+    return {
+      total,
+      data: parents,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+    };
   }
 
   async getParentById(parentId: string, schoolId: string) {
@@ -425,17 +479,34 @@ export class ParentService {
       throw new NotFoundException('Parent not found');
     }
 
-    if (data.name || data.phone) {
+    const userUpdateData: Prisma.UserUpdateInput = {};
+    if (data.name !== undefined) {
+      userUpdateData.name = data.name;
+    }
+    if (data.email !== undefined) {
+      userUpdateData.email = data.email;
+    }
+    if (data.phone !== undefined) {
+      userUpdateData.phone = data.phone;
+    }
+
+    if (Object.keys(userUpdateData).length > 0) {
       await this.prismaService.user.update({
         where: { id: parent.userId },
-        data: { name: data.name, phone: data.phone },
+        data: userUpdateData,
       });
     }
 
-    return this.prismaService.parentProfile.update({
+    await this.prismaService.parentProfile.update({
       where: { id: parentId },
-      data: { address: data.address, occupation: data.occupation },
+      data: {
+        address: data.address,
+        phone: data.phone,
+        occupation: data.occupation,
+      },
     });
+
+    return this.getParentById(parentId, schoolId);
   }
 
   async getChildrenByParentUserId(parentUserId: string, schoolId: string) {
