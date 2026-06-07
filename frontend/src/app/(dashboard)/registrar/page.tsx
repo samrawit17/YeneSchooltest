@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { dashboardAPI } from "@/lib/api/admin";
+import { useTranslations } from "@/hooks/useTranslations";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -82,16 +83,8 @@ interface DashboardResponse {
   };
 }
 
-const statCards = [
-  { key: "totalStudents", label: "Total Students", icon: Users, color: "blue" },
-  { key: "pendingApplications", label: "Pending Applications", icon: ClipboardList, color: "amber" },
-  { key: "classOccupancy", label: "Class Occupancy", icon: GraduationCap, color: "violet" },
-  { key: "dropoutRiskStudents", label: "Dropout Risk", icon: AlertCircle, color: "red" },
-  { key: "nationalExamCandidates", label: "National Exam Candidates", icon: Award, color: "emerald" },
-  { key: "studentsWithoutDocuments", label: "Missing Documents", icon: FileCheck, color: "slate" },
-  { key: "sectionsWithoutHomeroom", label: "No Homeroom Teacher", icon: School, color: "indigo" },
-  { key: "missingAttendanceSessions", label: "Missing Attendance Sessions", icon: CalendarCheck, color: "rose" },
-];
+const formatMessage = (template: string, values: Record<string, string | number>) =>
+  template.replace(/\{(\w+)\}/g, (_, key) => String(values[key] ?? `{${key}}`));
 
 const colorClasses: Record<string, string> = {
   blue: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
@@ -107,11 +100,26 @@ const colorClasses: Record<string, string> = {
 export default function RegistrarDashboard() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { displayTermName } = useAcademicYear();
+  const { t } = useTranslations<any>("roleDashboard");
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [dismissedAlertKeys, setDismissedAlertKeys] = useState<string[]>([]);
   const dismissedAlertsStorageKey = user?.id ? `registrar_dashboard_dismissed_alerts:${user.id}` : null;
+
+  const statCards = useMemo(
+    () => [
+      { key: "totalStudents", label: t.registrar.statTotalStudents, icon: Users, color: "blue" },
+      { key: "pendingApplications", label: t.registrar.statPendingApplications, icon: ClipboardList, color: "amber" },
+      { key: "classOccupancy", label: t.registrar.statClassOccupancy, icon: GraduationCap, color: "violet" },
+      { key: "dropoutRiskStudents", label: t.registrar.statDropoutRisk, icon: AlertCircle, color: "red" },
+      { key: "nationalExamCandidates", label: t.registrar.statNationalExamCandidates, icon: Award, color: "emerald" },
+      { key: "studentsWithoutDocuments", label: t.registrar.statMissingDocuments, icon: FileCheck, color: "slate" },
+      { key: "sectionsWithoutHomeroom", label: t.registrar.statNoHomeroomTeacher, icon: School, color: "indigo" },
+      { key: "missingAttendanceSessions", label: t.registrar.statMissingAttendanceSessions, icon: CalendarCheck, color: "rose" },
+    ],
+    [t],
+  );
 
   const getAlertKey = useCallback((alert: DashboardAlert) => {
     return [
@@ -137,7 +145,7 @@ export default function RegistrarDashboard() {
         setDashboardData(response.data);
       } catch (error) {
         console.error("Failed to fetch registrar dashboard data:", error);
-        toast.error("Failed to load registrar dashboard");
+        toast.error(t.registrar.failedLoad);
       } finally {
         setLoading(false);
       }
@@ -178,15 +186,15 @@ export default function RegistrarDashboard() {
 
   const primaryActions = useMemo(
     () => [
-      { label: "Register Student", href: "/admin/enrollment", icon: UserCheck },
-      { label: "Manage Students", href: "/list/students", icon: Users },
-      { label: "Class & Sections", href: "/admin/class-sections", icon: GraduationCap },
-      { label: "Promotion Decisions", href: "/admin/promotion", icon: ShieldCheck },
-      { label: "School Leaving", href: "/registrar/school-leaving", icon: Printer },
-      { label: "National Exams", href: "/registrar/national-exams", icon: Award },
-      { label: "Credentials", href: "/admin/credentials", icon: FileCheck },
+      { label: t.registrar.actionRegisterStudent, href: "/admin/enrollment", icon: UserCheck },
+      { label: t.registrar.actionManageStudents, href: "/list/students", icon: Users },
+      { label: t.registrar.actionClassSections, href: "/admin/class-sections", icon: GraduationCap },
+      { label: t.registrar.actionPromotionDecisions, href: "/admin/promotion", icon: ShieldCheck },
+      { label: t.registrar.actionSchoolLeaving, href: "/registrar/school-leaving", icon: Printer },
+      { label: t.registrar.actionNationalExams, href: "/registrar/national-exams", icon: Award },
+      { label: t.registrar.actionCredentials, href: "/admin/credentials", icon: FileCheck },
     ],
-    [],
+    [t],
   );
 
   const renderChart = (chart: DashboardChart) => {
@@ -201,7 +209,7 @@ export default function RegistrarDashboard() {
 
     if (chart.type === "pie" || chart.type === "doughnut") {
       const pieData = chart.labels.map((label, index) => ({
-        name: label,
+        name: translateChartString(label),
         value: chart.datasets[0]?.data[index] || 0,
       }));
       const palette = Array.isArray(chart.datasets[0]?.backgroundColor)
@@ -217,7 +225,7 @@ export default function RegistrarDashboard() {
               ))}
             </Pie>
             <Tooltip />
-            <Legend />
+            <Legend formatter={(value: string) => translateChartString(value)} />
           </PieChart>
         </ResponsiveContainer>
       );
@@ -228,10 +236,10 @@ export default function RegistrarDashboard() {
       <ResponsiveContainer width="100%" height={260}>
         <Chart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+          <XAxis dataKey="name" tick={{ fontSize: 12 }} tickFormatter={(value: string) => translateChartString(value)} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip />
-          <Legend />
+          <Legend formatter={(value: string) => translateChartString(value)} />
           {chart.datasets.map((dataset, index) =>
             chart.type === "bar" ? (
               <Bar key={dataset.label} dataKey={dataset.label} fill={colors[index % colors.length]} radius={[4, 4, 0, 0]} />
@@ -310,15 +318,33 @@ export default function RegistrarDashboard() {
   const alerts = (dashboardData?.alerts || [])
     .map((alert) => ({ alert, key: getAlertKey(alert) }))
     .filter(({ key }) => !dismissedAlertSet.has(key));
+  const priorityLabels: Record<string, string> = {
+    high: t.registrar.priorityHigh,
+    medium: t.registrar.priorityMedium,
+    low: t.registrar.priorityLow,
+  };
+
+  const chartTranslations: Record<string, string> = {
+    "Enrollment Trend (12 Months)": t.registrar.chartEnrollmentTrend,
+    "Students per Class": t.registrar.chartStudentsPerClass,
+    "Enrollment Status": t.registrar.chartEnrollmentStatus,
+    "Classes and Sections": t.registrar.chartClassesAndSections,
+    "Approved": t.registrar.datasetApproved,
+    "Pending": t.registrar.datasetPending,
+    "Rejected": t.registrar.datasetRejected,
+    "Students": t.registrar.datasetStudents,
+    "Capacity": t.registrar.datasetCapacity,
+  };
+  const translateChartString = (str: string) => chartTranslations[str] || str;
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 dark:bg-gray-900">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-950 dark:text-white">Registrar Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-950 dark:text-white">{t.registrar.title}</h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Student records, enrollment, academic documents, and authority reporting for {user?.name || "registrar"}.
+              {formatMessage(t.registrar.subtitle, { name: user?.name || "" })}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -349,7 +375,7 @@ export default function RegistrarDashboard() {
                   <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <p className="text-sm text-gray-800 dark:text-gray-200">{alert.message}</p>
                     <Badge className={`text-xs ${getPriorityBadge(alert.priority)}`}>
-                      {alert.priority.charAt(0).toUpperCase() + alert.priority.slice(1)}
+                      {priorityLabels[alert.priority] || alert.priority.charAt(0).toUpperCase() + alert.priority.slice(1)}
                     </Badge>
                   </div>
                   {alert.actionUrl && alert.actionLabel && (
@@ -368,8 +394,8 @@ export default function RegistrarDashboard() {
                     size="icon"
                     onClick={() => dismissAlert(alert)}
                     className="h-8 w-8 shrink-0 self-end text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white sm:self-auto"
-                    title="Dismiss notification"
-                    aria-label="Dismiss notification"
+                    title={t.registrar.dismissNotification}
+                    aria-label={t.registrar.dismissNotification}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -427,7 +453,7 @@ export default function RegistrarDashboard() {
               <div key={key} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                 <div className="mb-4 flex items-center gap-2">
                   {chart.type === "line" ? <LineChart className="h-5 w-5 text-blue-600" /> : <BarChart3 className="h-5 w-5 text-blue-600" />}
-                  <h2 className="font-semibold text-gray-950 dark:text-white">{chart.title}</h2>
+                   <h2 className="font-semibold text-gray-950 dark:text-white">{translateChartString(chart.title)}</h2>
                 </div>
                 {renderChart(chart)}
               </div>

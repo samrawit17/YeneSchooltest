@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -102,12 +102,15 @@ const formatMessage = (template: string, values: Record<string, string | number>
 
 const StudentsListPage = () => {
   const { t } = useTranslations<any>("peopleLists");
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const router = useRouter();
 
   // Check if user is registrar
-  const isRegistrar = user?.role?.toUpperCase() === 'REGISTRAR';
+  const normalizedRole = user?.role?.toUpperCase() || "";
+  const isRegistrar = normalizedRole === 'REGISTRAR';
+  const canViewStudentList = ["ADMIN", "IT_MANAGER", "REGISTRAR", "FINANCE"].includes(normalizedRole);
+  const schoolId = user?.schoolId;
   const [searchInput, setSearchInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -135,6 +138,24 @@ const StudentsListPage = () => {
   });
   const [importResult, setImportResult] = useState<{ credentials?: { name: string; email: string; username: string; role: string }[] } | null>(null);
 
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/sign-in");
+      return;
+    }
+
+    if (!authLoading && isAuthenticated && user) {
+      if (normalizedRole === "SUPER_ADMIN") {
+        router.push("/superadmin");
+        return;
+      }
+
+      if (!canViewStudentList || !schoolId) {
+        router.push("/access-denied?type=403");
+      }
+    }
+  }, [authLoading, canViewStudentList, isAuthenticated, normalizedRole, router, schoolId, user]);
+
   // Fetch students data
   const { data: studentsData, isLoading } = useQuery<StudentsResponse>({
     queryKey: queryKeys.students.list(
@@ -143,7 +164,8 @@ const StudentsListPage = () => {
       statusFilter,
       gradeFilter,
       sectionFilter,
-      yearFilter
+      yearFilter,
+      schoolId
     ),
     queryFn: async () => {
       console.log("API Params:", { 
@@ -157,7 +179,7 @@ const StudentsListPage = () => {
         status: statusFilter || undefined,
         grade: gradeFilter || undefined,
         section: sectionFilter || undefined,
-        year: yearFilter || undefined,
+        academicYearId: yearFilter || undefined,
         page: currentPage.toString(),
         limit: '10',
         search: searchInput || undefined,
@@ -165,6 +187,7 @@ const StudentsListPage = () => {
       return response.data;
     },
     placeholderData: keepPreviousData,
+    enabled: !!schoolId && isAuthenticated && canViewStudentList,
   });
 
   const { data: academicYearsData } = useQuery<AcademicYearOption[]>({
@@ -321,6 +344,10 @@ const StudentsListPage = () => {
     }
   };
 
+  if (authLoading || !isAuthenticated || !schoolId || !canViewStudentList) {
+    return null;
+  }
+
   if (isLoading) {
     return (
       <div className="p-6 min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
@@ -375,7 +402,7 @@ const StudentsListPage = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {user?.role === 'REGISTRAR' && (
+              {isRegistrar && (
                 <>
                   <Link href="/admin/bulk-upload">
                     <Button
@@ -432,9 +459,9 @@ const StudentsListPage = () => {
                     onStatusChange={updateStatusFilter}
                     options={{
                       statusOptions: [
-                        { value: "Active", label: t.status.active },
-                        { value: "Inactive", label: t.status.inactive },
-                        { value: "Pending", label: t.status.pending },
+                        { value: "ACTIVE", label: t.status.active },
+                        { value: "INACTIVE", label: t.status.inactive },
+                        { value: "PENDING", label: t.status.pending },
                       ]
                     }}
                     className="w-full"

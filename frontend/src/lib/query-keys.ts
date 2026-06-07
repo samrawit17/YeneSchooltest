@@ -87,8 +87,9 @@ export const queryKeys = {
       status?: string,
       grade?: string,
       section?: string,
-      year?: string
-    ) => ["students", page, search, status, grade, section, year] as const,
+      year?: string,
+      schoolId?: string
+    ) => ["students", schoolId, page, search, status, grade, section, year] as const,
     approved: (search?: string) => ["students", "approved", search] as const,
     detail: (studentId?: string) => ["student", studentId] as const,
     attendance: (studentId?: string) => ["studentAttendance", studentId] as const,

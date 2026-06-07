@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
+import { useTranslations } from "@/hooks/useTranslations";
+import { useSubscription } from "@/context/SubscriptionContext";
 import { assessmentsAPI, schoolSettingsAPI, termsAPI } from "@/lib/api";
 import { examSeatingAPI } from "@/lib/api/operations";
 import { getGradeNumbersFromSystem, getGradeRangeFromSystem } from "@/lib/grade-system";
@@ -41,8 +43,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import AccessDenied from "@/components/AccessDenied";
-import { FeatureGuard } from "@/components/FeatureGuard";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -133,6 +133,17 @@ interface SeatingOverview {
   sections: SectionWithStudents[];
 }
 
+interface ExamSeatingAccessIssue {
+  title: string;
+  message: string;
+  detail?: string;
+  statusCode?: number;
+  currentRole?: string;
+  blockedRequest?: string;
+  currentPlan?: string;
+  requiredRoles?: string[];
+}
+
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
@@ -145,6 +156,11 @@ const EXAM_CATEGORIES = [
   { code: "PRACTICAL", label: "Practical Exam", weight: 25 },
   { code: "ASSIGNMENT", label: "Assignment", weight: 10 },
 ];
+
+const EXAM_SEATING_FEATURE = "EXAM_SEATING";
+const PAGE_REQUEST_OPTIONS = { skipAuthErrorRedirect: true };
+const SCHOOL_EXAM_SEATING_ROLE_LABELS = ["Admin", "IT Manager", "Registrar"];
+const SCHOOL_EXAM_SEATING_ROLES = new Set(["ADMIN", "IT_MANAGER", "REGISTRAR"]);
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -352,6 +368,129 @@ function getExamTypeLabel(
   return legacyMap[value] || value;
 }
 
+function normalizeSettingsResponse(data: any): Record<string, any> {
+  const rawSettings = data?.data ?? data;
+  const settings: Record<string, any> = {};
+
+  if (Array.isArray(rawSettings)) {
+    rawSettings.forEach((setting) => {
+      if (setting?.key) {
+        settings[setting.key] = setting.value;
+      }
+    });
+    return settings;
+  }
+
+  if (rawSettings && typeof rawSettings === "object") {
+    if (rawSettings.key) {
+      settings[rawSettings.key] = rawSettings.value;
+      return settings;
+    }
+
+    Object.entries(rawSettings).forEach(([key, value]) => {
+      settings[key] =
+        value && typeof value === "object" && "value" in value
+          ? (value as { value: any }).value
+          : value;
+    });
+  }
+
+  return settings;
+}
+
+function formatRoleName(role?: string) {
+  if (!role) return "Unknown";
+  return role
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getErrorMessage(error: any) {
+  const message = error?.response?.data?.message;
+  return Array.isArray(message) ? message.join(", ") : message;
+}
+
+function getBlockedRequest(error: any) {
+  return error?.config?.url || error?.response?.config?.url || "";
+}
+
+function ExamSeatingDeniedState({ issue }: { issue: ExamSeatingAccessIssue }) {
+  const router = useRouter();
+
+  return (
+    <div className="min-h-[70vh] w-full p-6 flex items-center justify-center">
+      <Card className="w-full max-w-2xl border-red-100 bg-white">
+        <CardHeader>
+          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+            <AlertTriangle className="h-6 w-6 text-red-600" />
+          </div>
+          <CardTitle className="text-xl text-slate-950">{issue.title}</CardTitle>
+          <CardDescription className="text-base">{issue.message}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {issue.detail && (
+            <p className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              {issue.detail}
+            </p>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {issue.currentRole && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                <p className="text-xs font-medium uppercase text-amber-700">Current role</p>
+                <p className="text-sm font-semibold text-amber-900">
+                  {formatRoleName(issue.currentRole)}
+                </p>
+              </div>
+            )}
+
+            {issue.requiredRoles?.length ? (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+                <p className="text-xs font-medium uppercase text-blue-700">Allowed roles</p>
+                <p className="text-sm font-semibold text-blue-900">
+                  {issue.requiredRoles.join(", ")}
+                </p>
+              </div>
+            ) : null}
+
+            {issue.currentPlan && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Current plan</p>
+                <p className="text-sm font-semibold text-slate-900">{issue.currentPlan}</p>
+              </div>
+            )}
+
+            {issue.statusCode && (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Status</p>
+                <p className="text-sm font-semibold text-slate-900">{issue.statusCode}</p>
+              </div>
+            )}
+          </div>
+
+          {issue.blockedRequest && (
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-1 text-xs font-medium uppercase text-slate-500">Blocked request</p>
+              <p className="break-all font-mono text-xs text-slate-700">
+                {issue.blockedRequest}
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={() => router.back()}>
+              Go Back
+            </Button>
+            <Button onClick={() => router.push("/admin")}>Go to Dashboard</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -365,7 +504,13 @@ export default function ExamSeatingPage() {
     periodLabel,
     getTermsForYear,
   } = useAcademicYear();
+  const {
+    hasFeature,
+    loading: subscriptionLoading,
+    plan: subscriptionPlan,
+  } = useSubscription();
   const router = useRouter();
+  const { t } = useTranslations<any>("examSeating");
 
   /* -------------------- Data state -------------------- */
   const [terms, setTerms] = useState<AcademicTerm[]>([]);
@@ -381,6 +526,7 @@ export default function ExamSeatingPage() {
   const [fromGrade, setFromGrade] = useState<number>(1);
   const [toGrade, setToGrade] = useState<number>(12);
   const [examCapacity, setExamCapacity] = useState<number>(30);
+  const [examCapacityInput, setExamCapacityInput] = useState<string>("30");
   const [shuffle, setShuffle] = useState<boolean>(true);
   const [useScoreThresholdFilter, setUseScoreThresholdFilter] = useState<boolean>(false);
   const [savedSettings, setSavedSettings] = useState<{
@@ -397,8 +543,17 @@ export default function ExamSeatingPage() {
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [sectionSearch, setSectionSearch] = useState("");
+  const [accessIssue, setAccessIssue] = useState<ExamSeatingAccessIssue | null>(null);
 
   /* -------------------- Derived state -------------------- */
+  const normalizedRole = user?.role?.toUpperCase() || "";
+  const canManageExamSeating = SCHOOL_EXAM_SEATING_ROLES.has(normalizedRole);
+  const hasSchoolContext = Boolean(user?.schoolId);
+  const canAccessExamSeating = canManageExamSeating && hasSchoolContext;
+  const hasExamSeatingFeature = hasFeature(EXAM_SEATING_FEATURE);
+  const canLoadExamSeating =
+    canAccessExamSeating && !subscriptionLoading && hasExamSeatingFeature;
+
   const isDirty = useMemo(() => {
     if (!savedSettings || !seatingPlan) return false;
     return (
@@ -426,12 +581,12 @@ export default function ExamSeatingPage() {
   const canUseResultFilter = isFinalExamType;
 
   const resultFilterTitle = isFinalExamType
-    ? "Group by Mid Exam Result"
-    : "Group by Previous Final Result";
+    ? t.config.scoreFilter.midTitle
+    : t.config.scoreFilter.finalTitle;
 
   const resultFilterDescription = isFinalExamType
-    ? "Seats higher-performing students together first, then the next result group, based on mid exam averages."
-    : "Seats higher-performing students together first, then the next result group, based on previous final exam averages.";
+    ? t.config.scoreFilter.midDescription
+    : t.config.scoreFilter.finalDescription;
 
   const selectedTypeInfo = useMemo(
     () => examTypes.find((et) => et.type === selectedExamType),
@@ -460,13 +615,13 @@ export default function ExamSeatingPage() {
   useEffect(() => {
     if (
       isAuthenticated &&
-      user?.role === "REGISTRAR" &&
+      canLoadExamSeating &&
       currentAcademicYear?.id
     ) {
       loadInitialData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, user, currentAcademicYear?.id, currentTerm?.id, curriculumType]);
+  }, [isAuthenticated, canLoadExamSeating, currentAcademicYear?.id, currentTerm?.id, curriculumType]);
 
   useEffect(() => {
     if (!selectedExamType) return;
@@ -477,7 +632,10 @@ export default function ExamSeatingPage() {
       setLoadingOverview(true);
       setSeatingOverview(null);
       try {
-        const res = await examSeatingAPI.getSeatingPlanByType(selectedExamType);
+        const res = await examSeatingAPI.getSeatingPlanByType(
+          selectedExamType,
+          PAGE_REQUEST_OPTIONS
+        );
         if (cancelled) return;
 
         if (res.data) {
@@ -485,7 +643,7 @@ export default function ExamSeatingPage() {
           setSeatingPlan(plan);
           setFromGrade(plan.fromGrade);
           setToGrade(plan.toGrade);
-          setExamCapacity(plan.examCapacity || 30);
+          setExamCapacityValue(plan.examCapacity || 30);
           setShuffle(plan.shuffle);
           setUseScoreThresholdFilter(Boolean(plan.useScoreThresholdFilter));
           setSavedSettings({
@@ -532,21 +690,80 @@ export default function ExamSeatingPage() {
     setFromGrade(range.min);
     setToGrade(range.max);
     setExamCapacity(30);
+    setExamCapacityInput("30");
     setShuffle(true);
     setUseScoreThresholdFilter(false);
   }, [schoolSettings]);
 
+  const setExamCapacityValue = useCallback((value: number) => {
+    const next = Math.max(1, Math.min(100, Math.round(value)));
+    setExamCapacity(next);
+    setExamCapacityInput(String(next));
+  }, []);
+
+  const handleExamCapacityInputChange = (value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    setExamCapacityInput(value);
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) {
+      setExamCapacity(parsed);
+    }
+  };
+
+  const normalizeExamCapacityInput = () => {
+    if (!examCapacityInput.trim()) {
+      setExamCapacityInput(String(examCapacity));
+      return;
+    }
+
+    const parsed = Number.parseInt(examCapacityInput, 10);
+    if (!Number.isFinite(parsed)) {
+      setExamCapacityInput(String(examCapacity));
+      return;
+    }
+
+    setExamCapacityValue(parsed);
+  };
+
+  const hasValidExamCapacity = () => examCapacity >= 1 && examCapacity <= 100;
+
+  const handleCriticalPermissionError = (error: any, title: string) => {
+    const statusCode = error?.response?.status;
+    if (statusCode !== 401 && statusCode !== 403) {
+      return false;
+    }
+
+    setAccessIssue({
+      title,
+      message:
+        getErrorMessage(error) ||
+        "The server denied access to exam seating data for this account.",
+      detail:
+        "The page stayed open and captured the denied request instead of redirecting to the generic Access Denied screen.",
+      statusCode,
+      currentRole: normalizedRole,
+      requiredRoles: SCHOOL_EXAM_SEATING_ROLE_LABELS,
+      blockedRequest: getBlockedRequest(error),
+    });
+    return true;
+  };
+
   /* -------------------- Data fetching -------------------- */
   const loadInitialData = async () => {
     setLoadingInitial(true);
+    setAccessIssue(null);
     try {
       await Promise.all([fetchSchoolSettings(), fetchTermsAndExamTypes()]);
     } catch (e: any) {
       console.error("Failed to load initial data:", e);
+      if (handleCriticalPermissionError(e, "Exam seating data access denied")) {
+        return;
+      }
       if (e?.response?.status === 403 || e?.response?.status === 404) {
-        toast.error("Unable to load seating data. Please check your permissions.");
+        toast.error(t.toast.loadPermissionFailed);
       } else {
-        toast.error("Failed to load initial data");
+        toast.error(t.toast.loadFailed);
       }
     } finally {
       setLoadingInitial(false);
@@ -560,11 +777,8 @@ export default function ExamSeatingPage() {
         console.warn("No schoolId available for settings fetch");
         return;
       }
-      const res = await schoolSettingsAPI.getAll(schoolId);
-      const settings: Record<string, any> = {};
-      res.data?.forEach((s: any) => {
-        settings[s.key] = s.value;
-      });
+      const res = await schoolSettingsAPI.getAll(schoolId, PAGE_REQUEST_OPTIONS);
+      const settings = normalizeSettingsResponse(res.data);
       setSchoolSettings(settings);
 
       const range = getGradeRangeFromSystem(settings.grade_system || "1-12");
@@ -586,7 +800,7 @@ export default function ExamSeatingPage() {
       } else {
         // Fallback: try to fetch terms directly
         try {
-          const res = await termsAPI.getAll({});
+          const res = await termsAPI.getAll({}, PAGE_REQUEST_OPTIONS);
           termData = res.data?.data || res.data || [];
         } catch {
           termData = [];
@@ -602,7 +816,10 @@ export default function ExamSeatingPage() {
       await fetchExamTypesAndPlans(generatedTypes, termData);
     } catch (e) {
       console.error(e);
-      toast.error("Failed to load curriculum data");
+      if (handleCriticalPermissionError(e, "Curriculum data access denied")) {
+        return;
+      }
+      toast.error(t.toast.loadCurriculumFailed);
     }
   };
 
@@ -615,8 +832,8 @@ export default function ExamSeatingPage() {
         assessmentsAPI.list({
           academicYearId: currentAcademicYear?.id,
           termId: currentTerm?.id,
-        }),
-        examSeatingAPI.getSeatingPlans(),
+        }, PAGE_REQUEST_OPTIONS),
+        examSeatingAPI.getSeatingPlans(PAGE_REQUEST_OPTIONS),
       ]);
 
       const examsRaw = examsRes.data;
@@ -696,10 +913,10 @@ export default function ExamSeatingPage() {
         // Prefer current term's Final exam first, then Mid exam
         if (currentTerm?.order) {
           const currentFinalExam = types.find(t => 
-            t.type.includes('_FINAL') && curriculumExamTypes.find(ct => ct.value === t.type && ct.termOrder === currentTerm.order)
+            t.type.includes('_FINAL') && generatedTypes.find(ct => ct.value === t.type && ct.termOrder === currentTerm.order)
           );
           const currentMidExam = types.find(t => 
-            t.type.includes('_MID') && curriculumExamTypes.find(ct => ct.value === t.type && ct.termOrder === currentTerm.order)
+            t.type.includes('_MID') && generatedTypes.find(ct => ct.value === t.type && ct.termOrder === currentTerm.order)
           );
           if (currentFinalExam) {
             defaultType = currentFinalExam.type;
@@ -718,14 +935,17 @@ export default function ExamSeatingPage() {
       }
     } catch (e) {
       console.error(e);
-      toast.error("Failed to load exams and seating plans");
+      if (handleCriticalPermissionError(e, "Exam seating data access denied")) {
+        return;
+      }
+      toast.error(t.toast.loadPlansFailed);
     }
   };
 
   const fetchSeatingOverview = async (planId: string, cancelled?: boolean) => {
     setLoadingOverview(true);
     try {
-      const res = await examSeatingAPI.getSeatingOverview(planId);
+      const res = await examSeatingAPI.getSeatingOverview(planId, PAGE_REQUEST_OPTIONS);
       if (cancelled) return;
       setSeatingOverview(res.data);
       if (res.data?.sections?.length) {
@@ -733,8 +953,11 @@ export default function ExamSeatingPage() {
       }
     } catch (e: any) {
       if (!cancelled) {
+        if (handleCriticalPermissionError(e, "Seating overview access denied")) {
+          return;
+        }
         setSeatingOverview(null);
-        toast.error(e.response?.data?.message || "Failed to load seating overview");
+        toast.error(e.response?.data?.message || t.toast.loadOverviewFailed);
       }
     } finally {
       if (!cancelled) setLoadingOverview(false);
@@ -744,11 +967,15 @@ export default function ExamSeatingPage() {
   /* -------------------- Actions -------------------- */
   const createAndGenerateSeating = async () => {
     if (!selectedExamType) {
-      toast.warning("Please select an exam type");
+      toast.warning(t.toast.selectExamType);
       return;
     }
     if (fromGrade > toGrade) {
-      toast.warning("From grade must be less than or equal to To grade");
+      toast.warning(t.toast.invalidGradeRange);
+      return;
+    }
+    if (!hasValidExamCapacity()) {
+      toast.warning(t.toast.invalidCapacity);
       return;
     }
 
@@ -763,7 +990,8 @@ export default function ExamSeatingPage() {
           examCapacity: examCapacity || 30,
           shuffle,
           useScoreThresholdFilter: canUseResultFilter ? useScoreThresholdFilter : false,
-        }
+        },
+        PAGE_REQUEST_OPTIONS
       );
 
       const plan: SeatingPlan = createRes.data;
@@ -776,7 +1004,7 @@ export default function ExamSeatingPage() {
         useScoreThresholdFilter: Boolean(plan.useScoreThresholdFilter),
       });
 
-      const genRes = await examSeatingAPI.generateSeating(plan.id);
+      const genRes = await examSeatingAPI.generateSeating(plan.id, PAGE_REQUEST_OPTIONS);
       setSeatingOverview(genRes.data);
 
       if (genRes.data?.sections?.length) {
@@ -785,10 +1013,10 @@ export default function ExamSeatingPage() {
         );
       }
 
-      toast.success("Seating arrangement generated successfully!");
+      toast.success(t.toast.seatingGenerated);
     } catch (e: any) {
       console.error(e);
-      toast.error(e.response?.data?.message || "Failed to create seating plan");
+      toast.error(e.response?.data?.message || t.toast.createFailed);
     } finally {
       setGenerating(false);
     }
@@ -797,64 +1025,75 @@ export default function ExamSeatingPage() {
   const regenerateSeating = async () => {
     if (!seatingPlan) return;
 
-    // If user changed settings, we must delete the old plan and recreate
-    // because the backend has no PUT endpoint for seating plans.
     if (isDirty) {
-      const confirmed = window.confirm(
-        "You have changed the seating configuration. This will delete the existing plan and create a new one with the updated settings. Continue?"
-      );
-      if (!confirmed) return;
-
-      setGenerating(true);
-      try {
-        await examSeatingAPI.deleteSeatingPlan(seatingPlan.id);
-
-        const createRes = await examSeatingAPI.createSeatingPlan(
-          selectedExamType,
-          {
-            mode: "GRADE_RANGE",
-            fromGrade,
-            toGrade,
-            examCapacity: examCapacity || 30,
-            shuffle,
-            useScoreThresholdFilter: canUseResultFilter ? useScoreThresholdFilter : false,
-          }
-        );
-
-        const plan: SeatingPlan = createRes.data;
-        setSeatingPlan(plan);
-        setSavedSettings({
-          fromGrade: plan.fromGrade,
-          toGrade: plan.toGrade,
-          examCapacity: plan.examCapacity || 30,
-          shuffle: plan.shuffle,
-          useScoreThresholdFilter: Boolean(plan.useScoreThresholdFilter),
-        });
-
-        const genRes = await examSeatingAPI.generateSeating(plan.id);
-        setSeatingOverview(genRes.data);
-
-        if (genRes.data?.sections?.length) {
-          setExpandedSections(
-            new Set(genRes.data.sections.map((s: any) => s.sectionId))
-          );
-        }
-
-        toast.success("Plan recreated and seating generated with new settings!");
-      } catch (e: any) {
-        console.error(e);
-        toast.error(e.response?.data?.message || "Failed to recreate seating plan");
-      } finally {
-        setGenerating(false);
+      if (!hasValidExamCapacity()) {
+        toast.warning(t.toast.invalidCapacity);
+        return;
       }
+
+      toast.warning(t.toast.recreateTitle, {
+        description: t.toast.recreateDescription,
+        duration: 10000,
+        action: {
+          label: t.toast.continue,
+          onClick: async () => {
+            setGenerating(true);
+            try {
+              await examSeatingAPI.deleteSeatingPlan(seatingPlan.id, PAGE_REQUEST_OPTIONS);
+
+              const createRes = await examSeatingAPI.createSeatingPlan(
+                selectedExamType,
+                {
+                  mode: "GRADE_RANGE",
+                  fromGrade,
+                  toGrade,
+                  examCapacity: examCapacity || 30,
+                  shuffle,
+                  useScoreThresholdFilter: canUseResultFilter ? useScoreThresholdFilter : false,
+                },
+                PAGE_REQUEST_OPTIONS
+              );
+
+              const plan: SeatingPlan = createRes.data;
+              setSeatingPlan(plan);
+              setSavedSettings({
+                fromGrade: plan.fromGrade,
+                toGrade: plan.toGrade,
+                examCapacity: plan.examCapacity || 30,
+                shuffle: plan.shuffle,
+                useScoreThresholdFilter: Boolean(plan.useScoreThresholdFilter),
+              });
+
+              const genRes = await examSeatingAPI.generateSeating(plan.id, PAGE_REQUEST_OPTIONS);
+              setSeatingOverview(genRes.data);
+
+              if (genRes.data?.sections?.length) {
+                setExpandedSections(
+                  new Set(genRes.data.sections.map((s: any) => s.sectionId))
+                );
+              }
+
+              toast.success(t.toast.planRecreated);
+            } catch (e: any) {
+              console.error(e);
+              toast.error(e.response?.data?.message || t.toast.recreateFailed);
+            } finally {
+              setGenerating(false);
+            }
+          },
+        },
+        cancel: {
+          label: t.toast.cancel,
+          onClick: () => undefined,
+        },
+      });
       return;
     }
 
-    // Settings unchanged: just delete student assignments and regenerate
     setGenerating(true);
     try {
-      await examSeatingAPI.clearGeneratedStudents(seatingPlan.id);
-      const res = await examSeatingAPI.generateSeating(seatingPlan.id);
+      await examSeatingAPI.clearGeneratedStudents(seatingPlan.id, PAGE_REQUEST_OPTIONS);
+      const res = await examSeatingAPI.generateSeating(seatingPlan.id, PAGE_REQUEST_OPTIONS);
       setSeatingOverview(res.data);
 
       if (res.data?.sections?.length) {
@@ -863,10 +1102,10 @@ export default function ExamSeatingPage() {
         );
       }
 
-      toast.success("Seating regenerated successfully!");
+      toast.success(t.toast.seatingRegenerated);
     } catch (e: any) {
       console.error(e);
-      toast.error(e.response?.data?.message || "Failed to regenerate seating");
+      toast.error(e.response?.data?.message || t.toast.regenerateFailed);
     } finally {
       setGenerating(false);
     }
@@ -874,29 +1113,32 @@ export default function ExamSeatingPage() {
 
   const deleteSeatingPlan = async () => {
     if (!seatingPlan) return;
-    if (!window.confirm("Are you sure you want to delete this seating plan? This action cannot be undone.")) {
+    if (!window.confirm(t.toast.deleteConfirm)) {
       return;
     }
 
     try {
-      await examSeatingAPI.deleteSeatingPlan(seatingPlan.id);
+      await examSeatingAPI.deleteSeatingPlan(seatingPlan.id, PAGE_REQUEST_OPTIONS);
       setSeatingPlan(null);
       setSeatingOverview(null);
       setSavedSettings(null);
       resetFormToDefaults();
-      toast.success("Seating plan deleted");
+      toast.success(t.toast.planDeleted);
     } catch (e: any) {
-      toast.error(e.response?.data?.message || "Failed to delete seating plan");
+      toast.error(e.response?.data?.message || t.toast.deleteFailed);
     }
   };
 
   const handlePrint = async () => {
     if (!seatingPlan) {
-      toast.warning("No seating plan to print");
+      toast.warning(t.toast.noPlanPrint);
       return;
     }
     try {
-      const response = await examSeatingAPI.downloadPdfReport(seatingPlan.id);
+      const response = await examSeatingAPI.downloadPdfReport(
+        seatingPlan.id,
+        PAGE_REQUEST_OPTIONS
+      );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -906,19 +1148,22 @@ export default function ExamSeatingPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      toast.success("PDF downloaded successfully");
+      toast.success(t.toast.pdfDownloaded);
     } catch (e) {
-      toast.error("Failed to download PDF");
+      toast.error(t.toast.pdfFailed);
     }
   };
 
   const handleExportExcel = async () => {
     if (!seatingPlan) {
-      toast.warning("No seating plan to export");
+      toast.warning(t.toast.noPlanExport);
       return;
     }
     try {
-      const response = await examSeatingAPI.downloadExcelReport(seatingPlan.id);
+      const response = await examSeatingAPI.downloadExcelReport(
+        seatingPlan.id,
+        PAGE_REQUEST_OPTIONS
+      );
       const blob = new Blob([response.data], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
@@ -930,9 +1175,9 @@ export default function ExamSeatingPage() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      toast.success("Excel file downloaded successfully");
+      toast.success(t.toast.excelDownloaded);
     } catch (e) {
-      toast.error("Failed to download Excel");
+      toast.error(t.toast.excelFailed);
     }
   };
 
@@ -946,7 +1191,7 @@ export default function ExamSeatingPage() {
   };
 
   /* -------------------- Render guards -------------------- */
-  if (isLoading || loadingInitial) {
+  if (isLoading || loadingInitial || (canAccessExamSeating && subscriptionLoading)) {
     return (
       <div className="p-6 w-full space-y-6">
         <Skeleton className="h-8 w-1/3" />
@@ -963,21 +1208,73 @@ export default function ExamSeatingPage() {
     );
   }
 
-  const hasPermission = user?.role === "REGISTRAR";
-  if (!isAuthenticated || !hasPermission) {
-    return <AccessDenied />;
+  if (!isAuthenticated) {
+    return (
+      <div className="p-6 w-full space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+    );
+  }
+
+  if (!canManageExamSeating) {
+    return (
+      <ExamSeatingDeniedState
+        issue={{
+          title: "Exam seating access denied",
+          message: "Your role is not allowed to open the exam seating page.",
+          detail:
+            "Exam seating is a school administration workflow. Super Admin, Teacher, Finance, Parent, and Student accounts are blocked from this page.",
+          currentRole: normalizedRole,
+          requiredRoles: SCHOOL_EXAM_SEATING_ROLE_LABELS,
+        }}
+      />
+    );
+  }
+
+  if (!hasSchoolContext) {
+    return (
+      <ExamSeatingDeniedState
+        issue={{
+          title: "School context required",
+          message: "This page needs a school-scoped account.",
+          detail:
+            "Exam seating is generated from one school's classes, sections, assessments, and students. Accounts without a school cannot access it.",
+          currentRole: normalizedRole,
+          requiredRoles: SCHOOL_EXAM_SEATING_ROLE_LABELS,
+        }}
+      />
+    );
+  }
+
+  if (!hasExamSeatingFeature) {
+    return (
+      <ExamSeatingDeniedState
+        issue={{
+          title: "Exam seating is not enabled",
+          message: "This school's current subscription does not include exam seating.",
+          detail:
+            "Enable the EXAM_SEATING feature for this school before opening the seating planner.",
+          currentRole: normalizedRole,
+          currentPlan: subscriptionPlan?.name || "No active plan",
+        }}
+      />
+    );
+  }
+
+  if (accessIssue) {
+    return <ExamSeatingDeniedState issue={accessIssue} />;
   }
 
   /* -------------------- JSX -------------------- */
   return (
-    <FeatureGuard feature="EXAM_SEATING" showUpgradePrompt={false} fallback={<AccessDenied />}>
-      <div className="p-6 space-y-6 w-full">
+    <div className="p-6 space-y-6 w-full">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-black">Exam Seating Arrangement</h1>
+            <h1 className="text-2xl font-bold text-black">{t.page.title}</h1>
             <p className="text-gray-500">
-              Configure and generate seating for students across multiple grades
+              {t.page.subtitle}
             </p>
           </div>
 
@@ -990,17 +1287,17 @@ export default function ExamSeatingPage() {
               <CardHeader className="bg-slate-50 dark:bg-slate-900/50 pb-4 border-b">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Settings2 className="w-5 h-5 text-primary" />
-                  Seating Configuration
+                  {t.config.title}
                 </CardTitle>
                 <CardDescription>
-                  Select curriculum period exam and configure seating
+                  {t.config.description}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
                 {/* Exam Type */}
                 <div className="space-y-2">
                   <Label>
-                    Exam Type <span className="text-red-500">*</span>
+                    {t.config.examType.label} <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={selectedExamType}
@@ -1008,12 +1305,12 @@ export default function ExamSeatingPage() {
                     disabled={generating}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select exam type..." />
+                      <SelectValue placeholder={t.config.examType.placeholder} />
                     </SelectTrigger>
                     <SelectContent>
                       {examTypes.length === 0 ? (
                         <div className="p-2 text-center text-gray-500 text-sm">
-                          No exams available for {currentTerm?.name?.toLowerCase() || 'current period'}
+                          {t.config.examType.noExams.replace("{period}", currentTerm?.name?.toLowerCase() || 'current period')}
                         </div>
                       ) : (
                         examTypes.map((et) => (
@@ -1022,14 +1319,14 @@ export default function ExamSeatingPage() {
                               <FileText className="w-4 h-4" />
                               {et.label}
                               <Badge variant="secondary" className="ml-2 text-xs">
-                                {et.exams.length} exam{et.exams.length !== 1 ? "s" : ""}
+                                {et.exams.length} {et.exams.length === 1 ? t.exams : t.exams_plural}
                               </Badge>
                               {allPlans.some((p) => p.examType === et.type) && (
                                 <Badge
                                   variant="outline"
                                   className="ml-1 text-xs text-blue-600 border-blue-200 dark:text-blue-400 dark:border-blue-700"
                                 >
-                                  Plan exists
+                                  {t.config.examType.planExists}
                                 </Badge>
                               )}
                             </div>
@@ -1049,7 +1346,7 @@ export default function ExamSeatingPage() {
                       ))}
                       {selectedTypeInfo.exams.length > 3 && (
                         <div className="text-gray-400">
-                          + {selectedTypeInfo.exams.length - 3} more exams
+                          {t.examsMore.replace("{count}", String(selectedTypeInfo.exams.length - 3))}
                         </div>
                       )}
                     </div>
@@ -1058,10 +1355,10 @@ export default function ExamSeatingPage() {
 
                 {/* Grade Range */}
                 <div className="space-y-3">
-                  <Label className="font-medium">Grade Range for Exam</Label>
+                  <Label className="font-medium">{t.config.gradeRange.label}</Label>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs text-gray-500">From Grade</Label>
+                      <Label className="text-xs text-gray-500">{t.config.gradeRange.from}</Label>
                       <Select
                         value={String(fromGrade)}
                         onValueChange={(v) => setFromGrade(Number(v))}
@@ -1073,14 +1370,14 @@ export default function ExamSeatingPage() {
                         <SelectContent>
                           {availableGradeOptions.map((g) => (
                             <SelectItem key={g} value={String(g)} disabled={g > toGrade}>
-                              Grade {g}
+                              {t.section.grade.replace("{grade}", String(g))}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-gray-500">To Grade</Label>
+                      <Label className="text-xs text-gray-500">{t.config.gradeRange.to}</Label>
                       <Select
                         value={String(toGrade)}
                         onValueChange={(v) => setToGrade(Number(v))}
@@ -1092,7 +1389,7 @@ export default function ExamSeatingPage() {
                         <SelectContent>
                           {availableGradeOptions.map((g) => (
                             <SelectItem key={g} value={String(g)} disabled={g < fromGrade}>
-                              Grade {g}
+                              {t.section.grade.replace("{grade}", String(g))}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1100,46 +1397,46 @@ export default function ExamSeatingPage() {
                     </div>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Students in Grades {fromGrade} to {toGrade} will be seated together
+                    {t.config.gradeRange.hint.replace("{from}", String(fromGrade)).replace("{to}", String(toGrade))}
                   </p>
                 </div>
 
                 {/* Capacity */}
                 <div className="space-y-2">
-                  <Label>Students per Section / Room</Label>
+                  <Label>{t.config.capacity.label}</Label>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="icon"
                       type="button"
                       disabled={generating}
-                      onClick={() => setExamCapacity((c) => Math.max(1, c - 5))}
+                      onClick={() => setExamCapacityValue(examCapacity - 5)}
                     >
                       <Minus className="w-4 h-4" />
                     </Button>
                     <Input
                       type="number"
-                      value={examCapacity}
+                      value={examCapacityInput}
                       disabled={generating}
-                      onChange={(e) =>
-                        setExamCapacity(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))
-                      }
+                      onChange={(e) => handleExamCapacityInputChange(e.target.value)}
+                      onBlur={normalizeExamCapacityInput}
                       className="text-center"
                       min={1}
                       max={100}
+                      inputMode="numeric"
                     />
                     <Button
                       variant="outline"
                       size="icon"
                       type="button"
                       disabled={generating}
-                      onClick={() => setExamCapacity((c) => Math.min(100, c + 5))}
+                      onClick={() => setExamCapacityValue(examCapacity + 5)}
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Each exam room / section will hold up to {examCapacity} students
+                    {t.config.capacity.hint.replace("{capacity}", String(examCapacity))}
                   </p>
                 </div>
 
@@ -1148,8 +1445,8 @@ export default function ExamSeatingPage() {
                   <div className="flex items-center gap-2">
                     <Shuffle className="w-4 h-4 text-primary" />
                     <div>
-                      <Label className="font-medium">Shuffle Students</Label>
-                      <p className="text-xs text-gray-500">Mix students from different classes</p>
+                      <Label className="font-medium">{t.config.shuffle.label}</Label>
+                      <p className="text-xs text-gray-500">{t.config.shuffle.description}</p>
                     </div>
                   </div>
                   <Switch
@@ -1182,10 +1479,9 @@ export default function ExamSeatingPage() {
                   <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 text-sm text-amber-800 dark:text-amber-200">
                     <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                     <div>
-                      <p className="font-medium">Settings changed</p>
+                      <p className="font-medium">{t.config.dirtyWarning.title}</p>
                       <p className="text-xs text-amber-700 dark:text-amber-300">
-                        Clicking "Recreate Plan" will delete the existing plan and create a
-                        new one with these settings.
+                        {t.config.dirtyWarning.description}
                       </p>
                     </div>
                   </div>
@@ -1200,7 +1496,7 @@ export default function ExamSeatingPage() {
                   {generating ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                      {seatingPlan ? "Processing..." : "Generating..."}
+                      {seatingPlan ? t.config.buttons.processing : t.config.buttons.generating}
                     </>
                   ) : (
                     <>
@@ -1208,18 +1504,18 @@ export default function ExamSeatingPage() {
                         isDirty ? (
                           <>
                             <RotateCcw className="w-4 h-4 mr-2" />
-                            Recreate Plan & Generate
+                            {t.config.buttons.recreate}
                           </>
                         ) : (
                           <>
                             <Shuffle className="w-4 h-4 mr-2" />
-                            Regenerate Seating
+                            {t.config.buttons.regenerate}
                           </>
                         )
                       ) : (
                         <>
                           <LayoutGrid className="w-4 h-4 mr-2" />
-                          Generate Seating
+                          {t.config.buttons.generate}
                         </>
                       )}
                     </>
@@ -1232,11 +1528,11 @@ export default function ExamSeatingPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <Button variant="outline" onClick={handlePrint} disabled={generating}>
                         <Printer className="w-4 h-4 mr-2" />
-                        PDF
+                        {t.config.buttons.pdf}
                       </Button>
                       <Button variant="outline" onClick={handleExportExcel} disabled={generating}>
                         <Download className="w-4 h-4 mr-2" />
-                        Excel
+                        {t.config.buttons.excel}
                       </Button>
                     </div>
                     <Button
@@ -1246,7 +1542,7 @@ export default function ExamSeatingPage() {
                       disabled={generating}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Plan
+                      {t.config.buttons.delete}
                     </Button>
                   </div>
                 )}
@@ -1258,37 +1554,37 @@ export default function ExamSeatingPage() {
               <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200">
                 <CardContent className="pt-6">
                   <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-4">
-                    Seating Summary
+                    {t.summary.title}
                   </h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Exam Type:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t.summary.examType}</span>
                       <span className="font-medium">
                         {getExamTypeLabel(seatingOverview.plan.examType, curriculumExamTypes)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Grade Range:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t.summary.gradeRange}</span>
                       <span className="font-medium">
                         Grade {seatingOverview.plan.fromGrade} - {seatingOverview.plan.toGrade}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Total Students:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t.summary.totalStudents}</span>
                       <span className="font-medium">{seatingOverview.totalStudents}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Sections / Rooms:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t.summary.sections}</span>
                       <span className="font-medium">{seatingOverview.totalSections}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Capacity / Section:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t.summary.capacity}</span>
                       <span className="font-medium">{seatingOverview.plan.examCapacity}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Shuffle:</span>
+                      <span className="text-gray-600 dark:text-gray-400">{t.summary.shuffle}</span>
                       <span className="font-medium">
-                        {seatingOverview.plan.shuffle ? "Yes" : "No"}
+                        {seatingOverview.plan.shuffle ? t.summary.yes : t.summary.no}
                       </span>
                     </div>
                   </div>
@@ -1304,19 +1600,19 @@ export default function ExamSeatingPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Eye className="w-5 h-5 text-gray-500" />
-                    Seating Overview
+                    {t.overview.title}
                   </CardTitle>
                   <CardDescription className="mt-1">
                     {selectedTypeInfo
-                      ? `${selectedTypeInfo.label} Seating Arrangement`
-                      : "Select an exam type"}
+                      ? t.overview.description.replace("{examType}", selectedTypeInfo.label)
+                      : t.config.examType.placeholder}
                   </CardDescription>
                 </div>
                 {seatingOverview && seatingOverview.sections.length > 0 && (
                   <div className="relative w-full max-w-xs">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search sections or students..."
+                      placeholder={t.overview.searchPlaceholder}
                       value={sectionSearch}
                       onChange={(e) => setSectionSearch(e.target.value)}
                       className="pl-9"
@@ -1329,26 +1625,26 @@ export default function ExamSeatingPage() {
                 {loadingOverview ? (
                   <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                     <div className="w-8 h-8 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin mb-4" />
-                    <p>Loading seating overview...</p>
+                    <p>{t.overview.loading}</p>
                   </div>
                 ) : !selectedExamType ? (
                   <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                     <Users className="w-16 h-16 opacity-20 mb-4" />
-                    <p>No exam type selected.</p>
-                    <p className="text-sm mt-1">Select an exam type to generate seating.</p>
+                    <p>{t.overview.noSelection}</p>
+                    <p className="text-sm mt-1">{t.overview.noSelectionHint}</p>
                   </div>
                 ) : !seatingOverview ? (
                   <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                     <LayoutGrid className="w-16 h-16 opacity-20 mb-4" />
-                    <p>No seating arrangement yet.</p>
+                    <p>{t.overview.noPlan}</p>
                     <p className="text-sm mt-1">
-                      Configure settings and click "Generate Seating"
+                      {t.overview.noPlanHint}
                     </p>
                   </div>
                 ) : filteredSections.length === 0 && sectionSearch ? (
                   <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                     <Search className="w-16 h-16 opacity-20 mb-4" />
-                    <p>No sections match your search.</p>
+                    <p>{t.overview.noSearchResults}</p>
                   </div>
                 ) : (
                   <div className="p-6 space-y-4">
@@ -1371,13 +1667,13 @@ export default function ExamSeatingPage() {
                                   {section.sectionName}
                                 </h3>
                                 <p className="text-xs text-gray-500 truncate">
-                                  {section.className} • Grade {section.grade || "N/A"}
+                                  {section.className} • {t.section.grade.replace("{grade}", String(section.grade || t.section.gradeNa))}
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
                               <Badge variant="outline" className="text-xs">
-                                {section.assignedStudents} / {section.examCapacity}
+                                {t.section.capacity.replace("{assigned}", String(section.assignedStudents)).replace("{capacity}", String(section.examCapacity))}
                               </Badge>
                             </div>
                           </div>
@@ -1388,13 +1684,13 @@ export default function ExamSeatingPage() {
                             <Table>
                               <TableHeader>
                                 <TableRow className="bg-gray-50 dark:bg-slate-900/50">
-                                  <TableHead className="w-12 text-center">#</TableHead>
-                                  <TableHead>Student Name</TableHead>
-                                  <TableHead className="hidden sm:table-cell">Email</TableHead>
+                                  <TableHead className="w-12 text-center">{t.table.order}</TableHead>
+                                  <TableHead>{t.table.studentName}</TableHead>
+                                  <TableHead className="hidden sm:table-cell">{t.table.email}</TableHead>
                                   <TableHead className="hidden md:table-cell">
-                                    Original Section
+                                    {t.table.originalSection}
                                   </TableHead>
-                                  <TableHead className="hidden md:table-cell">Grade</TableHead>
+                                  <TableHead className="hidden md:table-cell">{t.table.grade}</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -1404,7 +1700,7 @@ export default function ExamSeatingPage() {
                                       colSpan={5}
                                       className="text-center text-gray-400 py-8"
                                     >
-                                      No students assigned
+                                      {t.table.noStudents}
                                     </TableCell>
                                   </TableRow>
                                 ) : (
@@ -1424,11 +1720,11 @@ export default function ExamSeatingPage() {
                                       </TableCell>
                                       <TableCell className="hidden md:table-cell text-sm">
                                         <Badge variant="secondary" className="text-xs">
-                                          {student.originalSection || "N/A"}
+                                          {student.originalSection || t.na}
                                         </Badge>
                                       </TableCell>
                                       <TableCell className="hidden md:table-cell text-sm text-gray-500">
-                                        {student.originalGrade || "N/A"}
+                                        {student.originalGrade || t.na}
                                       </TableCell>
                                     </TableRow>
                                   ))
@@ -1446,6 +1742,5 @@ export default function ExamSeatingPage() {
           </div>
         </div>
       </div>
-    </FeatureGuard>
   );
 }

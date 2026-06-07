@@ -387,7 +387,12 @@ export class StudentService {
 
   async getStudents(
     schoolId: string,
-    filters?: { status?: EnrollmentStatus; grade?: number; section?: string },
+    filters?: {
+      status?: EnrollmentStatus | 'ACTIVE' | 'INACTIVE';
+      grade?: number;
+      section?: string;
+      academicYear?: string;
+    },
     pagination?: { page: number; limit: number },
     requesterId?: string,
     requesterRole?: string,
@@ -505,7 +510,12 @@ export class StudentService {
       }
     }
 
-    if (filters?.status) {
+    if (filters?.status === 'ACTIVE') {
+      where.enrollmentStatus = EnrollmentStatus.APPROVED;
+      where.user = { ...(where.user || {}), isActive: true };
+    } else if (filters?.status === 'INACTIVE') {
+      where.user = { ...(where.user || {}), isActive: false };
+    } else if (filters?.status) {
       where.enrollmentStatus = filters.status;
     }
     if (filters?.grade) {
@@ -514,6 +524,21 @@ export class StudentService {
     }
     if (filters?.section) {
       where.section = filters.section;
+    }
+    if (filters?.academicYear) {
+      const academicYear = await this.prismaService.academicYear.findFirst({
+        where: {
+          schoolId,
+          OR: [
+            { id: filters.academicYear },
+            { name: filters.academicYear },
+          ],
+        },
+        select: { id: true, name: true },
+      });
+      where.academicYear = academicYear
+        ? { in: [academicYear.id, academicYear.name] }
+        : filters.academicYear;
     }
 
     // Apply search filter for all users (not just teachers)
