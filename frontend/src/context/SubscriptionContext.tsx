@@ -44,10 +44,14 @@ export function SubscriptionProvider({
 }) {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedSchoolId, setResolvedSchoolId] = useState<string | undefined>();
 
   const fetchPlan = async () => {
+    setLoading(true);
+
     if (!schoolId) {
       setPlan(null);
+      setResolvedSchoolId(undefined);
       setLoading(false);
       return;
     }
@@ -59,6 +63,7 @@ export function SubscriptionProvider({
       console.error('Failed to fetch school plan:', error);
       setPlan(null);
     } finally {
+      setResolvedSchoolId(schoolId);
       setLoading(false);
     }
   };
@@ -79,11 +84,13 @@ export function SubscriptionProvider({
     return currentLevel >= requiredLevel;
   };
 
+  const effectiveLoading = Boolean(schoolId && resolvedSchoolId !== schoolId) || loading;
+
   return (
     <SubscriptionContext.Provider 
       value={{ 
         plan, 
-        loading, 
+        loading: effectiveLoading,
         hasFeature, 
         hasTier,
         refreshPlan: fetchPlan 

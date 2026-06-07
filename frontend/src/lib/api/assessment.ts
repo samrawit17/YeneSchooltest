@@ -1,5 +1,12 @@
 import api from './core';
 
+type RequestOptions = {
+  skipAuthErrorRedirect?: boolean;
+};
+
+const requestOptions = (options?: RequestOptions) =>
+  options?.skipAuthErrorRedirect ? { skipAuthErrorRedirect: true } : {};
+
 export const assessmentsAPI = {
   getAcademicYears: () => api.get('/academic-years'),
   list: (params?: {
@@ -7,7 +14,8 @@ export const assessmentsAPI = {
     termId?: string;
     type?: string;
     status?: string;
-  }) => api.get('/assessments', { params }),
+  }, options?: RequestOptions) =>
+    api.get('/assessments', { params, ...requestOptions(options) }),
   getById: (id: string) => api.get(`/assessments/${id}`),
   create: (data: {
     title: string;

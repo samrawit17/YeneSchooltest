@@ -1,5 +1,12 @@
 import api from "./core";
 
+type RequestOptions = {
+  skipAuthErrorRedirect?: boolean;
+};
+
+const requestOptions = (options?: RequestOptions) =>
+  options?.skipAuthErrorRedirect ? { skipAuthErrorRedirect: true } : {};
+
 export const calendarAPI = {
   getCurrentEthiopianYear: () => api.get("/calendar/ethiopian-year"),
   getCurrentDate: () => api.get("/calendar/current"),
@@ -11,10 +18,15 @@ export const calendarAPI = {
 };
 
 export const examSeatingAPI = {
-  getSeatingPlans: () => api.get("/exams/seating/plans"),
-  getSeatingPlanByType: (examType: string) =>
-    api.get(`/exams/seating/type/${encodeURIComponent(examType)}/seating-plan`),
-  getSeatingPlanByExam: (examId: string) => api.get(`/exams/seating/${examId}/seating-plan`),
+  getSeatingPlans: (options?: RequestOptions) =>
+    api.get("/exams/seating/plans", requestOptions(options)),
+  getSeatingPlanByType: (examType: string, options?: RequestOptions) =>
+    api.get(
+      `/exams/seating/type/${encodeURIComponent(examType)}/seating-plan`,
+      requestOptions(options)
+    ),
+  getSeatingPlanByExam: (examId: string, options?: RequestOptions) =>
+    api.get(`/exams/seating/${examId}/seating-plan`, requestOptions(options)),
   createSeatingPlan: (
     examType: string,
     data: {
@@ -26,16 +38,32 @@ export const examSeatingAPI = {
       sectionIds?: string[];
       useScoreThresholdFilter?: boolean;
       scoreThreshold?: number;
-    }
-  ) => api.post(`/exams/seating/type/${encodeURIComponent(examType)}/seating-plan`, data),
-  generateSeating: (planId: string) => api.post(`/exams/seating/plan/${planId}/generate`),
-  getSeatingOverview: (planId: string) => api.get(`/exams/seating/plan/${planId}`),
-  clearGeneratedStudents: (planId: string) => api.delete(`/exams/seating/plan/${planId}/students`),
-  deleteSeatingPlan: (planId: string) => api.delete(`/exams/seating/plan/${planId}`),
-  downloadPdfReport: (planId: string) =>
-    api.get(`/exams/seating/plan/${planId}/print`, { responseType: "blob" }),
-  downloadExcelReport: (planId: string) =>
-    api.get(`/exams/seating/plan/${planId}/excel`, { responseType: "blob" }),
+    },
+    options?: RequestOptions
+  ) =>
+    api.post(
+      `/exams/seating/type/${encodeURIComponent(examType)}/seating-plan`,
+      data,
+      requestOptions(options)
+    ),
+  generateSeating: (planId: string, options?: RequestOptions) =>
+    api.post(`/exams/seating/plan/${planId}/generate`, undefined, requestOptions(options)),
+  getSeatingOverview: (planId: string, options?: RequestOptions) =>
+    api.get(`/exams/seating/plan/${planId}`, requestOptions(options)),
+  clearGeneratedStudents: (planId: string, options?: RequestOptions) =>
+    api.delete(`/exams/seating/plan/${planId}/students`, requestOptions(options)),
+  deleteSeatingPlan: (planId: string, options?: RequestOptions) =>
+    api.delete(`/exams/seating/plan/${planId}`, requestOptions(options)),
+  downloadPdfReport: (planId: string, options?: RequestOptions) =>
+    api.get(`/exams/seating/plan/${planId}/print`, {
+      responseType: "blob",
+      ...requestOptions(options),
+    }),
+  downloadExcelReport: (planId: string, options?: RequestOptions) =>
+    api.get(`/exams/seating/plan/${planId}/excel`, {
+      responseType: "blob",
+      ...requestOptions(options),
+    }),
 };
 
 export const nationalExamResultsAPI = {

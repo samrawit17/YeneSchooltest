@@ -1,5 +1,12 @@
 import api from "./core";
 
+type RequestOptions = {
+  skipAuthErrorRedirect?: boolean;
+};
+
+const requestOptions = (options?: RequestOptions) =>
+  options?.skipAuthErrorRedirect ? { skipAuthErrorRedirect: true } : {};
+
 export const platformSettingsAPI = {
   getAll: () => api.get("/platform/settings"),
   getFlags: () => api.get("/platform/settings/flags"),
@@ -203,11 +210,14 @@ export const termsAPI = {
     }
     return api.post(`/academic-years/${arg1.academicYearId}/terms`, arg1);
   },
-  getAll: (params?: { academicYearId?: string }) => {
+  getAll: (params?: { academicYearId?: string }, options?: RequestOptions) => {
     if (params?.academicYearId) {
-      return api.get(`/academic-years/${params.academicYearId}/terms`);
+      return api.get(
+        `/academic-years/${params.academicYearId}/terms`,
+        requestOptions(options)
+      );
     }
-    return api.get("/academic-years/terms/current");
+    return api.get("/academic-years/terms/current", requestOptions(options));
   },
   getById: (id: string) => api.get(`/academic-years/terms/${id}`),
   getByYear: (academicYearId: string) =>

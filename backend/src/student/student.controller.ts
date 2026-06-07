@@ -72,6 +72,14 @@ function studentDocumentFileFilter(
 export class StudentController {
   constructor(private readonly studentService: StudentService) {}
 
+  private requireSchoolContext(req: any): string {
+    const schoolId = req.user?.schoolId;
+    if (!schoolId) {
+      throw new BadRequestException('School context is required');
+    }
+    return schoolId;
+  }
+
   @Post()
   @Roles(Role.ADMIN, Role.REGISTRAR)
   @Permissions('student:create')
@@ -80,10 +88,7 @@ export class StudentController {
     @Request() req,
   ) {
     const createdById = req.user.id;
-    const schoolId = req.user.schoolId;
-    if (!schoolId) {
-      throw new BadRequestException('School context is required');
-    }
+    const schoolId = this.requireSchoolContext(req);
 
     return this.studentService.createStudent(
       { ...createStudentDto, schoolId },
@@ -93,6 +98,7 @@ export class StudentController {
 
   // FIXED: Handle classId param for attendance/offline cache (proxies ClassService.getStudentsByClass)
   @Get()
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.FINANCE, Role.TEACHER)
   @Permissions('student:read')
   async getStudents(
     @Request() req,
@@ -105,11 +111,10 @@ export class StudentController {
     @Query('limit') limit?: string,
     @Query('search') search?: string,
     @Query('rollNumber') rollNumber?: string,
+    @Query('year') year?: string,
+    @Query('academicYearId') academicYearId?: string,
   ) {
-    const schoolId = req.user.schoolId;
-    if (!schoolId) {
-      throw new BadRequestException('School context is required');
-    }
+    const schoolId = this.requireSchoolContext(req);
 
     if (classId) {
       // Attendance/offline cache: delegate to ClassService for exact same logic as my-class page
@@ -132,6 +137,7 @@ export class StudentController {
       status: status as any,
       grade: grade ? parseInt(grade) : undefined,
       section: section || sectionId,
+      academicYear: academicYearId || year,
     };
     const pagination = {
       page: page ? parseInt(page) : 1,
@@ -150,7 +156,7 @@ export class StudentController {
 
   @Get('id-cards')
   @RequiresFeature('STUDENT_ID_CARDS')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async getStudentsForIdCards(
     @Request() req,
     @Query('grade') grade?: string,
@@ -159,7 +165,7 @@ export class StudentController {
     @Query('search') search?: string,
     @Query('studentIds') studentIds?: string,
   ) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.getStudentsForIdCards(schoolId, {
       grade,
       section,
@@ -173,21 +179,21 @@ export class StudentController {
 
   @Get('id-cards/template')
   @RequiresFeature('STUDENT_ID_CARDS')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async getIdCardTemplate(@Request() req) {
-    return this.studentService.getIdCardTemplate(req.user.schoolId);
+    return this.studentService.getIdCardTemplate(this.requireSchoolContext(req));
   }
 
   @Put('id-cards/template')
   @RequiresFeature('STUDENT_ID_CARDS')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async saveIdCardTemplate(@Request() req, @Body() body: { template: Record<string, any> }) {
-    return this.studentService.saveIdCardTemplate(req.user.schoolId, body.template || {});
+    return this.studentService.saveIdCardTemplate(this.requireSchoolContext(req), body.template || {});
   }
 
   @Post('id-cards/template/watermark')
   @RequiresFeature('STUDENT_ID_CARDS')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 2 * 1024 * 1024 },
@@ -201,19 +207,19 @@ export class StudentController {
     if (!file) {
       throw new BadRequestException('Watermark image is required');
     }
-    const url = await this.studentService.uploadIdCardWatermark(req.user.schoolId, file);
+    const url = await this.studentService.uploadIdCardWatermark(this.requireSchoolContext(req), file);
     return { url };
   }
 
   @Get('id-cards/:studentId/pdf')
   @RequiresFeature('STUDENT_ID_CARDS')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async generateIdCardPdf(
     @Request() req,
     @Param('studentId') studentId: string,
     @Res() res: Response,
   ) {
-    const pdf = await this.studentService.generateIdCardPdf(req.user.schoolId, studentId);
+    const pdf = await this.studentService.generateIdCardPdf(this.requireSchoolContext(req), studentId);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="id-card-${studentId}.pdf"`);
     res.send(pdf);
@@ -221,14 +227,14 @@ export class StudentController {
 
   @Post('id-cards/bulk-pdf')
   @RequiresFeature('STUDENT_ID_CARDS')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   async generateIdCardsBulkPdf(
     @Request() req,
     @Body() body: { studentIds: string[] },
     @Res() res: Response,
   ) {
     const zip = await this.studentService.generateIdCardBulkZip(
-      req.user.schoolId,
+      this.requireSchoolContext(req),
       body.studentIds || [],
     );
     res.setHeader('Content-Type', 'application/zip');
@@ -237,20 +243,22 @@ export class StudentController {
   }
 
   @Get(':id')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.FINANCE)
   @Permissions('student:read')
   async getStudentById(@Param('id') studentId: string, @Request() req) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.getStudentById(studentId, schoolId);
   }
 
   @Put(':id')
+  @Roles(Role.ADMIN, Role.REGISTRAR)
   @Permissions('student:update')
   async updateStudent(
     @Param('id') studentId: string,
     @Body() updateStudentDto: UpdateStudentDto,
     @Request() req,
   ) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.updateStudent(
       studentId,
       schoolId,
@@ -262,15 +270,15 @@ export class StudentController {
   @Roles(Role.STUDENT)
   @Permissions('timetable:read')
   async getMyClassAssignment(@Request() req) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.getMyClassAssignment(req.user.id, schoolId);
   }
 
   @Get('homeroom/me')
-  @Roles(Role.TEACHER, Role.ADMIN, Role.IT_MANAGER, Role.SUPER_ADMIN)
+  @Roles(Role.TEACHER, Role.ADMIN, Role.IT_MANAGER)
   @Permissions('student:read')
   async getMyHomeroomStudents(@Request() req) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     const teacherId = req.user.id;
     const requesterRole = req.user.role;
     return this.studentService.getStudentsByHomeroomTeacher(
@@ -284,7 +292,7 @@ export class StudentController {
   @Roles(Role.ADMIN, Role.REGISTRAR)
   @Permissions('student:approve_enrollment')
   async getPendingEnrollments(@Request() req) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.getPendingEnrollments(schoolId);
   }
 
@@ -296,7 +304,7 @@ export class StudentController {
     @Body() approveData: ApproveEnrollmentDto,
     @Request() req,
   ) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.approveEnrollment(
       enrollmentId,
       schoolId,
@@ -315,7 +323,7 @@ export class StudentController {
     if (!rejectionReason) {
       throw new BadRequestException('Rejection reason is required');
     }
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.rejectEnrollment(
       enrollmentId,
       schoolId,
@@ -332,7 +340,7 @@ export class StudentController {
     @Body() assignData: AssignClassDto,
     @Request() req,
   ) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.assignClass(studentId, schoolId, assignData);
   }
 
@@ -345,7 +353,7 @@ export class StudentController {
     @Body('documents') documents: any[],
     @Request() req,
   ) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.uploadDocuments(studentId, schoolId, documents);
   }
 
@@ -357,7 +365,7 @@ export class StudentController {
     @Param('documentKey') documentKey: string,
     @Request() req,
   ) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.deleteDocument(studentId, schoolId, documentKey);
   }
 
@@ -376,7 +384,7 @@ export class StudentController {
     @Body() body: { title?: string; type?: string; description?: string },
     @Request() req,
   ) {
-    const schoolId = req.user.schoolId;
+    const schoolId = this.requireSchoolContext(req);
     return this.studentService.uploadDocumentFile(studentId, schoolId, file, body);
   }
 }
