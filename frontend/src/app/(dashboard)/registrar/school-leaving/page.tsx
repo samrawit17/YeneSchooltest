@@ -82,6 +82,17 @@ const defaultForm: IssueForm = {
   remarks: "",
 };
 
+const PAGE_REQUEST_OPTIONS = { skipAuthErrorRedirect: true };
+const SCHOOL_LEAVING_ROLES = new Set(["ADMIN", "IT_MANAGER", "REGISTRAR"]);
+
+const escapeHtml = (value: unknown) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 const resolveStudents = (payload: any): StudentRow[] => {
   const data = payload?.data?.data ?? payload?.data ?? payload;
   if (Array.isArray(data)) return data;
@@ -128,6 +139,9 @@ export default function SchoolLeavingIssuePage() {
   const [issuing, setIssuing] = useState(false);
   const [issuedReference, setIssuedReference] = useState("");
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const normalizedRole = user?.role?.toUpperCase() || "";
+  const canAccessSchoolLeaving =
+    SCHOOL_LEAVING_ROLES.has(normalizedRole) && Boolean(user?.schoolId);
 
   useEffect(() => {
     const onFullScreenChange = () => setIsFullScreen(!!document.fullscreenElement);
@@ -152,7 +166,7 @@ export default function SchoolLeavingIssuePage() {
   }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
-    if (!isAuthenticated || search.trim().length < 2) {
+    if (!isAuthenticated || !canAccessSchoolLeaving || search.trim().length < 2) {
       setStudents([]);
       return;
     }
@@ -164,7 +178,7 @@ export default function SchoolLeavingIssuePage() {
           search: search.trim(),
           academicYearId: currentAcademicYear?.id,
           limit: 8,
-        });
+        }, PAGE_REQUEST_OPTIONS);
         setStudents(resolveStudents(response));
       } catch (error) {
         console.error("Failed to search students", error);
@@ -175,7 +189,7 @@ export default function SchoolLeavingIssuePage() {
     }, 350);
 
     return () => window.clearTimeout(handle);
-  }, [currentAcademicYear?.id, isAuthenticated, search]);
+  }, [canAccessSchoolLeaving, currentAcademicYear?.id, isAuthenticated, search]);
 
   const referenceNumber = useMemo(() => {
     if (issuedReference) return issuedReference;
@@ -186,10 +200,12 @@ export default function SchoolLeavingIssuePage() {
 
   const updateForm = (key: keyof IssueForm, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    setIssuedReference("");
   };
 
   const selectStudent = (student: StudentRow) => {
     setSelectedStudent(student);
+    setIssuedReference("");
     setForm((prev) => ({
       ...prev,
       lastGradeCompleted: prev.lastGradeCompleted || student.className || student.enrollment?.grade?.toString() || "",
@@ -244,7 +260,7 @@ export default function SchoolLeavingIssuePage() {
 
     try {
       setIssuing(true);
-      await registrarAPI.uploadDocuments(studentId, [buildDocumentRecord()]);
+      await registrarAPI.uploadDocuments(studentId, [buildDocumentRecord()], PAGE_REQUEST_OPTIONS);
       setIssuedReference(referenceNumber);
       toast.success("School leaving certificate issued");
     } catch (error: any) {
@@ -257,10 +273,14 @@ export default function SchoolLeavingIssuePage() {
 
   const buildPrintHtml = (withPrintScript = true) => {
     const studentName = getStudentName(selectedStudent);
+    const calendarType = user?.calendarType as any || "GREGORIAN";
+    const issueDate = formatDateByCalendarType(form.issueDate, calendarType);
+    const leavingDate = formatDateByCalendarType(form.leavingDate, calendarType);
+    const generatedDate = formatDateByCalendarType(new Date(), calendarType);
     return `<!doctype html>
 <html>
 <head>
-  <title>${referenceNumber}</title>
+  <title>${escapeHtml(referenceNumber)}</title>
   <style>
     body { font-family: Arial, sans-serif; color: #111827; margin: 0; padding: 24px; font-size: 13px; line-height: 2; }
     h1 { font-size: 16px; margin: 0 0 16px; text-align: center; }
@@ -271,9 +291,9 @@ export default function SchoolLeavingIssuePage() {
 </head>
 <body>
   <h1>School Leaving Details</h1>
-  <div class="meta">Reference: <strong>${referenceNumber}</strong> &mdash; Issue Date: <strong>${formatDateByCalendarType(form.issueDate, user?.calendarType as any || 'GREGORIAN')}</strong></div>
-  <p>Student <strong>${studentName}</strong> from <strong>${getPlacement(selectedStudent)}</strong>, having completed <strong>${form.lastGradeCompleted}</strong> in the academic year <strong>${currentAcademicYear?.name || "-"}</strong>, left school on <strong>${formatDateByCalendarType(form.leavingDate, user?.calendarType as any || 'GREGORIAN')}</strong>. Reason: ${form.reason}. Destination: ${form.destinationSchool || "-"}, ${form.destinationRegion || "-"}. Conduct: ${form.conduct}. Attendance: ${form.attendanceSummary}. Academic Standing: ${form.academicStanding}. Remarks: ${form.remarks || "-"}.</p>
-  <div class="footer">Registrar: ${user?.name || "Registrar"} &mdash; Generated: ${formatDateByCalendarType(new Date(), user?.calendarType as any || 'GREGORIAN')}</div>
+  <div class="meta">Reference: <strong>${escapeHtml(referenceNumber)}</strong> &mdash; Issue Date: <strong>${escapeHtml(issueDate)}</strong></div>
+  <p>Student <strong>${escapeHtml(studentName)}</strong> from <strong>${escapeHtml(getPlacement(selectedStudent))}</strong>, having completed <strong>${escapeHtml(form.lastGradeCompleted)}</strong> in the academic year <strong>${escapeHtml(currentAcademicYear?.name || "-")}</strong>, left school on <strong>${escapeHtml(leavingDate)}</strong>. Reason: ${escapeHtml(form.reason)}. Destination: ${escapeHtml(form.destinationSchool || "-")}, ${escapeHtml(form.destinationRegion || "-")}. Conduct: ${escapeHtml(form.conduct)}. Attendance: ${escapeHtml(form.attendanceSummary)}. Academic Standing: ${escapeHtml(form.academicStanding)}. Remarks: ${escapeHtml(form.remarks || "-")}.</p>
+  <div class="footer">Registrar: ${escapeHtml(user?.name || "Registrar")} &mdash; Generated: ${escapeHtml(generatedDate)}</div>
   ${withPrintScript ? '<script>window.print(); window.close();</script>' : ''}
 </body>
 </html>`;
@@ -319,6 +339,31 @@ export default function SchoolLeavingIssuePage() {
   }
 
   if (!isAuthenticated) return null;
+
+  if (!canAccessSchoolLeaving) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 dark:bg-gray-900">
+        <Card className="mx-auto max-w-xl border-red-100">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-700">
+              <AlertCircle className="h-5 w-5" />
+              School leaving access denied
+            </CardTitle>
+            <CardDescription>
+              This page requires a school-scoped Admin, IT Manager, or Registrar account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-gray-600">
+            <p>Current role: {normalizedRole || "Unknown"}</p>
+            {!user?.schoolId && <p>School context is missing for this account.</p>}
+            <Button variant="outline" onClick={() => router.back()}>
+              Go Back
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-6 dark:bg-gray-900">

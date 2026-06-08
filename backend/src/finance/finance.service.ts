@@ -2369,6 +2369,9 @@ export class FinanceService {
 
   async dailyCollectionReport(query: ReportQueryDto) {
     const { schoolId, from, to, termId, academicYearId } = query;
+    const includeOutstanding =
+      String((query as any).includeOutstanding ?? 'true').toLowerCase() !==
+      'false';
     if (academicYearId) {
       await this.assertAcademicYearInSchool(schoolId, academicYearId);
     }
@@ -2468,7 +2471,7 @@ export class FinanceService {
       }
     });
 
-    if (academicYearId) {
+    if (academicYearId && includeOutstanding) {
       const outstandingResult = await this.outstandingBalancesReport(
         schoolId,
         academicYearId,
@@ -2492,7 +2495,7 @@ export class FinanceService {
     }
 
     return {
-      total: totalRevenue,
+      total: includeOutstanding ? totalRevenue : total,
       todayTotal: total,
       totalOutstanding,
       count: payments.length,

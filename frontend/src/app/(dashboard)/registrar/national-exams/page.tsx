@@ -30,10 +30,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 
 type ExamType = "GRADE_6_REGIONAL" | "GRADE_8_REGIONAL" | "GRADE_12_ESLCE";
 type BatchStatus = "DRAFT" | "READY" | "SUBMITTED" | "ACCEPTED" | "REJECTED";
+type ValidationSeverity = "error" | "warning";
+
+type ValidationIssue = {
+  message: string;
+  severity: ValidationSeverity;
+};
 
 type StudentRow = {
   id?: string;
@@ -49,13 +54,20 @@ type StudentRow = {
   academicYear?: string;
   gender?: string;
   dateOfBirth?: string;
+  birthday?: string;
   phone?: string;
+  nationality?: string;
+  faydaNumber?: string;
+  medicalInfo?: string;
+  disability?: string;
   documents?: any;
   user?: {
     id?: string;
     name?: string;
     email?: string;
     isActive?: boolean;
+    avatarUrl?: string;
+    profileImage?: string;
   };
   enrollment?: {
     academicYear?: string;
@@ -65,6 +77,7 @@ type StudentRow = {
 };
 
 type Candidate = {
+  listKey: string;
   student: StudentRow;
   included: boolean;
   candidateNumber: string;
@@ -99,6 +112,8 @@ const examOptions: Record<ExamType, { label: string; grade: string; bureau: stri
   },
 };
 
+const PAGE_REQUEST_OPTIONS = { skipAuthErrorRedirect: true };
+
 const resolveStudents = (payload: any): StudentRow[] => {
   const data = payload?.data?.data ?? payload?.data ?? payload;
   if (Array.isArray(data)) return data;
@@ -114,6 +129,8 @@ const studentName = (student: StudentRow) => student.user?.name || student.name 
 const studentEmail = (student: StudentRow) => student.user?.email || student.email || "";
 const studentCode = (student: StudentRow) => student.studentCode || student.studentId || student.id || "";
 const studentGrade = (student: StudentRow) => student.enrollment?.grade?.toString() || student.className?.match(/\d+/)?.[0] || "";
+const studentDateOfBirth = (student: StudentRow) => student.dateOfBirth || student.birthday || "";
+const dateInputValue = (value: string) => value.slice(0, 10);
 const studentPlacement = (student: StudentRow) =>
   [student.className, student.section ? `Section ${student.section}` : null].filter(Boolean).join(" - ") || "-";
 
@@ -131,26 +148,132 @@ const normalizeDocuments = (documents: any) => {
   return [documents];
 };
 
-const getValidationIssues = (candidate: Candidate, expectedGrade: string) => {
-  const student = candidate.student;
-  const issues: string[] = [];
-
-  if (!studentCode(student)) issues.push("Missing student ID");
-  if (!studentName(student) || studentName(student) === "Unnamed student") issues.push("Missing full name");
-  if (!student.gender) issues.push("Missing gender");
-  if (!studentGrade(student)) issues.push("Missing grade");
-  if (studentGrade(student) && studentGrade(student) !== expectedGrade) issues.push(`Not Grade ${expectedGrade}`);
-  if (!student.className || !student.section) issues.push("Missing class or section");
-  if (student.enrollmentStatus && !["APPROVED", "ACTIVE"].includes(student.enrollmentStatus)) {
-    issues.push(`Enrollment is ${student.enrollmentStatus}`);
+const stringifyRecord = (value: unknown): string => {
+  if (!value) return "";
+  if (typeof value === "string") {
+    try {
+      return stringifyRecord(JSON.parse(value));
+    } catch {
+      return value;
+    }
   }
-  if (student.user?.isActive === false) issues.push("Inactive account");
-  if (normalizeDocuments(student.documents).length === 0) issues.push("No document evidence");
-
-  return issues;
+  if (Array.isArray(value)) return value.map(stringifyRecord).join(" ");
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, entry]) => `${key} ${stringifyRecord(entry)}`)
+      .join(" ");
+  }
+  return String(value);
 };
 
+const documentText = (student: StudentRow) => normalizeDocuments(student.documents).map(stringifyRecord).join(" ");
+
+const hasDocumentMatch = (student: StudentRow, keywords: string[]) => {
+  const text = documentText(student).toLowerCase();
+  return keywords.some((keyword) => text.includes(keyword));
+};
+
+const hasStudentPhotoEvidence = (student: StudentRow) =>
+  Boolean(student.user?.avatarUrl || student.user?.profileImage) ||
+  hasDocumentMatch(student, ["photo", "picture", "passport", "image", "id card"]);
+
+const hasIdentityEvidence = (student: StudentRow) =>
+  Boolean(student.faydaNumber?.trim()) ||
+  hasDocumentMatch(student, ["fayda", "fan", "id", "identity", "birth", "certificate"]);
+
+const hasAcademicEvidence = (student: StudentRow) =>
+  hasDocumentMatch(student, ["grade", "report", "transcript", "card", "certificate", "result"]);
+
+const extractProfileDisability = (student: StudentRow) => {
+  if (student.disability?.trim()) return student.disability.trim();
+
+  const medicalInfo = student.medicalInfo;
+  if (medicalInfo) {
+    try {
+      const parsed = JSON.parse(medicalInfo);
+      if (parsed && typeof parsed === "object") {
+        const record = parsed as Record<string, unknown>;
+        const explicit =
+          record.disability ||
+          record.disabilityType ||
+          record.specialNeeds ||
+          record.specialNeed ||
+          record.accommodation ||
+          record.examAccommodation;
+        if (explicit && String(explicit).trim()) return String(explicit).trim();
+      }
+    } catch {
+      // Fall through to keyword-based detection for plain-text medical notes.
+    }
+  }
+
+  const text = [student.medicalInfo, documentText(student)]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const labels: Array<[string, string[]]> = [
+    ["Visual impairment", ["visual impairment", "blind", "low vision", "vision"]],
+    ["Hearing impairment", ["hearing impairment", "deaf", "hard of hearing", "sign language"]],
+    ["Physical disability", ["physical disability", "wheelchair", "mobility", "orthopedic"]],
+    ["Learning disability", ["learning disability", "intellectual", "dyslexia"]],
+    ["Medical accommodation", ["chronic", "epilepsy", "diabetes", "medical accommodation", "special need"]],
+  ];
+
+  return labels.find(([, keywords]) => keywords.some((keyword) => text.includes(keyword)))?.[0] || "";
+};
+
+const candidateAccommodation = (candidate: Candidate) =>
+  candidate.specialNeeds.trim() || extractProfileDisability(candidate.student);
+
+const getValidationChecks = (candidate: Candidate, expectedGrade: string) => {
+  const student = candidate.student;
+  const checks: ValidationIssue[] = [];
+  const add = (message: string, severity: ValidationSeverity = "error") => checks.push({ message, severity });
+
+  if (!studentCode(student)) add("Missing student ID");
+  if (!studentName(student) || studentName(student) === "Unnamed student") add("Missing full legal name");
+  if (!student.gender) add("Missing sex");
+  if (!studentDateOfBirth(student)) add("Missing date of birth");
+  if (!studentGrade(student)) add("Missing grade");
+  if (studentGrade(student) && studentGrade(student) !== expectedGrade) add(`Not Grade ${expectedGrade}`);
+  if (!student.className || !student.section) add("Missing class or section");
+  if (!student.rollNumber) add("Missing roll number");
+  if (student.enrollmentStatus && !["APPROVED", "ACTIVE"].includes(student.enrollmentStatus)) {
+    add(`Enrollment is ${student.enrollmentStatus}`);
+  }
+  if (student.user?.isActive === false) add("Inactive account");
+  if (normalizeDocuments(student.documents).length === 0) add("No document evidence");
+  if (!hasIdentityEvidence(student)) add("No ID/birth evidence", "warning");
+  if (!hasStudentPhotoEvidence(student)) add("No photo evidence", "warning");
+  if (!hasAcademicEvidence(student)) add("No grade evidence", "warning");
+  if (!student.faydaNumber?.trim()) add("Missing Fayda/FAN", "warning");
+  if (!candidate.candidateNumber.trim()) add("Candidate number not assigned", "warning");
+  if (extractProfileDisability(student) && !candidate.specialNeeds.trim()) {
+    add("Confirm disability accommodation");
+  }
+
+  return checks;
+};
+
+const getValidationIssues = (candidate: Candidate, expectedGrade: string) =>
+  getValidationChecks(candidate, expectedGrade)
+    .filter((check) => check.severity === "error")
+    .map((check) => check.message);
+
+const getValidationWarnings = (candidate: Candidate, expectedGrade: string) =>
+  getValidationChecks(candidate, expectedGrade)
+    .filter((check) => check.severity === "warning")
+    .map((check) => check.message);
+
 const csvEscape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+
+const htmlEscape = (value: unknown) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 
 const downloadFile = (filename: string, content: string, type: string) => {
   const blob = new Blob([content], { type });
@@ -225,7 +348,7 @@ export default function NationalExamCoordinationPage() {
     const loadGradeLevels = async () => {
       try {
         setLoadingGradeLevels(true);
-        const response = await schoolSettingsAPI.getAll(schoolId);
+        const response = await schoolSettingsAPI.getAll(schoolId, PAGE_REQUEST_OPTIONS);
         setAvailableGrades(getGradeNumbersFromSystem(response.data?.grade_system || "1-12"));
       } catch (error) {
         console.error("Failed to load school grade levels", error);
@@ -282,6 +405,10 @@ export default function NationalExamCoordinationPage() {
     (sum, candidate) => sum + getValidationIssues(candidate, expectedGrade).length,
     0,
   );
+  const warningCount = includedCandidates.reduce(
+    (sum, candidate) => sum + getValidationWarnings(candidate, expectedGrade).length,
+    0,
+  );
   const batchStatus: BatchStatus =
     submission.responseStatus !== "DRAFT"
       ? submission.responseStatus
@@ -300,6 +427,12 @@ export default function NationalExamCoordinationPage() {
         studentName(student),
         studentCode(student),
         studentPlacement(student),
+        student.gender,
+        studentDateOfBirth(student),
+        student.faydaNumber,
+        student.rollNumber,
+        candidate.specialNeeds,
+        candidate.remarks,
         candidate.candidateNumber,
       ]
         .join(" ")
@@ -320,14 +453,15 @@ export default function NationalExamCoordinationPage() {
         academicYearId: currentAcademicYear?.id,
         grade: expectedGrade,
         limit: 500,
-      });
+      }, PAGE_REQUEST_OPTIONS);
       const rows = resolveStudents(response);
       setCandidates(
-        rows.map((student) => ({
+        rows.map((student, index) => ({
+          listKey: studentKey(student) || `candidate-${index}`,
           student,
           included: true,
           candidateNumber: "",
-          specialNeeds: "",
+          specialNeeds: extractProfileDisability(student),
           remarks: "",
         })),
       );
@@ -342,19 +476,29 @@ export default function NationalExamCoordinationPage() {
 
   const updateCandidate = (key: string, patch: Partial<Candidate>) => {
     setCandidates((prev) =>
-      prev.map((candidate) => (studentKey(candidate.student) === key ? { ...candidate, ...patch } : candidate)),
+      prev.map((candidate) => (candidate.listKey === key ? { ...candidate, ...patch } : candidate)),
+    );
+  };
+
+  const updateCandidateStudent = (key: string, patch: Partial<StudentRow>) => {
+    setCandidates((prev) =>
+      prev.map((candidate) =>
+        candidate.listKey === key ? { ...candidate, student: { ...candidate.student, ...patch } } : candidate,
+      ),
     );
   };
 
   const buildRows = () =>
     includedCandidates.map((candidate, index) => {
       const student = candidate.student;
+      const warnings = getValidationWarnings(candidate, expectedGrade);
       return {
         no: index + 1,
         studentId: studentCode(student),
         fullName: studentName(student),
         gender: student.gender || "",
-        dateOfBirth: student.dateOfBirth || "",
+        dateOfBirth: studentDateOfBirth(student),
+        faydaNumber: student.faydaNumber || "",
         grade: studentGrade(student) || expectedGrade,
         section: student.section || "",
         className: student.className || "",
@@ -362,9 +506,10 @@ export default function NationalExamCoordinationPage() {
         email: studentEmail(student),
         examType: examOptions[examType].label,
         candidateNumber: candidate.candidateNumber,
-        specialNeeds: candidate.specialNeeds,
+        specialNeeds: candidateAccommodation(candidate),
         remarks: candidate.remarks,
         validation: getValidationIssues(candidate, expectedGrade).join("; "),
+        warnings: warnings.join("; "),
       };
     });
 
@@ -380,6 +525,7 @@ export default function NationalExamCoordinationPage() {
       "Full Name",
       "Sex",
       "Date of Birth",
+      "Fayda/FAN",
       "Grade",
       "Class",
       "Section",
@@ -390,6 +536,7 @@ export default function NationalExamCoordinationPage() {
       "Special Needs",
       "Remarks",
       "Validation Issues",
+      "Warnings",
     ];
     const csvRows = buildRows().map((row) => [
       row.no,
@@ -397,6 +544,7 @@ export default function NationalExamCoordinationPage() {
       row.fullName,
       row.gender,
       row.dateOfBirth,
+      row.faydaNumber,
       row.grade,
       row.className,
       row.section,
@@ -407,6 +555,7 @@ export default function NationalExamCoordinationPage() {
       row.specialNeeds,
       row.remarks,
       row.validation,
+      row.warnings,
     ]);
     const content = [headers, ...csvRows].map((row) => row.map(csvEscape).join(",")).join("\n");
     const suffix =
@@ -432,17 +581,20 @@ export default function NationalExamCoordinationPage() {
     }
 
     const htmlRows = rows
-      .map(
-        (row) => `<tr>
-          <td>${row.no}</td><td>${row.studentId}</td><td>${row.fullName}</td><td>${row.gender}</td>
-          <td>${row.grade}</td><td>${row.className}</td><td>${row.section}</td><td>${row.candidateNumber}</td>
-          <td>${row.specialNeeds || "-"}</td><td>${row.validation || "Ready"}</td>
-        </tr>`,
-      )
+      .map((row) => {
+        const validation = `${row.validation || "Ready"}${row.warnings ? `; Warnings: ${row.warnings}` : ""}`;
+        return `<tr>
+          <td>${htmlEscape(row.no)}</td><td>${htmlEscape(row.studentId)}</td><td>${htmlEscape(row.fullName)}</td><td>${htmlEscape(row.gender)}</td>
+          <td>${htmlEscape(row.dateOfBirth || "-")}</td><td>${htmlEscape(row.faydaNumber || "-")}</td><td>${htmlEscape(row.grade)}</td>
+          <td>${htmlEscape(row.className)}</td><td>${htmlEscape(row.section)}</td><td>${htmlEscape(row.rollNumber || "-")}</td>
+          <td>${htmlEscape(row.candidateNumber || "-")}</td><td>${htmlEscape(row.specialNeeds || "-")}</td>
+          <td>${htmlEscape(validation)}</td>
+        </tr>`;
+      })
       .join("");
 
     win.document.write(`<!doctype html>
-<html><head><title>${batchName}</title>
+<html><head><title>${htmlEscape(batchName)}</title>
 <style>
 body{font-family:Arial,sans-serif;padding:28px;color:#111827} h1{font-size:20px;margin:0 0 6px}
 .meta{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:16px 0;font-size:12px}
@@ -450,17 +602,17 @@ table{width:100%;border-collapse:collapse;font-size:11px} th,td{border:1px solid
 th{background:#f3f4f6}.sign{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:60px}
 .line{border-top:1px solid #111827;padding-top:8px;text-align:center;font-size:12px}
 </style></head><body>
-<h1>${batchName}</h1>
-<div>${examOptions[examType].label}</div>
+<h1>${htmlEscape(batchName)}</h1>
+<div>${htmlEscape(examOptions[examType].label)}</div>
 <div class="meta">
-<div>Academic Year: ${currentAcademicYear?.name || "-"}</div>
-<div>Status: ${batchStatus}</div>
-<div>Receiving Office: ${submission.receivingOffice || "-"}</div>
-<div>Reference: ${submission.referenceNumber || "-"}</div>
-<div>Prepared By: ${user?.name || "-"}</div>
-<div>Generated: ${format(new Date(), "yyyy-MM-dd HH:mm")}</div>
+<div>Academic Year: ${htmlEscape(currentAcademicYear?.name || "-")}</div>
+<div>Status: ${htmlEscape(batchStatus)}</div>
+<div>Receiving Office: ${htmlEscape(submission.receivingOffice || "-")}</div>
+<div>Reference: ${htmlEscape(submission.referenceNumber || "-")}</div>
+<div>Prepared By: ${htmlEscape(user?.name || "-")}</div>
+<div>Generated: ${htmlEscape(format(new Date(), "yyyy-MM-dd HH:mm"))}</div>
 </div>
-<table><thead><tr><th>No</th><th>Student ID</th><th>Name</th><th>Sex</th><th>Grade</th><th>Class</th><th>Section</th><th>Candidate No.</th><th>Special Needs</th><th>Validation</th></tr></thead><tbody>${htmlRows}</tbody></table>
+<table><thead><tr><th>No</th><th>Student ID</th><th>Name</th><th>Sex</th><th>DOB</th><th>Fayda/FAN</th><th>Grade</th><th>Class</th><th>Section</th><th>Roll</th><th>Candidate No.</th><th>Disability / Accommodation</th><th>Validation</th></tr></thead><tbody>${htmlRows}</tbody></table>
 <div class="sign"><div class="line">Registrar</div><div class="line">Director / Principal</div></div>
 <script>window.print(); window.close();</script>
 </body></html>`);
@@ -528,7 +680,7 @@ th{background:#f3f4f6}.sign{display:grid;grid-template-columns:1fr 1fr;gap:60px;
           <Metric label="Included Candidates" value={includedCandidates.length} icon={Users} />
           <Metric label="Ready Candidates" value={readyCandidates.length} icon={CheckCircle} />
           <Metric label="Validation Issues" value={issueCount} icon={AlertTriangle} tone={issueCount > 0 ? "warn" : "ok"} />
-          <Metric label="Academic Year" value={currentAcademicYear?.name || "-"} icon={ShieldCheck} />
+          <Metric label="Warnings" value={warningCount} icon={ShieldCheck} tone={warningCount > 0 ? "warn" : "ok"} />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
@@ -584,6 +736,28 @@ th{background:#f3f4f6}.sign{display:grid;grid-template-columns:1fr 1fr;gap:60px;
                   {loadingCandidates ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
                   Load Grade {expectedGrade} Students
                 </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Requirement Checks</CardTitle>
+                <CardDescription>Blocking items must be fixed before marking the list submitted.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div>
+                  <p className="font-medium text-gray-950 dark:text-white">Blocking</p>
+                  <p className="mt-1 text-gray-600 dark:text-gray-400">
+                    Student ID, full legal name, sex, date of birth, grade match, class, section, roll number,
+                    active enrollment, active account, document evidence, and disability accommodation confirmation.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-950 dark:text-white">Warnings</p>
+                  <p className="mt-1 text-gray-600 dark:text-gray-400">
+                    Fayda/FAN, candidate number, photo evidence, ID/birth evidence, and grade report evidence.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -664,22 +838,31 @@ th{background:#f3f4f6}.sign{display:grid;grid-template-columns:1fr 1fr;gap:60px;
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                    <table className="min-w-[980px] w-full text-sm">
+                    <table className="min-w-[1480px] w-full text-sm">
                       <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                         <tr>
                           <th className="px-3 py-3">Include</th>
-                          <th className="px-3 py-3">Student</th>
+                          <th className="px-3 py-3">Student ID</th>
+                          <th className="px-3 py-3">Full Name</th>
+                          <th className="px-3 py-3">Sex</th>
+                          <th className="px-3 py-3">DOB</th>
+                          <th className="px-3 py-3">Fayda/FAN</th>
+                          <th className="px-3 py-3">Class</th>
+                          <th className="px-3 py-3">Section</th>
+                          <th className="px-3 py-3">Roll</th>
                           <th className="px-3 py-3">Candidate No.</th>
-                          <th className="px-3 py-3">Special Needs</th>
+                          <th className="px-3 py-3">Disability / Accommodation</th>
+                          <th className="px-3 py-3">Remarks</th>
                           <th className="px-3 py-3">Validation</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
                         {filteredCandidates.map((candidate) => {
-                          const key = studentKey(candidate.student);
+                          const key = candidate.listKey;
                           const issues = getValidationIssues(candidate, expectedGrade);
+                          const warnings = getValidationWarnings(candidate, expectedGrade);
                           return (
-                            <tr key={key || studentCode(candidate.student)} className={!candidate.included ? "opacity-50" : ""}>
+                            <tr key={key} className={!candidate.included ? "opacity-50" : ""}>
                               <td className="px-3 py-3 align-top">
                                 <input
                                   type="checkbox"
@@ -689,9 +872,82 @@ th{background:#f3f4f6}.sign{display:grid;grid-template-columns:1fr 1fr;gap:60px;
                                 />
                               </td>
                               <td className="px-3 py-3 align-top">
-                                <div className="font-medium text-gray-950 dark:text-white">{studentName(candidate.student)}</div>
+                                <Input
+                                  value={studentCode(candidate.student)}
+                                  onChange={(event) =>
+                                    updateCandidateStudent(key, {
+                                      studentCode: event.target.value,
+                                      studentId: event.target.value,
+                                    })
+                                  }
+                                  placeholder="Student ID"
+                                  className="min-w-32"
+                                />
                               </td>
-
+                              <td className="px-3 py-3 align-top">
+                                <Input
+                                  value={studentName(candidate.student)}
+                                  onChange={(event) =>
+                                    updateCandidateStudent(key, {
+                                      name: event.target.value,
+                                      user: { ...candidate.student.user, name: event.target.value },
+                                    })
+                                  }
+                                  placeholder="Full legal name"
+                                  className="min-w-52"
+                                />
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <select
+                                  value={(candidate.student.gender || "").toUpperCase()}
+                                  onChange={(event) => updateCandidateStudent(key, { gender: event.target.value })}
+                                  className="h-9 min-w-28 rounded-md border border-input bg-transparent px-3 text-sm"
+                                >
+                                  <option value="">Select</option>
+                                  <option value="MALE">Male</option>
+                                  <option value="FEMALE">Female</option>
+                                </select>
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <Input
+                                  type="date"
+                                  value={dateInputValue(studentDateOfBirth(candidate.student))}
+                                  onChange={(event) => updateCandidateStudent(key, { dateOfBirth: event.target.value })}
+                                  className="min-w-36"
+                                />
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <Input
+                                  value={candidate.student.faydaNumber || ""}
+                                  onChange={(event) => updateCandidateStudent(key, { faydaNumber: event.target.value })}
+                                  placeholder="FAN"
+                                  className="min-w-36"
+                                />
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <Input
+                                  value={candidate.student.className || ""}
+                                  onChange={(event) => updateCandidateStudent(key, { className: event.target.value })}
+                                  placeholder={`Grade ${expectedGrade}`}
+                                  className="min-w-32"
+                                />
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <Input
+                                  value={candidate.student.section || ""}
+                                  onChange={(event) => updateCandidateStudent(key, { section: event.target.value })}
+                                  placeholder="Section"
+                                  className="min-w-24"
+                                />
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <Input
+                                  value={candidate.student.rollNumber || ""}
+                                  onChange={(event) => updateCandidateStudent(key, { rollNumber: event.target.value })}
+                                  placeholder="Roll"
+                                  className="min-w-24"
+                                />
+                              </td>
                               <td className="px-3 py-3 align-top">
                                 <Input
                                   value={candidate.candidateNumber}
@@ -704,24 +960,36 @@ th{background:#f3f4f6}.sign{display:grid;grid-template-columns:1fr 1fr;gap:60px;
                                 <Input
                                   value={candidate.specialNeeds}
                                   onChange={(event) => updateCandidate(key, { specialNeeds: event.target.value })}
-                                  placeholder="None"
+                                  placeholder="None / required accommodation"
+                                  className="min-w-56"
+                                />
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <Input
+                                  value={candidate.remarks}
+                                  onChange={(event) => updateCandidate(key, { remarks: event.target.value })}
+                                  placeholder="Optional"
                                   className="min-w-40"
                                 />
                               </td>
                               <td className="px-3 py-3 align-top">
-                                {issues.length === 0 ? (
-                                  <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                    Ready
-                                  </Badge>
-                                ) : (
-                                  <div className="flex flex-wrap gap-1">
-                                    {issues.map((issue) => (
-                                      <Badge key={issue} variant="outline" className="border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300">
-                                        {issue}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
+                                <div className="flex max-w-80 flex-wrap gap-1">
+                                  {issues.length === 0 && (
+                                    <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                      Ready
+                                    </Badge>
+                                  )}
+                                  {issues.map((issue) => (
+                                    <Badge key={issue} variant="outline" className="border-red-300 text-red-700 dark:border-red-800 dark:text-red-300">
+                                      {issue}
+                                    </Badge>
+                                  ))}
+                                  {warnings.map((warning) => (
+                                    <Badge key={warning} variant="outline" className="border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300">
+                                      {warning}
+                                    </Badge>
+                                  ))}
+                                </div>
                               </td>
                             </tr>
                           );

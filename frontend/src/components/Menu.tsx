@@ -545,7 +545,7 @@ const menuItems: MenuSection[] = [
         icon: <FileText className="w-5 h-5" />,
         label: "School Leaving",
         href: "/registrar/school-leaving",
-        visible: ["registrar"],
+        visible: ["registrar", "it_manager"],
         subscriptionFeature: "USER_MANAGEMENT",
       },
       {
@@ -751,7 +751,7 @@ const Menu = ({
 
   // Fetch curriculum type from school settings
   const { data: settingsData, isLoading: isSettingsLoading } = useQuery({
-    queryKey: queryKeys.school.curriculum(schoolId),
+    queryKey: queryKeys.school.settings(schoolId),
     queryFn: async () => {
       if (!schoolId) return { data: {} };
       try {

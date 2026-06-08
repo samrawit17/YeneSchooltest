@@ -67,7 +67,7 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: queryKeys.school.calendarSetting(user?.schoolId),
+    queryKey: queryKeys.school.settings(user?.schoolId),
     queryFn: async () => {
       if (!user?.schoolId) return {};
       const response = await schoolSettingsAPI.getAll(user.schoolId);

@@ -210,8 +210,8 @@ export class RegistrarController {
 
   // Upload documents for student
   @Post('students/:id/documents')
-  @Roles(Role.ADMIN, Role.REGISTRAR)
-  @Permissions('student:update')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
+  @Permissions('document:upload')
   async uploadDocuments(
     @Param('id') studentId: string,
     @Body('documents') documents: any[],

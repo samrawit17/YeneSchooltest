@@ -422,7 +422,7 @@ export class LessonService {
 
     // Create lesson, homework and resources inside a transaction to ensure atomicity.
     const result = await this.prisma.$transaction(async (tx) => {
-      const lesson = await (tx.content as any).create({
+      const lesson = await tx.content.create({
         data: {
           schoolId,
           academicYearId: data.academicYearId,
@@ -460,6 +460,25 @@ export class LessonService {
 
       let resources: any[] = [];
       if (data.resources && data.resources.length > 0) {
+        resources = await Promise.all(
+          data.resources.map((resource) =>
+            tx.contentResource.create({
+              data: {
+                contentId: lesson.id,
+                schoolId,
+                title: resource.title,
+                description: resource.description,
+                resourceType: resource.resourceType,
+                fileUrl: resource.fileUrl,
+                fileName: resource.fileName,
+                fileSize: resource.fileSize,
+                mimeType: resource.mimeType,
+                isLocked: resource.isLocked || false,
+                uploadedBy: teacherId,
+              },
+            }),
+          ),
+        );
       }
 
       return { lesson, resources };
@@ -593,7 +612,7 @@ export class LessonService {
 
       const parentUserIds = new Set<string>();
       for (const sc of studentClasses) {
-        const parentLinks = await (this.prisma as any).parentStudent.findMany({
+        const parentLinks = await this.prisma.parentStudent.findMany({
           where: { student: { userId: sc.studentId }, schoolId: lesson.schoolId },
           select: { parent: { select: { userId: true } } },
         });
@@ -755,7 +774,7 @@ export class LessonService {
 
       const parentIds = new Set<string>();
       for (const sc of studentClasses) {
-        const parentLink = await (this.prisma as any).parentStudent.findFirst({
+        const parentLink = await this.prisma.parentStudent.findFirst({
           where: { studentId: sc.studentId },
         });
         if (parentLink) parentIds.add(parentLink.parentId);
@@ -791,13 +810,17 @@ export class LessonService {
         teacher: { select: { id: true, name: true } },
         resources: true,
         attachmentsNew: true,
+        submissions: {
+          where: { studentId },
+          take: 1,
+        },
       },
     });
     if (!lesson || lesson.type !== ContentType.LESSON)
       throw new NotFoundException('Lesson not found');
 
     const homework = this.buildHomeworkFromLesson(lesson);
-    const submission = null;
+    const submission = lesson.submissions[0] || null;
 
     const studentFees = await this.prisma.studentFee.findMany({
       where: { studentId, schoolId, status: { in: ['OVERDUE', 'PENDING'] } },
@@ -830,17 +853,23 @@ export class LessonService {
     studentId: string,
     data: SubmitHomeworkDto,
   ) {
-    const homework = await (this.prisma as any).homework.findUnique({
-      where: { id: homeworkId },
+    const homework = await this.prisma.content.findFirst({
+      where: {
+        id: homeworkId,
+        type: ContentType.LESSON,
+      },
     });
     if (!homework) throw new NotFoundException('Homework not found');
+    if (!this.buildHomeworkFromLesson(homework)) {
+      throw new BadRequestException('This lesson does not have homework');
+    }
 
-    const existing = await (this.prisma as any).homeworkSubmission.findUnique({
-      where: { homeworkId_studentId: { homeworkId, studentId } },
+    const existing = await this.prisma.contentSubmission.findUnique({
+      where: { contentId_studentId: { contentId: homeworkId, studentId } },
     });
 
     if (existing) {
-      return (this.prisma as any).homeworkSubmission.update({
+      return this.prisma.contentSubmission.update({
         where: { id: existing.id },
         data: {
           submissionUrl: data.submissionUrl,
@@ -851,9 +880,9 @@ export class LessonService {
       });
     }
 
-    return (this.prisma as any).homeworkSubmission.create({
+    return this.prisma.contentSubmission.create({
       data: {
-        homeworkId,
+        contentId: homeworkId,
         studentId,
         submissionUrl: data.submissionUrl,
         submissionText: data.submissionText,
@@ -868,15 +897,21 @@ export class LessonService {
     teacherId: string,
     data: GradeHomeworkDto,
   ) {
-    const submission = await (this.prisma as any).homeworkSubmission.findUnique(
-      { where: { id: submissionId } },
-    );
+    const submission = await this.prisma.contentSubmission.findUnique({
+      where: { id: submissionId },
+      include: { content: true },
+    });
     if (!submission) throw new NotFoundException('Submission not found');
+    if (submission.content.type !== ContentType.LESSON) {
+      throw new BadRequestException('Submission is not for a lesson homework');
+    }
+    if (submission.content.teacherId !== teacherId) {
+      throw new ForbiddenException('Only the lesson teacher can grade this submission');
+    }
 
-    return (this.prisma as any).homeworkSubmission.update({
+    return this.prisma.contentSubmission.update({
       where: { id: submissionId },
       data: {
-        type: ContentType.LESSON,
         grade: data.grade,
         feedback: data.feedback,
         status: 'GRADED',
@@ -893,9 +928,7 @@ export class LessonService {
     query: LessonCoverageQueryDto,
     schoolId: string,
   ) {
-    const syllabusMappings = await (
-      this.prisma as any
-    ).syllabusMapping.findMany({
+    const syllabusMappings = await this.prisma.syllabusMapping.findMany({
       where: {
         schoolId,
         subjectId: query.subjectId,

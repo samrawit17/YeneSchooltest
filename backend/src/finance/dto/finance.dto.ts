@@ -8,6 +8,11 @@ import {
   Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+  PayrollEntryStatus,
+  PayrollPaymentMethod,
+  PayrollRunStatus,
+} from '@prisma/client';
 
 export class CreateFeeStructureDto {
   @IsString()
@@ -204,6 +209,10 @@ export class ReportQueryDto {
   @IsOptional()
   @IsEnum(['ETHIOPIAN', 'GREGORIAN'])
   calendarType?: 'ETHIOPIAN' | 'GREGORIAN';
+
+  @IsOptional()
+  @IsString()
+  includeOutstanding?: string;
 }
 
 export class PayrollQueryDto {
@@ -224,8 +233,8 @@ export class PayrollQueryDto {
   year?: number;
 
   @IsOptional()
-  @IsEnum(['DRAFT', 'APPROVED', 'PAID', 'CANCELLED'])
-  status?: 'DRAFT' | 'APPROVED' | 'PAID' | 'CANCELLED';
+  @IsEnum(PayrollRunStatus)
+  status?: PayrollRunStatus;
 }
 
 export class UpsertPayrollSalaryDto {
@@ -304,8 +313,8 @@ export class UpdatePayrollRunStatusDto {
   @IsString()
   schoolId!: string;
 
-  @IsEnum(['DRAFT', 'APPROVED', 'PAID', 'CANCELLED'])
-  status!: 'DRAFT' | 'APPROVED' | 'PAID' | 'CANCELLED';
+  @IsEnum(PayrollRunStatus)
+  status!: PayrollRunStatus;
 
   @IsOptional()
   @IsString()
@@ -320,12 +329,12 @@ export class UpdatePayrollEntryStatusDto {
   @IsString()
   schoolId!: string;
 
-  @IsEnum(['PENDING', 'APPROVED', 'PAID', 'HELD'])
-  status!: 'PENDING' | 'APPROVED' | 'PAID' | 'HELD';
+  @IsEnum(PayrollEntryStatus)
+  status!: PayrollEntryStatus;
 
   @IsOptional()
-  @IsString()
-  paymentMethod?: string;
+  @IsEnum(PayrollPaymentMethod)
+  paymentMethod?: PayrollPaymentMethod;
 
   @IsOptional()
   @IsString()
