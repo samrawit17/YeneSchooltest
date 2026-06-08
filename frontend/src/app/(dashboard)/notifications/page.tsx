@@ -216,22 +216,26 @@ const NotificationsPage = () => {
       </div>
 
       {isPushSupported() && (
-        <Card className="mb-4 md:mb-6 border-orange-200 dark:border-orange-800 bg-orange-50/70 dark:bg-orange-950/30">
+        <Card className="mb-4 md:mb-6 border-amber-300 bg-amber-50 text-slate-950 shadow-sm dark:border-amber-700 dark:bg-amber-950 dark:text-amber-50">
           <CardContent className="flex flex-col gap-4 p-4 sm:p-5 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-3">
-              <BellRing className="mt-1 h-5 w-5 text-orange-600 shrink-0" />
+              <BellRing className="mt-1 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" />
               <div>
-                <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm sm:text-base">
+                <p className="text-sm font-semibold text-slate-950 dark:text-amber-50 sm:text-base">
                   {t.pushTitle}
                 </p>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
+                <p className="mt-1 text-xs text-slate-700 dark:text-amber-100 sm:text-sm">
                   {t.pushDescription}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {pushPermission !== "granted" ? (
-                <Button onClick={handleEnablePush} disabled={pushActionLoading} className="w-full sm:w-auto">
+                <Button
+                  onClick={handleEnablePush}
+                  disabled={pushActionLoading}
+                  className="w-full border-slate-950 bg-slate-950 text-white hover:bg-slate-800 dark:border-amber-200 dark:bg-amber-200 dark:text-slate-950 dark:hover:bg-amber-100 sm:w-auto"
+                >
                   {pushActionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   {pushActionLoading ? t.enabling : t.enableNotifications}
                 </Button>
@@ -241,7 +245,7 @@ const NotificationsPage = () => {
                     variant="outline"
                     onClick={handleSyncPush}
                     disabled={pushActionLoading}
-                    className="w-full sm:w-auto"
+                    className="w-full border-amber-700 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-300 dark:bg-amber-900 dark:text-amber-50 dark:hover:bg-amber-800 sm:w-auto"
                   >
                     {pushActionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     {pushActionLoading ? t.syncing : t.syncBrowser}
@@ -250,7 +254,7 @@ const NotificationsPage = () => {
                     variant="ghost"
                     onClick={handleDisablePush}
                     disabled={pushActionLoading}
-                    className="w-full sm:w-auto"
+                    className="w-full text-amber-900 hover:bg-amber-100 hover:text-amber-950 dark:text-amber-100 dark:hover:bg-amber-900 dark:hover:text-amber-50 sm:w-auto"
                   >
                     {t.disable}
                   </Button>

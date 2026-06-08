@@ -1,5 +1,12 @@
 import api from './core';
 
+type RequestOptions = {
+  skipAuthErrorRedirect?: boolean;
+};
+
+const requestOptions = (options?: RequestOptions) =>
+  options?.skipAuthErrorRedirect ? { skipAuthErrorRedirect: true } : {};
+
 export const studentsAPI = {
   create: (data: any) => api.post('/students', data),
 
@@ -14,7 +21,8 @@ export const studentsAPI = {
     page?: string | number;
     limit?: string | number;
     search?: string;
-  }) => api.get('/students', { params }),
+  }, options?: RequestOptions) =>
+    api.get('/students', { params, ...requestOptions(options) }),
 
   getHomeroomStudents: () => api.get('/students/homeroom/me'),
   getMyClass: () => api.get('/students/me/class'),
@@ -116,6 +124,6 @@ export const registrarAPI = {
   assignClass: (id: string, data: { className: string; section: string; rollNumber: string; classId?: string; sectionId?: string; stream?: string | null }) =>
     api.post(`/registrar/students/${id}/assign-class`, data),
 
-  uploadDocuments: (id: string, documents: any[]) =>
-    api.post(`/registrar/students/${id}/documents`, { documents }),
+  uploadDocuments: (id: string, documents: any[], options?: RequestOptions) =>
+    api.post(`/registrar/students/${id}/documents`, { documents }, requestOptions(options)),
 };

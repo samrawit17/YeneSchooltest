@@ -337,6 +337,23 @@ export default function RegistrarDashboard() {
   };
   const translateChartString = (str: string) => chartTranslations[str] || str;
 
+  const alertTranslations: Array<{ pattern: RegExp; template: string }> = [
+    { pattern: /^(\d+) online enrollment request\(s\) waiting for registrar review$/, template: t.registrar.alertEnrollmentRequests },
+    { pattern: /^(\d+) section\(s\) do not have a homeroom teacher assigned$/, template: t.registrar.alertNoHomeroom },
+  ];
+  const translateAlertMessage = (message: string) => {
+    for (const { pattern, template } of alertTranslations) {
+      const match = message.match(pattern);
+      if (match) return formatMessage(template, { count: match[1] });
+    }
+    return message;
+  };
+  const actionLabelTranslations: Record<string, string> = {
+    "Review requests": t.registrar.actionReviewRequests,
+    "Assign homeroom": t.registrar.actionAssignHomeroom,
+  };
+  const translateActionLabel = (label: string) => actionLabelTranslations[label] || label;
+
   return (
     <div className="min-h-screen bg-gray-50 py-6 dark:bg-gray-900">
       <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -373,7 +390,7 @@ export default function RegistrarDashboard() {
                 >
                   <AlertIcon className={`h-5 w-5 shrink-0 ${alertStyle.iconColor}`} />
                   <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <p className="text-sm text-gray-800 dark:text-gray-200">{alert.message}</p>
+                    <p className="text-sm text-gray-800 dark:text-gray-200">{translateAlertMessage(alert.message)}</p>
                     <Badge className={`text-xs ${getPriorityBadge(alert.priority)}`}>
                       {priorityLabels[alert.priority] || alert.priority.charAt(0).toUpperCase() + alert.priority.slice(1)}
                     </Badge>
@@ -385,7 +402,7 @@ export default function RegistrarDashboard() {
                       onClick={() => router.push(alert.actionUrl!)}
                       className="flex w-full items-center justify-center gap-1 text-xs sm:w-auto"
                     >
-                      {alert.actionLabel}
+                      {translateActionLabel(alert.actionLabel)}
                       <ExternalLink className="h-3 w-3" />
                     </Button>
                   )}

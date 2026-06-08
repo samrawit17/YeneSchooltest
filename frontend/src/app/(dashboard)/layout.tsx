@@ -176,6 +176,7 @@ export default function DashboardLayout({
       return response.data || {};
     },
     enabled: isAuthenticated,
+    placeholderData: {},
     staleTime: 15000,
     refetchInterval: 30000,
     refetchOnMount: true,

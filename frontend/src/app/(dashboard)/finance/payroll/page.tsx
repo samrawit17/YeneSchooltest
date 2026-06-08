@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { financeAPI } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
+import { hasPermission, useAuth } from "@/context/AuthContext";
+import AccessDenied from "@/components/AccessDenied";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -145,12 +146,14 @@ const downloadCsv = (filename: string, rows: Array<Record<string, string | numbe
 };
 
 export default function PayrollPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const schoolId = user?.schoolId || "";
+  const canReadPayroll = hasPermission(user, "finance:payroll:read");
   const activeCalendarType: CalendarType = user?.calendarType === "GREGORIAN" ? "GREGORIAN" : "ETHIOPIAN";
   const now = new Date();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [staff, setStaff] = useState<PayrollStaff[]>([]);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string>("");
@@ -174,8 +177,12 @@ export default function PayrollPage() {
   });
 
   const loadPayroll = useCallback(async () => {
-    if (!schoolId) return;
+    if (!schoolId || !canReadPayroll) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setLoadError("");
     try {
       const [staffRes, runsRes] = await Promise.all([
         financeAPI.getPayrollStaff(schoolId),
@@ -185,16 +192,22 @@ export default function PayrollPage() {
       const nextRuns = runsRes.data?.runs || [];
       setStaff(nextStaff);
       setRuns(nextRuns);
-      if (!selectedRunId && nextRuns[0]?.id) setSelectedRunId(nextRuns[0].id);
-    } catch (error) {
-      toast.error("Failed to load payroll");
+      if (nextRuns.length === 0) {
+        setSelectedRunId("");
+      } else if (!selectedRunId || !nextRuns.some((run: PayrollRun) => run.id === selectedRunId)) {
+        setSelectedRunId(nextRuns[0].id);
+      }
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Failed to load payroll";
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, [schoolId, selectedRunId]);
+  }, [canReadPayroll, schoolId, selectedRunId]);
 
   const loadRunDetail = useCallback(async () => {
-    if (!schoolId || !selectedRunId) {
+    if (!schoolId || !canReadPayroll || !selectedRunId) {
       setSelectedRun(null);
       return;
     }
@@ -205,7 +218,7 @@ export default function PayrollPage() {
       setSelectedRun(null);
       toast.error("Failed to load payroll run");
     }
-  }, [schoolId, selectedRunId]);
+  }, [canReadPayroll, schoolId, selectedRunId]);
 
   useEffect(() => {
     loadPayroll();
@@ -410,7 +423,7 @@ export default function PayrollPage() {
   const canHoldEntries = selectedRun?.status === "DRAFT" || selectedRun?.status === "APPROVED";
   const canPayEntries = selectedRun?.status === "APPROVED";
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -422,6 +435,10 @@ export default function PayrollPage() {
         <Skeleton className="h-96" />
       </div>
     );
+  }
+
+  if (!canReadPayroll) {
+    return <AccessDenied type="403" />;
   }
 
   return (
@@ -442,6 +459,12 @@ export default function PayrollPage() {
           </Button>
         </div>
       </div>
+
+      {loadError ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {loadError}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -544,7 +567,9 @@ export default function PayrollPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {runs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No payroll runs yet.</p>
+                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                    No payroll runs yet. Create a salary setup first, then create the monthly run.
+                  </div>
                 ) : runs.map((run) => (
                   <button
                     key={run.id}
@@ -608,7 +633,13 @@ export default function PayrollPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {selectedRun.entries.map((entry) => (
+                          {selectedRun.entries.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                                No payroll entries were generated for this run.
+                              </TableCell>
+                            </TableRow>
+                          ) : selectedRun.entries.map((entry) => (
                             <TableRow key={entry.id}>
                               <TableCell>
                                 <div className="font-medium">{entry.staffUser.name}</div>
@@ -718,7 +749,13 @@ export default function PayrollPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStaff.map((item) => {
+                  {filteredStaff.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                        {staff.length === 0 ? "No eligible payroll staff found for this school." : "No staff match this search."}
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredStaff.map((item) => {
                     const netSetup = (item.salary?.baseSalary || 0) + (item.salary?.allowances || 0) - (item.salary?.deductions || 0);
                     return (
                       <TableRow key={item.id} className="cursor-pointer" onClick={() => fillSalaryForm(item.id)}>

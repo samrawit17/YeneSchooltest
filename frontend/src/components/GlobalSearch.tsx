@@ -157,6 +157,16 @@ interface NavigationMessages {
 const FINANCE_ALLOWED_RESULT_TYPES = new Set<string>(["student", "nav"]);
 const FINANCE_ALLOWED_ENTITY_KEYS = new Set<SearchableEntity>(["students"]);
 
+const ROLE_SEARCH_PERMISSIONS: Record<string, SearchableEntity[]> = {
+    admin: ["students", "teachers", "parents", "staff", "exams", "announcements", "events", "classes", "sections", "subjects", "grades"],
+    it_manager: ["students", "teachers", "parents", "staff", "announcements", "events", "classes", "sections", "subjects", "grades"],
+    teacher: ["students", "exams", "lessons", "announcements", "events", "classes", "subjects", "grades"],
+    student: ["lessons", "announcements", "events", "grades"],
+    parent: ["students", "announcements", "events", "grades"],
+    finance: ["students"],
+    registrar: ["students", "parents", "classes", "sections", "grades"],
+};
+
 const SEARCH_LABEL_KEYS: Record<string, string> = {
     Assignments: "assignments",
     "Bulk Upload": "bulkUpload",
@@ -226,25 +236,15 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
         [roleKey, isSchoolSettingVisible],
     );
 
-    // Fetch permissions on mount
+    // Seed permissions from the current role. This avoids an empty global-search
+    // request during every dashboard page load.
     useEffect(() => {
-        const fetchPermissions = async () => {
-            if (isSuperAdmin) {
-                setPermissions([]);
-                return;
-            }
-            try {
-                const response = await searchAPI.globalSearch('');
-                const data = response.data as SearchResponse;
-                if (data.permissions) {
-                    setPermissions(data.permissions);
-                }
-            } catch (error) {
-                console.error("Failed to fetch search permissions:", error);
-            }
-        };
-        fetchPermissions();
-    }, [isSuperAdmin]);
+        if (isSuperAdmin) {
+            setPermissions([]);
+            return;
+        }
+        setPermissions(ROLE_SEARCH_PERMISSIONS[roleKey] || []);
+    }, [isSuperAdmin, roleKey]);
 
     // Handle click outside to close dropdown
     useEffect(() => {

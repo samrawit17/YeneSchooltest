@@ -46,6 +46,7 @@ import {
   XCircle,
   MinusCircle,
   ArrowRight,
+  RotateCcw,
   BarChart3,
   PieChart as PieChartIcon,
   Activity,
@@ -178,6 +179,28 @@ interface OutstandingFee {
   status: 'PAID' | 'PARTIAL' | 'PENDING' | 'UNPAID';
 }
 
+const emptyFeeBreakdown: FeeBreakdown = {
+  tuition: 0,
+  registration: 0,
+  examFee: 0,
+  library: 0,
+  other: 0,
+};
+
+const resolveArrayPayload = <T,>(payload: any, keys: string[] = []): T[] => {
+  if (Array.isArray(payload)) return payload;
+
+  for (const key of keys) {
+    const value = key.split('.').reduce((current, part) => current?.[part], payload);
+    if (Array.isArray(value)) return value;
+  }
+
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  if (Array.isArray(payload?.rows)) return payload.rows;
+  return [];
+};
+
 const compressGradeNumbers = (grades: number[]) => {
   const sortedUnique = Array.from(new Set(grades)).sort((a, b) => a - b);
   if (sortedUnique.length === 0) return 'All Grades';
@@ -228,6 +251,8 @@ export default function FinanceDashboardPage() {
   const { formatDate: formatSchoolDate } = useAcademicYear();
   const { t } = useTranslations<FinanceMessages>('finance');
   const [loading, setLoading] = useState(true);
+  const [outstandingLoading, setOutstandingLoading] = useState(false);
+  const [dashboardReportSettled, setDashboardReportSettled] = useState(false);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
   const [currentTerm, setCurrentTerm] = useState<Term | null>(null);
@@ -248,13 +273,7 @@ export default function FinanceDashboardPage() {
     unpaidStudentsCount: 0,
   });
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
-  const [feeBreakdown, setFeeBreakdown] = useState<FeeBreakdown>({
-    tuition: 0,
-    registration: 0,
-    examFee: 0,
-    library: 0,
-    other: 0,
-  });
+  const [feeBreakdown, setFeeBreakdown] = useState<FeeBreakdown>(emptyFeeBreakdown);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [outstandingFees, setOutstandingFees] = useState<OutstandingFee[]>([]);
   const [feeStructures, setFeeStructures] = useState<any[]>([]);
@@ -292,6 +311,7 @@ export default function FinanceDashboardPage() {
   const [studentSearch, setStudentSearch] = useState('');
   const [studentResults, setStudentResults] = useState<StudentSearchResult[]>([]);
   const skipStudentSearch = useRef(false);
+  const outstandingRequestSeq = useRef(0);
   const [selectedStudentFees, setSelectedStudentFees] = useState<StudentFeeLookup[]>([]);
   const [selectedFeeId, setSelectedFeeId] = useState('');
   const [isSearchingStudents, setIsSearchingStudents] = useState(false);
@@ -337,6 +357,103 @@ export default function FinanceDashboardPage() {
   // Current user (mock - in real app get from auth)
   const currentUser = { name: 'Finance Manager', role: 'FINANCE' };
 
+  function toastText(value: unknown, fallback: string) {
+    if (typeof value === 'string' && value.trim()) return value;
+    if (
+      value &&
+      typeof value === 'object' &&
+      'message' in value &&
+      typeof (value as { message?: unknown }).message === 'string' &&
+      (value as { message: string }).message.trim()
+    ) {
+      return (value as { message: string }).message;
+    }
+    return fallback;
+  }
+
+  // Load dashboard data
+  const loadDashboardData = useCallback(async () => {
+    if (!selectedYear) return;
+    if (selectedTerm && selectedTerm !== 'all' && !terms.some((term) => term.id === selectedTerm)) {
+      return;
+    }
+
+    setLoading(true);
+    setDashboardReportSettled(false);
+    try {
+      // Get date range from state or defaults
+      const from = fromDate ? fromDate.toISOString().split('T')[0] : (selectedTerm === 'all' ? undefined : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
+      const to = toDate ? toDate.toISOString().split('T')[0] : (selectedTerm === 'all' ? undefined : new Date().toISOString().split('T')[0]);
+
+      // Fetch all data in parallel
+      const schoolId = user?.schoolId;
+      if (!schoolId) {
+        toast.error(toastText(t.schoolIdNotFound, 'School ID not found'));
+        setLoading(false);
+        setDashboardReportSettled(true);
+        return;
+      }
+
+      const termFilter = selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined;
+
+      const dailyReportPromise = financeAPI.getDailyReport({
+          schoolId: schoolId,
+          academicYearId: selectedYear,
+          termId: termFilter,
+          from: from,
+          to: to,
+          includeOutstanding: false,
+        })
+        .then((response) => ({ response }))
+        .catch((error) => ({ error }));
+
+      const feeStructuresResponse = await financeAPI
+        .listFeeStructures(schoolId, selectedYear, termFilter)
+        .catch((error) => {
+          console.error('Error fetching fee structures:', error);
+          return { data: [] };
+        });
+
+      const feeStructureRows = resolveArrayPayload<any>(feeStructuresResponse?.data, ['data']);
+      setFeeStructures(feeStructureRows);
+      setLoading(false);
+
+      const dailyReportResult = await dailyReportPromise;
+      if ('error' in dailyReportResult) {
+        throw dailyReportResult.error;
+      }
+
+      // Process stats
+      const report = dailyReportResult.response.data;
+      setStats({
+        totalRevenue: report.total || 0,
+        collectedToday: report.todayTotal || 0,
+        outstandingBalance: report.totalOutstanding || 0,
+        totalStudentsFullyPaid: report.paidStudents || 0,
+        studentsPartialPayment: report.partialStudents || 0,
+        unpaidStudentsCount: report.unpaidStudents || 0,
+      });
+
+      // Process revenue trend data
+      setRevenueData(resolveArrayPayload<RevenueData>(report, ['dailyData', 'data.dailyData']));
+
+      // Process fee breakdown
+      setFeeBreakdown(report.feeBreakdown || emptyFeeBreakdown);
+
+      // Process transactions
+      const paymentRows = resolveArrayPayload<Transaction>(report, ['payments', 'data.payments']);
+      setTransactions(paymentRows);
+      setTransactionsTotal(paymentRows.length);
+
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      toast.error(toastText(t.failedLoadYears, 'Failed to load finance dashboard'));
+    } finally {
+      setLoading(false);
+      setDashboardReportSettled(true);
+    }
+  }, [selectedYear, selectedTerm, terms, fromDate, toDate, user?.schoolId, t.failedLoadYears, t.schoolIdNotFound]);
+
   // Load academic years after auth has restored the school context.
   useEffect(() => {
     const loadSetupData = async () => {
@@ -373,25 +490,12 @@ export default function FinanceDashboardPage() {
         setSelectedYear('');
         setTerms([]);
         setSelectedTerm('');
-      toast.error('Failed to load dashboard data');
+        toast.error('Failed to load dashboard data');
       } finally {
         setLoading(false);
       }
     };
     loadSetupData();
-  }, [user?.schoolId]);
-
-  useEffect(() => {
-    const loadGradeOptions = async () => {
-      if (!user?.schoolId) return;
-      try {
-        const response = await schoolSettingsAPI.getAll(user.schoolId);
-        setGradeOptions(getGradeNumbersFromSystem(response.data?.grade_system || '1-12'));
-      } catch (error) {
-        setGradeOptions(getGradeNumbersFromSystem('1-12'));
-      }
-    };
-    loadGradeOptions();
   }, [user?.schoolId]);
 
   // Load curriculum info when academic year changes
@@ -407,6 +511,7 @@ export default function FinanceDashboardPage() {
         ]);
         
         if (settingsResponse?.data) {
+          setGradeOptions(getGradeNumbersFromSystem(settingsResponse.data.grade_system || '1-12'));
           const dueDaySetting = settingsResponse.data.fee_payment_due_day;
           const penaltySetting = settingsResponse.data.fee_daily_penalty_amount;
           const dueDay = Number(dueDaySetting ?? 15);
@@ -429,21 +534,11 @@ export default function FinanceDashboardPage() {
           setTerms(loadedTerms);
 
           setSelectedTerm((currentSelectedTerm) => {
+            if (currentSelectedTerm === 'all') return 'all';
             if (currentSelectedTerm && loadedTerms.some(term => term.id === currentSelectedTerm)) {
               return currentSelectedTerm;
             }
-
-            const current =
-              loadedTerms.find(term => term.id === resolvedCurrentTerm?.id) ||
-              loadedTerms.find(term => {
-                if (!term.startDate || !term.endDate) return false;
-                const today = new Date();
-                const start = new Date(term.startDate);
-                const end = new Date(term.endDate);
-                return today >= start && today <= end;
-              });
-
-            return current?.id || 'all';
+            return 'all';
           });
         }
       } catch (error) {
@@ -470,107 +565,46 @@ export default function FinanceDashboardPage() {
     }
   }, [selectedTerm, terms]);
 
-  // Load dashboard data
-  const loadDashboardData = useCallback(async () => {
-    if (!selectedYear) return;
-    if (selectedTerm && selectedTerm !== 'all' && !terms.some((term) => term.id === selectedTerm)) {
-      return;
-    }
-    
-    setLoading(true);
+  const loadOutstandingBalances = useCallback(async () => {
+    if (!selectedYear || !user?.schoolId) return;
+    if (selectedTerm && selectedTerm !== 'all' && !terms.some((term) => term.id === selectedTerm)) return;
+
+    const termFilter = selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined;
+    const requestId = outstandingRequestSeq.current + 1;
+    outstandingRequestSeq.current = requestId;
+    setOutstandingLoading(true);
     try {
-      // Get date range from state or defaults
-      const from = fromDate ? fromDate.toISOString().split('T')[0] : (selectedTerm === 'all' ? undefined : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
-      const to = toDate ? toDate.toISOString().split('T')[0] : (selectedTerm === 'all' ? undefined : new Date().toISOString().split('T')[0]);
+      const response = await financeAPI.getOutstandingBalances(user.schoolId, selectedYear, termFilter);
+      if (requestId !== outstandingRequestSeq.current) return;
 
-      // Fetch all data in parallel
-      const schoolId = user?.schoolId;
-      if (!schoolId) {
-        toast.error(t.schoolIdNotFound);
-        setLoading(false);
-        return;
-      }
+      const rows = resolveArrayPayload<OutstandingFee>(response?.data, ['rows', 'data.rows']);
+      const totalOutstanding = Number(response?.data?.totalOutstanding ?? 0);
+      const totalRevenue = Number(response?.data?.totalRevenue ?? 0);
+      const paidStudents = rows.filter((row) => row.status === 'PAID').length;
+      const partialStudents = rows.filter((row) => row.status === 'PARTIAL').length;
+      const unpaidStudents = rows.filter((row) => ['PENDING', 'UNPAID'].includes(String(row.status))).length;
 
-      const termFilter = selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined;
-      console.log('Fetching fee structures with:', { schoolId, selectedYear });
-      
-      const [dailyReport, outstandingResponse, feeStructuresResponse] = await Promise.all([
-        financeAPI.getDailyReport({ 
-          schoolId: schoolId, 
-          academicYearId: selectedYear,
-          termId: termFilter,
-          from: from,
-          to: to
-        }),
-        financeAPI.getOutstandingBalances(schoolId, selectedYear, termFilter),
-        financeAPI.listFeeStructures(schoolId, selectedYear, termFilter).catch(e => {
-          console.error('Error fetching fee structures:', e);
-          return { data: [] };
-        })
-      ]);
-      
-      console.log('Fee structures raw response:', feeStructuresResponse);
-      console.log('Daily report response:', dailyReport.data);
-      console.log('Outstanding response:', outstandingResponse.data);
-
-      // Process stats
-      const report = dailyReport.data;
-      console.log('Report stats:', {
-        total: report.total,
-        todayTotal: report.todayTotal,
-        totalOutstanding: report.totalOutstanding,
-        paidStudents: report.paidStudents,
-        partialStudents: report.partialStudents,
-        unpaidStudents: report.unpaidStudents
-      });
-      setStats({
-        totalRevenue: report.total || 0,
-        collectedToday: report.todayTotal || 0,
-        outstandingBalance: report.totalOutstanding || 0,
-        totalStudentsFullyPaid: report.paidStudents || 0,
-        studentsPartialPayment: report.partialStudents || 0,
-        unpaidStudentsCount: report.unpaidStudents || 0,
-      });
-
-      // Process revenue trend data
-      if (report.dailyData) {
-        setRevenueData(report.dailyData);
-      }
-
-      // Process fee structures
-      const fsData = feeStructuresResponse?.data;
-      console.log('Fee structures - raw fsData:', fsData, 'type:', typeof fsData);
-      if (fsData && typeof fsData === 'object' && 'data' in fsData) {
-        setFeeStructures((fsData as any).data || []);
-      } else if (Array.isArray(fsData)) {
-        setFeeStructures(fsData);
-      }
-
-      // Process fee breakdown
-      if (report.feeBreakdown) {
-        setFeeBreakdown(report.feeBreakdown);
-      }
-
-      // Process transactions
-      if (report.payments) {
-        setTransactions(report.payments);
-        setTransactionsTotal(report.payments.length);
-      }
-
-      // Process outstanding fees
-      console.log('Outstanding response:', outstandingResponse.data);
-      if (outstandingResponse.data.rows) {
-        setOutstandingFees(outstandingResponse.data.rows);
-        setOutstandingTotal(outstandingResponse.data.rows.length);
-      }
-
+      setOutstandingFees(rows);
+      setOutstandingTotal(rows.length);
+      setStats((current) => ({
+        ...current,
+        totalRevenue,
+        outstandingBalance: totalOutstanding,
+        totalStudentsFullyPaid: paidStudents,
+        studentsPartialPayment: partialStudents,
+        unpaidStudentsCount: unpaidStudents,
+      }));
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      toast.error(t.failedLoadYears);
+      if (requestId !== outstandingRequestSeq.current) return;
+      console.error('Error loading outstanding balances:', error);
+      setOutstandingFees([]);
+      setOutstandingTotal(0);
     } finally {
-      setLoading(false);
+      if (requestId === outstandingRequestSeq.current) {
+        setOutstandingLoading(false);
+      }
     }
-  }, [selectedYear, selectedTerm, terms, fromDate, toDate, user?.schoolId, t.failedLoadYears, t.schoolIdNotFound]);
+  }, [selectedYear, selectedTerm, terms, user?.schoolId]);
 
   // Load dashboard when filters or school context change
   useEffect(() => {
@@ -581,14 +615,55 @@ export default function FinanceDashboardPage() {
       terms.some((term) => term.id === selectedTerm);
 
     if (selectedYear && user?.schoolId && termReady) {
-      console.log('Loading dashboard data...');
       loadDashboardData();
     }
   }, [selectedYear, selectedTerm, terms, user?.schoolId, loadDashboardData, fromDate, toDate]);
 
+  useEffect(() => {
+    const termReady =
+      selectedTerm === 'all' ||
+      !selectedTerm ||
+      terms.length === 0 ||
+      terms.some((term) => term.id === selectedTerm);
+
+    if (selectedYear && user?.schoolId && termReady && dashboardReportSettled) {
+      const timer = window.setTimeout(() => {
+        loadOutstandingBalances();
+      }, 700);
+      return () => {
+        window.clearTimeout(timer);
+        outstandingRequestSeq.current += 1;
+        setOutstandingLoading(false);
+      };
+    }
+  }, [selectedYear, selectedTerm, terms, user?.schoolId, dashboardReportSettled, loadOutstandingBalances]);
+
   // Format currency
   const formatCurrency = (amount: number) => {
     return `Brr ${amount.toLocaleString()}`;
+  };
+
+  const getAllPeriodLabel = () => {
+    const messages = t as Partial<FinanceMessages>;
+    if (curriculumType === 'SEMESTER') return messages.allSemesters || 'All Semesters';
+    if (curriculumType === 'QUARTER') return messages.allQuarters || 'All Quarters';
+    return messages.allTerms || 'All Terms';
+  };
+
+  const financeText = (key: keyof FinanceMessages, fallback: string) => {
+    const value = (t as Partial<FinanceMessages>)[key];
+    return typeof value === 'string' && value.trim() ? value : fallback;
+  };
+
+  const apiToastText = (error: any, fallback: string) =>
+    toastText(error?.response?.data?.message || error?.message, fallback);
+
+  const getOutstandingStatusLabel = (status: string) => {
+    const messages = t as Partial<FinanceMessages>;
+    if (status === 'all') return getAllPeriodLabel().split(/\s+/)[0] || 'All';
+    if (status === 'PAID') return messages.paid || 'Paid';
+    if (status === 'PARTIAL') return messages.partial || 'Partial';
+    return messages.unpaid || 'Unpaid';
   };
 
   const activeCalendarType = user?.calendarType || 'ETHIOPIAN';
@@ -724,6 +799,16 @@ export default function FinanceDashboardPage() {
       calendarType: activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
       periodLabel,
     });
+  };
+
+  const formatPaymentFeeOptionLabel = (fee: StudentFeeItem) => {
+    const feeLabel = formatFeeItemDisplay(fee.name, isMonthlyBillingMode ? null : fee.termName);
+    const periodLabel = isMonthlyBillingMode
+      ? selectedPaymentTermName || 'Selected period'
+      : fee.termName || 'Whole Academic Year';
+    const balanceLabel = fee.balance <= 0 ? financeText('paid', 'Paid') : `${formatCurrency(fee.balance)} remaining`;
+
+    return `${feeLabel} - ${periodLabel} - ${balanceLabel}`;
   };
 
   const getInstallmentPeriodLabel = (installmentNumber: number) => {
@@ -995,11 +1080,11 @@ export default function FinanceDashboardPage() {
   // Handle Record Payment
   const handleRecordPayment = async () => {
     if (!paymentForm.studentId || !paymentForm.amountPaid) {
-      toast.error(t.studentAmountRequired);
+      toast.error(financeText('studentAmountRequired', 'Select a student and enter an amount'));
       return;
     }
     if (!paymentTermIdForSubmit) {
-      toast.error(t.selectTermError);
+      toast.error(financeText('selectTermError', 'Select a billing period'));
       return;
     }
     if (isMonthlyBillingMode && (!selectedFeeId || unpaidPaymentFeeOptions.length === 0 || (selectedFee?.balance || 0) <= 0)) {
@@ -1009,8 +1094,6 @@ export default function FinanceDashboardPage() {
     
     // Find the fee ID - use selected one or let backend find it
     const feeId = selectedFee?.id || selectedFeeId;
-    console.log('Recording payment - studentId:', paymentForm.studentId, 'feeId:', feeId);
-    
     setIsRecordingPayment(true);
     try {
       await financeAPI.recordPayment({
@@ -1023,7 +1106,7 @@ export default function FinanceDashboardPage() {
         transactionReference: paymentForm.transactionReference,
         notes: paymentForm.notes,
       });
-      toast.success(t.paymentRecorded);
+      toast.success(financeText('paymentRecorded', 'Payment recorded'));
       setRecordPaymentOpen(false);
       setPaymentForm({
         studentId: '',
@@ -1039,7 +1122,7 @@ export default function FinanceDashboardPage() {
       loadDashboardData();
     } catch (error: any) {
       console.error('Record payment error:', error);
-      toast.error(error.response?.data?.message || t.failedRecordPayment);
+      toast.error(apiToastText(error, financeText('failedRecordPayment', 'Failed to record payment')));
     } finally {
       setIsRecordingPayment(false);
     }
@@ -1047,7 +1130,7 @@ export default function FinanceDashboardPage() {
 
   const handleSendPeriodReminders = async () => {
     if (!user?.schoolId || !selectedTerm || selectedTerm === 'all') {
-      toast.error(t.selectTermReminder);
+      toast.error(financeText('selectTermReminder', 'Select a billing period first'));
       return;
     }
 
@@ -1059,7 +1142,7 @@ export default function FinanceDashboardPage() {
       });
       toast.success('Reminder is sent to all parents');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || t.failedReminders);
+      toast.error(apiToastText(error, financeText('failedReminders', 'Failed to send reminders')));
     } finally {
       setIsSendingReminders(false);
     }
@@ -1069,15 +1152,15 @@ export default function FinanceDashboardPage() {
     if (!user?.schoolId) return;
     const schoolId = user.schoolId;
 
-    toast.warning(t.reverseConfirm, {
+    toast.warning(financeText('reverseConfirm', 'Reverse payment?'), {
       description: `Reverse payment ${tx.transactionReference || tx.paymentReference || tx.receiptNumber || tx.id} for ${formatCurrency(tx.amountPaid)}?`,
       duration: 10000,
       cancel: {
-        label: t.cancel,
+        label: financeText('cancel', 'Cancel'),
         onClick: () => undefined,
       },
       action: {
-        label: t.reversed,
+        label: financeText('reversed', 'Reverse'),
         onClick: async () => {
           setReversingPaymentId(tx.id);
           try {
@@ -1085,10 +1168,10 @@ export default function FinanceDashboardPage() {
               schoolId,
               reason: 'Reversed from finance dashboard',
             });
-            toast.success(t.paymentReversed);
+            toast.success(financeText('paymentReversed', 'Payment reversed and balance recalculated'));
             loadDashboardData();
           } catch (error: any) {
-            toast.error(error.response?.data?.message || t.failedReverse);
+            toast.error(apiToastText(error, financeText('failedReverse', 'Failed to reverse payment')));
           } finally {
             setReversingPaymentId(null);
           }
@@ -1130,14 +1213,12 @@ export default function FinanceDashboardPage() {
       }));
     } catch (error) {
       console.error('Failed to refresh selected student fees:', error);
-      toast.error(t.failedLoadFees);
+      toast.error(financeText('failedLoadFees', 'Failed to load student fees'));
     }
   };
 
 // Search students for payment (auto-search as you type)
   const handleSearchStudents = useCallback(async (searchTerm: string) => {
-    console.log('Searching for:', searchTerm, 'schoolId:', user?.schoolId);
-    
     if (!searchTerm.trim() || !user?.schoolId || searchTerm.length < 2) {
       setStudentResults([]);
       setSelectedStudentFees([]);
@@ -1150,10 +1231,8 @@ export default function FinanceDashboardPage() {
         search: searchTerm.trim(),
         limit: '20'
       });
-      console.log('Student search response:', response);
       const rawStudents: StudentSearchResult[] = response.data?.data || response.data?.rows || [];
       const students = rawStudents.filter(isStudentSearchResult);
-      console.log('Found students:', students);
       setStudentResults(students);
       
       // Get their fees inline
@@ -1172,7 +1251,6 @@ export default function FinanceDashboardPage() {
           feesWithStudents.push({ student: s, fees: [] });
         }
       }
-      console.log('Fees with students:', feesWithStudents);
       setSelectedStudentFees(feesWithStudents);
     } catch (error) {
       console.error('Error searching students:', error);
@@ -1195,31 +1273,28 @@ export default function FinanceDashboardPage() {
 
 // Handle Create Fee Structure
   const handleCreateFeeStructure = async () => {
-    console.log('DEBUG: user:', user, 'years:', academicYears, 'selectedYear:', selectedYear);
-    
     // Get year - try selectedYear first, then first academic year, then ''
     let yearId = selectedYear;
     if (!yearId && academicYears.length > 0) {
       yearId = academicYears[0].id;
     }
-    console.log('Using yearId:', yearId);
     
     if (!user?.schoolId) {
-      toast.error(t.feeStructuresError);
+      toast.error(financeText('feeStructuresError', 'School ID not found'));
       return;
     }
     if (!yearId) {
-      toast.error(t.noAcademicYear);
+      toast.error(financeText('noAcademicYear', 'Select an academic year first'));
       return;
     }
     
     if (!feeStructureForm.feeType || feeStructureForm.feeType.trim() === '') {
-      toast.error(t.selectFeeType);
+      toast.error(financeText('selectFeeType', 'Select a fee type'));
       return;
     }
     
     if (!feeStructureForm.amount || feeStructureForm.amount <= 0) {
-      toast.error(t.validAmount);
+      toast.error(financeText('validAmount', 'Enter a valid amount'));
       return;
     }
 
@@ -1227,7 +1302,7 @@ export default function FinanceDashboardPage() {
     if (feeStructureForm.gradeMode === 'single') {
       const parsedGrade = parseInt(feeStructureForm.grade, 10);
       if (!gradeOptions.includes(parsedGrade)) {
-        toast.error(t.validGrade);
+        toast.error(financeText('validGrade', 'Select a valid grade'));
         return;
       }
       targetGrades = [parsedGrade];
@@ -1235,7 +1310,7 @@ export default function FinanceDashboardPage() {
       const fromGrade = parseInt(feeStructureForm.gradeFrom, 10);
       const toGrade = parseInt(feeStructureForm.gradeTo, 10);
       if (!gradeOptions.includes(fromGrade) || !gradeOptions.includes(toGrade) || fromGrade > toGrade) {
-        toast.error(t.validGradeRange);
+        toast.error(financeText('validGradeRange', 'Select a valid grade range'));
         return;
       }
       targetGrades = Array.from({ length: toGrade - fromGrade + 1 }, (_, index) => fromGrade + index);
@@ -1243,13 +1318,12 @@ export default function FinanceDashboardPage() {
 
     const schoolId = user?.schoolId;
     if (!schoolId) {
-      toast.error(t.schoolIdNotFound);
+      toast.error(financeText('schoolIdNotFound', 'School ID not found'));
       return;
     }
 
 setIsCreatingFeeStructure(true);
     try {
-      console.log('Creating fee structure - school:', schoolId, 'year:', yearId);
       if (feeStructureForm.billingMode === 'installments') {
         const basePayload = {
           schoolId,
@@ -1274,8 +1348,11 @@ setIsCreatingFeeStructure(true);
 
         toast.success(
           targetGrades.length > 1
-            ? t.installmentsCreated.replace('{from}', targetGrades[0].toString()).replace('{to}', targetGrades[targetGrades.length - 1].toString())
-            : t.installmentsCreatedSingle.replace('{count}', (feeCollectionMode?.installmentCount || terms.length || 1).toString()),
+            ? financeText('installmentsCreated', 'Installments created for Grades {from}-{to}')
+                .replace('{from}', targetGrades[0].toString())
+                .replace('{to}', targetGrades[targetGrades.length - 1].toString())
+            : financeText('installmentsCreatedSingle', 'Created {count} installments')
+                .replace('{count}', (feeCollectionMode?.installmentCount || terms.length || 1).toString()),
         );
         setFeeStructureOpen(false);
         setFeeStructureForm({
@@ -1317,8 +1394,10 @@ setIsCreatingFeeStructure(true);
 
       toast.success(
         targetGrades.length > 1
-          ? t.feeStructuresCreated.replace('{from}', targetGrades[0].toString()).replace('{to}', targetGrades[targetGrades.length - 1].toString())
-          : t.feeStructureCreated,
+          ? financeText('feeStructuresCreated', 'Fee structures created for Grades {from}-{to}')
+              .replace('{from}', targetGrades[0].toString())
+              .replace('{to}', targetGrades[targetGrades.length - 1].toString())
+          : financeText('feeStructureCreated', 'Fee structure created'),
       );
       setFeeStructureOpen(false);
       setFeeStructureForm({
@@ -1335,7 +1414,7 @@ setIsCreatingFeeStructure(true);
       loadDashboardData();
     } catch (error: any) {
       console.error('Create fee structure error:', error);
-      toast.error(error.response?.data?.message || t.failedCreateStructure);
+      toast.error(apiToastText(error, financeText('failedCreateStructure', 'Failed to create fee structure')));
     } finally {
       setIsCreatingFeeStructure(false);
     }
@@ -1400,7 +1479,7 @@ setIsCreatingFeeStructure(true);
                 <SelectValue placeholder={curriculumType === 'SEMESTER' ? t.semester : curriculumType === 'QUARTER' ? t.quarter : t.term} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{curriculumType === 'SEMESTER' ? t.allSemesters : curriculumType === 'QUARTER' ? t.allQuarters : t.allTerms}</SelectItem>
+                <SelectItem value="all">{getAllPeriodLabel()}</SelectItem>
                 {terms.map(term => (
                   <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
                 ))}
@@ -1445,7 +1524,7 @@ setIsCreatingFeeStructure(true);
               onClick={() => setRecordPaymentOpen(true)}
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
-              {t.recordPayment}
+              {financeText('recordPayment', 'Record Payment')}
             </Button>
           </div>
         </div>
@@ -1701,7 +1780,7 @@ setIsCreatingFeeStructure(true);
         <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700 mb-6 max-h-96 overflow-y-auto">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">{t.feeStructuresTitle}</CardTitle>
+              <CardTitle className="text-base font-semibold">{financeText('feeStructuresTitle', 'Fee Structures')}</CardTitle>
               <div className="flex gap-2">
                 <Button size="sm" variant="destructive" onClick={async () => {
                   if (!user?.schoolId) {
@@ -1714,10 +1793,10 @@ setIsCreatingFeeStructure(true);
                     await loadDashboardData();
                     toast.success('Fee structures cleared');
                   } catch (e: any) {
-                    toast.error(e.response?.data?.message || e.message || 'Failed to clear fee structures');
+                    toast.error(apiToastText(e, 'Failed to clear fee structures'));
                   }
                   }}>
-                    {t.clear}
+                    {financeText('clear', 'Clear')}
                   </Button>
                 <Button size="sm" variant="outline" onClick={async () => {
                   if (!selectedYear || !user?.schoolId) {
@@ -1725,21 +1804,23 @@ setIsCreatingFeeStructure(true);
                     return;
                   }
                   try {
-                    console.log('Generating fees with:', { schoolId: user.schoolId, academicYearId: selectedYear });
                     const result = await financeAPI.generateStudentFees({
                       schoolId: user.schoolId,
                       academicYearId: selectedYear,
                       termId: selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined,
                     });
-                    console.log('Generate result:', result);
-                    toast.success(result.data?.created ? `${t.feesCreated} ${result.data.created}` : t.noFeesCreated);
+                    toast.success(
+                      result.data?.created
+                        ? `${financeText('feesCreated', 'Created fees')} ${result.data.created}`
+                        : financeText('noFeesCreated', 'No fees were created'),
+                    );
                     loadDashboardData();
                   } catch (e: any) {
                     console.error('Generate error:', e);
-                    toast.error(e.response?.data?.message || e.message || t.failedGenerateFees);
+                    toast.error(apiToastText(e, financeText('failedGenerateFees', 'Failed to generate fees')));
                   }
                 }}>
-                  {t.generateStudentFees}
+                  {financeText('generateStudentFees', 'Generate Student Fees')}
                 </Button>
               </div>
             </div>
@@ -1806,7 +1887,12 @@ setIsCreatingFeeStructure(true);
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">Payment Reference</TableHead>
+                    <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">
+                      <span className="inline-flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                        Payment Reference
+                      </span>
+                    </TableHead>
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.student}</TableHead>
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.class}</TableHead>
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">{t.section}</TableHead>
@@ -1823,7 +1909,10 @@ setIsCreatingFeeStructure(true);
                     paginatedTransactions.map((tx) => (
                       <TableRow key={tx.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <TableCell className="text-xs font-medium dark:text-white py-3 px-4">
-                          {tx.transactionReference || tx.paymentReference || tx.receiptNumber || '-'}
+                          <span className="inline-flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                            <span>{tx.transactionReference || tx.paymentReference || tx.receiptNumber || '-'}</span>
+                          </span>
                         </TableCell>
                         <TableCell className="text-xs font-medium dark:text-white py-3 px-4">{tx.studentName}</TableCell>
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{tx.className || tx.grade || '-'}</TableCell>
@@ -1841,7 +1930,10 @@ setIsCreatingFeeStructure(true);
                             disabled={reversingPaymentId === tx.id}
                             onClick={() => handleReversePayment(tx)}
                           >
-                            {reversingPaymentId === tx.id ? t.reversing : t.reverse}
+                            <RotateCcw className={reversingPaymentId === tx.id ? 'h-3.5 w-3.5 animate-spin' : 'h-3.5 w-3.5'} />
+                            {reversingPaymentId === tx.id
+                              ? financeText('reversing', 'Reversing...')
+                              : financeText('reverse', 'Reverse')}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -1901,7 +1993,7 @@ setIsCreatingFeeStructure(true);
                             : 'border-transparent bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                         }`}
                       >
-                        {status === 'all' ? t.allTerms.split(' ')[0] : status === 'PAID' ? t.paid : status === 'PARTIAL' ? t.partial : t.unpaid}
+                        {getOutstandingStatusLabel(status)}
                       </button>
                     ))}
                     </div>
@@ -1924,7 +2016,13 @@ setIsCreatingFeeStructure(true);
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedOutstandingFees.length > 0 ? (
+                    {outstandingLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-slate-500 py-8 dark:text-gray-400">
+                            Loading outstanding balances...
+                          </TableCell>
+                        </TableRow>
+                      ) : paginatedOutstandingFees.length > 0 ? (
                         paginatedOutstandingFees.map((fee) => (
                           <TableRow key={fee.id} className={`border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${fee.status === 'UNPAID' ? 'bg-red-50 dark:bg-red-900/10' : ''}`}>
                             <TableCell className="text-xs font-medium dark:text-white py-3 px-4 w-[25%] text-left">{fee.studentName}</TableCell>
@@ -2032,7 +2130,10 @@ setIsCreatingFeeStructure(true);
 
             {terms.length > 0 && (
               <div className="space-y-2">
-                <Label>{isMonthlyBillingMode ? 'Current Term / Quarter' : 'Term / Semester Paid'}</Label>
+                <Label className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
+                  <Calendar className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                  {isMonthlyBillingMode ? 'Current Term / Quarter' : 'Term / Semester Paid'}
+                </Label>
                 <Select
                   value={paymentTermIdForSubmit || paymentForm.termId}
                   onValueChange={(value) => {
@@ -2041,7 +2142,7 @@ setIsCreatingFeeStructure(true);
                     refreshSelectedStudentFeesForTerm(value);
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="text-slate-900 dark:text-slate-100">
                     <SelectValue placeholder="Select period" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2057,7 +2158,10 @@ setIsCreatingFeeStructure(true);
 
             {paymentFeeOptions.length > 0 && (
               <div className="space-y-2">
-                <Label>{isMonthlyBillingMode ? 'Billing Month Paid' : 'Fee Item'}</Label>
+                <Label className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
+                  <Calendar className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                  {isMonthlyBillingMode ? 'Billing Month Paid' : 'Fee Item'}
+                </Label>
                 <Select
                   value={selectedFeeId}
                   onValueChange={(value) => {
@@ -2070,15 +2174,18 @@ setIsCreatingFeeStructure(true);
                     }));
                   }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select fee item" />
+                  <SelectTrigger className="text-slate-900 dark:text-slate-100">
+                    <SelectValue placeholder={isMonthlyBillingMode ? 'Select billing month' : 'Select fee item'} />
                   </SelectTrigger>
                   <SelectContent>
                     {paymentFeeOptions.map((fee) => (
-                      <SelectItem key={fee.id} value={fee.id} disabled={isMonthlyBillingMode && fee.balance <= 0}>
-                        <span className={isMonthlyBillingMode && fee.balance <= 0 ? 'line-through opacity-60' : ''}>
-                          {formatFeeItemDisplay(fee.name, isMonthlyBillingMode ? null : fee.termName)} • {isMonthlyBillingMode ? selectedPaymentTermName || 'Selected period' : fee.termName || 'Whole Academic Year'} • {fee.balance <= 0 ? 'Paid' : `${formatCurrency(fee.balance)} remaining`}
-                        </span>
+                      <SelectItem
+                        key={fee.id}
+                        value={fee.id}
+                        disabled={isMonthlyBillingMode && fee.balance <= 0}
+                        className={isMonthlyBillingMode && fee.balance <= 0 ? 'text-slate-500 line-through' : ''}
+                      >
+                        {formatPaymentFeeOptionLabel(fee)}
                       </SelectItem>
                     ))}
                   </SelectContent>

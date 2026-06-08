@@ -289,7 +289,6 @@ export class BackupService {
       teacherSubjectAssignments: await this.prisma.teacherSubjectAssignment.findMany({
         where: { schoolId },
       }),
-      timetables: await this.prisma.timetable.findMany({ where: { schoolId } }),
       timetableSlots: await this.prisma.timetableSlot.findMany({ where: { schoolId } }),
     };
   }
@@ -362,7 +361,6 @@ export class BackupService {
         where: { result: { schoolId } },
       }),
       examSeatingPlans: await this.prisma.examSeatingPlan.findMany({ where: { schoolId } }),
-      examSeatings: await this.prisma.examSeating.findMany({ where: { exam: { schoolId } } }),
     };
   }
 

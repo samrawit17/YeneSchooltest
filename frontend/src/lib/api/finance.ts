@@ -78,6 +78,7 @@ export const financeAPI = {
     to?: string;
     termId?: string;
     academicYearId?: string;
+    includeOutstanding?: boolean;
   }) => api.get('/finance/reports/daily', { params }),
   getMonthlyReport: (schoolId: string, month: number, year: number) =>
     api.get('/finance/reports/monthly', { params: { schoolId, month, year } }),

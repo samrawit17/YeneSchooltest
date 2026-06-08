@@ -65,6 +65,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
     'student:create',
     'student:read',
     'student:update',
+    'document:upload',
     'student:approve_enrollment',
     'parent:create',
     'parent:read',
@@ -129,6 +130,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
     'user:read',
     'view_users',
     'student:read',
+    'document:upload',
     'parent:read',
     'teacher:read',
     'employee:read',
@@ -191,6 +193,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
     'student:create',
     'student:read',
     'student:update',
+    'document:upload',
     'student:approve_enrollment',
     // Parent management
     'parent:create',

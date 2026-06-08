@@ -31,7 +31,6 @@ model School {
   attendances               Attendance[]
   attendanceRecords         AttendanceRecord[]
   attendanceSessions        AttendanceSession[]
-  chatRooms                 ChatRoom[]
   classes                   Class[]
   communications            Communication[]
   conversations             Conversation[]
@@ -73,7 +72,6 @@ model School {
   syllabusMappings          SyllabusMapping[]
   teacherProfiles           TeacherProfile[]
   teacherSubjectAssignments TeacherSubjectAssignment[]
-  timetables                Timetable[]
   timetableSlots            TimetableSlot[]
   users                     User[]
   schoolSettings            SchoolSetting[]
@@ -372,8 +370,6 @@ model User {
   attendanceOverrides         AttendanceRecord[]         @relation("AttendanceOverrides")
   attendanceRecords           AttendanceRecord[]
   attendanceSessions          AttendanceSession[]        @relation("SessionRecordedBy")
-  chatMessages                ChatMessage[]
-  chatParticipants            ChatParticipant[]
   conversationParticipants    ConversationParticipant[]
   messagesSent                Message[]                  @relation("MessageSender")
   messageReads                MessageRead[]
@@ -397,7 +393,6 @@ model User {
   financeProfile              FinanceProfile?
   Grade                       Grade[]
   gradedExams                 Grade[]                    @relation("GradedExams")
-  examSeatings                ExamSeating[]              @relation("ExamSeatings")
   createdSeatingPlans         ExamSeatingPlan[]
   examSectionStudents         ExamSectionStudent[]
   notifications               Notification[]
@@ -431,7 +426,6 @@ model User {
   gradeChangeLogs             GradeChangeLog[]
   teacherProfile              TeacherProfile?
   teacherAssignments          TeacherSubjectAssignment[]
-  timetables                  Timetable[]
   timetableSlots              TimetableSlot[]
   school                      School?                    @relation(map: "schoolId_fk_3", fields: [schoolId], references: [id])
 
@@ -753,7 +747,6 @@ model Class {
   studentClasses         StudentClass[]
   subjectGrades          SubjectGrade[]
   teacherAssignments     TeacherSubjectAssignment[]
-  timetables             Timetable[]
   timetableSlots         TimetableSlot[]
   contents               Content[]
   enrollmentRequests     EnrollmentRequest[]
@@ -787,7 +780,6 @@ model Section {
   studentClasses         StudentClass[]
   subjectGrades          SubjectGrade[]
   teacherAssignments     TeacherSubjectAssignment[]
-  timetables             Timetable[]
   timetableSlots         TimetableSlot[]
   contents               Content[]
   enrollmentRequests     EnrollmentRequest[]
@@ -818,7 +810,6 @@ model Subject {
   subjectGrades      SubjectGrade[]
   syllabusMappings   SyllabusMapping[]
   teacherAssignments TeacherSubjectAssignment[]
-  timetables         Timetable[]
   timetableSlots     TimetableSlot[]
   contents           Content[]
   practiceExams      PracticeExam[]
@@ -874,7 +865,6 @@ model Exam {
   subject      Subject           @relation(map: "subjectId_fk_37", fields: [subjectId], references: [id])
   results      ExamResult[]
   grades       Grade[]
-  seatings     ExamSeating[]
   seatingPlans ExamSeatingPlan[]
 
   @@index([schoolId, classId, sectionId])
@@ -1283,7 +1273,7 @@ model PayrollSalary {
   bankName      String?
   bankAccount   String?
   tinNumber     String?
-  payFrequency  String         @default("MONTHLY")
+  payFrequency  PayrollFrequency @default(MONTHLY)
   isActive      Boolean        @default(true)
   effectiveFrom DateTime       @default(now())
   effectiveTo   DateTime?
@@ -1305,8 +1295,8 @@ model PayrollRun {
   title            String
   periodMonth      Int
   periodYear       Int
-  periodCalendarType String       @default("GREGORIAN")
-  status           String         @default("DRAFT")
+  periodCalendarType CalendarType @default(GREGORIAN)
+  status           PayrollRunStatus @default(DRAFT)
   grossAmount      Float          @default(0)
   deductionsAmount Float          @default(0)
   netAmount        Float          @default(0)
@@ -1345,8 +1335,8 @@ model PayrollEntry {
   tax                  Float         @default(0)
   grossPay             Float
   netPay               Float
-  status               String        @default("PENDING")
-  paymentMethod        String?
+  status               PayrollEntryStatus @default(PENDING)
+  paymentMethod        PayrollPaymentMethod?
   transactionReference String?
   paidAt               DateTime?
   notes                String?
@@ -1825,54 +1815,6 @@ model PushSubscription {
   @@index([userId, endpoint])
 }
 
-model ChatRoom {
-  id           String            @id @default(cuid())
-  schoolId     String
-  name         String?
-  type         String
-  avatarUrl    String?
-  isActive     Boolean           @default(true)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  messages     ChatMessage[]
-  participants ChatParticipant[]
-  school       School            @relation(map: "schoolId_fk_124", fields: [schoolId], references: [id], onDelete: Cascade)
-
-  @@index([schoolId, type])
-}
-
-model ChatParticipant {
-  id         String    @id @default(cuid())
-  roomId     String
-  userId     String
-  joinedAt   DateTime  @default(now())
-  isAdmin    Boolean   @default(false)
-  mutedUntil DateTime?
-  room       ChatRoom  @relation(map: "roomId_fk_125", fields: [roomId], references: [id], onDelete: Cascade)
-  user       User      @relation(map: "userId_fk_126", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([roomId, userId])
-  @@index([userId])
-}
-
-model ChatMessage {
-  id        String   @id @default(cuid())
-  roomId    String
-  senderId  String
-  content   String
-  type      String   @default("TEXT")
-  fileUrl   String?
-  isEdited  Boolean  @default(false)
-  isDeleted Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  room      ChatRoom @relation(map: "roomId_fk_127", fields: [roomId], references: [id], onDelete: Cascade)
-  sender    User     @relation(map: "senderId_fk_128", fields: [senderId], references: [id], onDelete: Cascade)
-
-  @@index([roomId, createdAt])
-  @@index([senderId])
-}
-
 model Conversation {
   id        String   @id @default(cuid())
   schoolId  String
@@ -1932,32 +1874,6 @@ model MessageRead {
 }
 
 // Assignment model removed - merged into Lesson model
-
-model Timetable {
-  id        String   @id @default(cuid())
-  schoolId  String
-  classId   String
-  sectionId String
-  subjectId String?
-  day       String
-  startTime DateTime
-  endTime   DateTime
-  room      String?
-  teacherId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  class     Class    @relation(map: "classId_fk_135", fields: [classId], references: [id])
-  school    School   @relation(map: "schoolId_fk_136", fields: [schoolId], references: [id], onDelete: Cascade)
-  section   Section  @relation(map: "sectionId_fk_137", fields: [sectionId], references: [id])
-  subject   Subject? @relation(map: "subjectId_fk_138", fields: [subjectId], references: [id])
-  teacher   User?    @relation(map: "teacherId_fk_139", fields: [teacherId], references: [id])
-
-  @@unique([classId, sectionId, day, startTime])
-  @@index([teacherId])
-  @@index([schoolId], map: "Timetable_schoolId_fkey")
-  @@index([sectionId], map: "Timetable_sectionId_fkey")
-  @@index([subjectId], map: "Timetable_subjectId_fkey")
-}
 
 model TimetableSlot {
   id                 String              @id @default(cuid())
@@ -2265,6 +2181,30 @@ enum PaymentStatus {
   CANCELLED
 }
 
+enum PayrollFrequency {
+  MONTHLY
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum PayrollEntryStatus {
+  PENDING
+  APPROVED
+  PAID
+  HELD
+}
+
+enum PayrollPaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+}
+
 enum ExamType {
   MID_TERM
   FINAL
@@ -2472,23 +2412,6 @@ model EnrollmentRequest {
   @@index([requestedGrade])
   @@index([email])
   @@index([phone])
-}
-
-model ExamSeating {
-  id         String   @id @default(cuid())
-  examId     String
-  studentId  String
-  seatNumber String
-  roomName   String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  exam    Exam @relation(map: "examId_fk_163", fields: [examId], references: [id], onDelete: Cascade)
-  student User @relation("ExamSeatings", fields: [studentId], references: [id], onDelete: Cascade)
-
-  @@unique([examId, studentId])
-  @@index([examId])
-  @@index([studentId])
 }
 
 // New Exam Seating System Models

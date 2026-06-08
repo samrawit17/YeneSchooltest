@@ -1160,7 +1160,6 @@ export class SchoolSettingsService {
                 ClassSubject: true,
                 teacherAssignments: true,
                 timetableSlots: true,
-                timetables: true,
                 assessmentSubjects: true,
                 contents: true,
                 enrollmentRequests: true,
@@ -1230,7 +1229,6 @@ export class SchoolSettingsService {
             emptyDefaultClass._count.ClassSubject +
             emptyDefaultClass._count.teacherAssignments +
             emptyDefaultClass._count.timetableSlots +
-            emptyDefaultClass._count.timetables +
             emptyDefaultClass._count.assessmentSubjects +
             emptyDefaultClass._count.contents +
             emptyDefaultClass._count.enrollmentRequests +

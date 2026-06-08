@@ -10,16 +10,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border border-[var(--brand-color)]/25 bg-[rgba(var(--brand-color-rgb),0.9)] text-white shadow-sm hover:bg-[rgba(var(--brand-color-rgb),0.82)] hover:shadow-lg hover:shadow-[var(--brand-color)]/20",
+          "border border-[var(--brand-color,#e35336)]/25 bg-[rgba(var(--brand-color-rgb,227,83,54),0.9)] text-white shadow-sm hover:bg-[rgba(var(--brand-color-rgb,227,83,54),0.82)] hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
-          "border border-[rgba(var(--brand-color-rgb),0.22)] bg-[rgba(var(--brand-color-rgb),0.14)] text-sm font-semibold text-[var(--brand-color)] shadow-sm hover:bg-[rgba(var(--brand-color-rgb),0.2)] hover:text-[var(--brand-color)]",
+          "border border-[rgba(var(--brand-color-rgb,227,83,54),0.22)] bg-[rgba(var(--brand-color-rgb,227,83,54),0.14)] text-sm font-semibold text-[var(--brand-color,#e35336)] shadow-sm hover:bg-[rgba(var(--brand-color-rgb,227,83,54),0.2)] hover:text-[var(--brand-color,#e35336)]",
         secondary:
           "border border-slate-200 bg-slate-100 text-slate-700 shadow-sm hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
         ghost:
-          "text-[var(--brand-color)] hover:bg-[rgba(var(--brand-color-rgb),0.14)] hover:text-[var(--brand-color)]",
-        link: "font-semibold text-[var(--brand-color)] underline-offset-4 hover:underline",
+          "text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb,227,83,54),0.14)] hover:text-[var(--brand-color,#e35336)]",
+        link: "font-semibold text-[var(--brand-color,#e35336)] underline-offset-4 hover:underline",
       },
       size: {
         default: "h-9 px-4 py-2",
