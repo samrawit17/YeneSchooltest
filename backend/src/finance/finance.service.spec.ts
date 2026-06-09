@@ -1,12 +1,16 @@
 import { PaymentStatus } from '@prisma/client';
 import { FinanceService } from './finance.service';
+import { toGregorianDate } from '../common/date.util';
 
 describe('FinanceService critical payment flows', () => {
   const notificationService = {
     createNotification: jest.fn(),
   };
 
-  const createService = (tx: any, prismaOverrides: Record<string, any> = {}) => {
+  const createService = (
+    tx: any,
+    prismaOverrides: Record<string, any> = {},
+  ) => {
     const prisma: any = {
       $transaction: jest.fn((callback) => callback(tx)),
       payment: {
@@ -14,6 +18,14 @@ describe('FinanceService critical payment flows', () => {
       },
       studentProfile: {
         findFirst: jest.fn().mockResolvedValue(null),
+      },
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'TERM' },
+          { key: 'fee_structure_mode', value: 'TERMLY' },
+        ]),
+        findFirst: jest.fn().mockResolvedValue(null),
+        findUnique: jest.fn().mockResolvedValue({ value: '15' }),
       },
       ...prismaOverrides,
     };
@@ -121,7 +133,9 @@ describe('FinanceService critical payment flows', () => {
           paymentMethod: 'BANK_TRANSFER',
         },
       ),
-    ).rejects.toThrow('Selected payment period does not match this fee academic year');
+    ).rejects.toThrow(
+      'Selected payment period does not match this fee academic year',
+    );
   });
 
   it('rejects payment when the selected fee belongs to a different student', async () => {
@@ -192,7 +206,9 @@ describe('FinanceService critical payment flows', () => {
       'Wrong term selected',
     );
 
-    expect(tx.payment.delete).toHaveBeenCalledWith({ where: { id: 'payment-2' } });
+    expect(tx.payment.delete).toHaveBeenCalledWith({
+      where: { id: 'payment-2' },
+    });
     expect(tx.studentFee.update).toHaveBeenCalledWith({
       where: { id: 'fee-1' },
       data: { status: PaymentStatus.PARTIAL },
@@ -309,7 +325,9 @@ describe('FinanceService critical payment flows', () => {
           paymentMethod: 'BANK_TRANSFER',
         },
       ),
-    ).rejects.toThrow('Amount exceeds the remaining annual fee balance. Remaining: 5000');
+    ).rejects.toThrow(
+      'Amount exceeds the remaining annual fee balance. Remaining: 5000',
+    );
   });
 
   it('school-scopes student fee summary lookup, academic year, and term', async () => {
@@ -370,7 +388,14 @@ describe('FinanceService critical payment flows', () => {
     });
     expect(prisma.term.findFirst).toHaveBeenCalledWith({
       where: { id: 'term-1', academicYear: { schoolId: 'school-1' } },
-      select: { id: true, name: true, order: true, academicYearId: true },
+      select: {
+        id: true,
+        name: true,
+        order: true,
+        academicYearId: true,
+        startDate: true,
+        endDate: true,
+      },
     });
   });
 
@@ -378,7 +403,9 @@ describe('FinanceService critical payment flows', () => {
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
     const prisma: any = {
       academicYear: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'year-1', schoolId: 'school-1' }),
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'year-1', schoolId: 'school-1' }),
       },
       feeStructure: {
         findMany: jest.fn().mockResolvedValue([
@@ -404,15 +431,35 @@ describe('FinanceService critical payment flows', () => {
       studentProfile: {
         findMany: jest.fn().mockResolvedValue([
           { id: 'student-profile-1', userId: 'student-user-1', createdAt },
-          { id: 'student-profile-2', userId: 'student-user-2', createdAt: new Date('2026-01-02T00:00:00.000Z') },
-          { id: 'student-profile-3', userId: 'student-user-3', createdAt: new Date('2026-01-03T00:00:00.000Z') },
+          {
+            id: 'student-profile-2',
+            userId: 'student-user-2',
+            createdAt: new Date('2026-01-02T00:00:00.000Z'),
+          },
+          {
+            id: 'student-profile-3',
+            userId: 'student-user-3',
+            createdAt: new Date('2026-01-03T00:00:00.000Z'),
+          },
         ]),
       },
       parentStudent: {
         findMany: jest.fn().mockResolvedValue([
-          { parentId: 'parent-profile-1', studentId: 'student-profile-1', isPrimary: true },
-          { parentId: 'parent-profile-1', studentId: 'student-profile-2', isPrimary: true },
-          { parentId: 'parent-profile-1', studentId: 'student-profile-3', isPrimary: true },
+          {
+            parentId: 'parent-profile-1',
+            studentId: 'student-profile-1',
+            isPrimary: true,
+          },
+          {
+            parentId: 'parent-profile-1',
+            studentId: 'student-profile-2',
+            isPrimary: true,
+          },
+          {
+            parentId: 'parent-profile-1',
+            studentId: 'student-profile-3',
+            isPrimary: true,
+          },
         ]),
       },
       discountPolicy: {
@@ -483,6 +530,10 @@ describe('FinanceService critical payment flows', () => {
       schoolSetting: {
         findUnique: jest.fn().mockResolvedValue({ value: '15' }),
         findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'MONTHLY' },
+          { key: 'calendar_type', value: 'ETHIOPIAN' },
+          { key: 'fee_payment_due_day', value: '15' },
           { key: 'family_discount_enabled', value: 'false' },
         ]),
       },
@@ -522,10 +573,639 @@ describe('FinanceService critical payment flows', () => {
       ],
       skipDuplicates: true,
     });
-    const dueDate = prisma.studentFee.createMany.mock.calls[0][0].data[0].dueDate;
+    const dueDate =
+      prisma.studentFee.createMany.mock.calls[0][0].data[0].dueDate;
     expect(dueDate.getFullYear()).toBe(2025);
     expect(dueDate.getMonth()).toBe(11);
     expect(dueDate.getDate()).toBe(24);
+  });
+
+  it('reads fee_structure_mode independently from curriculum_type', async () => {
+    const prisma: any = {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'MONTHLY' },
+        ]),
+      },
+    };
+    const { service } = createService({} as any, prisma);
+
+    const config = await service.getBillingConfig('school-1');
+
+    expect(config).toMatchObject({
+      billingMode: 'MONTHLY',
+      curriculumType: 'QUARTER',
+      billingPeriodsPerYear: 8,
+      curriculumPeriodCount: 4,
+    });
+  });
+
+  it('creates eight monthly installments for a quarterly curriculum and maps two to each quarter', async () => {
+    const quarters = [1, 2, 3, 4].map((order) => ({
+      id: `q${order}`,
+      name: `Quarter ${order}`,
+      order,
+      startDate: new Date(2025, order * 2, 1),
+      endDate: new Date(2025, order * 2 + 1, 28),
+    }));
+    const tx: any = {
+      feeStructure: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: `${data.feeType}-${data.termId}` }),
+          ),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    const prisma: any = {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'MONTHLY' },
+        ]),
+        findUnique: jest.fn().mockResolvedValue({ value: 'GREGORIAN' }),
+      },
+      term: {
+        findMany: jest.fn().mockResolvedValue(quarters),
+      },
+      academicYear: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ startDate: new Date(2025, 8, 1) }),
+      },
+      feeStructure: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const { service } = createService(tx, prisma);
+
+    await service.generateInstallmentFees({
+      schoolId: 'school-1',
+      academicYearId: 'year-1',
+      feeType: 'TUITION',
+      annualAmount: 8000,
+    });
+
+    expect(tx.feeStructure.create).toHaveBeenCalledTimes(8);
+    expect(
+      tx.feeStructure.create.mock.calls.map(
+        (call: any[]) => call[0].data.termId,
+      ),
+    ).toEqual(['q1', 'q1', 'q2', 'q2', 'q3', 'q3', 'q4', 'q4']);
+  });
+
+  it('creates semesterly installments on term curriculum at term 1 and term 3', async () => {
+    const terms = [1, 2, 3].map((order) => ({
+      id: `term-${order}`,
+      name: `Term ${order}`,
+      order,
+      startDate: new Date(2025, order, 1),
+      endDate: new Date(2025, order + 1, 28),
+    }));
+    const tx: any = {
+      feeStructure: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: `${data.feeType}-${data.termId}` }),
+          ),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    const prisma: any = {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'TERM' },
+          { key: 'fee_structure_mode', value: 'SEMESTERLY' },
+        ]),
+        findUnique: jest.fn().mockResolvedValue({ value: 'GREGORIAN' }),
+      },
+      term: {
+        findMany: jest.fn().mockResolvedValue(terms),
+      },
+      academicYear: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ startDate: new Date(2025, 8, 1) }),
+      },
+      feeStructure: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const { service } = createService(tx, prisma);
+
+    await service.generateInstallmentFees({
+      schoolId: 'school-1',
+      academicYearId: 'year-1',
+      feeType: 'TUITION',
+      annualAmount: 6000,
+    });
+
+    expect(tx.feeStructure.create).toHaveBeenCalledTimes(2);
+    expect(
+      tx.feeStructure.create.mock.calls.map(
+        (call: any[]) => call[0].data.termId,
+      ),
+    ).toEqual(['term-1', 'term-3']);
+  });
+
+  it('uses the first two Ethiopian months for monthly installment labels', async () => {
+    const { service } = createService({} as any, {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'MONTHLY' },
+          { key: 'calendar_type', value: 'ETHIOPIAN' },
+          { key: 'fee_payment_due_day', value: '15' },
+        ]),
+      },
+    });
+    const config = await service.getBillingConfig('school-1');
+    expect(config).toMatchObject({
+      curriculumType: 'QUARTER',
+      billingMode: 'MONTHLY',
+      calendarType: 'ETHIOPIAN',
+      billingPeriodsPerYear: 8,
+      dueDay: 15,
+    });
+    const period = {
+      id: 'q1',
+      name: 'Quarter 1',
+      order: 1,
+      startDate: toGregorianDate({ year: 2018, month: 1, day: 1 }),
+      endDate: toGregorianDate({ year: 2018, month: 3, day: 30 }),
+    };
+
+    expect(
+      (service as any).getBillingMonthLabelForPeriod(
+        period,
+        0,
+        config,
+        config.calendarType,
+      ),
+    ).toBe('Meskerem');
+    expect(
+      (service as any).getBillingMonthLabelForPeriod(
+        period,
+        1,
+        config,
+        config.calendarType,
+      ),
+    ).toBe('Tikemet');
+  });
+
+  it('sets monthly due dates one month apart inside a quarter', async () => {
+    const { service } = createService({} as any, {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'MONTHLY' },
+          { key: 'calendar_type', value: 'GREGORIAN' },
+          { key: 'fee_payment_due_day', value: '15' },
+        ]),
+      },
+    });
+    const config = await service.getBillingConfig('school-1');
+    const periods = [
+      {
+        id: 'q1',
+        name: 'Quarter 1',
+        order: 1,
+        startDate: new Date(2025, 8, 16),
+        endDate: new Date(2025, 10, 30),
+      },
+    ];
+
+    const first = (service as any).getInstallmentDueDate({
+      zeroBasedIndex: 0,
+      config,
+      period: periods[0],
+      periods,
+      academicYearStartDate: periods[0].startDate,
+      dueDay: config.dueDay,
+      calendarType: config.calendarType,
+    });
+    const second = (service as any).getInstallmentDueDate({
+      zeroBasedIndex: 1,
+      config,
+      period: periods[0],
+      periods,
+      academicYearStartDate: periods[0].startDate,
+      dueDay: config.dueDay,
+      calendarType: config.calendarType,
+    });
+
+    expect(first).toEqual(new Date(2025, 8, 15));
+    expect(second).toEqual(new Date(2025, 9, 15));
+  });
+
+  it('sets Ethiopian monthly due dates by Ethiopian month boundaries', async () => {
+    const { service } = createService({} as any, {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'MONTHLY' },
+          { key: 'calendar_type', value: 'ETHIOPIAN' },
+          { key: 'fee_payment_due_day', value: '10' },
+        ]),
+      },
+    });
+    const config = await service.getBillingConfig('school-1');
+    const periods = [
+      {
+        id: 'q1',
+        name: 'Quarter 1',
+        order: 1,
+        startDate: toGregorianDate({ year: 2018, month: 1, day: 7 }),
+        endDate: toGregorianDate({ year: 2018, month: 3, day: 30 }),
+      },
+    ];
+
+    const first = (service as any).getInstallmentDueDate({
+      zeroBasedIndex: 0,
+      config,
+      period: periods[0],
+      periods,
+      academicYearStartDate: periods[0].startDate,
+      dueDay: config.dueDay,
+      calendarType: config.calendarType,
+    });
+    const second = (service as any).getInstallmentDueDate({
+      zeroBasedIndex: 1,
+      config,
+      period: periods[0],
+      periods,
+      academicYearStartDate: periods[0].startDate,
+      dueDay: config.dueDay,
+      calendarType: config.calendarType,
+    });
+
+    expect(first).toEqual(toGregorianDate({ year: 2018, month: 1, day: 10 }));
+    expect(second).toEqual(toGregorianDate({ year: 2018, month: 2, day: 10 }));
+  });
+
+  it('sets quarterly due dates in the last month of the quarter', async () => {
+    const { service } = createService({} as any, {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'QUARTERLY' },
+          { key: 'calendar_type', value: 'ETHIOPIAN' },
+          { key: 'fee_payment_due_day', value: '15' },
+        ]),
+      },
+    });
+    const config = await service.getBillingConfig('school-1');
+    const periods = [
+      {
+        id: 'q1',
+        name: 'Quarter 1',
+        order: 1,
+        startDate: toGregorianDate({ year: 2018, month: 1, day: 1 }),
+        endDate: toGregorianDate({ year: 2018, month: 3, day: 30 }),
+      },
+    ];
+
+    const dueDate = (service as any).getInstallmentDueDate({
+      zeroBasedIndex: 0,
+      config,
+      period: periods[0],
+      periods,
+      academicYearStartDate: periods[0].startDate,
+      dueDay: config.dueDay,
+      calendarType: config.calendarType,
+    });
+
+    expect(dueDate).toEqual(toGregorianDate({ year: 2018, month: 3, day: 15 }));
+  });
+
+  it('does not place non-monthly due dates after the period end day', async () => {
+    const { service } = createService({} as any, {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'QUARTERLY' },
+          { key: 'calendar_type', value: 'ETHIOPIAN' },
+          { key: 'fee_payment_due_day', value: '15' },
+        ]),
+      },
+    });
+    const config = await service.getBillingConfig('school-1');
+    const periods = [
+      {
+        id: 'q4',
+        name: 'Quarter 4',
+        order: 4,
+        startDate: toGregorianDate({ year: 2018, month: 9, day: 1 }),
+        endDate: toGregorianDate({ year: 2018, month: 10, day: 7 }),
+      },
+    ];
+
+    const dueDate = (service as any).getInstallmentDueDate({
+      zeroBasedIndex: 3,
+      config,
+      period: periods[0],
+      periods,
+      academicYearStartDate: periods[0].startDate,
+      dueDay: config.dueDay,
+      calendarType: config.calendarType,
+    });
+
+    expect(dueDate).toEqual(toGregorianDate({ year: 2018, month: 10, day: 7 }));
+  });
+
+  it('sets termly due dates in the last month of the term', async () => {
+    const { service } = createService({} as any, {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'TERM' },
+          { key: 'fee_structure_mode', value: 'TERMLY' },
+          { key: 'calendar_type', value: 'GREGORIAN' },
+          { key: 'fee_payment_due_day', value: '20' },
+        ]),
+      },
+    });
+    const config = await service.getBillingConfig('school-1');
+    const periods = [
+      {
+        id: 'term-1',
+        name: 'Term 1',
+        order: 1,
+        startDate: new Date(2025, 8, 1),
+        endDate: new Date(2025, 10, 30),
+      },
+    ];
+
+    const dueDate = (service as any).getInstallmentDueDate({
+      zeroBasedIndex: 0,
+      config,
+      period: periods[0],
+      periods,
+      academicYearStartDate: periods[0].startDate,
+      dueDay: config.dueDay,
+      calendarType: config.calendarType,
+    });
+
+    expect(dueDate).toEqual(new Date(2025, 10, 20));
+  });
+
+  it('reconciles stale due dates on existing generated student fees', async () => {
+    const term = {
+      id: 'q1',
+      name: 'Quarter 1',
+      order: 1,
+      startDate: toGregorianDate({ year: 2018, month: 1, day: 1 }),
+      endDate: toGregorianDate({ year: 2018, month: 3, day: 30 }),
+    };
+    const prisma: any = {
+      academicYear: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce({ id: 'year-1', schoolId: 'school-1' })
+          .mockResolvedValueOnce({
+            name: '2018',
+            startDate: term.startDate,
+          }),
+      },
+      feeStructure: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'fee-structure-installment-1',
+            schoolId: 'school-1',
+            academicYearId: 'year-1',
+            termId: term.id,
+            feeType: 'TUITION_INSTALLMENT_1',
+            amount: 15000,
+          },
+        ]),
+      },
+      schoolSetting: {
+        findUnique: jest.fn().mockResolvedValue({ value: '15' }),
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'QUARTERLY' },
+          { key: 'calendar_type', value: 'ETHIOPIAN' },
+          { key: 'fee_payment_due_day', value: '15' },
+          { key: 'family_discount_enabled', value: 'false' },
+        ]),
+      },
+      studentProfile: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'student-profile-1',
+            userId: 'student-user-1',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          },
+        ]),
+      },
+      studentClass: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      term: {
+        findMany: jest.fn().mockResolvedValue([term]),
+      },
+      studentFee: {
+        createMany: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              id: 'student-fee-1',
+              feeStructureId: 'fee-structure-installment-1',
+              studentId: 'student-user-1',
+              termId: term.id,
+              dueDate: toGregorianDate({ year: 2018, month: 1, day: 15 }),
+            },
+          ])
+          .mockResolvedValueOnce([]),
+      },
+    };
+    const { service } = createService({} as any, prisma);
+
+    const result = await service.generateStudentFees({
+      schoolId: 'school-1',
+      academicYearId: 'year-1',
+    });
+
+    expect(result.created).toBe(0);
+    expect(prisma.studentFee.createMany).not.toHaveBeenCalled();
+    expect(prisma.studentFee.update).toHaveBeenCalledWith({
+      where: { id: 'student-fee-1' },
+      data: {
+        dueDate: toGregorianDate({ year: 2018, month: 3, day: 15 }),
+      },
+    });
+  });
+
+  it('allocates year-wide fee payments sequentially in period view', async () => {
+    const prisma: any = {
+      studentProfile: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'student-profile-1',
+          userId: 'student-user-1',
+          studentCode: 'S-001',
+          academicYear: '2026',
+          section: 'A',
+          user: { name: 'Student One' },
+        }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      academicYear: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'year-1', startDate: new Date(2025, 8, 1) }),
+      },
+      term: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'term-2',
+          name: 'Term 2',
+          order: 2,
+          academicYearId: 'year-1',
+          startDate: new Date(2025, 10, 1),
+          endDate: new Date(2025, 11, 30),
+        }),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'term-1',
+            name: 'Term 1',
+            order: 1,
+            startDate: new Date(2025, 8, 1),
+            endDate: new Date(2025, 9, 30),
+          },
+          {
+            id: 'term-2',
+            name: 'Term 2',
+            order: 2,
+            startDate: new Date(2025, 10, 1),
+            endDate: new Date(2025, 11, 30),
+          },
+          {
+            id: 'term-3',
+            name: 'Term 3',
+            order: 3,
+            startDate: new Date(2026, 0, 1),
+            endDate: new Date(2026, 1, 28),
+          },
+        ]),
+      },
+      schoolSetting: {
+        findUnique: jest.fn().mockResolvedValue({ value: 'GREGORIAN' }),
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'TERM' },
+          { key: 'fee_structure_mode', value: 'TERMLY' },
+        ]),
+      },
+      feeStructure: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      studentFee: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'sf-1',
+            studentId: 'student-user-1',
+            termId: null,
+            totalAmount: 9000,
+            finalAmount: 9000,
+            discount: 0,
+            dueDate: null,
+            status: PaymentStatus.PARTIAL,
+            feeStructure: { feeType: 'TUITION', term: null },
+            discountPolicy: null,
+            term: null,
+            payments: [
+              { amountPaid: 3000, paymentDate: new Date(), termId: null },
+              { amountPaid: 3000, paymentDate: new Date(), termId: null },
+            ],
+          },
+        ]),
+      },
+    };
+    const { service } = createService({} as any, prisma);
+
+    const result = await service.getStudentFeeSummary(
+      'school-1',
+      'student-user-1',
+      'year-1',
+      'term-2',
+    );
+
+    expect(result.feeItems[0]).toMatchObject({
+      amount: 3000,
+      paidAmount: 3000,
+      balance: 0,
+      status: PaymentStatus.PAID,
+    });
+  });
+
+  it('records annual period payment using billingPeriodsPerYear instead of term count', async () => {
+    const tx: any = {
+      studentFee: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'fee-1',
+          schoolId: 'school-1',
+          studentId: 'student-user-1',
+          academicYearId: 'year-1',
+          termId: null,
+          finalAmount: 9000,
+          status: PaymentStatus.PENDING,
+          payments: [],
+        }),
+        update: jest.fn(),
+      },
+      term: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'q1' }),
+      },
+      payment: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({
+          id: 'payment-1',
+          receiptNumber: 'PAY-1',
+        }),
+      },
+      financeAuditLog: {
+        create: jest.fn(),
+      },
+    };
+    const prisma: any = {
+      schoolSetting: {
+        findMany: jest.fn().mockResolvedValue([
+          { key: 'curriculum_type', value: 'QUARTER' },
+          { key: 'fee_structure_mode', value: 'MONTHLY' },
+        ]),
+      },
+      payment: {
+        count: jest.fn().mockResolvedValue(0),
+      },
+    };
+    const { service } = createService(tx, prisma);
+
+    await service.recordPayment(
+      { id: 'finance-user-1' },
+      {
+        schoolId: 'school-1',
+        studentFeeId: 'fee-1',
+        studentId: 'student-user-1',
+        termId: 'q1',
+        amountPaid: 1125,
+        paymentMethod: 'BANK_TRANSFER',
+      },
+    );
+
+    expect(tx.payment.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        termId: 'q1',
+        amountPaid: 1125,
+      }),
+    });
+    expect(tx.studentFee.update).toHaveBeenCalledWith({
+      where: { id: 'fee-1' },
+      data: { status: PaymentStatus.PARTIAL },
+    });
   });
 
   it('only applies grade-specific fee structures to students in that grade', async () => {
@@ -563,9 +1243,11 @@ describe('FinanceService critical payment flows', () => {
       },
       schoolSetting: {
         findUnique: jest.fn().mockResolvedValue({ value: '15' }),
-        findMany: jest.fn().mockResolvedValue([
-          { key: 'family_discount_enabled', value: 'false' },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { key: 'family_discount_enabled', value: 'false' },
+          ]),
       },
       studentProfile: {
         findMany: jest.fn().mockResolvedValue([
@@ -625,12 +1307,13 @@ describe('FinanceService critical payment flows', () => {
     const { service } = createService(tx);
 
     await expect(
-      service.updatePayrollRunStatus(
-        { id: 'finance-user-1' },
-        'run-1',
-        { schoolId: 'school-1', status: 'PAID' },
-      ),
-    ).rejects.toThrow('Payroll run must move from DRAFT to APPROVED before payment');
+      service.updatePayrollRunStatus({ id: 'finance-user-1' }, 'run-1', {
+        schoolId: 'school-1',
+        status: 'PAID',
+      }),
+    ).rejects.toThrow(
+      'Payroll run must move from DRAFT to APPROVED before payment',
+    );
     expect(tx.payrollRun.update).not.toHaveBeenCalled();
   });
 
@@ -651,12 +1334,13 @@ describe('FinanceService critical payment flows', () => {
     const { service } = createService(tx);
 
     await expect(
-      service.updatePayrollEntryStatus(
-        { id: 'finance-user-1' },
-        'entry-1',
-        { schoolId: 'school-1', status: 'HELD' },
-      ),
-    ).rejects.toThrow('Entries cannot be changed after the payroll run is final');
+      service.updatePayrollEntryStatus({ id: 'finance-user-1' }, 'entry-1', {
+        schoolId: 'school-1',
+        status: 'HELD',
+      }),
+    ).rejects.toThrow(
+      'Entries cannot be changed after the payroll run is final',
+    );
     expect(tx.payrollEntry.update).not.toHaveBeenCalled();
   });
 
@@ -741,7 +1425,9 @@ describe('FinanceService critical payment flows', () => {
 
     const prisma: any = {
       school: {
-        findMany: jest.fn().mockResolvedValue([{ id: 'school-1', name: 'H&H' }]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 'school-1', name: 'H&H' }]),
       },
       schoolSetting: {
         findUnique: jest.fn().mockResolvedValue({ value: 'GREGORIAN' }),

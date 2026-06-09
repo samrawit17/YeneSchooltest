@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export const API_URL =
   process.env.BACKEND_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  'http://localhost:5000';
+  'http://localhost:8001';
 
 export function getCookieAuthHeaders(request: Request) {
   const cookie = request.headers.get('cookie');

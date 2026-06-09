@@ -80,11 +80,12 @@ export class AnnouncementService {
       .map((role) => role.trim().toLowerCase())
       .filter(Boolean);
 
+    const staffRoles = ['ADMIN', 'IT_MANAGER', 'REGISTRAR', 'TEACHER', 'FINANCE'];
     const audienceRoleMap: Record<string, string[]> = {
       student: ['STUDENT'],
       parent: ['PARENT'],
       teacher: ['TEACHER'],
-      staff: ['TEACHER'],
+      staff: staffRoles,
       admin: ['ADMIN'],
       it_manager: ['IT_MANAGER'],
       registrar: ['REGISTRAR'],
@@ -226,6 +227,23 @@ export class AnnouncementService {
       visibleTo: a.visibleTo ? a.visibleTo.split(',').map((r) => r.trim()) : [],
     }));
 
+    const staffRoles = ['admin', 'it_manager', 'registrar', 'teacher', 'finance'];
+    const canRoleSeeAudience = (currentRole: string, audience: string) => {
+      const normalizedRole = currentRole.toLowerCase();
+      const normalizedAudience = audience.toLowerCase();
+
+      if (normalizedAudience === 'staff') {
+        return staffRoles.includes(normalizedRole);
+      }
+
+      // Older announcements used "teacher" for the UI label "Staff".
+      if (normalizedAudience === 'teacher' && staffRoles.includes(normalizedRole)) {
+        return true;
+      }
+
+      return normalizedRole.includes(normalizedAudience);
+    };
+
     // Filter by role if userRole is provided
     if (userRole) {
       return transformed.filter((announcement) => {
@@ -239,9 +257,7 @@ export class AnnouncementService {
           return true;
         }
         // Check if user's role is in the visibleTo array
-        return visibleTo.some((role) =>
-          userRole.toLowerCase().includes(role.toLowerCase()),
-        );
+        return visibleTo.some((role) => canRoleSeeAudience(userRole, role));
       });
     }
 

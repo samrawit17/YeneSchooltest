@@ -14,7 +14,7 @@ ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 COPY package*.json ./
 
 RUN npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && \
-    npm install --no-save @next/swc-linux-x64-gnu@14.2.5 --no-audit --loglevel=error
+    npm install --no-save @next/swc-linux-x64-gnu@14.2.33 --no-audit --loglevel=error
 
 FROM node:20-slim AS development
 
@@ -26,8 +26,9 @@ COPY package*.json ./
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=8000
 
-EXPOSE 3000
+EXPOSE 8000
 
 CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 
@@ -76,12 +77,13 @@ RUN chown -R nodejs:nodejs /app
 
 USER nodejs
 
-EXPOSE 3000
+EXPOSE 8000
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV PORT=8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "fetch('http://127.0.0.1:3000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1:8000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["node", "server.js"]

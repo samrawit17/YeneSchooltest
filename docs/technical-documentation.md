@@ -220,7 +220,7 @@ npx prisma migrate dev
 npm run start:dev
 ```
 
-The backend listens on `PORT` or `5000` by default.
+The backend listens on `PORT` or `8001` by default.
 
 ### Docker commands
 
@@ -240,7 +240,7 @@ The container entrypoint waits for PostgreSQL, generates Prisma Client, applies 
 
 | Variable | Used by | Purpose/default visible in code or compose |
 |---|---|---|
-| `PORT` | `main.ts` | HTTP port; defaults to `5000` |
+| `PORT` | `main.ts` | HTTP port; defaults to `8001` |
 | `NODE_ENV` | auth cookie, Prisma pool, Docker | Enables secure cookies in production and controls pool idle behavior |
 | `DATABASE_URL` | Prisma config, entrypoint, seed | Primary PostgreSQL connection string |
 | `DATABASE_POOL_URL` | `PrismaService` | Preferred runtime PostgreSQL pool URL when set |
@@ -257,7 +257,7 @@ The container entrypoint waits for PostgreSQL, generates Prisma Client, applies 
 | `WEB_PUSH_PRIVATE_KEY` | `NotificationService` | VAPID private key |
 | `WEB_PUSH_CONTACT_EMAIL` | `NotificationService` | VAPID subject; defaults to `mailto:admin@example.com` in service fallback |
 | `ENCRYPTION_KEY` | `EnrollmentService` | Key material for enrollment token encryption; code has a development fallback |
-| `FRONTEND_URL` | `EnrollmentController` | Frontend enrollment URL base; defaults to `http://localhost:3000` |
+| `FRONTEND_URL` | `EnrollmentController` | Frontend enrollment URL base; defaults to `http://localhost:8000` |
 | `ATTENDANCE_CUTOFF_DISABLED` | `AttendanceService` | Disables attendance cutoff logic when configured |
 | `DISABLE_ATTENDANCE_CUTOFF` | `AttendanceService` | Alternate cutoff-disable flag |
 | `PRISMA_SCHEMA_SYNC` | `docker-entrypoint.sh` | `push` runs `prisma db push`; otherwise migrations are used |
@@ -282,7 +282,7 @@ The container entrypoint waits for PostgreSQL, generates Prisma Client, applies 
 
 ## API Documentation
 
-Base URL in local development is usually `http://localhost:5000`. Unless a route explicitly streams a file, successful responses are Nest-serialized JSON or strings returned from the controller/service. Routes using DTO bodies are validated by the global validation pipe. Inline object bodies are listed by field names when they are declared in the controller signature. Path parameters are shown in each route; query parameters and bodies are listed in the request input column.
+Base URL in local development is usually `http://localhost:8001`. Unless a route explicitly streams a file, successful responses are Nest-serialized JSON or strings returned from the controller/service. Routes using DTO bodies are validated by the global validation pipe. Inline object bodies are listed by field names when they are declared in the controller signature. Path parameters are shown in each route; query parameters and bodies are listed in the request input column.
 
 Common error cases across the catalog:
 

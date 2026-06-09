@@ -63,7 +63,8 @@ type StatusFilter = "all" | "active" | "scheduled" | "expired";
 const AnnouncementListPage = () => {
   const { t } = useTranslations<any>("announcements");
   const { user } = useAuth();
-  const isAdmin = (user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'IT_MANAGER') || user?.role?.toUpperCase() === 'REGISTRAR';
+  const userRole = user?.role?.toUpperCase();
+  const isAdmin = userRole === 'ADMIN' || userRole === 'IT_MANAGER' || userRole === 'REGISTRAR';
   
   const [searchQuery, setSearchQuery] = useState("");
   const [audienceFilter, setAudienceFilter] = useState<AudienceFilter>("all");
@@ -77,13 +78,13 @@ const AnnouncementListPage = () => {
     return () => syncService.stopAutoSync();
   }, []);
 
-  const { data: announcements, isLoading } = useQuery({
-    queryKey: queryKeys.announcements.list(user?.role),
+  const { data: announcements, isLoading, isError, error } = useQuery({
+    queryKey: queryKeys.announcements.list(userRole),
     queryFn: async () => {
-      const response = await announcementsAPI.getAll({ role: user?.role });
+      const response = await announcementsAPI.getAll({ role: userRole });
       return response.data;
     },
-    enabled: !!user,
+    enabled: !!userRole,
   });
   const { data: announcementsSetting } = useQuery({
     queryKey: ["school-setting", user?.schoolId, "ANNOUNCEMENTS_ENABLED"],
@@ -116,7 +117,7 @@ const AnnouncementListPage = () => {
         const audienceMap = {
           students: ["student"],
           parents: ["parent"],
-          staff: ["admin", "teacher", "registrar"]
+          staff: ["admin", "it_manager", "teacher", "registrar", "finance", "staff"]
         };
         const hasMatch = audienceMap[audienceFilter].some(aud => 
           announcement.visibleTo?.some(v => v.toLowerCase().includes(aud))
@@ -286,6 +287,14 @@ const AnnouncementListPage = () => {
           // Card-level skeleton - simple centered spinner
           <div className="flex items-center justify-center py-12 border rounded-lg bg-card">
             <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
+          </div>
+        ) : isError ? (
+          <div className="text-center py-12 border rounded-lg bg-card">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-3 opacity-80" />
+            <p className="font-medium text-red-600">Failed to load announcements</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {(error as any)?.response?.data?.message || (error as Error)?.message || "Please refresh and try again."}
+            </p>
           </div>
         ) : paginatedAnnouncements.length === 0 ? (
           <div className="text-center py-12 border rounded-lg bg-card">

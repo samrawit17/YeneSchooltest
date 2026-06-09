@@ -50,7 +50,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: development
-      PORT: 5000
+      PORT: 8001
       PRISMA_SCHEMA_SYNC: ${PRISMA_SCHEMA_SYNC:-push}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
       PRISMA_SKIP_SEED: ${PRISMA_SKIP_SEED:-1}
@@ -74,7 +74,7 @@ services:
       - /app/node_modules
       - /app/.next
     ports:
-      - "5001:5000"
+      - "8001:8001"
       - "9229:9229"
     dns:
       - 1.1.1.1
@@ -85,11 +85,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8001/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
       timeout: 10s
       retries: 5
-      # The dev entrypoint runs Prisma sync and seeding before Nest binds :5000.
+      # The dev entrypoint runs Prisma sync and seeding before Nest binds :8001.
       # First boot can exceed a minute on a fresh database, so give it more time.
       start_period: 180s
     entrypoint: /app/docker-entrypoint.sh
@@ -110,19 +110,19 @@ services:
       HOSTNAME: 0.0.0.0
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
-      NEXT_PUBLIC_API_URL: http://localhost:5001
+      NEXT_PUBLIC_API_URL: http://localhost:8001
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
     ports:
-      - "3000:3000"
+      - "8000:8000"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 15s
       timeout: 10s
       retries: 5

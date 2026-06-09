@@ -47,7 +47,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: 5000
+      PORT: 8001
       PRISMA_SCHEMA_SYNC: ${PRISMA_SCHEMA_SYNC:-push}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
       PRISMA_SKIP_SEED: ${PRISMA_SKIP_SEED:-1}
@@ -62,7 +62,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set to a strong production secret}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
       JWT_COOKIE_MAX_AGE_HOURS: ${JWT_COOKIE_MAX_AGE_HOURS:-8}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000}
       WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
       WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-akmPXo7n_zVhuXGjPB_GsS_G_mkzqc-WC9OF2d8mzLg}
       WEB_PUSH_CONTACT_EMAIL: ${WEB_PUSH_CONTACT_EMAIL:-mailto:admin@lemarisms.local}
@@ -76,14 +76,14 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "${BACKEND_PORT:-5000}:5000"
+      - "${BACKEND_PORT:-8001}:8001"
     volumes:
       - ./backend/public/uploads:/app/public/uploads
     dns:
       - 1.1.1.1
       - 8.8.8.8
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8001/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -104,7 +104,7 @@ services:
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/proxy}
-      BACKEND_URL: http://backend:5000
+      BACKEND_URL: http://backend:8001
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
       - ./frontend:/app
@@ -112,12 +112,12 @@ services:
       - /app/.next
       - ./backend/public/uploads:/app/public/uploads:ro
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-8000}:8000"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 5

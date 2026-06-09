@@ -54,7 +54,10 @@ export class FinanceController {
   @Post('fee-structures')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
   @Permissions('finance:fee_structure:create')
-  async createFeeStructure(@Body() dto: CreateFeeStructureDto, @Request() req: any) {
+  async createFeeStructure(
+    @Body() dto: CreateFeeStructureDto,
+    @Request() req: any,
+  ) {
     const fs = await this.financeService.createFeeStructure({
       ...dto,
       schoolId: this.resolveSchoolId(req.user, dto.schoolId),
@@ -129,7 +132,10 @@ export class FinanceController {
   @Post('student-fees/generate')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.FINANCE)
   @Permissions('finance:student_fees:generate')
-  async generateStudentFees(@Body() dto: GenerateStudentFeesDto, @Request() req: any) {
+  async generateStudentFees(
+    @Body() dto: GenerateStudentFeesDto,
+    @Request() req: any,
+  ) {
     const result = await this.financeService.generateStudentFees({
       ...dto,
       schoolId: this.resolveSchoolId(req.user, dto.schoolId),
@@ -140,7 +146,10 @@ export class FinanceController {
   @Get('student-fees')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE, Role.REGISTRAR)
   @Permissions('finance:student_fees:read')
-  async listStudentFees(@Query() query: StudentFeesQueryDto, @Request() req: any) {
+  async listStudentFees(
+    @Query() query: StudentFeesQueryDto,
+    @Request() req: any,
+  ) {
     const result = await this.financeService.getStudentFees({
       ...query,
       schoolId: this.resolveSchoolId(req.user, query.schoolId),
@@ -156,7 +165,10 @@ export class FinanceController {
   @Permissions('finance:payments:record')
   async recordPayment(@Body() dto: RecordPaymentDto, @Request() req: any) {
     try {
-      const result = await this.financeService.recordPayment(req.user, dto);
+      const result = await this.financeService.recordPayment(req.user, {
+        ...dto,
+        schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+      });
       return { success: true, ...result };
     } catch (error: any) {
       // Logging removed for production
@@ -225,7 +237,10 @@ export class FinanceController {
   @Get('payments')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE, Role.REGISTRAR)
   @Permissions('finance:reports:read')
-  async getAllPayments(@Query('schoolId') schoolId: string, @Request() req: any) {
+  async getAllPayments(
+    @Query('schoolId') schoolId: string,
+    @Request() req: any,
+  ) {
     const result = await this.financeService.getAllPayments(
       this.resolveSchoolId(req.user, schoolId),
     );
@@ -336,7 +351,10 @@ export class FinanceController {
   @Get('payroll/salaries')
   @Roles(Role.FINANCE)
   @Permissions('finance:payroll:read')
-  async payrollSalaries(@Query('schoolId') schoolId: string, @Request() req: any) {
+  async payrollSalaries(
+    @Query('schoolId') schoolId: string,
+    @Request() req: any,
+  ) {
     const result = await this.financeService.listPayrollSalaries(
       this.resolveSchoolId(req.user, schoolId),
     );
@@ -406,10 +424,14 @@ export class FinanceController {
     @Body() dto: UpdatePayrollRunStatusDto,
     @Request() req: any,
   ) {
-    const result = await this.financeService.updatePayrollRunStatus(req.user, id, {
-      ...dto,
-      schoolId: this.resolveSchoolId(req.user, dto.schoolId),
-    });
+    const result = await this.financeService.updatePayrollRunStatus(
+      req.user,
+      id,
+      {
+        ...dto,
+        schoolId: this.resolveSchoolId(req.user, dto.schoolId),
+      },
+    );
     return { success: true, data: result };
   }
 
@@ -538,6 +560,24 @@ export class FinanceController {
   }
 
   /**
+   * Get billing configuration for a school.
+   */
+  @Get('billing-config')
+  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.FINANCE)
+  @Permissions('finance:fee_structure:read')
+  async getBillingConfig(
+    @Query('schoolId') schoolId: string,
+    @Query('academicYearId') academicYearId: string,
+    @Request() req: any,
+  ) {
+    const config = await this.financeService.getBillingConfig(
+      this.resolveSchoolId(req.user, schoolId),
+      academicYearId,
+    );
+    return { success: true, data: config };
+  }
+
+  /**
    * Get fee collection mode for a school
    */
   @Get('fee-collection-mode')
@@ -547,24 +587,23 @@ export class FinanceController {
     @Query('schoolId') schoolId: string,
     @Request() req: any,
   ) {
-    const feeCollectionMode =
-      await this.financeService.getFeeCollectionMode(
-        this.resolveSchoolId(req.user, schoolId),
-      );
+    const config = await this.financeService.getBillingConfig(
+      this.resolveSchoolId(req.user, schoolId),
+    );
     const modeLabels: Record<string, string> = {
       MONTHLY: 'Monthly',
       QUARTERLY: 'Quarterly',
-      SEMESTER: 'Semester',
-      TERM: 'Term',
+      SEMESTERLY: 'Semesterly',
+      TERMLY: 'Termly',
       YEARLY: 'Full Year',
     };
     return {
       success: true,
       data: {
-        mode: feeCollectionMode,
-        modeLabel: modeLabels[feeCollectionMode] || feeCollectionMode,
-        installmentCount:
-          await this.financeService.getInstallmentCount(feeCollectionMode),
+        mode: config.billingMode,
+        modeLabel: modeLabels[config.billingMode] || config.billingMode,
+        installmentCount: config.billingPeriodsPerYear,
+        curriculumType: config.curriculumType,
       },
     };
   }

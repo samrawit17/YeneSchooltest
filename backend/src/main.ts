@@ -40,7 +40,7 @@ function requireProductionSecrets() {
 }
 
 function parseAllowedOrigins() {
-  const raw = process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const raw = process.env.CORS_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:8000';
   return raw
     .split(',')
     .map((origin) => origin.trim())
@@ -109,7 +109,7 @@ async function bootstrap() {
   app.useBodyParser('json', { limit: '10mb' });
   app.useBodyParser('urlencoded', { limit: '10mb', extended: true });
 
-  const port = process.env.PORT ?? 5000;
+  const port = process.env.PORT ?? 8001;
   await app.listen(port);
   console.log(`[startup] Backend listening on port ${port}`);
   console.log(

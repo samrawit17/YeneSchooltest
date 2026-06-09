@@ -6,6 +6,24 @@ import {
   NotificationService,
   NotificationType,
 } from '../notification/notification.service';
+import {
+  ETHIOPIAN_MONTH_NAMES,
+  type CalendarType,
+  toEthiopianDate,
+} from '../common/date.util';
+
+type BillingMode = 'MONTHLY' | 'QUARTERLY' | 'SEMESTERLY' | 'TERMLY' | 'YEARLY';
+
+type FeeDeadlineLabelContext = {
+  billingMode: BillingMode;
+  calendarType: CalendarType;
+  terms: Array<{
+    name: string;
+    order: number;
+    startDate: Date;
+    endDate: Date;
+  }>;
+};
 
 type CalendarFeedItem = {
   id: string;
@@ -88,6 +106,121 @@ export class EventService {
           AND: [{ startDate: { lte: from } }, { endDate: { gte: to } }],
         },
       ],
+    };
+  }
+
+  private normalizeBillingMode(value?: string | null): BillingMode {
+    const normalized = String(value || '')
+      .trim()
+      .toUpperCase();
+    if (normalized === 'MONTH' || normalized === 'MONTHLY') return 'MONTHLY';
+    if (normalized === 'QUARTER' || normalized === 'QUARTERLY')
+      return 'QUARTERLY';
+    if (normalized === 'SEMESTER' || normalized === 'SEMESTERLY')
+      return 'SEMESTERLY';
+    if (normalized === 'TERM' || normalized === 'TERMLY') return 'TERMLY';
+    if (normalized === 'YEAR' || normalized === 'YEARLY') return 'YEARLY';
+    return 'TERMLY';
+  }
+
+  private formatFeeDeadlineMonth(date: Date, calendarType: CalendarType) {
+    if (calendarType === 'ETHIOPIAN') {
+      const ethiopianDate = toEthiopianDate(date);
+      return ETHIOPIAN_MONTH_NAMES[ethiopianDate.month - 1] || 'Monthly';
+    }
+
+    return date.toLocaleDateString('en-US', { month: 'long' });
+  }
+
+  private getTermLabel(
+    term: FeeDeadlineLabelContext['terms'][number] | undefined,
+    fallbackPrefix: string,
+  ) {
+    if (!term) return null;
+    return term.name?.trim() || `${fallbackPrefix} ${term.order}`;
+  }
+
+  private getFeeDeadlinePeriodLabel(
+    dueDate: Date,
+    context: FeeDeadlineLabelContext,
+  ) {
+    const matchingTerm = context.terms.find(
+      (term) => term.startDate <= dueDate && term.endDate >= dueDate,
+    );
+
+    if (context.billingMode === 'MONTHLY') {
+      return this.formatFeeDeadlineMonth(dueDate, context.calendarType);
+    }
+
+    if (context.billingMode === 'QUARTERLY') {
+      return (
+        this.getTermLabel(matchingTerm, 'Quarter') ||
+        this.formatFeeDeadlineMonth(dueDate, context.calendarType)
+      );
+    }
+
+    if (context.billingMode === 'SEMESTERLY') {
+      return (
+        this.getTermLabel(matchingTerm, 'Semester') ||
+        this.formatFeeDeadlineMonth(dueDate, context.calendarType)
+      );
+    }
+
+    if (context.billingMode === 'YEARLY') {
+      return 'Annual';
+    }
+
+    return (
+      this.getTermLabel(matchingTerm, 'Term') ||
+      this.formatFeeDeadlineMonth(dueDate, context.calendarType)
+    );
+  }
+
+  private getFeeDeadlineTitle(dueDate: Date, context: FeeDeadlineLabelContext) {
+    return `${this.getFeeDeadlinePeriodLabel(dueDate, context)} fee`;
+  }
+
+  private async getFeeDeadlineLabelContext(
+    schoolId: string,
+    from: Date,
+    to: Date,
+  ): Promise<FeeDeadlineLabelContext> {
+    const [settings, terms] = await Promise.all([
+      this.prisma.schoolSetting.findMany({
+        where: {
+          schoolId,
+          key: { in: ['fee_structure_mode', 'curriculum_type', 'calendar_type'] },
+        },
+        select: { key: true, value: true },
+      }),
+      this.prisma.term.findMany({
+        where: {
+          academicYear: { schoolId },
+          OR: [
+            { startDate: { gte: from, lte: to } },
+            { endDate: { gte: from, lte: to } },
+            {
+              AND: [{ startDate: { lte: from } }, { endDate: { gte: to } }],
+            },
+          ],
+        },
+        select: { name: true, order: true, startDate: true, endDate: true },
+        orderBy: [{ academicYear: { startDate: 'asc' } }, { order: 'asc' }],
+      }),
+    ]);
+    const settingValue = (key: string) =>
+      settings.find((setting) => setting.key === key)?.value;
+
+    return {
+      billingMode: this.normalizeBillingMode(
+        settingValue('fee_structure_mode') || settingValue('curriculum_type'),
+      ),
+      calendarType:
+        String(settingValue('calendar_type') || '').toUpperCase() ===
+        'GREGORIAN'
+          ? 'GREGORIAN'
+          : 'ETHIOPIAN',
+      terms,
     };
   }
 
@@ -330,7 +463,7 @@ export class EventService {
 
     if (role === Role.STUDENT) {
       baseWhere.studentId = user.id;
-      return this.getPersonalFeeDeadlineItems(baseWhere);
+      return this.getPersonalFeeDeadlineItems(baseWhere, schoolId, from, to);
     }
 
     if (role === Role.PARENT) {
@@ -353,7 +486,7 @@ export class EventService {
       if (studentUserIds.length === 0) return [];
 
       baseWhere.studentId = { in: studentUserIds };
-      return this.getPersonalFeeDeadlineItems(baseWhere);
+      return this.getPersonalFeeDeadlineItems(baseWhere, schoolId, from, to);
     }
 
     if (
@@ -370,7 +503,6 @@ export class EventService {
         id: true,
         dueDate: true,
         finalAmount: true,
-        feeStructure: { select: { feeType: true } },
       },
       orderBy: { dueDate: 'asc' },
       take: 1000,
@@ -378,7 +510,7 @@ export class EventService {
 
     const grouped = new Map<
       string,
-      { dueDate: Date; count: number; amount: number; feeTypes: Set<string> }
+      { dueDate: Date; count: number; amount: number }
     >();
 
     fees.forEach((fee) => {
@@ -386,62 +518,82 @@ export class EventService {
       const key = fee.dueDate.toISOString().slice(0, 10);
       const existing =
         grouped.get(key) ||
-        { dueDate: fee.dueDate, count: 0, amount: 0, feeTypes: new Set() };
+        { dueDate: fee.dueDate, count: 0, amount: 0 };
       existing.count += 1;
       existing.amount += Number(fee.finalAmount || 0);
-      if (fee.feeStructure?.feeType) {
-        existing.feeTypes.add(fee.feeStructure.feeType);
-      }
       grouped.set(key, existing);
     });
 
-    return Array.from(grouped.entries()).map(([key, item]) => ({
-      id: `fee-deadline:${key}`,
-      title: `Fee due: ${item.count} student${item.count === 1 ? '' : 's'}`,
-      description: `${Array.from(item.feeTypes).join(', ') || 'School fees'} due. Total expected amount: ${item.amount.toFixed(2)}.`,
-      location: null,
-      startDate: item.dueDate,
-      endDate: item.dueDate,
-      audience: ['ADMIN', 'IT_MANAGER', 'REGISTRAR', 'FINANCE'],
-      category: 'OTHER',
-      color: '#ca8a04',
-      createdById: null,
-      createdAt: item.dueDate,
-      updatedAt: item.dueDate,
-      source: 'FEE_DEADLINE',
-      eventType: 'FEE_DEADLINE',
-    }));
+    const labelContext = await this.getFeeDeadlineLabelContext(
+      schoolId,
+      from,
+      to,
+    );
+
+    return Array.from(grouped.entries()).map(([key, item]) => {
+      const title = this.getFeeDeadlineTitle(item.dueDate, labelContext);
+
+      return {
+        id: `fee-deadline:${key}`,
+        title,
+        description: `${title} due.`,
+        location: null,
+        startDate: item.dueDate,
+        endDate: item.dueDate,
+        audience: ['ADMIN', 'IT_MANAGER', 'REGISTRAR', 'FINANCE'],
+        category: 'OTHER',
+        color: '#ca8a04',
+        createdById: null,
+        createdAt: item.dueDate,
+        updatedAt: item.dueDate,
+        source: 'FEE_DEADLINE',
+        eventType: 'FEE_DEADLINE',
+      };
+    });
   }
 
-  private async getPersonalFeeDeadlineItems(where: any) {
+  private async getPersonalFeeDeadlineItems(
+    where: any,
+    schoolId: string,
+    from: Date,
+    to: Date,
+  ) {
     const fees = await this.prisma.studentFee.findMany({
       where,
       include: {
         student: { select: { id: true, name: true } },
-        feeStructure: { select: { feeType: true } },
       },
       orderBy: { dueDate: 'asc' },
       take: 100,
     });
+    const labelContext = await this.getFeeDeadlineLabelContext(
+      schoolId,
+      from,
+      to,
+    );
 
     return fees
       .filter((fee) => fee.dueDate)
-      .map((fee) => ({
-        id: `fee-deadline:${fee.id}`,
-        title: `${fee.feeStructure?.feeType || 'School fee'} due`,
-        description: `${fee.student?.name || 'Student'} fee deadline. Amount due: ${Number(fee.finalAmount || 0).toFixed(2)}.`,
-        location: null,
-        startDate: fee.dueDate!,
-        endDate: fee.dueDate!,
-        audience: ['STUDENT', 'PARENT'],
-        category: 'OTHER' as const,
-        color: '#ca8a04',
-        createdById: null,
-        createdAt: fee.createdAt,
-        updatedAt: fee.updatedAt,
-        source: 'FEE_DEADLINE' as const,
-        eventType: 'FEE_DEADLINE' as const,
-      }));
+      .map((fee) => {
+        const title = this.getFeeDeadlineTitle(fee.dueDate!, labelContext);
+
+        return {
+          id: `fee-deadline:${fee.id}`,
+          title,
+          description: `${title} due.`,
+          location: null,
+          startDate: fee.dueDate!,
+          endDate: fee.dueDate!,
+          audience: ['STUDENT', 'PARENT'],
+          category: 'OTHER' as const,
+          color: '#ca8a04',
+          createdById: null,
+          createdAt: fee.createdAt,
+          updatedAt: fee.updatedAt,
+          source: 'FEE_DEADLINE' as const,
+          eventType: 'FEE_DEADLINE' as const,
+        };
+      });
   }
 
   async findOne(id: string, schoolId: string) {
