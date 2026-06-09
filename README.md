@@ -51,7 +51,7 @@ GOOGLE_TRANSLATE_API_KEY=""     # required when provider is google
 
 **Frontend** (`.env.local`):
 ```
-NEXT_PUBLIC_API_URL="http://localhost:5000"
+NEXT_PUBLIC_API_URL="http://localhost:8001"
 ```
 
 ## Docker
@@ -70,7 +70,7 @@ Fresh clone notes:
 
 - Root production Docker now boots with safe local defaults, including a fallback dev JWT secret.
 - Development and production Docker stacks use separate named volumes, so switching between them does not corrupt credentials or reuse the wrong database state.
-- Production app is available through `http://localhost` via nginx and directly on `http://localhost:3000` for frontend debugging.
+- Production app is available through `http://localhost` via nginx and directly on `http://localhost:8000` for frontend debugging.
 
 ## Scripts
 

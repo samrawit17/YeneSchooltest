@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const baseURL = process.env.SMS_BASE_URL || "http://localhost:3000";
+const baseURL = process.env.SMS_BASE_URL || "http://localhost:8000";
 
 async function submitLogin(page: import("@playwright/test").Page, loginIdentifier: string, password: string) {
   await page.goto(`${baseURL}/sign-in`, { waitUntil: "domcontentloaded" });

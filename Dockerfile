@@ -20,7 +20,9 @@ COPY --from=deps /app/node_modules ./node_modules
 
 COPY . .
 
-EXPOSE 3000
+ENV PORT=8000
+
+EXPOSE 8000
 
 CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
 
@@ -66,12 +68,13 @@ RUN chown -R nodejs:nodejs /app
 
 USER nodejs
 
-EXPOSE 3000
+EXPOSE 8000
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV PORT=8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "fetch('http://127.0.0.1:3000').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1:8000').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 CMD ["node", ".next/standalone/server.js"]

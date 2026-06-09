@@ -565,6 +565,8 @@ export default function FinanceDashboardPage() {
     }
   }, [selectedTerm, terms]);
 
+  const activeCalendarType = user?.calendarType || 'ETHIOPIAN';
+
   const loadOutstandingBalances = useCallback(async () => {
     if (!selectedYear || !user?.schoolId) return;
     if (selectedTerm && selectedTerm !== 'all' && !terms.some((term) => term.id === selectedTerm)) return;
@@ -574,7 +576,12 @@ export default function FinanceDashboardPage() {
     outstandingRequestSeq.current = requestId;
     setOutstandingLoading(true);
     try {
-      const response = await financeAPI.getOutstandingBalances(user.schoolId, selectedYear, termFilter);
+      const response = await financeAPI.getOutstandingBalances(
+        user.schoolId,
+        selectedYear,
+        termFilter,
+        activeCalendarType as 'ETHIOPIAN' | 'GREGORIAN',
+      );
       if (requestId !== outstandingRequestSeq.current) return;
 
       const rows = resolveArrayPayload<OutstandingFee>(response?.data, ['rows', 'data.rows']);
@@ -604,7 +611,7 @@ export default function FinanceDashboardPage() {
         setOutstandingLoading(false);
       }
     }
-  }, [selectedYear, selectedTerm, terms, user?.schoolId]);
+  }, [activeCalendarType, selectedYear, selectedTerm, terms, user?.schoolId]);
 
   // Load dashboard when filters or school context change
   useEffect(() => {
@@ -640,7 +647,7 @@ export default function FinanceDashboardPage() {
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return `Brr ${amount.toLocaleString()}`;
+    return `ETB ${amount.toLocaleString()}`;
   };
 
   const getAllPeriodLabel = () => {
@@ -665,8 +672,6 @@ export default function FinanceDashboardPage() {
     if (status === 'PARTIAL') return messages.partial || 'Partial';
     return messages.unpaid || 'Unpaid';
   };
-
-  const activeCalendarType = user?.calendarType || 'ETHIOPIAN';
 
   const getCalendarDateSlug = (date: Date) => {
     if (activeCalendarType === 'ETHIOPIAN') {
@@ -802,7 +807,16 @@ export default function FinanceDashboardPage() {
   };
 
   const formatPaymentFeeOptionLabel = (fee: StudentFeeItem) => {
-    const feeLabel = formatFeeItemDisplay(fee.name, isMonthlyBillingMode ? null : fee.termName);
+    const monthlyTermRangeLabel =
+      isMonthlyBillingMode && fee.termName && fee.termName !== selectedPaymentTermName
+        ? fee.termName
+        : isMonthlyBillingMode && fee.termId
+          ? getTermMonthRangeLabel(fee.termId)
+          : null;
+    const feeLabel = formatFeeItemDisplay(
+      fee.name,
+      isMonthlyBillingMode ? monthlyTermRangeLabel : fee.termName,
+    );
     const periodLabel = isMonthlyBillingMode
       ? selectedPaymentTermName || 'Selected period'
       : fee.termName || 'Whole Academic Year';
@@ -849,6 +863,13 @@ export default function FinanceDashboardPage() {
     if (installmentCount <= terms.length || installmentCount <= 1) return null;
 
     const term = terms.find((item) => item.id === termId);
+    if (isMonthlyBillingMode && term?.order) {
+      return {
+        start: (term.order - 1) * 2 + 1,
+        end: term.order * 2,
+      };
+    }
+
     const academicYear = academicYears.find((year) => year.id === selectedYear);
     const academicYearStart = academicYear?.startDate ? new Date(academicYear.startDate) : null;
     const termStart = term?.startDate ? new Date(term.startDate) : null;
@@ -899,6 +920,7 @@ export default function FinanceDashboardPage() {
     .filter((fee) => {
       if (!isMonthlyBillingMode && fee.balance <= 0) return false;
       if (!isMonthlyBillingMode) return true;
+      if (fee.termId && fee.termId === selectedPaymentTermId) return true;
 
       const installmentIndex = getInstallmentIndexFromFee(fee);
       if (installmentIndex === null) return false;
@@ -933,6 +955,7 @@ export default function FinanceDashboardPage() {
   const getTermMonthRangeLabel = (termId: string) => {
     const term = terms.find((t) => t.id === termId);
     if (!term || !term.startDate || !term.endDate) return null;
+    if (!isMonthlyBillingMode) return term.name;
 
     const academicYear = academicYears.find((y) => y.id === selectedYear);
     const ayStart = academicYear?.startDate ? new Date(academicYear.startDate) : null;
@@ -1010,13 +1033,18 @@ export default function FinanceDashboardPage() {
   };
 
   const formatOutstandingScopeLabel = (fee: OutstandingFee) => {
-    if (fee.installmentIndex != null) {
+    const scopeLabel = fee.scopeLabel;
+    const label = scopeLabel || '';
+
+    if (isMonthlyBillingMode && fee.installmentIndex != null) {
       return getInstallmentMonthName(fee.installmentIndex);
     }
 
-    const scopeLabel = fee.scopeLabel;
-    const label = scopeLabel || '';
-    const monthMatch = label.match(/^Month\s+(\d+)$/i);
+    if (fee.installmentIndex != null) {
+      return label || getInstallmentPeriodLabel(fee.installmentIndex);
+    }
+
+    const monthMatch = isMonthlyBillingMode ? label.match(/^Month\s+(\d+)$/i) : null;
     if (monthMatch) return getInstallmentMonthName(Number(monthMatch[1]));
     return label || '-';
   };
@@ -1043,7 +1071,7 @@ export default function FinanceDashboardPage() {
       }
     >();
 
-    feeStructures.forEach((fee) => {
+    feeStructures.filter((fee) => fee.isActive !== false).forEach((fee) => {
       const key = [
         fee.feeType || '',
         String(fee.amount ?? ''),
@@ -1702,7 +1730,7 @@ setIsCreatingFeeStructure(true);
                       fontSize={10} 
                       axisLine={false}
                       tickLine={false}
-                      tickFormatter={(val) => `Brr ${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`}
+                      tickFormatter={(val) => `ETB ${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`}
                     />
                     <Tooltip 
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
@@ -2082,7 +2110,8 @@ setIsCreatingFeeStructure(true);
                   value={studentSearch}
                   onChange={(e) => {
                     setStudentSearch(e.target.value);
-                    setPaymentForm({...paymentForm, studentId: '', termId: ''});
+                    setPaymentForm({...paymentForm, studentId: ''});
+                    setSelectedFeeId('');
                   }}
                 />
               
@@ -2100,17 +2129,17 @@ setIsCreatingFeeStructure(true);
                             entry.student.userId === selectedStudentId ||
                             entry.student.id === selectedStudentId,
                         );
+                        const selectedDialogTermId =
+                          paymentForm.termId ||
+                          (selectedTerm && selectedTerm !== 'all' ? selectedTerm : '');
                         const nextFee = choosePreferredPaymentFee(
                           studentFeeData?.fees || [],
-                          selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined,
+                          selectedDialogTermId || undefined,
                         );
 	                        setPaymentForm({
 	                          ...paymentForm,
 	                          studentId: selectedStudentId,
-	                          termId:
-	                            selectedTerm && selectedTerm !== 'all'
-	                              ? selectedTerm
-	                              : '',
+	                          termId: selectedDialogTermId,
                           amountPaid: nextFee?.balance || 0,
 	                        });
 	                        setStudentSearch(student.user?.name || student.name || 'Unknown');

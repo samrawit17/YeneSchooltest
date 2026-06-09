@@ -36,6 +36,26 @@ import {
   toGregorianDate,
 } from '../common/date.util';
 
+type CurriculumType = 'TERM' | 'QUARTER' | 'SEMESTER';
+type BillingMode = 'MONTHLY' | 'TERMLY' | 'QUARTERLY' | 'SEMESTERLY' | 'YEARLY';
+
+export interface BillingConfig {
+  curriculumType: CurriculumType;
+  billingMode: BillingMode;
+  calendarType: CalendarType;
+  dueDay: number;
+  curriculumPeriodCount: number;
+  billingPeriodsPerYear: number;
+  installmentsPerCurriculumPeriod: number;
+  periods?: Array<{
+    id: string;
+    name: string;
+    order: number;
+    startDate?: Date | null;
+    endDate?: Date | null;
+  }>;
+}
+
 @Injectable()
 export class FinanceService {
   private readonly logger = new Logger(FinanceService.name);
@@ -55,7 +75,9 @@ export class FinanceService {
       throw new ForbiddenException('Authentication required');
     }
 
-    const normalizedUserRole = String(user.role || '').trim().toUpperCase();
+    const normalizedUserRole = String(user.role || '')
+      .trim()
+      .toUpperCase();
     const elevatedRoles = new Set([
       Role.ADMIN,
       Role.IT_MANAGER,
@@ -85,9 +107,7 @@ export class FinanceService {
         return;
       }
 
-      throw new ForbiddenException(
-        'You can only view your own fee summary',
-      );
+      throw new ForbiddenException('You can only view your own fee summary');
     }
 
     if (normalizedUserRole === Role.PARENT) {
@@ -137,7 +157,9 @@ export class FinanceService {
       );
     }
 
-    throw new ForbiddenException('You are not allowed to view this fee summary');
+    throw new ForbiddenException(
+      'You are not allowed to view this fee summary',
+    );
   }
 
   private async formatPaymentsWithStudentContext(
@@ -163,7 +185,9 @@ export class FinanceService {
   ) {
     if (payments.length === 0) return [];
 
-    const rawStudentIds = [...new Set(payments.map((p) => p.studentId).filter(Boolean))];
+    const rawStudentIds = [
+      ...new Set(payments.map((p) => p.studentId).filter(Boolean)),
+    ];
 
     const students = await this.prisma.studentProfile.findMany({
       where: {
@@ -210,13 +234,15 @@ export class FinanceService {
     const studentRosterIds = [
       ...new Set(
         students.flatMap((student) =>
-          [student.id, student.userId].filter(
-            (value): value is string => Boolean(value),
+          [student.id, student.userId].filter((value): value is string =>
+            Boolean(value),
           ),
         ),
       ),
     ];
-    const academicYearNames = [...new Set(academicYears.map((year) => year.name))];
+    const academicYearNames = [
+      ...new Set(academicYears.map((year) => year.name)),
+    ];
 
     const studentClasses =
       studentRosterIds.length > 0 && academicYearNames.length > 0
@@ -251,12 +277,17 @@ export class FinanceService {
       const academicYearName = payment.studentFee?.academicYearId
         ? academicYearNameById.get(payment.studentFee.academicYearId) || null
         : null;
-      const classInfo = student && academicYearName
-        ? classByProfileAndYear.get(`${student.profileId}:${academicYearName}`) ||
-          (student.userId
-            ? classByProfileAndYear.get(`${student.userId}:${academicYearName}`)
-            : null)
-        : null;
+      const classInfo =
+        student && academicYearName
+          ? classByProfileAndYear.get(
+              `${student.profileId}:${academicYearName}`,
+            ) ||
+            (student.userId
+              ? classByProfileAndYear.get(
+                  `${student.userId}:${academicYearName}`,
+                )
+              : null)
+          : null;
 
       return {
         id: payment.id,
@@ -279,10 +310,7 @@ export class FinanceService {
           payment.studentFee?.termId ||
           payment.studentFee?.term?.id ||
           null,
-        termName:
-          payment.term?.name ||
-          payment.studentFee?.term?.name ||
-          null,
+        termName: payment.term?.name || payment.studentFee?.term?.name || null,
         feeType: payment.studentFee?.feeStructure?.feeType || null,
       };
     });
@@ -292,101 +320,268 @@ export class FinanceService {
   // INTELLIGENT FEE CALCULATION HELPER METHODS
   // ========================================================
 
-  private async getFeeCollectionModeInternal(
-    schoolId: string,
-  ): Promise<string> {
-    const [feeStructureMode, curriculumType] = await Promise.all([
-      this.prisma.schoolSetting.findUnique({
-        where: { schoolId_key: { schoolId, key: 'fee_structure_mode' } },
-      }),
-      this.prisma.schoolSetting.findUnique({
-        where: { schoolId_key: { schoolId, key: 'curriculum_type' } },
-      }),
-    ]);
-
-    return feeStructureMode?.value || curriculumType?.value || 'TERM';
+  private normalizeCurriculumType(value?: string | null): CurriculumType {
+    const normalized = String(value || '')
+      .trim()
+      .toUpperCase();
+    if (normalized === 'QUARTER' || normalized === 'QUARTERLY')
+      return 'QUARTER';
+    if (normalized === 'SEMESTER' || normalized === 'SEMESTERLY')
+      return 'SEMESTER';
+    return 'TERM';
   }
 
-  private getInstallmentCountInternal(feeCollectionMode: string): number {
-    const modeMap: Record<string, number> = {
-      QUARTER: 4,
-      QUARTERLY: 4,
-      SEMESTER: 2,
-      SEMESTERLY: 2,
+  private normalizeBillingMode(value?: string | null): BillingMode {
+    const normalized = String(value || '')
+      .trim()
+      .toUpperCase();
+    if (normalized === 'MONTH' || normalized === 'MONTHLY') return 'MONTHLY';
+    if (normalized === 'QUARTER' || normalized === 'QUARTERLY')
+      return 'QUARTERLY';
+    if (normalized === 'SEMESTER' || normalized === 'SEMESTERLY')
+      return 'SEMESTERLY';
+    if (normalized === 'TERM' || normalized === 'TERMLY') return 'TERMLY';
+    if (normalized === 'YEAR' || normalized === 'YEARLY') return 'YEARLY';
+    return 'TERMLY';
+  }
+
+  private getCurriculumPeriodCount(curriculumType: CurriculumType) {
+    const counts: Record<CurriculumType, number> = {
       TERM: 3,
-      TERMLY: 3,
-      MONTH: 12,
-      MONTHLY: 12,
-      YEARLY: 1,
-      YEAR: 1,
+      QUARTER: 4,
+      SEMESTER: 2,
     };
-    return modeMap[feeCollectionMode] || 3;
+    return counts[curriculumType];
   }
 
-  private calculateInstallmentAmountInternal(
-    annualAmount: number,
-    feeCollectionMode: string,
-  ): number {
-    const count = this.getInstallmentCountInternal(feeCollectionMode);
-    return Math.round((annualAmount / count) * 100) / 100;
+  private getBillingPeriodsPerYear(
+    billingMode: BillingMode,
+    curriculumPeriodCount: number,
+  ) {
+    const counts: Record<Exclude<BillingMode, 'MONTHLY' | 'TERMLY'>, number> = {
+      QUARTERLY: 4,
+      SEMESTERLY: 2,
+      YEARLY: 1,
+    };
+    if (billingMode === 'MONTHLY') return curriculumPeriodCount * 2;
+    if (billingMode === 'TERMLY') return curriculumPeriodCount;
+    return counts[billingMode];
   }
 
-  private calculateRemainderInternal(
-    annualAmount: number,
-    feeCollectionMode: string,
-  ): number {
-    const count = this.getInstallmentCountInternal(feeCollectionMode);
-    const installmentAmount = Math.floor((annualAmount / count) * 100) / 100;
-    return Math.round((annualAmount - installmentAmount * count) * 100) / 100;
-  }
+  async getBillingConfig(
+    schoolId: string,
+    academicYearId?: string,
+  ): Promise<BillingConfig> {
+    const settings = await this.prisma.schoolSetting.findMany({
+      where: {
+        schoolId,
+        key: {
+          in: [
+            'curriculum_type',
+            'fee_structure_mode',
+            'calendar_type',
+            'fee_payment_due_day',
+          ],
+        },
+      },
+      select: { key: true, value: true },
+    });
+    const settingValue = (key: string) =>
+      settings.find((setting) => setting.key === key)?.value;
 
-  private getInstallmentPeriodLabel(
-    feeCollectionMode: string,
-    index: number,
-    academicYearStartDate?: Date | null,
-    term?: { name?: string | null } | null,
-    calendarType?: CalendarType | string | null,
-  ): string {
-    const resolvedCalendarType =
-      String(calendarType || '').toUpperCase() === 'GREGORIAN'
+    const curriculumType = this.normalizeCurriculumType(
+      settingValue('curriculum_type'),
+    );
+    const billingMode = this.normalizeBillingMode(
+      settingValue('fee_structure_mode'),
+    );
+    const calendarType =
+      String(settingValue('calendar_type') || '').toUpperCase() === 'GREGORIAN'
         ? 'GREGORIAN'
         : 'ETHIOPIAN';
-    const normalizedMode = String(feeCollectionMode || '').toUpperCase();
-    if (term?.name) {
-      return term.name;
-    }
+    const dueDay = Math.max(
+      1,
+      Math.min(
+        30,
+        Number.parseInt(settingValue('fee_payment_due_day') || '15', 10) || 15,
+      ),
+    );
+    const curriculumPeriodCount = this.getCurriculumPeriodCount(curriculumType);
+    const billingPeriodsPerYear = this.getBillingPeriodsPerYear(
+      billingMode,
+      curriculumPeriodCount,
+    );
 
-    const modeLabels: Record<string, string> = {
-      MONTH: 'Month',
-      MONTHLY: 'Month',
-      QUARTER: 'Quarter',
-      QUARTERLY: 'Quarter',
-      SEMESTER: 'Semester',
-      SEMESTERLY: 'Semester',
-      TERM: 'Term',
-      TERMLY: 'Term',
-      YEAR: 'Full Year',
-      YEARLY: 'Full Year',
+    const config: BillingConfig = {
+      curriculumType,
+      billingMode,
+      calendarType,
+      dueDay,
+      curriculumPeriodCount,
+      billingPeriodsPerYear,
+      installmentsPerCurriculumPeriod: Math.round(
+        billingPeriodsPerYear / curriculumPeriodCount,
+      ),
     };
 
-    if (
-      ['MONTH', 'MONTHLY'].includes(normalizedMode) &&
-      academicYearStartDate &&
-      !Number.isNaN(academicYearStartDate.getTime())
-    ) {
-      const targetDate = new Date(academicYearStartDate);
-      targetDate.setMonth(targetDate.getMonth() + index);
-      if (resolvedCalendarType === 'GREGORIAN') {
-        return targetDate.toLocaleDateString('en-US', { month: 'long' });
-      }
-      const ethiopianDate = toEthiopianDate(targetDate);
-      return ETHIOPIAN_MONTH_NAMES[ethiopianDate.month - 1] || `Month ${index + 1}`;
+    if (academicYearId) {
+      config.periods = await this.getTermsForAcademicYear(
+        academicYearId,
+        schoolId,
+      );
     }
 
-    const label = modeLabels[normalizedMode] || 'Installment';
-    return normalizedMode === 'YEAR' || normalizedMode === 'YEARLY'
-      ? label
-      : `${label} ${index + 1}`;
+    return config;
+  }
+
+  private splitAmount(total: number, count: number) {
+    const safeCount = Math.max(1, count);
+    const baseAmount = Math.floor((Number(total || 0) / safeCount) * 100) / 100;
+    const remainder =
+      Math.round((Number(total || 0) - baseAmount * safeCount) * 100) / 100;
+    return Array.from({ length: safeCount }, (_, index) =>
+      index === safeCount - 1
+        ? Math.round((baseAmount + remainder) * 100) / 100
+        : baseAmount,
+    );
+  }
+
+  private getCurriculumPeriodForInstallment(
+    config: BillingConfig,
+    zeroBasedIndex: number,
+    periods: Array<{
+      id: string;
+      order?: number | null;
+      name?: string | null;
+      startDate?: Date | null;
+      endDate?: Date | null;
+    }>,
+  ) {
+    if (periods.length === 0 || config.billingMode === 'YEARLY') return null;
+    const sortedPeriods = periods
+      .slice()
+      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+    const billingCount = Math.max(1, config.billingPeriodsPerYear);
+    let periodIndex: number;
+
+    if (billingCount >= config.curriculumPeriodCount || billingCount === 1) {
+      periodIndex = Math.floor(
+        (zeroBasedIndex * config.curriculumPeriodCount) / billingCount,
+      );
+    } else {
+      periodIndex = Math.round(
+        (zeroBasedIndex * (config.curriculumPeriodCount - 1)) /
+          Math.max(1, billingCount - 1),
+      );
+    }
+
+    return (
+      sortedPeriods[
+        Math.max(0, Math.min(periodIndex, sortedPeriods.length - 1))
+      ] || null
+    );
+  }
+
+  private getBillingIndexWithinPeriod(
+    config: BillingConfig,
+    zeroBasedIndex: number,
+    periods: Array<{ id: string; order?: number | null }>,
+  ) {
+    const period = this.getCurriculumPeriodForInstallment(
+      config,
+      zeroBasedIndex,
+      periods,
+    );
+    if (!period) return 0;
+
+    let offset = 0;
+    for (let i = 0; i < zeroBasedIndex; i += 1) {
+      const previousPeriod = this.getCurriculumPeriodForInstallment(
+        config,
+        i,
+        periods,
+      );
+      if (previousPeriod?.id === period.id) offset += 1;
+    }
+    return offset;
+  }
+
+  private enumerateCalendarMonths(
+    startDate: Date,
+    endDate: Date,
+    calendarType: CalendarType | string,
+  ) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+
+    const labels: string[] = [];
+    const addLabel = (label?: string | null) => {
+      if (label && !labels.includes(label)) labels.push(label);
+    };
+
+    if (String(calendarType).toUpperCase() === 'GREGORIAN') {
+      const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+      const endCursor = new Date(end.getFullYear(), end.getMonth(), 1);
+      while (cursor <= endCursor) {
+        addLabel(cursor.toLocaleDateString('en-US', { month: 'long' }));
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+      return labels;
+    }
+
+    const startEth = toEthiopianDate(start);
+    const endEth = toEthiopianDate(end);
+    let absoluteMonth = startEth.year * 13 + startEth.month - 1;
+    const endAbsoluteMonth = endEth.year * 13 + endEth.month - 1;
+    while (absoluteMonth <= endAbsoluteMonth) {
+      const month = (absoluteMonth % 13) + 1;
+      addLabel(ETHIOPIAN_MONTH_NAMES[month - 1]);
+      absoluteMonth += 1;
+    }
+    return labels;
+  }
+
+  private getBillingMonthLabelForPeriod(
+    period: {
+      startDate?: Date | null;
+      endDate?: Date | null;
+      name?: string | null;
+      order?: number | null;
+    } | null,
+    billingIndexWithinPeriod: number,
+    config: BillingConfig,
+    calendarType: CalendarType | string,
+  ): string {
+    if (config.billingMode === 'YEARLY') return 'Full Year';
+    if (config.billingMode === 'TERMLY') {
+      return period?.name || `Period ${billingIndexWithinPeriod + 1}`;
+    }
+
+    if (
+      config.billingMode === 'MONTHLY' &&
+      period?.startDate &&
+      period?.endDate
+    ) {
+      const months = this.enumerateCalendarMonths(
+        new Date(period.startDate),
+        new Date(period.endDate),
+        calendarType,
+      );
+      return (
+        months[billingIndexWithinPeriod] ||
+        `Month ${billingIndexWithinPeriod + 1}`
+      );
+    }
+
+    if (period?.name) return period.name;
+    const modeLabel =
+      config.billingMode === 'QUARTERLY'
+        ? 'Quarter'
+        : config.billingMode === 'SEMESTERLY'
+          ? 'Semester'
+          : 'Installment';
+    return `${modeLabel} ${billingIndexWithinPeriod + 1}`;
   }
 
   private getFeeStructureInstallmentIndex(feeType?: string | null) {
@@ -394,10 +589,12 @@ export class FinanceService {
     return match ? Number(match[1]) : null;
   }
 
-  private getClassGradeNumber(classInfo?: {
-    grade?: number | null;
-    name?: string | null;
-  } | null) {
+  private getClassGradeNumber(
+    classInfo?: {
+      grade?: number | null;
+      name?: string | null;
+    } | null,
+  ) {
     if (classInfo?.grade != null && Number.isFinite(Number(classInfo.grade))) {
       return Number(classInfo.grade);
     }
@@ -406,67 +603,71 @@ export class FinanceService {
     return match ? Number(match[0]) : null;
   }
 
-  private getStudentFeeDueDate(params: {
+  private getInstallmentDueDate(params: {
+    zeroBasedIndex: number;
+    config: BillingConfig;
+    period: {
+      startDate?: Date | null;
+      endDate?: Date | null;
+      order?: number | null;
+    } | null;
+    periods?: Array<{ id: string; order?: number | null }>;
     academicYearStartDate?: Date | null;
-    termStartDate?: Date | null;
-    feeType?: string | null;
     dueDay: number;
     calendarType?: CalendarType | string | null;
   }) {
-    const installmentIndex = this.getFeeStructureInstallmentIndex(params.feeType);
     const resolvedCalendarType =
       String(params.calendarType || '').toUpperCase() === 'GREGORIAN'
         ? 'GREGORIAN'
         : 'ETHIOPIAN';
-    const safeDueDay = Math.max(1, Math.min(31, Number(params.dueDay) || 15));
-
-    if (
-      resolvedCalendarType === 'ETHIOPIAN' &&
-      params.academicYearStartDate &&
-      installmentIndex &&
-      !Number.isNaN(new Date(params.academicYearStartDate).getTime()) &&
-      !params.termStartDate
-    ) {
-      const startEth = toEthiopianDate(new Date(params.academicYearStartDate));
-      const zeroBasedMonth = startEth.month - 1 + installmentIndex - 1;
-      const year = startEth.year + Math.floor(zeroBasedMonth / 13);
-      const month = (zeroBasedMonth % 13) + 1;
-      const day = Math.min(safeDueDay, this.getEthiopianMonthLength(year, month));
-      return toGregorianDate({ year, month, day });
-    }
-
-    const baseDate = params.termStartDate
-      ? new Date(params.termStartDate)
-      : installmentIndex && params.academicYearStartDate
+    const safeDueDay = Math.max(1, Math.min(30, Number(params.dueDay) || 15));
+    const billingIndexWithinPeriod = params.periods?.length
+      ? this.getBillingIndexWithinPeriod(
+          params.config,
+          params.zeroBasedIndex,
+          params.periods,
+        )
+      : params.zeroBasedIndex;
+    const isMonthlyBilling = params.config.billingMode === 'MONTHLY';
+    const usePeriodEndMonth =
+      !isMonthlyBilling && Boolean(params.period?.endDate);
+    const periodBaseDate = !usePeriodEndMonth
+      ? params.period?.startDate
+      : params.period?.endDate;
+    const baseDate = periodBaseDate
+      ? new Date(periodBaseDate)
+      : params.academicYearStartDate
         ? new Date(params.academicYearStartDate)
         : new Date();
+    const monthOffset = isMonthlyBilling ? billingIndexWithinPeriod : 0;
 
     if (resolvedCalendarType === 'ETHIOPIAN') {
-      const baseEth = toEthiopianDate(baseDate);
+      const eth = toEthiopianDate(baseDate);
+      const zeroBasedTargetMonth = eth.month - 1 + monthOffset;
+      const targetYear = eth.year + Math.floor(zeroBasedTargetMonth / 13);
+      const targetMonth = (zeroBasedTargetMonth % 13) + 1;
+      const maxDayInPeriodMonth = usePeriodEndMonth ? eth.day : safeDueDay;
       const day = Math.min(
         safeDueDay,
-        this.getEthiopianMonthLength(baseEth.year, baseEth.month),
+        maxDayInPeriodMonth,
+        this.getEthiopianMonthLength(targetYear, targetMonth),
       );
-      return toGregorianDate({ year: baseEth.year, month: baseEth.month, day });
+      return toGregorianDate({ year: targetYear, month: targetMonth, day });
     }
 
-    if (
-      !params.termStartDate &&
-      installmentIndex &&
-      params.academicYearStartDate
-    ) {
-      baseDate.setMonth(baseDate.getMonth() + installmentIndex - 1);
-    }
-
-    const dueDate = new Date(baseDate);
-    dueDate.setDate(1);
-    const lastDayOfMonth = new Date(
-      dueDate.getFullYear(),
-      dueDate.getMonth() + 1,
+    const result = new Date(baseDate);
+    result.setMonth(result.getMonth() + monthOffset);
+    result.setDate(1);
+    const lastDay = new Date(
+      result.getFullYear(),
+      result.getMonth() + 1,
       0,
     ).getDate();
-    dueDate.setDate(Math.min(safeDueDay, lastDayOfMonth));
-    return dueDate;
+    const maxDayInPeriodMonth = usePeriodEndMonth
+      ? new Date(baseDate).getDate()
+      : safeDueDay;
+    result.setDate(Math.min(safeDueDay, maxDayInPeriodMonth, lastDay));
+    return result;
   }
 
   private getEthiopianMonthLength(year: number, month: number) {
@@ -490,10 +691,27 @@ export class FinanceService {
       .join(' ');
   }
 
+  private getMonthOffsetBetweenDates(
+    from: Date,
+    to: Date,
+    calendarType: CalendarType | string,
+  ) {
+    if (String(calendarType).toUpperCase() === 'ETHIOPIAN') {
+      const fromEth = toEthiopianDate(from);
+      const toEth = toEthiopianDate(to);
+      return (toEth.year - fromEth.year) * 13 + (toEth.month - fromEth.month);
+    }
+    return (
+      (to.getFullYear() - from.getFullYear()) * 12 +
+      (to.getMonth() - from.getMonth())
+    );
+  }
+
   private getInstallmentRangeForTerm(
     academicYearStartDate: Date | null | undefined,
     term: { startDate?: Date | null; endDate?: Date | null } | null,
     installmentCount: number,
+    calendarType: CalendarType | string = 'ETHIOPIAN',
   ) {
     if (
       !academicYearStartDate ||
@@ -505,22 +723,71 @@ export class FinanceService {
       return null;
     }
 
-    const monthDiff = (date: Date) =>
-      (date.getFullYear() - academicYearStartDate.getFullYear()) * 12 +
-      (date.getMonth() - academicYearStartDate.getMonth());
-    const start = Math.max(1, Math.min(installmentCount, monthDiff(term.startDate) + 1));
-    const end = term.endDate && !Number.isNaN(term.endDate.getTime())
-      ? Math.max(start, Math.min(installmentCount, monthDiff(term.endDate) + 1))
-      : start;
+    const start = Math.max(
+      1,
+      Math.min(
+        installmentCount,
+        this.getMonthOffsetBetweenDates(
+          academicYearStartDate,
+          term.startDate,
+          calendarType,
+        ) + 1,
+      ),
+    );
+    const end =
+      term.endDate && !Number.isNaN(term.endDate.getTime())
+        ? Math.max(
+            start,
+            Math.min(
+              installmentCount,
+              this.getMonthOffsetBetweenDates(
+                academicYearStartDate,
+                term.endDate,
+                calendarType,
+              ) + 1,
+            ),
+          )
+        : start;
 
     return { start, end };
   }
 
+  private getInstallmentRangeForSelectedTerm(params: {
+    config: BillingConfig;
+    selectedTerm: {
+      id?: string | null;
+      order?: number | null;
+      startDate?: Date | null;
+      endDate?: Date | null;
+    } | null;
+    terms: Array<{ id: string; order?: number | null }>;
+  }) {
+    if (!params.selectedTerm || params.terms.length === 0) return null;
+    if (params.config.billingMode === 'YEARLY') return null;
+
+    const indexes: number[] = [];
+    for (let i = 0; i < params.config.billingPeriodsPerYear; i += 1) {
+      const period = this.getCurriculumPeriodForInstallment(
+        params.config,
+        i,
+        params.terms,
+      );
+      if (period?.id === params.selectedTerm.id) indexes.push(i + 1);
+    }
+
+    if (indexes.length === 0) return null;
+    return { start: Math.min(...indexes), end: Math.max(...indexes) };
+  }
+
   private async getTermsForAcademicYear(
     academicYearId: string,
+    schoolId?: string,
   ): Promise<any[]> {
     return this.prisma.term.findMany({
-      where: { academicYearId },
+      where: {
+        academicYearId,
+        ...(schoolId ? { academicYear: { schoolId } } : {}),
+      },
       orderBy: { order: 'asc' },
     });
   }
@@ -531,12 +798,21 @@ export class FinanceService {
   ) {
     const academicYear = await this.prisma.academicYear.findFirst({
       where: { id: academicYearId, schoolId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, curriculumType: true },
     });
     if (!academicYear) {
       throw new Error('Academic year not found for this school');
     }
     return academicYear;
+  }
+
+  private getCurriculumPeriodDisplayName(curriculumType?: string | null) {
+    const normalized = String(curriculumType || '')
+      .trim()
+      .toUpperCase();
+    if (normalized === 'QUARTER') return 'Quarter';
+    if (normalized === 'SEMESTER') return 'Semester';
+    return 'Academic period';
   }
 
   private async assertTermInSchool(schoolId: string, termId?: string) {
@@ -838,9 +1114,7 @@ export class FinanceService {
           userId: financeUser.id,
           type: NotificationType.PAYROLL_PAYMENT_DUE,
           metadata: { contains: `"payrollRunId":"${run.id}"` },
-          AND: [
-            { metadata: { contains: `"daysBefore":${daysBefore}` } },
-          ],
+          AND: [{ metadata: { contains: `"daysBefore":${daysBefore}` } }],
         },
         select: { id: true },
       });
@@ -874,22 +1148,26 @@ export class FinanceService {
     });
 
     if (!term) {
-      throw new Error('Selected curriculum period was not found for this school');
+      throw new Error(
+        'Selected curriculum period was not found for this school',
+      );
     }
 
     const sent = await this.notifyParentsForTermFeeDue(term, true);
     return { sent, termName: term.name };
   }
 
-  private async notifyParentsForTermFeeDue(term: {
-    id: string;
-    name: string;
-    academicYearId: string;
-    academicYear: { id: string; schoolId: string; name: string };
-  }, force = false) {
+  private async notifyParentsForTermFeeDue(
+    term: {
+      id: string;
+      name: string;
+      academicYearId: string;
+      academicYear: { id: string; schoolId: string; name: string };
+    },
+    force = false,
+  ) {
     const schoolId = term.academicYear.schoolId;
-    const curriculumType = await this.getFeeCollectionModeInternal(schoolId);
-    const installmentCount = this.getInstallmentCountInternal(curriculumType);
+    const config = await this.getBillingConfig(schoolId, term.academicYearId);
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     let sent = 0;
@@ -910,8 +1188,9 @@ export class FinanceService {
     for (const fee of fees) {
       const expectedForPeriod = fee.termId
         ? fee.finalAmount
-        : Math.round((fee.finalAmount / Math.max(installmentCount, 1)) * 100) /
-          100;
+        : Math.round(
+            (fee.finalAmount / Math.max(config.billingPeriodsPerYear, 1)) * 100,
+          ) / 100;
       const paidForPeriod = fee.termId
         ? fee.payments.reduce((sum, payment) => sum + payment.amountPaid, 0)
         : fee.payments
@@ -989,7 +1268,7 @@ export class FinanceService {
   }
 
   private formatBirr(amount: number) {
-    return `Brr ${amount.toLocaleString('en-US', {
+    return `ETB ${amount.toLocaleString('en-US', {
       maximumFractionDigits: 2,
     })}`;
   }
@@ -999,67 +1278,86 @@ export class FinanceService {
   // ========================================================
 
   async calculateInstallmentFees(dto: CalculateInstallmentFeesDto) {
-    const feeCollectionMode = await this.getFeeCollectionModeInternal(
+    const config = await this.getBillingConfig(
       dto.schoolId,
+      dto.academicYearId,
     );
-    const installmentCount =
-      this.getInstallmentCountInternal(feeCollectionMode);
-    const installmentAmount = this.calculateInstallmentAmountInternal(
+    const terms = config.periods || [];
+    const amounts = this.splitAmount(
       dto.annualAmount,
-      feeCollectionMode,
+      config.billingPeriodsPerYear,
     );
-    const remainder = this.calculateRemainderInternal(
-      dto.annualAmount,
-      feeCollectionMode,
-    );
-
-    const terms = await this.getTermsForAcademicYear(dto.academicYearId);
+    const installmentAmount = amounts[0] || 0;
+    const remainder =
+      Math.round(
+        (dto.annualAmount - installmentAmount * amounts.length) * 100,
+      ) / 100;
 
     const modeLabels: Record<string, string> = {
       MONTHLY: 'Monthly',
       QUARTERLY: 'Quarterly',
-      SEMESTER: 'Semester',
-      TERM: 'Term',
+      SEMESTERLY: 'Semesterly',
+      TERMLY: 'Termly',
       YEARLY: 'Full Year',
     };
 
     return {
-      mode: feeCollectionMode,
-      modeLabel: modeLabels[feeCollectionMode] || feeCollectionMode,
-      installmentCount,
+      mode: config.billingMode,
+      curriculumType: config.curriculumType,
+      modeLabel: modeLabels[config.billingMode] || config.billingMode,
+      installmentCount: config.billingPeriodsPerYear,
       installmentAmount,
       remainder,
       annualAmount: dto.annualAmount,
       totalWithRemainder:
         Math.round((dto.annualAmount + remainder) * 100) / 100,
-      description: `Annual tuition of ${dto.annualAmount} split into ${installmentCount} ${modeLabels[feeCollectionMode] || 'installments'}`,
-      suggestedTermDistribution: terms
-        .slice(0, installmentCount)
-        .map((term, index) => ({
-          termName: term?.name || `${index + 1}`,
-          termId: term?.id,
-          amount:
-            index === installmentCount - 1 && remainder !== 0
-              ? Math.round((installmentAmount + remainder) * 100) / 100
-              : installmentAmount,
-        })),
+      description: `Annual tuition of ${dto.annualAmount} split into ${config.billingPeriodsPerYear} ${modeLabels[config.billingMode] || 'installments'}`,
+      suggestedTermDistribution: amounts.map((amount, index) => {
+        const period = this.getCurriculumPeriodForInstallment(
+          config,
+          index,
+          terms,
+        );
+        const billingIndexWithinPeriod = this.getBillingIndexWithinPeriod(
+          config,
+          index,
+          terms,
+        );
+        return {
+          termName: period?.name || 'Whole Academic Year',
+          termId: period?.id,
+          label: this.getBillingMonthLabelForPeriod(
+            period,
+            billingIndexWithinPeriod,
+            config,
+            config.calendarType,
+          ),
+          amount,
+        };
+      }),
     };
   }
 
   async generateInstallmentFees(dto: GenerateInstallmentFeesDto) {
-    const feeCollectionMode = await this.getFeeCollectionModeInternal(
-      dto.schoolId,
-    );
-    const installmentCount =
-      this.getInstallmentCountInternal(feeCollectionMode);
-    const terms = await this.getTermsForAcademicYear(dto.academicYearId);
+    await this.assertAcademicYearInSchool(dto.schoolId, dto.academicYearId);
+    const [config, academicYear] = await Promise.all([
+      this.getBillingConfig(dto.schoolId, dto.academicYearId),
+      this.prisma.academicYear.findFirst({
+        where: { id: dto.academicYearId, schoolId: dto.schoolId },
+        select: { startDate: true },
+      }),
+    ]);
+    const terms = config.periods || [];
+    const gradeWhere =
+      dto.grade != null ? { grade: dto.grade } : { grade: null };
+    const baseType = dto.feeType || 'TUITION';
 
     const existingStructures = await this.prisma.feeStructure.findMany({
       where: {
         schoolId: dto.schoolId,
         academicYearId: dto.academicYearId,
-        feeType: dto.feeType || 'TUITION',
-        ...(dto.grade ? { grade: dto.grade } : {}),
+        feeType: baseType,
+        ...gradeWhere,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -1074,52 +1372,48 @@ export class FinanceService {
 
     const baseStructure = existingStructures[0];
     const annualAmount = dto.annualAmount ?? baseStructure.amount;
-    const baseAmount = this.calculateInstallmentAmountInternal(
+    const amounts = this.splitAmount(
       annualAmount,
-      feeCollectionMode,
+      config.billingPeriodsPerYear,
     );
-    const remainder = this.calculateRemainderInternal(
-      annualAmount,
-      feeCollectionMode,
-    );
-
-    const amounts: number[] = [];
-    for (let i = 0; i < installmentCount; i++) {
-      if (i === installmentCount - 1 && remainder !== 0) {
-        amounts.push(Math.round((baseAmount + remainder) * 100) / 100);
-      } else {
-        amounts.push(baseAmount);
-      }
-    }
 
     let created = 0;
     await this.prisma.$transaction(async (tx) => {
-      const displayFeeType = String(dto.feeType || 'Tuition').replace(
-        /_/g,
-        ' ',
-      );
-      const installmentFeePrefix = `${dto.feeType || 'TUITION'}_INSTALLMENT_`;
+      const displayFeeType = String(baseType || 'Tuition').replace(/_/g, ' ');
+      const installmentFeePrefix = `${baseType}_INSTALLMENT_`;
+      const expectedInstallmentIds: string[] = [];
 
-      for (let i = 0; i < installmentCount; i++) {
-        const periodName = this.getInstallmentPeriodLabel(
-          feeCollectionMode,
+      for (let i = 0; i < config.billingPeriodsPerYear; i++) {
+        const installmentTerm = this.getCurriculumPeriodForInstallment(
+          config,
           i,
-          undefined,
-          terms[i],
+          terms,
         );
-        const installmentTermId =
-          periodName === terms[i]?.name ? terms[i]?.id : null;
+        const billingIndexWithinPeriod = this.getBillingIndexWithinPeriod(
+          config,
+          i,
+          terms,
+        );
+        const periodName = this.getBillingMonthLabelForPeriod(
+          installmentTerm,
+          billingIndexWithinPeriod,
+          config,
+          config.calendarType,
+        );
+        const installmentTermId = installmentTerm?.id || null;
         const existingInstallment = await tx.feeStructure.findFirst({
           where: {
             schoolId: dto.schoolId,
             academicYearId: dto.academicYearId,
             feeType: `${installmentFeePrefix}${i + 1}`,
-            ...(dto.grade ? { grade: dto.grade } : {}),
+            termId: installmentTermId || null,
+            ...gradeWhere,
           },
+          orderBy: { updatedAt: 'desc' },
         });
 
         if (!existingInstallment) {
-          await tx.feeStructure.create({
+          const createdInstallment = await tx.feeStructure.create({
             data: {
               schoolId: dto.schoolId,
               academicYearId: dto.academicYearId,
@@ -1133,9 +1427,10 @@ export class FinanceService {
               isActive: true,
             },
           });
+          expectedInstallmentIds.push(createdInstallment.id);
           created++;
         } else {
-          await tx.feeStructure.update({
+          const updatedInstallment = await tx.feeStructure.update({
             where: { id: existingInstallment.id },
             data: {
               termId: installmentTermId || null,
@@ -1146,6 +1441,7 @@ export class FinanceService {
               isActive: true,
             },
           });
+          expectedInstallmentIds.push(updatedInstallment.id);
         }
       }
 
@@ -1154,10 +1450,8 @@ export class FinanceService {
           schoolId: dto.schoolId,
           academicYearId: dto.academicYearId,
           feeType: { startsWith: installmentFeePrefix },
-          ...(dto.grade ? { grade: dto.grade } : {}),
-          NOT: Array.from({ length: installmentCount }, (_, index) => ({
-            feeType: `${installmentFeePrefix}${index + 1}`,
-          })),
+          ...gradeWhere,
+          id: { notIn: expectedInstallmentIds },
         },
         data: { isActive: false },
       });
@@ -1168,7 +1462,7 @@ export class FinanceService {
       message:
         created > 0
           ? `Generated ${created} installment fee structures`
-          : `Installment fee structures updated for ${feeCollectionMode}`,
+          : `Installment fee structures updated for ${config.billingMode}`,
       breakdown: amounts.map((amount, index) => ({
         installment: index + 1,
         amount,
@@ -1177,11 +1471,8 @@ export class FinanceService {
   }
 
   async getFeeCollectionMode(schoolId: string): Promise<string> {
-    return this.getFeeCollectionModeInternal(schoolId);
-  }
-
-  async getInstallmentCount(feeCollectionMode: string): Promise<number> {
-    return this.getInstallmentCountInternal(feeCollectionMode);
+    const config = await this.getBillingConfig(schoolId);
+    return config.billingMode;
   }
 
   // ========================================================
@@ -1189,6 +1480,17 @@ export class FinanceService {
   // ========================================================
 
   async createFeeStructure(dto: CreateFeeStructureDto) {
+    const academicYear = await this.assertAcademicYearInSchool(
+      dto.schoolId,
+      dto.academicYearId,
+    );
+    const term = await this.assertTermInSchool(dto.schoolId, dto.termId);
+    if (term && term.academicYearId !== dto.academicYearId) {
+      throw new Error(
+        `${this.getCurriculumPeriodDisplayName(academicYear.curriculumType)} does not match the selected academic year`,
+      );
+    }
+
     return this.prisma.feeStructure.create({
       data: {
         schoolId: dto.schoolId,
@@ -1209,6 +1511,20 @@ export class FinanceService {
     academicYearId?: string,
     termId?: string,
   ) {
+    let academicYear: { curriculumType?: string | null } | null = null;
+    if (academicYearId) {
+      academicYear = await this.assertAcademicYearInSchool(
+        schoolId,
+        academicYearId,
+      );
+    }
+    const term = await this.assertTermInSchool(schoolId, termId);
+    if (term && academicYearId && term.academicYearId !== academicYearId) {
+      throw new Error(
+        `${this.getCurriculumPeriodDisplayName(academicYear?.curriculumType)} does not match the selected academic year`,
+      );
+    }
+
     return this.prisma.feeStructure.findMany({
       where: {
         schoolId,
@@ -1251,10 +1567,10 @@ export class FinanceService {
     return this.prisma.feeStructure.delete({ where: { id } });
   }
 
-  async deleteFeeStructuresBySchool(
-    schoolId: string,
-    academicYearId?: string,
-  ) {
+  async deleteFeeStructuresBySchool(schoolId: string, academicYearId?: string) {
+    if (academicYearId) {
+      await this.assertAcademicYearInSchool(schoolId, academicYearId);
+    }
     const where: any = { schoolId };
     if (academicYearId) where.academicYearId = academicYearId;
     return this.prisma.feeStructure.deleteMany({ where });
@@ -1266,11 +1582,15 @@ export class FinanceService {
 
   async generateStudentFees(dto: GenerateStudentFeesDto) {
     await this.assertAcademicYearInSchool(dto.schoolId, dto.academicYearId);
+    const config = await this.getBillingConfig(
+      dto.schoolId,
+      dto.academicYearId,
+    );
+    const periods = config.periods || [];
     const academicYear = await this.prisma.academicYear.findFirst({
       where: { id: dto.academicYearId, schoolId: dto.schoolId },
       select: { name: true, startDate: true },
     });
-    const calendarType = await this.getSchoolCalendarType(dto.schoolId);
     if (dto.termId) {
       await this.assertTermInSchool(dto.schoolId, dto.termId);
     }
@@ -1290,14 +1610,10 @@ export class FinanceService {
       feeStructure.feeType.includes('_INSTALLMENT_'),
     );
     const feeStructures =
-      generatedFeeStructures.length > 0 ? generatedFeeStructures : foundFeeStructures;
+      generatedFeeStructures.length > 0
+        ? generatedFeeStructures
+        : foundFeeStructures;
     if (feeStructures.length === 0) return { created: 0 };
-
-    // Get due day from settings
-    const dueDaySetting = await this.prisma.schoolSetting.findUnique({
-      where: { schoolId_key: { schoolId: dto.schoolId, key: 'fee_payment_due_day' } },
-    });
-    const dueDay = parseInt(dueDaySetting?.value || '15', 10);
 
     const students = await this.prisma.studentProfile.findMany({
       where: { schoolId: dto.schoolId, enrollmentStatus: 'APPROVED' },
@@ -1330,33 +1646,35 @@ export class FinanceService {
       students,
     );
 
-    const termIds = Array.from(
-      new Set(feeStructures.map((fs) => fs.termId).filter((id): id is string => Boolean(id))),
-    );
-    const termStartById = new Map<string, Date>();
-    if (termIds.length > 0) {
-      const feeTerms = await this.prisma.term.findMany({
-        where: { id: { in: termIds } },
-        select: { id: true, startDate: true },
-      });
-      feeTerms.forEach((term) => {
-        if (term.startDate) termStartById.set(term.id, new Date(term.startDate));
-      });
-    }
+    const termById = new Map(periods.map((period) => [period.id, period]));
 
     const data = feeStructures.flatMap((fs) => {
-      const dueDate = this.getStudentFeeDueDate({
+      const installmentIndex = this.getFeeStructureInstallmentIndex(fs.feeType);
+      const zeroBasedIndex = installmentIndex ? installmentIndex - 1 : 0;
+      const period =
+        (fs.termId ? termById.get(fs.termId) || null : null) ||
+        (installmentIndex
+          ? this.getCurriculumPeriodForInstallment(
+              config,
+              zeroBasedIndex,
+              periods,
+            )
+          : null);
+      const dueDate = this.getInstallmentDueDate({
+        zeroBasedIndex,
+        config,
+        period,
+        periods,
         academicYearStartDate: academicYear?.startDate || null,
-        termStartDate: termStartById.get(fs.termId || '') || null,
-        feeType: fs.feeType,
-        dueDay,
-        calendarType,
+        dueDay: config.dueDay,
+        calendarType: config.calendarType,
       });
       const targetStudentIds =
         fs.grade == null
           ? studentIds
           : studentIds.filter(
-              (studentId) => studentGradeById.get(studentId) === Number(fs.grade),
+              (studentId) =>
+                studentGradeById.get(studentId) === Number(fs.grade),
             );
 
       return targetStudentIds.map((studentId) => {
@@ -1384,10 +1702,84 @@ export class FinanceService {
       });
     });
 
-    const result = await this.prisma.studentFee.createMany({
-      data,
-      skipDuplicates: true,
-    });
+    const existingFees = data.length
+      ? await this.prisma.studentFee.findMany({
+          where: {
+            schoolId: dto.schoolId,
+            academicYearId: dto.academicYearId,
+            feeStructureId: {
+              in: Array.from(new Set(data.map((row) => row.feeStructureId))),
+            },
+            studentId: {
+              in: Array.from(new Set(data.map((row) => row.studentId))),
+            },
+          },
+          select: {
+            id: true,
+            feeStructureId: true,
+            studentId: true,
+            termId: true,
+            dueDate: true,
+          },
+        })
+      : [];
+    const existingSet = new Set(
+      existingFees.map((fee) => `${fee.feeStructureId}:${fee.studentId}`),
+    );
+    const existingByKey = new Map(
+      existingFees.map((fee) => [
+        `${fee.feeStructureId}:${fee.studentId}`,
+        fee,
+      ]),
+    );
+    const dataToCreate = data.filter(
+      (row) => !existingSet.has(`${row.feeStructureId}:${row.studentId}`),
+    );
+
+    const result = dataToCreate.length
+      ? await this.prisma.studentFee.createMany({
+          data: dataToCreate,
+          skipDuplicates: true,
+        })
+      : { count: 0 };
+
+    const reconcileUpdates = data
+      .map((row) => {
+        const existing = existingByKey.get(
+          `${row.feeStructureId}:${row.studentId}`,
+        );
+        if (!existing) return null;
+
+        const nextTermId = row.termId ?? null;
+        const nextDueDate = row.dueDate ?? null;
+        const existingDueTime = existing.dueDate
+          ? new Date(existing.dueDate).getTime()
+          : null;
+        const nextDueTime = nextDueDate
+          ? new Date(nextDueDate).getTime()
+          : null;
+        const dataToUpdate: { termId?: string | null; dueDate?: Date | null } =
+          {};
+
+        if ((existing.termId ?? null) !== nextTermId) {
+          dataToUpdate.termId = nextTermId;
+        }
+        if (existingDueTime !== nextDueTime) {
+          dataToUpdate.dueDate = nextDueDate;
+        }
+        if (Object.keys(dataToUpdate).length === 0) return null;
+
+        return this.prisma.studentFee.update({
+          where: { id: existing.id },
+          data: dataToUpdate,
+        });
+      })
+      .filter(Boolean);
+
+    if (reconcileUpdates.length > 0) {
+      await Promise.all(reconcileUpdates);
+    }
+
     const updated = await this.recalculateFamilyDiscountsForExistingFees({
       schoolId: dto.schoolId,
       academicYearId: dto.academicYearId,
@@ -1436,23 +1828,27 @@ export class FinanceService {
       },
       select: { key: true, value: true },
     });
-    const settingMap = new Map(settings.map((setting) => [setting.key, setting.value]));
+    const settingMap = new Map(
+      settings.map((setting) => [setting.key, setting.value]),
+    );
     const enabled = this.parseBooleanSetting(
       settingMap.get('family_discount_enabled'),
       false,
     );
     const minStudents = Math.max(
       2,
-      Math.min(20, Number(settingMap.get('family_discount_min_students') || 3) || 3),
+      Math.min(
+        20,
+        Number(settingMap.get('family_discount_min_students') || 3) || 3,
+      ),
     );
     const configuredPercent = settingMap.has('family_discount_percent')
       ? settingMap.get('family_discount_percent')
       : '20';
-    const percent = Math.max(
-      0,
-      Math.min(100, Number(configuredPercent) || 0),
-    );
-    const feeTypes = String(settingMap.get('family_discount_fee_types') || 'TUITION')
+    const percent = Math.max(0, Math.min(100, Number(configuredPercent) || 0));
+    const feeTypes = String(
+      settingMap.get('family_discount_fee_types') || 'TUITION',
+    )
       .split(',')
       .map((item) => this.normalizeFeeType(item))
       .filter(Boolean);
@@ -1471,7 +1867,9 @@ export class FinanceService {
       return empty;
     }
 
-    const studentByProfileId = new Map(students.map((student) => [student.id, student]));
+    const studentByProfileId = new Map(
+      students.map((student) => [student.id, student]),
+    );
     const parentLinks = await this.prisma.parentStudent.findMany({
       where: {
         schoolId,
@@ -1498,7 +1896,12 @@ export class FinanceService {
     profileIdsByParent.forEach((profileIds) => {
       const familyStudents = Array.from(profileIds)
         .map((profileId) => studentByProfileId.get(profileId))
-        .filter((student): student is { id: string; userId: string; createdAt: Date } => Boolean(student))
+        .filter(
+          (
+            student,
+          ): student is { id: string; userId: string; createdAt: Date } =>
+            Boolean(student),
+        )
         .sort((a, b) => {
           const dateDiff = a.createdAt.getTime() - b.createdAt.getTime();
           return dateDiff !== 0 ? dateDiff : a.id.localeCompare(b.id);
@@ -1580,21 +1983,28 @@ export class FinanceService {
     academicYearId: string;
     feeStructures: Array<{ id: string; feeType: string; amount: number }>;
     studentIds: string[];
-    familyDiscount: Awaited<ReturnType<FinanceService['getFamilyDiscountContext']>>;
+    familyDiscount: Awaited<
+      ReturnType<FinanceService['getFamilyDiscountContext']>
+    >;
   }) {
     if (params.studentIds.length === 0 || params.feeStructures.length === 0) {
       return 0;
     }
 
     const feeStructureById = new Map(
-      params.feeStructures.map((feeStructure) => [feeStructure.id, feeStructure]),
+      params.feeStructures.map((feeStructure) => [
+        feeStructure.id,
+        feeStructure,
+      ]),
     );
     const rows = await this.prisma.studentFee.findMany({
       where: {
         schoolId: params.schoolId,
         academicYearId: params.academicYearId,
         studentId: { in: params.studentIds },
-        feeStructureId: { in: params.feeStructures.map((feeStructure) => feeStructure.id) },
+        feeStructureId: {
+          in: params.feeStructures.map((feeStructure) => feeStructure.id),
+        },
         payments: { none: {} },
       },
       select: {
@@ -1619,7 +2029,8 @@ export class FinanceService {
         params.familyDiscount,
       );
       const finalAmount = Math.max(0, row.totalAmount - discount);
-      const discountPolicyId = discount > 0 ? params.familyDiscount.policyId : null;
+      const discountPolicyId =
+        discount > 0 ? params.familyDiscount.policyId : null;
       const shouldUpdate =
         Math.abs(row.discount - discount) > 0.001 ||
         Math.abs(row.finalAmount - finalAmount) > 0.001 ||
@@ -1656,7 +2067,7 @@ export class FinanceService {
       search,
     } = query;
     const skip = (page - 1) * limit;
-    const whereBase: any = { schoolId };
+    const whereBase: any = { schoolId, feeStructure: { isActive: true } };
     if (status) whereBase.status = status as PaymentStatus;
     if (studentId) whereBase.studentId = studentId;
     if (academicYearId) whereBase.academicYearId = academicYearId;
@@ -1678,40 +2089,25 @@ export class FinanceService {
           select: { startDate: true },
         })
       : null;
-    const resolvedCalendarType = await this.getSchoolCalendarType(schoolId);
-    const curriculumType = await this.getFeeCollectionModeInternal(schoolId);
-    const normalizedFeeMode = String(curriculumType || '').toUpperCase();
+    const [resolvedCalendarType, config] = await Promise.all([
+      this.getSchoolCalendarType(schoolId),
+      this.getBillingConfig(schoolId, academicYearId),
+    ]);
+    const terms = config.periods || [];
     if (termId) {
       const selectedTerm = await this.assertTermInSchool(schoolId, termId);
       if (
         selectedTerm &&
-        ['MONTH', 'MONTHLY'].includes(normalizedFeeMode) &&
+        config.billingPeriodsPerYear !== config.curriculumPeriodCount &&
         academicYearWithDates?.startDate
       ) {
-        const installmentCount = this.getInstallmentCountInternal(curriculumType);
-        const terms = await this.prisma.term.findMany({
-          where: { academicYearId, academicYear: { schoolId } },
-          orderBy: { order: 'asc' },
-        });
         const selectedTermWithDates =
           terms.find((term) => term.id === selectedTerm.id) || selectedTerm;
-        const installmentRange =
-          this.getInstallmentRangeForTerm(
-            academicYearWithDates.startDate,
-            selectedTermWithDates,
-            installmentCount,
-          ) ||
-          (terms.length > 0
-            ? {
-                start:
-                  Math.floor(
-                    ((selectedTerm.order - 1) * installmentCount) / terms.length,
-                  ) + 1,
-                end: Math.floor(
-                  (selectedTerm.order * installmentCount) / terms.length,
-                ),
-              }
-            : null);
+        const installmentRange = this.getInstallmentRangeForSelectedTerm({
+          config,
+          selectedTerm: selectedTermWithDates,
+          terms,
+        });
 
         if (installmentRange) {
           whereBase.OR = [
@@ -1748,9 +2144,7 @@ export class FinanceService {
           where: scWhere,
           select: { studentId: true },
         });
-        const ids = Array.from(
-          new Set(studentClasses.map((x) => x.studentId)),
-        );
+        const ids = Array.from(new Set(studentClasses.map((x) => x.studentId)));
         whereBase.studentId = { in: ids };
       }
     }
@@ -1762,12 +2156,30 @@ export class FinanceService {
         include: {
           student: { select: { id: true, name: true } },
           feeStructure: {
-            include: { term: { select: { id: true, name: true } } },
+            include: {
+              term: {
+                select: {
+                  id: true,
+                  name: true,
+                  order: true,
+                  startDate: true,
+                  endDate: true,
+                },
+              },
+            },
           },
           discountPolicy: {
             select: { name: true, discountType: true, discountValue: true },
           },
-          term: { select: { id: true, name: true } },
+          term: {
+            select: {
+              id: true,
+              name: true,
+              order: true,
+              startDate: true,
+              endDate: true,
+            },
+          },
           payments: true,
         },
         orderBy: { updatedAt: 'desc' },
@@ -1810,14 +2222,19 @@ export class FinanceService {
       );
       const scopeLabel =
         installmentIndex !== null
-          ? this.getInstallmentPeriodLabel(
-              curriculumType,
-              installmentIndex - 1,
-              academicYearWithDates?.startDate,
+          ? this.getBillingMonthLabelForPeriod(
               sf.term || sf.feeStructure.term,
+              this.getBillingIndexWithinPeriod(
+                config,
+                installmentIndex - 1,
+                terms,
+              ),
+              config,
               resolvedCalendarType,
             )
-          : sf.term?.name || sf.feeStructure.term?.name || 'Whole Academic Year';
+          : sf.term?.name ||
+            sf.feeStructure.term?.name ||
+            'Whole Academic Year';
       const studentClass = classMap.get(sf.studentId);
       return {
         id: sf.id,
@@ -1862,7 +2279,10 @@ export class FinanceService {
     return { y, m, d, dateKey: `${y}${m}${d}` };
   }
 
-  private async generatePaymentReference(schoolId: string, paymentDate = new Date()) {
+  private async generatePaymentReference(
+    schoolId: string,
+    paymentDate = new Date(),
+  ) {
     const { y, m, d, dateKey } = this.getPaymentReferenceDateParts(paymentDate);
     const latestPayment = await this.prisma.payment.findFirst({
       where: {
@@ -1954,7 +2374,9 @@ export class FinanceService {
       }
     }
 
-    throw lastError || new Error('Failed to generate a unique payment reference');
+    throw (
+      lastError || new Error('Failed to generate a unique payment reference')
+    );
   }
 
   private async createPaymentWithFallbackReference(
@@ -1987,28 +2409,6 @@ export class FinanceService {
         },
       });
     }
-  }
-
-  private async getPeriodCountForFee(tx: any, schoolId: string, academicYearId: string) {
-    const termsCount = await tx.term.count({ where: { academicYearId } });
-    if (termsCount > 0) return termsCount;
-
-    const settings = await tx.schoolSetting.findMany({
-      where: {
-        schoolId,
-        key: { in: ['fee_structure_mode', 'curriculum_type'] },
-      },
-      select: { key: true, value: true },
-    });
-    const feeStructureMode = settings.find(
-      (setting) => setting.key === 'fee_structure_mode',
-    );
-    const curriculumType = settings.find(
-      (setting) => setting.key === 'curriculum_type',
-    );
-    return this.getInstallmentCountInternal(
-      feeStructureMode?.value || curriculumType?.value || 'TERM',
-    );
   }
 
   private async logAudit(
@@ -2045,19 +2445,34 @@ export class FinanceService {
   }
 
   async recordPayment(user: any, dto: RecordPaymentDto) {
+    if (
+      user?.role !== Role.SUPER_ADMIN &&
+      user?.schoolId &&
+      user.schoolId !== dto.schoolId
+    ) {
+      throw new Error('Fee does not match this school');
+    }
+
     const paymentDate = dto.paymentDate
       ? new Date(dto.paymentDate)
       : new Date();
+    const config = await this.getBillingConfig(dto.schoolId);
     const result = await this.prisma.$transaction(async (tx) => {
       const sf = dto.studentFeeId
         ? await tx.studentFee.findUnique({
             where: { id: dto.studentFeeId },
-            include: { payments: true, feeStructure: { select: { feeType: true } } },
+            include: {
+              payments: true,
+              feeStructure: { select: { feeType: true } },
+            },
           })
         : await tx.studentFee.findFirst({
             where: { schoolId: dto.schoolId, studentId: dto.studentId },
             orderBy: { createdAt: 'desc' },
-            include: { payments: true, feeStructure: { select: { feeType: true } } },
+            include: {
+              payments: true,
+              feeStructure: { select: { feeType: true } },
+            },
           });
 
       if (!sf) {
@@ -2086,43 +2501,37 @@ export class FinanceService {
           select: { id: true },
         });
         if (!term) {
-          throw new Error('Selected payment period does not match this fee academic year');
+          throw new Error(
+            'Selected payment period does not match this fee academic year',
+          );
         }
       }
       if (!sf.termId && !paymentTermId && !isInstallmentFee) {
-        throw new Error('Select the term or semester this annual fee payment is for');
+        throw new Error(
+          'Select the term or semester this annual fee payment is for',
+        );
       }
 
       const alreadyPaid = sf.payments.reduce((s, p) => s + p.amountPaid, 0);
-      const isAnnualFeePayment = !sf.termId && !isInstallmentFee && Boolean(paymentTermId);
-      const alreadyPaidForSelectedPeriod =
-        isInstallmentFee
-          ? alreadyPaid
-          : paymentTermId
+      const isAnnualFeePayment =
+        !sf.termId && !isInstallmentFee && Boolean(paymentTermId);
+      const perPeriodAmount = isAnnualFeePayment
+        ? Math.round(
+            (sf.finalAmount / Math.max(config.billingPeriodsPerYear, 1)) * 100,
+          ) / 100
+        : sf.finalAmount;
+      const alreadyPaidForSelectedPeriod = isInstallmentFee
+        ? alreadyPaid
+        : isAnnualFeePayment && paymentTermId
           ? sf.payments
               .filter((payment) => payment.termId === paymentTermId)
               .reduce((s, payment) => s + payment.amountPaid, 0)
           : alreadyPaid;
-      const expectedForSelectedPeriod =
-        isAnnualFeePayment
-          ? Math.round(
-              (sf.finalAmount /
-                Math.max(
-                  await this.getPeriodCountForFee(
-                    tx,
-                    dto.schoolId,
-                    sf.academicYearId,
-                  ),
-                  1,
-                )) *
-                100,
-            ) / 100
-          : sf.finalAmount;
       const outstanding = Math.max(
         0,
         isAnnualFeePayment
           ? sf.finalAmount - alreadyPaid
-          : expectedForSelectedPeriod - alreadyPaidForSelectedPeriod,
+          : perPeriodAmount - alreadyPaidForSelectedPeriod,
       );
       if (dto.amountPaid <= 0) throw new Error('Invalid amount');
       if (outstanding <= 0) {
@@ -2131,7 +2540,7 @@ export class FinanceService {
             ? 'This annual fee is already fully paid'
             : isInstallmentFee
               ? 'This installment is already fully paid'
-            : 'This term or semester is already fully paid',
+              : 'This term or semester is already fully paid',
         );
       }
       if (dto.amountPaid > outstanding)
@@ -2140,7 +2549,7 @@ export class FinanceService {
             ? `Amount exceeds the remaining annual fee balance. Remaining: ${outstanding}`
             : isInstallmentFee
               ? `Amount exceeds the remaining installment balance. Remaining: ${outstanding}`
-            : `Amount exceeds outstanding balance for the selected term or semester. Remaining: ${outstanding}`,
+              : `Amount exceeds outstanding balance for the selected term or semester. Remaining: ${outstanding}`,
         );
 
       const payment = await this.createPaymentWithFallbackReference(tx, {
@@ -2160,6 +2569,8 @@ export class FinanceService {
       const remaining = Math.max(0, sf.finalAmount - paidNow);
       const newStatus =
         remaining <= 0 ? PaymentStatus.PAID : PaymentStatus.PARTIAL;
+      // Always overwrite OVERDUE here; any successful payment must move the fee
+      // into its current paid/partial state.
       await tx.studentFee.update({
         where: { id: sf.id },
         data: { status: newStatus },
@@ -2178,7 +2589,12 @@ export class FinanceService {
         description: `Payment recorded for student fee ${sf.id}`,
       });
 
-      return { payment, paymentReference: payment.receiptNumber, remaining, status: newStatus };
+      return {
+        payment,
+        paymentReference: payment.receiptNumber,
+        remaining,
+        status: newStatus,
+      };
     });
 
     await this.notifyParentsOfRecordedPayment(dto.schoolId, result.payment);
@@ -2381,11 +2797,25 @@ export class FinanceService {
     let start = from ? new Date(from) : undefined;
     let end = to ? new Date(to) : undefined;
     if (!start || !end) {
-      const y = new Date().getFullYear();
-      const m = String(new Date().getMonth() + 1).padStart(2, '0');
-      const d = String(new Date().getDate()).padStart(2, '0');
-      start = new Date(`${y}-${m}-${d}T00:00:00.000Z`);
-      end = new Date(`${y}-${m}-${d}T23:59:59.999Z`);
+      const now = new Date();
+      start = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0,
+        0,
+        0,
+        0,
+      );
+      end = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+        999,
+      );
     }
 
     const where: any = { schoolId, paymentDate: { gte: start, lte: end } };
@@ -2538,15 +2968,12 @@ export class FinanceService {
       select: { startDate: true },
     });
     const selectedTerm = await this.assertTermInSchool(schoolId, termId);
-    const curriculumType = await this.getFeeCollectionModeInternal(schoolId);
-    const installmentCount = this.getInstallmentCountInternal(curriculumType);
-    const terms = await this.prisma.term.findMany({
-      where: { academicYearId, academicYear: { schoolId } },
-      orderBy: { order: 'asc' },
-    });
+    const config = await this.getBillingConfig(schoolId, academicYearId);
+    const terms = config.periods || [];
     const where: any = {
       schoolId,
       academicYearId,
+      feeStructure: { isActive: true },
       ...(termId && termId !== 'all'
         ? { OR: [{ termId }, { termId: null }] }
         : {}),
@@ -2559,10 +2986,19 @@ export class FinanceService {
         student: { select: { id: true, name: true } },
         feeStructure: {
           include: {
-            term: { select: { name: true } },
+            term: {
+              select: {
+                name: true,
+                order: true,
+                startDate: true,
+                endDate: true,
+              },
+            },
           },
         },
-        term: { select: { name: true } },
+        term: {
+          select: { name: true, order: true, startDate: true, endDate: true },
+        },
       },
     });
 
@@ -2599,17 +3035,13 @@ export class FinanceService {
       ? terms.find((term) => term.id === selectedTerm.id) || null
       : null;
     const selectedTermInstallmentRange =
-      selectedTerm && terms.length > 0 && installmentCount > terms.length
-        ? this.getInstallmentRangeForTerm(
-            academicYearWithDates?.startDate,
-            selectedTermWithDates,
-            installmentCount,
-          ) || {
-            start:
-              Math.floor(((selectedTerm.order - 1) * installmentCount) / terms.length) +
-              1,
-            end: Math.floor((selectedTerm.order * installmentCount) / terms.length),
-          }
+      selectedTerm &&
+      config.billingPeriodsPerYear !== config.curriculumPeriodCount
+        ? this.getInstallmentRangeForSelectedTerm({
+            config,
+            selectedTerm: selectedTermWithDates,
+            terms,
+          })
         : null;
 
     const rows = fees.flatMap((sf) => {
@@ -2623,6 +3055,7 @@ export class FinanceService {
       if (
         selectedTermInstallmentRange &&
         installmentIndex !== null &&
+        sf.termId !== selectedTerm?.id &&
         (installmentIndex < selectedTermInstallmentRange.start ||
           installmentIndex > selectedTermInstallmentRange.end)
       ) {
@@ -2635,25 +3068,34 @@ export class FinanceService {
       let displayStatus = sf.status;
       let scopeLabel =
         installmentIndex !== null
-          ? this.getInstallmentPeriodLabel(
-              curriculumType,
-              installmentIndex - 1,
-              academicYearWithDates?.startDate,
+          ? this.getBillingMonthLabelForPeriod(
               sf.term || sf.feeStructure.term,
+              this.getBillingIndexWithinPeriod(
+                config,
+                installmentIndex - 1,
+                terms,
+              ),
+              config,
               resolvedCalendarType,
             )
-          :
-        sf.term?.name ||
-        sf.feeStructure.term?.name ||
-        'Whole Academic Year';
+          : sf.term?.name ||
+            sf.feeStructure.term?.name ||
+            'Whole Academic Year';
 
       if (isPeriodView && isYearWide && selectedTerm) {
         const perPeriodAmount =
-          Math.round((sf.finalAmount / Math.max(installmentCount, 1)) * 100) /
-          100;
+          Math.round(
+            (sf.finalAmount / Math.max(config.billingPeriodsPerYear, 1)) * 100,
+          ) / 100;
+        const periodsAlreadyPaid = Math.max(
+          0,
+          Number(selectedTerm.order || 1) - 1,
+        );
+        const alreadyAllocatedToEarlierPeriods =
+          periodsAlreadyPaid * perPeriodAmount;
         const paidTowardCurrent = Math.max(
           0,
-          Math.min(perPeriodAmount, paid),
+          Math.min(perPeriodAmount, paid - alreadyAllocatedToEarlierPeriods),
         );
         const currentRemaining = Math.max(
           0,
@@ -2673,20 +3115,22 @@ export class FinanceService {
       }
 
       const studentClass = classMap.get(sf.studentId);
-      return [{
-        studentId: sf.studentId,
-        studentName: sf.student?.name,
-        grade: studentClass?.grade || null,
-        section: studentClass?.section || null,
-        feeType: this.formatFeeTypeLabel(sf.feeStructure.feeType),
-        scopeLabel,
-        installmentIndex,
-        isYearWide,
-        total: displayTotal,
-        paid: displayPaid,
-        remaining: displayRemaining,
-        status: displayStatus,
-      }];
+      return [
+        {
+          studentId: sf.studentId,
+          studentName: sf.student?.name,
+          grade: studentClass?.grade || null,
+          section: studentClass?.section || null,
+          feeType: this.formatFeeTypeLabel(sf.feeStructure.feeType),
+          scopeLabel,
+          installmentIndex,
+          isYearWide,
+          total: displayTotal,
+          paid: displayPaid,
+          remaining: displayRemaining,
+          status: displayStatus,
+        },
+      ];
     });
     const totalOutstanding = rows.reduce((s, r) => s + r.remaining, 0);
     // Total Revenue = actual amount collected (sum of all payments made)
@@ -3043,7 +3487,9 @@ export class FinanceService {
         bankAccount: dto.bankAccount || null,
         tinNumber: dto.tinNumber || null,
         isActive: dto.isActive ?? true,
-        effectiveFrom: dto.effectiveFrom ? new Date(dto.effectiveFrom) : new Date(),
+        effectiveFrom: dto.effectiveFrom
+          ? new Date(dto.effectiveFrom)
+          : new Date(),
         notes: dto.notes || null,
       };
 
@@ -3265,7 +3711,9 @@ export class FinanceService {
       }
 
       if (run.status === 'CANCELLED') {
-        throw new BadRequestException('Cancelled payroll runs cannot be changed');
+        throw new BadRequestException(
+          'Cancelled payroll runs cannot be changed',
+        );
       }
 
       if (run.status !== dto.status) {
@@ -3369,7 +3817,9 @@ export class FinanceService {
       }
 
       if (entry.status === 'PAID' && dto.status !== 'PAID') {
-        throw new BadRequestException('Paid payroll entries cannot be reopened');
+        throw new BadRequestException(
+          'Paid payroll entries cannot be reopened',
+        );
       }
 
       if (dto.status === 'PAID' && entry.run.status !== 'APPROVED') {
@@ -3421,9 +3871,10 @@ export class FinanceService {
       throw new Error('Student not found');
     }
 
-    const candidateStudentIds = [studentProfile.id, studentProfile.userId].filter(
-      (value): value is string => Boolean(value),
-    );
+    const candidateStudentIds = [
+      studentProfile.id,
+      studentProfile.userId,
+    ].filter((value): value is string => Boolean(value));
 
     const payments = await this.prisma.payment.findMany({
       where: { schoolId, studentId: { in: candidateStudentIds } },
@@ -3440,15 +3891,17 @@ export class FinanceService {
 
   async getCurriculumInfo(schoolId: string, academicYearId: string) {
     await this.assertAcademicYearInSchool(schoolId, academicYearId);
-    const setting = await this.prisma.schoolSetting.findUnique({
-      where: { schoolId_key: { schoolId, key: 'curriculum_type' } },
-    });
-    const curriculumType = setting?.value || 'TERM';
-    const terms = await this.prisma.term.findMany({
-      where: { academicYearId, academicYear: { schoolId } },
-      orderBy: { order: 'asc' },
-    });
-    return { curriculumType, terms, termCount: terms.length };
+    const config = await this.getBillingConfig(schoolId, academicYearId);
+    const terms = config.periods || [];
+    return {
+      curriculumType: config.curriculumType,
+      billingMode: config.billingMode,
+      calendarType: config.calendarType,
+      dueDay: config.dueDay,
+      billingPeriodsPerYear: config.billingPeriodsPerYear,
+      terms,
+      termCount: terms.length,
+    };
   }
 
   // ========================================================
@@ -3510,36 +3963,40 @@ export class FinanceService {
       termId && termId !== 'all'
         ? await this.prisma.term.findFirst({
             where: { id: termId, academicYear: { schoolId } },
-            select: { id: true, name: true, order: true, academicYearId: true },
+            select: {
+              id: true,
+              name: true,
+              order: true,
+              academicYearId: true,
+              startDate: true,
+              endDate: true,
+            },
           })
         : null;
     if (termId && termId !== 'all' && !selectedTerm) {
       throw new Error('Term not found');
     }
-    const curriculumType = await this.getFeeCollectionModeInternal(schoolId);
-    const installmentCount = this.getInstallmentCountInternal(curriculumType);
-    const terms = await this.prisma.term.findMany({
-      where: { academicYearId, academicYear: { schoolId } },
-      orderBy: { order: 'asc' },
-    });
+    const [config, resolvedCalendarType] = await Promise.all([
+      this.getBillingConfig(schoolId, academicYearId),
+      this.getSchoolCalendarType(schoolId),
+    ]);
+    const terms = config.periods || [];
     const selectedTermInstallmentRange =
-      selectedTerm && terms.length > 0 && installmentCount > terms.length
-        ? this.getInstallmentRangeForTerm(
-            academicYear.startDate,
-            terms.find((term) => term.id === selectedTerm.id) || null,
-            installmentCount,
-          ) || {
-            start:
-              Math.floor(((selectedTerm.order - 1) * installmentCount) / terms.length) +
-              1,
-            end: Math.floor((selectedTerm.order * installmentCount) / terms.length),
-          }
+      selectedTerm &&
+      config.billingPeriodsPerYear !== config.curriculumPeriodCount
+        ? this.getInstallmentRangeForSelectedTerm({
+            config,
+            selectedTerm:
+              terms.find((term) => term.id === selectedTerm.id) || null,
+            terms,
+          })
         : null;
 
     const studentFeesWhere: any = {
       studentId: { in: candidateStudentIds },
       academicYearId,
       schoolId,
+      feeStructure: { isActive: true },
     };
     if (termId && termId !== 'all') {
       studentFeesWhere.OR = [{ termId }, { termId: null }];
@@ -3548,11 +4005,24 @@ export class FinanceService {
     const studentFees = await this.prisma.studentFee.findMany({
       where: studentFeesWhere,
       include: {
-        feeStructure: { include: { term: { select: { name: true } } } },
+        feeStructure: {
+          include: {
+            term: {
+              select: {
+                name: true,
+                order: true,
+                startDate: true,
+                endDate: true,
+              },
+            },
+          },
+        },
         discountPolicy: {
           select: { name: true, discountType: true, discountValue: true },
         },
-        term: { select: { name: true } },
+        term: {
+          select: { name: true, order: true, startDate: true, endDate: true },
+        },
         payments: {
           orderBy: { paymentDate: 'desc' },
           include: { term: { select: { name: true } } },
@@ -3571,6 +4041,7 @@ export class FinanceService {
       if (
         selectedTermInstallmentRange &&
         installmentIndex !== null &&
+        sf.termId !== selectedTerm?.id &&
         (installmentIndex < selectedTermInstallmentRange.start ||
           installmentIndex > selectedTermInstallmentRange.end)
       ) {
@@ -3583,20 +4054,37 @@ export class FinanceService {
       let status = sf.status;
       let termName =
         installmentIndex !== null
-          ? this.getInstallmentPeriodLabel(
-              curriculumType,
-              installmentIndex - 1,
-              academicYear?.startDate || null,
+          ? this.getBillingMonthLabelForPeriod(
               sf.term || sf.feeStructure.term,
+              this.getBillingIndexWithinPeriod(
+                config,
+                installmentIndex - 1,
+                terms,
+              ),
+              config,
+              resolvedCalendarType,
             )
           : sf.term?.name || sf.feeStructure.term?.name || null;
 
       if (isPeriodView && isYearWide && selectedTerm) {
         const perPeriodAmount =
-          Math.round((sf.finalAmount / Math.max(installmentCount, 1)) * 100) /
-          100;
-        const paidTowardCurrent = Math.max(0, Math.min(perPeriodAmount, paid));
-        const currentRemaining = Math.max(0, perPeriodAmount - paidTowardCurrent);
+          Math.round(
+            (sf.finalAmount / Math.max(config.billingPeriodsPerYear, 1)) * 100,
+          ) / 100;
+        const periodsAlreadyPaid = Math.max(
+          0,
+          Number(selectedTerm.order || 1) - 1,
+        );
+        const alreadyAllocatedToEarlierPeriods =
+          periodsAlreadyPaid * perPeriodAmount;
+        const paidTowardCurrent = Math.max(
+          0,
+          Math.min(perPeriodAmount, paid - alreadyAllocatedToEarlierPeriods),
+        );
+        const currentRemaining = Math.max(
+          0,
+          perPeriodAmount - paidTowardCurrent,
+        );
 
         amount = perPeriodAmount;
         paidAmount = paidTowardCurrent;
@@ -3610,29 +4098,31 @@ export class FinanceService {
         termName = `${selectedTerm.name} share`;
       }
 
-      return [{
-        id: sf.id,
-        name: sf.feeStructure.feeType,
-        amount,
-        originalAmount: sf.totalAmount,
-        discount: sf.discount,
-        finalAmount: sf.finalAmount,
-        discountPercent:
-          sf.discountPolicy?.discountType === 'PERCENTAGE'
-            ? sf.discountPolicy.discountValue
-            : sf.totalAmount > 0 && sf.discount > 0
-              ? Math.round((sf.discount / sf.totalAmount) * 10000) / 100
-              : 0,
-        discountLabel: sf.discountPolicy?.name || null,
-        dueDate: sf.dueDate?.toISOString() || null,
-        status,
-        paidAmount,
-        balance,
-        category: sf.feeStructure.feeType,
-        termId: sf.termId,
-        termName,
-        isYearWide,
-      }];
+      return [
+        {
+          id: sf.id,
+          name: sf.feeStructure.feeType,
+          amount,
+          originalAmount: sf.totalAmount,
+          discount: sf.discount,
+          finalAmount: sf.finalAmount,
+          discountPercent:
+            sf.discountPolicy?.discountType === 'PERCENTAGE'
+              ? sf.discountPolicy.discountValue
+              : sf.totalAmount > 0 && sf.discount > 0
+                ? Math.round((sf.discount / sf.totalAmount) * 10000) / 100
+                : 0,
+          discountLabel: sf.discountPolicy?.name || null,
+          dueDate: sf.dueDate?.toISOString() || null,
+          status,
+          paidAmount,
+          balance,
+          category: sf.feeStructure.feeType,
+          termId: sf.termId,
+          termName,
+          isYearWide,
+        },
+      ];
     });
 
     const payments = studentFees.flatMap((sf) => {
@@ -3642,6 +4132,7 @@ export class FinanceService {
       if (
         selectedTermInstallmentRange &&
         installmentIndex !== null &&
+        sf.termId !== selectedTerm?.id &&
         (installmentIndex < selectedTermInstallmentRange.start ||
           installmentIndex > selectedTermInstallmentRange.end)
       ) {
@@ -3649,11 +4140,15 @@ export class FinanceService {
       }
       const termName =
         installmentIndex !== null
-          ? this.getInstallmentPeriodLabel(
-              curriculumType,
-              installmentIndex - 1,
-              academicYear?.startDate || null,
+          ? this.getBillingMonthLabelForPeriod(
               sf.term || sf.feeStructure.term,
+              this.getBillingIndexWithinPeriod(
+                config,
+                installmentIndex - 1,
+                terms,
+              ),
+              config,
+              resolvedCalendarType,
             )
           : sf.term?.name || sf.feeStructure.term?.name || null;
 
@@ -3690,7 +4185,9 @@ export class FinanceService {
       },
       feeItems,
       payments,
-      curriculumType,
+      curriculumType: config.curriculumType,
+      billingMode: config.billingMode,
+      billingPeriodsPerYear: config.billingPeriodsPerYear,
       terms,
       summary: { totalFees, totalPaid, totalBalance, nextDueDate: null },
     };

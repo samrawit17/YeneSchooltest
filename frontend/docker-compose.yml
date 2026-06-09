@@ -48,7 +48,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: 5000
+      PORT: 8001
       PRISMA_SKIP_SEED: ${PRISMA_SKIP_SEED:-1}
       DATABASE_URL: postgresql://${DB_USER:-usman}:${DB_PASSWORD:-834927615}@postgres:5432/${DB_NAME:-sms_db}
       DIRECT_DATABASE_URL: postgresql://${DB_USER:-usman}:${DB_PASSWORD:-834927615}@postgres:5432/${DB_NAME:-sms_db}
@@ -62,14 +62,14 @@ services:
       RATE_LIMIT_WINDOW_SEC: 60
       TRUST_PROXY: 1
     ports:
-      - "5000:5000"
+      - "8001:8001"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8001/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -90,19 +90,19 @@ services:
       HOSTNAME: 0.0.0.0
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
-      NEXT_PUBLIC_API_URL: http://localhost:5000
+      NEXT_PUBLIC_API_URL: http://localhost:8001
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
       - .:/app
       - /app/node_modules
       - /app/.next
     ports:
-      - "3000:3000"
+      - "8000:8000"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -43,6 +43,8 @@ interface Term {
   id: string;
   name: string;
   order?: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface PaymentRow {
@@ -129,21 +131,50 @@ const getCalendarDateSlug = (date: Date, calendarType?: string) => {
   return `gc-${year}-${month}-${day}`;
 };
 
+const isMonthlyBillingMode = (mode?: string | null) => {
+  const normalized = String(mode || "").toUpperCase();
+  return normalized === "MONTHLY" || normalized === "MONTH";
+};
+
+const getInstallmentPeriodName = (
+  installmentNumber: number,
+  feeCollectionMode: string,
+  terms: Term[],
+) => {
+  const periodName = terms[installmentNumber - 1]?.name;
+  if (periodName) return periodName;
+
+  const normalizedMode = String(feeCollectionMode || "").toUpperCase();
+  if (normalizedMode === "QUARTERLY" || normalizedMode === "QUARTER") {
+    return `Quarter ${installmentNumber}`;
+  }
+  if (normalizedMode === "SEMESTERLY" || normalizedMode === "SEMESTER") {
+    return `Semester ${installmentNumber}`;
+  }
+  if (normalizedMode === "TERMLY" || normalizedMode === "TERM") {
+    return `Term ${installmentNumber}`;
+  }
+  return `Installment ${installmentNumber}`;
+};
+
 const getOutstandingPeriodLabel = (
   row: OutstandingRow,
   academicYearStartDate?: string,
   calendarType: "ETHIOPIAN" | "GREGORIAN" = "ETHIOPIAN",
+  feeCollectionMode = "TERM",
+  terms: Term[] = [],
 ) => {
-  if (row.installmentIndex == null || !academicYearStartDate) {
-    return row.scopeLabel || "Whole Academic Year";
+  if (row.scopeLabel) return row.scopeLabel;
+
+  if (row.installmentIndex == null) {
+    return "Whole Academic Year";
   }
 
-  const periodDate = new Date(academicYearStartDate);
-  if (Number.isNaN(periodDate.getTime())) {
-    return row.scopeLabel || "Whole Academic Year";
+  if (isMonthlyBillingMode(feeCollectionMode)) {
+    return getInstallmentMonthName(row.installmentIndex, academicYearStartDate, calendarType);
   }
 
-  return getInstallmentMonthName(row.installmentIndex, academicYearStartDate, calendarType) || row.scopeLabel || "Whole Academic Year";
+  return getInstallmentPeriodName(row.installmentIndex, feeCollectionMode, terms);
 };
 
 const getPaymentPeriodLabel = (
@@ -229,6 +260,7 @@ const CHART_COLORS = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6"];
 
 export default function FinanceReportsPage() {
   const { user } = useAuth();
+  const canViewPayrollReports = user?.role === "FINANCE";
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -236,6 +268,7 @@ export default function FinanceReportsPage() {
   const [sendingReminders, setSendingReminders] = useState(false);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
+  const [feeCollectionMode, setFeeCollectionMode] = useState("TERM");
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("all");
   const [fromDate, setFromDate] = useState<Date | undefined>();
@@ -262,7 +295,7 @@ export default function FinanceReportsPage() {
     const loadYears = async () => {
       if (!user?.schoolId) return;
       try {
-        const response = await academicYearsAPI.getAll();
+        const response = await academicYearsAPI.getAll({ schoolId: user.schoolId });
         const years = response.data || [];
         setAcademicYears(years);
         const activeYear = years.find((year: AcademicYear) => year.isActive) || years[0];
@@ -317,18 +350,36 @@ export default function FinanceReportsPage() {
   }, [activeTab, loadAuditLogs, user?.schoolId, selectedYear, selectedTerm]);
 
   useEffect(() => {
-    const loadTerms = async () => {
+    const loadFinancePeriodSettings = async () => {
       if (!user?.schoolId || !selectedYear) return;
       try {
-        const response = await financeAPI.getCurriculumInfo(user.schoolId, selectedYear);
-        setTerms(response.data?.terms || []);
+        const [curriculumResult, feeModeResult] = await Promise.allSettled([
+          financeAPI.getCurriculumInfo(user.schoolId, selectedYear),
+          financeAPI.getFeeCollectionMode(user.schoolId),
+        ]);
+
+        if (curriculumResult.status === "fulfilled") {
+          setTerms(curriculumResult.value.data?.terms || []);
+        } else {
+          console.error("Failed to load finance curriculum terms", curriculumResult.reason);
+          setTerms([]);
+        }
+
+        if (feeModeResult.status === "fulfilled") {
+          const feeModePayload = feeModeResult.value.data?.data || feeModeResult.value.data || {};
+          setFeeCollectionMode(feeModePayload.mode || "TERM");
+        } else {
+          console.error("Failed to load fee collection mode", feeModeResult.reason);
+          setFeeCollectionMode("TERM");
+        }
       } catch (error) {
-        console.error("Failed to load terms", error);
+        console.error("Failed to load finance period settings", error);
         setTerms([]);
+        setFeeCollectionMode("TERM");
       }
     };
 
-    loadTerms();
+    loadFinancePeriodSettings();
   }, [selectedYear, user?.schoolId]);
 
   const loadReports = useCallback(async () => {
@@ -352,7 +403,9 @@ export default function FinanceReportsPage() {
           termId,
           user.calendarType,
         ),
-        financeAPI.getPayrollRuns({ schoolId: user.schoolId }),
+        canViewPayrollReports
+          ? financeAPI.getPayrollRuns({ schoolId: user.schoolId })
+          : Promise.resolve({ data: { runs: [] } }),
       ]);
 
       const summaryData = summaryResponse.data || {};
@@ -386,7 +439,7 @@ export default function FinanceReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [fromDate, selectedTerm, selectedYear, toDate, user?.calendarType, user?.schoolId]);
+  }, [canViewPayrollReports, fromDate, selectedTerm, selectedYear, toDate, user?.calendarType, user?.schoolId]);
 
   useEffect(() => {
     void loadReports();
@@ -432,6 +485,12 @@ export default function FinanceReportsPage() {
     [academicYears, selectedYear],
   );
 
+  const periodLabel = useMemo(() => {
+    if (terms.length === 0) return "All";
+    const base = terms[0].name.replace(/\s+\d+.*$/, "");
+    return `All ${base}s`;
+  }, [terms]);
+
   const displayedOutstanding = useMemo(() => {
     const calendarType = user?.calendarType || "ETHIOPIAN";
     return outstandingRows.map((row) => {
@@ -439,6 +498,8 @@ export default function FinanceReportsPage() {
         row,
         selectedAcademicYear?.startDate,
         calendarType,
+        feeCollectionMode,
+        terms,
       );
       return {
         ...row,
@@ -450,7 +511,7 @@ export default function FinanceReportsPage() {
         }),
       };
     });
-  }, [outstandingRows, selectedAcademicYear?.startDate, user?.calendarType]);
+  }, [feeCollectionMode, outstandingRows, selectedAcademicYear?.startDate, terms, user?.calendarType]);
 
   const displayedPayments = useMemo(() => {
     const calendarType = user?.calendarType || "ETHIOPIAN";
@@ -614,7 +675,7 @@ export default function FinanceReportsPage() {
       return;
     }
 
-    if (activeTab === "payroll") {
+    if (activeTab === "payroll" && canViewPayrollReports) {
       downloadCsv(`finance-payroll-${dateSuffix}.csv`, [
         ["Title", "Salary Month", "Payment Date", "Paid At", "Gross", "Deductions", "Net", "Staff Entries", "Status"],
         ...displayedPayrollRuns.map((run) => [
@@ -663,10 +724,7 @@ export default function FinanceReportsPage() {
       <div className="w-full p-4 md:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 mb-2">
-            <FileText className="h-3.5 w-3.5" />
-            <span>Finance / Reports</span>
-          </div>
+
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -706,7 +764,7 @@ export default function FinanceReportsPage() {
                     <SelectValue placeholder="Fee period" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Whole academic year</SelectItem>
+                    <SelectItem value="all">{periodLabel}</SelectItem>
                     {terms.map((term) => (
                       <SelectItem key={term.id} value={term.id}>
                         {term.name}
@@ -744,14 +802,7 @@ export default function FinanceReportsPage() {
                   <Download className="mr-1.5 h-3.5 w-3.5" />
                   Export
                 </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9"
-                  onClick={() => { setFromDate(undefined); setToDate(undefined); }}
-                >
-                  <Filter className="h-3.5 w-3.5" />
-                </Button>
+
               </div>
             </div>
           </CardContent>
@@ -866,13 +917,15 @@ export default function FinanceReportsPage() {
                 <Clock className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span>Overdue</span>
               </TabsTrigger>
-              <TabsTrigger
-                value="payroll"
-                className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
-              >
-                <Wallet className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                <span>Payroll</span>
-              </TabsTrigger>
+              {canViewPayrollReports ? (
+                <TabsTrigger
+                  value="payroll"
+                  className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
+                >
+                  <Wallet className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                  <span>Payroll</span>
+                </TabsTrigger>
+              ) : null}
               <TabsTrigger
                 value="audit"
                 className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"
@@ -886,7 +939,7 @@ export default function FinanceReportsPage() {
           {/* Summary Tab */}
           <TabsContent value="summary" className="mt-6">
             <div className="grid gap-6 lg:grid-cols-5">
-              <Card className="lg:col-span-3 border-slate-200/70 shadow-sm dark:border-slate-700/50">
+              <Card className="lg:col-span-5 border-slate-200/70 shadow-sm dark:border-slate-700/50">
                 <CardHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
                   <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Collection Overview</CardTitle>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Selected period billing and collection coverage</p>
@@ -927,57 +980,6 @@ export default function FinanceReportsPage() {
                           className="h-full rounded-full bg-rose-500"
                           style={{ width: `${summary.totalExpected > 0 ? (summary.totalOutstanding / summary.totalExpected) * 100 : 0}%` }}
                         />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="lg:col-span-2 border-slate-200/70 shadow-sm dark:border-slate-700/50">
-                <CardHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Payment Coverage</CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Students with complete payments vs outstanding</p>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-center">
-                    <div className="h-[180px] w-[180px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                          <Pie
-                            data={[
-                              { name: "Paid", value: Math.max(summary.totalStudentsPaid, 1) },
-                              { name: "Partial/Unpaid", value: Math.max(summary.totalStudentsPartialOrUnpaid, 1) },
-                            ]}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={50}
-                            outerRadius={80}
-                            paddingAngle={4}
-                            dataKey="value"
-                          >
-                            <Cell fill="#10b981" />
-                            <Cell fill="#f59e0b" />
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: "12px" }}
-                          />
-                        </RechartsPieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-2.5 dark:bg-emerald-950/30">
-                      <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                      <div>
-                        <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Paid</p>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">{summary.totalStudentsPaid}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-lg bg-amber-50 p-2.5 dark:bg-amber-950/30">
-                      <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                      <div>
-                        <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Partial/Unpaid</p>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">{summary.totalStudentsPartialOrUnpaid}</p>
                       </div>
                     </div>
                   </div>

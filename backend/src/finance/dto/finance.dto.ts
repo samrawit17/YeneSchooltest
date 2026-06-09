@@ -76,7 +76,7 @@ export class UpdateFeeStructureDto {
   description?: string | null;
 
   @IsOptional()
-  @IsString()
+  @IsBoolean()
   isActive?: boolean;
 }
 
@@ -349,9 +349,15 @@ export class UpdatePayrollEntryStatusDto {
 export enum FeeCollectionMode {
   MONTHLY = 'MONTHLY',
   QUARTERLY = 'QUARTERLY',
-  SEMESTER = 'SEMESTER',
-  TERM = 'TERM',
+  SEMESTERLY = 'SEMESTERLY',
+  TERMLY = 'TERMLY',
   YEARLY = 'YEARLY',
+}
+
+export enum CurriculumType {
+  TERM = 'TERM',
+  QUARTER = 'QUARTER',
+  SEMESTER = 'SEMESTER',
 }
 
 // DTO for intelligent fee calculation based on school's fee collection mode
@@ -392,6 +398,10 @@ export class GenerateInstallmentFeesDto {
   @IsString()
   feeType?: string;
 
+  /**
+   * Optional. When omitted, the service uses the existing annual FeeStructure
+   * for the requested school, academic year, fee type, and grade.
+   */
   @IsOptional()
   @IsNumber()
   @Min(0)

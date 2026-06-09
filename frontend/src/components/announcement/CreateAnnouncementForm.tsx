@@ -162,7 +162,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
             {[
               { id: "student", label: t.students },
               { id: "parent", label: t.parents },
-              { id: "teacher", label: t.staff },
+              { id: "staff", label: t.staff },
             ].map((role) => (
               <label key={role.id} className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 cursor-pointer hover:border-[var(--brand-color,#e35336)] dark:bg-gray-800 dark:border-gray-600">
                 <input
