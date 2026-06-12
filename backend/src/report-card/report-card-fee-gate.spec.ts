@@ -7,7 +7,7 @@ describe('ReportCardService parent fee gate', () => {
   const createService = (overrides: Record<string, any> = {}) => {
     const prisma = {
       parentProfile: {
-        findUnique: jest.fn().mockResolvedValue({
+        findFirst: jest.fn().mockResolvedValue({
           id: 'parent-profile-1',
           schoolId: 'school-1',
         }),
@@ -81,7 +81,7 @@ describe('ReportCardService parent fee gate', () => {
     });
 
     await expect(
-      service.getPublishedReportCardsForParent('parent-user-1', 'student-user-1', {
+      service.getPublishedReportCardsForParent('parent-user-1', 'student-user-1', 'school-1', {
         academicYear: '2018',
         term: 'Term 3',
       }),
@@ -105,6 +105,7 @@ describe('ReportCardService parent fee gate', () => {
     const cards = await service.getPublishedReportCardsForParent(
       'parent-user-1',
       'student-user-1',
+      'school-1',
       {
         academicYear: '2018',
         term: 'Term 3',

@@ -737,10 +737,10 @@ const Navbar = ({
   const handleLogout = () => {
     const redirectTo =
       normalizedRole !== "SUPER_ADMIN" && school?.publicUrlSlug
-        ? `/sign-in?slug=${encodeURIComponent(school.publicUrlSlug)}`
+        ? `/schools/${encodeURIComponent(school.publicUrlSlug)}/login`
         : normalizedRole !== "SUPER_ADMIN" && user?.schoolId
           ? `/sign-in?schoolId=${encodeURIComponent(user.schoolId)}`
-        : "/sign-in";
+          : "/sign-in";
 
     if (normalizedRole !== "SUPER_ADMIN" && school && user?.schoolId) {
       writeCachedSchoolLoginContext({

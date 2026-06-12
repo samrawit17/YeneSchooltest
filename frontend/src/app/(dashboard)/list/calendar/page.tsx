@@ -88,7 +88,7 @@ const EventListPage = () => {
   const isAdmin = role === "ADMIN" || role === "IT_MANAGER" || role === "REGISTRAR";
   const calendarType = user?.calendarType || "ETHIOPIAN";
   const [searchQuery, setSearchQuery] = useState("");
-  const [view, setView] = useState<CalendarView>("upcoming");
+  const [view, setView] = useState<CalendarView>("month");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const today = useMemo(() => new Date(), []);
   const feedFrom = useMemo(() => startOfDay(new Date()).toISOString(), []);
@@ -272,6 +272,12 @@ const EventListPage = () => {
           <div className="overflow-x-auto border-b border-slate-200 dark:border-slate-800">
             <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
               <TabsTrigger
+                value="month"
+                className="shrink-0 gap-1.5 rounded-none border-b-2 border-transparent px-3 text-xs font-semibold data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none md:px-4 md:text-sm"
+              >
+                Month
+              </TabsTrigger>
+              <TabsTrigger
                 value="today"
                 className="shrink-0 gap-1.5 rounded-none border-b-2 border-transparent px-3 text-xs font-semibold data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none md:px-4 md:text-sm"
               >
@@ -283,32 +289,8 @@ const EventListPage = () => {
               >
                 Next 30 days ({upcomingEvents.length})
               </TabsTrigger>
-              <TabsTrigger
-                value="month"
-                className="shrink-0 gap-1.5 rounded-none border-b-2 border-transparent px-3 text-xs font-semibold data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none md:px-4 md:text-sm"
-              >
-                Month
-              </TabsTrigger>
             </TabsList>
           </div>
-
-          <TabsContent value="today" className="mt-0">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="space-y-2">{todayEvents.length ? todayEvents.map((event) => renderEventCard(event)) : renderEmptyState()}</div>
-              <aside className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-                {selectedEvent ? renderEventCard(selectedEvent, true) : renderEmptyState()}
-              </aside>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="upcoming" className="mt-0">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="space-y-2">{upcomingEvents.length ? upcomingEvents.map((event) => renderEventCard(event)) : renderEmptyState()}</div>
-              <aside className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-                {selectedEvent ? renderEventCard(selectedEvent, true) : renderEmptyState()}
-              </aside>
-            </div>
-          </TabsContent>
 
           <TabsContent value="month" className="mt-0">
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -324,6 +306,24 @@ const EventListPage = () => {
               </div>
               <aside className="max-h-[520px] space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
                 {monthEvents.length ? monthEvents.map((event) => renderEventCard(event, true)) : renderEmptyState()}
+              </aside>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="today" className="mt-0">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="space-y-2">{todayEvents.length ? todayEvents.map((event) => renderEventCard(event)) : renderEmptyState()}</div>
+              <aside className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+                {selectedEvent ? renderEventCard(selectedEvent, true) : renderEmptyState()}
+              </aside>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="upcoming" className="mt-0">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="space-y-2">{upcomingEvents.length ? upcomingEvents.map((event) => renderEventCard(event)) : renderEmptyState()}</div>
+              <aside className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+                {selectedEvent ? renderEventCard(selectedEvent, true) : renderEmptyState()}
               </aside>
             </div>
           </TabsContent>

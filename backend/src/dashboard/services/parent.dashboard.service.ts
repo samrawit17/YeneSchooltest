@@ -107,9 +107,21 @@ export class ParentDashboardService {
     const activeAcademicYear = effectiveSchoolId
       ? await this.prisma.academicYear.findFirst({
           where: { schoolId: effectiveSchoolId, isActive: true },
-          select: { id: true },
+          select: { id: true, startDate: true, endDate: true },
         })
       : null;
+    const attendanceWindowStart =
+      activeAcademicYear?.startDate || new Date(today.getFullYear(), 0, 1);
+    const attendanceWindowEnd = activeAcademicYear?.endDate
+      ? (activeAcademicYear.endDate < todayEnd
+          ? activeAcademicYear.endDate
+          : todayEnd)
+      : todayEnd;
+    const recentAbsenceWindowStart = new Date(today);
+    recentAbsenceWindowStart.setDate(recentAbsenceWindowStart.getDate() - 7);
+    if (recentAbsenceWindowStart < attendanceWindowStart) {
+      recentAbsenceWindowStart.setTime(attendanceWindowStart.getTime());
+    }
 
     const childrenData: any[] = [];
 
@@ -125,8 +137,8 @@ export class ParentDashboardService {
           session: {
             status: 'SUBMITTED',
             date: {
-              gte: new Date(today.getFullYear(), 0, 1),
-              lte: todayEnd,
+              gte: attendanceWindowStart,
+              lte: attendanceWindowEnd,
             },
           },
         },
@@ -139,8 +151,8 @@ export class ParentDashboardService {
           session: {
             status: 'SUBMITTED',
             date: {
-              gte: new Date(today.getFullYear(), 0, 1),
-              lte: todayEnd,
+              gte: attendanceWindowStart,
+              lte: attendanceWindowEnd,
             },
           },
         },
@@ -170,8 +182,8 @@ export class ParentDashboardService {
           session: {
             status: 'SUBMITTED',
             date: {
-              gte: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
-              lte: todayEnd,
+              gte: recentAbsenceWindowStart,
+              lte: attendanceWindowEnd,
             },
           },
         },

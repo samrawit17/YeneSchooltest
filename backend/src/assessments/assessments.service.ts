@@ -395,9 +395,10 @@ export class AssessmentsService {
   private async resolveChildStudentForParent(
     parentUserId: string,
     childIdOrUserId: string,
+    schoolId: string,
   ) {
-    const parentProfile = await this.prisma.parentProfile.findUnique({
-      where: { userId: parentUserId },
+    const parentProfile = await this.prisma.parentProfile.findFirst({
+      where: { userId: parentUserId, schoolId },
       select: { id: true },
     });
 
@@ -407,6 +408,7 @@ export class AssessmentsService {
 
     const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
+        schoolId,
         OR: [{ id: childIdOrUserId }, { userId: childIdOrUserId }],
       },
       select: { id: true, userId: true },
@@ -420,6 +422,7 @@ export class AssessmentsService {
       where: {
         parentId: parentProfile.id,
         studentId: studentProfile.id,
+        schoolId,
       },
       select: { id: true },
     });
@@ -2074,6 +2077,7 @@ if (
     const studentId = await this.resolveChildStudentForParent(
       parentUserId,
       childId,
+      schoolId,
     );
     return this.getStudentUpcoming(studentId, schoolId, academicYearId);
   }
@@ -2088,6 +2092,7 @@ if (
     const studentId = await this.resolveChildStudentForParent(
       parentUserId,
       childId,
+      schoolId,
     );
     return this.getStudentResults(studentId, schoolId, academicYearId, termId);
   }

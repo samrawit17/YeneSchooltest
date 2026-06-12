@@ -109,6 +109,25 @@ export class ReportCardService {
     return year.name;
   }
 
+  private async resolveTerm(
+    schoolId: string,
+    termId: string,
+    academicYearId?: string,
+  ) {
+    const term = await this.prisma.term.findFirst({
+      where: {
+        id: termId,
+        ...(academicYearId ? { academicYearId } : {}),
+        academicYear: { schoolId },
+      },
+      select: { id: true, name: true, academicYearId: true },
+    });
+    if (!term) {
+      throw new NotFoundException('Term not found');
+    }
+    return term;
+  }
+
   private parseSettingValue(rawValue: string | null | undefined) {
     if (rawValue === null || rawValue === undefined) return null;
     try {
@@ -249,15 +268,12 @@ export class ReportCardService {
     return termBoundOutstanding.length === 0 && annualBlockingFees.length === 0;
   }
 
-  private async resolveTermName(termId: string) {
-    const term = await this.prisma.term.findUnique({
-      where: { id: termId },
-      select: { id: true, name: true },
-    });
-    if (!term) {
-      throw new NotFoundException('Term not found');
-    }
-    return term.name;
+  private async resolveTermName(
+    schoolId: string,
+    termId: string,
+    academicYearId?: string,
+  ) {
+    return (await this.resolveTerm(schoolId, termId, academicYearId)).name;
   }
 
   private buildAssessmentReadinessByClass(
@@ -507,9 +523,13 @@ export class ReportCardService {
     return value === null ? '-' : `${value}%`;
   }
 
-  private async verifyParentChild(parentId: string, childId: string) {
-    const parentProfile = await this.prisma.parentProfile.findUnique({
-      where: { userId: parentId },
+  private async verifyParentChild(
+    parentId: string,
+    childId: string,
+    schoolId: string,
+  ) {
+    const parentProfile = await this.prisma.parentProfile.findFirst({
+      where: { userId: parentId, schoolId },
       select: { id: true, schoolId: true },
     });
     if (!parentProfile) {
@@ -517,7 +537,10 @@ export class ReportCardService {
     }
 
     const studentProfile = await this.prisma.studentProfile.findFirst({
-      where: { OR: [{ id: childId }, { userId: childId }] },
+      where: {
+        schoolId,
+        OR: [{ id: childId }, { userId: childId }],
+      },
       select: { id: true },
     });
     if (!studentProfile) {
@@ -534,7 +557,7 @@ export class ReportCardService {
 
     return {
       studentUserId: link.student.userId,
-      schoolId: parentProfile.schoolId,
+      schoolId,
     };
   }
 
@@ -896,7 +919,10 @@ export class ReportCardService {
    * Calculate attendance percentage for a student in a term
    */
   private async calculateAttendance(
+    schoolId: string,
     studentId: string,
+    classId: string,
+    sectionId: string,
     termId: string,
   ): Promise<{
     totalDays: number;
@@ -904,8 +930,8 @@ export class ReportCardService {
     absentDays: number;
     percentage: number;
   }> {
-    const term = await this.prisma.term.findUnique({
-      where: { id: termId },
+    const term = await this.prisma.term.findFirst({
+      where: { id: termId, academicYear: { schoolId } },
       select: { startDate: true, endDate: true },
     });
 
@@ -915,7 +941,10 @@ export class ReportCardService {
 
     const attendanceRecords = await this.prisma.attendance.findMany({
       where: {
+        schoolId,
         studentId,
+        classId,
+        sectionId,
         date: {
           gte: term.startDate,
           lte: term.endDate,
@@ -946,7 +975,6 @@ export class ReportCardService {
       sectionId,
       academicYear,
       termId,
-      termName,
       generatedById,
     } = params;
 
@@ -960,9 +988,13 @@ export class ReportCardService {
         name: true,
       },
     });
+    if (!academicYearRecord) {
+      throw new NotFoundException('Academic year not found');
+    }
 
-    const academicYearId = academicYearRecord?.id ?? academicYear;
-    const academicYearName = academicYearRecord?.name ?? academicYear;
+    const academicYearId = academicYearRecord.id;
+    const academicYearName = academicYearRecord.name;
+    const termRecord = await this.resolveTerm(schoolId, termId, academicYearId);
 
     const student = await this.prisma.user.findFirst({
       where: { id: studentId, schoolId },
@@ -972,15 +1004,45 @@ export class ReportCardService {
       throw new NotFoundException('Student not found');
     }
 
-    // Fetch all terms for the academic year to build a cumulative view
-    const allTerms = await this.prisma.term.findMany({
-      where: { academicYearId },
-      orderBy: { order: 'asc' },
-    });
+    const [classRecord, sectionRecord, enrollment] = await Promise.all([
+      this.prisma.class.findFirst({
+        where: { id: classId, schoolId, academicYearId },
+        select: { id: true },
+      }),
+      this.prisma.section.findFirst({
+        where: { id: sectionId, classId },
+        select: { id: true },
+      }),
+      this.prisma.studentClass.findFirst({
+        where: {
+          schoolId,
+          studentId,
+          classId,
+          sectionId,
+          academicYear: { in: [academicYearId, academicYearName] },
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!classRecord) {
+      throw new NotFoundException('Class not found');
+    }
+    if (!sectionRecord) {
+      throw new NotFoundException('Section not found');
+    }
+    if (!enrollment) {
+      throw new BadRequestException(
+        'Student is not enrolled in this class and section for the selected academic year',
+      );
+    }
 
     const subjectGrades = await this.prisma.subjectGrade.findMany({
       where: {
+        schoolId,
         studentId,
+        classId,
+        sectionId,
         academicYear: academicYearId,
       },
       include: {
@@ -1002,7 +1064,13 @@ export class ReportCardService {
       },
     });
 
-    const attendance = await this.calculateAttendance(studentId, termId);
+    const attendance = await this.calculateAttendance(
+      schoolId,
+      studentId,
+      classId,
+      sectionId,
+      termId,
+    );
 
     // Group grades by subject to allow term-by-term comparison
     const gradesBySubject = new Map<string, any>();
@@ -1079,7 +1147,7 @@ export class ReportCardService {
         schoolId,
         studentId,
         academicYear: academicYearName,
-        term: termName,
+        term: termRecord.name,
       },
     });
 
@@ -1109,7 +1177,7 @@ export class ReportCardService {
           classId,
           sectionId,
           academicYear: academicYearName,
-          term: termName,
+          term: termRecord.name,
           status: ReportCardStatus.DRAFT,
           totalMarks,
           percentage,
@@ -1137,7 +1205,6 @@ export class ReportCardService {
       sectionId,
       academicYear,
       termId,
-      termName,
       generatedById,
     } = params;
 
@@ -1148,6 +1215,30 @@ export class ReportCardService {
       },
       select: { id: true, name: true },
     });
+    if (!academicYearRecord) {
+      throw new NotFoundException('Academic year not found');
+    }
+    const termRecord = await this.resolveTerm(
+      schoolId,
+      termId,
+      academicYearRecord.id,
+    );
+    const [classRecord, sectionRecord] = await Promise.all([
+      this.prisma.class.findFirst({
+        where: { id: classId, schoolId, academicYearId: academicYearRecord.id },
+        select: { id: true },
+      }),
+      this.prisma.section.findFirst({
+        where: { id: sectionId, classId },
+        select: { id: true },
+      }),
+    ]);
+    if (!classRecord) {
+      throw new NotFoundException('Class not found');
+    }
+    if (!sectionRecord) {
+      throw new NotFoundException('Section not found');
+    }
     const academicYearKeys = Array.from(
       new Set([academicYear, academicYearRecord?.id, academicYearRecord?.name].filter(Boolean) as string[]),
     );
@@ -1179,7 +1270,7 @@ export class ReportCardService {
           sectionId,
           academicYear,
           termId,
-          termName,
+          termName: termRecord.name,
           generatedById,
         });
         results.generated++;
@@ -1199,7 +1290,9 @@ export class ReportCardService {
     schoolId: string,
     filters: {
       classId?: string;
+      academicYearId?: string;
       academicYear?: string;
+      termId?: string;
       term?: string;
       status?: ReportCardStatus;
       studentId?: string;
@@ -1208,8 +1301,26 @@ export class ReportCardService {
     const whereClause: any = { schoolId };
 
     if (filters.classId) whereClause.classId = filters.classId;
-    if (filters.academicYear) whereClause.academicYear = filters.academicYear;
-    if (filters.term) whereClause.term = filters.term;
+    if (filters.academicYearId) {
+      const academicYearName = await this.resolveAcademicYearName(
+        schoolId,
+        filters.academicYearId,
+      );
+      whereClause.academicYear = {
+        in: [filters.academicYearId, academicYearName],
+      };
+    } else if (filters.academicYear) {
+      whereClause.academicYear = filters.academicYear;
+    }
+    if (filters.termId) {
+      whereClause.term = await this.resolveTermName(
+        schoolId,
+        filters.termId,
+        filters.academicYearId,
+      );
+    } else if (filters.term) {
+      whereClause.term = filters.term;
+    }
     if (filters.status) whereClause.status = filters.status;
     if (filters.studentId) whereClause.studentId = filters.studentId;
 
@@ -1238,26 +1349,28 @@ export class ReportCardService {
   async getPublishedReportCardsForParent(
     parentId: string,
     childId: string,
+    schoolId: string,
     filters?: {
       academicYear?: string;
       term?: string;
     },
   ) {
-    const { studentUserId, schoolId } = await this.verifyParentChild(
+    const { studentUserId, schoolId: validatedSchoolId } = await this.verifyParentChild(
       parentId,
       childId,
+      schoolId,
     );
-    await this.ensureParentGradeAccessEnabled(schoolId);
+    await this.ensureParentGradeAccessEnabled(validatedSchoolId);
     await this.ensureCurrentPeriodFeesPaid(
       studentUserId,
-      schoolId,
+      validatedSchoolId,
       filters?.academicYear,
       filters?.term,
     );
 
     const whereClause: any = {
       studentId: studentUserId,
-      schoolId,
+      schoolId: validatedSchoolId,
       status: ReportCardStatus.PUBLISHED,
     };
 
@@ -1338,7 +1451,7 @@ export class ReportCardService {
   ) {
     const [academicYearName, termName] = await Promise.all([
       this.resolveAcademicYearName(schoolId, academicYearId),
-      this.resolveTermName(termId),
+      this.resolveTermName(schoolId, termId, academicYearId),
     ]);
     const academicYearKeys = Array.from(
       new Set([academicYearId, academicYearName].filter(Boolean)),
@@ -1582,8 +1695,8 @@ export class ReportCardService {
         select: { id: true, name: true, address: true, phone: true },
       }),
       this.resolveAcademicYearName(schoolId, params.academicYearId),
-      this.resolveTermName(params.fromTermId),
-      this.resolveTermName(params.toTermId),
+      this.resolveTermName(schoolId, params.fromTermId, params.academicYearId),
+      this.resolveTermName(schoolId, params.toTermId, params.academicYearId),
     ]);
     const academicYearKeys = Array.from(
       new Set([params.academicYearId, academicYearName].filter(Boolean)),
@@ -2503,7 +2616,7 @@ export class ReportCardService {
 
     const [academicYearName, termName, classRecord] = await Promise.all([
       this.resolveAcademicYearName(schoolId, academicYearId),
-      this.resolveTermName(termId),
+      this.resolveTermName(schoolId, termId, academicYearId),
       this.prisma.class.findFirst({
         where: { id: classId, schoolId, academicYearId },
         select: { id: true, name: true, grade: true, section: true },

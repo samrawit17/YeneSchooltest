@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import {
   ALLOW_SUPER_ADMIN_MIXED_ROLE_KEY,
@@ -36,12 +36,20 @@ export class RolesGuard implements CanActivate {
       normalizedUserRole === Role.SUPER_ADMIN &&
       normalizedRequiredRoles.some((role) => role !== Role.SUPER_ADMIN)
     ) {
-      return false;
+      throw new ForbiddenException(
+        `Access denied. Your role (SUPER_ADMIN) is not explicitly allowed for this resource. Required roles: ${normalizedRequiredRoles.join(', ')}`,
+      );
     }
 
     const isAllowed =
       user &&
       normalizedRequiredRoles.some((role) => role === normalizedUserRole);
+
+    if (!isAllowed) {
+      throw new ForbiddenException(
+        `Access denied. Your role (${normalizedUserRole}) does not have permission. Required roles: ${normalizedRequiredRoles.join(', ')}`,
+      );
+    }
 
     return isAllowed;
   }

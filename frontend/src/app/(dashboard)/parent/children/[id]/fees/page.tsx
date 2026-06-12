@@ -19,7 +19,9 @@ import {
   Building,
   Smartphone
 } from "lucide-react";
-import { financeAPI } from "@/lib/api";
+import { academicYearsAPI } from "@/lib/api";
+import { financeAPI } from "@/lib/api/finance";
+import { parentDashboardAPI } from "@/lib/api/parent";
 
 // Shadcn/ui Components
 import {
@@ -91,14 +93,40 @@ const ChildFeesPage = () => {
   useEffect(() => {
     const fetchFees = async () => {
       try {
-        const schoolId = localStorage.getItem('schoolId');
-        const academicYearId = localStorage.getItem('academicYearId');
+        const [childrenRes, activeYearRes] = await Promise.allSettled([
+          parentDashboardAPI.getChildren(),
+          academicYearsAPI.getActive(),
+        ]);
+
+        const childrenData = childrenRes.status === "fulfilled"
+          ? (childrenRes.value.data?.children || childrenRes.value.data || [])
+          : [];
+        const matchedChild = Array.isArray(childrenData)
+          ? childrenData.find((child: any) =>
+              child.studentId === childId ||
+              child.id === childId ||
+              child.student?.id === childId ||
+              child.student?.userId === childId ||
+              child.userId === childId,
+            )
+          : null;
+        const schoolId =
+          matchedChild?.schoolId ||
+          matchedChild?.student?.schoolId ||
+          childrenData[0]?.schoolId ||
+          childrenData[0]?.student?.schoolId ||
+          null;
+        const academicYearId =
+          currentAcademicYear?.id ||
+          (activeYearRes.status === "fulfilled"
+            ? activeYearRes.value.data?.data?.id || activeYearRes.value.data?.id
+            : null);
 
         if (!schoolId || !academicYearId) {
           setFeeItems([]);
           setPayments([]);
           setSummary(null);
-          setChild(null);
+          setChild(matchedChild ? (matchedChild.student || matchedChild) : null);
           return;
         }
 
@@ -113,7 +141,7 @@ const ChildFeesPage = () => {
         setFeeItems(data.feeItems || []);
         setPayments(data.payments || []);
         setSummary(data.summary || null);
-        setChild(data.student || null);
+        setChild(data.student || matchedChild?.student || matchedChild || null);
         setCurriculumType(data.curriculumType || "TERM");
       } catch (error) {
         console.error("Failed to fetch fees:", error);
@@ -127,7 +155,7 @@ const ChildFeesPage = () => {
     };
 
     fetchFees();
-  }, [childId]);
+  }, [childId, currentAcademicYear?.id]);
 
   const formatCurrency = (amount: number) => {
     return `Brr ${amount.toLocaleString()}`;

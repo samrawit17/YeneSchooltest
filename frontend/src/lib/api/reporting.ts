@@ -139,7 +139,9 @@ export interface ParentPresentationReport {
 export const reportCardsAPI = {
   getAll: (params?: {
     classId?: string;
+    academicYearId?: string;
     academicYear?: string;
+    termId?: string;
     term?: string;
     status?: ReportCardStatus;
     studentId?: string;
