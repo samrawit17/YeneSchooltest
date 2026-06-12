@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { disciplineAPI, parentsAPI } from "@/lib/api/people";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, AlertTriangle, User, Clock, CheckCircle, Shield } from "lucide-react";
 import { TranslatedText } from "@/components/translation/TranslatedText";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ChildDiscipline {
   id: string;
@@ -17,6 +18,7 @@ interface ChildDiscipline {
   incidentDate: string;
   outcome?: string;
   childName: string;
+  childId?: string;
 }
 
 const severityColors = {
@@ -39,6 +41,8 @@ export default function ParentDisciplinePage() {
 
   const [incidents, setIncidents] = useState<ChildDiscipline[]>([]);
   const [loading, setLoading] = useState(true);
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>("all");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -57,6 +61,7 @@ export default function ParentDisciplinePage() {
     try {
       const resp = await parentsAPI.getChildren();
       const children = resp.data?.children || resp.data || [];
+      setChildren(children);
 
       const allIncidents: ChildDiscipline[] = [];
 
@@ -70,6 +75,7 @@ export default function ParentDisciplinePage() {
             ...i,
             childName:
               child.name || child.student?.user?.name || child.studentName || "Unknown",
+            childId: child.id,
           }));
           allIncidents.push(...childIncidents);
         } catch (e) {
@@ -85,6 +91,11 @@ export default function ParentDisciplinePage() {
     }
   }
 
+  const filteredIncidents = useMemo(() => {
+    if (selectedChildId === "all") return incidents;
+    return incidents.filter((i) => String(i.childId) === String(selectedChildId));
+  }, [incidents, selectedChildId]);
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
@@ -95,35 +106,48 @@ export default function ParentDisciplinePage() {
 
   if (!isAuthenticated) return null;
 
-  const openIncidents = incidents.filter((i) => i.status !== "RESOLVED");
-  const resolvedIncidents = incidents.filter((i) => i.status === "RESOLVED");
+  const openIncidents = filteredIncidents.filter((i) => i.status !== "RESOLVED");
+  const resolvedIncidents = filteredIncidents.filter((i) => i.status === "RESOLVED");
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div className="mx-auto max-w-7xl px-6 py-6">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-orange-600 text-white shadow-lg shadow-red-500/20">
-              <AlertTriangle className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-[#e35336]">
-                Discipline Records
-              </h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                View your children's disciplinary records
-              </p>
-            </div>
+      <div className="px-6 py-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              Discipline Records
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              View your children's disciplinary records
+            </p>
           </div>
+          {children.length > 1 && (
+            <div className="flex items-center gap-2 shrink-0 mr-[30px]">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">Select Child</label>
+              <Select value={selectedChildId} onValueChange={setSelectedChildId}>
+                <SelectTrigger className="w-full max-w-[200px] dark:bg-slate-800 dark:border-slate-700">
+                  <SelectValue placeholder="All children" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All children</SelectItem>
+                  {children.map((child: any) => (
+                    <SelectItem key={child.id} value={child.id}>
+                      {child.name || child.student?.user?.name || "Unknown"} — {child.className || child.student?.className || "N/A"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+      <div className="px-6 py-6 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Card className="dark:bg-slate-900 dark:border-slate-800">
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-gray-500 dark:text-gray-400">Total Incidents</p>
-              <p className="text-xl font-bold dark:text-white">{incidents.length}</p>
+              <p className="text-xl font-bold dark:text-white">{filteredIncidents.length}</p>
             </CardContent>
           </Card>
           <Card className="dark:bg-slate-900 dark:border-slate-800">
@@ -140,7 +164,7 @@ export default function ParentDisciplinePage() {
           </Card>
         </div>
 
-        {incidents.length === 0 ? (
+        {filteredIncidents.length === 0 ? (
           <Card className="dark:bg-slate-900 dark:border-slate-800">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Shield className="w-10 h-10 text-gray-400 mb-4" />
@@ -154,7 +178,7 @@ export default function ParentDisciplinePage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-gray-200 dark:divide-gray-800">
-                {incidents.map((incident) => {
+                {filteredIncidents.map((incident) => {
                   const StatusIcon = statusIcons[incident.status];
                   return (
                     <div key={incident.id} className="p-4">

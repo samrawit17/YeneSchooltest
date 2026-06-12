@@ -871,7 +871,7 @@ export default function AttendanceManagementPage() {
           {/* Filters */}
           <Card className="w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <CardContent className="p-3 sm:p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-center">
                 {/* Date Picker */}
                 {viewMode === 'date' && (
                   <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-700 rounded-lg border border-[#E2E8F0] dark:border-gray-600 p-1 w-full">
@@ -1005,17 +1005,7 @@ export default function AttendanceManagementPage() {
                   </SelectContent>
                 </Select>
 
-                {/* Refresh Button */}
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => fetchDashboard(true)}
-                  disabled={refreshing}
-                  className="w-full"
-                >
-                  <RefreshCw className={`w-4 h-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-                  {t.refresh}
-                </Button>
+
               </div>
             </CardContent>
           </Card>

@@ -128,6 +128,21 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Enforce school slug login for restricted roles
+    const restrictedRoles = new Set([
+      'PARENT',
+      'STUDENT',
+      'TEACHER',
+      'IT_MANAGER',
+      'FINANCE',
+      'REGISTRAR',
+    ]);
+    if (!schoolId && restrictedRoles.has(user.role)) {
+      throw new UnauthorizedException(
+        'Login from this URL is not allowed for your role. Please use your school\'s specific URL.',
+      );
+    }
+
     // Check portal access for role-based portals
     const portalAccessKeyMap: Record<string, string> = {
       TEACHER: 'TEACHER_PORTAL_ACCESS',

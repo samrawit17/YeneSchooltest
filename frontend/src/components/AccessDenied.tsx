@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ShieldOff, ArrowLeft, Search, AlertTriangle, LayoutDashboard, FileQuestion, ShieldX, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
+import { readCachedSchoolLoginContext } from '@/lib/school-resolver';
 
 interface AccessDeniedProps {
   type?: '403' | '404';
@@ -14,6 +15,21 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { logout, user: currentUser } = useAuth();
+  const handleLogout = () => {
+    let redirectTo = '/sign-in';
+    const cached = currentUser?.schoolId
+      ? readCachedSchoolLoginContext({ schoolId: currentUser.schoolId })
+      : undefined;
+    const normalizedRole = currentUser?.role?.toUpperCase();
+    if (normalizedRole !== 'SUPER_ADMIN' && cached?.publicUrlSlug) {
+      redirectTo = `/schools/${encodeURIComponent(cached.publicUrlSlug)}/login`;
+    } else if (currentUser?.schoolId) {
+      redirectTo = `/sign-in?schoolId=${encodeURIComponent(currentUser.schoolId)}`;
+    }
+    sessionStorage.setItem('postLogoutRedirect', redirectTo);
+    logout();
+    router.push(redirectTo);
+  };
   const [mounted, setMounted] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [attemptedUrl, setAttemptedUrl] = useState<string>('');
@@ -29,9 +45,9 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
       sessionStorage.getItem('accessDeniedUrl') ||
       searchParams.get('from') ||
       '';
-    const apiUrl = sessionStorage.getItem('accessDeniedApiUrl') || '';
+    const apiUrl = sessionStorage.getItem('accessDeniedApiUrl') || searchParams.get('api') || '';
     const code = sessionStorage.getItem('accessDeniedCode') || type;
-    const message = sessionStorage.getItem('accessDeniedMessage') || '';
+    const message = sessionStorage.getItem('accessDeniedMessage') || searchParams.get('error') || '';
     const permission = sessionStorage.getItem('accessDeniedPermission') || '';
 
     setAttemptedUrl(url);
@@ -227,7 +243,7 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
             </Button>
             <Button
               variant="outline"
-              onClick={() => { logout(); router.push('/sign-in'); }}
+              onClick={handleLogout}
               className="dark:bg-gray-800 dark:border-gray-700 text-red-500 hover:text-red-600"
             >
               <LogOut className="w-4 h-4 mr-2" />
@@ -241,6 +257,23 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
 
   // 403 case
   const path = attemptedUrl.toLowerCase();
+
+  const getApiRequiredRoles = (): string[] => {
+    const apiPath = attemptedApiUrl.toLowerCase();
+    const apiMappings: Record<string, string[]> = {
+      '/discipline': ['admin', 'it_manager', 'registrar', 'teacher'],
+      '/grades': ['teacher', 'admin', 'registrar'],
+      '/attendance': ['teacher', 'admin', 'registrar'],
+      '/students': ['admin', 'it_manager', 'registrar', 'teacher'],
+      '/finance': ['finance', 'admin'],
+      '/exams': ['admin', 'it_manager', 'teacher'],
+      '/timetable': ['admin', 'registrar', 'teacher'],
+    };
+    for (const [prefix, roles] of Object.entries(apiMappings)) {
+      if (apiPath.startsWith(prefix)) return roles;
+    }
+    return [];
+  };
 
   const getContextualInfo = () => {
     if (path.includes('/superadmin') || path.includes('/platform-settings')) {
@@ -359,15 +392,15 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
         </div>
 
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          {info.title}
+          {attemptedApiUrl ? 'API Access Denied' : info.title}
         </h1>
 
         <p className="text-gray-600 dark:text-gray-400 mb-2">
-          {info.message}
+          {attemptedApiUrl ? 'A required API endpoint rejected your request.' : info.message}
         </p>
 
         <p className="text-gray-500 dark:text-gray-500 mb-4 text-sm">
-          {info.detail}
+          {attemptedApiUrl ? `The blocked endpoint "${attemptedApiUrl}" requires specific role permissions.` : info.detail}
         </p>
 
         {attemptedUrl && (
@@ -382,7 +415,7 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
         {attemptedApiUrl && (
           <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 mb-4">
             <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">
-              Blocked Request
+              Blocked API Request
             </div>
             <p className="font-mono text-sm text-slate-700 dark:text-slate-200 break-all">
               {attemptedApiUrl}
@@ -391,12 +424,17 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
         )}
 
         {errorMessage && (
-          <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg p-3 mb-4">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-              <p className="text-sm font-mono text-red-600 dark:text-red-400 break-words text-left">
-                {errorMessage}
-              </p>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
+              <div className="text-left">
+                <p className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
+                  Error Details
+                </p>
+                <p className="text-sm font-mono text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">
+                  {errorMessage}
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -417,7 +455,34 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
           </div>
         )}
 
-        {info.requiredRoles.length > 0 && userRole && (
+        {attemptedApiUrl && userRole && actualType === '403' && (
+          (() => {
+            const apiRoles = getApiRequiredRoles();
+            const userRoleLower = userRole.toLowerCase();
+            const matches = apiRoles.length > 0 && apiRoles.includes(userRoleLower);
+            if (!apiRoles.length) return null;
+            return (
+              <div className={`rounded-lg p-4 mb-4 border ${matches ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'}`}>
+                <div className="flex items-start gap-3">
+                  <ShieldX className={`w-5 h-5 mt-0.5 shrink-0 ${matches ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
+                  <div className="text-left">
+                    <p className={`text-sm font-medium ${matches ? 'text-green-800 dark:text-green-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                      API Endpoint Access
+                    </p>
+                    <p className={`text-sm mt-1 ${matches ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      Your role: <span className="font-semibold capitalize">{userRole.replace('_', ' ')}</span>
+                    </p>
+                    <p className={`text-sm ${matches ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      API allowed roles: <span className="font-semibold">{apiRoles.join(', ').replace(/_/g, ' ')}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()
+        )}
+
+        {info.requiredRoles.length > 0 && userRole && !info.requiredRoles.includes(userRole) && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
             <div className="flex items-start gap-3">
               <ShieldX className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
@@ -462,7 +527,7 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
           </Button>
           <Button
             variant="outline"
-            onClick={() => { logout(); router.push('/sign-in'); }}
+            onClick={handleLogout}
             className="dark:bg-gray-800 dark:border-gray-700 text-red-500 hover:text-red-600"
           >
             <LogOut className="w-4 h-4 mr-2" />

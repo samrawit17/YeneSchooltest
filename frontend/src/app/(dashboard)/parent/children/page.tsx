@@ -231,56 +231,53 @@ const ParentChildrenPage = () => {
               const photoSrc = resolveAssetUrl(child.photoUrl);
 
               return (
-                <div key={child.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col">
-                  <div className="flex items-start gap-4 border-b border-slate-100 dark:border-slate-700 p-5">
-                    <div className="relative shrink-0">
-                      <Avatar className="h-20 w-20 ring-[3px] ring-slate-100 dark:ring-slate-700">
+                <div key={child.id} className="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col w-full max-w-[450px] mx-auto">
+                  <div className="pt-8 pb-4 px-6 text-center">
+                    <div className="relative inline-block">
+                      <Avatar className="h-24 w-24 ring-4 ring-slate-100 dark:ring-slate-700 mx-auto">
                         {photoSrc ? (
                           <img src={photoSrc} alt={child.name} className="h-full w-full rounded-full object-cover" />
                         ) : (
-                          <AvatarFallback className="text-2xl font-bold text-white bg-[var(--brand-color,#e35336)]">
+                          <AvatarFallback className="text-3xl font-bold text-white bg-[var(--brand-color,#e35336)]">
                             {child.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         )}
                       </Avatar>
                       {child.isPrimary && (
-                        <div className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 shadow-md ring-2 ring-white dark:ring-slate-900">
+                        <div className="absolute -right-1 top-0 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 shadow-md ring-2 ring-white dark:ring-slate-900">
                           <Star className="h-3.5 w-3.5 fill-white text-white" />
                         </div>
                       )}
                     </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-lg font-bold text-slate-900 dark:text-white">{child.name}</h3>
-                          <p className="mt-0.5 text-sm text-slate-500">{child.studentCode}</p>
-                        </div>
-                        <Badge variant="outline" className="shrink-0 text-xs">
-                          {child.relation || "Child"}
-                        </Badge>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <Metric icon={GraduationCap} label="Class" value={`${child.className}${child.section && child.section !== "N/A" ? ` - ${child.section}` : ""}`} />
-                        <Metric icon={Award} label="Average" value={`${academics.average || 0}%`} />
-                      </div>
-                    </div>
+                    <h3 className="mt-3 text-lg font-bold text-slate-900 dark:text-white">{child.name}</h3>
+                    <p className="text-sm text-slate-500">{child.studentCode}</p>
+                    <Badge variant="secondary" className="mt-2 text-xs px-3 py-0.5">
+                      {child.relation || "Child"}
+                    </Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
-                    <DetailRow icon={User} label="Username" value={child.username || child.studentCode || "N/A"} />
-                    <DetailRow icon={CalendarCheck} label="Attendance" value={`${attendance.rate}%${attendance.totalDays > 0 ? ` (${attendance.presentDays}/${attendance.totalDays})` : ''}`} />
-                    <DetailRow icon={Award} label="Latest Grade" value={academics.grade || "N/A"} />
-                    <DetailRow icon={Phone} label="Parent Phone" value={child.parentPhone || "N/A"} />
+                  <div className="px-6 pb-4 grid grid-cols-2 gap-3">
+                    <Metric icon={GraduationCap} label="Class" value={`${child.className}${child.section && child.section !== "N/A" ? ` - ${child.section}` : ""}`} />
+                    <Metric icon={CalendarCheck} label="Attendance" value={`${attendance.rate}%`} />
+                  </div>
+
+                  <div className="border-t border-slate-100 dark:border-slate-700 px-6 py-3 space-y-2">
+                    {child.username && (
+                      <MinimalRow icon={User} label="Username" value={child.username} />
+                    )}
+                    {child.parentPhone && (
+                      <MinimalRow icon={Phone} label="Phone" value={child.parentPhone} />
+                    )}
                     {child.homeroomTeacher && (
-                      <DetailRow icon={User} label="Homeroom Teacher" value={child.homeroomTeacher.name} />
+                      <MinimalRow icon={User} label="Teacher" value={child.homeroomTeacher.name} />
                     )}
                   </div>
 
-                  <div className="mt-auto px-5 pb-5">
+                  <div className="mt-auto px-6 pb-6 pt-1">
                     <Button
                       onClick={() => router.push(`/parent/children/${child.studentId || child.id}`)}
-                      className="h-10 w-full gap-2 rounded-lg text-sm font-semibold bg-[var(--brand-color,#e35336)] hover:opacity-90"
+                      variant="outline"
+                      className="h-10 w-full gap-2 rounded-xl text-sm font-semibold border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
                     >
                       <Eye className="h-4 w-4" />
                       View Full Profile
@@ -298,24 +295,19 @@ const ParentChildrenPage = () => {
 
 function Metric({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 p-2.5 dark:bg-slate-800/70">
-      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </div>
-      <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{value || "N/A"}</p>
+    <div className="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3 text-center">
+      <p className="text-xs font-medium text-slate-400 dark:text-slate-500">{label}</p>
+      <p className="mt-0.5 text-sm font-bold text-slate-900 dark:text-white">{value || "N/A"}</p>
     </div>
   );
 }
 
-function DetailRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+function MinimalRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="flex min-w-0 items-start gap-2.5 rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">{label}</p>
-        <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{value || "N/A"}</p>
-      </div>
+    <div className="flex items-center gap-3 text-sm">
+      <Icon className="h-4 w-4 shrink-0 text-slate-400" />
+      <span className="text-slate-500 dark:text-slate-400">{label}:</span>
+      <span className="ml-auto font-medium text-slate-800 dark:text-slate-200 truncate">{value}</span>
     </div>
   );
 }

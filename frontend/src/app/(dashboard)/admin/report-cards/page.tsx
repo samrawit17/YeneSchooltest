@@ -91,7 +91,7 @@ function StatusBadge({ status }: { status: ReportCardStatus }) {
 export default function ReportCardsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { currentAcademicYear, currentTerm, periodLabel } = useAcademicYear();
+  const { currentAcademicYear, currentTerm } = useAcademicYear();
 
   const [reportCards, setReportCards] = useState<ReportCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,21 +104,29 @@ export default function ReportCardsPage() {
   const [classes, setClasses] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [filterStatus, setFilterStatus] = useState<ReportCardStatus | "all">("all");
-  const [showFilters, setShowFilters] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [bulkGenerateLoading, setBulkGenerateLoading] = useState(false);
   const [selectedClassStudentCount, setSelectedClassStudentCount] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<{ type: "unpublish" } | { type: "delete"; id: string } | null>(null);
   const initialQueryApplied = useRef(false);
 
-  const isAdmin = user?.role === "ADMIN" || user?.role === "IT_MANAGER" || user?.role === "SUPER_ADMIN";
+  const canManageReportCards =
+    user?.role === "ADMIN" ||
+    user?.role === "REGISTRAR" ||
+    user?.role === "SUPER_ADMIN";
 
   const selectedAcademicYearRecord = useMemo(
     () => academicYears.find((year) => year.id === selectedAcademicYear) || null,
     [academicYears, selectedAcademicYear],
   );
-  const resolvedAcademicYearId = selectedAcademicYearRecord?.id || selectedAcademicYear || currentAcademicYear?.id || "";
-  const resolvedAcademicYearName = selectedAcademicYearRecord?.name || currentAcademicYear?.name || "";
+  const resolvedAcademicYearId =
+    selectedAcademicYearRecord?.id ||
+    (!selectedAcademicYear ? currentAcademicYear?.id : "") ||
+    "";
+  const resolvedAcademicYearName =
+    selectedAcademicYearRecord?.name ||
+    (!selectedAcademicYear ? currentAcademicYear?.name : "") ||
+    "";
 
   const selectedTermRecord = useMemo(
     () => terms.find((term) => term.id === selectedTerm) || null,
@@ -153,8 +161,12 @@ export default function ReportCardsPage() {
         setAcademicYears(data);
         const query = new URLSearchParams(window.location.search);
         const queryAcademicYearId = query.get("academicYearId");
+        const validQueryAcademicYearId =
+          queryAcademicYearId && data.some((year: any) => year.id === queryAcademicYearId)
+            ? queryAcademicYearId
+            : "";
         const active = data.find((year: any) => year.isActive) || data[0];
-        setSelectedAcademicYear((prev) => prev || queryAcademicYearId || currentAcademicYear?.id || active?.id || "");
+        setSelectedAcademicYear((prev) => prev || validQueryAcademicYearId || currentAcademicYear?.id || active?.id || "");
       })
       .catch(() => {
         if (currentAcademicYear?.id) setSelectedAcademicYear(currentAcademicYear.id);
@@ -179,10 +191,10 @@ export default function ReportCardsPage() {
   }, [resolvedAcademicYearId]);
 
   useEffect(() => {
-    if (resolvedAcademicYearName) {
+    if (resolvedAcademicYearId && (!selectedTerm || selectedTermRecord?.name)) {
       fetchReportCards();
     }
-  }, [selectedClass, selectedTerm, filterStatus, resolvedAcademicYearName]);
+  }, [selectedClass, selectedTerm, selectedTermRecord?.name, filterStatus, resolvedAcademicYearId]);
 
   useEffect(() => {
     const fetchSelectedClassStats = async () => {
@@ -263,9 +275,9 @@ export default function ReportCardsPage() {
       setError(null);
       const params: any = {};
       if (selectedClass) params.classId = selectedClass;
-      if (selectedTermRecord?.name) params.term = selectedTermRecord.name;
+      if (selectedTerm) params.termId = selectedTerm;
       if (filterStatus !== "all") params.status = filterStatus;
-      if (resolvedAcademicYearName) params.academicYear = resolvedAcademicYearName;
+      if (resolvedAcademicYearId) params.academicYearId = resolvedAcademicYearId;
 
       const response = await reportCardsAPI.getAll(params);
       const data = response.data || [];
@@ -544,7 +556,7 @@ export default function ReportCardsPage() {
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                {isAdmin && filteredCards.length > 0 && (
+                {canManageReportCards && filteredCards.length > 0 && (
                   <button
                     onClick={handleBulkDownloadReportCards}
                     className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
@@ -553,7 +565,7 @@ export default function ReportCardsPage() {
                     Download Report Cards ({selectedCards.size > 0 ? selectedCards.size : filteredCards.length})
                   </button>
                 )}
-                {isAdmin && selectedPublishedCardIds.length > 0 && (
+                {canManageReportCards && selectedPublishedCardIds.length > 0 && (
                   <button
                     onClick={handleUnpublish}
                     disabled={actionLoading}
@@ -563,7 +575,7 @@ export default function ReportCardsPage() {
                     Unpublish ({selectedPublishedCardIds.length})
                   </button>
                 )}
-                {isAdmin && (
+                {canManageReportCards && (
                   <button
                     onClick={handleBulkGenerate}
                     disabled={bulkGenerateLoading || !selectedClass}
@@ -642,7 +654,7 @@ export default function ReportCardsPage() {
                     <TableCell colSpan={8} className="px-4 py-12 text-center">
                       <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
                       <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">No report cards found</p>
-                      {isAdmin && (
+                      {canManageReportCards && (
                         <button
                           onClick={handleBulkGenerate}
                           disabled={!selectedClass || bulkGenerateLoading}
@@ -705,7 +717,7 @@ export default function ReportCardsPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          {isAdmin && card.status === "DRAFT" && (
+                          {canManageReportCards && card.status === "DRAFT" && (
                             <button
                               onClick={() => handleDelete(card.id)}
                               className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"

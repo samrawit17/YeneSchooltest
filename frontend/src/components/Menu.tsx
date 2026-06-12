@@ -141,6 +141,13 @@ const menuItems: MenuSection[] = [
         subscriptionFeature: "LESSON_MANAGEMENT",
       },
       {
+        icon: <AlertTriangle className="w-5 h-5" />,
+        label: "Discipline",
+        href: "/teacher/discipline",
+        visible: ["teacher"],
+        subscriptionFeature: "DISCIPLINE_MANAGEMENT",
+      },
+      {
         icon: <Calendar className="w-5 h-5" />,
         label: "Timetable",
         href: "/teacher/timetable",
@@ -467,6 +474,13 @@ const menuItems: MenuSection[] = [
         href: "/parent/attendance",
         visible: ["parent"],
         subscriptionFeature: "PARENT_PORTAL",
+      },
+      {
+        icon: <AlertTriangle className="w-5 h-5" />,
+        label: "Discipline",
+        href: "/parent/discipline",
+        visible: ["parent"],
+        subscriptionFeature: "DISCIPLINE_MANAGEMENT",
       },
       {
         icon: <Trophy className="w-5 h-5" />,

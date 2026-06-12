@@ -58,7 +58,7 @@ export class ReportCardController {
   ) {}
 
   @Post('generate')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
   @Permissions('report_card:create')
   async generateReportCard(
     @Request() req,
@@ -88,7 +88,7 @@ export class ReportCardController {
   }
 
   @Post('bulk-generate')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:create')
   async bulkGenerate(
     @Request() req,
@@ -122,7 +122,9 @@ export class ReportCardController {
     @Query()
     query: {
       classId?: string;
+      academicYearId?: string;
       academicYear?: string;
+      termId?: string;
       term?: string;
       status?: ReportCardStatus;
       studentId?: string;
@@ -238,6 +240,7 @@ export class ReportCardController {
     return this.reportCardService.getPublishedReportCardsForParent(
       req.user.id,
       childId,
+      req.user.schoolId,
       {
         academicYear: query.academicYear,
         term: query.term,
@@ -348,7 +351,7 @@ export class ReportCardController {
   }
 
   @Put(':id/remarks')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.TEACHER, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   async updateRemarks(
     @Request() req,
@@ -365,14 +368,14 @@ export class ReportCardController {
   }
 
   @Put('publish')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:publish')
   async publishReportCards(@Request() req, @Body() body: { ids: string[] }) {
     return this.reportCardService.publishReportCards(body.ids, req.user.schoolId);
   }
 
   @Post('publish/class')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:publish')
   async publishResultsForClass(
     @Request() req,
@@ -396,7 +399,7 @@ export class ReportCardController {
   }
 
   @Put('unpublish')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:publish')
   async unpublishReportCards(@Request() req, @Body() body: { ids: string[] }) {
     return this.reportCardService.unpublishReportCards(
@@ -407,7 +410,7 @@ export class ReportCardController {
 
   @Post('calculate-ranks')
   @RequiresFeature('STUDENT_RANKINGS')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:update')
   async calculateRanks(
     @Request() req,
@@ -422,7 +425,7 @@ export class ReportCardController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.REGISTRAR, Role.SUPER_ADMIN)
   @Permissions('report_card:delete')
   async deleteReportCard(@Request() req, @Param('id') id: string) {
     return this.reportCardService.deleteReportCard(id, req.user.schoolId);

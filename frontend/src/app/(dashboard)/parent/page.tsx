@@ -1115,7 +1115,7 @@ const ParentDashboard = () => {
                 {!parentGradesEnabled ? (
                   <>
                     <p className="text-2xl font-bold text-slate-400 mt-1.5">Disabled</p>
-                    <span className="text-xs text-slate-400">By school setting</span>
+                    <span className="text-xs text-slate-400">{t.bySchoolAdmin}</span>
                   </>
                 ) : gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />
@@ -1149,7 +1149,7 @@ const ParentDashboard = () => {
                 {!parentGradesEnabled ? (
                   <>
                     <p className="text-2xl font-bold text-slate-400 mt-1.5">Disabled</p>
-                    <p className="text-xs text-slate-400 mt-1">By school setting</p>
+                    <p className="text-xs text-slate-400 mt-1">{t.bySchoolAdmin}</p>
                   </>
                 ) : gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />

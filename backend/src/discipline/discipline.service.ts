@@ -5,6 +5,35 @@ import { PrismaService } from '../prisma/prisma.service';
 export class DisciplineService {
   constructor(private prisma: PrismaService) {}
 
+  async verifyParentChild(
+    parentId: string,
+    studentId: string,
+    schoolId: string,
+  ): Promise<boolean> {
+    const parentProfile = await this.prisma.parentProfile.findFirst({
+      where: { userId: parentId, schoolId },
+      select: { id: true },
+    });
+    if (!parentProfile) return false;
+
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: { schoolId, OR: [{ id: studentId }, { userId: studentId }] },
+      select: { id: true },
+    });
+    if (!studentProfile) return false;
+
+    const link = await this.prisma.parentStudent.findFirst({
+      where: {
+        parentId: parentProfile.id,
+        studentId: studentProfile.id,
+        schoolId,
+      },
+      select: { id: true },
+    });
+
+    return Boolean(link);
+  }
+
   async createIncident(data: {
     schoolId: string;
     studentId: string;

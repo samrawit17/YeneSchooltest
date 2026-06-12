@@ -87,6 +87,18 @@ export default function DashboardLayout({
   const { t, language } = useTranslations<any>("layout");
   const { isAuthenticated, isLoading, user, logout } = useAuth();
   const router = useRouter();
+  const handleLogout = () => {
+    let redirectTo = "/sign-in";
+    const normalizedRole = user?.role?.toUpperCase();
+    if (normalizedRole !== "SUPER_ADMIN" && school?.publicUrlSlug) {
+      redirectTo = `/schools/${encodeURIComponent(school.publicUrlSlug)}/login`;
+    } else if (user?.schoolId) {
+      redirectTo = `/sign-in?schoolId=${encodeURIComponent(user.schoolId)}`;
+    }
+    sessionStorage.setItem("postLogoutRedirect", redirectTo);
+    logout();
+    router.replace(redirectTo);
+  };
   const pathname = usePathname();
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   // Track if we've already checked auth to prevent premature redirects
@@ -322,7 +334,7 @@ export default function DashboardLayout({
           </p>
           <button
             type="button"
-            onClick={logout}
+            onClick={handleLogout}
             className="mt-8 inline-flex h-10 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] px-5 text-sm font-medium text-white transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:ring-offset-2 dark:focus:ring-offset-[#0F172A]"
           >
             Sign out
