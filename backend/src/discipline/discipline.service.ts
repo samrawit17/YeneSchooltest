@@ -44,10 +44,35 @@ export class DisciplineService {
     severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     actionTaken?: string;
   }) {
+    // Resolve studentProfile ID robustly
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: {
+        schoolId: data.schoolId,
+        OR: [
+          { id: data.studentId },
+          { userId: data.studentId },
+          { studentId: data.studentId },
+          { studentCode: data.studentId },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!studentProfile) {
+      throw new NotFoundException(`Student profile not found for identifier: ${data.studentId}`);
+    }
+
     return this.prisma.disciplineIncident.create({
       data: {
-        ...data,
+        schoolId: data.schoolId,
+        studentId: studentProfile.id,
+        reportedBy: data.reportedBy,
+        incidentDate: data.incidentDate,
+        title: data.title,
+        description: data.description,
         severity: data.severity || 'MEDIUM',
+        actionTaken: data.actionTaken,
+        status: 'OPEN',
       },
       include: {
         student: {
@@ -72,7 +97,20 @@ export class DisciplineService {
     const where: any = { schoolId };
     
     if (filters?.studentId) {
-      where.studentId = filters.studentId;
+      // Resolve studentProfile ID robustly
+      const studentProfile = await this.prisma.studentProfile.findFirst({
+        where: {
+          schoolId,
+          OR: [
+            { id: filters.studentId },
+            { userId: filters.studentId },
+            { studentId: filters.studentId },
+            { studentCode: filters.studentId },
+          ],
+        },
+        select: { id: true },
+      });
+      where.studentId = studentProfile ? studentProfile.id : filters.studentId;
     }
     if (filters?.severity) {
       where.severity = filters.severity;
@@ -159,8 +197,23 @@ export class DisciplineService {
   }
 
   async getStudentIncidents(studentId: string, schoolId: string) {
+    const studentProfile = await this.prisma.studentProfile.findFirst({
+      where: {
+        schoolId,
+        OR: [
+          { id: studentId },
+          { userId: studentId },
+          { studentId: studentId },
+          { studentCode: studentId },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!studentProfile) return [];
+
     return this.prisma.disciplineIncident.findMany({
-      where: { studentId, schoolId },
+      where: { studentId: studentProfile.id, schoolId },
       orderBy: { incidentDate: 'desc' },
       include: {
         reporter: {

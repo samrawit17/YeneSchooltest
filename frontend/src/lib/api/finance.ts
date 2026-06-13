@@ -182,4 +182,22 @@ export const financeAPI = {
       notes?: string;
     },
   ) => api.patch(`/finance/payroll/entries/${id}/status`, data),
+
+  // Discount Policy Endpoints
+  listDiscountPolicies: (schoolId: string) =>
+    api.get('/finance/discount-policies', { params: { schoolId } }),
+  createDiscountPolicy: (data: {
+    schoolId: string;
+    name: string;
+    description?: string;
+    discountType: 'PERCENTAGE' | 'FIXED';
+    discountValue: number;
+    isActive?: boolean;
+  }) => api.post('/finance/discount-policies', data),
+  updateDiscountPolicy: (id: string, schoolId: string, data: any) =>
+    api.put(`/finance/discount-policies/${id}?schoolId=${schoolId}`, data),
+  deleteDiscountPolicy: (id: string, schoolId: string) =>
+    api.delete(`/finance/discount-policies/${id}?schoolId=${schoolId}`),
+  applyDiscountPolicy: (studentFeeId: string, data: { schoolId: string; discountPolicyId: string }) =>
+    api.post(`/finance/student-fees/${studentFeeId}/apply-discount`, data),
 };

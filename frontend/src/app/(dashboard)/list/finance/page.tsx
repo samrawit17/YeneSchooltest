@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -75,6 +76,8 @@ interface StudentFee {
   installmentIndex?: number | null;
   totalFee: number;
   discount: number;
+  discountPercent?: number;
+  discountLabel?: string | null;
   finalAmount: number;
   paidAmount: number;
   remainingBalance: number;
@@ -129,6 +132,15 @@ interface CurriculumInfo {
   termCount: number;
 }
 
+interface DiscountPolicy {
+  id: string;
+  name: string;
+  description?: string;
+  discountType: 'PERCENTAGE' | 'FIXED';
+  discountValue: number;
+  isActive: boolean;
+}
+
 const FEE_TYPES = [
   { value: 'TUITION', label: 'Tuition' },
   { value: 'REGISTRATION', label: 'Registration' },
@@ -173,6 +185,7 @@ export default function FinanceListPage() {
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
   const [studentFees, setStudentFees] = useState<StudentFee[]>([]);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [discountPolicies, setDiscountPolicies] = useState<DiscountPolicy[]>([]);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
   const [curriculumType, setCurriculumType] = useState<string>('TERM');
@@ -500,7 +513,17 @@ export default function FinanceListPage() {
     loadGradeRange();
   }, [canOpenFinancePage, user?.schoolId]);
 
-  const loadData = useCallback(async () => {
+  const fetchDiscountPolicies = useCallback(async () => {
+    if (!user?.schoolId) return;
+    try {
+      const response = await financeAPI.listDiscountPolicies(user.schoolId);
+      setDiscountPolicies(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch discount policies:', error);
+    }
+  }, [user?.schoolId]);
+
+  const loadAllData = useCallback(async () => {
     if (!canOpenFinancePage) {
       setLoading(false);
       return;
@@ -509,7 +532,7 @@ export default function FinanceListPage() {
     setLoadError('');
     try {
       if (activeTab === 'fee-structures') {
-        if (!canReadFeeStructures) return;
+        if (!canReadFeeStructures) { setLoading(false); return; }
         const schoolId = user?.schoolId;
         if (!schoolId) {
           toast.error('School ID not found. Please log in again.');
@@ -519,7 +542,7 @@ export default function FinanceListPage() {
         const response = await financeAPI.listFeeStructures(schoolId, selectedYear);
         setFeeStructures((response.data?.data || []).filter((structure: FeeStructure) => structure.isActive));
       } else if (activeTab === 'student-fees') {
-        if (!canReadStudentFees) return;
+        if (!canReadStudentFees) { setLoading(false); return; }
         const schoolId = user?.schoolId;
         if (!schoolId) {
           toast.error('School ID not found. Please log in again.');
@@ -544,7 +567,7 @@ export default function FinanceListPage() {
         setTotalItems(totalCount);
         setTotalPages(Math.ceil(totalCount / pageSize));
       } else if (activeTab === 'payments') {
-        if (!canReadFinanceReports) return;
+        if (!canReadFinanceReports) { setLoading(false); return; }
         const schoolId = user?.schoolId;
         if (!schoolId) {
           toast.error('School ID not found. Please log in again.');
@@ -566,11 +589,10 @@ export default function FinanceListPage() {
     }
   }, [activeTab, canOpenFinancePage, canReadFeeStructures, canReadFinanceReports, canReadStudentFees, currentPage, pageSize, searchTerm, selectedGrade, selectedStatus, selectedTerm, selectedYear, user?.schoolId]);
 
-  // Load data based on active tab
   useEffect(() => {
     if (!selectedYear || !user?.schoolId) return;
-    loadData();
-  }, [loadData, selectedYear, user?.schoolId]);
+    loadAllData();
+  }, [loadAllData, selectedYear, user?.schoolId]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -648,7 +670,7 @@ export default function FinanceListPage() {
       );
       setFeeStructureDialogOpen(false);
       setFormData({ feeType: '', grade: availableGradeRanges[0]?.value || '', amount: '', termId: '', semester: '', description: '', isActive: true });
-      loadData();
+      loadAllData();
     } catch (error) {
       toast.error('Failed to create fee structure');
     }
@@ -658,7 +680,7 @@ export default function FinanceListPage() {
     try {
       await financeAPI.deleteFeeStructure(id, schoolId);
       toast.success('Fee structure deleted successfully');
-      loadData();
+      loadAllData();
     } catch (error) {
       toast.error('Failed to delete fee structure');
     }
@@ -812,7 +834,7 @@ export default function FinanceListPage() {
         paymentDate: toLocalDateInputValue(new Date()),
         notes: '',
       });
-      loadData(); // Refresh the data
+      loadAllData(); // Refresh the data
     } catch (error: any) {
       console.error('Error recording payment:', error);
       toast.error(error?.response?.data?.message || 'Failed to record payment');
@@ -890,7 +912,7 @@ export default function FinanceListPage() {
           ? `Generated ${created} period-specific fee structures`
           : `Fee structures reconciled for ${grades.length} grades`,
       );
-      loadData();
+      loadAllData();
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to generate installments');
     }
@@ -900,7 +922,7 @@ export default function FinanceListPage() {
     try {
       await financeAPI.clearFeeStructures(schoolId, selectedYear);
       toast.success('Fee structures cleared');
-      loadData();
+      loadAllData();
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to clear fee structures');
     }
@@ -957,7 +979,7 @@ export default function FinanceListPage() {
       });
       const created = Number(response.data?.created || 0);
       toast.success(created > 0 ? `Created ${created} student fees` : 'No new student fees to create');
-      loadData();
+      loadAllData();
     } catch (error: any) {
       toast.error(error?.response?.data?.message || 'Failed to generate student fees');
     }
@@ -1174,91 +1196,93 @@ export default function FinanceListPage() {
 
       <div className="p-4 md:p-6 space-y-6">
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-3 sm:p-4 mb-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Academic Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {academicYears.map(year => (
-                  <SelectItem key={year.id} value={year.id}>{year.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {showBillingPeriodFilter && terms.length > 0 && (
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={isMonthlyBilling ? 'Billing Period' : `${curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">
-                    {isMonthlyBilling ? 'All Billing Periods' : `All ${curriculumType === 'SEMESTER' ? 'Semesters' : curriculumType === 'QUARTER' ? 'Quarters' : 'Terms'}`}
-                  </SelectItem>
-                  {terms.map(term => (
-                    <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            <div className="col-span-2 sm:col-span-2 lg:col-span-2">
-              <TableSearch
-                search={searchTerm}
-                setSearch={setSearchTerm}
-                placeholder={searchPlaceholder}
-                className="w-full"
-              />
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
             </div>
-
-            {showGradeFilter && (
-              <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Grade" />
+                  <SelectValue placeholder="Academic Year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
-                  {allowedGrades.map(g => (
-                    <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
+                  {academicYears.map(year => (
+                    <SelectItem key={year.id} value={year.id}>{year.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            )}
 
-            {showStatusFilter && (
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="PAID">Paid</SelectItem>
-                  <SelectItem value="PARTIAL">Partial</SelectItem>
-                  <SelectItem value="PENDING">Unpaid</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+              {showBillingPeriodFilter && terms.length > 0 && (
+                <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={isMonthlyBilling ? 'Billing Period' : `${curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      {isMonthlyBilling ? 'All Billing Periods' : `All ${curriculumType === 'SEMESTER' ? 'Semesters' : curriculumType === 'QUARTER' ? 'Quarters' : 'Terms'}`}
+                    </SelectItem>
+                    {terms.map(term => (
+                      <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
-            <Button variant="outline" onClick={() => {
-              setSearchTerm('');
-              setSelectedTerm('all');
-              setSelectedGrade('all');
-              setSelectedStatus('all');
-            }}>
-              Clear Filters
-            </Button>
-          </div>
+              <div className="col-span-2 sm:col-span-2 lg:col-span-2">
+                <TableSearch
+                  search={searchTerm}
+                  setSearch={setSearchTerm}
+                  placeholder={searchPlaceholder}
+                  className="w-full"
+                />
+              </div>
+
+              {showGradeFilter && (
+                <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Grades</SelectItem>
+                    {allowedGrades.map(g => (
+                      <SelectItem key={g} value={g.toString()}>Grade {g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {showStatusFilter && (
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="PAID">Paid</SelectItem>
+                    <SelectItem value="PARTIAL">Partial</SelectItem>
+                    <SelectItem value="PENDING">Unpaid</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+
+              <Button variant="outline" onClick={() => {
+                setSearchTerm('');
+                setSelectedTerm('all');
+                setSelectedGrade('all');
+                setSelectedStatus('all');
+              }}>
+                Clear Filters
+              </Button>
+            </div>
+          )}
         </div>
 
         {loadError ? (
           <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
             {loadError}
-          </div>
-        ) : null}
-
-        {loading ? (
-          <div className="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">
-            Loading finance data...
           </div>
         ) : null}
 
@@ -1284,259 +1308,317 @@ export default function FinanceListPage() {
             </TabsList>
           </div>
 
-          {/* Fee Structures Tab */}
-          <TabsContent value="fee-structures">
+          {loading ? (
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle>Fee Structures</CardTitle>
-                    <p className="text-sm text-slate-500 mt-1">
-                      Billing cycle: <span className="font-medium">{getModeLabel(feeCollectionMode)}</span> - {getFeeStructureHelpText(feeCollectionMode)}
-                    </p>
+                    <Skeleton className="h-6 w-48 mb-2" />
+                    <Skeleton className="h-4 w-72" />
                   </div>
                   <div className="flex items-center gap-2">
-                    {canDeleteFeeStructures && (
-                      <Button
-                        variant="outline"
-                        onClick={handleClearFeeStructures}
-                        className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Clear
-                      </Button>
-                    )}
-                    {canCreateFeeStructures && (
-                      <Button variant="outline" onClick={handleGenerateInstallments} className="border-green-600 text-green-700 hover:bg-green-50">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Auto-Generate / Reconcile {installmentCount}x
-                      </Button>
-                    )}
-                    {canCreateFeeStructures && (
-                      <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
-                        setFormData({ feeType: 'TUITION', grade: availableGradeRanges[0]?.value || '', amount: '', termId: '', semester: '', description: '', isActive: true });
-                        setFeeStructureDialogOpen(true);
-                      }}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Fee Structure
-                      </Button>
-                    )}
+                    <Skeleton className="h-10 w-24" />
+                    <Skeleton className="h-10 w-48" />
+                    <Skeleton className="h-10 w-40" />
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="whitespace-nowrap">Fee Type</TableHead>
-                      <TableHead className="whitespace-nowrap">Grade</TableHead>
-                      <TableHead className="whitespace-nowrap">{getBillingPeriodLabel(feeCollectionMode)}</TableHead>
-                      <TableHead className="whitespace-nowrap">Amount (ETB)</TableHead>
-                      <TableHead className="whitespace-nowrap">Description</TableHead>
-                      <TableHead className="whitespace-nowrap">Status</TableHead>
-                      <TableHead className="whitespace-nowrap">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredFeeStructures.length > 0 ? (
-                      paginatedFeeStructures.map(fs => {
-                        const period = getFeeStructurePeriod(fs);
-                        return (
-                          <TableRow key={fs.id}>
-                            <TableCell className="font-medium">{formatFeeTypeDisplay(fs.feeType, period)}</TableCell>
-                            <TableCell>{fs.grade ? `Grade ${fs.grade}` : 'All Grades'}</TableCell>
-                            <TableCell>{period}</TableCell>
-                            <TableCell>{formatCurrency(fs.amount)}</TableCell>
-                            <TableCell>{formatFeeStructureDescription(fs, period)}</TableCell>
-                            <TableCell>
-                              <Badge variant={fs.isActive ? 'default' : 'secondary'}>
-                                {fs.isActive ? 'Active' : 'Inactive'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {canDeleteFeeStructures && (
-                                  <Button variant="ghost" size="sm" onClick={() => handleDeleteFeeStructure(fs.id)}>
-                                    <Trash2 className="w-4 h-4 text-red-500" />
-                                  </Button>
-                                )}
-                              </div>
+              <CardContent className="space-y-4">
+                <div className="border rounded-md overflow-hidden">
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 border-b">
+                    <div className="grid grid-cols-7 gap-4">
+                      {[1, 2, 3, 4, 5, 6, 7].map(i => <Skeleton key={i} className="h-4 w-full" />)}
+                    </div>
+                  </div>
+                  {[1, 2, 3, 4, 5].map(row => (
+                    <div key={row} className="p-4 border-b">
+                      <div className="grid grid-cols-7 gap-4">
+                        {[1, 2, 3, 4, 5, 6, 7].map(i => <Skeleton key={i} className="h-4 w-full" />)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Fee Structures Tab */}
+              <TabsContent value="fee-structures">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-row items-center justify-between">
+                      <div>
+                        <CardTitle>Fee Structures</CardTitle>
+                        <p className="text-sm text-slate-500 mt-1">
+                          Billing cycle: <span className="font-medium">{getModeLabel(feeCollectionMode)}</span> - {getFeeStructureHelpText(feeCollectionMode)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {canDeleteFeeStructures && (
+                          <Button
+                            variant="outline"
+                            onClick={handleClearFeeStructures}
+                            className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Clear
+                          </Button>
+                        )}
+                        {canCreateFeeStructures && (
+                          <Button variant="outline" onClick={handleGenerateInstallments} className="border-green-600 text-green-700 hover:bg-green-50">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Auto-Generate / Reconcile {installmentCount}x
+                          </Button>
+                        )}
+                        {canCreateFeeStructures && (
+                          <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => {
+                            setFormData({ feeType: 'TUITION', grade: availableGradeRanges[0]?.value || '', amount: '', termId: '', semester: '', description: '', isActive: true });
+                            setFeeStructureDialogOpen(true);
+                          }}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Fee Structure
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="whitespace-nowrap">Fee Type</TableHead>
+                          <TableHead className="whitespace-nowrap">Grade</TableHead>
+                          <TableHead className="whitespace-nowrap">{getBillingPeriodLabel(feeCollectionMode)}</TableHead>
+                          <TableHead className="whitespace-nowrap">Amount (ETB)</TableHead>
+                          <TableHead className="whitespace-nowrap">Description</TableHead>
+                          <TableHead className="whitespace-nowrap">Status</TableHead>
+                          <TableHead className="whitespace-nowrap">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredFeeStructures.length > 0 ? (
+                          paginatedFeeStructures.map(fs => {
+                            const period = getFeeStructurePeriod(fs);
+                            return (
+                              <TableRow key={fs.id}>
+                                <TableCell className="font-medium">{formatFeeTypeDisplay(fs.feeType, period)}</TableCell>
+                                <TableCell>{fs.grade ? `Grade ${fs.grade}` : 'All Grades'}</TableCell>
+                                <TableCell>{period}</TableCell>
+                                <TableCell>{formatCurrency(fs.amount)}</TableCell>
+                                <TableCell>{formatFeeStructureDescription(fs, period)}</TableCell>
+                                <TableCell>
+                                  <Badge variant={fs.isActive ? 'default' : 'secondary'}>
+                                    {fs.isActive ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {canDeleteFeeStructures && (
+                                      <Button variant="ghost" size="sm" onClick={() => handleDeleteFeeStructure(fs.id)}>
+                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-8 text-slate-500">
+                              {searchTerm || selectedGrade !== 'all' || selectedTerm !== 'all'
+                                ? 'No fee structures match the selected filters.'
+                                : 'No generated fee structures found. Add the base fee structure, then run Auto-Generate.'}
                             </TableCell>
                           </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-slate-500">
-                          {searchTerm || selectedGrade !== 'all' || selectedTerm !== 'all'
-                            ? 'No fee structures match the selected filters.'
-                            : 'No generated fee structures found. Add the base fee structure, then run Auto-Generate.'}
-                        </TableCell>
-                      </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                    {filteredFeeStructures.length > FEE_STRUCTURES_PAGE_SIZE && (
+                      <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 flex justify-end">
+                        <Pagination page={feeStructuresPage} setPage={setFeeStructuresPage} totalPages={feeStructuresTotalPages} />
+                      </div>
                     )}
-                  </TableBody>
-                </Table>
-                {filteredFeeStructures.length > FEE_STRUCTURES_PAGE_SIZE && (
-                  <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 flex justify-end">
-                    <Pagination page={feeStructuresPage} setPage={setFeeStructuresPage} totalPages={feeStructuresTotalPages} />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-          {/* Student Fees Tab */}
-          <TabsContent value="student-fees">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Student Fees</CardTitle>
-                <div className="flex items-center gap-2">
-                  {canGenerateStudentFees && (
-                    <Button variant="outline" onClick={handleGenerateStudentFees}>
-                      <Users className="w-4 h-4 mr-2" />
-                      Generate Student Fees
-                    </Button>
-                  )}
-                  <Button variant="outline">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="whitespace-nowrap">Student Name</TableHead>
-                      <TableHead className="whitespace-nowrap">Grade</TableHead>
-                      <TableHead className="whitespace-nowrap">{getBillingPeriodLabel(feeCollectionMode)}</TableHead>
-                      <TableHead className="whitespace-nowrap">Fee Type</TableHead>
-                      <TableHead className="whitespace-nowrap">Total Fee</TableHead>
-                      <TableHead className="whitespace-nowrap">Paid</TableHead>
-                      <TableHead className="whitespace-nowrap">Balance</TableHead>
-                      <TableHead className="whitespace-nowrap">Due Date</TableHead>
-                      <TableHead className="whitespace-nowrap">Status</TableHead>
-                      <TableHead className="whitespace-nowrap">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStudentFees.length > 0 ? (
-                      filteredStudentFees.map(sf => (
-                        <TableRow key={sf.id}>
-                          <TableCell className="font-medium">{sf.studentName}</TableCell>
-                          <TableCell>{getStudentFeeGradeLabel(sf)}</TableCell>
-                          <TableCell>{getStudentFeePeriodLabel(sf)}</TableCell>
-                          <TableCell>{formatFeeTypeDisplay(sf.feeType, getStudentFeePeriodLabel(sf))}</TableCell>
-                          <TableCell>{formatCurrency(sf.finalAmount)}</TableCell>
-                          <TableCell className="text-green-600">{formatCurrency(sf.paidAmount)}</TableCell>
-                          <TableCell className={sf.remainingBalance > 0 ? 'text-red-600 font-medium' : ''}>
-                            {formatCurrency(sf.remainingBalance)}
-                          </TableCell>
-                          <TableCell>{sf.dueDate ? formatDate(sf.dueDate) : '-'}</TableCell>
-                          <TableCell>{getStatusBadge(sf.status)}</TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => handleViewDetails(sf)}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={10} className="text-center py-8 text-slate-500">
-                          {searchTerm || selectedGrade !== 'all' || selectedStatus !== 'all' || selectedTerm !== 'all'
-                            ? 'No student fees match the selected filters.'
-                            : 'No student fees found'}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-
-                {/* Pagination */}
-                {filteredStudentFees.length > 0 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="text-sm text-slate-500">
-                      Showing 1 to {filteredStudentFees.length} of {filteredStudentFees.length}
+              {/* Student Fees Tab */}
+              <TabsContent value="student-fees">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Student Fees</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {canGenerateStudentFees && (
+                        <Button variant="outline" onClick={handleGenerateStudentFees}>
+                          <Users className="w-4 h-4 mr-2" />
+                          Generate Student Fees
+                        </Button>
+                      )}
+                      <Button variant="outline">
+                        <Download className="w-4 h-4 mr-2" />
+                        Export
+                      </Button>
                     </div>
-                    <Pagination
-                      page={currentPage}
-                      setPage={setCurrentPage}
-                      totalPages={totalPages}
-                      className="flex-wrap"
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Payments Tab */}
-          <TabsContent value="payments">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Payment History</CardTitle>
-                <Button variant="outline" onClick={exportPaymentsCsv} disabled={payments.length === 0}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export CSV
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Receipt #</TableHead>
-                      <TableHead>Student Name</TableHead>
-                      <TableHead>Grade</TableHead>
-                      <TableHead>Paid Period</TableHead>
-                      <TableHead>Payment Method</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Recorded By</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Notes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPayments.length > 0 ? (
-                      paginatedPayments.map(p => (
-                        <TableRow key={p.id}>
-                          <TableCell className="font-medium">{p.receiptNumber}</TableCell>
-                          <TableCell>{p.studentName}</TableCell>
-                          <TableCell>{p.grade} - {p.section}</TableCell>
-                          <TableCell>{formatPaymentPaidMonth(p)}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {p.paymentMethod === 'CASH' && <Banknote className="w-3 h-3 mr-1" />}
-                              {p.paymentMethod === 'BANK_TRANSFER' && <CreditCard className="w-3 h-3 mr-1" />}
-                              {p.paymentMethod === 'CHEQUE' && <Receipt className="w-3 h-3 mr-1" />}
-                              {p.paymentMethod}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="font-medium text-green-600">
-                            {formatCurrency(p.amountPaid)}
-                          </TableCell>
-                          <TableCell>{p.recordedBy}</TableCell>
-                          <TableCell>{formatDate(p.paymentDate)}</TableCell>
-                          <TableCell>{p.notes || '-'}</TableCell>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="whitespace-nowrap">Student Name</TableHead>
+                          <TableHead className="whitespace-nowrap">Grade</TableHead>
+                          <TableHead className="whitespace-nowrap">{getBillingPeriodLabel(feeCollectionMode)}</TableHead>
+                          <TableHead className="whitespace-nowrap">Fee Type</TableHead>
+                          <TableHead className="whitespace-nowrap">Total Fee</TableHead>
+                          <TableHead className="whitespace-nowrap">Discount</TableHead>
+                          <TableHead className="whitespace-nowrap">Final Fee</TableHead>
+                          <TableHead className="whitespace-nowrap">Paid</TableHead>
+                          <TableHead className="whitespace-nowrap">Balance</TableHead>
+                          <TableHead className="whitespace-nowrap">Due Date</TableHead>
+                          <TableHead className="whitespace-nowrap">Status</TableHead>
+                          <TableHead className="whitespace-nowrap">Actions</TableHead>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8 text-slate-500">
-                          No payments found
-                        </TableCell>
-                      </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredStudentFees.length > 0 ? (
+                          filteredStudentFees.map(sf => (
+                            <TableRow key={sf.id}>
+                              <TableCell className="font-medium">
+  <span className="inline-flex items-center gap-1.5">
+    {sf.studentName}
+    {sf.discount > 0 && (
+      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px] px-1.5 py-0">
+        {sf.discountPercent}%
+      </Badge>
+    )}
+  </span>
+</TableCell>
+                              <TableCell>{getStudentFeeGradeLabel(sf)}</TableCell>
+                              <TableCell>{getStudentFeePeriodLabel(sf)}</TableCell>
+                              <TableCell>{formatFeeTypeDisplay(sf.feeType, getStudentFeePeriodLabel(sf))}</TableCell>
+                              <TableCell>{formatCurrency((sf as any).totalAmount || sf.finalAmount)}</TableCell>
+                               <TableCell>
+  {sf.discount > 0 ? (
+    <span className="inline-flex items-center gap-1.5">
+      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px] px-1.5 py-0">
+        {sf.discountPercent}%
+      </Badge>
+      <span className="text-blue-600">-{formatCurrency(sf.discount)}</span>
+    </span>
+  ) : formatCurrency(0)}
+</TableCell>
+                              <TableCell className="font-medium">{formatCurrency(sf.finalAmount)}</TableCell>
+                              <TableCell className="text-green-600">{formatCurrency(sf.paidAmount)}</TableCell>
+                              <TableCell className={sf.remainingBalance > 0 ? 'text-red-600 font-medium' : ''}>
+                                {formatCurrency(sf.remainingBalance)}
+                              </TableCell>
+                              <TableCell>{sf.dueDate ? formatDate(sf.dueDate) : '-'}</TableCell>
+                              <TableCell>{getStatusBadge(sf.status)}</TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="sm" onClick={() => handleViewDetails(sf)}>
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={10} className="text-center py-8 text-slate-500">
+                              {searchTerm || selectedGrade !== 'all' || selectedStatus !== 'all' || selectedTerm !== 'all'
+                                ? 'No student fees match the selected filters.'
+                                : 'No student fees found'}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    {filteredStudentFees.length > 0 && (
+                      <div className="flex items-center justify-between mt-4">
+                        <div className="text-sm text-slate-500">
+                          Showing 1 to {filteredStudentFees.length} of {filteredStudentFees.length}
+                        </div>
+                        <Pagination
+                          page={currentPage}
+                          setPage={setCurrentPage}
+                          totalPages={totalPages}
+                          className="flex-wrap"
+                        />
+                      </div>
                     )}
-                  </TableBody>
-                </Table>
-                {filteredPayments.length > PAYMENTS_PAGE_SIZE && (
-                  <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 flex justify-end">
-                    <Pagination page={paymentsPage} setPage={setPaymentsPage} totalPages={paymentsTotalPages} />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Payments Tab */}
+              <TabsContent value="payments">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Payment History</CardTitle>
+                    <Button variant="outline" onClick={exportPaymentsCsv} disabled={payments.length === 0}>
+                      <Download className="w-4 h-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Receipt #</TableHead>
+                          <TableHead>Student Name</TableHead>
+                          <TableHead>Grade</TableHead>
+                          <TableHead>Paid Period</TableHead>
+                          <TableHead>Payment Method</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Recorded By</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Notes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredPayments.length > 0 ? (
+                          paginatedPayments.map(p => (
+                            <TableRow key={p.id}>
+                              <TableCell className="font-medium">{p.receiptNumber}</TableCell>
+                              <TableCell>{p.studentName}</TableCell>
+                              <TableCell>{p.grade} - {p.section}</TableCell>
+                              <TableCell>{formatPaymentPaidMonth(p)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {p.paymentMethod === 'CASH' && <Banknote className="w-3 h-3 mr-1" />}
+                                  {p.paymentMethod === 'BANK_TRANSFER' && <CreditCard className="w-3 h-3 mr-1" />}
+                                  {p.paymentMethod === 'CHEQUE' && <Receipt className="w-3 h-3 mr-1" />}
+                                  {p.paymentMethod}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-medium text-green-600">
+                                {formatCurrency(p.amountPaid)}
+                              </TableCell>
+                              <TableCell>{p.recordedBy}</TableCell>
+                              <TableCell>{formatDate(p.paymentDate)}</TableCell>
+                              <TableCell>{p.notes || '-'}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={9} className="text-center py-8 text-slate-500">
+                              No payments found
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                    {filteredPayments.length > PAYMENTS_PAGE_SIZE && (
+                      <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 flex justify-end">
+                        <Pagination page={paymentsPage} setPage={setPaymentsPage} totalPages={paymentsTotalPages} />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </>
+          )}
         </Tabs>
 
         {/* Create Fee Structure Dialog */}

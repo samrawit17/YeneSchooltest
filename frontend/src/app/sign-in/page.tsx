@@ -12,7 +12,7 @@ import { useThemeStore } from "@/lib/themeStore";
 import { AppLanguage, useLanguageStore } from "@/lib/languageStore";
 import { useTranslations } from "@/hooks/useTranslations";
 import { Eye, EyeOff, Languages, Lock, LogIn, Moon, School, Sun, User, Megaphone } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { announcementsAPI, type Announcement } from "@/lib/api/content";
 import { enrollmentAPI } from "@/lib/api/enrollment";
 import { resolveAssetUrl } from "@/lib/asset-url";
@@ -103,6 +103,7 @@ const LoginPage = () => {
   const [schoolAccentColor, setSchoolAccentColor] = useState<string | null>(cachedLoginSchool?.accentColor || null);
   const [resolvedLoginSchoolSlug, setResolvedLoginSchoolSlug] = useState<string | null>(cachedLoginSchool?.publicUrlSlug || null);
   const initialDocumentTitleRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
   const displaySchoolName =
     schoolName ||
     announcements[currentSlide]?.school?.name ||
@@ -168,7 +169,9 @@ const LoginPage = () => {
     document.head.append(icon, shortcutIcon);
 
     return () => {
-      document.head.querySelectorAll(selector).forEach((node) => node.remove());
+      try {
+        document.head.querySelectorAll(selector).forEach((node) => node.remove());
+      } catch {}
     };
   }, [displaySchoolLogoUrl]);
 
@@ -213,6 +216,7 @@ const LoginPage = () => {
       }
     };
     fetchData();
+    return () => { mountedRef.current = false; };
   }, [requestedSchoolSlug, requestedSchoolId]);
 
   useEffect(() => {
@@ -225,7 +229,7 @@ const LoginPage = () => {
     if (announcements.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % announcements.length);
-    }, 5000);
+    }, 60000);
     return () => clearInterval(timer);
   }, [announcements.length]);
 
@@ -328,12 +332,12 @@ const LoginPage = () => {
           alt={`${displaySchoolName} login background`}
           className="absolute inset-0 h-full w-full object-cover"
           onError={(event) => {
+            if (!mountedRef.current) return;
             const fallbackUrl = displaySchoolLogoUrl || defaultLoginImageUrl;
             if (event.currentTarget.src !== fallbackUrl) {
               event.currentTarget.src = fallbackUrl;
             }
-          }}
-        />
+          }} />
         <div className="absolute inset-0 bg-black/60" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
 
@@ -344,6 +348,7 @@ const LoginPage = () => {
                 src={displaySchoolLogoUrl}
                 alt={`${displaySchoolName} logo`}
                 className="h-40 w-52 shrink-0 rounded-xl bg-transparent object-contain md:h-48 md:w-64"
+                onError={(e) => { if (mountedRef.current) e.currentTarget.style.display = 'none'; }}
               />
             )}
             <h1 className="max-w-full truncate text-3xl font-bold tracking-wide md:text-4xl">
@@ -365,23 +370,14 @@ const LoginPage = () => {
                 <Megaphone className="w-5 h-5 text-orange-300" />
                 <span className="text-sm font-medium text-orange-200 uppercase tracking-wider">Announcements</span>
               </div>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentSlide}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.4 }}
-                >
-
-                  <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-3">
-                    {announcements[currentSlide].title}
-                  </h2>
-                  <p className="text-base text-white/80 line-clamp-3">
-                    {announcements[currentSlide].content}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
+              <div className="transition-all duration-400">
+                <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-3">
+                  {announcements[currentSlide].title}
+                </h2>
+                <p className="text-base text-white/80 line-clamp-3">
+                  {announcements[currentSlide].content}
+                </p>
+              </div>
 
               {announcements.length > 1 && (
                 <div className="flex items-center gap-2 mt-6">

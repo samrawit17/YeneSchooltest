@@ -1141,9 +1141,11 @@ const ParentFeesPage = () => {
                                               {formatCurrency(periodAmount)}
                                             </div>
                                             {periodData?.discount ? (
-                                              <div className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                                                {periodData.discountLabel || "Family discount"}
-                                                {periodData.discountPercent ? ` (${periodData.discountPercent}%)` : ""} -{formatCurrency(periodData.discount)}
+                                              <div className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 flex-wrap">
+                                                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px] px-1.5 py-0">
+                                                  {periodData.discountPercent ? `${periodData.discountPercent}%` : "Discount"}
+                                                </Badge>
+                                                {periodData.discountLabel || "Family discount"} -{formatCurrency(periodData.discount)}
                                               </div>
                                             ) : null}
 

@@ -1071,8 +1071,13 @@ const ParentDashboard = () => {
                   )}
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                  <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                     {selectedChild.name}
+                    {discountPercent > 0 && (
+                      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px] px-1.5 py-0">
+                        {discountPercent}%
+                      </Badge>
+                    )}
                   </h3>
                   <p className="text-sm text-slate-500">
                     {t.grade} {selectedChild.className} &middot; {t.section} {selectedChild.section}
@@ -1298,9 +1303,11 @@ const ParentDashboard = () => {
                           </p>
                         )}
                         {period.discount > 0 && (
-                          <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                            {period.discountLabel || "Family discount"}
-                            {period.discountPercent ? ` (${period.discountPercent}%)` : ""}: -{formatBirr(period.discount)}
+                          <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 flex-wrap">
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px] px-1.5 py-0">
+                              {period.discountPercent ? `${period.discountPercent}%` : "Discount"}
+                            </Badge>
+                            {period.discountLabel || "Family discount"}: -{formatBirr(period.discount)}
                           </p>
                         )}
                       </div>
