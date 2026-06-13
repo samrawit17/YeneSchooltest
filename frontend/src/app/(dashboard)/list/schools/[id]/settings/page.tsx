@@ -1499,7 +1499,10 @@ export default function SchoolSettingsPage() {
   return (
     <div className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden p-3 sm:p-4 md:p-6">
       {/* Page Title */}
-      <h1 className="mb-6 text-xl font-semibold text-slate-900 dark:text-white">{t.title}</h1>
+      <h1 className="mb-1 text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+      <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
+        Configure all school-specific settings below. Changes take effect immediately after saving.
+      </p>
 
       {/* School Header */}
       {schoolInfo && (

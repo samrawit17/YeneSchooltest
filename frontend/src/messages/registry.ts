@@ -7418,6 +7418,9 @@ const getLegacyModule = (language: AppLanguage, module: MessageModule) => {
   if (module === "examSeating") {
     return examSeatingMessages[language as keyof typeof examSeatingMessages] ?? examSeatingMessages.en;
   }
+  if (module === "finance") {
+    return financeMessages[language as keyof typeof financeMessages] ?? financeMessages.en;
+  }
 
   const legacyKey = legacyModuleKeys[module];
   if (!legacyKey) return null;

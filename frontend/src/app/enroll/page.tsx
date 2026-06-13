@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import { enrollmentAPI } from '@/lib/api/enrollment';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -111,21 +111,6 @@ const toDateInputValue = (date?: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const slideVariants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 60 : -60,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? -60 : 60,
-    opacity: 0,
-  }),
-};
-
 export default function EnrollmentPage() {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useThemeStore();
@@ -133,7 +118,7 @@ export default function EnrollmentPage() {
   const setLanguage = useLanguageStore((state) => state.setLanguage);
   const { t } = useTranslations<any>('enrollment');
   const [currentStep, setCurrentStep] = useState<FormStep>('school');
-  const [direction, setDirection] = useState(1);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchoolData, setSelectedSchoolData] = useState<{ id: string; name: string; academicYearId: string; academicYearName: string } | null>(null);
@@ -362,7 +347,6 @@ export default function EnrollmentPage() {
   const nextStep = () => {
     const nextIndex = stepIndex + 1;
     if (nextIndex < STEPS.length) {
-      setDirection(1);
       setCurrentStep(STEPS[nextIndex]);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -371,7 +355,6 @@ export default function EnrollmentPage() {
   const prevStep = () => {
     const prevIndex = stepIndex - 1;
     if (prevIndex >= 0) {
-      setDirection(-1);
       setCurrentStep(STEPS[prevIndex]);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -427,12 +410,7 @@ export default function EnrollmentPage() {
         className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center p-4"
         style={pageStyle}
       >
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="w-full max-w-md"
-        >
+        <div className="w-full max-w-md">
           <Card className="border-0 shadow-xl shadow-slate-200/60 dark:shadow-slate-900/80 overflow-hidden dark:bg-slate-800">
             <div
               className="h-2 w-full"
@@ -468,7 +446,7 @@ export default function EnrollmentPage() {
               </Button>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -523,14 +501,9 @@ export default function EnrollmentPage() {
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-12">
         {/* Header */}
         <div className="text-center mb-10">
-          <motion.div
-            initial={{ y: -10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.4 }}
-            className="flex items-center justify-center gap-3 mb-4"
-          >
+          <div className="flex items-center justify-center gap-3 mb-4">
             {schoolLogoUrl ? (
-              <img src={schoolLogoUrl} alt={selectedSchool?.name || t.schoolAlt} className="h-32 w-32 object-contain" />
+              <img src={schoolLogoUrl} alt={selectedSchool?.name || t.schoolAlt} className="h-32 w-32 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             ) : (
               <div className="flex h-12 w-12 items-center justify-center rounded-xl"
                 style={{ backgroundColor: 'var(--enroll-brand)' }}
@@ -544,7 +517,7 @@ export default function EnrollmentPage() {
                 {selectedSchool?.name || t.titleFallback}
               </h1>
             </div>
-          </motion.div>
+          </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
             {t.subtitle}
           </p>
@@ -603,17 +576,8 @@ export default function EnrollmentPage() {
         </div>
 
         {/* Form Card */}
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={currentStep}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-          >
-            <Card className="border border-slate-200/80 dark:border-slate-700/80 shadow-lg shadow-slate-200/40 dark:shadow-slate-900/60 overflow-hidden dark:bg-slate-800">
+        <div className="transition-opacity duration-200">
+          <Card className="border border-slate-200/80 dark:border-slate-700/80 shadow-lg shadow-slate-200/40 dark:shadow-slate-900/60 overflow-hidden dark:bg-slate-800">
               <div
                 className="h-1 w-full"
                 style={{ background: `linear-gradient(90deg, ${brandColor}, ${brandColor}44)` }}
@@ -1060,8 +1024,7 @@ export default function EnrollmentPage() {
                 </div>
               </CardContent>
             </Card>
-          </motion.div>
-        </AnimatePresence>
+          </div>
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-400 dark:text-slate-600 mt-8">

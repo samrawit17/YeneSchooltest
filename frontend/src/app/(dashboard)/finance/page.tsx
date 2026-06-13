@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -50,7 +51,8 @@ import {
   BarChart3,
   PieChart as PieChartIcon,
   Activity,
-  Settings
+  Settings,
+  Tag,
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -93,6 +95,7 @@ interface DashboardStats {
   totalRevenue: number;
   collectedToday: number;
   outstandingBalance: number;
+  totalDiscounts?: number;
   totalStudentsFullyPaid: number;
   studentsPartialPayment: number;
   unpaidStudentsCount: number;
@@ -176,6 +179,9 @@ interface OutstandingFee {
   total: number;
   paid: number;
   remaining: number;
+  discount: number;
+  discountPercent?: number;
+  discountLabel?: string | null;
   status: 'PAID' | 'PARTIAL' | 'PENDING' | 'UNPAID';
 }
 
@@ -250,8 +256,6 @@ export default function FinanceDashboardPage() {
   const { user } = useAuth();
   const { formatDate: formatSchoolDate } = useAcademicYear();
   const { t } = useTranslations<FinanceMessages>('finance');
-  const [loading, setLoading] = useState(true);
-  const [outstandingLoading, setOutstandingLoading] = useState(false);
   const [dashboardReportSettled, setDashboardReportSettled] = useState(false);
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
@@ -268,6 +272,7 @@ export default function FinanceDashboardPage() {
     totalRevenue: 0,
     collectedToday: 0,
     outstandingBalance: 0,
+    totalDiscounts: 0,
     totalStudentsFullyPaid: 0,
     studentsPartialPayment: 0,
     unpaidStudentsCount: 0,
@@ -378,7 +383,6 @@ export default function FinanceDashboardPage() {
       return;
     }
 
-    setLoading(true);
     setDashboardReportSettled(false);
     try {
       // Get date range from state or defaults
@@ -389,7 +393,6 @@ export default function FinanceDashboardPage() {
       const schoolId = user?.schoolId;
       if (!schoolId) {
         toast.error(toastText(t.schoolIdNotFound, 'School ID not found'));
-        setLoading(false);
         setDashboardReportSettled(true);
         return;
       }
@@ -416,7 +419,6 @@ export default function FinanceDashboardPage() {
 
       const feeStructureRows = resolveArrayPayload<any>(feeStructuresResponse?.data, ['data']);
       setFeeStructures(feeStructureRows);
-      setLoading(false);
 
       const dailyReportResult = await dailyReportPromise;
       if ('error' in dailyReportResult) {
@@ -449,7 +451,6 @@ export default function FinanceDashboardPage() {
       console.error('Error loading dashboard data:', error);
       toast.error(toastText(t.failedLoadYears, 'Failed to load finance dashboard'));
     } finally {
-      setLoading(false);
       setDashboardReportSettled(true);
     }
   }, [selectedYear, selectedTerm, terms, fromDate, toDate, user?.schoolId, t.failedLoadYears, t.schoolIdNotFound]);
@@ -458,11 +459,9 @@ export default function FinanceDashboardPage() {
   useEffect(() => {
     const loadSetupData = async () => {
       if (!user?.schoolId) {
-        setLoading(false);
         return;
       }
 
-      setLoading(true);
       try {
         const response = await academicYearsAPI.getAll({ schoolId: user.schoolId });
         const years = Array.isArray(response.data)
@@ -491,8 +490,6 @@ export default function FinanceDashboardPage() {
         setTerms([]);
         setSelectedTerm('');
         toast.error('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
       }
     };
     loadSetupData();
@@ -574,7 +571,6 @@ export default function FinanceDashboardPage() {
     const termFilter = selectedTerm && selectedTerm !== 'all' ? selectedTerm : undefined;
     const requestId = outstandingRequestSeq.current + 1;
     outstandingRequestSeq.current = requestId;
-    setOutstandingLoading(true);
     try {
       const response = await financeAPI.getOutstandingBalances(
         user.schoolId,
@@ -587,6 +583,7 @@ export default function FinanceDashboardPage() {
       const rows = resolveArrayPayload<OutstandingFee>(response?.data, ['rows', 'data.rows']);
       const totalOutstanding = Number(response?.data?.totalOutstanding ?? 0);
       const totalRevenue = Number(response?.data?.totalRevenue ?? 0);
+      const totalDiscounts = Number(response?.data?.totalDiscounts ?? 0);
       const paidStudents = rows.filter((row) => row.status === 'PAID').length;
       const partialStudents = rows.filter((row) => row.status === 'PARTIAL').length;
       const unpaidStudents = rows.filter((row) => ['PENDING', 'UNPAID'].includes(String(row.status))).length;
@@ -597,6 +594,7 @@ export default function FinanceDashboardPage() {
         ...current,
         totalRevenue,
         outstandingBalance: totalOutstanding,
+        totalDiscounts,
         totalStudentsFullyPaid: paidStudents,
         studentsPartialPayment: partialStudents,
         unpaidStudentsCount: unpaidStudents,
@@ -607,9 +605,7 @@ export default function FinanceDashboardPage() {
       setOutstandingFees([]);
       setOutstandingTotal(0);
     } finally {
-      if (requestId === outstandingRequestSeq.current) {
-        setOutstandingLoading(false);
-      }
+      if (requestId !== outstandingRequestSeq.current) return;
     }
   }, [activeCalendarType, selectedYear, selectedTerm, terms, user?.schoolId]);
 
@@ -634,14 +630,7 @@ export default function FinanceDashboardPage() {
       terms.some((term) => term.id === selectedTerm);
 
     if (selectedYear && user?.schoolId && termReady && dashboardReportSettled) {
-      const timer = window.setTimeout(() => {
-        loadOutstandingBalances();
-      }, 700);
-      return () => {
-        window.clearTimeout(timer);
-        outstandingRequestSeq.current += 1;
-        setOutstandingLoading(false);
-      };
+      loadOutstandingBalances();
     }
   }, [selectedYear, selectedTerm, terms, user?.schoolId, dashboardReportSettled, loadOutstandingBalances]);
 
@@ -1560,7 +1549,7 @@ setIsCreatingFeeStructure(true);
 
       <div className="p-4 md:p-6 space-y-6">
         {/* Billing Health Check Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className={`border-l-4 shadow-sm ${billingStatusTone.split(' ')[0]}`}>
             <CardContent className="p-4 flex items-center gap-4">
               <div className={`p-2 rounded-full ${billingStatusTone.split(' ').slice(1).join(' ')}`}>
@@ -1598,43 +1587,40 @@ setIsCreatingFeeStructure(true);
               </div>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-purple-500 shadow-sm md:col-span-3">
-            <CardContent className="p-4 flex items-center justify-between gap-4">
-               <div className="flex items-center gap-4">
-                <div className="p-2 bg-purple-50 rounded-full text-purple-600 dark:bg-purple-900/40 dark:text-purple-400">
-                  <Wallet className="w-5 h-5" />
+          <Card className="border-l-4 border-l-purple-500 shadow-sm">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="shrink-0 p-2 bg-purple-50 rounded-full text-purple-600 dark:bg-purple-900/40 dark:text-purple-400">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-slate-500 font-medium">Billing Policy</p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                  <span className="text-xs text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">Due:</span> {formatDueDay(billingPolicy.dueDay)}
+                  </span>
+                  <span className="text-xs text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold">Penalty:</span> {formatCurrency(billingPolicy.penalty)}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 font-medium">Billing Policy</p>
-                  <div className="flex items-center gap-4 mt-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">Due Day:</span>
-                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        {formatDueDay(billingPolicy.dueDay)}
-                      </span>
-                    </div>
-                    <div className="h-3 w-px bg-slate-200 dark:bg-slate-600" />
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] text-slate-400 uppercase font-bold">Daily Penalty:</span>
-                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(billingPolicy.penalty)}</span>
-                    </div>
-                  </div>
-                </div>
-               </div>
-               <div className="text-[10px] text-slate-400 italic">
-                 Managed via School Settings
-               </div>
+              </div>
+              <div className="shrink-0 text-[10px] text-slate-400 italic">
+                Managed via School Settings
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-blue-600 to-blue-700 text-white">
             <CardContent className="p-5">
               <div className="relative z-10">
                 <p className="text-blue-100 text-xs font-medium uppercase tracking-wider">{t.totalRevenue}</p>
-                <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.totalRevenue)}</h3>
+                {dashboardReportSettled ? (
+                  <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.totalRevenue)}</h3>
+                ) : (
+                  <Skeleton className="h-8 w-36 mt-1 bg-white/20" />
+                )}
                 <div className="flex items-center mt-4 text-blue-100 text-xs">
                   <Activity className="w-3.5 h-3.5 mr-1" />
                   <span>Overall Collection</span>
@@ -1648,7 +1634,11 @@ setIsCreatingFeeStructure(true);
             <CardContent className="p-5">
               <div className="relative z-10">
                 <p className="text-emerald-100 text-xs font-medium uppercase tracking-wider">{t.collectedToday}</p>
-                <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.collectedToday)}</h3>
+                {dashboardReportSettled ? (
+                  <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.collectedToday)}</h3>
+                ) : (
+                  <Skeleton className="h-8 w-36 mt-1 bg-white/20" />
+                )}
                 <div className="flex items-center mt-4 text-emerald-100 text-xs">
                   <TrendingUp className="w-3.5 h-3.5 mr-1" />
                   <span>Daily Velocity</span>
@@ -1658,11 +1648,33 @@ setIsCreatingFeeStructure(true);
             </CardContent>
           </Card>
 
+          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+            <CardContent className="p-5">
+              <div className="relative z-10">
+                <p className="text-amber-100 text-xs font-medium uppercase tracking-wider">Total Discounts</p>
+                {dashboardReportSettled ? (
+                  <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.totalDiscounts || 0)}</h3>
+                ) : (
+                  <Skeleton className="h-8 w-36 mt-1 bg-white/20" />
+                )}
+                <div className="flex items-center mt-4 text-amber-100 text-xs">
+                  <Tag className="w-3.5 h-3.5 mr-1" />
+                  <span>Applied Reductions</span>
+                </div>
+              </div>
+              <Tag className="absolute -right-2 -bottom-2 w-24 h-24 text-white/10" />
+            </CardContent>
+          </Card>
+
           <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-rose-500 to-rose-600 text-white">
             <CardContent className="p-5">
               <div className="relative z-10">
                 <p className="text-rose-100 text-xs font-medium uppercase tracking-wider">{t.outstandingBalance}</p>
-                <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.outstandingBalance)}</h3>
+                {dashboardReportSettled ? (
+                  <h3 className="text-2xl font-bold mt-1">{formatCurrency(stats.outstandingBalance)}</h3>
+                ) : (
+                  <Skeleton className="h-8 w-36 mt-1 bg-white/20" />
+                )}
                 <div className="flex items-center mt-4 text-rose-100 text-xs">
                   <AlertCircle className="w-3.5 h-3.5 mr-1" />
                   <span>Outstanding Dues</span>
@@ -1676,9 +1688,13 @@ setIsCreatingFeeStructure(true);
             <CardContent className="p-5">
               <div className="relative z-10">
                 <p className="text-slate-300 text-xs font-medium uppercase tracking-wider">Efficiency Rate</p>
-                <h3 className="text-2xl font-bold mt-1">
-                  {Math.round((stats.totalRevenue / (stats.totalRevenue + stats.outstandingBalance || 1)) * 100)}%
-                </h3>
+                {dashboardReportSettled ? (
+                  <h3 className="text-2xl font-bold mt-1">
+                    {Math.round((stats.totalRevenue / (stats.totalRevenue + stats.outstandingBalance || 1)) * 100)}%
+                  </h3>
+                ) : (
+                  <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
+                )}
                 <div className="flex items-center mt-4 text-slate-300 text-xs">
                   <CheckCircle className="w-3.5 h-3.5 mr-1" />
                   <span>Target Fulfillment</span>
@@ -1710,43 +1726,47 @@ setIsCreatingFeeStructure(true);
             </CardHeader>
             <CardContent>
               <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartRevenueData}>
-                    <defs>
-                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis 
-                      dataKey="date" 
-                      fontSize={10} 
-                      tickFormatter={(d) => formatDate(d)} 
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis 
-                      fontSize={10} 
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(val) => `ETB ${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`}
-                    />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      formatter={(val: number) => [formatCurrency(val), 'Revenue']}
-                      labelFormatter={(label) => formatDate(label)}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="amount" 
-                      stroke="#3b82f6" 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorAmount)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                {dashboardReportSettled ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartRevenueData}>
+                      <defs>
+                        <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        fontSize={10} 
+                        tickFormatter={(d) => formatDate(d)} 
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        fontSize={10} 
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(val) => `ETB ${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        formatter={(val: number) => [formatCurrency(val), 'Revenue']}
+                        labelFormatter={(label) => formatDate(label)}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="amount" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#colorAmount)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Skeleton className="h-full w-full rounded-lg" />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -1758,29 +1778,33 @@ setIsCreatingFeeStructure(true);
             </CardHeader>
             <CardContent>
               <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart 
-                    data={[
-                      { name: 'Tuition', value: feeBreakdown.tuition },
-                      { name: 'Reg', value: feeBreakdown.registration },
-                      { name: 'Exam', value: feeBreakdown.examFee },
-                      { name: 'Other', value: feeBreakdown.other + feeBreakdown.library }
-                    ]}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
-                    <YAxis fontSize={10} axisLine={false} tickLine={false} hide />
-                    <Tooltip 
-                      cursor={{fill: '#f1f5f9'}}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
-                      {[0,1,2,3].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                {dashboardReportSettled ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={[
+                        { name: 'Tuition', value: feeBreakdown.tuition },
+                        { name: 'Reg', value: feeBreakdown.registration },
+                        { name: 'Exam', value: feeBreakdown.examFee },
+                        { name: 'Other', value: feeBreakdown.other + feeBreakdown.library }
+                      ]}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                      <YAxis fontSize={10} axisLine={false} tickLine={false} hide />
+                      <Tooltip 
+                        cursor={{fill: '#f1f5f9'}}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
+                        {[0,1,2,3].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b', '#6366f1'][index]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <Skeleton className="h-full w-full rounded-lg" />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2 mt-4">
                 <div className="flex items-center gap-1.5">
@@ -1854,11 +1878,7 @@ setIsCreatingFeeStructure(true);
             </div>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center py-8 text-slate-400">
-                <p className="text-sm">{t.loading}</p>
-              </div>
-            ) : displayFeeStructures.length > 0 ? (
+            {displayFeeStructures.length > 0 ? (
               <Table className="w-full">
                 <TableHeader>
                   <TableRow className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
@@ -1933,7 +1953,17 @@ setIsCreatingFeeStructure(true);
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedTransactions.length > 0 ? (
+                  {!dashboardReportSettled ? (
+                    [...Array(5)].map((_, i) => (
+                      <TableRow key={i} className="border-b dark:border-slate-700">
+                        {[...Array(10)].map((_, j) => (
+                          <TableCell key={j} className="py-3 px-4">
+                            <Skeleton className="h-4 w-full" />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : paginatedTransactions.length > 0 ? (
                     paginatedTransactions.map((tx) => (
                       <TableRow key={tx.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <TableCell className="text-xs font-medium dark:text-white py-3 px-4">
@@ -1999,7 +2029,7 @@ setIsCreatingFeeStructure(true);
                 <div className="min-w-0">
                   <CardTitle className="text-base font-semibold dark:text-white">{t.outstandingFees}</CardTitle>
                   <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
-                    {outstandingFeesNote}
+                    Outstanding balances follow the school's quarterly billing method.
                   </p>
                 </div>
                 <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
@@ -2035,41 +2065,60 @@ setIsCreatingFeeStructure(true);
                   <TableHeader>
                     <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[25%] text-left">{t.student}</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-left">{t.grade}</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-left">{t.feePeriod}</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">{t.total}</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">{t.paid}</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-right">{t.balance}</TableHead>
-                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[15%] text-center">{t.status}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[12%] text-left">{t.grade}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[13%] text-left">{t.feePeriod}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[10%] text-right">{t.total}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[10%] text-right">Discount</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[10%] text-right">{t.paid}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[10%] text-right">{t.balance}</TableHead>
+                      <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[10%] text-center">{t.status}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {outstandingLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center text-slate-500 py-8 dark:text-gray-400">
-                            Loading outstanding balances...
-                          </TableCell>
+                    {!dashboardReportSettled ? (
+                      [...Array(5)].map((_, i) => (
+                        <TableRow key={i} className="border-b dark:border-slate-700">
+                          {[...Array(8)].map((_, j) => (
+                            <TableCell key={j} className="py-3 px-4">
+                              <Skeleton className="h-4 w-full" />
+                            </TableCell>
+                          ))}
                         </TableRow>
-                      ) : paginatedOutstandingFees.length > 0 ? (
+                      ))
+                    ) : paginatedOutstandingFees.length > 0 ? (
                         paginatedOutstandingFees.map((fee) => (
                           <TableRow key={fee.id} className={`border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${fee.status === 'UNPAID' ? 'bg-red-50 dark:bg-red-900/10' : ''}`}>
-                            <TableCell className="text-xs font-medium dark:text-white py-3 px-4 w-[25%] text-left">{fee.studentName}</TableCell>
-                            <TableCell className="text-xs dark:text-gray-300 py-3 px-4 w-[15%] text-left">{fee.grade ? `${fee.grade}${fee.section ? ` - ${fee.section}` : ''}` : '-'}</TableCell>
-                            <TableCell className="py-3 px-4 w-[15%] text-left">
+                            <TableCell className="text-xs font-medium dark:text-white py-3 px-4 w-[25%] text-left">
+  <span className="inline-flex items-center gap-1.5">
+    {fee.studentName}
+    {fee.discount > 0 && (
+      <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px] px-1.5 py-0">
+        {fee.discountPercent}%
+      </Badge>
+    )}
+  </span>
+</TableCell>
+                            <TableCell className="text-xs dark:text-gray-300 py-3 px-4 w-[12%] text-left">{fee.grade ? `${fee.grade}${fee.section ? ` - ${fee.section}` : ''}` : '-'}</TableCell>
+                            <TableCell className="py-3 px-4 w-[13%] text-left">
                               <div className="text-xs dark:text-gray-300">{formatOutstandingScopeLabel(fee)}</div>
                               {fee.isYearWide && (
                                 <div className="text-[10px] text-slate-500 dark:text-gray-400">{t.derivedFromAnnual}</div>
                               )}
                             </TableCell>
-                            <TableCell className="text-xs dark:text-white py-3 px-4 w-[15%] text-right">{formatCurrency(fee.total || 0)}</TableCell>
-                            <TableCell className="text-xs text-green-600 dark:text-green-400 py-3 px-4 w-[15%] text-right">{formatCurrency(fee.paid || 0)}</TableCell>
-                            <TableCell className="text-xs font-medium text-red-600 dark:text-red-400 py-3 px-4 w-[15%] text-right">{formatCurrency(fee.remaining || 0)}</TableCell>
-                            <TableCell className="text-xs py-3 px-4 w-[15%] text-center">{getStatusBadge(fee.status)}</TableCell>
+                            <TableCell className="text-xs dark:text-white py-3 px-4 w-[10%] text-right">{formatCurrency(fee.total || 0)}</TableCell>
+                            <TableCell className="text-xs py-3 px-4 w-[10%] text-right">
+  {fee.discount > 0 ? (
+    <span className="text-blue-600 dark:text-blue-400">-{formatCurrency(fee.discount)}</span>
+  ) : formatCurrency(0)}
+</TableCell>
+                            <TableCell className="text-xs text-green-600 dark:text-green-400 py-3 px-4 w-[10%] text-right">{formatCurrency(fee.paid || 0)}</TableCell>
+                            <TableCell className="text-xs font-medium text-red-600 dark:text-red-400 py-3 px-4 w-[10%] text-right">{formatCurrency(fee.remaining || 0)}</TableCell>
+                            <TableCell className="text-xs py-3 px-4 w-[10%] text-center">{getStatusBadge(fee.status)}</TableCell>
                           </TableRow>
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-slate-500 py-8 dark:text-gray-400">
+                          <TableCell colSpan={8} className="text-center text-slate-500 py-8 dark:text-gray-400">
                             {outstandingSearch ? 'No matching fees found' : 'No outstanding fees'}
                           </TableCell>
                         </TableRow>

@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface HomeroomStudent {
   id: string;
@@ -95,10 +96,15 @@ export default function TeacherDisciplinePage() {
 
         setStudents(homeroomStudents);
 
+        // Auto-select if only one student
+        if (homeroomStudents.length === 1) {
+          setSelectedStudentId(homeroomStudents[0].id);
+        }
+
         const aggregated = await Promise.all(
           homeroomStudents.map(async (student) => {
             try {
-              const resp = await disciplineAPI.getStudentIncidents(student.userId);
+              const resp = await disciplineAPI.getStudentIncidents(student.id);
               const studentIncidents = Array.isArray(resp.data) ? resp.data : resp.data?.data || [];
               return studentIncidents.map((incident: any) => ({
                 id: incident.id,
@@ -163,7 +169,7 @@ export default function TeacherDisciplinePage() {
     try {
       await disciplineAPI.createIncident({
         schoolId: user.schoolId,
-        studentId: selectedStudent.userId,
+        studentId: selectedStudent.id,
         reportedBy: user.id,
         incidentDate: new Date().toISOString(),
         title: form.title,
@@ -171,11 +177,20 @@ export default function TeacherDisciplinePage() {
         severity: form.severity,
         actionTaken: form.actionTaken,
       });
+      
+      toast.success("Discipline incident logged successfully");
       setDialogOpen(false);
       setForm({ title: "", description: "", severity: "LOW", actionTaken: "" });
-      window.location.reload();
-    } catch (error) {
+      
+      // Instead of reload, we can just trigger a data refresh or add it to the state
+      // For simplicity in this specific setup, we'll trigger the reload after a short delay
+      // so the user can see the toast
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
       console.error("Failed to create incident:", error);
+      toast.error(error.response?.data?.message || "Failed to create incident");
     } finally {
       setSubmitting(false);
     }
@@ -191,22 +206,26 @@ export default function TeacherDisciplinePage() {
               View incidents for your homeroom students
             </p>
           </div>
-          {students.length > 1 && (
+          {students.length > 0 && (
             <div className="flex items-center gap-2 shrink-0 mr-[30px]">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">Select Student</label>
-              <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                <SelectTrigger className="w-full max-w-[200px] dark:bg-slate-800 dark:border-slate-700">
-                  <SelectValue placeholder="All students" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All students</SelectItem>
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.name} — {student.className || "N/A"}{student.section ? ` - ${student.section}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {students.length > 1 && (
+                <>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">Select Student</label>
+                  <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                    <SelectTrigger className="w-full max-w-[200px] dark:bg-slate-800 dark:border-slate-700">
+                      <SelectValue placeholder="All students" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All students</SelectItem>
+                      {students.map((student) => (
+                        <SelectItem key={student.id} value={student.id}>
+                          {student.name} — {student.className || "N/A"}{student.section ? ` - ${student.section}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
               {selectedStudentId !== "all" && (
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                   <DialogTrigger asChild>

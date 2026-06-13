@@ -1648,6 +1648,9 @@ export class FinanceService {
 
     const termById = new Map(periods.map((period) => [period.id, period]));
 
+    const annualDiscountCache = new Map<string, number>();
+    const studentAnnualTotalCache = new Map<string, number>();
+
     const data = feeStructures.flatMap((fs) => {
       const installmentIndex = this.getFeeStructureInstallmentIndex(fs.feeType);
       const zeroBasedIndex = installmentIndex ? installmentIndex - 1 : 0;
@@ -1678,12 +1681,37 @@ export class FinanceService {
             );
 
       return targetStudentIds.map((studentId) => {
-        const discount = this.calculateFamilyDiscountAmount(
-          fs.feeType,
-          fs.amount,
-          studentId,
-          familyDiscount,
-        );
+        const normType = this.normalizeFeeType(fs.feeType);
+        const annualKey = `${studentId}:${normType}`;
+
+        if (!annualDiscountCache.has(annualKey)) {
+          const sameTypeStructures = feeStructures.filter((f) => {
+            if (this.normalizeFeeType(f.feeType) !== normType) return false;
+            if (f.grade == null) return true;
+            return studentGradeById.get(studentId) === Number(f.grade);
+          });
+          const annualTotal = sameTypeStructures.reduce(
+            (sum, f) => sum + Number(f.amount),
+            0,
+          );
+          studentAnnualTotalCache.set(annualKey, annualTotal);
+          const annualDiscount = this.calculateFamilyDiscountAmount(
+            normType,
+            annualTotal,
+            studentId,
+            familyDiscount,
+          );
+          annualDiscountCache.set(annualKey, annualDiscount);
+        }
+
+        const annualDiscount = annualDiscountCache.get(annualKey) || 0;
+        const annualTotal = studentAnnualTotalCache.get(annualKey) || fs.amount;
+        const discount =
+          annualTotal > 0
+            ? Math.round(
+                ((annualDiscount * Number(fs.amount)) / annualTotal) * 100,
+              ) / 100
+            : 0;
 
         return {
           schoolId: dto.schoolId,
@@ -1997,6 +2025,7 @@ export class FinanceService {
         feeStructure,
       ]),
     );
+
     const rows = await this.prisma.studentFee.findMany({
       where: {
         schoolId: params.schoolId,
@@ -2018,16 +2047,53 @@ export class FinanceService {
       },
     });
 
+    const annualDiscountCache = new Map<string, number>();
+    const studentAnnualTotalCache = new Map<string, number>();
+    const studentFeeGroupKey = (studentId: string, normType: string) =>
+      `${studentId}::${normType}`;
+
+    for (const row of rows) {
+      const feeStructure = feeStructureById.get(row.feeStructureId);
+      if (!feeStructure) continue;
+      const normType = this.normalizeFeeType(feeStructure.feeType);
+      const key = studentFeeGroupKey(row.studentId, normType);
+      if (annualDiscountCache.has(key)) continue;
+
+      const sameStudentRows = rows.filter(
+        (r) =>
+          r.studentId === row.studentId &&
+          this.normalizeFeeType(
+            feeStructureById.get(r.feeStructureId)?.feeType || '',
+          ) === normType,
+      );
+      const annualTotal = sameStudentRows.reduce(
+        (sum, r) => sum + Number(r.totalAmount),
+        0,
+      );
+      studentAnnualTotalCache.set(key, annualTotal);
+      const annualDiscount = this.calculateFamilyDiscountAmount(
+        normType,
+        annualTotal,
+        row.studentId,
+        params.familyDiscount,
+      );
+      annualDiscountCache.set(key, annualDiscount);
+    }
+
     let updated = 0;
     for (const row of rows) {
       const feeStructure = feeStructureById.get(row.feeStructureId);
       if (!feeStructure) continue;
-      const discount = this.calculateFamilyDiscountAmount(
-        feeStructure.feeType,
-        row.totalAmount,
-        row.studentId,
-        params.familyDiscount,
-      );
+      const normType = this.normalizeFeeType(feeStructure.feeType);
+      const key = studentFeeGroupKey(row.studentId, normType);
+      const annualDiscount = annualDiscountCache.get(key) || 0;
+      const annualTotal = studentAnnualTotalCache.get(key) || row.totalAmount;
+      const discount =
+        annualTotal > 0
+          ? Math.round(
+              ((annualDiscount * Number(row.totalAmount)) / annualTotal) * 100,
+            ) / 100
+          : 0;
       const finalAmount = Math.max(0, row.totalAmount - discount);
       const discountPolicyId =
         discount > 0 ? params.familyDiscount.policyId : null;
@@ -2999,6 +3065,9 @@ export class FinanceService {
         term: {
           select: { name: true, order: true, startDate: true, endDate: true },
         },
+        discountPolicy: {
+          select: { name: true, discountType: true, discountValue: true },
+        },
       },
     });
 
@@ -3114,6 +3183,13 @@ export class FinanceService {
         scopeLabel = `${selectedTerm.name} share`;
       }
 
+      const discountPercent =
+        sf.discountPolicy?.discountType === 'PERCENTAGE'
+          ? sf.discountPolicy.discountValue
+          : sf.totalAmount > 0 && sf.discount > 0
+            ? Math.round((sf.discount / sf.totalAmount) * 10000) / 100
+            : 0;
+      const discountLabel = sf.discountPolicy?.name || null;
       const studentClass = classMap.get(sf.studentId);
       return [
         {
@@ -3126,6 +3202,10 @@ export class FinanceService {
           installmentIndex,
           isYearWide,
           total: displayTotal,
+          discount: sf.discount,
+          discountPercent,
+          discountLabel,
+          originalTotal: sf.totalAmount,
           paid: displayPaid,
           remaining: displayRemaining,
           status: displayStatus,
@@ -3135,7 +3215,8 @@ export class FinanceService {
     const totalOutstanding = rows.reduce((s, r) => s + r.remaining, 0);
     // Total Revenue = actual amount collected (sum of all payments made)
     const totalRevenue = rows.reduce((s, r) => s + r.paid, 0);
-    return { totalOutstanding, totalRevenue, rows };
+    const totalDiscounts = rows.reduce((s, r) => s + (r.discount || 0), 0);
+    return { totalOutstanding, totalRevenue, totalDiscounts, rows };
   }
 
   async markOverdueFees(
