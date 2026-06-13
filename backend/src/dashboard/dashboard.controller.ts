@@ -10,6 +10,7 @@ import { RegistrarDashboardService } from './services/registrar.dashboard.servic
 import { SuperadminDashboardService } from './services/superadmin.dashboard.service';
 import { UniversalDashboardResponseDto } from './dto/dashboard-response.dto';
 import { CacheService } from '../infrastructure/cache/cache.service';
+import { CACHE_TTL } from '../infrastructure/cache/cache.constants';
 
 // Extended request type with user
 interface AuthenticatedRequest extends Request {
@@ -35,8 +36,10 @@ export class DashboardController {
     private readonly superadminDashboardService: SuperadminDashboardService,
   ) {}
 
-  private getUserNamespace(userId: string) {
-    return `dashboard:user:${userId}`;
+  private getUserNamespace(userId: string, schoolId?: string) {
+    return schoolId
+      ? `dashboard:school:${schoolId}:user:${userId}`
+      : `dashboard:user:${userId}`;
   }
 
   private getSchoolNamespace(schoolId: string) {
@@ -52,12 +55,15 @@ export class DashboardController {
     const namespace =
       scope === 'school' && user.schoolId
         ? this.getSchoolNamespace(user.schoolId)
-        : this.getUserNamespace(user.id);
+        : this.getUserNamespace(user.id, user.schoolId);
+
+    const ttl =
+      scope === 'school' ? CACHE_TTL.DASHBOARD_SCHOOL : CACHE_TTL.DASHBOARD_USER;
 
     return this.cacheService.getOrSetVersioned(
       namespace,
       cacheKey,
-      120,
+      ttl,
       factory,
     );
   }

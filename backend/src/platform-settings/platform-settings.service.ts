@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
-import { DEFAULT_CACHE_TTL_SECONDS } from '../infrastructure/cache/cache.constants';
+import { DEFAULT_CACHE_TTL_SECONDS, CACHE_TTL } from '../infrastructure/cache/cache.constants';
 
 @Injectable()
 export class PlatformSettingsService {
@@ -36,7 +36,7 @@ export class PlatformSettingsService {
   async getSetting(key: string) {
     return this.cacheService.getOrSet(
       this.getSettingCacheKey(key),
-      DEFAULT_CACHE_TTL_SECONDS,
+      CACHE_TTL.PLATFORM_SETTINGS,
       async () => {
         const setting = await this.prisma.platformSetting.findUnique({
           where: { key },
@@ -52,7 +52,7 @@ export class PlatformSettingsService {
   async getAllSettings() {
     return this.cacheService.getOrSet(
       this.getAllSettingsCacheKey(),
-      DEFAULT_CACHE_TTL_SECONDS,
+      CACHE_TTL.PLATFORM_SETTINGS,
       async () => {
         const settings = await this.prisma.platformSetting.findMany();
         const result: Record<string, any> = { ...this.defaultSettings };

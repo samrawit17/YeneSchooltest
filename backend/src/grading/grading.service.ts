@@ -23,6 +23,7 @@ import {
   GradeStatus,
 } from './dto/grading.dto';
 import { CacheService } from '../infrastructure/cache/cache.service';
+import { CACHE_TTL } from '../infrastructure/cache/cache.constants';
 import {
   NotificationService,
   NotificationType,
@@ -54,12 +55,12 @@ export class GradingService {
     private notificationService: NotificationService,
   ) {}
 
-  private getStudentGradesNamespace(studentId: string) {
-    return `grades:student:${studentId}`;
+  private getStudentGradesNamespace(schoolId: string, studentId: string) {
+    return `grades:school:${schoolId}:student:${studentId}`;
   }
 
-  private getTeacherGradesNamespace(teacherId: string) {
-    return `grades:teacher:${teacherId}`;
+  private getTeacherGradesNamespace(schoolId: string, teacherId: string) {
+    return `grades:school:${schoolId}:teacher:${teacherId}`;
   }
 
   private getSchoolGradesNamespace(schoolId: string) {
@@ -511,16 +512,16 @@ export class GradingService {
 
     if (input.teacherId) {
       await this.cacheService.bumpVersion(
-        this.getTeacherGradesNamespace(input.teacherId),
+        this.getTeacherGradesNamespace(input.schoolId, input.teacherId),
       );
-      await this.cacheService.bumpVersion(`dashboard:user:${input.teacherId}`);
+      await this.cacheService.bumpVersion(`dashboard:school:${input.schoolId}:user:${input.teacherId}`);
     }
 
     for (const studentId of input.studentIds || []) {
       await this.cacheService.bumpVersion(
-        this.getStudentGradesNamespace(studentId),
+        this.getStudentGradesNamespace(input.schoolId, studentId),
       );
-      await this.cacheService.bumpVersion(`dashboard:user:${studentId}`);
+      await this.cacheService.bumpVersion(`dashboard:school:${input.schoolId}:user:${studentId}`);
     }
   }
 
@@ -1014,7 +1015,7 @@ export class GradingService {
     );
 
     return this.cacheService.getOrSetVersioned(
-      this.getTeacherGradesNamespace(teacherId),
+      this.getTeacherGradesNamespace(schoolId, teacherId),
       JSON.stringify({
         mode: 'grade-entry',
         academicYear,
@@ -1023,7 +1024,7 @@ export class GradingService {
         sectionId,
         subjectId,
       }),
-      120,
+      CACHE_TTL.GRADES_TEACHER,
       async () => {
         const gradingComponentMap = await this.getSchoolGradingComponentsMap(
           access.schoolId,
@@ -2057,7 +2058,7 @@ export class GradingService {
     return this.cacheService.getOrSetVersioned(
       this.getSchoolGradesNamespace(schoolId),
       JSON.stringify({ mode: 'review', filter }),
-      120,
+      CACHE_TTL.GRADES_SCHOOL,
       async () =>
         this.prisma.subjectGrade.findMany({
           where,
@@ -2249,9 +2250,9 @@ export class GradingService {
     }
 
     return this.cacheService.getOrSetVersioned(
-      this.getStudentGradesNamespace(studentId),
+      this.getStudentGradesNamespace(schoolId, studentId),
       JSON.stringify({ mode: 'grades', academicYear, termId }),
-      60,
+      CACHE_TTL.GRADES_STUDENT,
       async () => {
         const grades = await this.prisma.subjectGrade.findMany({
           where: {
@@ -2330,9 +2331,9 @@ export class GradingService {
     academicYear: string,
   ) {
     return this.cacheService.getOrSetVersioned(
-      this.getTeacherGradesNamespace(teacherId),
+      this.getTeacherGradesNamespace(schoolId, teacherId),
       JSON.stringify({ mode: 'assignments', academicYear }),
-      120,
+      CACHE_TTL.GRADES_TEACHER,
       async () => {
         const teacherSubjectAssignments =
           await this.prisma.teacherSubjectAssignment.findMany({
@@ -2933,14 +2934,14 @@ export class GradingService {
     await this.syncGradeLockStatus(studentId, schoolId, academicYear);
 
     const finalGrades = await this.cacheService.getOrSetVersioned(
-      this.getStudentGradesNamespace(studentId),
+      this.getStudentGradesNamespace(schoolId, studentId),
       JSON.stringify({
         mode: 'final-grades',
         academicYear,
         classId,
         hideLockedScores,
       }),
-      60,
+      CACHE_TTL.STUDENT_FINAL_GRADES,
       async () => {
         const grades = await this.prisma.subjectGrade.findMany({
           where: {
