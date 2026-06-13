@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
-import { DEFAULT_CACHE_TTL_SECONDS } from '../infrastructure/cache/cache.constants';
+import { DEFAULT_CACHE_TTL_SECONDS, CACHE_TTL } from '../infrastructure/cache/cache.constants';
 import { CredentialService } from '../credential/credential.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { AuditRequestContext, AuditService, type AuditActor } from '../audit/audit.service';
@@ -728,7 +728,7 @@ export class SchoolSettingsService {
 
     return this.cacheService.getOrSet(
       this.getSettingCacheKey(schoolId, canonicalKey),
-      DEFAULT_CACHE_TTL_SECONDS,
+      CACHE_TTL.SCHOOL_SETTINGS,
       async () => {
         const settings = await this.prisma.schoolSetting.findMany({
           where: {
@@ -747,7 +747,7 @@ export class SchoolSettingsService {
   async getAllSettings(schoolId: string) {
     return this.cacheService.getOrSet(
       this.getAllSettingsCacheKey(schoolId),
-      DEFAULT_CACHE_TTL_SECONDS,
+      CACHE_TTL.SCHOOL_SETTINGS,
       async () => {
         const settings = await this.prisma.schoolSetting.findMany({
           where: { schoolId },

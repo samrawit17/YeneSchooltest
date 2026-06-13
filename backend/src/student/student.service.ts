@@ -14,6 +14,7 @@ import { CredentialService } from '../credential/credential.service';
 import { Prisma, Role, EnrollmentStatus } from '@prisma/client';
 import { ClassService } from '../class/class.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
+import { CACHE_TTL } from '../infrastructure/cache/cache.constants';
 import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
 
 const MAX_ID_CARD_BULK_COUNT = 200;
@@ -204,8 +205,8 @@ export class StudentService {
     await this.cacheService.bumpVersion(`dashboard:school:${schoolId}`);
 
     for (const studentUserId of studentUserIds) {
-      await this.cacheService.bumpVersion(`dashboard:user:${studentUserId}`);
-      await this.cacheService.bumpVersion(`grades:student:${studentUserId}`);
+      await this.cacheService.bumpVersion(`dashboard:school:${schoolId}:user:${studentUserId}`);
+      await this.cacheService.bumpVersion(`grades:school:${schoolId}:student:${studentUserId}`);
     }
   }
 
@@ -594,7 +595,7 @@ export class StudentService {
         rollNumber,
         where,
       }),
-      120,
+      CACHE_TTL.STUDENTS_LIST,
       async () => {
         const studentProfiles =
           await this.prismaService.studentProfile.findMany({

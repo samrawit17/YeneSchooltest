@@ -45,7 +45,18 @@ export class CacheService {
     }
   }
 
-  async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
+  async set<T>(
+    key: string,
+    value: T,
+    ttlSeconds: number,
+    schoolId?: string,
+  ): Promise<void> {
+    if (key.startsWith('platform-settings') && schoolId) {
+      throw new Error(
+        'School-specific data cannot be written to platform-settings. Use a school-scoped key instead.',
+      );
+    }
+
     const serializedValue = JSON.stringify(value);
 
     this.memoryCache.set(key, {
@@ -72,6 +83,7 @@ export class CacheService {
     key: string,
     ttlSeconds: number,
     factory: () => Promise<T>,
+    schoolId?: string,
   ): Promise<T> {
     const cachedValue = await this.get<T>(key);
     if (cachedValue !== null) {
@@ -79,7 +91,7 @@ export class CacheService {
     }
 
     const value = await factory();
-    await this.set(key, value, ttlSeconds);
+    await this.set(key, value, ttlSeconds, schoolId);
     return value;
   }
 
@@ -110,12 +122,14 @@ export class CacheService {
     suffix: string,
     ttlSeconds: number,
     factory: () => Promise<T>,
+    schoolId?: string,
   ): Promise<T> {
     const version = await this.getVersion(namespace);
     return this.getOrSet(
       `${namespace}:v${version}:${suffix}`,
       ttlSeconds,
       factory,
+      schoolId,
     );
   }
 

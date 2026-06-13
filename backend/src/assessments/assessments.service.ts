@@ -49,8 +49,8 @@ export class AssessmentsService {
     private readonly cacheService: CacheService,
   ) {}
 
-  private getTeacherGradesNamespace(teacherId: string) {
-    return `grades:teacher:${teacherId}`;
+  private getTeacherGradesNamespace(schoolId: string, teacherId: string) {
+    return `grades:school:${schoolId}:teacher:${teacherId}`;
   }
 
   private getSchoolGradesNamespace(schoolId: string) {
@@ -73,8 +73,8 @@ export class AssessmentsService {
       this.cacheService.bumpVersion(this.getSchoolGradesNamespace(schoolId)),
       this.cacheService.bumpVersion(`dashboard:school:${schoolId}`),
       ...uniqueTeacherIds.flatMap((teacherId) => [
-        this.cacheService.bumpVersion(this.getTeacherGradesNamespace(teacherId)),
-        this.cacheService.bumpVersion(`dashboard:user:${teacherId}`),
+        this.cacheService.bumpVersion(this.getTeacherGradesNamespace(schoolId, teacherId)),
+        this.cacheService.bumpVersion(`dashboard:school:${schoolId}:user:${teacherId}`),
       ]),
     ]);
   }
