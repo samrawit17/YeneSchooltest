@@ -376,7 +376,7 @@ const AdminDashboardView = () => {
         <div className="w-full space-y-5 md:space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
               <Card key={i}>
                 <CardContent className="pt-6">
@@ -385,7 +385,7 @@ const AdminDashboardView = () => {
               </Card>
             ))}
           </div>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 md:gap-4">
             {[1, 2, 3, 4].map((i) => (
               <Card key={i}>
                 <CardContent className="pt-6">
@@ -424,17 +424,20 @@ const AdminDashboardView = () => {
   const visibleAlerts = alerts.filter((alert) => !dismissedAlertSet.has(getAlertKey(alert)));
   const metadata = dashboardData?.metadata;
   const isITManagerDashboard = dashboardRole === "IT_MANAGER";
+  const toBarChart = (data: ChartData | null | undefined): ChartData | null | undefined =>
+    data && data.type !== "bar" && data.type !== "line" ? { ...data, type: "bar" } : data;
+
   const visibleCharts = {
     attendance: translateChart(charts.attendance),
-    userDistribution: translateChart(charts.userDistribution),
-    classDistribution: translateChart(charts.classDistribution),
-    overview: translateChart(charts.overview),
+    userDistribution: toBarChart(translateChart(charts.userDistribution)),
+    classDistribution: toBarChart(translateChart(charts.classDistribution)),
+    overview: toBarChart(translateChart(charts.overview)),
   };
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-gray-50 transition-colors dark:bg-[#111111]">
       <div className="p-3 sm:p-4 md:p-6">
-        <div className="w-full space-y-5 md:space-y-6">
+        <div className="w-full space-y-3 md:space-y-4">
           {/* Header */}
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -507,9 +510,9 @@ const AdminDashboardView = () => {
           )}
 
           {/* KPI Row */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
             {/* Total Students */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -527,7 +530,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Total Teachers */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -545,7 +548,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Total Classes */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -565,7 +568,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Attendance Today */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -590,7 +593,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Pending Enrollments */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -614,7 +617,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Upcoming Exams */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -633,7 +636,7 @@ const AdminDashboardView = () => {
           </div>
 
           {/* Charts Section */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
             {/* Weekly Attendance Chart */}
             {visibleCharts.attendance && (
               <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
@@ -675,7 +678,7 @@ const AdminDashboardView = () => {
           )}
 
           {/* Bottom Section - School Overview */}
-          <div className="grid grid-cols-1 gap-6">
+          <div className="grid grid-cols-1 gap-3">
             {/* School Overview Pie Chart */}
             {visibleCharts.overview && (
               <Card className="min-w-0 overflow-hidden lg:col-span-2 shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>

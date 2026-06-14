@@ -216,8 +216,18 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
 
   const currentAcademicYear: AcademicYear | null = academicYearData || currentTermData?.academicYear || null;
   const currentTerm = useMemo<AcademicTerm | null>(() => {
+    const now = new Date();
     const activeYearId = currentAcademicYear?.id;
     const activeYearTerms = currentAcademicYear?.terms || [];
+
+    // If the academic year has ended, return null — don't show an old term
+    if (currentAcademicYear?.endDate) {
+      const yearEnd = new Date(currentAcademicYear.endDate);
+      if (!Number.isNaN(yearEnd.getTime()) && yearEnd < now) {
+        return null;
+      }
+    }
+
     const currentTermYearId = currentTermData?.academicYear?.id;
     const hasMatchingCurrentTerm =
       !!currentTermData &&
@@ -231,9 +241,8 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
       return currentTermData || null;
     }
 
-    const now = new Date();
     const activeTerm = activeYearTerms.find((term) => matchesCurrentDate(term, now));
-    return activeTerm || activeYearTerms[0] || null;
+    return activeTerm || null;
   }, [currentAcademicYear, currentTermData]);
 
   const formattedYearLabel = useMemo(() => {

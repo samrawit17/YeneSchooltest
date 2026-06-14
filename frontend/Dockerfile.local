@@ -1,0 +1,38 @@
+FROM node:20-slim AS deps
+WORKDIR /app
+COPY node_modules ./node_modules
+COPY package*.json ./
+
+FROM node:20-slim AS development
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=8000
+EXPOSE 8000
+CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
+
+FROM node:20-slim AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:20-slim AS production
+WORKDIR /app
+ENV NPM_CONFIG_FETCH_RETRIES=5
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 --ingroup nodejs nodejs
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+RUN mkdir -p .next/cache && chown -R nodejs:nodejs .next
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+EXPOSE 8000
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+ENV PORT=8000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "fetch('http://127.0.0.1:8000/sign-in').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
+CMD ["node", "server.js"]
