@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -14,6 +15,7 @@ export class SubjectsService {
     name: string;
     code?: string;
     isActive?: boolean;
+    academicYearId?: string;
   }) {
     // Check for duplicate subject name in school
     const existing = await this.prisma.subject.findFirst({
@@ -29,12 +31,26 @@ export class SubjectsService {
       );
     }
 
+    if (data.academicYearId) {
+      const academicYear = await this.prisma.academicYear.findFirst({
+        where: { id: data.academicYearId, schoolId: data.schoolId },
+        select: { endDate: true, name: true },
+      });
+
+      if (academicYear && new Date(academicYear.endDate) < new Date()) {
+        throw new BadRequestException(
+          `Cannot create subjects for academic year "${academicYear.name}" because it has ended.`,
+        );
+      }
+    }
+
     return this.prisma.subject.create({
       data: {
         schoolId: data.schoolId,
         name: data.name,
         code: data.code,
         isActive: data.isActive ?? true,
+        academicYearId: data.academicYearId,
       },
     });
   }
@@ -43,6 +59,11 @@ export class SubjectsService {
     return this.prisma.subject.findMany({
       where: { schoolId },
       orderBy: { name: 'asc' },
+      include: {
+        academicYear: {
+          select: { id: true, name: true },
+        },
+      },
     });
   }
 
@@ -51,6 +72,9 @@ export class SubjectsService {
       where: { id },
       include: {
         school: true,
+        academicYear: {
+          select: { id: true, name: true },
+        },
       },
     });
 

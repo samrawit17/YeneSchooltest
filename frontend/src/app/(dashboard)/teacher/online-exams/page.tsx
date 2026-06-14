@@ -236,10 +236,10 @@ export default function TeacherOnlineExamsPage() {
         : "";
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 p-6 dark:bg-[#111111]">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Online Exams</h1>
-        <p className="text-sm text-slate-500">Create exams for your assigned class, section, and subject.</p>
+        <h1 className="text-2xl font-bold text-gray-950 dark:text-white">Online Exams</h1>
+        <p className="text-sm text-gray-500">Create exams for your assigned class, section, and subject.</p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
@@ -260,7 +260,7 @@ export default function TeacherOnlineExamsPage() {
                   </SelectContent>
                 </Select>
                 {!assignmentsQuery.isLoading && assignments.length === 0 ? (
-                  <p className="text-xs text-slate-500">No assigned classes match this school's configured grade levels.</p>
+                  <p className="text-xs text-gray-500">No assigned classes match this school's configured grade levels.</p>
                 ) : null}
               </div>
               <div className="space-y-1.5">
@@ -312,17 +312,17 @@ export default function TeacherOnlineExamsPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {examsQuery.isLoading ? (
-                <div className="flex items-center py-8 text-sm text-slate-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading exams...</div>
+                <div className="flex items-center py-8 text-sm text-gray-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading exams...</div>
               ) : (examsQuery.data || []).length === 0 ? (
-                <div className="py-8 text-sm text-slate-500">No online exams created yet.</div>
+                <div className="py-8 text-sm text-gray-500">No online exams created yet.</div>
               ) : (
                 (examsQuery.data || []).map((exam: PracticeExam) => (
-                  <button key={exam.id} onClick={() => setSelectedExamId(exam.id)} className={`w-full rounded-lg border p-3 text-left text-sm ${selectedExam?.id === exam.id ? "border-[var(--brand-color,#e35336)] bg-red-50 dark:bg-red-950/20" : "border-slate-200 dark:border-slate-800"}`}>
+                  <button key={exam.id} onClick={() => setSelectedExamId(exam.id)} className={`w-full rounded-lg border p-3 text-left text-sm ${selectedExam?.id === exam.id ? "border-[var(--brand-color,#e35336)] bg-red-50 dark:bg-red-950/20" : "border-gray-200 dark:border-[#2A2A2A]"}`}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-semibold">{exam.title}</span>
                       <Badge variant="outline">{exam.status}</Badge>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">Grade {exam.grade}{exam.stream ? ` ${exam.stream}` : ""} - {exam._count?.questions || 0} questions</p>
+                    <p className="mt-1 text-xs text-gray-500">Grade {exam.grade}{exam.stream ? ` ${exam.stream}` : ""} - {exam._count?.questions || 0} questions</p>
                   </button>
                 ))
               )}
@@ -338,7 +338,7 @@ export default function TeacherOnlineExamsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <CardTitle>{selectedExam.title}</CardTitle>
-                      <p className="text-sm text-slate-500">Grade {selectedExam.grade}{selectedExam.stream ? ` ${selectedExam.stream}` : ""} - {selectedExam.durationMinutes} minutes - Code {selectedExam.accessCode}</p>
+                      <p className="text-sm text-gray-500">Grade {selectedExam.grade}{selectedExam.stream ? ` ${selectedExam.stream}` : ""} - {selectedExam.durationMinutes} minutes - Code {selectedExam.accessCode}</p>
                   </div>
                     <Select value={selectedExam.status} onValueChange={(status) => updateStatus.mutate({ id: selectedExam.id, status })}>
                       <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
@@ -461,7 +461,7 @@ export default function TeacherOnlineExamsPage() {
                         <Label htmlFor="online-short-answer">Accepted answer</Label>
                         <Input id="online-short-answer" value={questionForm.correctText} disabled={questionBankLocked} onChange={(e) => setQuestionForm({ ...questionForm, correctText: e.target.value })} placeholder="Exact answer or variants separated by |" />
                       </div>
-                      <label className="flex items-end gap-2 pb-2 text-sm text-slate-700 dark:text-slate-200">
+                      <label className="flex items-end gap-2 pb-2 text-sm text-gray-700 dark:text-gray-200">
                         <input type="checkbox" checked={!!questionForm.caseSensitive} disabled={questionBankLocked} onChange={(e) => setQuestionForm({ ...questionForm, caseSensitive: e.target.checked })} />
                         Case sensitive
                       </label>
@@ -487,7 +487,7 @@ export default function TeacherOnlineExamsPage() {
                     disabled={questionBankLocked}
                     onChange={(event) => setCsv(event.target.value)}
                   />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     Use question_type MCQ, TRUE_FALSE, or SHORT_ANSWER. Short answers can include accepted variants separated by |.
                   </p>
                   <Button variant="outline" disabled={importQuestions.isPending || !csv.trim() || questionBankLocked} onClick={() => importQuestions.mutate()}>
@@ -501,17 +501,17 @@ export default function TeacherOnlineExamsPage() {
                 <CardHeader><CardTitle className="text-base">Questions ({questions.length})</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {examDetailQuery.isLoading ? (
-                    <div className="flex items-center py-8 text-sm text-slate-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading questions...</div>
+                    <div className="flex items-center py-8 text-sm text-gray-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading questions...</div>
                   ) : questions.length === 0 ? (
-                    <div className="py-8 text-sm text-slate-500">No questions added yet.</div>
+                    <div className="py-8 text-sm text-gray-500">No questions added yet.</div>
                   ) : (
                     questions.map((question: PracticeExamQuestion, index: number) => (
-                      <div key={question.id} className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+                      <div key={question.id} className="rounded-lg border border-gray-200 p-4 dark:border-[#2A2A2A]">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="text-xs font-semibold text-slate-500">Question {index + 1}</p>
-                            <p className="font-medium text-slate-900 dark:text-slate-100">{question.questionText}</p>
-                            <p className="mt-2 text-xs text-slate-500">
+                            <p className="text-xs font-semibold text-gray-500">Question {index + 1}</p>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{question.questionText}</p>
+                            <p className="mt-2 text-xs text-gray-500">
                               {question.questionType === "SHORT_ANSWER"
                                 ? `Short answer: ${question.correctText || "-"}`
                                 : question.questionType === "TRUE_FALSE"
@@ -531,8 +531,8 @@ export default function TeacherOnlineExamsPage() {
             </>
           ) : (
             <Card>
-              <CardContent className="flex min-h-80 flex-col items-center justify-center text-center text-sm text-slate-500">
-                <BookOpen className="mb-3 h-10 w-10 text-slate-300" />
+              <CardContent className="flex min-h-80 flex-col items-center justify-center text-center text-sm text-gray-500">
+                <BookOpen className="mb-3 h-10 w-10 text-gray-300" />
                 Create or select an online exam.
               </CardContent>
             </Card>

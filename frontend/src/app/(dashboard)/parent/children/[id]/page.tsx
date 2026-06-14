@@ -447,7 +447,7 @@ const ChildDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 min-h-screen bg-gray-50 dark:bg-slate-900">
+      <div className="p-6 min-h-screen bg-gray-50 dark:bg-[#111111]">
         <Skeleton className="h-8 w-48 mb-6" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
@@ -464,7 +464,7 @@ const ChildDetailPage = () => {
 
   if (!child) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-screen bg-gray-50 dark:bg-slate-900">
+      <div className="p-6 flex items-center justify-center min-h-screen bg-gray-50 dark:bg-[#111111]">
         <Card className="max-w-md mx-auto">
           <CardContent className="py-12 text-center">
             <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -482,13 +482,13 @@ const ChildDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111] transition-colors">
       <div className="p-4 md:p-6">
         <div className="space-y-6">
 
 
           {/* Large Child Profile Card */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
             <CardContent className="p-6">
               <div className="flex flex-col lg:flex-row gap-6">
                 {/* Left - Student Photo and Basic Info */}
@@ -534,7 +534,7 @@ const ChildDetailPage = () => {
 
                 {/* Right - Quick Stats */}
                 <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4 lg:ml-auto">
-                  <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                  <div className="p-4 bg-gray-50 dark:bg-[#2A2A2A]/50 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span className="text-xs text-gray-500 dark:text-gray-400">Attendance</span>
@@ -544,7 +544,7 @@ const ChildDetailPage = () => {
                     </p>
                   </div>
                   {parentGradesEnabled && !paymentGate.blocked && (
-                    <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                    <div className="p-4 bg-gray-50 dark:bg-[#2A2A2A]/50 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span className="text-xs text-gray-500 dark:text-gray-400">Current GPA</span>
@@ -554,7 +554,7 @@ const ChildDetailPage = () => {
                       </p>
                     </div>
                   )}
-                  <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                  <div className="p-4 bg-gray-50 dark:bg-[#2A2A2A]/50 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <DollarSign className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                       <span className="text-xs text-gray-500 dark:text-gray-400">Fee Balance</span>
@@ -567,7 +567,7 @@ const ChildDetailPage = () => {
                       Brr {stats?.fees.balance || 0}
                     </p>
                   </div>
-                  <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                  <div className="p-4 bg-gray-50 dark:bg-[#2A2A2A]/50 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Award className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                       <span className="text-xs text-gray-500 dark:text-gray-400">Behavior</span>
@@ -584,7 +584,7 @@ const ChildDetailPage = () => {
           {/* Two Column Layout Below Profile */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left - Personal Information Card */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                   Personal Information
@@ -638,7 +638,7 @@ const ChildDetailPage = () => {
             </Card>
 
             {/* Right - Academic Snapshot Card */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                   Academic Snapshot
@@ -718,7 +718,7 @@ const ChildDetailPage = () => {
                       </div>
                     </>
                   ) : (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-slate-700 dark:bg-slate-700/40 dark:text-gray-300">
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-[#2A2A2A] dark:bg-[#2A2A2A]/40 dark:text-gray-300">
                       {paymentGate.blocked
                         ? paymentGate.message
                         : "Grade viewing is disabled for parents by the school."}
@@ -730,7 +730,7 @@ const ChildDetailPage = () => {
           </div>
 
           {/* Bottom Section - Recent Activity Timeline */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                 Recent Activity
@@ -743,7 +743,7 @@ const ChildDetailPage = () => {
                     key={activity.id}
                     className={`flex items-start gap-4 py-4 ${
                       index !== recentActivity.length - 1
-                        ? "border-b border-gray-100 dark:border-slate-700"
+                        ? "border-b border-gray-100 dark:border-[#2A2A2A]"
                         : ""
                     }`}
                   >
@@ -773,7 +773,7 @@ const ChildDetailPage = () => {
                         )}
                       </div>
                       {index !== recentActivity.length - 1 && (
-                        <div className="w-px h-full absolute top-10 bg-gray-200 dark:bg-slate-700" />
+                        <div className="w-px h-full absolute top-10 bg-gray-200 dark:bg-[#2A2A2A]" />
                       )}
                     </div>
                     <div className="flex-1 pb-4">

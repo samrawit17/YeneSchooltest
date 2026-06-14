@@ -189,7 +189,7 @@ export default function EditParentPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: "#F8FAFC", fontFamily: "var(--font-sans), sans-serif" }}>
+    <div className="min-h-screen p-4 md:p-6 bg-gray-50 dark:bg-[#111111]" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
       <div className="w-full">
         {/* Header */}
         <div className="mb-6 flex items-start gap-3">
@@ -203,24 +203,24 @@ export default function EditParentPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 flex h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b bg-transparent p-0 dark:border-slate-700">
+          <TabsList className="mb-6 flex h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b bg-transparent p-0 dark:border-[#2A2A2A]">
             <TabsTrigger
               value="personal"
-              className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-gray-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-gray-400"
             >
               <User className="w-4 h-4" />
               Personal
             </TabsTrigger>
             <TabsTrigger
               value="children"
-              className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-gray-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-gray-400"
             >
               <Users className="w-4 h-4" />
               Children
             </TabsTrigger>
             <TabsTrigger
               value="contact"
-              className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+              className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-gray-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-gray-400"
             >
               <Phone className="w-4 h-4" />
               Contact

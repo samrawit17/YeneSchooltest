@@ -249,7 +249,7 @@ const StudentIdCard = ({
     : undefined;
 
   return (
-    <div className="relative w-[540px] h-[340px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-xl">
+    <div className="relative w-[540px] h-[340px] overflow-hidden rounded-xl border border-gray-200 bg-white text-gray-900 shadow-xl">
       {watermarkSrc && (
         <img src={watermarkSrc} alt="" className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-[58%] -translate-x-1/2 -translate-y-1/2 object-contain opacity-10" />
       )}
@@ -257,7 +257,7 @@ const StudentIdCard = ({
         {logoSrc ? (
           <img src={logoSrc} alt="" className="h-11 w-11 rounded bg-white/95 object-contain p-1" />
         ) : (
-          <div className="flex h-11 w-11 items-center justify-center rounded bg-white/95 text-[10px] font-semibold text-slate-500">{t.preview.logo}</div>
+          <div className="flex h-11 w-11 items-center justify-center rounded bg-white/95 text-[10px] font-semibold text-gray-500">{t.preview.logo}</div>
         )}
         <div className="min-w-0 flex-1 px-4">
           <h3 className="truncate text-xl font-bold leading-tight">{school.name || t.generator.schoolName}</h3>
@@ -269,7 +269,7 @@ const StudentIdCard = ({
       </div>
 
       <div className="relative z-10 grid grid-cols-[110px_1fr_82px] gap-5 p-5">
-        <div className="flex h-36 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+        <div className="flex h-36 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
           {photoSrc ? (
             <img src={photoSrc} alt={student.name} className="h-full w-full object-cover" />
           ) : (
@@ -278,26 +278,26 @@ const StudentIdCard = ({
         </div>
         <div className="min-w-0 space-y-2 text-[13px]">
           <h2 className="truncate text-xl font-bold" style={{ color: template.primaryColor }}>{student.name || t.generator.studentName}</h2>
-          <p><span className="font-semibold text-slate-500">{t.generator.id}:</span> {student.studentCode || "-"}</p>
-          <p><span className="font-semibold text-slate-500">{t.generator.class}:</span> {t.generator.grade} {student.grade || "-"} {student.section || ""}</p>
-          <p><span className="font-semibold text-slate-500">{t.generator.academicYear}:</span> {student.academicYear || "-"}</p>
-          {student.bloodGroup && <p><span className="font-semibold text-slate-500">{t.generator.bloodGroup}:</span> {student.bloodGroup}</p>}
+          <p><span className="font-semibold text-gray-500">{t.generator.id}:</span> {student.studentCode || "-"}</p>
+          <p><span className="font-semibold text-gray-500">{t.generator.class}:</span> {t.generator.grade} {student.grade || "-"} {student.section || ""}</p>
+          <p><span className="font-semibold text-gray-500">{t.generator.academicYear}:</span> {student.academicYear || "-"}</p>
+          {student.bloodGroup && <p><span className="font-semibold text-gray-500">{t.generator.bloodGroup}:</span> {student.bloodGroup}</p>}
           {student.emergencyContact?.phone && (
-            <p><span className="font-semibold text-slate-500">{t.generator.emergency}:</span> {student.emergencyContact.phone}</p>
+            <p><span className="font-semibold text-gray-500">{t.generator.emergency}:</span> {student.emergencyContact.phone}</p>
           )}
         </div>
         <div className="flex flex-col items-center justify-start gap-1 pt-2">
-          <div className="rounded border border-slate-200 bg-white p-1" dangerouslySetInnerHTML={{ __html: generateQRSvg(student.studentCode || student.studentId || "id", 58) }} />
-          <span className="text-[10px] text-slate-500">{t.generator.scanToVerify}</span>
+          <div className="rounded border border-gray-200 bg-white p-1" dangerouslySetInnerHTML={{ __html: generateQRSvg(student.studentCode || student.studentId || "id", 58) }} />
+          <span className="text-[10px] text-gray-500">{t.generator.scanToVerify}</span>
         </div>
       </div>
-      <div className="relative z-10 flex items-end justify-between bg-slate-50 px-5 py-2 text-[11px] text-slate-500">
+      <div className="relative z-10 flex items-end justify-between bg-gray-50 px-5 py-2 text-[11px] text-gray-500">
         <div className="w-32 text-center">
-          <div className="mb-1 border-t border-slate-400" />
+          <div className="mb-1 border-t border-gray-400" />
           <span>{t.generator.schoolStamp}</span>
         </div>
         <div className="w-40 text-center">
-          <div className="mb-1 border-t border-slate-400" />
+          <div className="mb-1 border-t border-gray-400" />
           <span>{t.generator.principalSignature}</span>
         </div>
       </div>
@@ -513,14 +513,14 @@ export default function StudentIdCardGenerator({
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="h-auto p-1 bg-white dark:bg-slate-900 border rounded-xl shadow-sm">
-          <TabsTrigger value="preview" className="rounded-lg gap-1.5"><Eye className="w-4 h-4" /> {t.generator.previewTab}</TabsTrigger>
-          <TabsTrigger value="students" className="rounded-lg gap-1.5"><Users className="w-4 h-4" /> {formatMessage(t.generator.studentsTab, { count: students.length })}</TabsTrigger>
+        <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
+          <TabsTrigger value="preview" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"><Eye className="w-4 h-4" /> {t.generator.previewTab}</TabsTrigger>
+          <TabsTrigger value="students" className="shrink-0 gap-1.5 px-3 text-xs font-semibold data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:text-[var(--brand-color,#e35336)] rounded-none md:gap-2 md:px-4 md:text-sm"><Users className="w-4 h-4" /> {formatMessage(t.generator.studentsTab, { count: students.length })}</TabsTrigger>
         </TabsList>
 
         {/* ---- PREVIEW TAB ---- */}
         <TabsContent value="preview">
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <CreditCard className="w-5 h-5" /> {t.generator.cardPreview}
@@ -538,7 +538,7 @@ export default function StudentIdCardGenerator({
                       if (s) setPreviewStudent(s);
                     }}
                   >
-                    <SelectTrigger className="w-64 dark:bg-slate-800 dark:border-slate-700">
+                    <SelectTrigger className="w-64 dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -552,7 +552,7 @@ export default function StudentIdCardGenerator({
                 </div>
               )}
 
-              <div className="flex justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-800 dark:to-slate-900 rounded-xl">
+              <div className="flex justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#1A1A1A] dark:to-[#111111] rounded-xl">
                 <StudentIdCard
                   student={previewStudent}
                   school={localSchool}
@@ -588,7 +588,7 @@ export default function StudentIdCardGenerator({
 
         {/* ---- STUDENTS TAB ---- */}
         <TabsContent value="students">
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2"><Users className="w-5 h-5" /> {t.generator.selectStudents}</span>
@@ -660,7 +660,7 @@ function StudentRow({
       className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
         selected
           ? "bg-blue-50 border-blue-300 dark:bg-blue-950/30 dark:border-blue-800"
-          : "hover:bg-gray-50 dark:hover:bg-slate-800 dark:border-slate-700"
+          : "hover:bg-gray-50 dark:hover:bg-[#1A1A1A] dark:border-[#2A2A2A]"
       }`}
       onClick={onToggle}
     >

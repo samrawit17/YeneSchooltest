@@ -792,7 +792,7 @@ export default function AttendanceManagementPage() {
 
   if (isLoading || (loading && !hasLoadedDashboardRef.current)) {
     return (
-      <div className="min-h-screen overflow-x-hidden bg-gray-50 p-3 dark:bg-slate-900 sm:p-4 md:p-6">
+      <div className="min-h-screen overflow-x-hidden bg-gray-50 p-3 dark:bg-[#111111] sm:p-4 md:p-6">
         <div className="w-full space-y-5 md:space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
@@ -821,7 +821,7 @@ export default function AttendanceManagementPage() {
 
   if (error && !dashboardData) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#111111] flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center space-y-4">
             <AlertCircle className="w-12 h-12 text-[var(--brand-color,#e35336)] mx-auto" />
@@ -838,7 +838,7 @@ export default function AttendanceManagementPage() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gray-50 transition-colors dark:bg-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50 transition-colors dark:bg-[#111111]">
       <div className="p-3 sm:p-4 md:p-6">
         <div className="w-full space-y-5 md:space-y-6">
           {/* Header */}
@@ -869,7 +869,7 @@ export default function AttendanceManagementPage() {
           )}
 
           {/* Filters */}
-          <Card className="w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
             <CardContent className="p-3 sm:p-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-center">
                 {/* Date Picker */}
@@ -1013,7 +1013,7 @@ export default function AttendanceManagementPage() {
           {/* KPI Row */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {/* Attendance Rate */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -1031,7 +1031,7 @@ export default function AttendanceManagementPage() {
             </Card>
 
             {/* Present Today */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -1049,7 +1049,7 @@ export default function AttendanceManagementPage() {
             </Card>
 
             {/* Absent Today */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -1067,7 +1067,7 @@ export default function AttendanceManagementPage() {
             </Card>
 
             {/* Late Today */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -1085,7 +1085,7 @@ export default function AttendanceManagementPage() {
             </Card>
 
             {/* Submitted Sessions */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -1103,7 +1103,7 @@ export default function AttendanceManagementPage() {
             </Card>
 
             {/* Total Students */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -1125,7 +1125,7 @@ export default function AttendanceManagementPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             {/* Weekly Attendance Chart */}
             {attendanceChartData && (
-              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
                   {showCharts ? (
                     <DynamicChart chartData={attendanceChartData} height={240} />
@@ -1137,7 +1137,7 @@ export default function AttendanceManagementPage() {
             )}
 
             {/* Today Overview - Doughnut */}
-            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
               <CardContent className="p-3 sm:p-4">
                 {showCharts ? (
                   <DynamicChart chartData={overviewChartData} height={240} />
@@ -1150,7 +1150,7 @@ export default function AttendanceManagementPage() {
 
           {/* Attendance by Class - Full Width */}
           {attendanceByClassChartData && (
-            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
               <CardContent className="p-3 sm:p-4">
                 {showCharts ? (
                   <DynamicChart chartData={attendanceByClassChartData} height={240} />
@@ -1164,7 +1164,7 @@ export default function AttendanceManagementPage() {
           {/* Additional Stats Row */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 md:gap-6">
             {/* Missing Attendance */}
-            <Card className="min-w-0 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="min-w-0 shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardHeader className="border-b border-red-200 dark:border-red-800 pb-3">
                 <CardTitle className="text-base font-semibold flex items-center gap-2 text-red-600 dark:text-red-400">
                   <Activity className="w-4 h-4 text-red-500" />
@@ -1186,8 +1186,8 @@ export default function AttendanceManagementPage() {
             </Card>
 
             {/* Recent Absences */}
-            <Card className="min-w-0 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-              <CardHeader className="border-b border-gray-200 dark:border-slate-700 pb-3">
+            <Card className="min-w-0 shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
+              <CardHeader className="border-b border-gray-200 dark:border-[#2A2A2A] pb-3">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <TrendingDown className="w-4 h-4 text-[var(--brand-color,#e35336)]" />
                   {t.recentAbsences}
@@ -1226,8 +1226,8 @@ export default function AttendanceManagementPage() {
           </div>
 
           {/* Sessions Table */}
-          <Card className="min-w-0 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-            <CardHeader className="border-b border-gray-200 dark:border-slate-700 pb-4">
+          <Card className="min-w-0 shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
+            <CardHeader className="border-b border-gray-200 dark:border-[#2A2A2A] pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                   {t.attendanceSessions} - {visibleDateLabel}

@@ -42,6 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslations } from "@/hooks/useTranslations";
 
 interface Term {
@@ -137,6 +138,8 @@ export default function AcademicYearsPage() {
   const [mounted, setMounted] = useState(false);
   const [editingTerm, setEditingTerm] = useState<Term | null>(null);
   const [termPendingDelete, setTermPendingDelete] = useState<Term | null>(null);
+  const [yearPendingDelete, setYearPendingDelete] =
+    useState<AcademicYear | null>(null);
   const [schoolCurriculumType, setSchoolCurriculumType] =
     useState<string>("QUARTER");
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -167,6 +170,16 @@ export default function AcademicYearsPage() {
     ["ADMIN", "IT_MANAGER"].includes(user.role) &&
     hasPermission("academic_year:delete");
   const usesCustomPeriodWeights = selectedYear?.curriculumType === "CUSTOM";
+
+  const needsNewAcademicYear =
+    canCreateAcademicYear &&
+    academicYears.length > 0 &&
+    !academicYears.some((y) => {
+      const now = new Date();
+      const end = new Date(y.endDate);
+      const start = new Date(y.startDate);
+      return (y.isActive && now <= end) || (now >= start && now <= end);
+    });
 
   // Fetch school settings to get the curriculum type that controls period creation.
   useEffect(() => {
@@ -582,6 +595,29 @@ export default function AcademicYearsPage() {
     }
   };
 
+  const handleDeleteAcademicYear = async () => {
+    if (!yearPendingDelete) return;
+    if (!canDeleteAcademicYear) {
+      toast.error("You do not have permission to delete academic years.");
+      return;
+    }
+    try {
+      setSaving(true);
+      await academicYearsAPI.delete(yearPendingDelete.id, {
+        skipAuthErrorRedirect: true,
+      });
+      setYearPendingDelete(null);
+      await fetchAcademicYears(schoolId);
+      await refreshAcademicContext();
+      toast.success(t.messages.yearDeleted);
+    } catch (error) {
+      console.error("Error deleting academic year:", error);
+      toast.error(getApiErrorMessage(error, t.messages.yearDeleteFailed));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const openEditTerm = (term: Term) => {
     setEditingTerm(term);
     setNewTerm({
@@ -620,10 +656,10 @@ export default function AcademicYearsPage() {
   };
 
   const getYearStatus = (year: AcademicYear) => {
-    if (year.isActive) return t.active;
     const now = new Date();
-    const start = new Date(year.startDate);
     const end = new Date(year.endDate);
+    if (year.isActive && now <= end) return t.active;
+    const start = new Date(year.startDate);
     if (now >= start && now <= end) return t.current;
     if (now < start) return t.upcoming;
     return t.past;
@@ -654,8 +690,32 @@ export default function AcademicYearsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-[var(--brand-color,#e35336)]"></div>
+      <div className="space-y-6 px-4">
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-10 w-40" />
+        </div>
+        <div className="bg-white dark:bg-[#111111] rounded-lg shadow p-6 border dark:border-[#2A2A2A]">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+            <Skeleton className="h-10 w-full md:w-64" />
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+        <div className="bg-white dark:bg-[#111111] rounded-lg shadow p-6 border dark:border-[#2A2A2A]">
+          <Skeleton className="h-10 w-40" />
+        </div>
       </div>
     );
   }
@@ -725,6 +785,32 @@ export default function AcademicYearsPage() {
         )}
       </div>
 
+      {needsNewAcademicYear && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div>
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                Academic year has ended
+              </h3>
+              <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+                The current academic year has ended. Create a new academic year
+                to continue managing classes, enrollments, and grading.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                className="mt-3 bg-amber-600 text-white hover:bg-amber-700"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Create New Academic Year
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!selectedYear && academicYears.length === 0 && (
         <div className="flex min-h-[55vh] items-center justify-center">
           <p className="text-center text-lg font-medium text-gray-500 dark:text-gray-400">
@@ -736,7 +822,7 @@ export default function AcademicYearsPage() {
       {selectedYear && (
         <>
           {/* Periods/Terms */}
-          <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6 border dark:border-slate-800">
+          <div className="bg-white dark:bg-[#111111] rounded-lg shadow p-6 border dark:border-[#2A2A2A]">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
               <div>
                 <h2 className="text-lg font-semibold dark:text-white">
@@ -756,7 +842,7 @@ export default function AcademicYearsPage() {
                     );
                     setSelectedYear(year || null);
                   }}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/35 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/35 dark:border-gray-600 dark:bg-[#1A1A1A] dark:text-white"
                 >
                   {academicYears.map((year) => {
                     const status = getYearStatus(year);
@@ -788,7 +874,7 @@ export default function AcademicYearsPage() {
             <div className="overflow-x-auto">
               <Table className="w-full">
                 <TableHeader>
-                  <TableRow className="bg-gray-50 dark:bg-slate-800">
+                  <TableRow className="bg-gray-50 dark:bg-[#1A1A1A]">
                     <TableHead className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
                       {t.periodName}
                     </TableHead>
@@ -809,7 +895,7 @@ export default function AcademicYearsPage() {
                     </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="divide-y divide-gray-200 dark:divide-slate-700">
+                <TableBody className="divide-y divide-gray-200 dark:divide-[#2A2A2A]">
                   {[...selectedYear.terms]
                     .sort((a, b) => a.order - b.order)
                     .map((term) => {
@@ -820,7 +906,7 @@ export default function AcademicYearsPage() {
                       return (
                         <TableRow
                           key={term.id}
-                          className={`${term.isLocked ? "bg-gray-50 dark:bg-slate-800" : "dark:hover:bg-slate-800/50"} ${isCurrent ? "ring-2 ring-inset ring-[var(--brand-color)]" : ""}`}
+                          className={`${term.isLocked ? "bg-gray-50 dark:bg-[#1A1A1A]" : "dark:hover:bg-[#1A1A1A]/50"} ${isCurrent ? "ring-2 ring-inset ring-[var(--brand-color)]" : ""}`}
                         >
                           <TableCell className="px-4 py-3 font-medium dark:text-white">
                             <div className="flex items-center gap-2">
@@ -852,7 +938,7 @@ export default function AcademicYearsPage() {
                                 <DropdownMenuTrigger asChild>
                                   <button
                                     type="button"
-                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-slate-800 dark:hover:text-gray-200"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-[#1A1A1A] dark:hover:text-gray-200"
                                     aria-label={t.actions}
                                     disabled={saving}
                                   >
@@ -908,7 +994,7 @@ export default function AcademicYearsPage() {
 
           {/* Activate Button */}
           {!selectedYear.isActive && canUpdateAcademicYear && (
-            <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6 border dark:border-slate-800">
+            <div className="bg-white dark:bg-[#111111] rounded-lg shadow p-6 border dark:border-[#2A2A2A]">
               <button
                 onClick={() => handleActivateYear(selectedYear.id)}
                 disabled={saving || getTotalWeight() !== 100}
@@ -923,12 +1009,33 @@ export default function AcademicYearsPage() {
               )}
             </div>
           )}
+
+          {/* Delete Academic Year */}
+          {canDeleteAcademicYear && (
+            <div className="bg-white dark:bg-[#111111] rounded-lg shadow p-6 border border-red-200 dark:border-red-900/60">
+              <h3 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-2">
+                Delete Academic Year
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                This will permanently delete this academic year along with all
+                its classes, terms, assessments, enrollments, fees, and
+                timetable slots. This action cannot be undone.
+              </p>
+              <button
+                onClick={() => setYearPendingDelete(selectedYear)}
+                disabled={saving}
+                className="rounded-lg bg-red-600 px-6 py-2 text-white transition-all hover:bg-red-700 disabled:opacity-50"
+              >
+                Delete This Academic Year
+              </button>
+            </div>
+          )}
         </>
       )}
 
       {/* Create Academic Year Dialog */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="max-w-md border dark:border-slate-800 dark:bg-slate-900">
+        <DialogContent className="max-w-md border dark:border-[#2A2A2A] dark:bg-[#111111]">
           <DialogHeader>
             <DialogTitle>{t.createYear}</DialogTitle>
             <DialogDescription>
@@ -952,7 +1059,7 @@ export default function AcademicYearsPage() {
                 }
                 placeholder="2025-2026"
                 required
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -993,7 +1100,7 @@ export default function AcademicYearsPage() {
               <button
                 type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg dark:text-gray-300"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-gray-300"
               >
                 {t.cancel}
               </button>
@@ -1014,7 +1121,7 @@ export default function AcademicYearsPage() {
         mounted &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 rounded-lg p-6 w-full max-w-md border dark:border-slate-800">
+            <div className="bg-white dark:bg-[#111111] rounded-lg p-6 w-full max-w-md border dark:border-[#2A2A2A]">
               <h3 className="text-lg font-semibold mb-4 dark:text-white">
                 {editingTerm ? t.editPeriod : t.addPeriod}
               </h3>
@@ -1038,7 +1145,7 @@ export default function AcademicYearsPage() {
                         : "Semester 1"
                     }
                     required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
                   />
                 </div>
                 <div
@@ -1061,7 +1168,7 @@ export default function AcademicYearsPage() {
                       }
                       min="1"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
                     />
                   </div>
                   {usesCustomPeriodWeights && (
@@ -1082,7 +1189,7 @@ export default function AcademicYearsPage() {
                         max="100"
                         step="0.01"
                         required
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
                       />
                     </div>
                   )}
@@ -1130,7 +1237,7 @@ export default function AcademicYearsPage() {
                       setShowTermModal(false);
                       setEditingTerm(null);
                     }}
-                    className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg dark:text-gray-300"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:text-gray-300"
                   >
                     {t.cancel}
                   </button>
@@ -1171,6 +1278,39 @@ export default function AcademicYearsPage() {
                 if (termPendingDelete) {
                   handleDeleteTerm(termPendingDelete.id);
                 }
+              }}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {saving ? t.saving : t.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!yearPendingDelete}
+        onOpenChange={(open) => {
+          if (!open) setYearPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t.messages.yearDeleteConfirm || "Delete Academic Year"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {yearPendingDelete
+                ? `Are you sure you want to delete ${yearPendingDelete.name}? This will permanently delete this academic year along with all its classes, terms, assessments, enrollments, fees, and timetable slots. This action cannot be undone.`
+                : t.messages.yearDeleteConfirm}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>{t.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving || !yearPendingDelete}
+              onClick={(event) => {
+                event.preventDefault();
+                handleDeleteAcademicYear();
               }}
               className="bg-red-600 text-white hover:bg-red-700"
             >

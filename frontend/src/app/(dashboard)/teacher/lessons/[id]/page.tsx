@@ -121,7 +121,7 @@ const LessonDetailPage = () => {
   const canPublish = isOwner && lesson.status === "DRAFT";
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111]">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -173,32 +173,32 @@ const LessonDetailPage = () => {
         <div className="lg:col-span-2 space-y-6">
           {/* Lesson Content, Objective & Homework combined */}
           <Card>
-            <CardContent className="p-0 divide-y divide-slate-100 dark:divide-slate-800">
+            <CardContent className="p-0 divide-y divide-gray-100 dark:divide-[#2A2A2A]">
               {lesson.objective && (
                 <div className="p-6">
-                  <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white mb-3">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white mb-3">
                     <BookOpen className="w-4 h-4 text-[#e35336]" />
                     Learning Objective
                   </h3>
-                  <TranslatedText text={lesson.objective} textClassName="text-sm text-slate-700 dark:text-slate-300" />
+                  <TranslatedText text={lesson.objective} textClassName="text-sm text-gray-700 dark:text-gray-300" />
                 </div>
               )}
 
               <div className="p-6">
-                  <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white mb-3">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white mb-3">
                     <FileText className="w-4 h-4 text-[#e35336]" />
                     Lesson Content
                 </h3>
                 {lesson.lessonContent ? (
-                  <TranslatedText text={lesson.lessonContent} textClassName="text-sm text-slate-700 dark:text-slate-300" />
+                  <TranslatedText text={lesson.lessonContent} textClassName="text-sm text-gray-700 dark:text-gray-300" />
                 ) : (
-                  <p className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">No content added yet.</p>
+                  <p className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">No content added yet.</p>
                 )}
               </div>
 
               {(lesson.homework || lesson.instructions) && (
                 <div className="p-6">
-                  <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white mb-3">
+                  <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white mb-3">
                     <FileText className="w-4 h-4 text-[#e35336]" />
                     Homework
                   </h3>
@@ -215,10 +215,10 @@ const LessonDetailPage = () => {
                             lesson.instructions ||
                             ""
                       }
-                      textClassName="text-sm text-slate-700 dark:text-slate-300"
+                      textClassName="text-sm text-gray-700 dark:text-gray-300"
                     />
                   ) : (
-                    <p className="text-sm text-slate-700 dark:text-slate-300">No homework assigned.</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">No homework assigned.</p>
                   )}
                 </div>
               )}

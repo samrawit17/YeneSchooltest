@@ -172,7 +172,8 @@ export const academicYearsAPI = {
   updateCurriculumType: (id: string, data: { curriculumType: string }) =>
     api.put(`/academic-years/${id}/curriculum-type`, data),
   activate: (id: string) => api.put(`/academic-years/${id}/activate`),
-  delete: (id: string) => api.delete(`/academic-years/${id}`),
+  delete: (id: string, config?: any) =>
+    api.delete(`/academic-years/${id}`, config),
   getPeriodWeights: (id: string) =>
     api.get(`/academic-years/${id}/period-weights`),
   validateWeights: (id: string) =>
@@ -309,6 +310,7 @@ export const subjectsAPI = {
     code?: string;
     isActive?: boolean;
     description?: string;
+    academicYearId?: string;
   }) => api.post("/subjects", data),
   getAll: (params?: { schoolId?: string }) => api.get("/subjects", { params }),
   getById: (id: string) => api.get(`/subjects/${id}`),

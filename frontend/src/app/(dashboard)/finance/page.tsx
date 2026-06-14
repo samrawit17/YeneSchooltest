@@ -702,7 +702,7 @@ export default function FinanceDashboardPage() {
       case 'UNPAID':
         return <Badge className="bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/40 dark:text-red-400"><XCircle className="w-3 h-3 mr-1" />Unpaid</Badge>;
       default:
-        return <Badge className="dark:bg-slate-700 dark:text-slate-300">{status}</Badge>;
+        return <Badge className="dark:bg-[#2A2A2A] dark:text-gray-300">{status}</Badge>;
     }
   };
 
@@ -1451,7 +1451,7 @@ setIsCreatingFeeStructure(true);
   })();
   const billingStatusTone =
     !selectedYear || terms.length === 0
-      ? 'border-l-slate-400 bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+      ? 'border-l-gray-400 bg-gray-50 text-gray-600 dark:bg-[#1A1A1A] dark:text-gray-400'
       : pendingBalanceCount > 0
         ? 'border-l-amber-500 bg-amber-50 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
         : 'border-l-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400';
@@ -1468,19 +1468,19 @@ setIsCreatingFeeStructure(true);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       {/* Header */}
-      <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+      <div className="border-b border-gray-200 dark:border-[#2A2A2A] px-6 py-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t.subtitle}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t.subtitle}</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
             {/* Academic Year Selector */}
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[130px] bg-white dark:bg-slate-700 text-xs">
+              <SelectTrigger className="w-[130px] bg-white dark:bg-[#2A2A2A] text-xs">
                 <SelectValue placeholder={t.academicYear} />
               </SelectTrigger>
               <SelectContent>
@@ -1492,7 +1492,7 @@ setIsCreatingFeeStructure(true);
 
             {/* Term Selector */}
             <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-              <SelectTrigger className="w-[100px] bg-white dark:bg-slate-700 text-xs">
+              <SelectTrigger className="w-[100px] bg-white dark:bg-[#2A2A2A] text-xs">
                 <SelectValue placeholder={curriculumType === 'SEMESTER' ? t.semester : curriculumType === 'QUARTER' ? t.quarter : t.term} />
               </SelectTrigger>
               <SelectContent>
@@ -1509,7 +1509,7 @@ setIsCreatingFeeStructure(true);
                 className="w-[140px] h-8 text-[10px]" 
                 placeholder="From Date"
               />
-              <span className="text-slate-400 text-xs">-</span>
+              <span className="text-gray-400 text-xs">-</span>
               <CalendarDatePicker 
                 value={toDate} 
                 onChange={setToDate} 
@@ -1518,7 +1518,7 @@ setIsCreatingFeeStructure(true);
               />
             </div>
 
-            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1" />
+            <div className="h-5 w-px bg-gray-300 dark:bg-[#333333] mx-1" />
 
             <div className="flex items-center gap-1.5">
               <Button
@@ -1533,7 +1533,7 @@ setIsCreatingFeeStructure(true);
               </Button>
             </div>
 
-            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1" />
+            <div className="h-5 w-px bg-gray-300 dark:bg-[#333333] mx-1" />
 
             <Button 
               size="sm"
@@ -1560,7 +1560,7 @@ setIsCreatingFeeStructure(true);
                 )}
               </div>
               <div>
-                <p className="text-xs text-slate-500">Billing Status</p>
+                <p className="text-xs text-gray-500">Billing Status</p>
                 <p className="text-sm font-semibold">{billingStatus}</p>
               </div>
             </CardContent>
@@ -1571,7 +1571,7 @@ setIsCreatingFeeStructure(true);
                 <Activity className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Active Term</p>
+                <p className="text-xs text-gray-500">Active Term</p>
                 <p className="text-sm font-semibold">{selectedTermDetails?.name || 'No active term'}</p>
               </div>
             </CardContent>
@@ -1582,7 +1582,7 @@ setIsCreatingFeeStructure(true);
                 <AlertCircle className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Pending Actions</p>
+                <p className="text-xs text-gray-500">Pending Actions</p>
                 <p className="text-sm font-semibold">{pendingBalanceCount} Unpaid Balances</p>
               </div>
             </CardContent>
@@ -1593,17 +1593,17 @@ setIsCreatingFeeStructure(true);
                 <Wallet className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-slate-500 font-medium">Billing Policy</p>
+                <p className="text-xs text-gray-500 font-medium">Billing Policy</p>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
-                  <span className="text-xs text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold">Due:</span> {formatDueDay(billingPolicy.dueDay)}
+                  <span className="text-xs text-gray-700 dark:text-gray-200 whitespace-nowrap">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold">Due:</span> {formatDueDay(billingPolicy.dueDay)}
                   </span>
-                  <span className="text-xs text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold">Penalty:</span> {formatCurrency(billingPolicy.penalty)}
+                  <span className="text-xs text-gray-700 dark:text-gray-200 whitespace-nowrap">
+                    <span className="text-[10px] text-gray-400 uppercase font-bold">Penalty:</span> {formatCurrency(billingPolicy.penalty)}
                   </span>
                 </div>
               </div>
-              <div className="shrink-0 text-[10px] text-slate-400 italic">
+              <div className="shrink-0 text-[10px] text-gray-400 italic">
                 Managed via School Settings
               </div>
             </CardContent>
@@ -1612,7 +1612,7 @@ setIsCreatingFeeStructure(true);
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+          <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-blue-600 to-blue-700 text-white">
             <CardContent className="p-5">
               <div className="relative z-10">
                 <p className="text-blue-100 text-xs font-medium uppercase tracking-wider">{t.totalRevenue}</p>
@@ -1630,7 +1630,7 @@ setIsCreatingFeeStructure(true);
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+          <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
             <CardContent className="p-5">
               <div className="relative z-10">
                 <p className="text-emerald-100 text-xs font-medium uppercase tracking-wider">{t.collectedToday}</p>
@@ -1648,7 +1648,7 @@ setIsCreatingFeeStructure(true);
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+          <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-amber-500 to-amber-600 text-white">
             <CardContent className="p-5">
               <div className="relative z-10">
                 <p className="text-amber-100 text-xs font-medium uppercase tracking-wider">Total Discounts</p>
@@ -1666,7 +1666,7 @@ setIsCreatingFeeStructure(true);
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-rose-500 to-rose-600 text-white">
+          <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-rose-500 to-rose-600 text-white">
             <CardContent className="p-5">
               <div className="relative z-10">
                 <p className="text-rose-100 text-xs font-medium uppercase tracking-wider">{t.outstandingBalance}</p>
@@ -1684,10 +1684,10 @@ setIsCreatingFeeStructure(true);
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-slate-700 to-slate-800 text-white">
+          <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-slate-700 to-slate-800 text-white">
             <CardContent className="p-5">
               <div className="relative z-10">
-                <p className="text-slate-300 text-xs font-medium uppercase tracking-wider">Efficiency Rate</p>
+                <p className="text-gray-300 text-xs font-medium uppercase tracking-wider">Efficiency Rate</p>
                 {dashboardReportSettled ? (
                   <h3 className="text-2xl font-bold mt-1">
                     {Math.round((stats.totalRevenue / (stats.totalRevenue + stats.outstandingBalance || 1)) * 100)}%
@@ -1695,7 +1695,7 @@ setIsCreatingFeeStructure(true);
                 ) : (
                   <Skeleton className="h-8 w-24 mt-1 bg-white/20" />
                 )}
-                <div className="flex items-center mt-4 text-slate-300 text-xs">
+                <div className="flex items-center mt-4 text-gray-300 text-xs">
                   <CheckCircle className="w-3.5 h-3.5 mr-1" />
                   <span>Target Fulfillment</span>
                 </div>
@@ -1707,11 +1707,11 @@ setIsCreatingFeeStructure(true);
 
         {/* Analytics Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 shadow-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="lg:col-span-2 shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg font-bold">Revenue Trend</CardTitle>
-                <p className="text-xs text-slate-500 mt-1">Daily collection performance for the selected period</p>
+                <p className="text-xs text-gray-500 mt-1">Daily collection performance for the selected period</p>
               </div>
               <Select value={chartView} onValueChange={(v: any) => setChartView(v)}>
                 <SelectTrigger className="w-32 h-8 text-xs">
@@ -1771,10 +1771,10 @@ setIsCreatingFeeStructure(true);
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
             <CardHeader>
               <CardTitle className="text-lg font-bold">Fee Composition</CardTitle>
-              <p className="text-xs text-slate-500 mt-1">Revenue breakdown by fee type</p>
+              <p className="text-xs text-gray-500 mt-1">Revenue breakdown by fee type</p>
             </CardHeader>
             <CardContent>
               <div className="h-[250px] w-full">
@@ -1809,19 +1809,19 @@ setIsCreatingFeeStructure(true);
               <div className="grid grid-cols-2 gap-2 mt-4">
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                  <span className="text-[10px] font-medium text-slate-600">Tuition</span>
+                  <span className="text-[10px] font-medium text-gray-600">Tuition</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-medium text-slate-600">Registration</span>
+                  <span className="text-[10px] font-medium text-gray-600">Registration</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  <span className="text-[10px] font-medium text-slate-600">Exam Fees</span>
+                  <span className="text-[10px] font-medium text-gray-600">Exam Fees</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-                  <span className="text-[10px] font-medium text-slate-600">Other</span>
+                  <span className="text-[10px] font-medium text-gray-600">Other</span>
                 </div>
               </div>
             </CardContent>
@@ -1829,7 +1829,7 @@ setIsCreatingFeeStructure(true);
         </div>
 
         {/* Fee Structures Section */}
-        <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700 mb-6 max-h-96 overflow-y-auto">
+        <Card className="bg-white dark:bg-[#1A1A1A] shadow-sm border-gray-200 dark:border-[#2A2A2A] mb-6 max-h-96 overflow-y-auto">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold">{financeText('feeStructuresTitle', 'Fee Structures')}</CardTitle>
@@ -1881,30 +1881,30 @@ setIsCreatingFeeStructure(true);
             {displayFeeStructures.length > 0 ? (
               <Table className="w-full">
                 <TableHeader>
-                  <TableRow className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[30%] text-left">{t.feeType}</TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{t.grade}</TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{getBillingPeriodLabel(feeCollectionMode?.mode)}</TableHead>
-                    <TableHead className="text-sm font-semibold text-slate-500 dark:text-gray-300 py-3 px-4 w-[20%] text-right">{t.amount}</TableHead>
+                  <TableRow className="border-b border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50">
+                    <TableHead className="text-sm font-semibold text-gray-500 dark:text-gray-300 py-3 px-4 w-[30%] text-left">{t.feeType}</TableHead>
+                    <TableHead className="text-sm font-semibold text-gray-500 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{t.grade}</TableHead>
+                    <TableHead className="text-sm font-semibold text-gray-500 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{getBillingPeriodLabel(feeCollectionMode?.mode)}</TableHead>
+                    <TableHead className="text-sm font-semibold text-gray-500 dark:text-gray-300 py-3 px-4 w-[20%] text-right">{t.amount}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {displayFeeStructures.map((fee) => (
-                    <TableRow key={fee.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <TableCell className="text-sm font-medium text-slate-900 dark:text-white py-3 px-4 w-[30%] text-left">
+                    <TableRow key={fee.id} className="border-b border-gray-100 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50">
+                      <TableCell className="text-sm font-medium text-gray-900 dark:text-white py-3 px-4 w-[30%] text-left">
                         <div>{formatFeeItemDisplay(fee.feeType, formatInstallmentLabel(fee))}</div>
                       </TableCell>
-                      <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{fee.gradeLabel}</TableCell>
-                      <TableCell className="text-sm text-slate-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">
+                      <TableCell className="text-sm text-gray-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">{fee.gradeLabel}</TableCell>
+                      <TableCell className="text-sm text-gray-700 dark:text-gray-300 py-3 px-4 w-[25%] text-left">
                         {formatInstallmentLabel(fee) || '-'}
                       </TableCell>
-                      <TableCell className="text-sm text-slate-700 dark:text-slate-300 py-3 px-4 w-[20%] text-right">{formatCurrency(fee.amount)}</TableCell>
+                      <TableCell className="text-sm text-gray-700 dark:text-gray-300 py-3 px-4 w-[20%] text-right">{formatCurrency(fee.amount)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
                 <FileText className="w-8 h-8 mb-2" />
                 <p className="text-sm">{t.noFeeStructures}</p>
                 <p className="text-xs mt-1">{t.addFeeStructureHint}</p>
@@ -1916,15 +1916,15 @@ setIsCreatingFeeStructure(true);
         {/* Tables Section */}
         <div className="space-y-6">
           {/* Recent Transactions */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardHeader className="pb-2 border-b dark:border-slate-700">
+          <Card className="bg-white dark:bg-[#1A1A1A] shadow-sm border-gray-200 dark:border-[#2A2A2A]">
+            <CardHeader className="pb-2 border-b dark:border-[#2A2A2A]">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold dark:text-white">{t.recentTransactions}</CardTitle>
                 <div className="relative w-[600px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <Input 
                     placeholder={t.search}
-                    className="pl-9 h-8 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                    className="pl-9 h-8 dark:bg-[#2A2A2A] dark:border-gray-600 dark:text-white"
                     value={transactionsSearch}
                     onChange={(e) => setTransactionsSearch(e.target.value)}
                   />
@@ -1934,10 +1934,10 @@ setIsCreatingFeeStructure(true);
             <CardContent className="pt-4">
               <Table className="w-full">
                 <TableHeader>
-                  <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <TableRow className="bg-gray-50 dark:bg-[#1A1A1A]/50 hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50">
                     <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4">
                       <span className="inline-flex items-center gap-1.5">
-                        <FileText className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
+                        <FileText className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
                         Payment Reference
                       </span>
                     </TableHead>
@@ -1955,7 +1955,7 @@ setIsCreatingFeeStructure(true);
                 <TableBody>
                   {!dashboardReportSettled ? (
                     [...Array(5)].map((_, i) => (
-                      <TableRow key={i} className="border-b dark:border-slate-700">
+                      <TableRow key={i} className="border-b dark:border-[#2A2A2A]">
                         {[...Array(10)].map((_, j) => (
                           <TableCell key={j} className="py-3 px-4">
                             <Skeleton className="h-4 w-full" />
@@ -1965,10 +1965,10 @@ setIsCreatingFeeStructure(true);
                     ))
                   ) : paginatedTransactions.length > 0 ? (
                     paginatedTransactions.map((tx) => (
-                      <TableRow key={tx.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <TableRow key={tx.id} className="border-b dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50">
                         <TableCell className="text-xs font-medium dark:text-white py-3 px-4">
                           <span className="inline-flex items-center gap-1.5">
-                            <FileText className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                            <FileText className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                             <span>{tx.transactionReference || tx.paymentReference || tx.receiptNumber || '-'}</span>
                           </span>
                         </TableCell>
@@ -1979,7 +1979,7 @@ setIsCreatingFeeStructure(true);
                         <TableCell className="text-xs py-3 px-4 dark:text-gray-300">{formatFeeItemDisplay(tx.feeType, tx.termName)}</TableCell>
                         <TableCell className="text-xs py-3 px-4">{getPaymentMethodBadge(tx.paymentMethod)}</TableCell>
                         <TableCell className="text-xs font-medium dark:text-white py-3 px-4">{formatCurrency(tx.amountPaid)}</TableCell>
-                        <TableCell className="text-xs text-slate-500 dark:text-gray-400 py-3 px-4">{formatDate(tx.paymentDate)}</TableCell>
+                        <TableCell className="text-xs text-gray-500 dark:text-gray-400 py-3 px-4">{formatDate(tx.paymentDate)}</TableCell>
                         <TableCell className="text-xs py-3 px-4 text-right">
                           <Button
                             size="sm"
@@ -1998,7 +1998,7 @@ setIsCreatingFeeStructure(true);
                     ))
                   ) : (
                     <TableRow>
-                        <TableCell colSpan={10} className="text-center text-slate-500 py-8 dark:text-gray-400">
+                        <TableCell colSpan={10} className="text-center text-gray-500 py-8 dark:text-gray-400">
                         {t.noTransactions}
                       </TableCell>
                     </TableRow>
@@ -2008,7 +2008,7 @@ setIsCreatingFeeStructure(true);
               
               {/* Pagination */}
               <div className="flex items-center justify-between mt-4">
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-gray-500">
                   {filteredTransactions.length > 0
                     ? `Showing ${(transactionsPage - 1) * transactionsLimit + 1} to ${Math.min(transactionsPage * transactionsLimit, filteredTransactions.length)} of ${filteredTransactions.length}`
                     : 'No transactions to paginate'}
@@ -2023,12 +2023,12 @@ setIsCreatingFeeStructure(true);
           </Card>
 
           {/* Outstanding Fees */}
-          <Card className="bg-white dark:bg-slate-800 shadow-sm border-slate-200 dark:border-slate-700">
-            <CardHeader className="pb-2 border-b dark:border-slate-700">
+          <Card className="bg-white dark:bg-[#1A1A1A] shadow-sm border-gray-200 dark:border-[#2A2A2A]">
+            <CardHeader className="pb-2 border-b dark:border-[#2A2A2A]">
               <div className="flex flex-col gap-3">
                 <div className="min-w-0">
                   <CardTitle className="text-base font-semibold dark:text-white">{t.outstandingFees}</CardTitle>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     Outstanding balances follow the school's quarterly billing method.
                   </p>
                 </div>
@@ -2048,7 +2048,7 @@ setIsCreatingFeeStructure(true);
                         className={`shrink-0 flex-1 border-b-2 px-3 py-1.5 text-xs font-semibold transition-all rounded-none lg:flex-none md:px-4 md:text-sm ${
                           outstandingStatusFilter === status
                             ? 'border-[var(--brand-color,#e35336)] bg-transparent text-[var(--brand-color,#e35336)] shadow-none'
-                            : 'border-transparent bg-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                            : 'border-transparent bg-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                         }`}
                       >
                         {getOutstandingStatusLabel(status)}
@@ -2063,7 +2063,7 @@ setIsCreatingFeeStructure(true);
               <div className="max-h-[400px] overflow-y-auto">
                 <Table className="w-full">
                   <TableHeader>
-                    <TableRow className="bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <TableRow className="bg-gray-50 dark:bg-[#1A1A1A]/50 hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50">
                       <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[25%] text-left">{t.student}</TableHead>
                       <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[12%] text-left">{t.grade}</TableHead>
                       <TableHead className="text-xs font-semibold dark:text-gray-300 py-3 px-4 w-[13%] text-left">{t.feePeriod}</TableHead>
@@ -2077,7 +2077,7 @@ setIsCreatingFeeStructure(true);
                   <TableBody>
                     {!dashboardReportSettled ? (
                       [...Array(5)].map((_, i) => (
-                        <TableRow key={i} className="border-b dark:border-slate-700">
+                        <TableRow key={i} className="border-b dark:border-[#2A2A2A]">
                           {[...Array(8)].map((_, j) => (
                             <TableCell key={j} className="py-3 px-4">
                               <Skeleton className="h-4 w-full" />
@@ -2087,7 +2087,7 @@ setIsCreatingFeeStructure(true);
                       ))
                     ) : paginatedOutstandingFees.length > 0 ? (
                         paginatedOutstandingFees.map((fee) => (
-                          <TableRow key={fee.id} className={`border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${fee.status === 'UNPAID' ? 'bg-red-50 dark:bg-red-900/10' : ''}`}>
+                          <TableRow key={fee.id} className={`border-b dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50 ${fee.status === 'UNPAID' ? 'bg-red-50 dark:bg-red-900/10' : ''}`}>
                             <TableCell className="text-xs font-medium dark:text-white py-3 px-4 w-[25%] text-left">
   <span className="inline-flex items-center gap-1.5">
     {fee.studentName}
@@ -2102,7 +2102,7 @@ setIsCreatingFeeStructure(true);
                             <TableCell className="py-3 px-4 w-[13%] text-left">
                               <div className="text-xs dark:text-gray-300">{formatOutstandingScopeLabel(fee)}</div>
                               {fee.isYearWide && (
-                                <div className="text-[10px] text-slate-500 dark:text-gray-400">{t.derivedFromAnnual}</div>
+                                <div className="text-[10px] text-gray-500 dark:text-gray-400">{t.derivedFromAnnual}</div>
                               )}
                             </TableCell>
                             <TableCell className="text-xs dark:text-white py-3 px-4 w-[10%] text-right">{formatCurrency(fee.total || 0)}</TableCell>
@@ -2118,7 +2118,7 @@ setIsCreatingFeeStructure(true);
                         ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center text-slate-500 py-8 dark:text-gray-400">
+                          <TableCell colSpan={8} className="text-center text-gray-500 py-8 dark:text-gray-400">
                             {outstandingSearch ? 'No matching fees found' : 'No outstanding fees'}
                           </TableCell>
                         </TableRow>
@@ -2127,8 +2127,8 @@ setIsCreatingFeeStructure(true);
                 </Table>
               </div>
               {filteredOutstandingFees.length > 0 && (
-                <div className="flex items-center justify-between py-3 px-4 border-t dark:border-slate-700">
-                  <div className="text-xs text-slate-500 dark:text-gray-400">
+                <div className="flex items-center justify-between py-3 px-4 border-t dark:border-[#2A2A2A]">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
                     Showing {((outstandingPage - 1) * outstandingLimit) + 1} to {Math.min(outstandingPage * outstandingLimit, filteredOutstandingFees.length)} of {filteredOutstandingFees.length}
                   </div>
                   <Pagination
@@ -2166,11 +2166,11 @@ setIsCreatingFeeStructure(true);
               
                 {/* Student Results - floating */}
                 {studentResults.length > 0 && (
-                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg shadow-lg max-h-40 overflow-y-auto">
                     {studentResults.map((student) => (
                     <div 
                       key={student.userId || student.id}
-	                      className={`p-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 ${paymentForm.studentId === (student.userId || student.id) ? 'bg-blue-50 dark:bg-blue-900' : ''}`}
+	                      className={`p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#1A1A1A] ${paymentForm.studentId === (student.userId || student.id) ? 'bg-blue-50 dark:bg-blue-900' : ''}`}
 	                      onClick={() => {
                         const selectedStudentId = student.userId || student.id;
                         const studentFeeData = selectedStudentFees.find(
@@ -2198,7 +2198,7 @@ setIsCreatingFeeStructure(true);
 	                      }}
                     >
                       <p className="font-medium">{student.user?.name || student.name || 'Unknown'}</p>
-                      <p className="text-xs text-slate-500">ID: {student.studentCode || student.id}</p>
+                      <p className="text-xs text-gray-500">ID: {student.studentCode || student.id}</p>
                     </div>
                   ))}
                 </div>
@@ -2208,8 +2208,8 @@ setIsCreatingFeeStructure(true);
 
             {terms.length > 0 && (
               <div className="space-y-2">
-                <Label className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
-                  <Calendar className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                <Label className="inline-flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
+                  <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   {isMonthlyBillingMode ? 'Current Term / Quarter' : 'Term / Semester Paid'}
                 </Label>
                 <Select
@@ -2220,7 +2220,7 @@ setIsCreatingFeeStructure(true);
                     refreshSelectedStudentFeesForTerm(value);
                   }}
                 >
-                  <SelectTrigger className="text-slate-900 dark:text-slate-100">
+                  <SelectTrigger className="text-gray-900 dark:text-gray-100">
                     <SelectValue placeholder="Select period" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2236,8 +2236,8 @@ setIsCreatingFeeStructure(true);
 
             {paymentFeeOptions.length > 0 && (
               <div className="space-y-2">
-                <Label className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
-                  <Calendar className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                <Label className="inline-flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
+                  <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                   {isMonthlyBillingMode ? 'Billing Month Paid' : 'Fee Item'}
                 </Label>
                 <Select
@@ -2252,7 +2252,7 @@ setIsCreatingFeeStructure(true);
                     }));
                   }}
                 >
-                  <SelectTrigger className="text-slate-900 dark:text-slate-100">
+                  <SelectTrigger className="text-gray-900 dark:text-gray-100">
                     <SelectValue placeholder={isMonthlyBillingMode ? 'Select billing month' : 'Select fee item'} />
                   </SelectTrigger>
                   <SelectContent>
@@ -2261,7 +2261,7 @@ setIsCreatingFeeStructure(true);
                         key={fee.id}
                         value={fee.id}
                         disabled={isMonthlyBillingMode && fee.balance <= 0}
-                        className={isMonthlyBillingMode && fee.balance <= 0 ? 'text-slate-500 line-through' : ''}
+                        className={isMonthlyBillingMode && fee.balance <= 0 ? 'text-gray-500 line-through' : ''}
                       >
                         {formatPaymentFeeOptionLabel(fee)}
                       </SelectItem>
@@ -2347,7 +2347,7 @@ setIsCreatingFeeStructure(true);
             <DialogTitle>Create Fee Structure</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-300">
               Create a single fee or split one annual amount into {feeCollectionMode?.modeLabel || 'school period'} installments.
             </div>
             <div className="space-y-2">
@@ -2391,7 +2391,7 @@ setIsCreatingFeeStructure(true);
                 </SelectContent>
               </Select>
               {feeStructureForm.billingMode === 'installments' && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   The amount below is the annual amount. It will be split across {feeCollectionMode?.modeLabel || 'configured'} periods.
                 </p>
               )}

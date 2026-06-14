@@ -117,7 +117,7 @@ export default function ForgotPasswordPage() {
   if (submitted) {
     return (
       <div
-        className="flex min-h-screen flex-col items-center bg-slate-50 pt-10 dark:bg-slate-900"
+        className="flex min-h-screen flex-col items-center bg-slate-50 pt-10 dark:bg-[#111111]"
         style={pageStyle}
       >
         {schoolName && (
@@ -140,7 +140,7 @@ export default function ForgotPasswordPage() {
           </div>
         )}
         <div className="mt-8 flex w-full justify-center px-4">
-          <Card className="w-full max-w-lg dark:bg-slate-900 dark:border-slate-800">
+          <Card className="w-full max-w-lg dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
                 <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -163,7 +163,7 @@ export default function ForgotPasswordPage() {
 
   return (
       <div
-        className="flex min-h-screen flex-col items-center bg-slate-50 pt-10 dark:bg-slate-900"
+        className="flex min-h-screen flex-col items-center bg-slate-50 pt-10 dark:bg-[#111111]"
         style={pageStyle}
       >
         {schoolName && (
@@ -186,7 +186,7 @@ export default function ForgotPasswordPage() {
           </div>
         )}
         <div className="mt-8 flex w-full justify-center px-4">
-          <Card className="w-full max-w-lg dark:bg-slate-900 dark:border-slate-800">
+          <Card className="w-full max-w-lg dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardHeader>
               <CardTitle className="dark:text-white">{t.title}</CardTitle>
               <CardDescription>
@@ -204,7 +204,7 @@ export default function ForgotPasswordPage() {
                   placeholder={t.placeholder}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                  className="pl-10 dark:bg-[#1A1A1A] dark:border-[#2A2A2A] dark:text-white"
                   required
                 />
               </div>

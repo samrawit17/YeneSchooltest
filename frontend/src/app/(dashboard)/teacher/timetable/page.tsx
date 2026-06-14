@@ -188,8 +188,8 @@ const TeacherTimetablePage = () => {
 
   if (loading || isLoading) {
     return (
-      <div className="w-full max-w-full space-y-4 bg-[#F8FAFC] p-3 dark:bg-[#0F172A] sm:p-4 md:space-y-6 md:p-6 overflow-x-hidden">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[#334155] dark:bg-[#111827] sm:rounded-3xl">
+      <div className="w-full max-w-full space-y-4 bg-[#F8FAFC] p-3 dark:bg-[#111111] sm:p-4 md:space-y-6 md:p-6 overflow-x-hidden">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#334155] dark:bg-[#111827] sm:rounded-3xl">
           <div className="p-4 sm:p-6 space-y-3">
             <Skeleton className="h-7 w-40" />
             <Skeleton className="h-4 w-72" />
@@ -211,7 +211,7 @@ const TeacherTimetablePage = () => {
           </div>
         </div>
 
-        <div className="hidden lg:block rounded-xl border border-slate-200 dark:border-[#334155] overflow-hidden">
+        <div className="hidden lg:block rounded-xl border border-gray-200 dark:border-[#334155] overflow-hidden">
           <div className="border-b dark:border-[#334155] p-6 space-y-2">
             <Skeleton className="h-6 w-44" />
             <Skeleton className="h-4 w-56" />
@@ -240,16 +240,16 @@ const TeacherTimetablePage = () => {
   }
 
   return (
-    <div className="w-full max-w-full space-y-4 bg-[#F8FAFC] p-3 dark:bg-[#0F172A] sm:p-4 md:space-y-6 md:p-6 overflow-x-hidden">
+    <div className="w-full max-w-full space-y-4 bg-[#F8FAFC] p-3 dark:bg-[#111111] sm:p-4 md:space-y-6 md:p-6 overflow-x-hidden">
       {/* Header */}
       <div className="overflow-hidden rounded-2xl border border-[rgba(var(--brand-color-rgb),0.12)] bg-white shadow-sm dark:border-[#334155] dark:bg-[#111827] sm:rounded-3xl">
         <div className="p-4 sm:p-6">
           <div className="space-y-3">
             <div>
-              <h1 className="text-xl font-bold text-slate-950 dark:text-white sm:text-2xl">
+              <h1 className="text-xl font-bold text-gray-950 dark:text-white sm:text-2xl">
                 My Timetable
               </h1>
-              <p className="mt-1 max-w-2xl text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+              <p className="mt-1 max-w-2xl text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
                 Clean daily teaching view for phone use, with a full weekly grid available on larger screens.
               </p>
             </div>
@@ -261,7 +261,7 @@ const TeacherTimetablePage = () => {
 
 
       {/* Mobile Day Agenda */}
-      <Card className="overflow-hidden border-none bg-transparent shadow-none lg:hidden">
+      <Card className="overflow-hidden border-gray-200 dark:border-[#2A2A2A] bg-transparent shadow-none lg:hidden">
         <div className="mb-4">
           <h2 className="flex items-center gap-2 text-lg font-semibold dark:text-white">
             <Clock className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
@@ -280,10 +280,10 @@ const TeacherTimetablePage = () => {
                 className={`flex min-w-[100px] flex-col rounded-2xl border p-3 text-left transition-all ${
                   isActive
                     ? "border-[var(--brand-color,#e35336)] bg-[var(--brand-color,#e35336)] text-white shadow-lg shadow-[rgba(var(--brand-color-rgb),0.2)]"
-                    : "border-gray-200 bg-white text-slate-700 hover:border-[rgba(var(--brand-color-rgb),0.5)] dark:border-[#334155] dark:bg-[#1E293B] dark:text-gray-300"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-[rgba(var(--brand-color-rgb),0.5)] dark:border-[#334155] dark:bg-[#1E293B] dark:text-gray-300"
                 }`}
               >
-                <span className={`text-xs font-medium ${isActive ? "text-white/80" : "text-slate-500 dark:text-gray-400"}`}>
+                <span className={`text-xs font-medium ${isActive ? "text-white/80" : "text-gray-500 dark:text-gray-400"}`}>
                   {day.name.slice(0, 3)}
                 </span>
                 <span className="text-sm font-bold">{day.name}</span>
@@ -306,9 +306,9 @@ const TeacherTimetablePage = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-[var(--brand-color,#e35336)]" />
-                      <h3 className="font-bold text-slate-900 dark:text-white">{slot.subject?.name}</h3>
+                      <h3 className="font-bold text-gray-900 dark:text-white">{slot.subject?.name}</h3>
                     </div>
-                    <p className="text-sm text-slate-500 dark:text-gray-400">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Class {slot.class?.name} • Section {slot.section?.name}
                     </p>
                   </div>
@@ -319,14 +319,14 @@ const TeacherTimetablePage = () => {
 
                 <div className="mt-4 flex flex-wrap gap-4 border-t border-gray-100 pt-4 dark:border-[#334155]">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-slate-400" />
-                    <span className="text-xs font-medium text-slate-600 dark:text-gray-300">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
                       {formatTimeRange(slot.startTime, slot.endTime)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-slate-400" />
-                    <span className="text-xs font-medium text-slate-600 dark:text-gray-300">
+                    <MapPin className="h-4 w-4 text-gray-400" />
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
                       Room {slot.room || "TBD"}
                     </span>
                   </div>
@@ -350,7 +350,7 @@ const TeacherTimetablePage = () => {
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-[#1E293B]">
               <Calendar className="h-6 w-6 text-gray-400" />
             </div>
-            <p className="text-sm font-medium text-slate-600 dark:text-gray-400">
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
               No classes scheduled for {weekdays.find((day) => day.value === selectedMobileDay)?.name}
             </p>
           </div>
@@ -383,8 +383,8 @@ const TeacherTimetablePage = () => {
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-[#0F172A]">
-                  <th className="sticky left-0 z-10 bg-slate-50 p-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500 dark:bg-[#0F172A] dark:text-slate-400">
+                <tr className="bg-gray-50 dark:bg-[#111111]">
+                  <th className="sticky left-0 z-10 bg-gray-50 p-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:bg-[#111111] dark:text-gray-400">
                     Time
                   </th>
                   {weekdays.map((day) => (
@@ -393,7 +393,7 @@ const TeacherTimetablePage = () => {
                       className={`min-w-[150px] p-4 text-center text-xs font-bold uppercase tracking-wider ${
                         todayIsWeekday && day.value === todayDayOfWeek 
                           ? 'bg-[rgba(var(--brand-color-rgb),0.05)] text-[var(--brand-color,#e35336)]' 
-                          : 'text-slate-500 dark:text-slate-400'
+                          : 'text-gray-500 dark:text-gray-400'
                       }`}
                     >
                       {day.name}
@@ -403,10 +403,10 @@ const TeacherTimetablePage = () => {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-[#334155]">
                 {uniqueSlotRanges.map((slot) => (
-                  <tr key={`${slot.start}-${slot.end}`} className="group hover:bg-slate-50/50 dark:hover:bg-[#0F172A]/50">
+                  <tr key={`${slot.start}-${slot.end}`} className="group hover:bg-gray-50/50 dark:hover:bg-[#111111]/50">
                     <td className="sticky left-0 z-10 bg-white p-4 dark:bg-[#1E293B]">
-                      <div className="text-sm font-bold text-slate-900 dark:text-white">{slot.label}</div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400">{formatTimeRange(slot.start, slot.end)}</div>
+                      <div className="text-sm font-bold text-gray-900 dark:text-white">{slot.label}</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400">{formatTimeRange(slot.start, slot.end)}</div>
                     </td>
                     
                     {weekdays.map((day) => {
@@ -419,14 +419,14 @@ const TeacherTimetablePage = () => {
                           className={`p-2 transition-colors ${todayIsWeekday && isToday ? 'bg-[rgba(var(--brand-color-rgb),0.05)]' : ''}`}
                         >
                           {classForSlot ? (
-                            <div className="h-full rounded-xl border border-[rgba(var(--brand-color-rgb),0.1)] bg-white p-3 shadow-sm transition-all hover:border-[rgba(var(--brand-color-rgb),0.3)] hover:shadow-md dark:bg-[#0F172A]">
-                              <p className="line-clamp-1 text-sm font-bold text-slate-900 dark:text-white">
+                            <div className="h-full rounded-xl border border-[rgba(var(--brand-color-rgb),0.1)] bg-white p-3 shadow-sm transition-all hover:border-[rgba(var(--brand-color-rgb),0.3)] hover:shadow-md dark:bg-[#111111]">
+                              <p className="line-clamp-1 text-sm font-bold text-gray-900 dark:text-white">
                                 {classForSlot.class?.name}
                               </p>
-                              <p className="mt-1 line-clamp-1 text-xs font-medium text-slate-700 dark:text-slate-300">
+                              <p className="mt-1 line-clamp-1 text-xs font-medium text-gray-700 dark:text-gray-300">
                                 {classForSlot.subject?.name}
                               </p>
-                              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
                                 <MapPin className="h-3 w-3" />
                                 {classForSlot.room || 'TBD'}
                               </div>

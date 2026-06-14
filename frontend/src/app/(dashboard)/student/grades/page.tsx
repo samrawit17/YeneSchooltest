@@ -209,17 +209,17 @@ export default function StudentGradesPage() {
   const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       <div className="p-4 md:p-6 lg:p-8 space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-primary" />
               My Grades & Results
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               View your academic performance, grades and results
             </p>
           </div>
@@ -230,17 +230,17 @@ export default function StudentGradesPage() {
         </div>
 
         {/* Stats Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-200 dark:bg-slate-700 rounded-lg overflow-hidden">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-gray-200 dark:bg-[#2A2A2A] rounded-lg overflow-hidden">
           {[
             { label: "Overall GPA", value: overallGPA.toFixed(1), suffix: "/ 4.0", color: getGPAColor(overallGPA) },
-            { label: "Average Score", value: `${averageScore}%`, suffix: "Percentage", color: "text-slate-900 dark:text-white" },
+            { label: "Average Score", value: `${averageScore}%`, suffix: "Percentage", color: "text-gray-900 dark:text-white" },
             { label: "Highest Score", value: `${highestScore}%`, suffix: "Best subject", color: "text-green-600" },
-            { label: "Subjects", value: grades.length, suffix: "This year", color: "text-slate-900 dark:text-white" },
+            { label: "Subjects", value: grades.length, suffix: "This year", color: "text-gray-900 dark:text-white" },
           ].map((stat, i) => (
-            <div key={i} className="bg-white dark:bg-slate-800 p-4 md:p-5">
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">{stat.label}</p>
+            <div key={i} className="bg-white dark:bg-[#1A1A1A] p-4 md:p-5">
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{stat.label}</p>
               <p className={`text-3xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{stat.suffix}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{stat.suffix}</p>
             </div>
           ))}
         </div>
@@ -281,7 +281,7 @@ export default function StudentGradesPage() {
             <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
           </div>
         ) : grades.length === 0 ? (
-          <div className="text-center py-20 text-sm text-slate-400 dark:text-slate-500">
+          <div className="text-center py-20 text-sm text-gray-400 dark:text-gray-500">
             No grades found for the selected criteria
           </div>
         ) : (
@@ -289,35 +289,35 @@ export default function StudentGradesPage() {
             {Object.entries(groupedByTerm).map(([termName, termGrades]) => (
               <div key={termName}>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{termName}</h2>
-                  <span className="text-sm text-slate-500 dark:text-slate-400">
-                    Term Average: <span className="font-semibold text-slate-900 dark:text-white">{calculateTermAverage(termGrades)}%</span>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{termName}</h2>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Term Average: <span className="font-semibold text-gray-900 dark:text-white">{calculateTermAverage(termGrades)}%</span>
                   </span>
                 </div>
-                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                <div className="border border-gray-200 dark:border-[#2A2A2A] rounded-lg overflow-hidden">
                   <table className="w-full">
                     <thead>
-                      <tr className="bg-slate-100 dark:bg-slate-800">
-                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Subject</th>
-                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CA</th>
-                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mid</th>
-                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Final</th>
-                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</th>
-                        <th className="text-center py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Grade</th>
-                        <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Remark</th>
+                      <tr className="bg-gray-100 dark:bg-[#1A1A1A]">
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subject</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">CA</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mid</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Final</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+                        <th className="text-center py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Grade</th>
+                        <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Remark</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <tbody className="divide-y divide-gray-200 dark:divide-[#2A2A2A]">
                       {termGrades.map(grade => (
-                        <tr key={grade.id} className="bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <tr key={grade.id} className="bg-white dark:bg-[#1A1A1A]/50 hover:bg-gray-50 dark:hover:bg-[#1A1A1A]">
                           <td className="py-3 px-4">
-                            <p className="font-medium text-slate-900 dark:text-white">{grade.subject.name}</p>
-                            <p className="text-xs text-slate-400 dark:text-slate-500">{grade.class.name} - {grade.section.name}</p>
+                            <p className="font-medium text-gray-900 dark:text-white">{grade.subject.name}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500">{grade.class.name} - {grade.section.name}</p>
                           </td>
-                          <td className="py-3 px-4 text-center text-slate-700 dark:text-slate-300">{grade.caScore ?? "-"}</td>
-                          <td className="py-3 px-4 text-center text-slate-700 dark:text-slate-300">{grade.midScore ?? "-"}</td>
-                          <td className="py-3 px-4 text-center text-slate-700 dark:text-slate-300">{grade.finalScore ?? "-"}</td>
-                          <td className="py-3 px-4 text-center font-bold text-slate-900 dark:text-white">{grade.totalScore ?? "-"}</td>
+                          <td className="py-3 px-4 text-center text-gray-700 dark:text-gray-300">{grade.caScore ?? "-"}</td>
+                          <td className="py-3 px-4 text-center text-gray-700 dark:text-gray-300">{grade.midScore ?? "-"}</td>
+                          <td className="py-3 px-4 text-center text-gray-700 dark:text-gray-300">{grade.finalScore ?? "-"}</td>
+                          <td className="py-3 px-4 text-center font-bold text-gray-900 dark:text-white">{grade.totalScore ?? "-"}</td>
                           <td className="py-3 px-4 text-center">
                             {grade.gradeLetter ? (
                               <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${getGradeColor(grade.gradeLetter)}`}>
@@ -325,7 +325,7 @@ export default function StudentGradesPage() {
                               </span>
                             ) : "-"}
                           </td>
-                          <td className="py-3 px-4 text-sm text-slate-500 dark:text-slate-400 italic">{grade.remark ? `"${grade.remark}"` : "-"}</td>
+                          <td className="py-3 px-4 text-sm text-gray-500 dark:text-gray-400 italic">{grade.remark ? `"${grade.remark}"` : "-"}</td>
                         </tr>
                       ))}
                     </tbody>

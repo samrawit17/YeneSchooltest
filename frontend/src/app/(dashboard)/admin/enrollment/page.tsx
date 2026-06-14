@@ -60,12 +60,12 @@ interface AcademicYear {
 }
 
 const statusConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-  PENDING: { color: 'bg-yellow-100 text-yellow-800', icon: <Clock className="w-4 h-4" />, label: 'Pending' },
-  DOCUMENTS_PENDING: { color: 'bg-orange-100 text-orange-800', icon: <FileText className="w-4 h-4" />, label: 'Documents Pending' },
-  APPROVED: { color: 'bg-green-100 text-green-800', icon: <CheckCircle className="w-4 h-4" />, label: 'Approved' },
-  REJECTED: { color: 'bg-red-100 text-red-800', icon: <XCircle className="w-4 h-4" />, label: 'Rejected' },
-  WAITLISTED: { color: 'bg-blue-100 text-blue-800', icon: <AlertCircle className="w-4 h-4" />, label: 'Waitlisted' },
-  CANCELLED: { color: 'bg-gray-100 text-gray-800', icon: <Ban className="w-4 h-4" />, label: 'Cancelled' },
+  PENDING: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300', icon: <Clock className="w-4 h-4" />, label: 'Pending' },
+  DOCUMENTS_PENDING: { color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300', icon: <FileText className="w-4 h-4" />, label: 'Documents Pending' },
+  APPROVED: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', icon: <CheckCircle className="w-4 h-4" />, label: 'Approved' },
+  REJECTED: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300', icon: <XCircle className="w-4 h-4" />, label: 'Rejected' },
+  WAITLISTED: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300', icon: <AlertCircle className="w-4 h-4" />, label: 'Waitlisted' },
+  CANCELLED: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300', icon: <Ban className="w-4 h-4" />, label: 'Cancelled' },
 };
 
 const canApproveOrReject = (status: string) => status === 'PENDING' || status === 'WAITLISTED';
@@ -247,7 +247,7 @@ export default function AdminEnrollmentPage() {
   const formatEnrollmentDate = (dateString: string) => formatSchoolDate(dateString);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111] p-6">
       <div className="w-full space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -583,7 +583,7 @@ export default function AdminEnrollmentPage() {
                   <div><span className="text-gray-500">Class:</span> <strong>{credentials.student.class}</strong></div>
                   <div><span className="text-gray-500">Section:</span> <strong>{credentials.student.section}</strong></div>
                   <div><span className="text-gray-500">Roll Number:</span> <strong>{credentials.student.rollNumber}</strong></div>
-                  <div><span className="text-gray-500">Temporary Password:</span> <code className="bg-white px-2 py-1 rounded">{credentials.student.password}</code></div>
+                  <div><span className="text-gray-500">Temporary Password:</span> <code className="bg-white dark:bg-[#1A1A1A] px-2 py-1 rounded">{credentials.student.password}</code></div>
                 </div>
               </div>
 

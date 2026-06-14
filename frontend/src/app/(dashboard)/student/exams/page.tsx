@@ -58,7 +58,7 @@ export default function StudentAssessmentsPage() {
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-bold text-[#e35336]">My Assessments</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-gray-500">
           Track scheduled quizzes, tests, mid exams, final exams, and your results.
         </p>
       </div>
@@ -75,16 +75,16 @@ export default function StudentAssessmentsPage() {
                 <div className="font-medium">{item.assessment.title}</div>
                 <Badge variant="outline">{item.assessment.type}</Badge>
               </div>
-              <div className="mt-2 text-sm text-slate-500">
+              <div className="mt-2 text-sm text-gray-500">
                 {item.subject.name} • Max {item.maxScore}
               </div>
-              <div className="mt-1 text-sm text-slate-500">
+              <div className="mt-1 text-sm text-gray-500">
                 {new Date(item.assessment.startDate).toLocaleString()}
               </div>
             </div>
           ))}
           {!upcoming.length && (
-            <div className="rounded-lg border border-dashed p-6 text-sm text-slate-500">
+            <div className="rounded-lg border border-dashed p-6 text-sm text-gray-500">
               No upcoming assessments.
             </div>
           )}
@@ -102,7 +102,7 @@ export default function StudentAssessmentsPage() {
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="font-semibold">{subject.subjectName}</div>
-                  <div className="text-sm text-slate-500">{subject.termName || "Current Term"}</div>
+                  <div className="text-sm text-gray-500">{subject.termName || "Current Term"}</div>
                 </div>
                 <Badge variant="secondary">
                   {subject.summary.gradeLetter || "Pending"} {subject.summary.totalScore !== null ? `• ${subject.summary.totalScore.toFixed(1)}/100` : ""}
@@ -110,9 +110,9 @@ export default function StudentAssessmentsPage() {
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {subject.assessments.map((assessment: any) => (
-                  <div key={assessment.assessmentSubjectId} className="rounded-md bg-slate-50 p-3">
+                  <div key={assessment.assessmentSubjectId} className="rounded-md bg-gray-50 p-3">
                     <div className="text-sm font-medium">{assessment.title}</div>
-                    <div className="text-xs text-slate-500">{assessment.type}</div>
+                    <div className="text-xs text-gray-500">{assessment.type}</div>
                     <div className="mt-2 text-sm">
                       {assessment.score === null ? "Pending" : `${assessment.score}/${assessment.maxScore}`}
                     </div>
@@ -122,7 +122,7 @@ export default function StudentAssessmentsPage() {
             </div>
           ))}
           {!results.length && (
-            <div className="rounded-lg border border-dashed p-6 text-sm text-slate-500">
+            <div className="rounded-lg border border-dashed p-6 text-sm text-gray-500">
               No results available yet.
             </div>
           )}

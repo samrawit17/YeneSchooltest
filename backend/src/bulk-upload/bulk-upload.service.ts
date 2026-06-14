@@ -295,7 +295,7 @@ export class BulkUploadService {
   /**
    * Parse CSV file content (simple manual parser)
    */
-  parseCSV(content: string): BulkUserRecord[] {
+  parseCSV(content: string, studentImport = false): BulkUserRecord[] {
     try {
       const lines = content.split('\n').filter((line) => line.trim() !== '');
       if (lines.length < 2) {
@@ -321,6 +321,17 @@ export class BulkUploadService {
       // Debug: log headers
       console.log('Parsed headers:', headers);
       console.log('Header count:', headers.length);
+
+      // Require FAN/fayda_number column for student CSV imports
+      if (studentImport) {
+        const faydaPattern = /^(fan|fayda)/;
+        const hasFaydaColumn = headers.some((h) => faydaPattern.test(h));
+        if (!hasFaydaColumn) {
+          throw new BadRequestException(
+            `Student CSV must include a FAN column. Use fan or fayda_number. FCN is not required. Found headers: ${headers.join(', ')}`,
+          );
+        }
+      }
 
       const nameIdx = findIdx([
         'full_name',
@@ -707,6 +718,18 @@ export class BulkUploadService {
     const yearName = fallbackAcademicYear?.name; // Use name for StudentClass.academicYear
     if (!yearId) throw new Error('No academic year found for this school');
     if (!yearName) throw new Error('No academic year name found');
+
+    const resolvedYear =
+      fallbackAcademicYear?.id === yearId
+        ? fallbackAcademicYear
+        : await this.prismaService.academicYear.findUnique({
+            where: { id: yearId },
+          });
+    if (resolvedYear && new Date(resolvedYear.endDate) < new Date()) {
+      throw new BadRequestException(
+        `Cannot create students for academic year "${resolvedYear.name}" because it has ended. Create a new academic year first.`,
+      );
+    }
 
     // Fetch section capacity from school settings (default to 30)
     const capacitySetting = await this.prismaService.schoolSetting.findUnique({

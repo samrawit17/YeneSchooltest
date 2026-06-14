@@ -43,8 +43,8 @@ export default function StudentPracticeExamsPage() {
     <div className="space-y-6 p-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Online Examination</h1>
-          <p className="text-sm text-slate-500">Available online examinations for your grade and stream.</p>
+          <h1 className="text-2xl font-bold text-gray-950 dark:text-white">Online Examination</h1>
+          <p className="text-sm text-gray-500">Available online examinations for your grade and stream.</p>
         </div>
         <Badge variant="outline" className="w-fit">Online</Badge>
       </div>
@@ -71,13 +71,13 @@ export default function StudentPracticeExamsPage() {
                   <CardTitle className="text-lg">{exam.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {exam.description ? <p className="text-sm text-slate-500">{exam.description}</p> : null}
-                  <div className="flex flex-wrap gap-2 text-sm text-slate-600">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 dark:bg-slate-900">
+                  {exam.description ? <p className="text-sm text-gray-500">{exam.description}</p> : null}
+                  <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 dark:bg-[#111111]">
                       <Clock className="h-4 w-4" /> {exam.durationMinutes} min
                     </span>
-                    <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-slate-900">Pass {exam.passMark}%</span>
-                    <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-slate-900">{exam._count?.questions || 0} questions</span>
+                    <span className="rounded-md bg-gray-100 px-2 py-1 dark:bg-[#111111]">Pass {exam.passMark}%</span>
+                    <span className="rounded-md bg-gray-100 px-2 py-1 dark:bg-[#111111]">{exam._count?.questions || 0} questions</span>
                   </div>
                   <Button
                     className="w-full"
@@ -98,7 +98,7 @@ export default function StudentPracticeExamsPage() {
         </div>
       ) : (
         <Card>
-          <CardContent className="py-16 text-center text-sm text-slate-500">
+          <CardContent className="py-16 text-center text-sm text-gray-500">
             No active online examinations are available for your grade right now.
           </CardContent>
         </Card>
@@ -110,7 +110,7 @@ export default function StudentPracticeExamsPage() {
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
               <div>
                 <CardTitle className="text-lg">Enter Exam Code</CardTitle>
-                <p className="mt-1 text-sm text-slate-500">{selectedExam.title}</p>
+                <p className="mt-1 text-sm text-gray-500">{selectedExam.title}</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelectedExam(null)}>
                 <X className="h-4 w-4" />
@@ -120,7 +120,7 @@ export default function StudentPracticeExamsPage() {
               <div className="space-y-2">
                 <Label htmlFor="exam-access-code">Exam code</Label>
                 <div className="relative">
-                  <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     id="exam-access-code"
                     value={accessCode}

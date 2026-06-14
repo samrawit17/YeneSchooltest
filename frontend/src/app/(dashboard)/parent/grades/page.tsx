@@ -6,9 +6,10 @@ import { useAuth } from "@/context/AuthContext";
 import { academicYearsAPI, gradingAPI, reportCardsAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
 import { useSchoolFeatureSetting } from "@/hooks/useSchoolFeatureSetting";
-import { Download, Loader2 } from "lucide-react";
+import { Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -84,7 +85,7 @@ const gradeBadgeClass = (grade: string | null) => {
     case "F":
       return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300";
     default:
-      return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+      return "bg-gray-100 text-gray-600 dark:bg-[#2A2A2A] dark:text-gray-300";
   }
 };
 
@@ -419,30 +420,76 @@ export default function ParentGradesPage() {
 
   if (authLoading || parentGradesSettingLoading || initialLoad) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
+        <div className="px-4 py-6 md:px-6 space-y-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <Skeleton className="h-8 w-48 mb-2" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+            <Skeleton className="h-9 w-44 rounded-md" />
+          </div>
+
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+            <div className="grid gap-4 md:grid-cols-3">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="space-y-1.5">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+            <div className="grid gap-4 md:grid-cols-5">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <div key={n}>
+                  <Skeleton className="h-3 w-16 mb-2" />
+                  <Skeleton className="h-5 w-24 mb-1" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+            <Skeleton className="h-6 w-32 mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="flex gap-4">
+                  <Skeleton className="h-4 w-32" />
+                  {[1, 2, 3].map((m) => (
+                    <Skeleton key={m} className="h-4 w-16 mx-auto" />
+                  ))}
+                  <Skeleton className="h-4 w-12" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!parentGradesEnabled) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
         <div className="px-4 py-6 md:px-6 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Published Results
             </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               View published subject results for your children.
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-800">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Grade viewing is disabled
             </h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500 dark:text-slate-400">
+            <p className="mx-auto mt-2 max-w-xl text-sm text-gray-500 dark:text-gray-400">
               This school has disabled parent access to student grades. Contact the school
               administration if you need access to published results.
             </p>
@@ -453,14 +500,14 @@ export default function ParentGradesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
       <div className="px-4 py-6 md:px-6 space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Published Results
             </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               View published subject results for your children.
             </p>
           </div>
@@ -470,10 +517,10 @@ export default function ParentGradesPage() {
           </Button>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-500">Child</label>
+              <label className="text-xs font-medium text-gray-500">Child</label>
               <Select value={selectedChildId} onValueChange={setSelectedChildId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select child" />
@@ -491,7 +538,7 @@ export default function ParentGradesPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-500">Academic Year</label>
+              <label className="text-xs font-medium text-gray-500">Academic Year</label>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select academic year" />
@@ -506,7 +553,7 @@ export default function ParentGradesPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-500">{periodLabel}</label>
+              <label className="text-xs font-medium text-gray-500">{periodLabel}</label>
               <Select value={selectedTerm} onValueChange={setSelectedTerm}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select period" />
@@ -531,37 +578,37 @@ export default function ParentGradesPage() {
         )}
 
         {selectedChild && !paymentGate.blocked && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
             <div className="grid gap-4 md:grid-cols-5">
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400">Student</p>
-                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">{selectedChild.name}</p>
-                <p className="text-sm text-slate-500">{selectedChild.studentCode}</p>
+                <p className="text-xs uppercase tracking-wide text-gray-400">Student</p>
+                <p className="mt-0.5 font-semibold text-gray-900 dark:text-white">{selectedChild.name}</p>
+                <p className="text-sm text-gray-500">{selectedChild.studentCode}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400">Class</p>
-                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs uppercase tracking-wide text-gray-400">Class</p>
+                <p className="mt-0.5 font-semibold text-gray-900 dark:text-white">
                   {selectedChild.className} &middot; Section {selectedChild.section}
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400">Average / GPA</p>
-                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs uppercase tracking-wide text-gray-400">Average / GPA</p>
+                <p className="mt-0.5 font-semibold text-gray-900 dark:text-white">
                   {overallAverage}% / {overallGradePoint}
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400">Ranking</p>
-                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs uppercase tracking-wide text-gray-400">Ranking</p>
+                <p className="mt-0.5 font-semibold text-gray-900 dark:text-white">
                   {typeof rankSummary.rank === "number" ? `#${rankSummary.rank}` : "-"}
                 </p>
                 {rankSummary.termName && (
-                  <p className="text-sm text-slate-500">{rankSummary.termName}</p>
+                  <p className="text-sm text-gray-500">{rankSummary.termName}</p>
                 )}
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-400">Subjects / Highest</p>
-                <p className="mt-0.5 font-semibold text-slate-900 dark:text-white">
+                <p className="text-xs uppercase tracking-wide text-gray-400">Subjects / Highest</p>
+                <p className="mt-0.5 font-semibold text-gray-900 dark:text-white">
                   {gradeRows.length} / {highestScore}
                 </p>
               </div>
@@ -570,19 +617,30 @@ export default function ParentGradesPage() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-14">
-            <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+            <Skeleton className="h-6 w-32 mb-4" />
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="flex gap-4">
+                  <Skeleton className="h-4 w-32" />
+                  {[1, 2, 3].map((m) => (
+                    <Skeleton key={m} className="h-4 w-16 mx-auto" />
+                  ))}
+                  <Skeleton className="h-4 w-12" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : paymentGate.blocked ? null : gradeRows.length === 0 ? (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-14 text-center text-slate-500">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl py-14 text-center text-gray-500">
             No published results found for the selected child and academic year.
           </div>
         ) : (
           <div className="space-y-5">
             {groupedByTerm.map((group) => (
-              <div key={group.termName} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                <div className="flex flex-col gap-2 px-5 py-4 md:flex-row md:items-center md:justify-between border-b border-slate-100 dark:border-slate-700">
-                  <h3 className="font-semibold text-slate-900 dark:text-white">{group.termName}</h3>
+              <div key={group.termName} className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl overflow-hidden">
+                <div className="flex flex-col gap-2 px-5 py-4 md:flex-row md:items-center md:justify-between border-b border-gray-100 dark:border-[#2A2A2A]">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">{group.termName}</h3>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline" className="text-xs">Avg {group.average}%</Badge>
                     <Badge className="bg-[var(--brand-color,#e35336)] text-white text-xs">GPA {group.gradePoint}</Badge>
@@ -597,29 +655,29 @@ export default function ParentGradesPage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b border-slate-100 dark:border-slate-700">
-                            <th className="text-left text-xs font-medium text-slate-500 pb-3 pr-4">Subject</th>
+                          <tr className="border-b border-gray-100 dark:border-[#2A2A2A]">
+                            <th className="text-left text-xs font-medium text-gray-500 pb-3 pr-4">Subject</th>
                             {assessmentColumns.map((column) => (
                               <th key={column.code} className="text-center pb-3 px-2">
                                 <div className="inline-flex flex-col items-center gap-0.5">
-                                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                                     {column.label}
                                   </span>
                                   {column.maxScore > 0 && (
-                                    <span className="text-[10px] text-slate-400">/{column.maxScore}</span>
+                                    <span className="text-[10px] text-gray-400">/{column.maxScore}</span>
                                   )}
                                 </div>
                               </th>
                             ))}
-                            <th className="text-center text-xs font-medium text-slate-500 pb-3 px-2">Total</th>
-                            <th className="text-center text-xs font-medium text-slate-500 pb-3 px-2">Grade</th>
-                            <th className="text-left text-xs font-medium text-slate-500 pb-3 pl-2">Remark</th>
+                            <th className="text-center text-xs font-medium text-gray-500 pb-3 px-2">Total</th>
+                            <th className="text-center text-xs font-medium text-gray-500 pb-3 px-2">Grade</th>
+                            <th className="text-left text-xs font-medium text-gray-500 pb-3 pl-2">Remark</th>
                           </tr>
                         </thead>
                         <tbody>
                           {group.rows.map((row) => (
-                            <tr key={`${group.termName}-${row.subjectId}`} className="border-b border-slate-50 dark:border-slate-700/50 last:border-0">
-                              <td className="py-3 pr-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                            <tr key={`${group.termName}-${row.subjectId}`} className="border-b border-gray-50 dark:border-[#2A2A2A]/50 last:border-0">
+                              <td className="py-3 pr-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">
                                 {row.subjectName}
                               </td>
                               {assessmentColumns.map((column) => {
@@ -630,12 +688,12 @@ export default function ParentGradesPage() {
                                   ? Math.round(scores.reduce((sum, s) => sum + s, 0) * 100) / 100
                                   : null;
                                 return (
-                                  <td key={column.code} className="text-center py-3 px-2 text-slate-700 dark:text-slate-300">
+                                  <td key={column.code} className="text-center py-3 px-2 text-gray-700 dark:text-gray-300">
                                     {value ?? "-"}
                                   </td>
                                 );
                               })}
-                              <td className="text-center py-3 px-2 font-medium text-slate-900 dark:text-white">
+                              <td className="text-center py-3 px-2 font-medium text-gray-900 dark:text-white">
                                 {row.totalScore ?? "-"}
                               </td>
                               <td className="text-center py-3 px-2">
@@ -643,7 +701,7 @@ export default function ParentGradesPage() {
                                   {row.gradeLetter || "-"}
                                 </span>
                               </td>
-                              <td className="py-3 pl-2 text-slate-500">{row.remark || "-"}</td>
+                              <td className="py-3 pl-2 text-gray-500">{row.remark || "-"}</td>
                             </tr>
                           ))}
                         </tbody>

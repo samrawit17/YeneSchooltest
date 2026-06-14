@@ -277,7 +277,7 @@ export default function IdCardGeneratorPage() {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-[#111111]">
         <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
@@ -285,12 +285,12 @@ export default function IdCardGeneratorPage() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       <div className="px-3 py-6 sm:px-4 md:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-black dark:text-white">{t.page.title}</h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {t.page.description}
             </p>
           </div>
@@ -313,13 +313,13 @@ export default function IdCardGeneratorPage() {
       </div>
 
       <div className="space-y-6 px-3 pb-6 sm:px-4 md:px-8">
-        <Card className="dark:border-slate-800 dark:bg-slate-900">
+        <Card className="dark:border-[#2A2A2A] dark:bg-[#111111]">
           <CardContent className="pt-6">
             <div className="flex flex-col gap-3 md:flex-row">
               <div className="w-full md:w-48">
                 <Label className="mb-1 block text-xs text-gray-500">{t.page.academicYear}</Label>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="dark:border-slate-700 dark:bg-slate-800">
+                  <SelectTrigger className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
                     <SelectValue placeholder={t.page.selectYear} />
                   </SelectTrigger>
                   <SelectContent>
@@ -333,13 +333,13 @@ export default function IdCardGeneratorPage() {
                 <Label className="mb-1 block text-xs text-gray-500">{t.page.search}</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder={t.page.searchPlaceholder} className="pl-9 dark:border-slate-700 dark:bg-slate-800" />
+                  <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder={t.page.searchPlaceholder} className="pl-9 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]" />
                 </div>
               </div>
               <div className="w-full md:w-40">
                 <Label className="mb-1 block text-xs text-gray-500">{t.page.grade}</Label>
                 <Select value={filterGrade} onValueChange={setFilterGrade}>
-                  <SelectTrigger className="dark:border-slate-700 dark:bg-slate-800"><SelectValue placeholder={t.page.allGrades} /></SelectTrigger>
+                  <SelectTrigger className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]"><SelectValue placeholder={t.page.allGrades} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t.page.allGrades}</SelectItem>
                     {grades.map((g) => <SelectItem key={g} value={g.toString()}>{formatMessage(t.page.gradeValue, { grade: g })}</SelectItem>)}
@@ -349,7 +349,7 @@ export default function IdCardGeneratorPage() {
               <div className="w-full md:w-40">
                 <Label className="mb-1 block text-xs text-gray-500">{t.page.section}</Label>
                 <Select value={filterSection} onValueChange={setFilterSection}>
-                  <SelectTrigger className="dark:border-slate-700 dark:bg-slate-800"><SelectValue placeholder={t.page.allSections} /></SelectTrigger>
+                  <SelectTrigger className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]"><SelectValue placeholder={t.page.allSections} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t.page.allSections}</SelectItem>
                     {sections.map((s) => <SelectItem key={s} value={s}>{formatMessage(t.page.sectionValue, { section: s })}</SelectItem>)}
@@ -361,17 +361,17 @@ export default function IdCardGeneratorPage() {
         </Card>
 
         {!loading && filteredStudents.length > 0 && (
-          <Card className="dark:border-slate-800 dark:bg-slate-900">
+          <Card className="dark:border-[#2A2A2A] dark:bg-[#111111]">
             <CardContent className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-start gap-3">
                 <AlertTriangle className={`mt-0.5 h-5 w-5 ${studentsWithIssues.length ? "text-amber-600" : "text-emerald-600"}`} />
                 <div>
-                  <p className="font-medium text-slate-900 dark:text-white">
+                  <p className="font-medium text-gray-900 dark:text-white">
                     {studentsWithIssues.length
                       ? formatMessage(t.page.incompleteSummary, { issueCount: studentsWithIssues.length, total: filteredStudents.length })
                       : formatMessage(t.page.readySummary, { count: filteredStudents.length })}
                   </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     {t.page.fallbackNote}
                   </p>
                 </div>
@@ -388,7 +388,7 @@ export default function IdCardGeneratorPage() {
           </Card>
         )}
 
-        <Card className="dark:border-slate-800 dark:bg-slate-900">
+        <Card className="dark:border-[#2A2A2A] dark:bg-[#111111]">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between gap-2 text-base">
               <span>{t.page.settingsTitle}</span>
@@ -407,7 +407,7 @@ export default function IdCardGeneratorPage() {
             <div>
               <Label className="mb-1 block text-xs text-gray-500">{t.page.themeColor}</Label>
               <div className="flex gap-2">
-                <input type="color" value={isValidHexColor(template.themeColor) ? template.themeColor : defaultTemplate.themeColor} onChange={(e) => setTemplate((p) => ({ ...p, themeColor: e.target.value }))} className="h-10 w-12 rounded border border-slate-300 bg-white p-1" />
+                <input type="color" value={isValidHexColor(template.themeColor) ? template.themeColor : defaultTemplate.themeColor} onChange={(e) => setTemplate((p) => ({ ...p, themeColor: e.target.value }))} className="h-10 w-12 rounded border border-gray-300 bg-white p-1" />
                 <Input
                   value={template.themeColor}
                   onChange={(e) => setTemplate((p) => ({ ...p, themeColor: e.target.value }))}
@@ -432,22 +432,22 @@ export default function IdCardGeneratorPage() {
               <Label className="mb-1 block text-xs text-gray-500">{t.page.schoolAddress}</Label>
               <Input value={template.schoolAddress} onChange={(e) => setTemplate((p) => ({ ...p, schoolAddress: e.target.value }))} />
             </div>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+            <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
               <input type="checkbox" checked={template.showEmergencyContact} onChange={(e) => setTemplate((p) => ({ ...p, showEmergencyContact: e.target.checked }))} />
               <span className="text-sm font-medium">{t.page.showEmergencyContact}</span>
             </label>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
+            <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
               <input type="checkbox" checked={template.showBloodGroup} onChange={(e) => setTemplate((p) => ({ ...p, showBloodGroup: e.target.checked }))} />
               <span className="text-sm font-medium">{t.page.showBloodGroup}</span>
             </label>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800 md:col-span-2">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] md:col-span-2">
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={template.useCustomBackground} onChange={(e) => setTemplate((p) => ({ ...p, useCustomBackground: e.target.checked }))} />
                 <span className="text-sm font-semibold">{t.page.useCustomBackground}</span>
               </label>
               {template.useCustomBackground && (
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <Label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:bg-slate-800">
+                  <Label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white px-3 text-sm font-medium hover:bg-gray-50 dark:border-gray-600 dark:bg-[#111111] dark:hover:bg-[#1A1A1A]">
                     {watermarkUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                     {t.page.uploadWatermark}
                     <input
@@ -458,7 +458,7 @@ export default function IdCardGeneratorPage() {
                       onChange={(e) => handleWatermarkUpload(e.target.files?.[0])}
                     />
                   </Label>
-                  <span className="truncate text-xs text-slate-500">
+                  <span className="truncate text-xs text-gray-500">
                     {template.customBackgroundUrl ? template.customBackgroundUrl : t.page.noWatermark}
                   </span>
                 </div>
@@ -474,7 +474,7 @@ export default function IdCardGeneratorPage() {
         </Card>
 
         {loading ? (
-          <Card className="dark:border-slate-800 dark:bg-slate-900">
+          <Card className="dark:border-[#2A2A2A] dark:bg-[#111111]">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Loader2 className="mb-4 h-10 w-10 animate-spin text-[var(--brand-color,#e35336)]" />
               <p className="text-gray-500">{t.page.loadingStudents}</p>
@@ -501,10 +501,10 @@ export default function IdCardGeneratorPage() {
 
       {mounted && createPortal(previewOpen ? (
         <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50 p-4" onClick={() => setPreviewOpen(false)}>
-          <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#111111]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-base font-semibold dark:text-white"><Palette className="h-4 w-4" /> {t.page.previewTitle}</h3>
-              <button onClick={() => setPreviewOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800">
+              <button onClick={() => setPreviewOpen(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-[#1A1A1A]">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -519,12 +519,12 @@ export default function IdCardGeneratorPage() {
 function IdCardPreview({ template, t }: { template: IdCardTemplate; t: any }) {
   const watermarkSrc = template.useCustomBackground ? resolveAssetUrl(template.customBackgroundUrl) : undefined;
   return (
-    <div className="relative aspect-[1.586/1] overflow-hidden rounded-xl border border-slate-300 bg-white text-slate-900 shadow-sm">
+    <div className="relative aspect-[1.586/1] overflow-hidden rounded-xl border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-gray-100 shadow-sm">
       {watermarkSrc && (
         <img src={watermarkSrc} alt="" className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-[58%] -translate-x-1/2 -translate-y-1/2 object-contain opacity-10" />
       )}
       <div className="relative z-10 flex h-[23%] items-center justify-between px-5 text-white" style={{ backgroundColor: template.themeColor }}>
-        <div className="flex h-10 w-10 items-center justify-center rounded bg-white/95 text-[10px] text-slate-500">{t.preview.logo}</div>
+        <div className="flex h-10 w-10 items-center justify-center rounded bg-white/95 text-[10px] text-gray-500">{t.preview.logo}</div>
           <div className="min-w-0 flex-1 px-3">
             <div className="truncate text-lg font-bold">{template.schoolName || t.preview.schoolName}</div>
             <div className="truncate text-[11px] opacity-90">
@@ -534,7 +534,7 @@ function IdCardPreview({ template, t }: { template: IdCardTemplate; t: any }) {
         <div className="text-right text-xs font-semibold">{template.title}</div>
       </div>
       <div className="relative z-10 grid grid-cols-[96px_1fr_68px] gap-4 p-5">
-        <div className="flex h-28 items-center justify-center rounded-lg border text-xs text-slate-500">{t.preview.photo}</div>
+        <div className="flex h-28 items-center justify-center rounded-lg border border-gray-300 dark:border-[#2A2A2A] text-xs text-gray-500 dark:text-gray-400">{t.preview.photo}</div>
         <div className="space-y-2 text-sm">
           <div className="text-lg font-bold" style={{ color: template.themeColor }}>{t.preview.name}</div>
           <div><b>{t.preview.id}:</b> STU-00123</div>
@@ -544,17 +544,17 @@ function IdCardPreview({ template, t }: { template: IdCardTemplate; t: any }) {
           {template.showEmergencyContact && <div><b>{t.preview.emergency}:</b> 0911000000</div>}
         </div>
         <div className="flex flex-col items-center gap-1">
-          <div className="grid h-14 w-14 place-items-center rounded border text-xs">{t.preview.qr}</div>
-          <span className="text-[10px] text-slate-500">{t.preview.scanToVerify}</span>
+          <div className="grid h-14 w-14 place-items-center rounded border border-gray-300 dark:border-[#2A2A2A] text-xs">{t.preview.qr}</div>
+          <span className="text-[10px] text-gray-500 dark:text-gray-400">{t.preview.scanToVerify}</span>
         </div>
       </div>
-      <div className="relative z-10 flex items-end justify-between bg-slate-50 px-5 py-2 text-[11px] text-slate-500">
+      <div className="relative z-10 flex items-end justify-between bg-gray-50 dark:bg-[#2A2A2A] px-5 py-2 text-[11px] text-gray-500 dark:text-gray-400">
         <div className="w-28 text-center">
-          <div className="mb-1 border-t border-slate-400" />
+          <div className="mb-1 border-t border-gray-400" />
           <span>{t.preview.schoolStamp}</span>
         </div>
         <div className="w-36 text-center">
-          <div className="mb-1 border-t border-slate-400" />
+          <div className="mb-1 border-t border-gray-400" />
           <span>{t.preview.principalSignature}</span>
         </div>
       </div>

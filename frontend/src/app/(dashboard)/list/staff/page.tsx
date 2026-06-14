@@ -106,10 +106,10 @@ export default function StaffPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#111111] transition-colors">
         <div className="p-4 md:p-6">
           <div className="w-full">
-            <Card className="dark:border-slate-700 dark:bg-slate-800">
+            <Card className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
               <CardContent className="p-6">
                 <div className="text-center">
                   <p className="text-red-500">{t.messages.loadStaffFailed}</p>
@@ -125,13 +125,13 @@ export default function StaffPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#111111] transition-colors">
         <div className="p-4 md:p-6">
           <div className="w-full">
             <div className="flex items-center justify-between mb-6">
               <Skeleton className="h-8 w-48" />
             </div>
-            <Card className="dark:border-slate-700 dark:bg-slate-800">
+            <Card className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
               <CardContent className="p-0">
                 <Skeleton className="h-96 w-full" />
               </CardContent>
@@ -146,14 +146,14 @@ export default function StaffPage() {
   const endItem = Math.min(page * 10, total);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111] transition-colors">
       <div className="p-4 md:p-6">
         <div className="w-full space-y-6">
           {/* Top Section - Title and Buttons */}
           <div className="flex flex-row flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-black dark:text-white">{t.titles.staff}</h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 {t.subtitles.staff}
               </p>
             </div>
@@ -162,7 +162,7 @@ export default function StaffPage() {
           </div>
 
           {/* Filters Section */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
             <CardContent className="p-3 sm:p-4">
               <div className="flex flex-row flex-wrap items-center gap-3">
                 <div className="flex-1 min-w-[160px]">
@@ -180,7 +180,7 @@ export default function StaffPage() {
                       setSelectedRole(e.target.value);
                       setPage(1);
                     }}
-                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white min-w-[140px]"
+                    className="px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-[#111111] text-gray-900 dark:text-white min-w-[140px]"
                   >
                     <option value="">{t.filters.allRoles}</option>
                     <option value="ADMIN">{t.roles.ADMIN}</option>
@@ -195,11 +195,11 @@ export default function StaffPage() {
           </Card>
 
           {/* Main Data Table */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
-                  <tr className="border-b border-gray-100 dark:border-slate-700">
+                <thead className="bg-gray-50 dark:bg-[#111111]/50 sticky top-0">
+                  <tr className="border-b border-gray-100 dark:border-[#2A2A2A]">
                     <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.staff}</th>
                     <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.role}</th>
                     <th className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.usernameStaffId}</th>
@@ -209,7 +209,7 @@ export default function StaffPage() {
                 </thead>
                 <tbody>
                   {staffList.map((item) => (
-                    <tr key={item.id} className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onClick={() => router.push(`/list/staff/${item.id}`)}>
+                    <tr key={item.id} className="border-b border-gray-100 dark:border-[#2A2A2A]/50 hover:bg-gray-50 dark:hover:bg-[#2A2A2A]/30 transition-colors cursor-pointer" onClick={() => router.push(`/list/staff/${item.id}`)}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <Avatar className="w-10 h-10">

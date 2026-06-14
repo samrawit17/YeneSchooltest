@@ -389,7 +389,7 @@ const ParentFeesPage = () => {
     <div className="p-4 md:p-6 space-y-6">
       <Skeleton className="h-8 w-48" />
       <div className="grid grid-cols-1 gap-6">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5 space-y-4">
             <Skeleton className="h-6 w-32" />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[1, 2, 3, 4].map((i) => (
@@ -810,17 +810,17 @@ const ParentFeesPage = () => {
 
   const activePeriodText =
     selectedPeriod === "all"
-      ? t.allPeriods.replace("{period}s", `${systemPeriodLabelPlural}`)
+      ? (t.allPeriods || `All ${systemPeriodLabel}s`).replace("{period}s", `${systemPeriodLabelPlural}`)
       : selectedPeriod || currentTerm?.name || `Current ${systemPeriodLabel}`;
   const visibleChildren = selectedChild ? [selectedChild] : [];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
       <div className="px-4 py-6 md:px-6 space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t.subtitle}</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Select
@@ -830,7 +830,7 @@ const ParentFeesPage = () => {
                 setPeriodTouched(false);
               }}
             >
-              <SelectTrigger className="h-9 w-full bg-white text-sm dark:bg-slate-800 sm:w-64">
+              <SelectTrigger className="h-9 w-full bg-white text-sm dark:bg-[#1A1A1A] sm:w-64">
                 <SelectValue placeholder={t.selectChild} />
               </SelectTrigger>
               <SelectContent>
@@ -848,12 +848,12 @@ const ParentFeesPage = () => {
         </div>
 
         {children.length === 0 ? (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-16 text-center">
-            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-4">
-              <CreditCard className="w-7 h-7 text-slate-400" />
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl py-16 text-center">
+            <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-[#2A2A2A] flex items-center justify-center mx-auto mb-4">
+              <CreditCard className="w-7 h-7 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{t.noChildren}</h3>
-            <p className="text-sm text-slate-500 mt-1">{t.noChildrenDesc}</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.noChildren}</h3>
+            <p className="text-sm text-gray-500 mt-1">{t.noChildrenDesc}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6">
@@ -983,11 +983,11 @@ const ParentFeesPage = () => {
                 : periodPaymentHistory.filter((payment) => payment.displayPeriod === selectedPeriod);
 
               return (
-                <div key={child.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+                <div key={child.id} className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-[#2A2A2A]">
                     <div>
-                      <h3 className="font-semibold text-slate-900 dark:text-white">{child.name}</h3>
-                      <p className="text-sm text-slate-500">Grade {child.className} &middot; Section {child.section}</p>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">{child.name}</h3>
+                      <p className="text-sm text-gray-500">Grade {child.className} &middot; Section {child.section}</p>
                     </div>
                     <div className="flex items-center gap-2">
                         <Select
@@ -1017,7 +1017,7 @@ const ParentFeesPage = () => {
                             <SelectValue placeholder={systemPeriodLabel} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all" className="text-xs">{t.allPeriods.replace("{period}s", `${systemPeriodLabelPlural}`)}</SelectItem>
+                            <SelectItem value="all" className="text-xs">{(t.allPeriods || `All ${systemPeriodLabel}s`).replace("{period}s", `${systemPeriodLabelPlural}`)}</SelectItem>
                             {periodTitles.map((title, i) => (
                               <SelectItem key={i} value={title} className="text-xs">{title}</SelectItem>
                             ))}
@@ -1034,38 +1034,38 @@ const ParentFeesPage = () => {
                     </div>
                   <div className="p-5 space-y-5">
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.total}</p>
-                        <p className="font-bold text-lg text-slate-900 dark:text-white mt-1">{formatCurrency(visibleTotals.total)}</p>
+                      <div className="p-4 rounded-xl border border-gray-100 dark:border-[#2A2A2A] text-center">
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t.total}</p>
+                        <p className="font-bold text-lg text-gray-900 dark:text-white mt-1">{formatCurrency(visibleTotals.total)}</p>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.paid}</p>
+                      <div className="p-4 rounded-xl border border-gray-100 dark:border-[#2A2A2A] text-center">
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t.paid}</p>
                         <p className="font-bold text-lg text-green-600 dark:text-green-400 mt-1">{formatCurrency(visibleTotals.paid)}</p>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.balance}</p>
+                      <div className="p-4 rounded-xl border border-gray-100 dark:border-[#2A2A2A] text-center">
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t.balance}</p>
                         <p className="font-bold text-lg mt-1" style={{ color: visibleTotals.balance > 0 ? 'var(--brand-color, #e35336)' : 'var(--brand-color, #e35336)' }}>
                           {formatCurrency(visibleTotals.balance)}
                         </p>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.penalty}</p>
+                      <div className="p-4 rounded-xl border border-gray-100 dark:border-[#2A2A2A] text-center">
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t.penalty}</p>
                         <p className="font-bold text-lg text-red-600 dark:text-red-400 mt-1">{formatCurrency(visibleTotals.penalty)}</p>
                       </div>
-                      <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-                        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t.totalDue}</p>
-                        <p className="font-bold text-lg text-slate-900 dark:text-white mt-1">{formatCurrency(totalDueWithPenalty)}</p>
+                      <div className="p-4 rounded-xl border border-gray-100 dark:border-[#2A2A2A] text-center">
+                        <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t.totalDue}</p>
+                        <p className="font-bold text-lg text-gray-900 dark:text-white mt-1">{formatCurrency(totalDueWithPenalty)}</p>
                       </div>
                     </div>
 
                     <div>
-                      <div className="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 mb-1.5">
+                      <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-1.5">
                         <span>{t.paymentProgress}</span>
                         <span>{visiblePaidPercentage}%</span>
                       </div>
                       <Progress
                         value={visiblePaidPercentage}
-                        className="h-2.5 bg-slate-100 dark:bg-slate-700"
+                        className="h-2.5 bg-gray-100 dark:bg-[#2A2A2A]"
                         style={{ '--progress-background': 'var(--brand-color, #e35336)' } as React.CSSProperties}
                       />
                     </div>
@@ -1077,11 +1077,11 @@ const ParentFeesPage = () => {
                           const isExpanded = expandedGroups[groupKey] ?? true;
 
                           return (
-                            <div key={groupIdx} className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                            <div key={groupIdx} className="border border-gray-200 dark:border-[#2A2A2A] rounded-xl overflow-hidden">
                               <button
                                 type="button"
                                 onClick={() => toggleGroup(groupKey)}
-                                className="w-full flex items-center justify-between gap-3 px-4 py-3.5 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700/80 transition-colors text-left"
+                                className="w-full flex items-center justify-between gap-3 px-4 py-3.5 bg-gray-50 dark:bg-[#2A2A2A]/50 hover:bg-gray-100 dark:hover:bg-[#2A2A2A]/80 transition-colors text-left"
                               >
                                 <div className="flex items-center gap-3 min-w-0">
                                   <div
@@ -1091,24 +1091,24 @@ const ParentFeesPage = () => {
                                     <DollarSign className="w-4 h-4" style={{ color: 'var(--brand-color, #e35336)' }} />
                                   </div>
                                   <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                                       {getCleanFeeType(group.feeType)}
                                     </p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                                      {formatCurrency(group.amountPerPeriod)} {t.perPeriod.replace("{period}", periodLabel)}
-                                      {group.periods[0]?.isYearWide ? ` · ${t.splitAcross.replace("{count}", String(periodTitles.length)).replace("{period}s", `${periodLabel}s`)}` : ""}
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      {formatCurrency(group.amountPerPeriod)} {(t.perPeriod || "per {period}").replace("{period}", periodLabel)}
+                                      {group.periods[0]?.isYearWide ? ` · ${(t.splitAcross || "Split across {count} {period}s").replace("{count}", String(periodTitles.length)).replace("{period}s", `${periodLabel}s`)}` : ""}
                                     </p>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                   {getStatusBadge(group.status, group.balanceAmount)}
-                                  {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                                  {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
                                 </div>
                               </button>
 
                               {isExpanded && (
                                 <>
-                                  <div className="p-4 bg-white dark:bg-slate-900">
+                                  <div className="p-4 bg-white dark:bg-[#111111]">
                                     <div className={`grid gap-3 ${
                                       periodTitles.length === 4 ? "grid-cols-2 md:grid-cols-4" :
                                       periodTitles.length === 3 ? "grid-cols-1 sm:grid-cols-3" :
@@ -1130,14 +1130,14 @@ const ParentFeesPage = () => {
                                             className={`relative p-3.5 rounded-xl border transition-colors ${
                                               isFullPaid
                                                 ? 'border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-950/20'
-                                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'
+                                                : 'border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111]'
                                             }`}
                                           >
-                                            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                                            <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                                               {title}
                                             </div>
 
-                                            <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                            <div className="text-lg font-bold text-gray-900 dark:text-white">
                                               {formatCurrency(periodAmount)}
                                             </div>
                                             {periodData?.discount ? (
@@ -1156,11 +1156,11 @@ const ParentFeesPage = () => {
                                                   {t.fullyPaid}
                                                 </span>
                                               ) : hasPayment && !isFullPaid ? (
-                                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
                                                   {t.paid} {formatCurrency(paid)} &middot; {t.due} {formatCurrency(balance)}
                                                 </span>
                                               ) : balance > 0 ? (
-                                                <span className="inline-flex flex-col gap-0.5 text-xs text-slate-500 dark:text-slate-400">
+                                                <span className="inline-flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
                                                   <span className="font-medium text-red-600 dark:text-red-400">{t.unpaid}</span>
                                                   <span>{t.due} {formatCurrency(balance)}</span>
                                                   {periodPenalty.penalty > 0 && (
@@ -1170,13 +1170,13 @@ const ParentFeesPage = () => {
                                                   )}
                                                 </span>
                                               ) : (
-                                                <span className="text-xs text-slate-400">{t.noPayment}</span>
+                                                <span className="text-xs text-gray-400">{t.noPayment}</span>
                                               )}
                                             </div>
 
                                             <Progress
                                               value={periodAmount > 0 ? (paid / periodAmount) * 100 : 0}
-                                              className="h-1.5 mt-3 bg-slate-100 dark:bg-slate-700"
+                                              className="h-1.5 mt-3 bg-gray-100 dark:bg-[#2A2A2A]"
                                               style={{ '--progress-background': isFullPaid ? '#22c55e' : 'var(--brand-color, #e35336)' } as React.CSSProperties}
                                             />
                                           </div>
@@ -1185,11 +1185,11 @@ const ParentFeesPage = () => {
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-700/30 border-t border-slate-200 dark:border-slate-700 text-sm">
-                                    <span className="text-slate-500 dark:text-slate-400">
+                                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#2A2A2A]/30 border-t border-gray-200 dark:border-[#2A2A2A] text-sm">
+                                    <span className="text-gray-500 dark:text-gray-400">
                                       {t.totalPaidLabel}: <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(group.paidAmount)}</span>
                                     </span>
-                                    <span className="text-slate-500 dark:text-slate-400">
+                                    <span className="text-gray-500 dark:text-gray-400">
                                       {t.balance}: <span className="font-semibold" style={{ color: group.balanceAmount > 0 ? 'var(--brand-color, #e35336)' : undefined }}>
                                         {formatCurrency(group.balanceAmount)}
                                       </span>
@@ -1202,35 +1202,35 @@ const ParentFeesPage = () => {
                         })}
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 p-8 text-center">
-                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-3">
-                          <Receipt className="w-6 h-6 text-slate-400" />
+                      <div className="rounded-xl border border-dashed border-gray-200 dark:border-[#2A2A2A] p-8 text-center">
+                        <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-[#2A2A2A] flex items-center justify-center mx-auto mb-3">
+                          <Receipt className="w-6 h-6 text-gray-400" />
                         </div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t.noFees}</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                          {t.noFeesDesc.replace("{period}s", `${periodLabel}s`)}
+                        <p className="text-sm font-medium text-gray-600 dark:text-gray-300">{t.noFees}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          {(t.noFeesDesc || "No fees found for {period}s").replace("{period}s", `${periodLabel}s`)}
                         </p>
                       </div>
                     )}
 
-                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-700/50">
+                    <div className="border border-gray-200 dark:border-[#2A2A2A] rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-[#2A2A2A]/50">
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t.paymentHistory}</h3>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{t.paymentHistory}</h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             {selectedPeriod === "all"
-                              ? t.allPeriods.replace("{period}s", `${periodLabel}s`)
+                              ? (t.allPeriods || `All ${systemPeriodLabel}s`).replace("{period}s", `${periodLabel}s`)
                               : selectedPeriod}
                           </p>
                         </div>
-                        <Receipt className="w-4 h-4 text-slate-400" />
+                        <Receipt className="w-4 h-4 text-gray-400" />
                       </div>
 
                       {visiblePaymentHistory.length > 0 ? (
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
-                            <thead className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
-                              <tr className="text-left text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <thead className="bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-[#2A2A2A]">
+                              <tr className="text-left text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
                                 <th className="px-4 py-3 font-semibold">{t.receipt}</th>
                                 <th className="px-4 py-3 font-semibold">{periodLabel}</th>
                                 <th className="px-4 py-3 font-semibold">{t.fee}</th>
@@ -1239,14 +1239,14 @@ const ParentFeesPage = () => {
                                 <th className="px-4 py-3 font-semibold">{t.date}</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-900">
+                            <tbody className="divide-y divide-gray-100 dark:divide-[#2A2A2A] bg-white dark:bg-[#111111]">
                               {visiblePaymentHistory.map((payment) => (
-                                <tr key={payment.id} className="text-slate-700 dark:text-slate-200">
+                                <tr key={payment.id} className="text-gray-700 dark:text-gray-200">
                                   <td className="px-4 py-3 font-mono text-xs">
                                     {payment.receiptNumber || "-"}
                                   </td>
                                   <td className="px-4 py-3">
-                                    <Badge variant="outline" className="border-slate-200 dark:border-slate-600">
+                                    <Badge variant="outline" className="border-gray-200 dark:border-gray-600">
                                       {payment.displayPeriod}
                                     </Badge>
                                   </td>
@@ -1264,11 +1264,11 @@ const ParentFeesPage = () => {
                           </table>
                         </div>
                       ) : (
-                        <div className="px-4 py-8 text-center bg-white dark:bg-slate-900">
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                              {t.noPayments.replace("{period}", selectedPeriod === "all" ? t.academicYear : periodLabel.toLowerCase())}
+                        <div className="px-4 py-8 text-center bg-white dark:bg-[#111111]">
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                              {(t.noPayments || "No payments for {period}").replace("{period}", selectedPeriod === "all" ? (t.academicYear || "academic year") : periodLabel.toLowerCase())}
                             </p>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                               {t.noPaymentsDesc}
                             </p>
                         </div>

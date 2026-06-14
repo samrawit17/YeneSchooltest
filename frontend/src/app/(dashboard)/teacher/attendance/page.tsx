@@ -908,7 +908,7 @@ export default function TeacherAttendancePage() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#0F172A]">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-[#111111]">
       <div className="mx-auto w-full min-w-0 px-3 sm:px-6 lg:p-6">
         {/* Top Header */}
         <div className="mb-4 min-w-0 rounded-lg border border-[rgba(var(--brand-color-rgb),0.16)] bg-white p-3 shadow-sm dark:border-[#334155] dark:bg-[#1E293B] sm:mb-6 sm:p-6">
@@ -995,7 +995,7 @@ export default function TeacherAttendancePage() {
                 onValueChange={setSelectedClass}
                 disabled={isLoadingClasses}
               >
-                <SelectTrigger className="w-full border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white sm:w-[180px]">
+                <SelectTrigger className="w-full border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#111111] dark:text-white sm:w-[180px]">
                   <SelectValue placeholder={isLoadingClasses ? "Loading..." : "Class"} className="truncate" />
                 </SelectTrigger>
                 <SelectContent className="dark:bg-[#1E293B] dark:border-[#334155] max-h-[300px] overflow-y-auto">
@@ -1027,7 +1027,7 @@ export default function TeacherAttendancePage() {
                   placeholder="Search students..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white"
+                  className="pl-9 border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#111111] dark:text-white"
                 />
               </div>
             </div>
@@ -1048,7 +1048,7 @@ export default function TeacherAttendancePage() {
               </div>
             ) : (
               filteredStudents.map((student) => (
-                <div key={student.id} className="rounded-lg border border-[#E2E8F0] bg-white p-3 dark:border-[#334155] dark:bg-[#0F172A]">
+                <div key={student.id} className="rounded-lg border border-[#E2E8F0] bg-white p-3 dark:border-[#334155] dark:bg-[#111111]">
                   <div className="flex items-start gap-3">
                     <Avatar className="h-9 w-9 shrink-0">
                       <AvatarFallback className="text-xs">
@@ -1072,7 +1072,7 @@ export default function TeacherAttendancePage() {
                     value={student.remark}
                     onChange={(e) => handleRemarkChange(student.id, e.target.value)}
                     disabled={!canEdit()}
-                    className="mt-3 h-9 border-[rgba(var(--brand-color-rgb),0.18)] text-xs focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white"
+                    className="mt-3 h-9 border-[rgba(var(--brand-color-rgb),0.18)] text-xs focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#111111] dark:text-white"
                   />
                 </div>
               ))
@@ -1082,7 +1082,7 @@ export default function TeacherAttendancePage() {
           {/* Table */}
           <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[700px] sm:min-w-full">
-              <thead className="bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[#0F172A] border-b border-[rgba(var(--brand-color-rgb),0.14)] dark:border-[#334155]">
+              <thead className="bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[#111111] border-b border-[rgba(var(--brand-color-rgb),0.14)] dark:border-[#334155]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Roll Number</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student Name</th>
@@ -1162,7 +1162,7 @@ export default function TeacherAttendancePage() {
                           value={student.remark}
                           onChange={(e) => handleRemarkChange(student.id, e.target.value)}
                           disabled={!canEdit()}
-                          className="w-full sm:w-32 lg:w-48 h-8 border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#0F172A] dark:text-white text-xs sm:text-sm"
+                          className="w-full sm:w-32 lg:w-48 h-8 border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#111111] dark:text-white text-xs sm:text-sm"
                         />
                       </td>
                       <td className="px-2 sm:px-4 py-3 text-xs text-gray-500 dark:text-gray-400 hidden md:table-cell">

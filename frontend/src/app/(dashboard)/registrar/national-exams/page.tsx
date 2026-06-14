@@ -662,7 +662,7 @@ th{background:#f3f4f6}.sign{display:grid;grid-template-columns:1fr 1fr;gap:60px;
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className={batchStatus === "READY" ? "bg-emerald-600 text-white" : "bg-slate-700 text-white"}>
+            <Badge className={batchStatus === "READY" ? "bg-emerald-600 text-white" : "bg-gray-700 text-white"}>
               {batchStatus}
             </Badge>
             <Button

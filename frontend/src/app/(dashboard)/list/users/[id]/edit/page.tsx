@@ -145,7 +145,7 @@ export default function EditUserPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: "#F8FAFC", fontFamily: "var(--font-sans), sans-serif" }}>
+    <div className="min-h-screen p-4 md:p-6 bg-gray-50 dark:bg-[#111111]" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-6">

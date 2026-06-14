@@ -639,7 +639,7 @@ export function Breadcrumb({
 
   return (
     <nav
-      className={`flex items-center text-xs sm:text-sm py-2 sm:py-3 px-4 sm:px-6 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10 ${className}`}
+      className={`flex items-center text-xs sm:text-sm py-2 sm:py-3 px-4 sm:px-6 border-b border-gray-100 dark:border-[#2A2A2A] bg-white/50 dark:bg-[#161616]/50 backdrop-blur-sm sticky top-0 z-10 ${className}`}
       aria-label="Breadcrumb"
     >
       <ol className="flex items-center flex-wrap gap-0.5 sm:gap-1">

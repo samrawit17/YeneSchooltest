@@ -394,16 +394,16 @@ export default function PromotionPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       <header className="bg-transparent px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
 
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 Student Promotion
               </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Promote students to the next grade level
               </p>
             </div>
@@ -426,16 +426,16 @@ export default function PromotionPage() {
           </div>
         ) : null}
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+        <div className="bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Source Grade
               </label>
               <select
                 value={selectedGrade}
                 onChange={(e) => setSelectedGrade(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                className="w-full px-3 py-2.5 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
               >
                 <option value="">Select a grade</option>
                 {gradeOptions.map((grade) => (
@@ -446,13 +446,13 @@ export default function PromotionPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Destination Grade
               </label>
               <select
                 value={selectedNextGrade}
                 onChange={(e) => setSelectedNextGrade(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                className="w-full px-3 py-2.5 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
               >
                 <option value="">Select destination</option>
                 {nextGrades.map((grade) => (
@@ -466,13 +466,13 @@ export default function PromotionPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Destination Academic Year
               </label>
               <select
                 value={selectedTargetYearId}
                 onChange={(e) => setSelectedTargetYearId(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                className="w-full px-3 py-2.5 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
               >
                 <option value="">Select target year</option>
                 {targetYearOptions.map((year) => (
@@ -488,7 +488,7 @@ export default function PromotionPage() {
               ) : null}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Promotion Criteria
               </label>
               <div className="flex gap-2">
@@ -500,9 +500,9 @@ export default function PromotionPage() {
                     value={minAverageGrade}
                     onChange={(e) => setMinAverageGrade(clampPercent(Number(e.target.value)))}
                     placeholder="Min Grade"
-                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white"
                   />
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Min Grade %</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Min Grade %</span>
                 </div>
                 <div className="flex-1">
                   <input
@@ -513,15 +513,15 @@ export default function PromotionPage() {
                     onChange={(e) => setMinAttendance(clampPercent(Number(e.target.value)))}
                     placeholder="Min Attendance"
                     disabled={!attendanceEnabled}
-                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white disabled:opacity-50"
+                    className="w-full px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white disabled:opacity-50"
                   />
-                  <label htmlFor="attendance-toggle" className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 cursor-pointer">
+                  <label htmlFor="attendance-toggle" className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
                     <input
                       type="checkbox"
                       id="attendance-toggle"
                       checked={attendanceEnabled}
                       onChange={(e) => setAttendanceEnabled(e.target.checked)}
-                      className="rounded border-slate-300"
+                      className="rounded border-gray-300"
                     />
                     Min Attendance %
                   </label>
@@ -535,33 +535,33 @@ export default function PromotionPage() {
           <>
 
 
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <div className="bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
+              <div className="p-4 border-b border-gray-200 dark:border-[#2A2A2A] flex items-center justify-between">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
                   <div className="flex items-center gap-4">
-                    <h2 className="font-semibold text-slate-900 dark:text-white">
+                    <h2 className="font-semibold text-gray-900 dark:text-white">
                       Promotion Candidates - {promotionData?.className}
                     </h2>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       Academic Year: {promotionData?.academicYear}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800/70">
-                      <div className="text-slate-500 dark:text-slate-400">Eligible</div>
-                      <div className="font-semibold text-slate-900 dark:text-white">{stats.promoted}</div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/70">
+                      <div className="text-gray-500 dark:text-gray-400">Eligible</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">{stats.promoted}</div>
                     </div>
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800/70">
-                      <div className="text-slate-500 dark:text-slate-400">Retained</div>
-                      <div className="font-semibold text-slate-900 dark:text-white">{stats.retained}</div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/70">
+                      <div className="text-gray-500 dark:text-gray-400">Retained</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">{stats.retained}</div>
                     </div>
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800/70">
-                      <div className="text-slate-500 dark:text-slate-400">No Data</div>
-                      <div className="font-semibold text-slate-900 dark:text-white">{stats.noData}</div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/70">
+                      <div className="text-gray-500 dark:text-gray-400">No Data</div>
+                      <div className="font-semibold text-gray-900 dark:text-white">{stats.noData}</div>
                     </div>
                     <button
                       onClick={fetchPromotionData}
-                      className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                      className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-400 dark:hover:bg-[#2A2A2A] dark:hover:text-gray-200"
                     >
                       <RefreshCw className="w-4 h-4" />
                     </button>
@@ -573,17 +573,17 @@ export default function PromotionPage() {
                 <div className="overflow-x-auto">
                   <Table className="w-full">
                     <TableHeader>
-                      <TableRow className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Roll No.</TableHead>
-                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Student</TableHead>
-                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Average</TableHead>
-                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Attendance</TableHead>
-                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Grade</TableHead>
-                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Status</TableHead>
-                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Reason</TableHead>
+                      <TableRow className="bg-gray-50 dark:bg-[#1A1A1A]/50 border-b border-gray-200 dark:border-[#2A2A2A]">
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Roll No.</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Student</TableHead>
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Average</TableHead>
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Attendance</TableHead>
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Grade</TableHead>
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</TableHead>
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Reason</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    <TableBody className="divide-y divide-gray-100 dark:divide-[#2A2A2A]">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <TableRow key={i}>
                           <TableCell className="px-4 py-3"><Skeleton className="h-5 w-12 rounded mx-auto" /></TableCell>
@@ -600,8 +600,8 @@ export default function PromotionPage() {
                 </div>
               ) : !promotionData || promotionData.candidates.length === 0 ? (
                 <div className="p-12 text-center">
-                  <Users className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                  <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                     No students found in this grade
                   </p>
                 </div>
@@ -609,40 +609,40 @@ export default function PromotionPage() {
                 <div className="overflow-x-auto">
                   <Table className="w-full">
                     <TableHeader>
-                      <TableRow className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                      <TableRow className="bg-gray-50 dark:bg-[#1A1A1A]/50 border-b border-gray-200 dark:border-[#2A2A2A]">
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                           Roll No.
                         </TableHead>
-                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                           Student
                         </TableHead>
-                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                           Average
                         </TableHead>
-                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                           Attendance
                         </TableHead>
-                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                           Grade
                         </TableHead>
-                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                           Status
                         </TableHead>
-                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        <TableHead className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
                           Reason
                         </TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    <TableBody className="divide-y divide-gray-100 dark:divide-[#2A2A2A]">
                       {sortedCandidates.map((candidate) => (
                         <TableRow
                           key={candidate.student.id}
-                          className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+                          className={`hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50 ${
                             candidate.status === "RETAINED" ? "bg-red-50/50 dark:bg-red-900/10" : ""
                           }`}
                         >
                           <TableCell className="px-4 py-3">
-                            <span className="inline-flex min-w-[52px] justify-center rounded-md bg-slate-100 px-2 py-1 text-center text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+                            <span className="inline-flex min-w-[52px] justify-center rounded-md bg-gray-100 px-2 py-1 text-center text-xs font-semibold text-gray-700 dark:bg-[#2A2A2A] dark:text-gray-200">
                               {candidate.student.rollNumber || "-"}
                             </span>
                           </TableCell>
@@ -656,15 +656,15 @@ export default function PromotionPage() {
                                   {candidate.student.name?.charAt(0) || "?"}
                                 </AvatarFallback>
                               </Avatar>
-                              <span className="truncate font-medium text-slate-900 dark:text-white text-sm">
+                              <span className="truncate font-medium text-gray-900 dark:text-white text-sm">
                                 {candidate.student.name}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell className="px-4 py-3 text-center">
                             <div className="flex items-center justify-center gap-1">
-                              <TrendingUp className="w-4 h-4 text-slate-400" />
-                              <span className="font-medium text-slate-900 dark:text-white">
+                              <TrendingUp className="w-4 h-4 text-gray-400" />
+                              <span className="font-medium text-gray-900 dark:text-white">
                                 {candidate.averageGrade.toFixed(1)}%
                               </span>
                             </div>
@@ -716,7 +716,7 @@ export default function PromotionPage() {
                             )}
                           </TableCell>
                           <TableCell className="px-4 py-3">
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
                               {candidate.reasons?.join(", ") || (candidate.status === "PROMOTED" ? "Meets criteria" : "-")}
                             </span>
                           </TableCell>
@@ -728,13 +728,13 @@ export default function PromotionPage() {
               )}
 
               {requiresStreamAssignment && promotionData?.candidates.length ? (
-                <div className="border-t border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                <div className="border-t border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
                   <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                         Grade 11 Stream Assignment
                       </h3>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         Assign Natural or Social stream for every student being promoted into Grade 11.
                       </p>
                     </div>
@@ -751,14 +751,14 @@ export default function PromotionPage() {
                         type="button"
                         disabled={selectedPromotableStudents.length === 0}
                         onClick={() => setStreamForStudents(selectedPromotableStudents.map((candidate) => candidate.student.id), "SOCIAL")}
-                        className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.25)] bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-700"
+                        className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.25)] bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#111111] dark:text-gray-100 dark:hover:bg-[#2A2A2A]"
                       >
                         Set selected Social
                       </button>
                     </div>
                   </div>
 
-                  <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300">
+                  <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:border-[#2A2A2A] dark:bg-[#111111]/50 dark:text-gray-300">
                     {selectedPromotableStudents.length === 0
                       ? "Select eligible students or choose Promote All Eligible to assign streams."
                       : `${assignedStreamCount} of ${selectedPromotableStudents.length} selected student(s) assigned${missingStreamCount > 0 ? `, ${missingStreamCount} missing` : ""}.`}
@@ -769,13 +769,13 @@ export default function PromotionPage() {
                       {selectedPromotableStudents.map((candidate) => (
                         <div
                           key={`stream-${candidate.student.id}`}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50"
+                          className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#111111]/50"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                            <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
                               {candidate.student.name}
                             </p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
                               Roll {candidate.student.rollNumber || "-"} - {candidate.averageGrade.toFixed(1)}%
                             </p>
                           </div>
@@ -787,7 +787,7 @@ export default function PromotionPage() {
                                 [candidate.student.id]: event.target.value as PromotionStream,
                               }))
                             }
-                            className="h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                            className="h-9 shrink-0 rounded-lg border border-gray-200 bg-white px-2 text-xs font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-100"
                           >
                             <option value="">Stream</option>
                             <option value="NATURAL">Natural</option>
@@ -800,7 +800,7 @@ export default function PromotionPage() {
                 </div>
               ) : null}
 
-              <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+              <div className="p-4 border-t border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex flex-wrap items-center gap-2">
                     <button
@@ -820,7 +820,7 @@ export default function PromotionPage() {
                         handleSelectAll();
                       }}
                       disabled={promotableStudents.length === 0}
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-200 dark:hover:bg-[#2A2A2A]"
                     >
                       <CheckCircle className="h-4 w-4" />
                       {selectedStudents.size === promotableStudents.length && promotableStudents.length > 0
@@ -828,7 +828,7 @@ export default function PromotionPage() {
                         : "Select Eligible"}
                     </button>
                   </div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
                     {promoteAll
                       ? `Ready to promote all ${promotableStudents.length} eligible students`
                       : `${selectedStudents.size} of ${promotableStudents.length} eligible students selected`}
@@ -856,7 +856,7 @@ export default function PromotionPage() {
                         )}
                       </button>
                     ) : (
-                      <span className="text-sm text-slate-500 dark:text-slate-400">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         No next grade available
                       </span>
                     )}

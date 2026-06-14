@@ -316,7 +316,7 @@ export default function BulkUploadPage() {
     const normalizedHeaders = headers.map(h => h.toLowerCase().replace(/\s+/g, '_'));
     const hasStaffFields = normalizedHeaders.some(h => ['full_name', 'name', 'email', 'phone', 'role'].includes(h));
     const hasStudentFields = normalizedHeaders.some(h => ['first_name', 'middle_name', 'last_name', 'current_class', 'parent_name', 'parent_phone', 'gender', 'fan', 'fayda_number', 'fayda', 'national_id'].includes(h));
-    const hasFaydaField = normalizedHeaders.some(h => ['fan', 'fayda_number', 'fayda', 'fayda_id', 'national_id', 'national_id_number'].includes(h));
+    const hasFaydaField = normalizedHeaders.some(h => /^(fan|fayda)/.test(h));
     
     if (uploadType === 'staff' && hasStudentFields) {
       warnings.push("STUDENT_DATA_DETECTED");
@@ -590,10 +590,10 @@ export default function BulkUploadPage() {
   return (
     <div className="w-full px-4 py-6 sm:px-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           {t.title}
         </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           {t.description}
         </p>
       </div>
@@ -609,9 +609,9 @@ export default function BulkUploadPage() {
         </TabsList>
 
         <TabsContent value="import" className="space-y-6">
-          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-              <div className="flex items-center gap-2 rounded-lg bg-slate-100 p-1 dark:bg-slate-700">
+              <div className="flex items-center gap-2 rounded-lg bg-gray-100 p-1 dark:bg-[#2A2A2A]">
                   {[
                     { id: "staff", label: t.uploadTypes.staff },
                     { id: "students-auto", label: t.uploadTypes.studentsAuto },
@@ -622,8 +622,8 @@ export default function BulkUploadPage() {
                     onClick={() => setUploadType(item.id as UploadType)}
                     className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
                       uploadType === item.id
-                        ? "bg-white text-slate-900 shadow-sm dark:bg-slate-600 dark:text-white"
-                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                        ? "bg-white text-gray-900 shadow-sm dark:bg-[#333333] dark:text-white"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     }`}
                   >
                     {item.label}
@@ -657,7 +657,7 @@ export default function BulkUploadPage() {
                     ? "border-[var(--brand-color)] bg-[color:rgba(var(--brand-color-rgb),0.06)]"
                     : importFile
                     ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-900/10"
-                    : "border-slate-300 bg-white hover:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:hover:border-slate-500"
+                    : "border-gray-300 bg-white hover:border-gray-400 dark:border-gray-600 dark:bg-[#1A1A1A] dark:hover:border-gray-500"
                 }`}
                 onDragOver={(event) => {
                   event.preventDefault();
@@ -693,8 +693,8 @@ export default function BulkUploadPage() {
                     <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
                       <CheckCircle2 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <p className="text-lg font-semibold text-slate-900 dark:text-white">{importFile.name}</p>
-                    <p className="mt-1 text-sm text-slate-500">{(importFile.size / 1024).toFixed(1)} KB &middot; {t.csvReady}</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">{importFile.name}</p>
+                    <p className="mt-1 text-sm text-gray-500">{(importFile.size / 1024).toFixed(1)} KB &middot; {t.csvReady}</p>
                     <div className="mt-4 flex gap-3">
                       <Button size="sm" onClick={(e) => { e.stopPropagation(); handleUpload(); }} disabled={isUploading}>
                         {isUploading ? (
@@ -710,21 +710,21 @@ export default function BulkUploadPage() {
                   </>
                 ) : (
                   <>
-                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700">
-                      <FileSpreadsheet className="h-7 w-7 text-slate-500 dark:text-slate-400" />
+                    <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 dark:bg-[#2A2A2A]">
+                      <FileSpreadsheet className="h-7 w-7 text-gray-500 dark:text-gray-400" />
                     </div>
-                    <p className="text-lg font-semibold text-slate-900 dark:text-white">{t.dropHere}</p>
-                    <p className="mt-1 text-sm text-slate-500">{t.csvOnly}</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">{t.dropHere}</p>
+                    <p className="mt-1 text-sm text-gray-500">{t.csvOnly}</p>
                   </>
                 )}
               </div>
 
               {previewData.length > 0 && (
-                <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3 dark:border-slate-700">
+                <div className="rounded-xl border border-gray-200 bg-white dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
+                  <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3 dark:border-[#2A2A2A]">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.preview}</p>
-                      <p className="text-xs text-slate-500">{t.allRows.replace("{count}", String(previewData.length))}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.preview}</p>
+                      <p className="text-xs text-gray-500">{t.allRows.replace("{count}", String(previewData.length))}</p>
                     </div>
                   </div>
                   {validationWarnings.length > 0 && (
@@ -742,17 +742,17 @@ export default function BulkUploadPage() {
                   <div className="overflow-x-auto p-5">
                     <table className="w-full text-left text-sm">
                       <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <tr className="border-b border-gray-200 dark:border-[#2A2A2A]">
                           {Object.keys(previewData[0]).map((header) => (
-                            <th key={header} className="whitespace-nowrap px-3 py-2 font-semibold text-slate-500">{header}</th>
+                            <th key={header} className="whitespace-nowrap px-3 py-2 font-semibold text-gray-500">{header}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {previewData.map((row, index) => (
-                          <tr key={index} className="border-b border-slate-100 last:border-0 dark:border-slate-700">
+                          <tr key={index} className="border-b border-gray-100 last:border-0 dark:border-[#2A2A2A]">
                             {Object.entries(row).map(([key, value]) => (
-                              <td key={`${index}-${key}`} className="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300">
+                              <td key={`${index}-${key}`} className="whitespace-nowrap px-3 py-2 text-gray-700 dark:text-gray-300">
                                 {String(value || "—")}
                               </td>
                             ))}
@@ -768,8 +768,8 @@ export default function BulkUploadPage() {
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{t.importResult}</h3>
-                  <p className="text-sm text-slate-500">{uploadResult.message}</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.importResult}</h3>
+                  <p className="text-sm text-gray-500">{uploadResult.message}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setUploadResult(null)}>
                   {t.newImport}
@@ -777,29 +777,29 @@ export default function BulkUploadPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-5">
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-medium text-slate-500">{t.stats.total}</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{uploadSummary.totalRecords}</p>
+                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
+                  <p className="text-xs font-medium text-gray-500">{t.stats.total}</p>
+                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{uploadSummary.totalRecords}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
                   <p className="text-xs font-medium text-emerald-600">{t.stats.created}</p>
                   <p className="mt-1 text-2xl font-bold text-emerald-600">{uploadSummary.successfulCount}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
                   <p className="text-xs font-medium text-red-500">{t.stats.failed}</p>
                   <p className="mt-1 text-2xl font-bold text-red-500">{uploadSummary.failedCount}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
                   <p className="text-xs font-medium text-amber-600">Skipped</p>
                   <p className="mt-1 text-2xl font-bold text-amber-600">{uploadSummary.skippedCount}</p>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-medium text-slate-500">{t.stats.successRate}</p>
+                <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
+                  <p className="text-xs font-medium text-gray-500">{t.stats.successRate}</p>
                   <div className="mt-2 flex items-center gap-2">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-[#2A2A2A]">
                       <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${successRate}%` }} />
                     </div>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">{successRate}%</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">{successRate}%</span>
                   </div>
                 </div>
               </div>
@@ -811,8 +811,8 @@ export default function BulkUploadPage() {
                       <ShieldCheck className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900 dark:text-white">{t.credentialsGenerated.replace("{count}", String(uploadResult.credentials.length))}</p>
-                      <p className="text-sm text-slate-500">{t.exportHint}</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">{t.credentialsGenerated.replace("{count}", String(uploadResult.credentials.length))}</p>
+                      <p className="text-sm text-gray-500">{t.exportHint}</p>
                     </div>
                   </div>
                   <Button size="sm" onClick={downloadImportReport}>
@@ -829,8 +829,8 @@ export default function BulkUploadPage() {
                       <CreditCard className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900 dark:text-white">{t.generateIdCards}</p>
-                      <p className="text-sm text-slate-500">{t.forNewStudents.replace("{count}", String(uploadResult.credentials.length))}</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">{t.generateIdCards}</p>
+                      <p className="text-sm text-gray-500">{t.forNewStudents.replace("{count}", String(uploadResult.credentials.length))}</p>
                     </div>
                   </div>
                   <Button
@@ -849,12 +849,12 @@ export default function BulkUploadPage() {
               ) : null}
 
               {uploadResult.failedRecords?.length ? (
-                <div className="rounded-xl border border-red-200 bg-white p-5 dark:border-red-800 dark:bg-slate-800">
+                <div className="rounded-xl border border-red-200 bg-white p-5 dark:border-red-800 dark:bg-[#1A1A1A]">
                   <p className="mb-3 text-sm font-semibold text-red-600 dark:text-red-400">{t.failedRows.replace("{count}", String(uploadResult.failedRecords.length))}</p>
                   <div className="space-y-2">
                     {uploadResult.failedRecords.map((item: any, index: number) => (
                       <div key={index} className="rounded-lg border border-red-100 bg-red-50/50 px-4 py-3 dark:border-red-900 dark:bg-red-950/20">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
                           {item.record?.full_name || item.record?.email || `Row ${index + 1}`}
                         </p>
                         <p className="text-sm text-red-600 dark:text-red-400">{item.error}</p>
@@ -865,14 +865,14 @@ export default function BulkUploadPage() {
               ) : null}
 
               {uploadResult.skippedRecords?.length ? (
-                <div className="rounded-xl border border-amber-200 bg-white p-5 dark:border-amber-800 dark:bg-slate-800">
+                <div className="rounded-xl border border-amber-200 bg-white p-5 dark:border-amber-800 dark:bg-[#1A1A1A]">
                   <p className="mb-3 text-sm font-semibold text-amber-600 dark:text-amber-400">
                     Skipped duplicate rows ({uploadResult.skippedRecords.length})
                   </p>
                   <div className="space-y-2">
                     {uploadResult.skippedRecords.map((item: any, index: number) => (
                       <div key={index} className="rounded-lg border border-amber-100 bg-amber-50/50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/20">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
                           {item.record?.full_name || item.record?.email || `Row ${index + 1}`}
                         </p>
                         <p className="text-sm text-amber-600 dark:text-amber-400">{item.reason}</p>
@@ -886,9 +886,9 @@ export default function BulkUploadPage() {
         </TabsContent>
 
         <TabsContent value="create" className="space-y-5">
-          <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-              <div className="flex items-center gap-2 rounded-lg bg-slate-100 p-1 dark:bg-slate-700">
+              <div className="flex items-center gap-2 rounded-lg bg-gray-100 p-1 dark:bg-[#2A2A2A]">
                   {[
                     { id: "student", label: t.createTypes.student },
                     { id: "staff", label: t.createTypes.staff },
@@ -899,8 +899,8 @@ export default function BulkUploadPage() {
                     onClick={() => setCreateType(item.id as CreateType)}
                     className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
                       createType === item.id
-                        ? "bg-white text-slate-900 shadow-sm dark:bg-slate-600 dark:text-white"
-                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                        ? "bg-white text-gray-900 shadow-sm dark:bg-[#333333] dark:text-white"
+                        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     }`}
                   >
                     {item.label}
@@ -920,12 +920,12 @@ export default function BulkUploadPage() {
                 </SelectContent>
               </Select>
             </div>
-            <p className="text-xs text-slate-500">{t.autoStore}</p>
+            <p className="text-xs text-gray-500">{t.autoStore}</p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-            <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-700">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+          <div className="rounded-xl border border-gray-200 bg-white dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
+            <div className="border-b border-gray-100 px-5 py-4 dark:border-[#2A2A2A]">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                 {createType === "student" ? t.createTitle.student : t.createTitle.staff}
               </h3>
             </div>
@@ -933,7 +933,7 @@ export default function BulkUploadPage() {
               {createType === "student" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">First name</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">First name</Label>
                     <Input
                       value={studentForm.firstName}
                       onChange={(event) => setStudentForm((current) => ({ ...current, firstName: event.target.value }))}
@@ -941,7 +941,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Middle name</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Middle name</Label>
                     <Input
                       value={studentForm.middleName}
                       onChange={(event) => setStudentForm((current) => ({ ...current, middleName: event.target.value }))}
@@ -949,7 +949,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Last name</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Last name</Label>
                     <Input
                       value={studentForm.lastName}
                       onChange={(event) => setStudentForm((current) => ({ ...current, lastName: event.target.value }))}
@@ -957,7 +957,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.phone}</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.phone}</Label>
                     <Input
                       value={studentForm.phone}
                       onChange={(event) => setStudentForm((current) => ({ ...current, phone: event.target.value }))}
@@ -965,7 +965,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Fayda Number (FAN) *</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Fayda Number (FAN) *</Label>
                     <Input
                       value={studentForm.faydaNumber}
                       onChange={(event) => setStudentForm((current) => ({ ...current, faydaNumber: event.target.value }))}
@@ -973,10 +973,10 @@ export default function BulkUploadPage() {
                       inputMode="numeric"
                       maxLength={16}
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400">FAN is required. FCN is not required.</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">FAN is required. FCN is not required.</p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Gender</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Gender</Label>
                     <Select
                       value={studentForm.gender}
                       onValueChange={(value) => setStudentForm((current) => ({ ...current, gender: value }))}
@@ -991,7 +991,7 @@ export default function BulkUploadPage() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.email}</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.email}</Label>
                     <Input
                       value={studentForm.email}
                       onChange={(event) => setStudentForm((current) => ({ ...current, email: event.target.value }))}
@@ -999,7 +999,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Mother name</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Mother name</Label>
                     <Input
                       value={studentForm.motherName}
                       onChange={(event) => setStudentForm((current) => ({ ...current, motherName: event.target.value }))}
@@ -1007,7 +1007,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Mother phone</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Mother phone</Label>
                     <Input
                       value={studentForm.motherPhone}
                       onChange={(event) => setStudentForm((current) => ({ ...current, motherPhone: event.target.value }))}
@@ -1015,7 +1015,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Parent name</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Parent name</Label>
                     <Input
                       value={studentForm.parentName}
                       onChange={(event) => setStudentForm((current) => ({ ...current, parentName: event.target.value }))}
@@ -1023,7 +1023,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Parent phone</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Parent phone</Label>
                     <Input
                       value={studentForm.parentPhone}
                       onChange={(event) => setStudentForm((current) => ({ ...current, parentPhone: event.target.value }))}
@@ -1031,7 +1031,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Relation</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Relation</Label>
                     <Select
                       value={studentForm.relation}
                       onValueChange={(value) => setStudentForm((current) => ({ ...current, relation: value }))}
@@ -1048,7 +1048,7 @@ export default function BulkUploadPage() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.class}</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.class}</Label>
                     <Select
                       value={studentForm.classId}
                       onValueChange={(value) => {
@@ -1075,7 +1075,7 @@ export default function BulkUploadPage() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Section</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Section</Label>
                     <Select
                       value={studentForm.sectionId}
                       onValueChange={(value) => setStudentForm((current) => ({ ...current, sectionId: value }))}
@@ -1095,7 +1095,7 @@ export default function BulkUploadPage() {
                   </div>
                   {[11, 12].includes(Number(classes.find((item: any) => item.id === studentForm.classId)?.grade)) && (
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">Stream</Label>
+                      <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Stream</Label>
                       <Select
                         value={studentForm.stream}
                         onValueChange={(value) => setStudentForm((current) => ({ ...current, stream: value }))}
@@ -1114,7 +1114,7 @@ export default function BulkUploadPage() {
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.fullName}</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.fullName}</Label>
                     <Input
                       value={staffForm.name}
                       onChange={(event) => setStaffForm((current) => ({ ...current, name: event.target.value }))}
@@ -1122,7 +1122,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.emailRequired}</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.emailRequired}</Label>
                     <Input
                       value={staffForm.email}
                       onChange={(event) => setStaffForm((current) => ({ ...current, email: event.target.value }))}
@@ -1130,7 +1130,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.phone}</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.phone}</Label>
                     <Input
                       value={staffForm.phone}
                       onChange={(event) => setStaffForm((current) => ({ ...current, phone: event.target.value }))}
@@ -1138,7 +1138,7 @@ export default function BulkUploadPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t.role}</Label>
+                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">{t.role}</Label>
                     <Select
                       value={staffForm.role}
                       onValueChange={(value: "TEACHER" | "ADMIN" | "IT_MANAGER" | "REGISTRAR" | "FINANCE") =>
@@ -1160,7 +1160,7 @@ export default function BulkUploadPage() {
                 </div>
               )}
 
-              <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
+              <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-[#2A2A2A]">
                 <Button onClick={handleCreateOne} disabled={isCreating || isLoadingSetup}>
                   {isCreating ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t.creating}</>
@@ -1177,7 +1177,7 @@ export default function BulkUploadPage() {
               <div className="flex items-center justify-between border-b border-emerald-200 px-5 py-4 dark:border-emerald-800">
                 <div>
                   <h3 className="text-base font-semibold text-emerald-700 dark:text-emerald-300">{t.credentialsReady}</h3>
-                  <p className="text-sm text-slate-500">{createdMessage}</p>
+                  <p className="text-sm text-gray-500">{createdMessage}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={exportCreatedCredentials}>
                   <Download className="mr-2 h-4 w-4" /> {t.exportCsv}
@@ -1188,22 +1188,22 @@ export default function BulkUploadPage() {
                   <div key={`${credential.username}-${index}`} className="px-5 py-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-semibold text-slate-900 dark:text-white">{credential.name}</p>
-                        <p className="text-sm text-slate-500">{credential.email || t.noEmail}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">{credential.name}</p>
+                        <p className="text-sm text-gray-500">{credential.email || t.noEmail}</p>
                       </div>
                       <Badge className={ROLE_COLORS[credential.role] || ROLE_COLORS.STUDENT}>
                         {credential.role}
                       </Badge>
                     </div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.username}</p>
-                        <p className="font-mono text-sm text-slate-900 dark:text-white">{formatUserDisplayCode(credential.username, selectedYearLabel)}</p>
-                        <p className="text-xs text-slate-500">Login: {credential.username}</p>
+                      <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-[#111111]">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t.username}</p>
+                        <p className="font-mono text-sm text-gray-900 dark:text-white">{formatUserDisplayCode(credential.username, selectedYearLabel)}</p>
+                        <p className="text-xs text-gray-500">Login: {credential.username}</p>
                       </div>
-                      <div className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-900">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.tempPassword}</p>
-                        <p className="font-mono text-sm text-slate-900 dark:text-white">{credential.temporaryPassword}</p>
+                      <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-[#111111]">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t.tempPassword}</p>
+                        <p className="font-mono text-sm text-gray-900 dark:text-white">{credential.temporaryPassword}</p>
                       </div>
                     </div>
                   </div>

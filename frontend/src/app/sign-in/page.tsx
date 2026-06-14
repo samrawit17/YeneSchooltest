@@ -59,7 +59,7 @@ const languageOptions: Array<{ value: AppLanguage; label: string }> = [
 ];
 
 const accentControlClassName =
-  "border bg-white/90 text-gray-700 shadow-sm transition-colors hover:bg-white focus:ring-2 focus:ring-offset-2 dark:bg-gray-900/80 dark:text-gray-200 dark:hover:bg-gray-900";
+  "border bg-white/90 text-gray-700 shadow-sm transition-colors hover:bg-white focus:ring-2 focus:ring-offset-2 dark:bg-[#111111]/80 dark:text-[#CCCCCC] dark:hover:bg-[#111111]";
 const defaultLoginImageUrl =
   "https://images.unsplash.com/photo-1562774053-701939374585?q=80&w=2086&auto=format&fit=crop";
 
@@ -413,7 +413,7 @@ const LoginPage = () => {
       </div>
 
       {/* Right Side - Minimal Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-gray-900 relative">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white dark:bg-[#111111] relative">
         {/* Top Right Controls */}
         <div className="absolute top-4 right-4 flex items-center gap-2">
           <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
@@ -487,7 +487,7 @@ const LoginPage = () => {
                         <Input
                           placeholder={t.loginIdentifierPlaceholder}
                           {...field}
-                          className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-700 transition-colors text-gray-900 dark:text-white"
+                          className="pl-10 h-12 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-[#333333] focus:bg-white dark:focus:bg-[#222222] transition-colors text-gray-900 dark:text-white"
                           disabled={isLoading}
                         />
                         <User className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
@@ -512,7 +512,7 @@ const LoginPage = () => {
                           type={showPassword ? "text" : "password"}
                           placeholder={t.passwordPlaceholder}
                           {...field}
-                          className="pl-10 pr-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 focus:bg-white dark:focus:bg-gray-700 transition-colors text-gray-900 dark:text-white"
+                          className="pl-10 pr-10 h-12 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-[#333333] focus:bg-white dark:focus:bg-[#222222] transition-colors text-gray-900 dark:text-white"
                           disabled={isLoading}
                         />
                         <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
@@ -547,7 +547,7 @@ const LoginPage = () => {
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                          className="border-gray-300 dark:border-gray-600"
+                          className="border-gray-300 dark:border-[#333333]"
                           disabled={isLoading}
                         />
                       </FormControl>

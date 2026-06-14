@@ -1163,7 +1163,7 @@ export default function FinanceListPage() {
   };
 
   if (authLoading) {
-    return <div className="p-6 text-sm text-slate-500">Loading finance...</div>;
+    return <div className="p-6 text-sm text-gray-500">Loading finance...</div>;
   }
 
   if (!canOpenFinancePage) {
@@ -1171,19 +1171,19 @@ export default function FinanceListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       {/* Header */}
-      <div className="px-6 py-4 dark:bg-slate-800">
+      <div className="px-6 py-4 dark:bg-[#1A1A1A]">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/finance">
-              <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
-                <ArrowLeft className="w-5 h-5 text-slate-500" />
+              <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100">
+                <ArrowLeft className="w-5 h-5 text-gray-500" />
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Finance Management</h1>
-              <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Finance Management</h1>
+              <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">
                 {feeCollectionMode} BILLING MODE
               </p>
             </div>
@@ -1195,7 +1195,7 @@ export default function FinanceListPage() {
       </div>
 
       <div className="p-4 md:p-6 space-y-6">
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-3 sm:p-4 mb-6">
+        <div className="bg-white dark:bg-[#1A1A1A] rounded-lg shadow-sm border border-gray-200 dark:border-[#2A2A2A] p-3 sm:p-4 mb-6">
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -1288,7 +1288,7 @@ export default function FinanceListPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <div className="overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+          <div className="overflow-x-auto border-b border-gray-200 dark:border-[#2A2A2A]">
             <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
               <TabsTrigger
                 value="fee-structures"
@@ -1325,7 +1325,7 @@ export default function FinanceListPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="border rounded-md overflow-hidden">
-                  <div className="bg-slate-50 dark:bg-slate-800 p-4 border-b">
+                  <div className="bg-gray-50 dark:bg-[#1A1A1A] p-4 border-b">
                     <div className="grid grid-cols-7 gap-4">
                       {[1, 2, 3, 4, 5, 6, 7].map(i => <Skeleton key={i} className="h-4 w-full" />)}
                     </div>
@@ -1349,7 +1349,7 @@ export default function FinanceListPage() {
                     <div className="flex flex-row items-center justify-between">
                       <div>
                         <CardTitle>Fee Structures</CardTitle>
-                        <p className="text-sm text-slate-500 mt-1">
+                        <p className="text-sm text-gray-500 mt-1">
                           Billing cycle: <span className="font-medium">{getModeLabel(feeCollectionMode)}</span> - {getFeeStructureHelpText(feeCollectionMode)}
                         </p>
                       </div>
@@ -1425,7 +1425,7 @@ export default function FinanceListPage() {
                           })
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-slate-500">
+                            <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                               {searchTerm || selectedGrade !== 'all' || selectedTerm !== 'all'
                                 ? 'No fee structures match the selected filters.'
                                 : 'No generated fee structures found. Add the base fee structure, then run Auto-Generate.'}
@@ -1435,7 +1435,7 @@ export default function FinanceListPage() {
                       </TableBody>
                     </Table>
                     {filteredFeeStructures.length > FEE_STRUCTURES_PAGE_SIZE && (
-                      <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 flex justify-end">
+                      <div className="border-t border-gray-100 dark:border-[#2A2A2A] px-4 py-3 flex justify-end">
                         <Pagination page={feeStructuresPage} setPage={setFeeStructuresPage} totalPages={feeStructuresTotalPages} />
                       </div>
                     )}
@@ -1523,7 +1523,7 @@ export default function FinanceListPage() {
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={10} className="text-center py-8 text-slate-500">
+                            <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                               {searchTerm || selectedGrade !== 'all' || selectedStatus !== 'all' || selectedTerm !== 'all'
                                 ? 'No student fees match the selected filters.'
                                 : 'No student fees found'}
@@ -1536,7 +1536,7 @@ export default function FinanceListPage() {
                     {/* Pagination */}
                     {filteredStudentFees.length > 0 && (
                       <div className="flex items-center justify-between mt-4">
-                        <div className="text-sm text-slate-500">
+                        <div className="text-sm text-gray-500">
                           Showing 1 to {filteredStudentFees.length} of {filteredStudentFees.length}
                         </div>
                         <Pagination
@@ -1602,7 +1602,7 @@ export default function FinanceListPage() {
                           ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={9} className="text-center py-8 text-slate-500">
+                            <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                               No payments found
                             </TableCell>
                           </TableRow>
@@ -1610,7 +1610,7 @@ export default function FinanceListPage() {
                       </TableBody>
                     </Table>
                     {filteredPayments.length > PAYMENTS_PAGE_SIZE && (
-                      <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 flex justify-end">
+                      <div className="border-t border-gray-100 dark:border-[#2A2A2A] px-4 py-3 flex justify-end">
                         <Pagination page={paymentsPage} setPage={setPaymentsPage} totalPages={paymentsTotalPages} />
                       </div>
                     )}
@@ -1704,45 +1704,45 @@ export default function FinanceListPage() {
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-slate-500">Student Name</Label>
+                    <Label className="text-gray-500">Student Name</Label>
                     <p className="font-medium">{selectedFee.studentName}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-500">Grade & Section</Label>
+                    <Label className="text-gray-500">Grade & Section</Label>
                     <p className="font-medium">{selectedFee.grade} - {selectedFee.section}</p>
                   </div>
                   {selectedFee.termName && (
                     <div>
-                      <Label className="text-slate-500">{curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'}</Label>
+                      <Label className="text-gray-500">{curriculumType === 'SEMESTER' ? 'Semester' : curriculumType === 'QUARTER' ? 'Quarter' : 'Term'}</Label>
                       <p className="font-medium">{selectedFee.termName}</p>
                     </div>
                   )}
                   <div>
-                    <Label className="text-slate-500">Fee Type</Label>
+                    <Label className="text-gray-500">Fee Type</Label>
                     <p className="font-medium">{formatFeeTypeDisplay(selectedFee.feeType, selectedFee.termName)}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-500">Status</Label>
+                    <Label className="text-gray-500">Status</Label>
                     <div className="mt-1">{getStatusBadge(selectedFee.status)}</div>
                   </div>
                   <div>
-                    <Label className="text-slate-500">Total Fee</Label>
+                    <Label className="text-gray-500">Total Fee</Label>
                     <p className="font-medium">{formatCurrency(selectedFee.totalFee)}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-500">Discount</Label>
+                    <Label className="text-gray-500">Discount</Label>
                     <p className="font-medium">{formatCurrency(selectedFee.discount)}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-500">Final Amount</Label>
+                    <Label className="text-gray-500">Final Amount</Label>
                     <p className="font-medium">{formatCurrency(selectedFee.finalAmount)}</p>
                   </div>
                   <div>
-                    <Label className="text-slate-500">Paid Amount</Label>
+                    <Label className="text-gray-500">Paid Amount</Label>
                     <p className="font-medium text-green-600">{formatCurrency(selectedFee.paidAmount)}</p>
                   </div>
                   <div className="col-span-2">
-                    <Label className="text-slate-500">Remaining Balance</Label>
+                    <Label className="text-gray-500">Remaining Balance</Label>
                     <p className="font-medium text-red-600 text-lg">{formatCurrency(selectedFee.remainingBalance)}</p>
                   </div>
                 </div>
@@ -1771,13 +1771,13 @@ export default function FinanceListPage() {
             </DialogHeader>
             {selectedFee && (
               <div className="space-y-4">
-                <div className="bg-slate-50 p-3 rounded-lg space-y-2">
+                <div className="bg-gray-50 p-3 rounded-lg space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Student:</span>
+                    <span className="text-gray-500">Student:</span>
                     <span className="font-medium">{selectedFee.studentName}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">{isMonthlyBilling ? 'Billing Month:' : 'Fee Type:'}</span>
+                    <span className="text-gray-500">{isMonthlyBilling ? 'Billing Month:' : 'Fee Type:'}</span>
                     <span className="font-medium">
                       {selectedPaymentFee
                         ? formatFeeTypeDisplay(selectedPaymentFee.name, null)
@@ -1785,7 +1785,7 @@ export default function FinanceListPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Remaining Balance:</span>
+                    <span className="text-gray-500">Remaining Balance:</span>
                     <span className="font-medium text-red-600">{formatCurrency(selectedPaymentFee?.balance ?? selectedFee.remainingBalance)}</span>
                   </div>
                 </div>

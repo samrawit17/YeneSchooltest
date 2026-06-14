@@ -153,10 +153,10 @@ export default function AdminPracticeExamsPage() {
   const optionLabels = questionType === "TRUE_FALSE" ? (["A", "B"] as const) : (["A", "B", "C", "D"] as const);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 p-6 dark:bg-[#111111]">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Practice Exams</h1>
-        <p className="text-sm text-slate-500">Independent MCQ online exams for assigned grades and streams.</p>
+        <h1 className="text-2xl font-bold text-gray-950 dark:text-white">Practice Exams</h1>
+        <p className="text-sm text-gray-500">Independent MCQ online exams for assigned grades and streams.</p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
@@ -207,7 +207,7 @@ export default function AdminPracticeExamsPage() {
                   <Input id="practice-exam-pass-mark" type="number" min="0" max="100" placeholder="50" value={examForm.passMark} onChange={(e) => setExamForm({ ...examForm, passMark: e.target.value })} />
                 </div>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-gray-500">
                 Question count is created by adding questions manually or importing a CSV after the exam is created.
               </p>
               <Button className="w-full" disabled={createExam.isPending || !examForm.title.trim() || !examForm.grade || (streamRequired && !examForm.stream)} onClick={() => createExam.mutate()}>
@@ -221,12 +221,12 @@ export default function AdminPracticeExamsPage() {
             <CardHeader><CardTitle className="text-base">Exam List</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {(examsQuery.data || []).map((exam: PracticeExam) => (
-                <button key={exam.id} onClick={() => setSelectedExamId(exam.id)} className={`w-full rounded-lg border p-3 text-left text-sm ${selectedExam?.id === exam.id ? "border-[var(--brand-color,#e35336)] bg-red-50 dark:bg-red-950/20" : "border-slate-200 dark:border-slate-800"}`}>
+                <button key={exam.id} onClick={() => setSelectedExamId(exam.id)} className={`w-full rounded-lg border p-3 text-left text-sm ${selectedExam?.id === exam.id ? "border-[var(--brand-color,#e35336)] bg-red-50 dark:bg-red-950/20" : "border-gray-200 dark:border-[#2A2A2A]"}`}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold">{exam.title}</span>
                     <Badge variant="outline">{exam.status}</Badge>
                   </div>
-                  <p className="mt-1 text-xs text-slate-500">Grade {exam.grade}{exam.stream ? ` ${exam.stream}` : ""} - {exam._count?.questions || 0} questions</p>
+                  <p className="mt-1 text-xs text-gray-500">Grade {exam.grade}{exam.stream ? ` ${exam.stream}` : ""} - {exam._count?.questions || 0} questions</p>
                 </button>
               ))}
             </CardContent>
@@ -241,7 +241,7 @@ export default function AdminPracticeExamsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <CardTitle>{selectedExam.title}</CardTitle>
-                      <p className="text-sm text-slate-500">Grade {selectedExam.grade}{selectedExam.stream ? ` ${selectedExam.stream}` : ""} - {selectedExam.durationMinutes} minutes</p>
+                      <p className="text-sm text-gray-500">Grade {selectedExam.grade}{selectedExam.stream ? ` ${selectedExam.stream}` : ""} - {selectedExam.durationMinutes} minutes</p>
                     </div>
                     <Select value={selectedExam.status} onValueChange={(status) => updateStatus.mutate({ id: selectedExam.id, status })}>
                       <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
@@ -299,7 +299,7 @@ export default function AdminPracticeExamsPage() {
                   ) : (
                     <div className="grid gap-2 md:grid-cols-[1fr_auto]">
                       <Input placeholder="Accepted answer or variants separated by |" value={questionForm.correctText} onChange={(e) => setQuestionForm({ ...questionForm, correctText: e.target.value })} />
-                      <label className="flex items-center gap-2 rounded-md border px-3 text-sm dark:border-slate-800">
+                      <label className="flex items-center gap-2 rounded-md border px-3 text-sm dark:border-[#2A2A2A]">
                         <input type="checkbox" checked={!!questionForm.caseSensitive} onChange={(e) => setQuestionForm({ ...questionForm, caseSensitive: e.target.checked })} />
                         Case sensitive
                       </label>
@@ -324,7 +324,7 @@ export default function AdminPracticeExamsPage() {
                     onChange={(e) => setCsv(e.target.value)}
                     placeholder={"subject,question_type,question,option_a,option_b,option_c,option_d,correct_answer,case_sensitive\nMathematics,MCQ,What is 5+7?,10,11,12,13,C,false\nCivics,TRUE_FALSE,The capital city of Ethiopia is Addis Ababa.,,,,,True,false\nEnglish,SHORT_ANSWER,Write a greeting.,,,,,Hello|Hi,false"}
                   />
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     Use question_type MCQ, TRUE_FALSE, or SHORT_ANSWER. Short answers can include accepted variants separated by |.
                   </p>
                   <Button variant="outline" disabled={importQuestions.isPending || !csv.trim()} onClick={() => importQuestions.mutate()}>
@@ -338,11 +338,11 @@ export default function AdminPracticeExamsPage() {
                 <CardHeader><CardTitle className="text-base">Questions ({questions.length})</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {questions.map((question: PracticeExamQuestion, index) => (
-                    <div key={question.id} className="rounded-lg border p-3 text-sm dark:border-slate-800">
+                    <div key={question.id} className="rounded-lg border p-3 text-sm dark:border-[#2A2A2A]">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-semibold">{index + 1}. {question.questionText}</p>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 text-xs text-gray-500">
                             {question.subject} - {question.questionType === "SHORT_ANSWER"
                               ? `Short answer: ${question.correctText || "-"}`
                               : question.questionType === "TRUE_FALSE"
@@ -360,7 +360,7 @@ export default function AdminPracticeExamsPage() {
               </Card>
             </>
           ) : (
-            <Card><CardContent className="py-16 text-center text-sm text-slate-500">Create an exam to add questions.</CardContent></Card>
+            <Card><CardContent className="py-16 text-center text-sm text-gray-500">Create an exam to add questions.</CardContent></Card>
           )}
         </div>
       </div>

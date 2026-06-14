@@ -80,6 +80,14 @@ export class PermissionsGuard implements CanActivate {
 
     const userPermissions: string[] = user.permissions || [];
 
+    // ADMIN and IT_MANAGER with no explicit permissions bypass the check
+    if (
+      !userPermissions.length &&
+      [Role.ADMIN, Role.IT_MANAGER].includes(user.role)
+    ) {
+      return true;
+    }
+
     const hasPermission = requiredPermissions.every((permission) =>
       userPermissions.includes(permission),
     );

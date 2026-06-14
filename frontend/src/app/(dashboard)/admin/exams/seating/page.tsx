@@ -426,12 +426,12 @@ function ExamSeatingDeniedState({ issue }: { issue: ExamSeatingAccessIssue }) {
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
             <AlertTriangle className="h-6 w-6 text-red-600" />
           </div>
-          <CardTitle className="text-xl text-slate-950">{issue.title}</CardTitle>
+          <CardTitle className="text-xl text-gray-950">{issue.title}</CardTitle>
           <CardDescription className="text-base">{issue.message}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {issue.detail && (
-            <p className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <p className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
               {issue.detail}
             </p>
           )}
@@ -456,24 +456,24 @@ function ExamSeatingDeniedState({ issue }: { issue: ExamSeatingAccessIssue }) {
             ) : null}
 
             {issue.currentPlan && (
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-medium uppercase text-slate-500">Current plan</p>
-                <p className="text-sm font-semibold text-slate-900">{issue.currentPlan}</p>
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs font-medium uppercase text-gray-500">Current plan</p>
+                <p className="text-sm font-semibold text-gray-900">{issue.currentPlan}</p>
               </div>
             )}
 
             {issue.statusCode && (
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-medium uppercase text-slate-500">Status</p>
-                <p className="text-sm font-semibold text-slate-900">{issue.statusCode}</p>
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs font-medium uppercase text-gray-500">Status</p>
+                <p className="text-sm font-semibold text-gray-900">{issue.statusCode}</p>
               </div>
             )}
           </div>
 
           {issue.blockedRequest && (
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-              <p className="mb-1 text-xs font-medium uppercase text-slate-500">Blocked request</p>
-              <p className="break-all font-mono text-xs text-slate-700">
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+              <p className="mb-1 text-xs font-medium uppercase text-gray-500">Blocked request</p>
+              <p className="break-all font-mono text-xs text-gray-700">
                 {issue.blockedRequest}
               </p>
             </div>
@@ -1284,7 +1284,7 @@ export default function ExamSeatingPage() {
           {/* ==================== CONFIGURATION PANEL ==================== */}
           <div className="lg:col-span-4 space-y-6">
             <Card>
-              <CardHeader className="bg-slate-50 dark:bg-slate-900/50 pb-4 border-b">
+              <CardHeader className="bg-gray-50 dark:bg-[#111111]/50 pb-4 border-b">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Settings2 className="w-5 h-5 text-primary" />
                   {t.config.title}
@@ -1441,7 +1441,7 @@ export default function ExamSeatingPage() {
                 </div>
 
                 {/* Shuffle */}
-                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#111111] rounded-lg border">
                   <div className="flex items-center gap-2">
                     <Shuffle className="w-4 h-4 text-primary" />
                     <div>
@@ -1457,7 +1457,7 @@ export default function ExamSeatingPage() {
                 </div>
 
                 {canUseResultFilter && (
-                  <div className="space-y-3 rounded-lg border bg-slate-50 p-3 dark:bg-slate-900">
+                  <div className="space-y-3 rounded-lg border bg-gray-50 p-3 dark:bg-[#111111]">
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <Label className="font-medium">{resultFilterTitle}</Label>
@@ -1596,7 +1596,7 @@ export default function ExamSeatingPage() {
           {/* ==================== OVERVIEW PANEL ==================== */}
           <div className="lg:col-span-8">
             <Card className="h-full border shadow-sm">
-              <CardHeader className="bg-white dark:bg-slate-950 border-b flex flex-row items-center justify-between gap-4">
+              <CardHeader className="bg-white dark:bg-[#111111] border-b flex flex-row items-center justify-between gap-4">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Eye className="w-5 h-5 text-gray-500" />
@@ -1655,7 +1655,7 @@ export default function ExamSeatingPage() {
                         onOpenChange={() => toggleSectionExpanded(section.sectionId)}
                       >
                         <CollapsibleTrigger asChild>
-                          <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 px-4 py-3 border rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                          <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111111] px-4 py-3 border rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-[#1A1A1A] transition-colors">
                             <div className="flex items-center gap-3 min-w-0">
                               {expandedSections.has(section.sectionId) ? (
                                 <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
@@ -1663,7 +1663,7 @@ export default function ExamSeatingPage() {
                                 <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
                               )}
                               <div className="min-w-0">
-                                <h3 className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                                <h3 className="font-bold text-gray-800 dark:text-gray-200 truncate">
                                   {section.sectionName}
                                 </h3>
                                 <p className="text-xs text-gray-500 truncate">
@@ -1683,7 +1683,7 @@ export default function ExamSeatingPage() {
                           <div className="border border-t-0 rounded-b-lg overflow-hidden">
                             <Table>
                               <TableHeader>
-                                <TableRow className="bg-gray-50 dark:bg-slate-900/50">
+                                <TableRow className="bg-gray-50 dark:bg-[#111111]/50">
                                   <TableHead className="w-12 text-center">{t.table.order}</TableHead>
                                   <TableHead>{t.table.studentName}</TableHead>
                                   <TableHead className="hidden sm:table-cell">{t.table.email}</TableHead>
@@ -1707,7 +1707,7 @@ export default function ExamSeatingPage() {
                                   section.students.map((student) => (
                                     <TableRow
                                       key={student.studentId}
-                                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
+                                      className="hover:bg-gray-50/50 dark:hover:bg-[#1A1A1A]/50"
                                     >
                                       <TableCell className="text-center text-gray-500">
                                         {student.orderIndex}

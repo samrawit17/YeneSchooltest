@@ -107,7 +107,7 @@ export default function TeacherLeaderboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 dark:bg-slate-900 md:p-6">
+      <div className="min-h-screen bg-gray-50 p-4 dark:bg-[#111111] md:p-6">
         <div className="space-y-4">
           <Skeleton className="h-9 w-64" />
           <Skeleton className="h-4 w-96 max-w-full" />
@@ -123,14 +123,14 @@ export default function TeacherLeaderboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 dark:bg-slate-900 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-4 dark:bg-[#111111] md:p-6">
       <div className="space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-950 dark:text-white">
               Teacher Leaderboard
             </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Ranking based on the last 30 days of on-time grading, attendance submissions, and lesson planning.
             </p>
           </div>
@@ -156,8 +156,8 @@ export default function TeacherLeaderboardPage() {
           <Card>
             <CardContent className="flex items-center justify-between p-5">
               <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Teachers ranked</p>
-                <p className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">{rows.length}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Teachers ranked</p>
+                <p className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">{rows.length}</p>
               </div>
               <Users className="h-9 w-9 text-blue-600" />
             </CardContent>
@@ -165,19 +165,19 @@ export default function TeacherLeaderboardPage() {
           <Card>
             <CardContent className="flex items-center justify-between p-5">
               <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Average score</p>
-                <p className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">{averageScore}%</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Average score</p>
+                <p className="mt-2 text-3xl font-bold text-gray-950 dark:text-white">{averageScore}%</p>
               </div>
               <Trophy className="h-9 w-9 text-amber-500" />
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-5">
-              <p className="text-sm text-slate-500 dark:text-slate-400">Current leader</p>
-              <p className="mt-2 truncate text-xl font-bold text-slate-950 dark:text-white">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Current leader</p>
+              <p className="mt-2 truncate text-xl font-bold text-gray-950 dark:text-white">
                 {topTeacher?.teacherName || "No teacher data"}
               </p>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 {topTeacher ? `${topTeacher.overallScore}% overall` : "No activity found"}
               </p>
             </CardContent>
@@ -186,7 +186,7 @@ export default function TeacherLeaderboardPage() {
 
         {rows.length === 0 ? (
           <Card>
-            <CardContent className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+            <CardContent className="p-8 text-center text-sm text-gray-500 dark:text-gray-400">
               No teacher leaderboard data is available for the last 30 days.
             </CardContent>
           </Card>
@@ -243,7 +243,7 @@ export default function TeacherLeaderboardPage() {
                 <CardTitle className="text-base">Teacher Ranking</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="divide-y divide-gray-100 dark:divide-[#2A2A2A]">
                   {rows.map((teacher) => (
                     <div
                       key={teacher.teacherId}
@@ -254,10 +254,10 @@ export default function TeacherLeaderboardPage() {
                           #{teacher.rank}
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-950 dark:text-white">
+                          <p className="truncate text-sm font-semibold text-gray-950 dark:text-white">
                             {teacher.teacherName}
                           </p>
-                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                             {teacher.teacherEmail || "No email"}
                           </p>
                         </div>
@@ -283,18 +283,18 @@ export default function TeacherLeaderboardPage() {
                         ].map((metric) => (
                           <div key={metric.label}>
                             <div className="mb-1 flex items-center justify-between text-xs">
-                              <span className="text-slate-500 dark:text-slate-400">{metric.label}</span>
-                              <span className="font-medium text-slate-700 dark:text-slate-200">{metric.value}%</span>
+                              <span className="text-gray-500 dark:text-gray-400">{metric.label}</span>
+                              <span className="font-medium text-gray-700 dark:text-gray-200">{metric.value}%</span>
                             </div>
                             <Progress value={metric.value} className="h-2" />
-                            <p className="mt-1 text-xs text-slate-400">{metric.detail}</p>
+                            <p className="mt-1 text-xs text-gray-400">{metric.detail}</p>
                           </div>
                         ))}
                       </div>
 
                       <div className="text-left lg:text-right">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Overall</p>
-                        <p className="text-2xl font-bold text-slate-950 dark:text-white">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Overall</p>
+                        <p className="text-2xl font-bold text-gray-950 dark:text-white">
                           {teacher.overallScore}%
                         </p>
                       </div>

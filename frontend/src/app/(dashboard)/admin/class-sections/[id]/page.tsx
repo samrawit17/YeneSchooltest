@@ -201,11 +201,11 @@ export default function ClassDetailPage() {
                 </div>
                 <div className="flex flex-col items-start gap-1 text-sm lg:items-end">
                   <div className="inline-flex items-center gap-2">
-                    <School className="h-4 w-4 text-slate-400" />
-                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                    <School className="h-4 w-4 text-gray-400" />
+                    <span className="font-medium text-gray-700 dark:text-gray-200">
                       Homeroom Teacher:
                     </span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    <span className="font-semibold text-gray-700 dark:text-gray-200">
                       {displayedHomeroomTeacher?.name || "Not assigned"}
                     </span>
                   </div>
@@ -217,8 +217,8 @@ export default function ClassDetailPage() {
       </div>
 
       {/* Students Table Card */}
-      <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
-        <CardHeader className="border-b border-gray-200 dark:border-slate-700">
+      <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] overflow-hidden">
+        <CardHeader className="border-b border-gray-200 dark:border-[#2A2A2A]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Students List</CardTitle>
             <div className="relative w-full sm:w-auto sm:min-w-[420px]">
@@ -227,7 +227,7 @@ export default function ClassDetailPage() {
                 placeholder="Search students by name, code, email, or phone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-9 dark:bg-slate-900 dark:border-slate-700"
+                className="w-full pl-9 pr-9 dark:bg-[#111111] dark:border-[#2A2A2A]"
               />
               {searchTerm && (
                 <button
@@ -264,8 +264,8 @@ export default function ClassDetailPage() {
             <>
               <div className="overflow-x-auto">
                 <Table className="w-full">
-                  <TableHeader className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
-                    <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                  <TableHeader className="bg-gray-50 dark:bg-[#111111]/50 sticky top-0">
+                    <TableRow className="border-b border-gray-100 dark:border-[#2A2A2A]">
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Roll No.</TableHead>
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Student</TableHead>
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">Code</TableHead>
@@ -280,7 +280,7 @@ export default function ClassDetailPage() {
                   </TableHeader>
                   <TableBody>
                     {students.map((student, index) => (
-                      <TableRow key={student.id} className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                      <TableRow key={student.id} className="border-b border-gray-100 dark:border-[#2A2A2A]/50 hover:bg-gray-50 dark:hover:bg-[#2A2A2A]/30 transition-colors">
                         <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                           {student.rollNumber || (page - 1) * 50 + index + 1}
                         </TableCell>
@@ -308,7 +308,7 @@ export default function ClassDetailPage() {
                         {showStreamColumn && (
                           <TableCell className="px-4 py-3">
                             {student.stream ? (
-                              <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">
+                              <Badge variant="outline" className="border-gray-200 text-gray-600 dark:border-[#2A2A2A] dark:text-gray-300">
                                 {student.stream === "NATURAL" ? "Natural" : student.stream === "SOCIAL" ? "Social" : student.stream}
                               </Badge>
                             ) : (
@@ -321,11 +321,11 @@ export default function ClassDetailPage() {
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           {student.gender === "MALE" || student.gender === "Male" || student.gender === "male" ? (
-                            <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">Male</Badge>
+                            <Badge variant="outline" className="border-gray-200 text-gray-600 dark:border-[#2A2A2A] dark:text-gray-300">Male</Badge>
                           ) : student.gender === "FEMALE" || student.gender === "Female" || student.gender === "female" ? (
-                            <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">Female</Badge>
+                            <Badge variant="outline" className="border-gray-200 text-gray-600 dark:border-[#2A2A2A] dark:text-gray-300">Female</Badge>
                           ) : (
-                            <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300">N/A</Badge>
+                            <Badge variant="outline" className="border-gray-200 text-gray-600 dark:border-[#2A2A2A] dark:text-gray-300">N/A</Badge>
                           )}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">

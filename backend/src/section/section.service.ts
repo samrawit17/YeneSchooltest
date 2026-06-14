@@ -23,11 +23,22 @@ export class SectionService {
   ) {
     const classExists = await this.prisma.class.findFirst({
       where: { id: data.classId, schoolId },
-      select: { id: true },
+      select: { id: true, academicYearId: true },
     });
 
     if (!classExists) {
       throw new BadRequestException('Class not found for this school');
+    }
+
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: classExists.academicYearId, schoolId },
+      select: { endDate: true, name: true },
+    });
+
+    if (academicYear && new Date(academicYear.endDate) < new Date()) {
+      throw new BadRequestException(
+        `Cannot create sections for academic year "${academicYear.name}" because it has ended.`,
+      );
     }
 
     const existingSection = await this.prisma.section.findFirst({
@@ -236,7 +247,18 @@ export class SectionService {
   }
 
   async delete(id: string, schoolId: string) {
-    await this.findOne(id, schoolId); // Validate exists
+    const section = await this.findOne(id, schoolId); // Validate exists
+
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: section.class.academicYearId, schoolId },
+      select: { endDate: true, name: true },
+    });
+
+    if (academicYear && new Date(academicYear.endDate) < new Date()) {
+      throw new BadRequestException(
+        `Cannot delete sections for academic year "${academicYear.name}" because it has ended.`,
+      );
+    }
 
     return this.prisma.section.delete({
       where: { id },

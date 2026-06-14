@@ -72,12 +72,12 @@ interface Announcement {
 }
 
 const TeacherDashboardSkeleton = () => (
-  <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+  <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
     <div className="p-4 md:p-6 space-y-6">
       <Skeleton className="h-8 w-48" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div key={i} className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <Skeleton className="h-3 w-20 mb-2" />
             <Skeleton className="h-8 w-16 mb-2" />
             <Skeleton className="h-3 w-24" />
@@ -85,13 +85,13 @@ const TeacherDashboardSkeleton = () => (
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="lg:col-span-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
           <Skeleton className="h-5 w-32 mb-1" />
           <Skeleton className="h-3 w-16 mb-4" />
           <Skeleton className="h-64 w-full rounded-lg" />
         </div>
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
             <Skeleton className="h-5 w-28 mb-4" />
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-12 w-full mb-2" />
@@ -99,7 +99,7 @@ const TeacherDashboardSkeleton = () => (
           </div>
         </div>
       </div>
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+      <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
         <Skeleton className="h-5 w-32 mb-4" />
         <Skeleton className="h-32 w-full rounded-lg" />
       </div>
@@ -241,21 +241,21 @@ const TeacherDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
       <div className="p-4 md:p-6 space-y-6">
 
         {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {getGreeting(t.teacher)}, {user?.name ? user.name.split(' ')[0] : t.common.teacher}
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {t.teacher.subtitle}
             </p>
           </div>
           {displayTermName ? (
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg px-3 py-1.5">
               <Calendar className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
               {displayTermName}
             </div>
@@ -265,14 +265,14 @@ const TeacherDashboard = () => {
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 cursor-pointer hover:border-[var(--brand-color,#e35336)]/40 transition-colors"
+            className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 cursor-pointer hover:border-[var(--brand-color,#e35336)]/40 transition-colors"
             onClick={() => router.push('/teacher/timetable')}
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.teacher.todaysClasses}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{todayCount}</p>
-                <p className="text-xs text-slate-400 mt-1">{todayCount === 1 ? t.teacher.class : t.teacher.classes} {t.teacher.scheduled}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.teacher.todaysClasses}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">{todayCount}</p>
+                <p className="text-xs text-gray-400 mt-1">{todayCount === 1 ? t.teacher.class : t.teacher.classes} {t.teacher.scheduled}</p>
               </div>
               <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30">
                 <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -281,14 +281,14 @@ const TeacherDashboard = () => {
           </div>
 
           <div
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 cursor-pointer hover:border-[var(--brand-color,#e35336)]/40 transition-colors"
+            className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 cursor-pointer hover:border-[var(--brand-color,#e35336)]/40 transition-colors"
             onClick={() => router.push('/teacher/lessons')}
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.teacher.lessons}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{lessonsCount}</p>
-                <p className="text-xs text-slate-400 mt-1">{t.teacher.recentlyCreated}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.teacher.lessons}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">{lessonsCount}</p>
+                <p className="text-xs text-gray-400 mt-1">{t.teacher.recentlyCreated}</p>
               </div>
               <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-900/30">
                 <BookOpen className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -297,17 +297,17 @@ const TeacherDashboard = () => {
           </div>
 
           <div
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 cursor-pointer hover:border-[var(--brand-color,#e35336)]/40 transition-colors"
+            className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 cursor-pointer hover:border-[var(--brand-color,#e35336)]/40 transition-colors"
             onClick={() => router.push('/teacher/attendance')}
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.teacher.attendance}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.teacher.attendance}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">
                   <ClipboardList className="w-5 h-5 inline text-emerald-500 mr-1" />
                   {t.teacher.take}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">{t.teacher.markAttendance}</p>
+                <p className="text-xs text-gray-400 mt-1">{t.teacher.markAttendance}</p>
               </div>
               <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30">
                 <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -316,14 +316,14 @@ const TeacherDashboard = () => {
           </div>
 
           <div
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 cursor-pointer hover:border-[var(--brand-color,#e35336)]/40 transition-colors"
+            className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 cursor-pointer hover:border-[var(--brand-color,#e35336)]/40 transition-colors"
             onClick={() => router.push('/list/announcements')}
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.teacher.announcements}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{announcementsCount}</p>
-                <p className="text-xs text-slate-400 mt-1">{t.teacher.recentUpdates}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.teacher.announcements}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">{announcementsCount}</p>
+                <p className="text-xs text-gray-400 mt-1">{t.teacher.recentUpdates}</p>
               </div>
               <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/30">
                 <Bell className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -350,11 +350,11 @@ const TeacherDashboard = () => {
 
         {/* Today's Schedule + Recent Lessons */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+          <div className="lg:col-span-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white">{t.teacher.todaysSchedule}</h3>
-                <p className="text-xs text-slate-500">{formatDateLocal(new Date())}</p>
+                <h3 className="font-semibold text-gray-900 dark:text-white">{t.teacher.todaysSchedule}</h3>
+                <p className="text-xs text-gray-500">{formatDateLocal(new Date())}</p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => router.push('/teacher/timetable')}>
                 {t.teacher.viewTimetable}
@@ -364,16 +364,16 @@ const TeacherDashboard = () => {
             {upcomingClasses.length > 0 ? (
               <div className="space-y-2">
                 {upcomingClasses.slice(0, 5).map((cls) => (
-                  <div key={cls.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                  <div key={cls.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-[#2A2A2A] bg-gray-50/50 dark:bg-[#2A2A2A]/30 hover:bg-gray-100 dark:hover:bg-[#2A2A2A]/50 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="shrink-0 w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
                         <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                           {cls.subject}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                           {cls.time} &middot; {t.common.grade} {cls.grade} &middot; {t.common.section} {cls.section} &middot; {cls.room}
                         </p>
                       </div>
@@ -394,18 +394,18 @@ const TeacherDashboard = () => {
               </div>
             ) : (
               <div className="text-center py-10">
-                <Calendar className="w-10 h-10 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-                <p className="text-sm text-slate-500">{t.teacher.noClassesToday}</p>
+                <Calendar className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm text-gray-500">{t.teacher.noClassesToday}</p>
               </div>
             )}
           </div>
 
           <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-semibold text-slate-900 dark:text-white">{t.teacher.recentLessons}</h3>
-                  <p className="text-xs text-slate-500">{t.teacher.latestLessons}</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">{t.teacher.recentLessons}</h3>
+                  <p className="text-xs text-gray-500">{t.teacher.latestLessons}</p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => router.push('/teacher/lessons')}>
                   {t.common.viewAll}
@@ -417,15 +417,15 @@ const TeacherDashboard = () => {
                   {recentLessons.map((lesson) => (
                     <div
                       key={lesson.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/30 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-[#2A2A2A] bg-gray-50/50 dark:bg-[#2A2A2A]/30 hover:bg-gray-100 dark:hover:bg-[#2A2A2A]/50 transition-colors cursor-pointer"
                       onClick={() => router.push(`/teacher/lessons/${lesson.id}`)}
                     >
                       <div className="w-9 h-9 rounded-lg bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
                         <BookOpen className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{lesson.title}</p>
-                        <p className="text-xs text-slate-500 truncate">{lesson.subject} &middot; {t.common.grade} {lesson.grade}{lesson.section}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{lesson.title}</p>
+                        <p className="text-xs text-gray-500 truncate">{lesson.subject} &middot; {t.common.grade} {lesson.grade}{lesson.section}</p>
                       </div>
                       <Badge className={`${getStatusColor(lesson.status)} text-[10px] shrink-0`}>
                         {lesson.status === "published" ? t.teacher.published : t.teacher.draft}
@@ -435,8 +435,8 @@ const TeacherDashboard = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <BookOpen className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                  <p className="text-sm text-slate-500">{t.teacher.noLessons}</p>
+                  <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                  <p className="text-sm text-gray-500">{t.teacher.noLessons}</p>
                   <Button variant="outline" size="sm" className="mt-3" onClick={() => router.push('/teacher/lessons')}>
                     <Plus className="w-3 h-3 mr-1" />
                     {t.teacher.createLesson}
@@ -448,11 +448,11 @@ const TeacherDashboard = () => {
         </div>
 
         {/* Announcements */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white">{t.teacher.announcements}</h3>
-              <p className="text-xs text-slate-500">{t.teacher.latestAdminUpdates}</p>
+              <h3 className="font-semibold text-gray-900 dark:text-white">{t.teacher.announcements}</h3>
+              <p className="text-xs text-gray-500">{t.teacher.latestAdminUpdates}</p>
             </div>
             <Button variant="ghost" size="sm" onClick={() => router.push('/list/announcements')}>
               {t.common.viewAll}
@@ -467,28 +467,28 @@ const TeacherDashboard = () => {
                   className={`p-4 rounded-xl border transition-all hover:border-[var(--brand-color,#e35336)]/30 cursor-pointer ${
                     announcement.isUrgent
                       ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                      : 'bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-700'
+                      : 'bg-gray-50 dark:bg-[#2A2A2A]/30 border-gray-200 dark:border-[#2A2A2A]'
                   }`}
                   onClick={() => router.push(`/list/announcements/${announcement.id}`)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${announcement.isUrgent ? 'bg-red-100 dark:bg-red-900/30' : 'bg-slate-100 dark:bg-slate-700'}`}>
-                      <AlertCircle className={`w-4 h-4 ${announcement.isUrgent ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-400'}`} />
+                    <div className={`p-2 rounded-lg ${announcement.isUrgent ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-[#2A2A2A]'}`}>
+                      <AlertCircle className={`w-4 h-4 ${announcement.isUrgent ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <TranslatedText
                         as="h4"
                         text={announcement.title}
-                        textClassName={`text-sm font-semibold ${announcement.isUrgent ? 'text-red-700 dark:text-red-300' : 'text-slate-900 dark:text-white'}`}
+                        textClassName={`text-sm font-semibold ${announcement.isUrgent ? 'text-red-700 dark:text-red-300' : 'text-gray-900 dark:text-white'}`}
                         showControls={false}
                       />
                       <TranslatedText
                         text={announcement.content}
-                        textClassName="text-xs text-slate-600 dark:text-slate-400 line-clamp-2"
+                        textClassName="text-xs text-gray-600 dark:text-gray-400 line-clamp-2"
                         className="mt-1"
                         showControls={false}
                       />
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                         {formatDateLocal(announcement.date)}
                       </p>
                     </div>
@@ -498,8 +498,8 @@ const TeacherDashboard = () => {
             </div>
           ) : (
             <div className="text-center py-8">
-              <Bell className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm text-slate-500">{t.common.noAnnouncements}</p>
+              <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+              <p className="text-sm text-gray-500">{t.common.noAnnouncements}</p>
             </div>
           )}
         </div>

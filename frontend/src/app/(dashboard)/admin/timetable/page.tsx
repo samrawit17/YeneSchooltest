@@ -220,7 +220,7 @@ const shuffleAutoItems = <T,>(items: T[]) => {
 };
 
 const TimetablePageSkeleton = () => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 md:p-8 space-y-6">
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-[#111111] dark:to-[#111111] p-4 md:p-8 space-y-6">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="space-y-2">
         <Skeleton className="h-8 w-56" />
@@ -233,7 +233,7 @@ const TimetablePageSkeleton = () => (
       </div>
     </div>
 
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
       <div className="grid gap-3 md:grid-cols-3">
         <Skeleton className="h-10 w-full rounded-lg" />
         <Skeleton className="h-10 w-full rounded-lg" />
@@ -242,7 +242,7 @@ const TimetablePageSkeleton = () => (
     </div>
 
     <div className="grid grid-cols-1 gap-6">
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
             <Skeleton className="h-6 w-48" />
@@ -274,7 +274,7 @@ const TimetablePageSkeleton = () => (
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <Skeleton className="h-6 w-44" />
@@ -1102,7 +1102,7 @@ const AdminTimetablePage = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-2 md:p-4 space-y-3">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-[#111111] dark:to-[#111111] p-2 md:p-4 space-y-3">
 
         {/* Header */}
         <div 
@@ -1197,10 +1197,10 @@ const AdminTimetablePage = () => {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 gap-6">
 
-          <Card className="border-0 shadow-sm bg-white dark:bg-slate-800 overflow-hidden">
+          <Card className="border-0 shadow-sm bg-white dark:bg-[#1A1A1A] overflow-hidden">
             <div className="relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-r from-[var(--brand-color,#e35336)]/5 to-transparent dark:from-[var(--brand-color,#e35336)]/10" />
-              <CardHeader className="relative border-b bg-gray-50/50 dark:bg-slate-800/50">
+              <CardHeader className="relative border-b bg-gray-50/50 dark:bg-[#1A1A1A]/50">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-start gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-color,#e35336)]/10 dark:bg-[var(--brand-color,#e35336)]/20">
@@ -1242,69 +1242,69 @@ const AdminTimetablePage = () => {
             <CardContent className="grid gap-3 p-3 lg:grid-cols-[1.15fr_0.85fr]">
               <div className="space-y-3">
                 <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-slate-800 p-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-[#1A1A1A] p-3">
                     <div className="flex items-center gap-2">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">
                         <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Available / week</div>
+                      <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Available / week</div>
                     </div>
                     <div className="mt-1 text-xl font-bold text-blue-700 dark:text-blue-400">{periodCount * SCHOOL_WEEK_DAYS.length}</div>
                   </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-slate-800 p-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-[#1A1A1A] p-3">
                     <div className="flex items-center gap-2">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
                         <BarChart3 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                       </div>
-                      <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Requested</div>
+                      <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Requested</div>
                     </div>
                     <div className="mt-1 text-xl font-bold text-amber-700 dark:text-amber-400">{totalRequestedPeriods}</div>
                   </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-800 p-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-[#1A1A1A] p-3">
                     <div className="flex items-center gap-2">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
                         <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Subjects</div>
+                      <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Subjects</div>
                     </div>
                     <div className="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-400">{classSubjects.length}</div>
                   </div>
                 </div>
 
                 {classSubjects.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-8 text-center">
-                    <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No subjects configured</p>
-                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Select an academic year, class, and section to define subject loads.</p>
+                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] p-8 text-center">
+                    <BookOpen className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No subjects configured</p>
+                    <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Select an academic year, class, and section to define subject loads.</p>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div className="bg-slate-50 dark:bg-slate-800/80 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
-                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Subject Loads</span>
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-[#1A1A1A]/80 px-4 py-2.5 border-b border-gray-200 dark:border-[#2A2A2A]">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Subject Loads</span>
                     </div>
                     <Table>
                       <TableHeader>
-                        <TableRow className="bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Subject</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Teacher</TableHead>
-                          <TableHead className="w-40 text-xs font-semibold text-slate-500 dark:text-slate-400">Periods Needed</TableHead>
+                        <TableRow className="bg-gray-50/50 dark:bg-[#1A1A1A]/50 hover:bg-gray-50/50 dark:hover:bg-[#1A1A1A]/50">
+                          <TableHead className="text-xs font-semibold text-gray-500 dark:text-gray-400">Subject</TableHead>
+                          <TableHead className="text-xs font-semibold text-gray-500 dark:text-gray-400">Teacher</TableHead>
+                          <TableHead className="w-40 text-xs font-semibold text-gray-500 dark:text-gray-400">Periods Needed</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {classSubjects.map((item) => (
-                          <TableRow key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                          <TableRow key={item.id} className="hover:bg-gray-50/50 dark:hover:bg-[#1A1A1A]/50">
                             <TableCell>
-                              <div className="font-medium text-slate-900 dark:text-white">{item.subject?.name || "Unknown subject"}</div>
-                              <div className="text-xs text-slate-400">{item.subject?.code || item.subjectId}</div>
+                              <div className="font-medium text-gray-900 dark:text-white">{item.subject?.name || "Unknown subject"}</div>
+                              <div className="text-xs text-gray-400">{item.subject?.code || item.subjectId}</div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                                  <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                                <div className="h-6 w-6 rounded-full bg-gray-100 dark:bg-[#2A2A2A] flex items-center justify-center">
+                                  <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
                                     {item.teacher?.name?.charAt(0) || "?"}
                                   </span>
                                 </div>
-                                <span className="text-sm text-slate-600 dark:text-slate-300">{item.teacher?.name || "No teacher"}</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-300">{item.teacher?.name || "No teacher"}</span>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -1332,24 +1332,24 @@ const AdminTimetablePage = () => {
 
               <div className="space-y-3">
                 {!autoPreview ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-8 text-center h-full">
-                    <Sparkles className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No preview generated</p>
-                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Click Preview to see the generated schedule.</p>
+                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] p-8 text-center h-full">
+                    <Sparkles className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No preview generated</p>
+                    <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Click Preview to see the generated schedule.</p>
                   </div>
                 ) : (
                   <>
                     <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-slate-800 p-2.5">
-                        <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Requested</div>
+                      <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/30 dark:to-[#1A1A1A] p-2.5">
+                        <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Requested</div>
                         <div className="text-lg font-bold text-violet-700 dark:text-violet-400">{autoPreview.summary.requestedPeriods}</div>
                       </div>
-                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-slate-800 p-2.5">
-                        <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Generated</div>
+                      <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-[#1A1A1A] p-2.5">
+                        <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Generated</div>
                         <div className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{autoPreview.summary.generatedPeriods}</div>
                       </div>
-                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-slate-800 p-2.5">
-                        <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Unscheduled</div>
+                      <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-[#1A1A1A] p-2.5">
+                        <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Unscheduled</div>
                         <div className="text-lg font-bold text-red-700 dark:text-red-400">{autoPreview.summary.unscheduledPeriods}</div>
                       </div>
                     </div>
@@ -1357,16 +1357,16 @@ const AdminTimetablePage = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 w-1.5 rounded-full bg-[var(--brand-color,#e35336)]" />
-                        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Generated Slots</h3>
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Generated Slots</h3>
                       </div>
                       {autoPreview.generatedSlots.length === 0 ? (
-                        <p className="text-sm text-slate-400">No generated slots.</p>
+                        <p className="text-sm text-gray-400">No generated slots.</p>
                       ) : (
                         <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                           {autoPreview.generatedSlots.map((slot, index) => (
-                            <div key={`${slot.classSubjectId}-${index}`} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 p-3 text-sm hover:border-[var(--brand-color,#e35336)]/30 transition-colors">
-                              <div className="font-medium text-slate-900 dark:text-white">{slot.subjectName}</div>
-                              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            <div key={`${slot.classSubjectId}-${index}`} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-gray-50/50 dark:bg-[#1A1A1A]/50 p-3 text-sm hover:border-[var(--brand-color,#e35336)]/30 transition-colors">
+                              <div className="font-medium text-gray-900 dark:text-white">{slot.subjectName}</div>
+                              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 {slot.teacherName || "Unknown teacher"} · {SCHOOL_WEEK_DAYS.find((day) => day.value === slot.dayOfWeek)?.shortName || slot.dayOfWeek} · Period {slot.periodNumber} · {slot.startTime} - {slot.endTime}
                               </div>
                             </div>
@@ -1378,7 +1378,7 @@ const AdminTimetablePage = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Unscheduled</h3>
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Unscheduled</h3>
                       </div>
                       {autoPreview.unscheduled.length === 0 ? (
                         <div className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 p-3">
@@ -1406,8 +1406,8 @@ const AdminTimetablePage = () => {
           <div 
             className="xl:col-span-3"
           >
-            <Card className="border bg-white dark:bg-slate-800 overflow-hidden">
-              <CardHeader className="border-b bg-gray-50/50 dark:bg-slate-800/50 px-3 sm:px-4">
+            <Card className="border bg-white dark:bg-[#1A1A1A] overflow-hidden">
+              <CardHeader className="border-b bg-gray-50/50 dark:bg-[#1A1A1A]/50 px-3 sm:px-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2 dark:text-white">
@@ -1449,8 +1449,8 @@ const AdminTimetablePage = () => {
                     <div className="overflow-x-auto">
                       <Table className="w-full">
                         <TableHeader>
-                          <TableRow className="border-b-2 border-gray-100 dark:border-slate-700">
-                            <TableHead className="w-28 bg-gray-50/80 dark:bg-slate-800/80 font-bold text-gray-700 dark:text-gray-300 sticky left-0 z-10">
+                          <TableRow className="border-b-2 border-gray-100 dark:border-[#2A2A2A]">
+                            <TableHead className="w-28 bg-gray-50/80 dark:bg-[#1A1A1A]/80 font-bold text-gray-700 dark:text-gray-300 sticky left-0 z-10">
                               <div className="flex items-center gap-2">
                                 <Clock className="w-4 h-4" />
                                 {t.time}
@@ -1459,7 +1459,7 @@ const AdminTimetablePage = () => {
                             {SCHOOL_WEEK_DAYS.map((day) => (
                               <TableHead 
                                 key={day.value} 
-                                className="bg-gray-50/80 dark:bg-slate-800/80 text-center min-w-[200px] font-bold text-gray-700 dark:text-gray-300"
+                                className="bg-gray-50/80 dark:bg-[#1A1A1A]/80 text-center min-w-[200px] font-bold text-gray-700 dark:text-gray-300"
                               >
                                 <div className="flex flex-col items-center gap-1">
                                   <span>{t.weekdays[day.shortName]}</span>
@@ -1476,11 +1476,11 @@ const AdminTimetablePage = () => {
                             <TableRow 
                               key={timeRange.start}
                               className={cn(
-                                "border-b border-gray-100 dark:border-slate-700/50 transition-colors",
-                                timeIndex % 2 === 0 ? "bg-white dark:bg-slate-800" : "bg-gray-50/30 dark:bg-slate-800/50"
+                                "border-b border-gray-100 dark:border-[#2A2A2A]/50 transition-colors",
+                                timeIndex % 2 === 0 ? "bg-white dark:bg-[#1A1A1A]" : "bg-gray-50/30 dark:bg-[#1A1A1A]/50"
                               )}
                             >
-                              <TableCell className="font-semibold bg-gray-50/80 dark:bg-slate-800/80 sticky left-0 z-10 border-r">
+                              <TableCell className="font-semibold bg-gray-50/80 dark:bg-[#1A1A1A]/80 sticky left-0 z-10 border-r">
                                 <div className="flex flex-col items-center">
                                   <span className="text-sm text-gray-900 dark:text-white">{timeRange.start}</span>
                                   <span className="text-xs text-gray-400">{timeRange.end}</span>
@@ -1545,7 +1545,7 @@ const AdminTimetablePage = () => {
                                                   placeholder={t.room}
                                                   value={slot.room}
                                                   onChange={(e) => updateSlot(day.value, timeRange.start, 'room', e.target.value)}
-                                                  className="h-6 text-xs bg-white/60 dark:bg-slate-700/60 border-0 focus:ring-1 focus:ring-[var(--brand-color,#e35336)] px-1.5"
+                                                  className="h-6 text-xs bg-white/60 dark:bg-[#2A2A2A]/60 border-0 focus:ring-1 focus:ring-[var(--brand-color,#e35336)] px-1.5"
                                                 />
                                               </div>
                                             )}
@@ -1554,7 +1554,7 @@ const AdminTimetablePage = () => {
                                       ) : (
                                         <div
                                           className={cn(
-                                            "h-full min-h-[80px] rounded-xl border-2 border-dashed border-gray-200 dark:border-slate-700 p-2 transition-all",
+                                            "h-full min-h-[80px] rounded-xl border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] p-2 transition-all",
                                             isHovered && "border-[var(--brand-color,#e35336)]/50 bg-[var(--brand-color,#e35336)]/5"
                                           )}
                                         >
@@ -1567,7 +1567,7 @@ const AdminTimetablePage = () => {
                                               value=""
                                               onValueChange={(v) => handleSubjectChange(day.value, timeRange.start, v)}
                                             >
-                                              <SelectTrigger className="h-full min-h-[60px] border-0 bg-transparent hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-xs text-gray-400">
+                                              <SelectTrigger className="h-full min-h-[60px] border-0 bg-transparent hover:bg-gray-50 dark:hover:bg-[#2A2A2A]/50 transition-colors text-xs text-gray-400">
                                                 <SelectValue placeholder={t.addSubject} />
                                               </SelectTrigger>
                                               <SelectContent className="max-h-[300px]">
@@ -1610,7 +1610,7 @@ const AdminTimetablePage = () => {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-20 px-4">
                     <div
-                      className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-700 dark:to-slate-800 rounded-3xl flex items-center justify-center mb-6"
+                      className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#2A2A2A] dark:to-[#1A1A1A] rounded-3xl flex items-center justify-center mb-6"
                     >
                       <Calendar className="w-10 h-10 text-gray-400" />
                     </div>
@@ -1626,7 +1626,7 @@ const AdminTimetablePage = () => {
               </CardContent>
 
               {selectedClassId && selectedSectionId && !loading && (
-                <CardFooter className="border-t bg-gray-50/50 dark:bg-slate-800/50 px-6 py-4">
+                <CardFooter className="border-t bg-gray-50/50 dark:bg-[#1A1A1A]/50 px-6 py-4">
                   <div className="flex items-center justify-between w-full text-xs text-gray-500">
                     <div className="flex items-center gap-4">
                       <span className="flex items-center gap-1.5">

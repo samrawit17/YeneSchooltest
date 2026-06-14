@@ -529,7 +529,7 @@ const FormModal = ({
         style={{ fontFamily: "var(--font-sans), sans-serif" }}
         customCloseButton={false}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between px-5 py-4 border-b dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-[var(--brand-color,#e35336)] rounded-xl flex items-center justify-center shadow-md">
               {getTableIcon()}
@@ -566,11 +566,11 @@ const FormModal = ({
   const modalContent = (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4">
       <div
-        className="w-full max-w-lg max-h-[90vh] overflow-hidden rounded-2xl border bg-white font-sans shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+        className="w-full max-w-lg max-h-[90vh] overflow-hidden rounded-2xl border bg-white font-sans shadow-2xl dark:border-[#2A2A2A] dark:bg-[#1A1A1A]"
         style={{ fontFamily: "var(--font-sans), sans-serif" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between px-5 py-4 border-b dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-[var(--brand-color,#e35336)] rounded-xl flex items-center justify-center shadow-md">
               {getTableIcon()}

@@ -1125,11 +1125,11 @@ const Menu = ({
                 const collapsedItemClasses = `flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
                   isActive && !parentWithSameChild
                     ? useBrandNavigation
-                      ? "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
-                      : "bg-slate-200 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-white"
+                      ? "bg-[rgba(227,83,54,0.10)] text-[#e35336] font-semibold border-l-[3px] border-[#e35336] dark:bg-[rgba(227,83,54,0.15)] dark:text-[#e35336]"
+                      : "bg-slate-200 text-slate-900 shadow-sm dark:bg-[#1A1A1A] dark:text-white"
                     : useBrandNavigation
                       ? "text-slate-800 hover:bg-white/55 dark:text-gray-200 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
-                      : "text-slate-800 hover:bg-slate-100 dark:text-gray-200 dark:hover:bg-slate-800"
+                      : "text-slate-800 hover:bg-slate-100 dark:text-gray-200 dark:hover:bg-[#222222]"
                 }`;
 
                 return (
@@ -1174,11 +1174,11 @@ const Menu = ({
                   <div
                     className={`relative flex items-center justify-start gap-3 rounded-lg transition-colors ${isActive && !parentWithSameChild
                       ? useBrandNavigation
-                        ? "bg-[rgba(var(--brand-color-rgb),0.38)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.36)] dark:text-white"
-                        : "bg-slate-200 text-slate-900 font-medium shadow-sm dark:bg-slate-800 dark:text-white"
+                        ? "bg-[rgba(227,83,54,0.10)] text-[#e35336] font-semibold border-l-[3px] border-[#e35336] dark:bg-[rgba(227,83,54,0.15)] dark:text-[#e35336]"
+                        : "bg-slate-200 text-slate-900 font-medium shadow-sm dark:bg-[#1A1A1A] dark:text-white"
                       : useBrandNavigation
                         ? "text-slate-800 dark:text-gray-200 hover:bg-white/55 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
-                        : "text-slate-800 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        : "text-slate-800 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-[#222222]"
                       } min-h-12 w-full px-3.5 py-3`}
                   >
                     {hasVisibleChildren ? (
@@ -1240,14 +1240,14 @@ const Menu = ({
                           )}
                         </button>
                       ) : isActive && !hasChildren && !parentWithSameChild ? (
-                        <div className={`h-1.5 w-1.5 rounded-full ${useBrandNavigation ? "bg-[var(--brand-color,#e35336)]" : "bg-slate-500 dark:bg-slate-300"}`} />
+                        <div className={`h-1.5 w-1.5 rounded-full ${useBrandNavigation ? "bg-[var(--brand-color,#e35336)]" : "bg-slate-500 dark:bg-[#CCCCCC]"}`} />
                       ) : null}
                     </div>
                   </div>
 
                   {/* Related children */}
                   {hasVisibleChildren && !collapsed && isOpen && (
-                    <div className={`animate-in fade-in slide-in-from-top-1 duration-200 ease-out ${language === "ar" ? "mr-4 pr-2 border-r" : "ml-4 pl-2 border-l"} dark:border-gray-700 space-y-1 ${useBrandNavigation ? "border-white/55" : "border-gray-200"}`}>
+                    <div className={`animate-in fade-in slide-in-from-top-1 duration-200 ease-out ${language === "ar" ? "mr-4 pr-2 border-r" : "ml-4 pl-2 border-l"} dark:border-[#2A2A2A] space-y-1 ${useBrandNavigation ? "border-white/55" : "border-gray-200"}`}>
                       {visibleChildren.map((child) => {
                         const childHref = child.href;
                         const childPath = childHref.split("#")[0];
@@ -1265,11 +1265,11 @@ const Menu = ({
                             className={`flex min-h-10 items-center gap-3 rounded-lg px-4 py-2 transition-colors ${
                               isChildActive
                                 ? useBrandNavigation
-                                  ? "bg-[rgba(var(--brand-color-rgb),0.34)] text-slate-900 font-medium shadow-sm dark:bg-[rgba(var(--brand-color-rgb),0.34)] dark:text-white"
-                                  : "bg-slate-200 text-slate-900 font-medium shadow-sm dark:bg-slate-800 dark:text-white"
+                                  ? "bg-[rgba(227,83,54,0.10)] text-[#e35336] font-semibold border-l-[3px] border-[#e35336] dark:bg-[rgba(227,83,54,0.15)] dark:text-[#e35336]"
+                                  : "bg-slate-200 text-slate-900 font-medium shadow-sm dark:bg-[#1A1A1A] dark:text-white"
                                 : useBrandNavigation
                                   ? "text-slate-600 dark:text-gray-300 hover:bg-white/55 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
-                                  : "text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                  : "text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-[#222222]"
                             }`}
                           >
                             <div className="flex h-5 w-5 shrink-0 items-center justify-center text-slate-900 dark:text-white">
@@ -1278,7 +1278,7 @@ const Menu = ({
                             <span className="flex-1 text-sm whitespace-normal" dir={textDirection}>{childDisplayLabel}</span>
                             <div className={`${language === "ar" ? "mr-auto" : "ml-auto"} flex h-5 w-4 shrink-0 items-center justify-center`}>
                               {isChildActive && (
-                                <div className={`h-1 w-1 rounded-full ${useBrandNavigation ? "bg-[var(--brand-color,#e35336)]" : "bg-slate-500 dark:bg-slate-300"}`} />
+                                <div className={`h-1 w-1 rounded-full ${useBrandNavigation ? "bg-[var(--brand-color,#e35336)]" : "bg-slate-500 dark:bg-[#CCCCCC]"}`} />
                               )}
                             </div>
                           </Link>

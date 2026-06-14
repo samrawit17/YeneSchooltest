@@ -242,7 +242,7 @@ const MyClassesPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111]">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -269,8 +269,8 @@ const MyClassesPage = () => {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">Class {cls.name}</CardTitle>
-                      <CardDescription className="text-sm font-medium text-slate-600 dark:text-slate-400">Grade {cls.grade} • Section {cls.section}</CardDescription>
+                      <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">Class {cls.name}</CardTitle>
+                      <CardDescription className="text-sm font-medium text-gray-600 dark:text-gray-400">Grade {cls.grade} • Section {cls.section}</CardDescription>
                     </div>
                   </div>
                   <DropdownMenu>

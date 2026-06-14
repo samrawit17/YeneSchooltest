@@ -133,7 +133,7 @@ export default function CreateIncidentPage() {
 
   if (authLoading || studentsLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-[#111111]">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
@@ -142,8 +142,8 @@ export default function CreateIncidentPage() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
+      <div className="border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111]">
         <div className="mx-auto max-w-3xl px-6 py-6">
           <div className="flex items-center gap-4">
             <Button
@@ -160,7 +160,7 @@ export default function CreateIncidentPage() {
               <h1 className="text-2xl font-bold text-[#e35336]">
                 Log Discipline Incident
               </h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Report a new disciplinary incident
               </p>
             </div>
@@ -170,7 +170,7 @@ export default function CreateIncidentPage() {
 
       <div className="mx-auto max-w-3xl px-6 py-6">
         <form onSubmit={handleSubmit}>
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardHeader>
               <CardTitle>Incident Details</CardTitle>
             </CardHeader>
@@ -183,7 +183,7 @@ export default function CreateIncidentPage() {
                     setFormData({ ...formData, studentId: value })
                   }
                 >
-                  <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700">
+                  <SelectTrigger className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                     <SelectValue placeholder="Select student" />
                   </SelectTrigger>
                   <SelectContent>
@@ -205,7 +205,7 @@ export default function CreateIncidentPage() {
                     setFormData({ ...formData, incidentDate: date ? toLocalDateInputValue(date) : "" })
                   }
                   placeholder="Select incident date"
-                  className="dark:bg-slate-800 dark:border-slate-700"
+                  className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 />
               </div>
 
@@ -218,7 +218,7 @@ export default function CreateIncidentPage() {
                     setFormData({ ...formData, title: e.target.value })
                   }
                   placeholder="Brief description of incident"
-                  className="dark:bg-slate-800 dark:border-slate-700"
+                  className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 />
               </div>
 
@@ -232,7 +232,7 @@ export default function CreateIncidentPage() {
                   }
                   placeholder="Detailed description of what happened"
                   rows={4}
-                  className="dark:bg-slate-800 dark:border-slate-700"
+                  className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 />
               </div>
 
@@ -244,7 +244,7 @@ export default function CreateIncidentPage() {
                     setFormData({ ...formData, severity: value })
                   }
                 >
-                  <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700">
+                  <SelectTrigger className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -266,7 +266,7 @@ export default function CreateIncidentPage() {
                   }
                   placeholder="What action was taken immediately?"
                   rows={3}
-                  className="dark:bg-slate-800 dark:border-slate-700"
+                  className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 />
               </div>
 

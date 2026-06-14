@@ -1188,8 +1188,8 @@ export default function TeacherGradingPage() {
 
       {/* Marks Entry Table */}
       {selectedAssignmentData && (
-        <Card className="w-full min-w-0 max-w-full overflow-hidden border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <CardHeader className="flex w-full flex-col gap-4 border-b border-gray-100 dark:border-slate-700 sm:flex-row sm:items-start sm:justify-between">
+        <Card className="w-full min-w-0 max-w-full overflow-hidden border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
+          <CardHeader className="flex w-full flex-col gap-4 border-b border-gray-100 dark:border-[#2A2A2A] sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">Student Marks</CardTitle>
               <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
@@ -1231,14 +1231,14 @@ export default function TeacherGradingPage() {
               </div>
             )}
             {!isTermLocked && lockedOrUpcomingColumns.length > 0 && (
-              <div className="mx-4 mb-4 flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300 sm:mx-6">
+              <div className="mx-4 mb-4 flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-gray-700 dark:border-[#2A2A2A] dark:bg-[#111111]/40 dark:text-gray-300 sm:mx-6">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
                   <div>
                     <p className="text-sm font-medium">
                       Some mark columns are not editable yet.
                     </p>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       {lockedOrUpcomingColumns.map((column) => `${column.label}: ${getComponentStartLabel(column.code)}`).join(" · ")}
                     </p>
                   </div>
@@ -1259,10 +1259,10 @@ export default function TeacherGradingPage() {
                     </div>
                   ) : (
                     students.map((student, index) => (
-                      <div key={student.studentId} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                      <div key={student.studentId} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-800 dark:text-white">
+                            <p className="truncate text-sm font-semibold text-gray-800 dark:text-white">
                               {index + 1}. {student.studentName}
                             </p>
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -1319,8 +1319,8 @@ export default function TeacherGradingPage() {
                           />
                         </div>
 
-                        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm dark:border-gray-700">
-                          <span className="font-medium text-slate-700 dark:text-gray-300">Total: {student.totalScore ?? "-"}</span>
+                        <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-sm dark:border-gray-700">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Total: {student.totalScore ?? "-"}</span>
                           <span className={`inline-flex min-w-8 justify-center rounded-full px-2 py-1 text-xs font-semibold ${getGradeColor(student.gradeLetter)}`}>
                             {student.gradeLetter || "-"}
                           </span>
@@ -1332,8 +1332,8 @@ export default function TeacherGradingPage() {
 
                 <div className="hidden w-full max-w-full sm:block">
                 <Table className="w-full table-fixed">
-                <TableHeader className="sticky top-0 bg-gray-50 dark:bg-slate-900/50">
-                  <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                <TableHeader className="sticky top-0 bg-gray-50 dark:bg-[#111111]/50">
+                  <TableRow className="border-b border-gray-100 dark:border-[#2A2A2A]">
                     <TableHead className="w-[8%] px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Roll No.</TableHead>
                     <TableHead className="w-[18%] px-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400">Student</TableHead>
                     {assessmentColumns.map(col => (
@@ -1356,7 +1356,7 @@ export default function TeacherGradingPage() {
                     </TableRow>
                   ) : (
                     students.map((student) => (
-                      <TableRow key={student.studentId} className="border-b border-gray-100 transition-colors hover:bg-gray-50 dark:border-slate-700/50 dark:hover:bg-slate-700/30">
+                      <TableRow key={student.studentId} className="border-b border-gray-100 transition-colors hover:bg-gray-50 dark:border-[#2A2A2A]/50 dark:hover:bg-[#2A2A2A]/30">
                         <TableCell className="px-3 py-3 text-sm text-gray-700 dark:text-gray-300">{student.rollNumber || "-"}</TableCell>
                         <TableCell className="px-3 py-3 text-sm font-medium text-gray-900 dark:text-white">
                           <div className="truncate">{student.studentName}</div>
@@ -1365,7 +1365,7 @@ export default function TeacherGradingPage() {
                           <TableCell key={col.code} className="px-2 py-3 text-center">
                             <Input
                               type="number"
-                              className="h-8 w-full min-w-0 border-gray-200 px-1 text-center text-xs dark:border-slate-600 dark:bg-gray-700 dark:text-white"
+                              className="h-8 w-full min-w-0 border-gray-200 px-1 text-center text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                               min="0"
                               max={getComponentMaxScore(col.code)}
                               value={student.componentScores?.[col.code.toUpperCase()] ?? ""}
@@ -1401,7 +1401,7 @@ export default function TeacherGradingPage() {
                         </TableCell>
                         <TableCell className="px-3 py-3">
                            <Input
-                              className="h-8 w-full border-gray-200 px-2 text-xs dark:border-slate-600 dark:bg-gray-700 dark:text-white"
+                              className="h-8 w-full border-gray-200 px-2 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                               placeholder="Private note..."
                               value={student.internalNote || ""}
                               onChange={(e) => handleInternalNoteChange(student.studentId, e.target.value)}

@@ -216,15 +216,15 @@ const NotificationsPage = () => {
       </div>
 
       {isPushSupported() && (
-        <Card className="mb-4 md:mb-6 border-amber-300 bg-amber-50 text-slate-950 shadow-sm dark:border-amber-700 dark:bg-amber-950 dark:text-amber-50">
+        <Card className="mb-4 md:mb-6 border-amber-300 bg-amber-50 text-gray-950 shadow-sm dark:border-amber-700 dark:bg-amber-950 dark:text-amber-50">
           <CardContent className="flex flex-col gap-4 p-4 sm:p-5 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-3">
               <BellRing className="mt-1 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" />
               <div>
-                <p className="text-sm font-semibold text-slate-950 dark:text-amber-50 sm:text-base">
+                <p className="text-sm font-semibold text-gray-950 dark:text-amber-50 sm:text-base">
                   {t.pushTitle}
                 </p>
-                <p className="mt-1 text-xs text-slate-700 dark:text-amber-100 sm:text-sm">
+                <p className="mt-1 text-xs text-gray-700 dark:text-amber-100 sm:text-sm">
                   {t.pushDescription}
                 </p>
               </div>
@@ -234,7 +234,7 @@ const NotificationsPage = () => {
                 <Button
                   onClick={handleEnablePush}
                   disabled={pushActionLoading}
-                  className="w-full border-slate-950 bg-slate-950 text-white hover:bg-slate-800 dark:border-amber-200 dark:bg-amber-200 dark:text-slate-950 dark:hover:bg-amber-100 sm:w-auto"
+                  className="w-full border-gray-950 bg-gray-950 text-white hover:bg-gray-800 dark:border-amber-200 dark:bg-amber-200 dark:text-gray-950 dark:hover:bg-amber-100 sm:w-auto"
                 >
                   {pushActionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   {pushActionLoading ? t.enabling : t.enableNotifications}
@@ -306,7 +306,7 @@ const NotificationsPage = () => {
                       notification.isRead
                         ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
                         : "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
-                    } cursor-pointer transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] dark:hover:bg-slate-800`}
+                    } cursor-pointer transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] dark:hover:bg-[#1A1A1A]`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">

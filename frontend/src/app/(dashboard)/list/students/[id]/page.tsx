@@ -175,7 +175,7 @@ const getPeriodStatusClass = (status: string) => {
     case "unpaid":
       return "text-red-700 dark:text-red-300";
     default:
-      return "text-slate-500 dark:text-slate-400";
+      return "text-gray-500 dark:text-gray-400";
   }
 };
 
@@ -188,7 +188,7 @@ const getAttendanceStatusClass = (status: string) => {
     case "absent":
       return "text-red-700 dark:text-red-300";
     default:
-      return "text-slate-500 dark:text-slate-400";
+      return "text-gray-500 dark:text-gray-400";
   }
 };
 
@@ -696,18 +696,18 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
+    <div className="min-h-screen bg-gray-50 p-4 dark:bg-[#111111] sm:p-6">
       <div className="w-full space-y-6">
         <Button variant="outline" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="mr-1.5 h-4 w-4" />
           Back
         </Button>
 
-        <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Card className="overflow-hidden border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
           <CardContent className="p-0">
-            <div className="flex flex-col gap-5 border-b border-slate-100 p-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-5 border-b border-gray-100 p-5 dark:border-[#2A2A2A] lg:flex-row lg:items-start lg:justify-between">
               <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
-                <Avatar className="h-24 w-24 border-4 border-slate-100 shadow-sm dark:border-slate-800">
+                <Avatar className="h-24 w-24 border-4 border-gray-100 shadow-sm dark:border-[#2A2A2A]">
                   {avatarUrl ? (
                     <AvatarImage src={resolveAssetUrl(avatarUrl) || avatarUrl} alt={studentName} />
                   ) : (
@@ -717,14 +717,14 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="truncate text-2xl font-bold text-slate-900 dark:text-white">{studentName}</h1>
+                    <h1 className="truncate text-2xl font-bold text-gray-900 dark:text-white">{studentName}</h1>
                     <Badge className={isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}>
                       {isActive ? t.active : t.inactive}
                     </Badge>
                     <Badge variant="outline">{enrollmentStatus}</Badge>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{displayStudentCode}</span>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="font-mono font-semibold text-gray-700 dark:text-gray-200">{displayStudentCode}</span>
                     {username !== displayStudentCode ? <span>Login: {username}</span> : null}
                     <span>{className}{section !== t.nA ? ` - ${section}` : ""}</span>
                     <span>{t.roll.replace("{number}", student.rollNumber || t.nA)}</span>
@@ -767,7 +767,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[390px_1fr]">
           <div className="space-y-6">
-            <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
               <CardHeader>
                 <CardTitle className="text-base">{t.info.title}</CardTitle>
               </CardHeader>
@@ -788,22 +788,22 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
               <CardHeader>
                 <CardTitle className="text-base">{t.parent.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 {parents.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 py-8 text-center dark:border-slate-700">
-                    <Users className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                    <p className="text-sm text-slate-500">{t.parent.noParent}</p>
+                  <div className="rounded-xl border border-dashed border-gray-200 py-8 text-center dark:border-[#2A2A2A]">
+                    <Users className="mx-auto mb-2 h-8 w-8 text-gray-300" />
+                    <p className="text-sm text-gray-500">{t.parent.noParent}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {parents.map((parent: any, index: number) => (
-                      <div key={`${parent.id || index}`} className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-                        <p className="font-semibold text-slate-900 dark:text-white">{parent.name || t.parent.unknown}</p>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{parent.phone || t.parent.noPhone}</p>
+                      <div key={`${parent.id || index}`} className="rounded-lg border border-gray-100 p-3 dark:border-[#2A2A2A]">
+                        <p className="font-semibold text-gray-900 dark:text-white">{parent.name || t.parent.unknown}</p>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{parent.phone || t.parent.noPhone}</p>
                         <div className="mt-2 flex flex-wrap gap-1">
                           {parent.relation ? <Badge variant="outline">{parent.relation}</Badge> : null}
                           {parent.isPrimary ? <Badge variant="outline">{t.parent.primary}</Badge> : null}
@@ -816,10 +816,10 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
             </Card>
 
             {canManageDocuments ? (
-              <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <FileText className="h-4 w-4 text-slate-500" />
+                    <FileText className="h-4 w-4 text-gray-500" />
                     Documents
                   </CardTitle>
                 </CardHeader>
@@ -831,10 +831,10 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                       const submitted = !!submittedDocument && !notRequired;
                       if (notRequired) return null;
                       return (
-                        <div key={document.type} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+                        <div key={document.type} className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 p-3 dark:border-[#2A2A2A]">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{document.title}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                            <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{document.title}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
                               {notRequired ? "Not required" : submitted ? "Submitted" : "Waiting for physical document"}
                             </p>
                           </div>
@@ -850,8 +850,8 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                     })}
                   </div>
 
-                  <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-                    <p className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Add custom document</p>
+                  <div className="rounded-lg border border-gray-100 p-3 dark:border-[#2A2A2A]">
+                    <p className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Add custom document</p>
                     <div className="space-y-2">
                       <Input
                         value={customDocumentTitle}
@@ -877,14 +877,14 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                     </div>
                   </div>
                   {documents.length > 0 ? (
-                    <div className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-                      <p className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Submitted documents</p>
+                    <div className="rounded-lg border border-gray-100 p-3 dark:border-[#2A2A2A]">
+                      <p className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">Submitted documents</p>
                       <div className="space-y-2">
                         {documents.filter((document: any) => String(document?.status || "").toUpperCase() !== "NOT_REQUIRED" && document?.notRequired !== true).map((document: any, index: number) => (
-                          <div key={`${getDocumentKey(document)}-${index}`} className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-800/70">
+                          <div key={`${getDocumentKey(document)}-${index}`} className="flex items-center justify-between gap-3 rounded-md bg-gray-50 px-3 py-2 dark:bg-[#1A1A1A]/70">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{document.title || document.name || document.type || "Document"}</p>
-                              <p className="truncate text-xs text-slate-500">{document.note || document.description || document.status || "Submitted"}</p>
+                              <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{document.title || document.name || document.type || "Document"}</p>
+                              <p className="truncate text-xs text-gray-500">{document.note || document.description || document.status || "Submitted"}</p>
                             </div>
                             <DocumentActionsMenu
                               isBusy={deleteDocumentMutation.isPending}
@@ -902,18 +902,18 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
           </div>
 
           <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
-            <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
               <CardHeader>
                 <CardTitle className="text-base">{t.attendance.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 {isFinance ? (
-                  <div className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                  <div className="rounded-lg border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500 dark:border-[#2A2A2A] dark:text-gray-400">
                     Attendance details are not available to finance accounts.
                   </div>
                 ) : (
-                  <div className="overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800">
-                    <div className="grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr] bg-slate-50 px-3 py-2 text-xs font-semibold uppercase text-slate-500 dark:bg-slate-800/70 dark:text-slate-400">
+                  <div className="overflow-hidden rounded-lg border border-gray-100 dark:border-[#2A2A2A]">
+                    <div className="grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr] bg-gray-50 px-3 py-2 text-xs font-semibold uppercase text-gray-500 dark:bg-[#1A1A1A]/70 dark:text-gray-400">
                       <span>{t.attendance.day}</span>
                       <span>{t.attendance.date}</span>
                       <span>{t.attendance.status}</span>
@@ -922,14 +922,14 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                     {[todayAttendanceRow].map((record: any, index: number) => (
                       <div
                         key={`${toDateKey(record.date)}-${index}`}
-                        className="grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr] gap-2 border-t border-slate-100 px-3 py-2 text-sm dark:border-slate-800"
+                        className="grid grid-cols-[1.1fr_0.9fr_0.8fr_1fr] gap-2 border-t border-gray-100 px-3 py-2 text-sm dark:border-[#2A2A2A]"
                       >
-                        <span className="truncate font-medium text-slate-800 dark:text-slate-100">{formatWeekday(record.date)}</span>
-                        <span className="truncate text-slate-500 dark:text-slate-400">{formatShortDate(record.date)}</span>
+                        <span className="truncate font-medium text-gray-800 dark:text-gray-100">{formatWeekday(record.date)}</span>
+                        <span className="truncate text-gray-500 dark:text-gray-400">{formatShortDate(record.date)}</span>
                         <span className={`truncate font-semibold ${getAttendanceStatusClass(record.status || "")}`}>
                           {record.status}
                         </span>
-                        <span className="truncate text-slate-500 dark:text-slate-400">{record.remarks}</span>
+                        <span className="truncate text-gray-500 dark:text-gray-400">{record.remarks}</span>
                       </div>
                     ))}
                   </div>
@@ -938,7 +938,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
             </Card>
 
             {!isTeacher ? (
-              <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
                 <CardHeader>
                   <CardTitle className="text-base">{t.fee.title}</CardTitle>
                 </CardHeader>
@@ -953,7 +953,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                       <PeriodFeeRow key={period.id} period={period} />
                     ))}
                     {feeRows.length === 0 ? (
-                      <p className="py-4 text-sm text-slate-500">
+                      <p className="py-4 text-sm text-gray-500">
                         {t.fee.noPeriods}
                       </p>
                     ) : null}
@@ -962,7 +962,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
               </Card>
             ) : null}
 
-            <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 2xl:col-span-2">
+            <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111] 2xl:col-span-2">
               <CardHeader>
                 <CardTitle className="text-base">{t.academic.title}</CardTitle>
               </CardHeader>
@@ -1014,7 +1014,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                 value={editForm.full_name}
                 onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
                 placeholder={t.editDialog.fullNamePlaceholder}
-                className="text-sm dark:bg-slate-900 dark:border-slate-700"
+                className="text-sm dark:bg-[#111111] dark:border-[#2A2A2A]"
               />
             </div>
             
@@ -1024,7 +1024,7 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
                 id="email"
                 value={editForm.email}
                 disabled
-                className="bg-gray-50 dark:bg-slate-800 text-sm dark:border-slate-700"
+                className="bg-gray-50 dark:bg-[#1A1A1A] text-sm dark:border-[#2A2A2A]"
                 placeholder={t.editDialog.emailDisabled}
               />
             </div>
@@ -1144,23 +1144,23 @@ function StudentDetailContent({ studentId }: { studentId: string }) {
 
 function SummaryItem({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/70">
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+    <div className="rounded-xl bg-gray-50 p-4 dark:bg-[#1A1A1A]/70">
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-gray-400">
         <Icon className="h-4 w-4" />
         {label}
       </div>
-      <p className="mt-2 truncate text-lg font-bold text-slate-900 dark:text-white">{value || "N/A"}</p>
+      <p className="mt-2 truncate text-lg font-bold text-gray-900 dark:text-white">{value || "N/A"}</p>
     </div>
   );
 }
 
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="flex min-w-0 items-start gap-3 rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+    <div className="flex min-w-0 items-start gap-3 rounded-lg border border-gray-100 p-3 dark:border-[#2A2A2A]">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{value || "N/A"}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{value || "N/A"}</p>
       </div>
     </div>
   );
@@ -1168,18 +1168,18 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/70">
-      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-1 truncate text-base font-bold text-slate-900 dark:text-white">{value || "0"}</p>
+    <div className="rounded-lg bg-gray-50 p-3 dark:bg-[#1A1A1A]/70">
+      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="mt-1 truncate text-base font-bold text-gray-900 dark:text-white">{value || "0"}</p>
     </div>
   );
 }
 
 function MiniRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2 text-sm dark:border-slate-800">
-      <span className="min-w-0 truncate text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="shrink-0 font-semibold text-slate-800 dark:text-slate-200">{value}</span>
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2 text-sm dark:border-[#2A2A2A]">
+      <span className="min-w-0 truncate text-gray-500 dark:text-gray-400">{label}</span>
+      <span className="shrink-0 font-semibold text-gray-800 dark:text-gray-200">{value}</span>
     </div>
   );
 }
@@ -1246,18 +1246,18 @@ function PeriodFeeRow({ period }: { period: { name: string; due: number; paid: n
     }
   };
   return (
-    <div className="rounded-lg border border-slate-100 px-3 py-2 text-sm dark:border-slate-800">
+    <div className="rounded-lg border border-gray-100 px-3 py-2 text-sm dark:border-[#2A2A2A]">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="truncate font-semibold text-slate-800 dark:text-slate-100">{period.name}</span>
+            <span className="truncate font-semibold text-gray-800 dark:text-gray-100">{period.name}</span>
             {period.isCurrent ? (
               <Badge variant="outline" className="h-5 shrink-0 px-1.5 text-[10px]">
                 {t.fee.current}
               </Badge>
             ) : null}
           </div>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             {t.fee.periodNote.replace("{due}", formatMoney(period.due)).replace("{paid}", formatMoney(period.paid)).replace("{balance}", formatMoney(period.balance))}
           </p>
         </div>

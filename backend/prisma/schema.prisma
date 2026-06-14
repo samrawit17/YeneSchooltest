@@ -689,6 +689,7 @@ model AcademicYear {
   nationalExamBatches NationalExamResultBatch[]
   timetableSlots      TimetableSlot[]
   contents            Content[]
+  subjects            Subject[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -800,6 +801,7 @@ model Subject {
   grade              Int?
   credits            Float?
   colorCode          String?
+  academicYearId     String?
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
   classSubjects      ClassSubject[]
@@ -813,10 +815,12 @@ model Subject {
   timetableSlots     TimetableSlot[]
   contents           Content[]
   practiceExams      PracticeExam[]
+  academicYear       AcademicYear?              @relation(fields: [academicYearId], references: [id], map: "subject_academic_year_fk")
 
   @@unique([schoolId, name])
   @@index([schoolId, code])
   @@index([schoolId, grade])
+  @@index([academicYearId])
 }
 
 model ClassSubject {

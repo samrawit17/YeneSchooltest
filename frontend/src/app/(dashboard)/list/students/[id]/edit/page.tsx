@@ -580,7 +580,7 @@ export default function EditStudentPage() {
   const requiredDocuments = getRequiredStudentDocuments(formData.className || student.className);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 dark:bg-slate-950 md:p-6" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
+    <div className="min-h-screen bg-[#F8FAFC] p-4 dark:bg-[#111111] md:p-6" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
       {/* Header */}
       <div className="mb-6 flex items-start gap-3">
         <Button variant="outline" size="icon" onClick={() => router.push(`/list/students/${studentId}`)}>
@@ -594,31 +594,31 @@ export default function EditStudentPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6 flex h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b bg-transparent p-0 dark:border-slate-700">
+        <TabsList className="mb-6 flex h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b bg-transparent p-0 dark:border-[#2A2A2A]">
           <TabsTrigger
             value="personal"
-            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-gray-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-gray-400"
           >
             <User className="h-4 w-4" />
             Personal
           </TabsTrigger>
           <TabsTrigger
             value="academic"
-            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-gray-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-gray-400"
           >
             <BookOpen className="h-4 w-4" />
             Academic
           </TabsTrigger>
           <TabsTrigger
             value="parent"
-            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-gray-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-gray-400"
           >
             <Users className="h-4 w-4" />
             Parent
           </TabsTrigger>
           <TabsTrigger
             value="documents"
-            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-slate-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-slate-400"
+            className="flex items-center gap-2 rounded-none border-b-2 border-transparent bg-transparent px-5 py-3 text-sm font-medium text-gray-500 shadow-none data-[state=active]:border-[var(--brand-color,#e35336)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--brand-color,#e35336)] data-[state=active]:shadow-none dark:text-gray-400"
           >
             <FileText className="h-4 w-4" />
             Documents
@@ -764,19 +764,19 @@ export default function EditStudentPage() {
               <CardDescription>Move the student to the correct class and section for the active academic year</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]">
                 <div className="grid gap-3 text-sm sm:grid-cols-3">
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400">Current class</p>
-                    <p className="font-semibold text-slate-900 dark:text-white">{formData.className || "Not assigned"}</p>
+                    <p className="text-gray-500 dark:text-gray-400">Current class</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{formData.className || "Not assigned"}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400">Current section</p>
-                    <p className="font-semibold text-slate-900 dark:text-white">{formData.section || "Not assigned"}</p>
+                    <p className="text-gray-500 dark:text-gray-400">Current section</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{formData.section || "Not assigned"}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500 dark:text-slate-400">Roll number</p>
-                    <p className="font-semibold text-slate-900 dark:text-white">{formData.rollNumber || "Not set"}</p>
+                    <p className="text-gray-500 dark:text-gray-400">Roll number</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{formData.rollNumber || "Not set"}</p>
                   </div>
                 </div>
               </div>
@@ -851,7 +851,7 @@ export default function EditStudentPage() {
                         <SelectItem value="NATURAL">Natural</SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-slate-500">Only Grade 11 and Grade 12 students use a stream.</p>
+                    <p className="text-xs text-gray-500">Only Grade 11 and Grade 12 students use a stream.</p>
                   </div>
                 )}
                 
@@ -1059,7 +1059,7 @@ export default function EditStudentPage() {
                         )}
                       </div>
 
-                      <div className="mt-4 rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
+                      <div className="mt-4 rounded-lg bg-gray-50 p-3 dark:bg-[#111111]">
                         <p className="mb-3 text-sm font-medium">Optional file upload</p>
                         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
                           <div className="space-y-2">

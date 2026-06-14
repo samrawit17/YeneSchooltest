@@ -131,20 +131,20 @@ export default function StudentRankingsPage() {
   };
 
   const getRankBadge = (rank: number) => {
-    if (rank === 1) return { icon: '🥇', bg: 'bg-yellow-100 text-yellow-800', label: 'Gold' };
-    if (rank === 2) return { icon: '🥈', bg: 'bg-gray-100 text-gray-800', label: 'Silver' };
-    if (rank === 3) return { icon: '🥉', bg: 'bg-amber-100 text-amber-800', label: 'Bronze' };
-    return { icon: `#${rank}`, bg: 'bg-slate-100 text-slate-800', label: '' };
+    if (rank === 1) return { icon: '🥇', bg: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300', label: 'Gold' };
+    if (rank === 2) return { icon: '🥈', bg: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300', label: 'Silver' };
+    if (rank === 3) return { icon: '🥉', bg: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300', label: 'Bronze' };
+    return { icon: `#${rank}`, bg: 'bg-gray-100 dark:bg-[#2A2A2A] text-gray-800 dark:text-gray-300', label: '' };
   };
 
   if (isLoading || !isAuthenticated) return null;
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A] min-h-screen">
+    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111] min-h-screen">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-black">Preview Rankings</h1>
-          <p className="text-gray-500">Preview class rankings before final publishing. Parent-visible rankings are finalized in Publish Results.</p>
+          <h1 className="text-2xl font-bold text-black dark:text-white">Preview Rankings</h1>
+          <p className="text-gray-500 dark:text-gray-400">Preview class rankings before final publishing. Parent-visible rankings are finalized in Publish Results.</p>
         </div>
         <Button onClick={() => router.push("/admin/exams/publish")} className="bg-[var(--brand-color)] text-white hover:opacity-90">
           <Send className="mr-2 h-4 w-4" />
@@ -161,7 +161,7 @@ export default function StudentRankingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-gray-200 dark:border-[#2A2A2A]">
         <CardHeader>
           <CardTitle>Preview Configuration</CardTitle>
           <CardDescription>Select a class and term to preview ranking order before publishing</CardDescription>
@@ -199,7 +199,7 @@ export default function StudentRankingsPage() {
       </Card>
 
       {rankingsResult && (
-        <Card>
+        <Card className="border-gray-200 dark:border-[#2A2A2A]">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -218,7 +218,7 @@ export default function StudentRankingsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-4 mb-4 p-4 bg-gray-50 dark:bg-[#1A1A1A] rounded-lg">
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary">{rankingsResult.results?.length || 0}</div>
                 <div className="text-sm text-gray-500">Total Students</div>
@@ -237,7 +237,7 @@ export default function StudentRankingsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b">
+                    <tr className="border-b border-gray-200 dark:border-[#2A2A2A]">
                       <th className="text-left py-3 px-4 font-medium">Rank</th>
                       <th className="text-left py-3 px-4 font-medium">Student Name</th>
                       <th className="text-left py-3 px-4 font-medium">Roll No.</th>
@@ -250,7 +250,7 @@ export default function StudentRankingsPage() {
                     {rankingsResult.results.map((result: any, idx: number) => {
                       const badge = getRankBadge(result.rank);
                       return (
-                        <tr key={idx} className="border-b hover:bg-gray-50">
+                        <tr key={idx} className="border-b border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#1A1A1A]">
                           <td className="py-3 px-4">
                             <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${badge.bg}`}>
                               {badge.icon}

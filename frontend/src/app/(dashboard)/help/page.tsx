@@ -765,10 +765,10 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-4">
-      <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
         {title}
       </h2>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
         {description}
       </p>
     </div>
@@ -787,7 +787,7 @@ export default function HelpPage() {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-[#111111]">
         <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
@@ -802,7 +802,7 @@ export default function HelpPage() {
   const RoleIcon = content.icon;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       <div className="px-6 py-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-4">
@@ -813,66 +813,61 @@ export default function HelpPage() {
               <h1 className="text-2xl font-bold text-[var(--brand-color,#e35336)]">
                 Help Center
               </h1>
-              <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
                 Role-specific guidance for common tasks, quick access pages,
                 and the best place to start when something is blocked.
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3 rounded-2xl border border-[rgba(var(--brand-color-rgb),0.18)] bg-white px-4 py-3 shadow-sm dark:bg-slate-900">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.14)]">
-              <RoleIcon className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                {content.label}
-              </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {content.roleSummary}
-              </p>
-            </div>
+          <div className="rounded-2xl border border-[rgba(var(--brand-color-rgb),0.18)] bg-white px-4 py-3 shadow-sm dark:bg-[#111111]">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              {content.label}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {content.roleSummary}
+            </p>
           </div>
         </div>
       </div>
 
       <div className="space-y-6 px-6 pb-6">
-        <Card className="border-[rgba(var(--brand-color-rgb),0.16)] bg-white dark:border-slate-800 dark:bg-slate-900">
+        <Card className="border-[rgba(var(--brand-color-rgb),0.16)] bg-white dark:border-[#2A2A2A] dark:bg-[#111111]">
           <CardContent className="grid gap-4 p-5 lg:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]/60">
               <div className="mb-3 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-[var(--brand-color,#e35336)]" />
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   Best for
                 </p>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Use this page when you need the right starting point for your
                 role instead of browsing the whole menu.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]/60">
               <div className="mb-3 flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-[var(--brand-color,#e35336)]" />
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   If a page is blocked
                 </p>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Confirm your role, then check whether the issue is the page
                 itself or the first request it makes in the background.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]/60">
               <div className="mb-3 flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-[var(--brand-color,#e35336)]" />
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
                   For follow-up
                 </p>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Use Communication Book for tracked academic follow-up instead of
                 relying on generic announcements.
               </p>
@@ -880,7 +875,7 @@ export default function HelpPage() {
           </CardContent>
         </Card>
 
-        <Card className="dark:border-slate-800 dark:bg-slate-900">
+        <Card className="dark:border-[#2A2A2A] dark:bg-[#111111]">
           <CardHeader className="pb-2">
             <SectionHeader
               title="Common Tasks"
@@ -894,20 +889,15 @@ export default function HelpPage() {
               return (
                 <div
                   key={task.title}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/40"
+                  className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]/40"
                 >
-                  <div className="mb-3 flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(var(--brand-color-rgb),0.14)]">
-                      <TaskIcon className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {task.title}
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        {task.summary}
-                      </p>
-                    </div>
+                  <div className="mb-3">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {task.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {task.summary}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -916,7 +906,7 @@ export default function HelpPage() {
                         <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[rgba(var(--brand-color-rgb),0.12)] text-[11px] font-semibold text-[var(--brand-color,#e35336)]">
                           {index + 1}
                         </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
                           {step}
                         </p>
                       </div>
@@ -938,7 +928,7 @@ export default function HelpPage() {
           </CardContent>
         </Card>
 
-        <Card className="dark:border-slate-800 dark:bg-slate-900">
+        <Card className="dark:border-[#2A2A2A] dark:bg-[#111111]">
           <CardHeader className="pb-2">
             <SectionHeader
               title="Quick Access"
@@ -954,19 +944,16 @@ export default function HelpPage() {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="group flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/40 dark:hover:bg-slate-800/60"
+                    className="group rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:bg-gray-50 dark:border-[#2A2A2A] dark:bg-[#111111]/40 dark:hover:bg-[#1A1A1A]/60"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 transition-colors group-hover:bg-[rgba(var(--brand-color-rgb),0.14)] dark:bg-slate-800">
-                      <ItemIcon className="h-5 w-5 text-slate-600 transition-colors group-hover:text-[var(--brand-color,#e35336)] dark:text-slate-300" />
-                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                        <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
                           {item.name}
                         </p>
-                        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100" />
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />
                       </div>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         {item.description}
                       </p>
                     </div>
@@ -977,7 +964,7 @@ export default function HelpPage() {
           </CardContent>
         </Card>
 
-        <Card className="dark:border-slate-800 dark:bg-slate-900">
+        <Card className="dark:border-[#2A2A2A] dark:bg-[#111111]">
           <CardHeader className="pb-2">
             <SectionHeader
               title="Support Tips"
@@ -988,10 +975,10 @@ export default function HelpPage() {
             {content.supportTips.map((tip) => (
               <div
                 key={tip}
-                className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50"
+                className="flex gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]/50"
               >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-color,#e35336)]" />
-                <p className="text-sm text-slate-600 dark:text-slate-300">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
                   {tip}
                 </p>
               </div>

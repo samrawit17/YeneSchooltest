@@ -209,7 +209,7 @@ const BigCalendar = ({
   };
 
   return (
-    <div className="h-full w-full dark:bg-gray-800 dark:rounded-lg flex flex-col">
+    <div className="h-full w-full dark:bg-[#1A1A1A] dark:rounded-lg flex flex-col">
       {/* Custom Responsive Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
         <div className="flex items-center gap-1">

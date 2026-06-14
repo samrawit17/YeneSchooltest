@@ -243,9 +243,9 @@ const statusBadgeClasses: Record<string, string> = {
   PAID: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800",
   PARTIAL: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800",
   UNPAID: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800",
-  PENDING: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
+  PENDING: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-[#1A1A1A] dark:text-gray-400 dark:border-[#2A2A2A]",
   OVERDUE: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800",
-  DRAFT: "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
+  DRAFT: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-[#1A1A1A] dark:text-gray-400 dark:border-[#2A2A2A]",
   APPROVED: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
   CANCELLED: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800",
 };
@@ -720,17 +720,17 @@ export default function FinanceReportsPage() {
   [overdueRows, selectedOverdueRows]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/60 dark:from-slate-900 dark:to-slate-900/60">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/60 dark:from-[#111111] dark:to-[#111111]/60">
       <div className="w-full p-4 md:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6">
 
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                 Finance Reports
               </h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Summary, payments, outstanding balances, overdue fees, and audit history.
               </p>
             </div>
@@ -738,11 +738,11 @@ export default function FinanceReportsPage() {
         </div>
 
         {/* Filter Card */}
-        <Card className="mb-6 border-slate-200/70 bg-white/80 shadow-sm backdrop-blur-sm dark:border-slate-700/50 dark:bg-slate-800/60">
+        <Card className="mb-6 border-gray-200/70 bg-white/80 shadow-sm backdrop-blur-sm dark:border-[#2A2A2A]/50 dark:bg-[#1A1A1A]/60">
           <CardContent className="p-4 md:p-5">
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex-1 min-w-[160px]">
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Academic Year</label>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Academic Year</label>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Academic year" />
@@ -758,7 +758,7 @@ export default function FinanceReportsPage() {
               </div>
 
               <div className="flex-1 min-w-[140px]">
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Fee Period</label>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Fee Period</label>
                 <Select value={selectedTerm} onValueChange={setSelectedTerm}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue placeholder="Fee period" />
@@ -775,7 +775,7 @@ export default function FinanceReportsPage() {
               </div>
 
               <div className="flex-1 min-w-[140px]">
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">From</label>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">From</label>
                 <CalendarDatePicker
                   value={fromDate}
                   onChange={setFromDate}
@@ -785,7 +785,7 @@ export default function FinanceReportsPage() {
               </div>
 
               <div className="flex-1 min-w-[140px]">
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">To</label>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">To</label>
                 <CalendarDatePicker
                   value={toDate}
                   onChange={setToDate}
@@ -812,7 +812,7 @@ export default function FinanceReportsPage() {
         {loading ? (
           <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {[1, 2, 3, 4, 5].map((i) => (
-              <Card key={i} className="overflow-hidden border-slate-200/70 dark:border-slate-700/50">
+              <Card key={i} className="overflow-hidden border-gray-200/70 dark:border-[#2A2A2A]/50">
                 <CardContent className="p-5">
                   <Skeleton className="h-3 w-20" />
                   <Skeleton className="mt-3 h-7 w-32" />
@@ -823,7 +823,7 @@ export default function FinanceReportsPage() {
           </div>
         ) : (
           <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-blue-600 to-blue-700 text-white">
+            <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-blue-600 to-blue-700 text-white">
               <CardContent className="p-5">
                 <p className="text-blue-100 text-xs font-medium uppercase tracking-wider">Total Expected</p>
                 <h3 className="text-xl font-bold mt-1">{formatCurrency(summary.totalExpected)}</h3>
@@ -835,7 +835,7 @@ export default function FinanceReportsPage() {
               <DollarSign className="absolute -right-3 -bottom-3 w-20 h-20 text-white/10" />
             </Card>
 
-            <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+            <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
               <CardContent className="p-5">
                 <p className="text-emerald-100 text-xs font-medium uppercase tracking-wider">Total Collected</p>
                 <h3 className="text-xl font-bold mt-1">{formatCurrency(summary.totalCollected)}</h3>
@@ -847,7 +847,7 @@ export default function FinanceReportsPage() {
               <FileText className="absolute -right-3 -bottom-3 w-20 h-20 text-white/10" />
             </Card>
 
-            <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-rose-500 to-rose-600 text-white">
+            <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-rose-500 to-rose-600 text-white">
               <CardContent className="p-5">
                 <p className="text-rose-100 text-xs font-medium uppercase tracking-wider">Total Outstanding</p>
                 <h3 className="text-xl font-bold mt-1">{formatCurrency(summary.totalOutstanding)}</h3>
@@ -859,7 +859,7 @@ export default function FinanceReportsPage() {
               <TriangleAlert className="absolute -right-3 -bottom-3 w-20 h-20 text-white/10" />
             </Card>
 
-            <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-violet-500 to-violet-600 text-white">
+            <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-violet-500 to-violet-600 text-white">
               <CardContent className="p-5">
                 <p className="text-violet-100 text-xs font-medium uppercase tracking-wider">Students Paid</p>
                 <h3 className="text-xl font-bold mt-1">{summary.totalStudentsPaid}</h3>
@@ -871,7 +871,7 @@ export default function FinanceReportsPage() {
               <Users className="absolute -right-3 -bottom-3 w-20 h-20 text-white/10" />
             </Card>
 
-            <Card className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+            <Card className="relative overflow-hidden border-gray-200 dark:border-[#2A2A2A] shadow-md bg-gradient-to-br from-orange-500 to-orange-600 text-white">
               <CardContent className="p-5">
                 <p className="text-orange-100 text-xs font-medium uppercase tracking-wider">Partial or Unpaid</p>
                 <h3 className="text-xl font-bold mt-1">{summary.totalStudentsPartialOrUnpaid}</h3>
@@ -887,7 +887,7 @@ export default function FinanceReportsPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+          <div className="overflow-x-auto border-b border-gray-200 dark:border-[#2A2A2A]">
             <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
               <TabsTrigger
                 value="summary"
@@ -939,10 +939,10 @@ export default function FinanceReportsPage() {
           {/* Summary Tab */}
           <TabsContent value="summary" className="mt-6">
             <div className="grid gap-6 lg:grid-cols-5">
-              <Card className="lg:col-span-5 border-slate-200/70 shadow-sm dark:border-slate-700/50">
-                <CardHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Collection Overview</CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Selected period billing and collection coverage</p>
+              <Card className="lg:col-span-5 border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
+                <CardHeader className="border-b border-gray-100 pb-4 dark:border-[#2A2A2A]">
+                  <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Collection Overview</CardTitle>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Selected period billing and collection coverage</p>
                 </CardHeader>
                 <CardContent className="p-6">
                   <div className="grid gap-6 sm:grid-cols-3">
@@ -951,7 +951,7 @@ export default function FinanceReportsPage() {
                         <DollarSign className="h-4 w-4" />
                         <span className="text-[11px] font-semibold uppercase tracking-wider">Expected</span>
                       </div>
-                      <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(summary.totalExpected)}</p>
+                      <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(summary.totalExpected)}</p>
                       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-blue-200 dark:bg-blue-900/50">
                         <div className="h-full w-full rounded-full bg-blue-500" />
                       </div>
@@ -986,10 +986,10 @@ export default function FinanceReportsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="lg:col-span-5 border-slate-200/70 shadow-sm dark:border-slate-700/50">
-                <CardHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Collection Breakdown</CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Revenue composition for the selected period</p>
+              <Card className="lg:col-span-5 border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
+                <CardHeader className="border-b border-gray-100 pb-4 dark:border-[#2A2A2A]">
+                  <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Collection Breakdown</CardTitle>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Revenue composition for the selected period</p>
                 </CardHeader>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-center sm:justify-start">
@@ -1022,17 +1022,17 @@ export default function FinanceReportsPage() {
                           <div key={item.name} className="flex items-center gap-3">
                             <div className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS[index] }} />
                             <div>
-                              <p className="text-xs font-medium text-slate-600 dark:text-slate-400">{item.name}</p>
-                              <p className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(item.value)}</p>
+                              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{item.name}</p>
+                              <p className="text-sm font-bold text-gray-900 dark:text-white">{formatCurrency(item.value)}</p>
                             </div>
                           </div>
                         ))}
-                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="pt-2 border-t border-gray-100 dark:border-[#2A2A2A]">
                           <div className="flex items-center gap-3">
-                            <div className="h-3 w-3 rounded-full bg-slate-400" />
+                            <div className="h-3 w-3 rounded-full bg-gray-400" />
                             <div>
-                              <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Collection Rate</p>
-                              <p className="text-sm font-bold text-slate-900 dark:text-white">
+                              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Collection Rate</p>
+                              <p className="text-sm font-bold text-gray-900 dark:text-white">
                                 {summary.totalExpected > 0
                                   ? `${((summary.totalCollected / summary.totalExpected) * 100).toFixed(1)}%`
                                   : "N/A"}
@@ -1050,14 +1050,14 @@ export default function FinanceReportsPage() {
 
           {/* Payments Tab */}
           <TabsContent value="payments" className="mt-6">
-            <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
-              <CardHeader className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+            <Card className="border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
+              <CardHeader className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-[#2A2A2A]">
                 <div>
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Payment Report</CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{displayedPayments.length} payments — Page {paymentPage} of {paymentTotalPages || 1}</p>
+                  <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Payment Report</CardTitle>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{displayedPayments.length} payments — Page {paymentPage} of {paymentTotalPages || 1}</p>
                 </div>
                 <div className="relative w-full sm:w-[280px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                   <Input
                     value={paymentSearch}
                     onChange={(event) => setPaymentSearch(event.target.value)}
@@ -1070,22 +1070,22 @@ export default function FinanceReportsPage() {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Payment Reference</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Student</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Class</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Amount</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Method</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Date</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Recorded By</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Fee Period</TableHead>
+                      <TableRow className="bg-gray-50/80 dark:bg-[#111111]/40">
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Payment Reference</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Student</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Class</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Amount</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Method</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Date</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Recorded By</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Fee Period</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredPayments.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={8} className="py-12 text-center">
-                            <div className="flex flex-col items-center gap-2 text-slate-400">
+                            <div className="flex flex-col items-center gap-2 text-gray-400">
                               <FileText className="h-8 w-8 opacity-40" />
                               <p className="text-sm font-medium">No payments found</p>
                               <p className="text-xs">Try adjusting your search or filter criteria</p>
@@ -1094,25 +1094,25 @@ export default function FinanceReportsPage() {
                         </TableRow>
                       ) : (
                         paginatedPayments.map((payment) => (
-                          <TableRow key={payment.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/40">
+                          <TableRow key={payment.id} className="border-b border-gray-100 transition-colors hover:bg-gray-50/80 dark:border-[#2A2A2A] dark:hover:bg-[#1A1A1A]/50">
                             <TableCell className="py-3 px-4">
-                              <span className="font-mono text-xs font-medium text-slate-900 dark:text-white">
+                              <span className="font-mono text-xs font-medium text-gray-900 dark:text-white">
                                 {payment.transactionReference || payment.paymentReference || payment.receiptNumber}
                               </span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs font-medium text-slate-900 dark:text-white">{payment.studentName || "N/A"}</span>
+                              <span className="text-xs font-medium text-gray-900 dark:text-white">{payment.studentName || "N/A"}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs text-slate-600 dark:text-slate-400">{payment.grade || "N/A"}{payment.section ? ` - ${payment.section}` : ""}</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">{payment.grade || "N/A"}{payment.section ? ` - ${payment.section}` : ""}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
-                              <span className="text-xs font-semibold text-slate-900 dark:text-white">{formatCurrency(payment.amountPaid)}</span>
+                              <span className="text-xs font-semibold text-gray-900 dark:text-white">{formatCurrency(payment.amountPaid)}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
                               <Badge
                                 variant="outline"
-                                className={`text-[11px] font-medium ${methodBadgeClasses[payment.paymentMethod] || "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400"}`}
+                                className={`text-[11px] font-medium ${methodBadgeClasses[payment.paymentMethod] || "bg-gray-100 text-gray-600 border-gray-200 dark:bg-[#1A1A1A] dark:text-gray-400"}`}
                               >
                                 {payment.paymentMethod === "CASH" && <Banknote className="mr-1 h-3 w-3" />}
                                 {payment.paymentMethod === "BANK_TRANSFER" && <CreditCard className="mr-1 h-3 w-3" />}
@@ -1121,15 +1121,15 @@ export default function FinanceReportsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs text-slate-600 dark:text-slate-400">
+                              <span className="text-xs text-gray-600 dark:text-gray-400">
                                 <FormattedDate date={payment.paymentDate} />
                               </span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs text-slate-600 dark:text-slate-400">{payment.recordedBy || "N/A"}</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">{payment.recordedBy || "N/A"}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <Badge variant="outline" className="text-[11px] font-normal text-slate-600 dark:text-slate-400">
+                              <Badge variant="outline" className="text-[11px] font-normal text-gray-600 dark:text-gray-400">
                                 {payment.displayPaymentPeriod}
                               </Badge>
                             </TableCell>
@@ -1140,7 +1140,7 @@ export default function FinanceReportsPage() {
                   </Table>
                 </div>
                 {displayedPayments.length > PAYMENTS_PER_PAGE && (
-                  <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+                  <div className="border-t border-gray-100 px-4 py-3 dark:border-[#2A2A2A]">
                     <Pagination page={paymentPage} setPage={setPaymentPage} totalPages={paymentTotalPages} />
                   </div>
                 )}
@@ -1150,14 +1150,14 @@ export default function FinanceReportsPage() {
 
           {/* Outstanding Tab */}
           <TabsContent value="outstanding" className="mt-6">
-            <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
-              <CardHeader className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+            <Card className="border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
+              <CardHeader className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-[#2A2A2A]">
                 <div>
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Outstanding Report</CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{filteredOutstanding.length} balances — Page {outstandingPage} of {outstandingTotalPages || 1}</p>
+                  <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Outstanding Report</CardTitle>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{filteredOutstanding.length} balances — Page {outstandingPage} of {outstandingTotalPages || 1}</p>
                 </div>
                 <div className="relative w-full sm:w-[280px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                   <Input
                     value={outstandingSearch}
                     onChange={(event) => setOutstandingSearch(event.target.value)}
@@ -1170,21 +1170,21 @@ export default function FinanceReportsPage() {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Student</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Class</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Fee Period</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Total Bill</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Amount Paid</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Balance</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-center">Status</TableHead>
+                      <TableRow className="bg-gray-50/80 dark:bg-[#111111]/40">
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Student</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Class</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Fee Period</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Total Bill</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Amount Paid</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Balance</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-center">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredOutstanding.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={7} className="py-12 text-center">
-                            <div className="flex flex-col items-center gap-2 text-slate-400">
+                            <div className="flex flex-col items-center gap-2 text-gray-400">
                               <CheckCircle2 className="h-8 w-8 opacity-40" />
                               <p className="text-sm font-medium">No outstanding balances</p>
                               <p className="text-xs">All fees have been cleared for the selected period</p>
@@ -1195,23 +1195,23 @@ export default function FinanceReportsPage() {
                         paginatedOutstanding.map((row) => (
                           <TableRow
                             key={`${row.studentId}-${row.feeType}-${row.displayScopeLabel || "all"}`}
-                            className={`border-b border-slate-100 transition-colors hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/40 ${
+                            className={`border-b border-gray-100 transition-colors hover:bg-gray-50/80 dark:border-[#2A2A2A] dark:hover:bg-[#1A1A1A]/50 ${
                               row.status === "UNPAID" ? "bg-red-50/50 dark:bg-red-950/20" : ""
                             } ${row.status === "PARTIAL" ? "bg-amber-50/50 dark:bg-amber-950/20" : ""}`}
                           >
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs font-medium text-slate-900 dark:text-white">{row.studentName}</span>
+                              <span className="text-xs font-medium text-gray-900 dark:text-white">{row.studentName}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs text-slate-600 dark:text-slate-400">{row.grade || "N/A"}{row.section ? ` - ${row.section}` : ""}</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">{row.grade || "N/A"}{row.section ? ` - ${row.section}` : ""}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <Badge variant="outline" className="text-[11px] font-normal text-slate-600 dark:text-slate-400">
+                              <Badge variant="outline" className="text-[11px] font-normal text-gray-600 dark:text-gray-400">
                                 {row.displayScopeLabel}
                               </Badge>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
-                              <span className="text-xs font-medium text-slate-900 dark:text-white">{formatCurrency(row.total)}</span>
+                              <span className="text-xs font-medium text-gray-900 dark:text-white">{formatCurrency(row.total)}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
                               <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(row.paid)}</span>
@@ -1226,7 +1226,7 @@ export default function FinanceReportsPage() {
                             <TableCell className="py-3 px-4 text-center">
                               <Badge
                                 variant="outline"
-                                className={`text-[11px] font-semibold ${statusBadgeClasses[row.status] || "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400"}`}
+                                className={`text-[11px] font-semibold ${statusBadgeClasses[row.status] || "bg-gray-100 text-gray-600 border-gray-200 dark:bg-[#1A1A1A] dark:text-gray-400"}`}
                               >
                                 {row.status === "PAID" && <CheckCircle2 className="mr-1 h-3 w-3" />}
                                 {row.status === "PARTIAL" && <AlertTriangle className="mr-1 h-3 w-3" />}
@@ -1241,7 +1241,7 @@ export default function FinanceReportsPage() {
                   </Table>
                 </div>
                 {filteredOutstanding.length > OUTSTANDING_PER_PAGE && (
-                  <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+                  <div className="border-t border-gray-100 px-4 py-3 dark:border-[#2A2A2A]">
                     <Pagination page={outstandingPage} setPage={setOutstandingPage} totalPages={outstandingTotalPages} />
                   </div>
                 )}
@@ -1251,11 +1251,11 @@ export default function FinanceReportsPage() {
 
           {/* Overdue Tab */}
           <TabsContent value="overdue" className="mt-6">
-            <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
-              <CardHeader className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+            <Card className="border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
+              <CardHeader className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-[#2A2A2A]">
                 <div>
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Overdue Command Center</CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Manage aged dues and send proactive reminders</p>
+                  <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Overdue Command Center</CardTitle>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Manage aged dues and send proactive reminders</p>
                 </div>
                 <Button
                   size="sm"
@@ -1278,7 +1278,7 @@ export default function FinanceReportsPage() {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
+                      <TableRow className="bg-gray-50/80 dark:bg-[#111111]/40">
                         <TableHead className="w-12 py-3 px-4">
                           <Checkbox
                             checked={overdueRows.filter(r => r.remaining > 0).length > 0 && allSelected}
@@ -1291,20 +1291,20 @@ export default function FinanceReportsPage() {
                             }}
                           />
                         </TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Student</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Fee Type</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Amount</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Remaining</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-center">Days Overdue</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Penalty</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-center">Status</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Student</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Fee Type</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Amount</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Remaining</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-center">Days Overdue</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Penalty</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-center">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {overdueRows.filter(r => r.remaining > 0).length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={8} className="py-12 text-center">
-                            <div className="flex flex-col items-center gap-2 text-slate-400">
+                            <div className="flex flex-col items-center gap-2 text-gray-400">
                               <CheckCircle2 className="h-8 w-8 opacity-40" />
                               <p className="text-sm font-medium">No overdue fees</p>
                               <p className="text-xs">All payments are up to date for the current selection</p>
@@ -1315,7 +1315,7 @@ export default function FinanceReportsPage() {
                         overdueRows.filter(r => r.remaining > 0).map((row, idx) => (
                           <TableRow
                             key={`${row.studentId}-${idx}`}
-                            className={`border-b border-slate-100 transition-colors hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/40 ${
+                            className={`border-b border-gray-100 transition-colors hover:bg-gray-50/80 dark:border-[#2A2A2A] dark:hover:bg-[#1A1A1A]/50 ${
                               selectedOverdueRows.includes(row.studentId) ? "bg-orange-50/50 dark:bg-orange-950/20" : ""
                             }`}
                           >
@@ -1332,13 +1332,13 @@ export default function FinanceReportsPage() {
                               />
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs font-medium text-slate-900 dark:text-white">{row.studentName}</span>
+                              <span className="text-xs font-medium text-gray-900 dark:text-white">{row.studentName}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs text-slate-600 dark:text-slate-400">{(row as any).displayFeeType || row.feeType}</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">{(row as any).displayFeeType || row.feeType}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
-                              <span className="text-xs font-medium text-slate-900 dark:text-white">{formatCurrency(row.total)}</span>
+                              <span className="text-xs font-medium text-gray-900 dark:text-white">{formatCurrency(row.total)}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
                               <span className="text-xs font-bold text-red-600 dark:text-red-400">{formatCurrency(row.remaining)}</span>
@@ -1364,7 +1364,7 @@ export default function FinanceReportsPage() {
                               </span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-center">
-                              <Badge className="bg-red-100 text-red-700 border-none text-[11px] font-semibold dark:bg-red-950/40 dark:text-red-400">
+                              <Badge className="bg-red-100 text-red-700 border-gray-200 dark:border-[#2A2A2A] text-[11px] font-semibold dark:bg-red-950/40 dark:text-red-400">
                                 <AlertTriangle className="mr-1 h-3 w-3" />
                                 Overdue
                               </Badge>
@@ -1382,49 +1382,49 @@ export default function FinanceReportsPage() {
           {/* Payroll Tab */}
           <TabsContent value="payroll" className="mt-6">
             <div className="mb-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
+              <Card className="border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Paid Payroll</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Paid Payroll</p>
                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                   </div>
-                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(payrollReport.paidNet)}</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{payrollReport.paidRuns} paid runs in selected dates</p>
+                  <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(payrollReport.paidNet)}</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{payrollReport.paidRuns} paid runs in selected dates</p>
                 </CardContent>
               </Card>
 
-              <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
+              <Card className="border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Approved Pending</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Approved Pending</p>
                     <Clock className="h-4 w-4 text-blue-500" />
                   </div>
-                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(payrollReport.pendingNet)}</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{payrollReport.pendingRuns} approved runs awaiting payment</p>
+                  <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(payrollReport.pendingNet)}</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{payrollReport.pendingRuns} approved runs awaiting payment</p>
                 </CardContent>
               </Card>
 
-              <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
+              <Card className="border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Payroll Net</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Payroll Net</p>
                     <Wallet className="h-4 w-4 text-rose-500" />
                   </div>
-                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(payrollReport.totalNet)}</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{payrollReport.staffEntries} staff entries across visible runs</p>
+                  <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(payrollReport.totalNet)}</p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{payrollReport.staffEntries} staff entries across visible runs</p>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
-              <CardHeader className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+            <Card className="border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
+              <CardHeader className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between dark:border-[#2A2A2A]">
                 <div>
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Payroll Report</CardTitle>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">Payroll Report</CardTitle>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {displayedPayrollRuns.length} salary runs in view. Payroll is reported as a finance outflow.
                   </p>
                 </div>
-                <Badge variant="outline" className="w-fit text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                <Badge variant="outline" className="w-fit text-[11px] font-semibold text-gray-600 dark:text-gray-400">
                   Gross {formatCurrency(payrollReport.totalGross)} - Deductions {formatCurrency(payrollReport.totalDeductions)}
                 </Badge>
               </CardHeader>
@@ -1432,22 +1432,22 @@ export default function FinanceReportsPage() {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Run</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Salary Month</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4">Payment Date</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Gross</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Deductions</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-right">Net</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-center">Staff</TableHead>
-                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 py-3 px-4 text-center">Status</TableHead>
+                      <TableRow className="bg-gray-50/80 dark:bg-[#111111]/40">
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Run</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Salary Month</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4">Payment Date</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Gross</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Deductions</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-right">Net</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-center">Staff</TableHead>
+                        <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 py-3 px-4 text-center">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {displayedPayrollRuns.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={8} className="py-12 text-center">
-                            <div className="flex flex-col items-center gap-2 text-slate-400">
+                            <div className="flex flex-col items-center gap-2 text-gray-400">
                               <Wallet className="h-8 w-8 opacity-40" />
                               <p className="text-sm font-medium">No payroll runs found</p>
                               <p className="text-xs">Create payroll runs from Finance / Payroll, or adjust the report dates</p>
@@ -1456,19 +1456,19 @@ export default function FinanceReportsPage() {
                         </TableRow>
                       ) : (
                         displayedPayrollRuns.map((run) => (
-                          <TableRow key={run.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/40">
+                          <TableRow key={run.id} className="border-b border-gray-100 transition-colors hover:bg-gray-50/80 dark:border-[#2A2A2A] dark:hover:bg-[#1A1A1A]/50">
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs font-medium text-slate-900 dark:text-white">{run.displayTitle || "Payroll Run"}</span>
-                              <span className="mt-0.5 block text-[11px] text-slate-500 dark:text-slate-400">{run.displayPaidAt}</span>
+                              <span className="text-xs font-medium text-gray-900 dark:text-white">{run.displayTitle || "Payroll Run"}</span>
+                              <span className="mt-0.5 block text-[11px] text-gray-500 dark:text-gray-400">{run.displayPaidAt}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs text-slate-600 dark:text-slate-400">{run.displaySalaryMonth}</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">{run.displaySalaryMonth}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4">
-                              <span className="text-xs text-slate-600 dark:text-slate-400">{run.displayPaymentDate}</span>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">{run.displayPaymentDate}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
-                              <span className="text-xs font-medium text-slate-900 dark:text-white">{formatCurrency(run.grossAmount)}</span>
+                              <span className="text-xs font-medium text-gray-900 dark:text-white">{formatCurrency(run.grossAmount)}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-right">
                               <span className="text-xs font-medium text-amber-600 dark:text-amber-400">{formatCurrency(run.deductionsAmount)}</span>
@@ -1477,7 +1477,7 @@ export default function FinanceReportsPage() {
                               <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{formatCurrency(run.netAmount)}</span>
                             </TableCell>
                             <TableCell className="py-3 px-4 text-center">
-                              <Badge variant="outline" className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                              <Badge variant="outline" className="text-[11px] font-semibold text-gray-600 dark:text-gray-400">
                                 <Users className="mr-1 h-3 w-3" />
                                 {run.entryCount}
                               </Badge>
@@ -1485,7 +1485,7 @@ export default function FinanceReportsPage() {
                             <TableCell className="py-3 px-4 text-center">
                               <Badge
                                 variant="outline"
-                                className={`text-[11px] font-semibold ${statusBadgeClasses[run.status] || "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400"}`}
+                                className={`text-[11px] font-semibold ${statusBadgeClasses[run.status] || "bg-gray-100 text-gray-600 border-gray-200 dark:bg-[#1A1A1A] dark:text-gray-400"}`}
                               >
                                 {run.status === "PAID" && <CheckCircle2 className="mr-1 h-3 w-3" />}
                                 {run.status === "APPROVED" && <Clock className="mr-1 h-3 w-3" />}
@@ -1506,29 +1506,29 @@ export default function FinanceReportsPage() {
 
           {/* Audit Logs Tab */}
           <TabsContent value="audit" className="mt-6">
-            <Card className="border-slate-200/70 shadow-sm dark:border-slate-700/50">
-              <CardHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900 dark:text-white">
-                  <History className="h-5 w-5 text-slate-400" />
+            <Card className="border-gray-200/70 shadow-sm dark:border-[#2A2A2A]/50">
+              <CardHeader className="border-b border-gray-100 pb-4 dark:border-[#2A2A2A]">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+                  <History className="h-5 w-5 text-gray-400" />
                   Financial Audit Trail
                 </CardTitle>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Sequential log of all financial modifications and reversals for the selected calendar dates
                 </p>
               </CardHeader>
               <CardContent className="p-0">
                 {auditLogs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                     <History className="h-12 w-12 mb-3 opacity-20" />
                     <p className="text-sm font-medium">No audit logs recorded</p>
                     <p className="text-xs mt-1">Financial activities will appear here as they occur</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="divide-y divide-gray-100 dark:divide-[#2A2A2A]">
                     {auditLogs.map((log, idx) => (
                       <div
                         key={idx}
-                        className="flex items-start gap-4 px-6 py-4 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-900/40"
+                        className="flex items-start gap-4 px-6 py-4 transition-colors hover:bg-gray-50/80 dark:hover:bg-[#1A1A1A]/50"
                       >
                         <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                           log.action === "REVERSED"
@@ -1543,25 +1543,25 @@ export default function FinanceReportsPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
                               {(log.entityType || "").replace(/_/g, " ")} <span className={`font-normal ${
                                 log.action === "REVERSED" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
                               }`}>{log.action}</span>
                             </p>
-                            <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
+                            <span className="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">
                               {formatDateByCalendarType(log.createdAt, user?.calendarType || "ETHIOPIAN")}
                             </span>
                           </div>
-                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
                             {log.details || "Financial transaction entry"}
                           </p>
                           <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                            <Badge variant="outline" className="text-[11px] font-normal text-gray-500 dark:text-gray-400">
                               <Users className="mr-1 h-3 w-3" />
                               {log.performedBy || "System"}
                             </Badge>
                             {log.amount && (
-                              <Badge variant="outline" className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                              <Badge variant="outline" className="text-[11px] font-semibold text-gray-700 dark:text-gray-300">
                                 <DollarSign className="mr-1 h-3 w-3" />
                                 {formatCurrency(log.amount)}
                               </Badge>

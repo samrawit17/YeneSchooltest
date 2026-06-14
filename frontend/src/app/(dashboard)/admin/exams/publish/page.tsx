@@ -57,8 +57,8 @@ function getStatusMeta(status: ReportPublishSummaryRow["status"]) {
     case "no_students":
       return {
         label: "No students",
-        icon: <Users className="h-4 w-4 text-slate-400" />,
-        badge: <Badge variant="outline" className="text-slate-400 border-slate-200 dark:border-slate-800 font-medium tracking-tight">Empty Class</Badge>,
+        icon: <Users className="h-4 w-4 text-gray-400" />,
+        badge: <Badge variant="outline" className="text-gray-400 border-gray-200 dark:border-[#2A2A2A] font-medium tracking-tight">Empty Class</Badge>,
       };
     default:
       return {
@@ -309,19 +309,19 @@ export default function PublishResultsPage() {
   if (authLoading || !isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50/50 dark:bg-[#111111]">
       <div className="w-full px-6 pt-8 pb-4">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">Publish Results</h1>
-            <p className="text-sm text-slate-500 mt-1 max-w-xl font-normal">
+            <h1 className="text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Publish Results</h1>
+            <p className="text-sm text-gray-500 mt-1 max-w-xl font-normal">
               Validate assessment completion, finalize rankings, and release end-of-term reports to parents and students in a single click.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
+            <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-[#2A2A2A] p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="h-9 w-[180px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                  <SelectTrigger className="h-9 w-[180px] border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl font-medium text-xs transition-all hover:bg-gray-100">
                     <SelectValue placeholder="Academic Year" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl ring-1 ring-black/5">
@@ -332,9 +332,9 @@ export default function PublishResultsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+                <div className="h-4 w-px bg-gray-200 dark:bg-[#1A1A1A]" />
                 <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                  <SelectTrigger className="h-9 w-[160px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                  <SelectTrigger className="h-9 w-[160px] border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl font-medium text-xs transition-all hover:bg-gray-100">
                     <SelectValue placeholder="Term" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl ring-1 ring-black/5">
@@ -352,7 +352,7 @@ export default function PublishResultsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/admin/exams/entry-progress")}
-                className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
+                className="rounded-xl border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] font-medium text-xs"
               >
                 <ClipboardCheck className="mr-2 h-4 w-4 text-[var(--brand-color)]" />
                 Entry Progress
@@ -361,7 +361,7 @@ export default function PublishResultsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/admin/report-cards")}
-                className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
+                className="rounded-xl border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] font-medium text-xs"
               >
                 <FileText className="mr-2 h-4 w-4 text-blue-500" />
                 Report Cards
@@ -393,30 +393,30 @@ export default function PublishResultsPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
+              <Card className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A] shadow-sm">
                 <CardContent className="p-5">
-                  <p className="text-xs text-slate-400 mb-1">Ready</p>
-                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">{readyRows.length}</p>
+                  <p className="text-xs text-gray-400 mb-1">Ready</p>
+                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">{readyRows.length}</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
+              <Card className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A] shadow-sm">
                 <CardContent className="p-5">
-                  <p className="text-xs text-slate-400 mb-1">Released</p>
-                  <p className="text-2xl font-semibold text-slate-900 dark:text-white">{publishedRows.length}</p>
+                  <p className="text-xs text-gray-400 mb-1">Released</p>
+                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">{publishedRows.length}</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
+              <Card className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A] shadow-sm">
                 <CardContent className="p-5">
-                  <p className="text-xs text-slate-400 mb-1">Incomplete</p>
+                  <p className="text-xs text-gray-400 mb-1">Incomplete</p>
                   <p className="text-2xl font-semibold text-amber-600">{issueRows.length}</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
+              <Card className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A] shadow-sm">
                 <CardContent className="p-5">
-                  <p className="text-xs text-slate-400 mb-1">Missing</p>
+                  <p className="text-xs text-gray-400 mb-1">Missing</p>
                   <p className="text-2xl font-semibold text-indigo-600">{totalMissingMarks}</p>
                 </CardContent>
               </Card>
@@ -445,15 +445,15 @@ export default function PublishResultsPage() {
               </Card>
             ) : null}
 
-            <Card className="bg-white dark:bg-slate-900 border-none shadow-sm rounded-2xl overflow-hidden">
-              <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800/50">
+            <Card className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A] shadow-sm rounded-2xl overflow-hidden">
+              <CardHeader className="pb-4 border-b border-gray-100 dark:border-[#2A2A2A]/50">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <CardTitle className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                    <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
                        <BarChart3 className="w-5 h-5 text-[var(--brand-color)]" />
                        Publication Tracker
                     </CardTitle>
-                    <CardDescription className="dark:text-slate-400 font-normal">
+                    <CardDescription className="dark:text-[#888888] font-normal">
                       Publishing triggers automatic ranking calculation and instant parent notification via SMS/Portal.
                     </CardDescription>
                   </div>
@@ -474,30 +474,30 @@ export default function PublishResultsPage() {
               <CardContent>
                 {rows.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <XCircle className="mb-3 h-10 w-10 text-slate-300" />
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                    <XCircle className="mb-3 h-10 w-10 text-gray-300" />
+                    <p className="text-sm text-gray-500 dark:text-[#888888]">
                       No report-card data found for the selected academic year and term.
                     </p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                      <TableRow className="bg-gray-50/50 dark:bg-[#1A1A1A]/30 border-b border-gray-100 dark:border-[#2A2A2A] hover:bg-gray-50/50">
                         <TableHead className="w-12 py-4">
                           <Checkbox
                             checked={readyClassIds.length > 0 && readyClassIds.every((id) => selectedClasses.includes(id))}
                             onCheckedChange={toggleAll}
-                            className="rounded-md border-slate-300"
+                            className="rounded-md border-gray-300"
                           />
                         </TableHead>
-                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Class & Section</TableHead>
-                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Students</TableHead>
-                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-center">Marks Entry</TableHead>
-                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-center">Generation</TableHead>
-                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Ranking Status</TableHead>
-                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Certificate</TableHead>
-                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">Approval Status</TableHead>
-                        <TableHead className="text-right font-medium text-[10px] uppercase tracking-wider text-slate-400">Action</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400">Class & Section</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400">Students</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400 text-center">Marks Entry</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400 text-center">Generation</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400">Ranking Status</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400">Certificate</TableHead>
+                        <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400">Approval Status</TableHead>
+                        <TableHead className="text-right font-medium text-[10px] uppercase tracking-wider text-gray-400">Action</TableHead>
                       </TableRow>
                     </TableHeader>
 <TableBody>
@@ -506,42 +506,42 @@ export default function PublishResultsPage() {
                         const rowKey = `${row.classId}-${row.sectionName || "all"}`;
                         return (
                           <Fragment key={rowKey}>
-                          <TableRow className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                          <TableRow className="group transition-all hover:bg-gray-50/50 dark:hover:bg-[#1A1A1A]/40">
                             <TableCell className="py-4">
                               <Checkbox
                                 checked={selectedClasses.includes(row.classId)}
                                 onCheckedChange={() => toggleClass(row.classId)}
                                 disabled={row.status !== "ready" || publishing}
-                                className="rounded-md border-slate-300 data-[state=checked]:bg-[var(--brand-color)] data-[state=checked]:border-[var(--brand-color)]"
+                                className="rounded-md border-gray-300 data-[state=checked]:bg-[var(--brand-color)] data-[state=checked]:border-[var(--brand-color)]"
                               />
                             </TableCell>
                             <TableCell className="py-4">
                               <div className="flex flex-col">
-                                <span className="text-sm font-medium text-slate-900 dark:text-white uppercase tracking-tight group-hover:text-[var(--brand-color)] transition-colors">
+                                <span className="text-sm font-medium text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-[var(--brand-color)] transition-colors">
                                   {row.className}
                                   {row.sectionName ? ` - ${row.sectionName}` : ""}
                                 </span>
-                                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+                                <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">
                                   Level Grade {row.grade ?? "—"}
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell className="py-4">
                               <div className="flex items-center gap-2">
-                                 <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800">
-                                   <Users className="w-3.5 h-3.5 text-slate-500" />
+                                 <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-[#1A1A1A]">
+                                   <Users className="w-3.5 h-3.5 text-gray-500" />
                                  </div>
-                                 <span className="text-sm font-medium text-slate-700 dark:text-slate-200 tabular-nums">{row.expectedEntries}</span>
+                                 <span className="text-sm font-medium text-gray-700 dark:text-gray-200 tabular-nums">{row.expectedEntries}</span>
                               </div>
                             </TableCell>
                             <TableCell className="py-4 text-center">
                               <div className="inline-flex flex-col items-center">
                                 <span className={`text-sm font-medium tabular-nums ${row.assessmentMissingScores > 0 ? "text-amber-500" : "text-emerald-600"}`}>
                                   {row.assessmentEnteredScores}
-                                  <span className="text-slate-300 dark:text-slate-700 mx-1">/</span>
+                                  <span className="text-gray-300 dark:text-gray-700 mx-1">/</span>
                                   {row.assessmentExpectedScores}
                                 </span>
-                                <span className="text-[9px] font-normal text-slate-400 uppercase tracking-tighter">
+                                <span className="text-[9px] font-normal text-gray-400 uppercase tracking-tighter">
                                   {row.assessmentMissingScores} Missing
                                 </span>
                               </div>
@@ -550,21 +550,21 @@ export default function PublishResultsPage() {
                               <div className="inline-flex flex-col items-center">
                                 <span className={`text-sm font-medium tabular-nums ${row.missingEntries + row.incompleteEntries > 0 ? "text-amber-500" : "text-emerald-600"}`}>
                                   {row.generatedEntries}
-                                  <span className="text-slate-300 dark:text-slate-700 mx-1">/</span>
+                                  <span className="text-gray-300 dark:text-gray-700 mx-1">/</span>
                                   {row.expectedEntries}
                                 </span>
-                                <span className="text-[9px] font-normal text-slate-400 uppercase tracking-tighter">
+                                <span className="text-[9px] font-normal text-gray-400 uppercase tracking-tighter">
                                   {row.incompleteEntries} Pending
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell className="py-4">
                               <div className="flex flex-col">
-                                <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                                  <BarChart3 className="h-3.5 w-3.5 text-slate-400" />
+                                <div className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600 dark:text-gray-300">
+                                  <BarChart3 className="h-3.5 w-3.5 text-gray-400" />
                                   AUTO-RANK
                                 </div>
-                                <span className="text-[9px] font-normal text-slate-400 tabular-nums">
+                                <span className="text-[9px] font-normal text-gray-400 tabular-nums">
                                   {row.rankingEntries}/{row.expectedEntries} Cached
                                 </span>
                               </div>
@@ -587,7 +587,7 @@ export default function PublishResultsPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openPreview(row)}
-                                className="h-8 w-8 p-0 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-[var(--brand-color)]/10 hover:text-[var(--brand-color)]"
+                                className="h-8 w-8 p-0 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-[#888888] hover:bg-[var(--brand-color)]/10 hover:text-[var(--brand-color)]"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -613,7 +613,7 @@ export default function PublishResultsPage() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => setExpandedClassId((prev) => prev === row.classId ? null : row.classId)}
-                                  className="h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-500 hover:text-white"
+                                  className="h-8 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-[#888888] hover:bg-amber-500 hover:text-white"
                                 >
                                   {expandedClassId === row.classId ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                 </Button>
@@ -642,23 +642,23 @@ export default function PublishResultsPage() {
                                     </div>
                                     <div className="flex flex-wrap gap-4 pt-2 ml-4">
                                       <div className="flex flex-col">
-                                         <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Marks Progress</span>
-                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-200 tabular-nums">{row.assessmentEnteredScores} / {row.assessmentExpectedScores}</span>
+                                         <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Marks Progress</span>
+                                         <span className="text-sm font-medium text-gray-700 dark:text-gray-200 tabular-nums">{row.assessmentEnteredScores} / {row.assessmentExpectedScores}</span>
                                       </div>
                                       <div className="flex flex-col">
-                                         <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">Report Generation</span>
-                                         <span className="text-sm font-medium text-slate-700 dark:text-slate-200 tabular-nums">{row.generatedEntries} / {row.expectedEntries}</span>
+                                         <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Report Generation</span>
+                                         <span className="text-sm font-medium text-gray-700 dark:text-gray-200 tabular-nums">{row.generatedEntries} / {row.expectedEntries}</span>
                                       </div>
                                     </div>
                                   </div>
                                   <div className="flex flex-row lg:flex-col gap-2 justify-end">
-                                    <Button size="sm" variant="outline" onClick={() => router.push("/admin/exams/entry-progress")} className="rounded-xl border-amber-200 dark:border-amber-800 font-medium text-xs bg-white dark:bg-slate-900">
+                                    <Button size="sm" variant="outline" onClick={() => router.push("/admin/exams/entry-progress")} className="rounded-xl border-amber-200 dark:border-amber-800 font-medium text-xs bg-white dark:bg-[#111111]">
                                       Fix Missing Scores
                                     </Button>
-                                    <Button size="sm" variant="outline" onClick={() => router.push("/admin/assessments")} className="rounded-xl border-amber-200 dark:border-amber-800 font-medium text-xs bg-white dark:bg-slate-900">
+                                    <Button size="sm" variant="outline" onClick={() => router.push("/admin/assessments")} className="rounded-xl border-amber-200 dark:border-amber-800 font-medium text-xs bg-white dark:bg-[#111111]">
                                       Configure Subjects
                                     </Button>
-                                    <Button size="sm" variant="outline" onClick={() => openPreview(row)} className="rounded-xl border-amber-200 dark:border-amber-800 font-medium text-xs bg-white dark:bg-slate-900">
+                                    <Button size="sm" variant="outline" onClick={() => openPreview(row)} className="rounded-xl border-amber-200 dark:border-amber-800 font-medium text-xs bg-white dark:bg-[#111111]">
                                        Review Incomplete Cards
                                     </Button>
                                   </div>
@@ -685,14 +685,14 @@ export default function PublishResultsPage() {
               This will finalize rankings, publish {publishTargetRows.reduce((sum, row) => sum + row.expectedEntries, 0)} report cards across {publishTargetRows.length} class{publishTargetRows.length === 1 ? "" : "es"}, and send notifications to parents and students.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
             {publishTargetRows.slice(0, 5).map((row) => (
               <div key={`${row.classId}-${row.sectionName || "all"}`} className="flex justify-between gap-3 py-1">
                 <span>{row.className}{row.sectionName ? ` - ${row.sectionName}` : ""}</span>
-                <span className="text-slate-500">{row.expectedEntries} students</span>
+                <span className="text-gray-500">{row.expectedEntries} students</span>
               </div>
             ))}
-            {publishTargetRows.length > 5 ? <p className="pt-1 text-xs text-slate-500">+{publishTargetRows.length - 5} more classes</p> : null}
+            {publishTargetRows.length > 5 ? <p className="pt-1 text-xs text-gray-500">+{publishTargetRows.length - 5} more classes</p> : null}
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={publishing}>Cancel</AlertDialogCancel>
