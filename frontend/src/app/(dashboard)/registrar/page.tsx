@@ -92,7 +92,7 @@ const colorClasses: Record<string, string> = {
   violet: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
   red: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300",
   emerald: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-  slate: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  slate: "bg-gray-100 text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-300",
   indigo: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300",
   rose: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
 };
@@ -261,7 +261,7 @@ export default function RegistrarDashboard() {
 
   if (isLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#111111]">
         <div className="h-12 w-12 animate-spin rounded-full border-4 border-[var(--brand-color,#e35336)] border-t-transparent" />
       </div>
     );
@@ -308,7 +308,7 @@ export default function RegistrarDashboard() {
       case "low":
         return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
       default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
+        return "bg-gray-100 text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-400";
     }
   };
 
@@ -355,7 +355,7 @@ export default function RegistrarDashboard() {
   const translateActionLabel = (label: string) => actionLabelTranslations[label] || label;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 py-6 dark:bg-[#111111]">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -366,12 +366,12 @@ export default function RegistrarDashboard() {
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             {dashboardData?.metadata?.academicYear && (
-              <span className="rounded-md bg-white px-3 py-2 font-medium text-gray-800 shadow-sm dark:bg-gray-800 dark:text-gray-200">
+              <span className="rounded-md bg-white px-3 py-2 font-medium text-gray-800 shadow-sm dark:bg-[#1A1A1A] dark:text-gray-200">
                 {dashboardData.metadata.academicYear}
               </span>
             )}
             {displayTermName && (
-              <span className="rounded-md bg-white px-3 py-2 font-medium text-gray-800 shadow-sm dark:bg-gray-800 dark:text-gray-200">
+              <span className="rounded-md bg-white px-3 py-2 font-medium text-gray-800 shadow-sm dark:bg-[#1A1A1A] dark:text-gray-200">
                 {displayTermName}
               </span>
             )}
@@ -427,7 +427,7 @@ export default function RegistrarDashboard() {
             const Icon = card.icon;
             const value = stats[card.key] ?? 0;
             return (
-              <div key={card.key} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div key={card.key} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{card.label}</p>
@@ -451,7 +451,7 @@ export default function RegistrarDashboard() {
               <button
                 key={action.href}
                 onClick={() => router.push(action.href)}
-                className="flex min-h-20 flex-col items-start justify-between rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-[var(--brand-color,#e35336)] dark:border-gray-700 dark:bg-gray-800"
+                className="flex min-h-20 flex-col items-start justify-between rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-[var(--brand-color,#e35336)] dark:border-[#2A2A2A] dark:bg-[#1A1A1A]"
               >
                 <Icon className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
                 <span className="text-sm font-semibold text-gray-950 dark:text-white">{action.label}</span>
@@ -467,7 +467,7 @@ export default function RegistrarDashboard() {
         {Object.keys(charts).length > 0 && (
           <div className="grid gap-6 lg:grid-cols-2">
             {Object.entries(charts).slice(0, 4).map(([key, chart]) => (
-              <div key={key} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+              <div key={key} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
                 <div className="mb-4 flex items-center gap-2">
                   {chart.type === "line" ? <LineChart className="h-5 w-5 text-blue-600" /> : <BarChart3 className="h-5 w-5 text-blue-600" />}
                    <h2 className="font-semibold text-gray-950 dark:text-white">{translateChartString(chart.title)}</h2>

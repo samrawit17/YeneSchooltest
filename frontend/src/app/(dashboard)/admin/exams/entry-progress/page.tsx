@@ -85,13 +85,13 @@ function ProgressBar({ percentage }: { percentage: number }) {
 
   return (
     <div className="flex items-center gap-3 min-w-0">
-      <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800/50 p-0.5 overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
+      <div className="flex-1 h-2 rounded-full bg-gray-100 dark:bg-[#1A1A1A]/50 p-0.5 overflow-hidden border border-gray-200/50 dark:border-[#2A2A2A]/50">
         <div 
           className={`h-full rounded-full bg-gradient-to-r transition-all duration-1000 ease-out shadow-sm ${color}`} 
           style={{ width: `${pct}%` }} 
         />
       </div>
-      <span className="text-[10px] font-medium tabular-nums text-slate-500 shrink-0 w-8 text-right">{pct}%</span>
+      <span className="text-[10px] font-medium tabular-nums text-gray-500 shrink-0 w-8 text-right">{pct}%</span>
     </div>
   );
 }
@@ -119,7 +119,7 @@ function StatusChip({ status }: { status: StatusFilter }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-2 py-0.5">
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 dark:text-[#CCCCCC] bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-full px-2 py-0.5">
       <Users className="w-3 h-3" /> No students
     </span>
   );
@@ -385,19 +385,19 @@ export default function EntryProgressPage() {
   if (isLoading || !isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50/50 dark:bg-[#111111]">
       <div className="w-full px-6 pt-8 pb-4">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-900 dark:text-white tracking-tight">Entry Progress</h1>
-            <p className="text-sm text-slate-500 mt-1 max-w-xl font-normal">
+            <h1 className="text-3xl font-semibold text-gray-900 dark:text-white tracking-tight">Entry Progress</h1>
+            <p className="text-sm text-gray-500 mt-1 max-w-xl font-normal">
               Real-time monitoring of grading status across all departments. Track missing scores and manage submission deadlines.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
+            <div className="bg-white dark:bg-[#111111] border border-gray-200 dark:border-[#2A2A2A] p-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
               <Select value={selectedYear} onValueChange={(value) => { setSelectedYear(value); setData([]); setHasFetched(false); }}>
-                <SelectTrigger className="h-9 w-[180px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                <SelectTrigger className="h-9 w-[180px] border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl font-medium text-xs transition-all hover:bg-gray-100">
                   <SelectValue placeholder="Academic Year" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl ring-1 ring-black/5">
@@ -408,9 +408,9 @@ export default function EntryProgressPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+              <div className="h-4 w-px bg-gray-200 dark:bg-[#1A1A1A]" />
               <Select value={selectedTerm} onValueChange={setSelectedTerm} disabled={!selectedYear || terms.length === 0}>
-                <SelectTrigger className="h-9 w-[160px] border-none bg-slate-50 dark:bg-slate-800/50 rounded-xl font-medium text-xs transition-all hover:bg-slate-100">
+                <SelectTrigger className="h-9 w-[160px] border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50 rounded-xl font-medium text-xs transition-all hover:bg-gray-100">
                   <SelectValue placeholder="Term" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl ring-1 ring-black/5">
@@ -429,7 +429,7 @@ export default function EntryProgressPage() {
                 size="sm"
                 onClick={remindAllPending}
                 disabled={reminding}
-                className="rounded-xl border-slate-200 dark:border-slate-800 bg-white font-medium text-xs"
+                className="rounded-xl border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] font-medium text-xs"
               >
                 {reminding ? <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#e35336]" /> : <Bell className="mr-2 h-4 w-4 text-[#e35336]" />}
                 {reminding ? "Sending..." : "Remind Pending"}
@@ -441,32 +441,32 @@ export default function EntryProgressPage() {
 
       <div className="w-full px-6 py-6 space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
+        <Card className="bg-white dark:bg-[#111111] dark:border-[#2A2A2A] shadow-sm">
           <CardContent className="p-5">
-            <p className="text-xs text-slate-400 mb-1">Total Progress</p>
-            <p className="text-2xl font-semibold text-slate-900 dark:text-white">
+            <p className="text-xs text-gray-400 mb-1">Total Progress</p>
+            <p className="text-2xl font-semibold text-gray-900 dark:text-white">
               {stats.hasScoreEntries ? `${stats.overallPct}%` : "0%"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
+        <Card className="bg-white dark:bg-[#111111] dark:border-[#2A2A2A] shadow-sm">
           <CardContent className="p-5">
-            <p className="text-xs text-slate-400 mb-1">Finalized</p>
-            <p className="text-2xl font-semibold text-slate-900 dark:text-white">{stats.complete}</p>
+            <p className="text-xs text-gray-400 mb-1">Finalized</p>
+            <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stats.complete}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
+        <Card className="bg-white dark:bg-[#111111] dark:border-[#2A2A2A] shadow-sm">
           <CardContent className="p-5">
-            <p className="text-xs text-slate-400 mb-1">Action Required</p>
-            <p className="text-2xl font-semibold text-slate-900 dark:text-white">{stats.totalMissing}</p>
+            <p className="text-xs text-gray-400 mb-1">Action Required</p>
+            <p className="text-2xl font-semibold text-gray-900 dark:text-white">{stats.totalMissing}</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-none shadow-sm">
+        <Card className="bg-white dark:bg-[#111111] dark:border-[#2A2A2A] shadow-sm">
           <CardContent className="p-5">
-            <p className="text-xs text-slate-400 mb-1">Attention</p>
+            <p className="text-xs text-gray-400 mb-1">Attention</p>
             <p className="text-2xl font-semibold text-rose-600">{stats.empty}</p>
           </CardContent>
         </Card>
@@ -479,20 +479,20 @@ export default function EntryProgressPage() {
         </div>
       ) : (
         <>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white dark:bg-[#111111] p-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] shadow-sm">
             <div className="relative w-full md:w-[26rem] lg:w-[32rem]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#e35336] transition-colors" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#e35336] transition-colors" />
               <Input
                 placeholder="Search subject, class, section..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 h-10 text-sm border-none bg-slate-50 dark:bg-slate-800 focus-visible:ring-2 focus-visible:ring-[#e35336]/20 rounded-xl"
+                className="pl-10 h-10 text-sm border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] focus-visible:ring-2 focus-visible:ring-[#e35336]/20 rounded-xl"
               />
             </div>
 
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
               <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
-                <SelectTrigger className="h-10 text-xs w-full md:w-36 bg-slate-50 dark:bg-slate-800 border-none rounded-xl">
+                <SelectTrigger className="h-10 text-xs w-full md:w-36 bg-gray-50 dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -507,7 +507,7 @@ export default function EntryProgressPage() {
           </div>
 
           {rows.length === 0 ? (
-            <Card className="border-dashed border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+            <Card className="border-dashed border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111]">
               <CardContent className="py-16 text-center">
                 <CheckCircle2 className="w-10 h-10 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
                 <p className="text-sm text-gray-400 dark:text-gray-500">
@@ -516,41 +516,41 @@ export default function EntryProgressPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="shadow-sm overflow-hidden bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 rounded-2xl">
+            <Card className="shadow-sm overflow-hidden bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A] rounded-2xl">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
-                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">
+                    <TableRow className="bg-gray-50/50 dark:bg-[#1A1A1A]/30 border-b border-gray-100 dark:border-[#2A2A2A] hover:bg-gray-50/50">
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400">
                         <button onClick={() => toggleSort("subject")} className="flex items-center gap-1">
                           Subject <SortIcon k="subject" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400">
                         <button onClick={() => toggleSort("className")} className="flex items-center gap-1">
                           Class <SortIcon k="className" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 min-w-[140px]">
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400 min-w-[140px]">
                         <button onClick={() => toggleSort("progress")} className="flex items-center gap-1">
                           Progress <SortIcon k="progress" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-center">
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400 text-center">
                         Entered
                       </TableHead>
-                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-center">
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400 text-center">
                         <button onClick={() => toggleSort("missing")} className="flex items-center justify-center gap-1 w-full">
                           Missing <SortIcon k="missing" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400">
                         Status
                       </TableHead>
-                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400">
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400">
                         Deadline
                       </TableHead>
-                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-slate-400 text-right">
+                      <TableHead className="font-medium text-[10px] uppercase tracking-wider text-gray-400 text-right">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -562,26 +562,26 @@ export default function EntryProgressPage() {
                       return (
                         <TableRow
                           key={`${row.teacherId}:${row.subject}:${row.className}:${row.sectionName ?? "none"}`}
-                          className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/40"
+                          className="group transition-all hover:bg-gray-50/50 dark:hover:bg-[#1A1A1A]/40"
                         >
                           <TableCell className="py-4">
                             <div className="flex flex-col">
-                               <span className="text-sm font-medium text-slate-800 dark:text-gray-100">{row.subject}</span>
+                               <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{row.subject}</span>
                             </div>
                           </TableCell>
                           <TableCell className="py-4">
                             <div className="flex flex-col">
-                              <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">{row.className}</span>
-                              <span className="text-[10px] text-slate-400 font-medium">{row.sectionName || "Core Section"}</span>
+                              <span className="text-sm text-gray-600 dark:text-[#CCCCCC] font-medium">{row.className}</span>
+                              <span className="text-[10px] text-gray-400 font-medium">{row.sectionName || "Core Section"}</span>
                             </div>
                           </TableCell>
                           <TableCell className="py-4">
                             <ProgressBar percentage={row.percentage} />
                           </TableCell>
                           <TableCell className="py-4 text-center">
-                            <span className="text-sm font-medium tabular-nums text-slate-700 dark:text-slate-200">
+                            <span className="text-sm font-medium tabular-nums text-gray-700 dark:text-gray-200">
                               {row.enteredGrades}
-                              <span className="text-slate-300 dark:text-slate-700 mx-1">/</span>
+                              <span className="text-gray-300 dark:text-gray-700 mx-1">/</span>
                               {row.totalStudents}
                             </span>
                           </TableCell>
@@ -611,8 +611,8 @@ export default function EntryProgressPage() {
                             <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                <DropdownMenu>
                                  <DropdownMenuTrigger asChild>
-                                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
-                                     <MoreVertical className="h-4 w-4 text-slate-400" />
+                                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-gray-200 dark:hover:bg-[#2A2A2A]">
+                                     <MoreVertical className="h-4 w-4 text-gray-400" />
                                    </Button>
                                  </DropdownMenuTrigger>
                                  <DropdownMenuContent align="end" className="w-48 rounded-xl ring-1 ring-black/5">
@@ -639,7 +639,7 @@ export default function EntryProgressPage() {
                 </Table>
               </div>
 
-              <div className="px-4 py-2.5 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 flex items-center justify-between">
+              <div className="px-4 py-2.5 border-t border-gray-100 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A]/50 flex items-center justify-between">
                 <p className="text-xs text-gray-400 dark:text-gray-500">
                   Showing {rows.length} of {stats.total} assignments
                   {stats.totalMissing > 0 && <span className="ml-2">· {stats.totalMissing} missing</span>}

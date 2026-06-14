@@ -127,7 +127,7 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
   // Loading state with skeletons matching the exact structure
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
+      <div className="min-h-screen bg-gray-50/50 dark:bg-[#111111]">
         <div className="w-full px-6 pt-8 pb-4">
           <div className="flex items-center gap-4">
             <Skeleton className="w-8 h-8 rounded-lg" />
@@ -153,10 +153,10 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
 
   if (!announcement) {
     return (
-      <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col items-center justify-center min-h-[400px] text-center">
-        <Bell className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-3" />
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Announcement not found</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">The announcement you're looking for doesn't exist or has been deleted.</p>
+      <div className="min-h-screen bg-gray-50/50 dark:bg-[#111111] flex flex-col items-center justify-center min-h-[400px] text-center">
+        <Bell className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Announcement not found</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">The announcement you're looking for doesn't exist or has been deleted.</p>
         <Link href="/list/announcements">
           <Button className="rounded-xl bg-[var(--brand-color)] text-white hover:opacity-90">
             <ArrowLeft className="w-4 h-4 mr-2" />

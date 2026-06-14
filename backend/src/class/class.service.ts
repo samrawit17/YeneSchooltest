@@ -22,11 +22,17 @@ export class ClassService {
 
     const academicYear = await this.prisma.academicYear.findFirst({
       where: { id: academicYearId, schoolId },
-      select: { id: true },
+      select: { id: true, endDate: true, name: true },
     });
 
     if (!academicYear) {
       throw new BadRequestException('Academic year not found for this school');
+    }
+
+    if (new Date(academicYear.endDate) < new Date()) {
+      throw new BadRequestException(
+        `Cannot modify classes for academic year "${academicYear.name}" because it has ended.`,
+      );
     }
   }
 
@@ -251,7 +257,18 @@ export class ClassService {
   }
 
   async delete(id: string, schoolId: string) {
-    await this.findOne(id, schoolId); // Validate exists
+    const classData = await this.findOne(id, schoolId); // Validate exists
+
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: classData.academicYearId, schoolId },
+      select: { endDate: true, name: true },
+    });
+
+    if (academicYear && new Date(academicYear.endDate) < new Date()) {
+      throw new BadRequestException(
+        `Cannot delete classes for academic year "${academicYear.name}" because it has ended.`,
+      );
+    }
 
     return this.prisma.class.delete({
       where: { id },

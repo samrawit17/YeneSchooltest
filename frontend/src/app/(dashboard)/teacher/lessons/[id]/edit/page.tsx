@@ -199,7 +199,7 @@ export default function EditLessonPage() {
   const canSubmitForReview = form.status === "DRAFT";
 
   return (
-    <div className="space-y-6 bg-[#F8FAFC] p-6 dark:bg-[#0F172A]">
+    <div className="space-y-6 bg-[#F8FAFC] p-6 dark:bg-[#111111]">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />

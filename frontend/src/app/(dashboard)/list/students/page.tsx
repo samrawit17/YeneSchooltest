@@ -350,7 +350,7 @@ const StudentsListPage = () => {
 
   if (isLoading) {
     return (
-      <div className="p-6 min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="p-6 min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
         <div className="w-full space-y-6">
           <div className="flex items-center justify-between">
             <Skeleton className="h-8 w-48" />
@@ -390,14 +390,14 @@ const StudentsListPage = () => {
   const endItem = Math.min(currentPage * 10, total);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] transition-colors">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111] transition-colors">
       <div className="p-4 md:p-6">
         <div className="w-full space-y-6">
           {/* Top Section - Title and Buttons */}
           <div className="flex flex-row flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-black dark:text-white">{t.titles.students}</h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 {t.subtitles.students}
               </p>
             </div>
@@ -407,7 +407,7 @@ const StudentsListPage = () => {
                   <Link href="/admin/bulk-upload">
                     <Button
                       variant="outline"
-                      className="dark:border-slate-700 dark:hover:bg-slate-800"
+                      className="dark:border-[#2A2A2A] dark:hover:bg-[#1A1A1A]"
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       {t.actions.bulkImport}
@@ -426,7 +426,7 @@ const StudentsListPage = () => {
           </div>
 
           {/* Filters Section */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
             <CardContent className="p-3 sm:p-4">
               <div className="flex flex-row flex-wrap items-center gap-3">
                 {/* Search Bar using TableSearch Component */}
@@ -472,11 +472,11 @@ const StudentsListPage = () => {
           </Card>
 
           {/* Main Data Table */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] overflow-hidden">
             <div className="overflow-x-auto">
               <Table className="w-full">
-                <TableHeader className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
-                  <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                <TableHeader className="bg-gray-50 dark:bg-[#111111]/50 sticky top-0">
+                  <TableRow className="border-b border-gray-100 dark:border-[#2A2A2A]">
                     <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.photo}</TableHead>
                     <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.studentName}</TableHead>
                     <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.studentId}</TableHead>
@@ -491,7 +491,7 @@ const StudentsListPage = () => {
                   {students.map((student) => (
                     <TableRow
                       key={student.id}
-                      className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
+                      className="border-b border-gray-100 dark:border-[#2A2A2A]/50 hover:bg-gray-50 dark:hover:bg-[#2A2A2A]/30 transition-colors cursor-pointer"
                       onClick={() => router.push(`/list/students/${student.id}`)}
                     >
                       <TableCell className="px-4 py-3">
@@ -590,7 +590,7 @@ const StudentsListPage = () => {
                 type="text"
                 value={newStudent.full_name}
                 onChange={(e) => setNewStudent({ ...newStudent, full_name: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 placeholder={t.placeholders.fullName}
               />
             </div>
@@ -601,7 +601,7 @@ const StudentsListPage = () => {
                 type="email"
                 value={newStudent.email}
                 onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 placeholder={t.placeholders.email}
               />
             </div>
@@ -612,7 +612,7 @@ const StudentsListPage = () => {
                 type="text"
                 value={newStudent.phone}
                 onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 placeholder={t.placeholders.phone}
               />
             </div>
@@ -623,7 +623,7 @@ const StudentsListPage = () => {
                 type="text"
                 value={newStudent.mother_name}
                 onChange={(e) => setNewStudent({ ...newStudent, mother_name: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 placeholder="Enter mother's full name"
               />
             </div>
@@ -634,7 +634,7 @@ const StudentsListPage = () => {
                 type="text"
                 value={newStudent.mother_phone}
                 onChange={(e) => setNewStudent({ ...newStudent, mother_phone: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 placeholder="Enter mother's phone number"
               />
             </div>
@@ -644,7 +644,7 @@ const StudentsListPage = () => {
               <select
                 value={newStudent.gender}
                 onChange={(e) => setNewStudent({ ...newStudent, gender: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                className="w-full mt-1 px-3 py-2 border rounded-md dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
               >
                 <option value="MALE">{t.modal.male}</option>
                 <option value="FEMALE">{t.modal.female}</option>
@@ -660,7 +660,7 @@ const StudentsListPage = () => {
                   <span className="font-medium text-green-800">{t.modal.created}</span>
                 </div>
                 <p className="text-sm text-green-700 mb-2">{t.modal.credentials}</p>
-                <div className="bg-white p-3 rounded border text-sm font-mono">
+                <div className="bg-white dark:bg-[#1A1A1A] p-3 rounded border border-gray-200 dark:border-[#2A2A2A] text-sm font-mono">
                   <div><span className="font-semibold">{t.modal.name}</span> {importResult.credentials[0]?.name}</div>
                   <div><span className="font-semibold">{t.modal.emailLabel}</span> <span className="text-blue-600">{importResult.credentials[0]?.email}</span></div>
                   <div><span className="font-semibold">{t.modal.username}</span> <span className="text-blue-600">{importResult.credentials[0]?.username}</span></div>

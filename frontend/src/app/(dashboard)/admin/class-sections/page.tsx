@@ -104,6 +104,7 @@ type SubjectData = {
   isActive: boolean;
   description?: string;
   grade?: number;
+  academicYear?: { id: string; name: string } | null;
 };
 
 function EntityActions({
@@ -125,7 +126,7 @@ function EntityActions({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-100 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-300 dark:hover:bg-[#2A2A2A]"
             aria-label={`${entityLabel} actions`}
           >
             <MoreHorizontal className="h-4 w-4" />
@@ -455,7 +456,7 @@ export default function AcademicStructurePage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-[#111111]">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
@@ -465,16 +466,16 @@ export default function AcademicStructurePage() {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
         {/* Header */}
-        <div className="border-b border-slate-200 dark:border-slate-800">
+        <div className="border-b border-gray-200 dark:border-[#2A2A2A]">
           <div className="w-full px-6 py-6">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="min-w-0">
                 <h1 className="text-2xl font-bold text-black">
                   All Classes and Sections
                 </h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   Manage classes, sections, and subjects in one place
                 </p>
               </div>
@@ -492,7 +493,7 @@ export default function AcademicStructurePage() {
                     </TabsTrigger>
                   </TabsList>
                   <Select value={academicYearId} onValueChange={setAcademicYearId}>
-                    <SelectTrigger className="h-8 w-full sm:w-44 dark:bg-slate-900 dark:border-slate-700">
+                    <SelectTrigger className="h-8 w-full sm:w-44 dark:bg-[#111111] dark:border-[#2A2A2A]">
                       <SelectValue placeholder="Academic Year" />
                     </SelectTrigger>
                     <SelectContent>
@@ -513,10 +514,10 @@ export default function AcademicStructurePage() {
 
           {/* ========== CLASSES TAB ========== */}
           <TabsContent value="classes">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-[#2A2A2A] dark:bg-[#111111]">
+              <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-[#2A2A2A]">
                 <School className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
-                <h2 className="text-base font-semibold text-slate-900 dark:text-white">All Classes</h2>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white">All Classes</h2>
               </div>
               {classesLoading ? (
                 <div className="flex items-center justify-center py-12">
@@ -532,7 +533,7 @@ export default function AcademicStructurePage() {
                 <div className="overflow-x-auto">
                   <Table className="w-full">
                     <TableHeader>
-                      <TableRow className="border-b dark:border-slate-700">
+                      <TableRow className="border-b dark:border-[#2A2A2A]">
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Class Name</TableHead>
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Grade</TableHead>
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Academic Year</TableHead>
@@ -544,7 +545,7 @@ export default function AcademicStructurePage() {
                       {filteredClasses.map((cls) => (
                         <TableRow
                           key={cls.id}
-                          className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                          className="border-b dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50 transition-colors"
                         >
                           <TableCell className="py-3 px-4">
                             <div 
@@ -560,7 +561,7 @@ export default function AcademicStructurePage() {
                             </div>
                           </TableCell>
                           <TableCell className="py-3 px-4 hidden md:table-cell">
-                            <Badge variant="outline" className="dark:border-slate-600">{cls.grade}</Badge>
+                            <Badge variant="outline" className="dark:border-gray-600">{cls.grade}</Badge>
                           </TableCell>
                           <TableCell className="py-3 px-4 hidden md:table-cell text-gray-600 dark:text-gray-400">
                             {cls.academicYear?.name || "—"}
@@ -601,10 +602,10 @@ export default function AcademicStructurePage() {
 
           {/* ========== SECTIONS TAB ========== */}
           <TabsContent value="sections">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-[#2A2A2A] dark:bg-[#111111]">
+              <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-[#2A2A2A]">
                 <Layers className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
-                <h2 className="text-base font-semibold text-slate-900 dark:text-white">All Sections</h2>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white">All Sections</h2>
               </div>
               {sectionsLoading ? (
                 <div className="flex items-center justify-center py-12">
@@ -620,7 +621,7 @@ export default function AcademicStructurePage() {
                 <div className="overflow-x-auto">
                   <Table className="w-full">
                     <TableHeader>
-                      <TableRow className="border-b dark:border-slate-700">
+                      <TableRow className="border-b dark:border-[#2A2A2A]">
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Section</TableHead>
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Class</TableHead>
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Capacity</TableHead>
@@ -632,7 +633,7 @@ export default function AcademicStructurePage() {
                       {filteredSections.map((sec) => (
                         <TableRow
                           key={sec.id}
-                          className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                          className="border-b dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50 transition-colors"
                         >
                           <TableCell className="py-3 px-4">
                             <div 
@@ -690,13 +691,13 @@ export default function AcademicStructurePage() {
 
           {/* ========== SUBJECTS TAB ========== */}
           <TabsContent value="subjects">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-[#2A2A2A] dark:bg-[#111111]">
+              <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-[#2A2A2A]">
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
-                  <h2 className="text-base font-semibold text-slate-900 dark:text-white">All Subjects</h2>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-white">All Subjects</h2>
                 </div>
-                <FormModal table="subject" type="create" />
+                <FormModal table="subject" type="create" data={{ academicYearId }} />
               </div>
               {subjectsLoading ? (
                 <div className="flex items-center justify-center py-12">
@@ -712,11 +713,12 @@ export default function AcademicStructurePage() {
                 <div className="overflow-x-auto">
                   <Table className="w-full">
                     <TableHeader>
-                      <TableRow className="border-b dark:border-slate-700">
+                      <TableRow className="border-b dark:border-[#2A2A2A]">
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Subject Name</TableHead>
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Code</TableHead>
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden md:table-cell">Status</TableHead>
                         <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden lg:table-cell">Description</TableHead>
+                        <TableHead className="text-left py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 hidden lg:table-cell">Academic Year</TableHead>
                         <TableHead className="text-right py-3 px-4 font-semibold text-gray-600 dark:text-gray-300">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -724,7 +726,7 @@ export default function AcademicStructurePage() {
                       {filteredSubjects.map((sub) => (
                         <TableRow
                           key={sub.id}
-                          className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                          className="border-b dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50 transition-colors"
                         >
                           <TableCell className="py-3 px-4">
                             <div className="flex items-center gap-2">
@@ -756,6 +758,9 @@ export default function AcademicStructurePage() {
                           </TableCell>
                           <TableCell className="py-3 px-4 hidden lg:table-cell text-gray-600 dark:text-gray-400 max-w-[200px] truncate">
                             {sub.description || <span className="text-gray-400">—</span>}
+                          </TableCell>
+                          <TableCell className="py-3 px-4 hidden lg:table-cell text-gray-600 dark:text-gray-400">
+                            {sub.academicYear?.name || <span className="text-gray-400">—</span>}
                           </TableCell>
                           <TableCell className="py-3 px-4 text-right">
                             <EntityActions

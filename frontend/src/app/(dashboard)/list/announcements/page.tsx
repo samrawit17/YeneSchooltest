@@ -199,7 +199,7 @@ const AnnouncementListPage = () => {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-h-[82vh] w-[min(94vw,900px)] max-w-none overflow-hidden p-0">
-              <DialogHeader className="border-b bg-[rgba(var(--brand-color-rgb),0.08)] px-5 py-4 dark:border-slate-700">
+              <DialogHeader className="border-b bg-[rgba(var(--brand-color-rgb),0.08)] px-5 py-4 dark:border-[#2A2A2A]">
                 <DialogTitle className="text-gray-900 dark:text-white">{t.createTitle}</DialogTitle>
                 <DialogDescription className="text-gray-500 dark:text-gray-400">
                   {t.createDescription}

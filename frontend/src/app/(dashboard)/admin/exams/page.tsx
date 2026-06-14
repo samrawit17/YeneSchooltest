@@ -289,7 +289,7 @@ function SubjectRow({
 
 
   return (
-    <div className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg border border-gray-200 dark:border-slate-700">
+    <div className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 dark:bg-[#111111]/50 rounded-lg border border-gray-200 dark:border-[#2A2A2A]">
       <div className="col-span-1 text-center">
         <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{index + 1}</span>
       </div>
@@ -301,7 +301,7 @@ function SubjectRow({
           value={entry.subjectId}
           onValueChange={(v) => onChange(entry.id, "subjectId", v)}
         >
-          <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
+          <SelectTrigger className="h-8 text-xs bg-white dark:bg-[#1A1A1A] dark:border-[#333333] dark:text-[#CCCCCC]">
             <SelectValue placeholder={t.subjectRow.subject} />
           </SelectTrigger>
           <SelectContent>
@@ -324,7 +324,7 @@ function SubjectRow({
             onChange(entry.id, "sectionId", "");
           }}
         >
-          <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
+          <SelectTrigger className="h-8 text-xs bg-white dark:bg-[#1A1A1A] dark:border-[#333333] dark:text-[#CCCCCC]">
             <SelectValue placeholder={t.subjectRow.class} />
           </SelectTrigger>
           <SelectContent>
@@ -345,7 +345,7 @@ function SubjectRow({
           onValueChange={(v) => onChange(entry.id, "sectionId", v)}
           disabled={!entry.classId || filteredSections.length === 0}
         >
-          <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
+          <SelectTrigger className="h-8 text-xs bg-white dark:bg-[#1A1A1A] dark:border-[#333333] dark:text-[#CCCCCC]">
             <SelectValue placeholder={filteredSections.length === 0 ? t.subjectRow.noSections : t.subjectRow.section} />
           </SelectTrigger>
           <SelectContent>
@@ -365,7 +365,7 @@ function SubjectRow({
           value={entry.teacherId}
           onValueChange={(v) => onChange(entry.id, "teacherId", v)}
         >
-          <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200">
+          <SelectTrigger className="h-8 text-xs bg-white dark:bg-[#1A1A1A] dark:border-[#333333] dark:text-[#CCCCCC]">
             <SelectValue placeholder={t.subjectRow.teacher} />
           </SelectTrigger>
           <SelectContent>
@@ -387,7 +387,7 @@ function SubjectRow({
           max={100}
           value={entry.maxScore}
           onChange={(e) => onChange(entry.id, "maxScore", Number(e.target.value))}
-          className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:placeholder:text-gray-500"
+          className="h-8 text-xs bg-white dark:bg-[#1A1A1A] dark:border-[#333333] dark:text-[#CCCCCC] dark:placeholder:text-[#666666]"
         />
       </div>
 
@@ -400,7 +400,7 @@ function SubjectRow({
           max={entry.maxScore}
           value={entry.passMark}
           onChange={(e) => onChange(entry.id, "passMark", Number(e.target.value))}
-          className="h-8 text-xs bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:placeholder:text-gray-500"
+          className="h-8 text-xs bg-white dark:bg-[#1A1A1A] dark:border-[#333333] dark:text-[#CCCCCC] dark:placeholder:text-[#666666]"
         />
       </div>
 
@@ -436,8 +436,8 @@ function AssessmentCard({
   const totalExpected = assessment.subjects.length;
 
   return (
-    <Card className="overflow-hidden transition-shadow hover:shadow-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
-      <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-slate-900">
+    <Card className="overflow-hidden transition-shadow hover:shadow-md bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A]">
+      <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-[#111111]">
         <Link
           href={`/admin/assessments/${assessment.id}`}
           className="min-w-0 flex flex-1 items-center rounded-md outline-none transition-colors hover:text-[var(--brand-color)] focus-visible:ring-2 focus-visible:ring-[var(--brand-color,#e35336)]"
@@ -486,7 +486,7 @@ function AssessmentCard({
           <button
             type="button"
             onClick={onToggle}
-            className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-slate-800 dark:hover:text-gray-200"
+            className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-[#1A1A1A] dark:hover:text-gray-200"
             aria-label={expanded ? "Collapse assessment subjects" : "Expand assessment subjects"}
           >
             {expanded ? (
@@ -499,7 +499,7 @@ function AssessmentCard({
       </div>
 
       {expanded && (
-        <div className="border-t border-gray-100 dark:border-slate-800 px-6 py-4 bg-gray-50 dark:bg-slate-800/50">
+        <div className="border-t border-gray-100 dark:border-[#2A2A2A] px-6 py-4 bg-gray-50 dark:bg-[#1A1A1A]/50">
           {assessment.subjects.length === 0 ? (
             <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-2">
               {t.assessmentCard.noSubjects}
@@ -516,7 +516,7 @@ function AssessmentCard({
               {assessment.subjects.map((sub) => (
                 <div
                   key={sub.id}
-                  className="grid grid-cols-5 gap-2 px-2 py-1.5 rounded bg-gray-50 dark:bg-slate-800"
+                  className="grid grid-cols-5 gap-2 px-2 py-1.5 rounded bg-gray-50 dark:bg-[#1A1A1A]"
                 >
                   <span className="text-xs text-gray-700 dark:text-gray-300">
                     {sub.subject.name}
@@ -1075,7 +1075,7 @@ export default function AssessmentManagementPage() {
   if (pathname === "/admin/exams") return null;
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A] min-h-screen">
+    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111] min-h-screen">
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -1089,7 +1089,7 @@ export default function AssessmentManagementPage() {
             variant="outline"
             onClick={confirmClearAssessments}
             disabled={assessments.length === 0 || clearing}
-            className="self-start border-red-200 bg-white text-red-700 shadow-sm hover:bg-red-50 hover:text-red-800 md:self-auto dark:border-red-900 dark:bg-slate-800 dark:text-red-300 dark:hover:bg-red-950/30"
+            className="self-start border-red-200 bg-white text-red-700 shadow-sm hover:bg-red-50 hover:text-red-800 md:self-auto dark:border-red-900 dark:bg-[#1A1A1A] dark:text-red-300 dark:hover:bg-red-950/30"
           >
             {clearing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
             Clear All
@@ -1097,7 +1097,7 @@ export default function AssessmentManagementPage() {
           <Button
             variant="outline"
             onClick={() => setWeightsOpen(true)}
-            className="self-start bg-white shadow-sm hover:opacity-90 md:self-auto dark:bg-slate-800"
+            className="self-start bg-white shadow-sm hover:opacity-90 md:self-auto dark:bg-[#1A1A1A]"
             style={brandSoftStyle}
           >
             <Pencil className="w-4 h-4 mr-2" />
@@ -1123,7 +1123,7 @@ export default function AssessmentManagementPage() {
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${
             filterType === "ALL"
               ? "text-white"
-              : "bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600"
+              : "bg-white dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#333333]"
           }`}
           style={filterType === "ALL" ? brandSolidStyle : undefined}
         >
@@ -1139,7 +1139,7 @@ export default function AssessmentManagementPage() {
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all border flex items-center gap-1.5 ${
                 active
                   ? ""
-                  : "bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600"
+                  : "bg-white dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#333333]"
               }`}
               style={active ? brandSoftStyle : undefined}
             >
@@ -1152,7 +1152,7 @@ export default function AssessmentManagementPage() {
 
         <div className="ml-auto">
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-8 w-32 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-xs dark:bg-slate-800 dark:border-[rgba(var(--brand-color-rgb),0.22)]">
+            <SelectTrigger className="h-8 w-32 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-xs dark:bg-[#1A1A1A] dark:border-[rgba(var(--brand-color-rgb),0.22)]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1172,7 +1172,7 @@ export default function AssessmentManagementPage() {
           <Loader2 className="w-6 h-6 animate-spin text-[var(--brand-color,#e35336)]" />
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="border-dashed border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+        <Card className="border-dashed border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111]">
           <CardContent className="py-14 text-center">
             <ClipboardList className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-400 dark:text-gray-500">{t.empty.noAssessments}</p>
@@ -1210,7 +1210,7 @@ export default function AssessmentManagementPage() {
 
       {/* ── Weight Modal ── */}
       <Dialog open={weightsOpen} onOpenChange={setWeightsOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+        <DialogContent className="max-w-lg bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A]">
           <DialogHeader>
             <DialogTitle>{t.weightModal.title}</DialogTitle>
             <DialogDescription>
@@ -1224,7 +1224,7 @@ export default function AssessmentManagementPage() {
               return (
               <div key={type} className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <p className="text-sm font-medium text-gray-900 dark:text-[#F2F2F2]">
                     {t.assessmentType[type]?.label ?? type}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -1245,8 +1245,8 @@ export default function AssessmentManagementPage() {
               </div>
               );
             })}
-            <div className="rounded-lg border border-dashed border-gray-200 p-3 dark:border-slate-700">
-              <p className="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+            <div className="rounded-lg border border-dashed border-gray-200 p-3 dark:border-[#2A2A2A]">
+              <p className="mb-2 text-sm font-medium text-gray-900 dark:text-[#F2F2F2]">
                 {t.weightModal.addNewType}
               </p>
               <div className="flex items-center gap-2">
@@ -1261,9 +1261,9 @@ export default function AssessmentManagementPage() {
                 </Button>
               </div>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm dark:border-slate-700">
+            <div className="flex items-center justify-between rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm dark:border-[#2A2A2A]">
               <span className="text-gray-500 dark:text-gray-400">{t.weightModal.total}</span>
-              <span className="font-semibold text-gray-900 dark:text-gray-100">
+              <span className="font-semibold text-gray-900 dark:text-[#F2F2F2]">
                 {assessmentWeights.reduce((sum, row) => sum + row.percentage, 0)}%
               </span>
             </div>
@@ -1282,7 +1282,7 @@ export default function AssessmentManagementPage() {
       </Dialog>
 
       <Dialog open={modalOpen} onOpenChange={(o) => { setModalOpen(o); if (!o) resetForm(); }}>
-        <DialogContent className="max-h-[90vh] w-[96vw] max-w-6xl overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+        <DialogContent className="max-h-[90vh] w-[96vw] max-w-6xl overflow-y-auto bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2" style={brandTextStyle}>
               <Plus className="w-5 h-5" />
@@ -1313,8 +1313,8 @@ export default function AssessmentManagementPage() {
 
             <div className="space-y-6 py-2">
               <TabsContent value="basic" className="space-y-4 mt-0">
-              <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-                <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+              <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/40">
+                <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-[#F2F2F2]">
                   <Wand2 className="h-4 w-4" />
                   Quick templates
                 </div>
@@ -1352,7 +1352,7 @@ export default function AssessmentManagementPage() {
                     placeholder={t.newAssessmentModal.titlePlaceholder}
                     value={formData.title}
                     onChange={(e) => setFormData((p) => ({ ...p, title: e.target.value }))}
-                    className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    className="mt-1 bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-[#F2F2F2] placeholder:text-gray-400 dark:placeholder:text-[#666666]"
                   />
                 </div>
 
@@ -1379,7 +1379,7 @@ export default function AssessmentManagementPage() {
                           className={`flex flex-col items-start p-2.5 rounded-lg border text-left transition-all ${
                             selected
                               ? "ring-1 ring-offset-1"
-                              : "border-gray-200 bg-white hover:border-[rgba(var(--brand-color-rgb),0.28)] hover:bg-[rgba(var(--brand-color-rgb),0.04)] dark:border-slate-700 dark:bg-slate-800 dark:hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.08)]"
+                              : "border-gray-200 bg-white hover:border-[rgba(var(--brand-color-rgb),0.28)] hover:bg-[rgba(var(--brand-color-rgb),0.04)] dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.08)]"
                           }`}
                           style={
                             selected
@@ -1420,7 +1420,7 @@ export default function AssessmentManagementPage() {
                         setFormData((p) => ({ ...p, academicYearId: v, termId: "" }))
                       }
                     >
-                      <SelectTrigger className="mt-1 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-gray-900 dark:border-[rgba(var(--brand-color-rgb),0.22)] dark:bg-slate-800 dark:text-gray-100">
+                      <SelectTrigger className="mt-1 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-gray-900 dark:border-[rgba(var(--brand-color-rgb),0.22)] dark:bg-[#1A1A1A] dark:text-[#F2F2F2]">
                         <SelectValue placeholder={t.newAssessmentModal.selectAcademicYear} />
                       </SelectTrigger>
                       <SelectContent>
@@ -1441,7 +1441,7 @@ export default function AssessmentManagementPage() {
                       onValueChange={(v) => setFormData((p) => ({ ...p, termId: v }))}
                       disabled={!formData.academicYearId || terms.length === 0}
                     >
-                      <SelectTrigger className="mt-1 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-gray-900 dark:border-[rgba(var(--brand-color-rgb),0.22)] dark:bg-slate-800 dark:text-gray-100">
+                      <SelectTrigger className="mt-1 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-gray-900 dark:border-[rgba(var(--brand-color-rgb),0.22)] dark:bg-[#1A1A1A] dark:text-[#F2F2F2]">
                         <SelectValue
                           placeholder={
                             !formData.academicYearId
@@ -1486,7 +1486,7 @@ export default function AssessmentManagementPage() {
                       }));
                     }}
                     placeholder={t.newAssessmentModal.selectStartDate}
-                    className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100"
+                    className="mt-1 bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-[#F2F2F2]"
                   />
                 </div>
                 <div>
@@ -1502,15 +1502,15 @@ export default function AssessmentManagementPage() {
                       }))
                     }
                     placeholder={t.newAssessmentModal.selectEndDate}
-                    className="mt-1 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-gray-100"
+                    className="mt-1 bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-[#F2F2F2]"
                   />
                 </div>
               </div>
 
-              <div className="mt-4 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800/40">
+              <div className="mt-4 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/40">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <p className="text-sm font-medium text-gray-900 dark:text-[#F2F2F2]">
                       {t.newAssessmentModal.addToCalendar}
                     </p>
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -1553,7 +1553,7 @@ export default function AssessmentManagementPage() {
                         ),
                       ).length
                       ? "text-white"
-                      : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-slate-800 dark:text-gray-300"
+                      : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[#1A1A1A] dark:text-gray-300"
                   }`}
                   style={
                     selectedGrades.length > 0 &&
@@ -1590,7 +1590,7 @@ export default function AssessmentManagementPage() {
                         className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
                           selected
                             ? "text-white"
-                            : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-slate-800 dark:text-gray-300"
+                            : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[#1A1A1A] dark:text-gray-300"
                         }`}
                         style={selected ? brandSolidStyle : undefined}
                       >
@@ -1611,7 +1611,7 @@ export default function AssessmentManagementPage() {
                     className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
                       selectedSubjectIds.length > 0 && selectedSubjectIds.length === subjects.length
                         ? "text-white"
-                        : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-slate-800 dark:text-gray-300"
+                        : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[#1A1A1A] dark:text-gray-300"
                     }`}
                     style={
                       selectedSubjectIds.length > 0 && selectedSubjectIds.length === subjects.length
@@ -1631,7 +1631,7 @@ export default function AssessmentManagementPage() {
                         className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-all ${
                           selected
                             ? "text-white"
-                            : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-slate-800 dark:text-gray-300"
+                            : "bg-white text-gray-600 hover:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[#1A1A1A] dark:text-gray-300"
                         }`}
                         style={selected ? brandSolidStyle : undefined}
                       >
@@ -1648,7 +1648,7 @@ export default function AssessmentManagementPage() {
                     ? "border-amber-200 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-900/20"
                     : scopeStatus.tone === "success"
                       ? "border-emerald-200 bg-emerald-50/70 dark:border-emerald-800 dark:bg-emerald-900/20"
-                      : "border-gray-200 dark:border-slate-700"
+                      : "border-gray-200 dark:border-[#2A2A2A]"
                 }`}
               >
                 <p
@@ -1675,19 +1675,19 @@ export default function AssessmentManagementPage() {
                 Review before creating
               </h3>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
+                <div className="rounded-lg border border-gray-200 p-4 dark:border-[#2A2A2A]">
                   <p className="text-xs text-gray-500 dark:text-gray-400">Assessment</p>
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{formData.title || "Untitled"}</p>
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-[#F2F2F2]">{formData.title || "Untitled"}</p>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{formData.type || "No type selected"}</p>
                 </div>
-                <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
+                <div className="rounded-lg border border-gray-200 p-4 dark:border-[#2A2A2A]">
                   <p className="text-xs text-gray-500 dark:text-gray-400">Scope</p>
-                  <p className="mt-1 font-semibold text-gray-900 dark:text-gray-100">{selectedGrades.length} grade{selectedGrades.length === 1 ? "" : "s"}</p>
+                  <p className="mt-1 font-semibold text-gray-900 dark:text-[#F2F2F2]">{selectedGrades.length} grade{selectedGrades.length === 1 ? "" : "s"}</p>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{selectedSubjectIds.length} subject{selectedSubjectIds.length === 1 ? "" : "s"}</p>
                 </div>
-                <div className="rounded-lg border border-gray-200 p-4 dark:border-slate-700">
+                <div className="rounded-lg border border-gray-200 p-4 dark:border-[#2A2A2A]">
                   <p className="text-xs text-gray-500 dark:text-gray-400">Will create</p>
-                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">{selectedAssignments.length}</p>
+                  <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-[#F2F2F2]">{selectedAssignments.length}</p>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">class-subject assessment entries</p>
                 </div>
               </div>
@@ -1699,13 +1699,13 @@ export default function AssessmentManagementPage() {
                   </p>
                 </div>
               )}
-              <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-slate-700">
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-[#2A2A2A]">
                 {selectedAssignments.length === 0 ? (
                   <p className="p-4 text-sm text-gray-500 dark:text-gray-400">No class-subject entries match the selected scope.</p>
                 ) : (
                   selectedAssignments.slice(0, 30).map((assignment) => (
-                    <div key={assignment.id} className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-2 text-sm last:border-b-0 dark:border-slate-700">
-                      <span className="text-gray-800 dark:text-gray-200">
+                    <div key={assignment.id} className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-2 text-sm last:border-b-0 dark:border-[#2A2A2A]">
+                      <span className="text-gray-800 dark:text-[#CCCCCC]">
                         {assignment.class?.name} {assignment.section?.name ? `- ${assignment.section.name}` : ""} · {assignment.subject?.name}
                       </span>
                       <span className={assignment.teacherId ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
@@ -1719,12 +1719,12 @@ export default function AssessmentManagementPage() {
           </div>
         </Tabs>
 
-          <DialogFooter className="gap-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+          <DialogFooter className="gap-2 pt-2 border-t border-gray-200 dark:border-[#2A2A2A]">
             <Button
               variant="outline"
               onClick={() => { setModalOpen(false); resetForm(); }}
               disabled={submitting}
-              className="bg-white hover:opacity-90 dark:bg-slate-800"
+              className="bg-white hover:opacity-90 dark:bg-[#1A1A1A]"
               style={{
                 color: "var(--brand-color)",
                 borderColor: "rgba(var(--brand-color-rgb),0.24)",
@@ -1788,7 +1788,7 @@ export default function AssessmentManagementPage() {
 
       {/* ── Lock Confirm Dialog ── */}
       <AlertDialog open={!!lockTarget} onOpenChange={(o) => { if (!o) setLockTarget(null); }}>
-        <AlertDialogContent className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
+        <AlertDialogContent className="bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A]">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
               <Lock className="w-4 h-4" style={brandTextStyle} />
@@ -1801,7 +1801,7 @@ export default function AssessmentManagementPage() {
           <AlertDialogFooter>
             <AlertDialogCancel
               disabled={locking}
-              className="bg-white hover:opacity-90 dark:bg-slate-800"
+              className="bg-white hover:opacity-90 dark:bg-[#1A1A1A]"
               style={{
                 color: "var(--brand-color)",
                 borderColor: "rgba(var(--brand-color-rgb),0.24)",

@@ -28,7 +28,7 @@ const categoryBadgeClass: Record<string, string> = {
   SPORTS: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-300 dark:border-orange-800",
   CULTURAL: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800",
   HOLIDAY: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800",
-  OTHER: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+  OTHER: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-[#1A1A1A] dark:text-[#CCCCCC] dark:border-[#2A2A2A]",
 };
 
 const startOfDay = (date: Date) => {
@@ -184,24 +184,24 @@ const EventListPage = () => {
         key={event.id}
         type="button"
         onClick={() => setSelectedEventId(event.id)}
-        className={`w-full rounded-lg border bg-white p-3 text-left transition hover:border-[var(--brand-color,#e35336)] hover:shadow-sm dark:bg-slate-900 ${
+        className={`w-full rounded-lg border bg-white p-3 text-left transition hover:border-[var(--brand-color,#e35336)] hover:shadow-sm dark:bg-[#111111] ${
           isSelected
             ? "border-[var(--brand-color,#e35336)] ring-2 ring-[rgba(var(--brand-color-rgb,227,83,54),0.16)]"
-            : "border-slate-200 dark:border-slate-800"
+            : "border-gray-200 dark:border-[#2A2A2A]"
         }`}
       >
         <div className="flex items-start justify-between gap-2">
           <TranslatedText
             as="h3"
             text={event.title}
-            textClassName={`${compact ? "text-sm" : "text-base"} font-semibold text-slate-900 dark:text-white line-clamp-2`}
+            textClassName={`${compact ? "text-sm" : "text-base"} font-semibold text-gray-900 dark:text-white line-clamp-2`}
             className="min-w-0"
           />
           <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${categoryBadgeClass[category] || categoryBadgeClass.OTHER}`}>
             {t.categories?.[category] || category}
           </span>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-[#888888]">
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="h-3.5 w-3.5" />
             {formatDateRange(event)}
@@ -216,7 +216,7 @@ const EventListPage = () => {
         {!compact && event.description ? (
           <TranslatedText
             text={event.description}
-            textClassName="mt-2 text-sm text-slate-500 dark:text-slate-400 line-clamp-2"
+            textClassName="mt-2 text-sm text-gray-500 dark:text-[#888888] line-clamp-2"
           />
         ) : null}
       </button>
@@ -224,23 +224,23 @@ const EventListPage = () => {
   };
 
   const renderEmptyState = () => (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400">
+    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500 dark:border-[#2A2A2A] dark:bg-[#111111]/50 dark:text-[#888888]">
       {searchQuery ? "No events match your search." : t.noActivities}
     </div>
   );
 
   return (
-    <div className="m-1 mt-0 flex-1 overflow-x-hidden rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950 sm:m-2 md:m-4 md:p-5">
+    <div className="m-1 mt-0 flex-1 overflow-x-hidden rounded-md border border-gray-200 bg-white p-3 dark:border-[#2A2A2A] dark:bg-[#161616] sm:m-2 md:m-4 md:p-5">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-950 dark:text-white">{t.title}</h1>
+          <h1 className="text-xl font-semibold text-gray-950 dark:text-white">{t.title}</h1>
           {isAdmin ? (
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t.description}</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-[#888888]">{t.description}</p>
           ) : null}
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative min-w-[220px] sm:w-[400px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
@@ -269,7 +269,7 @@ const EventListPage = () => {
         </Card>
       ) : (
         <Tabs value={view} onValueChange={(value) => setView(value as CalendarView)} className="space-y-4">
-          <div className="overflow-x-auto border-b border-slate-200 dark:border-slate-800">
+          <div className="overflow-x-auto border-b border-gray-200 dark:border-[#2A2A2A]">
             <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
               <TabsTrigger
                 value="month"
@@ -294,7 +294,7 @@ const EventListPage = () => {
 
           <TabsContent value="month" className="mt-0">
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-              <div className="min-h-[360px] rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+              <div className="min-h-[360px] rounded-lg border border-gray-200 p-3 dark:border-[#2A2A2A]">
                 <BigCalendar
                   events={monthEvents.map((event) => ({
                     ...event,
@@ -304,7 +304,7 @@ const EventListPage = () => {
                   onEventClick={(event) => setSelectedEventId(event.id || null)}
                 />
               </div>
-              <aside className="max-h-[520px] space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+              <aside className="max-h-[520px] space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#111111]/50">
                 {monthEvents.length ? monthEvents.map((event) => renderEventCard(event, true)) : renderEmptyState()}
               </aside>
             </div>
@@ -313,7 +313,7 @@ const EventListPage = () => {
           <TabsContent value="today" className="mt-0">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
               <div className="space-y-2">{todayEvents.length ? todayEvents.map((event) => renderEventCard(event)) : renderEmptyState()}</div>
-              <aside className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+              <aside className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]/50">
                 {selectedEvent ? renderEventCard(selectedEvent, true) : renderEmptyState()}
               </aside>
             </div>
@@ -322,7 +322,7 @@ const EventListPage = () => {
           <TabsContent value="upcoming" className="mt-0">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
               <div className="space-y-2">{upcomingEvents.length ? upcomingEvents.map((event) => renderEventCard(event)) : renderEmptyState()}</div>
-              <aside className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+              <aside className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]/50">
                 {selectedEvent ? renderEventCard(selectedEvent, true) : renderEmptyState()}
               </aside>
             </div>

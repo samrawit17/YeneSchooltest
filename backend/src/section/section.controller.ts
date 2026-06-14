@@ -105,11 +105,17 @@ export class SectionController {
     if (academicYearId) {
       const academicYear = await this.prismaService.academicYear.findFirst({
         where: { id: academicYearId, schoolId },
-        select: { id: true },
+        select: { id: true, endDate: true, name: true },
       });
 
       if (!academicYear) {
         throw new BadRequestException('Academic year not found for this school');
+      }
+
+      if (new Date(academicYear.endDate) < new Date()) {
+        throw new BadRequestException(
+          `Cannot sync capacities for academic year "${academicYear.name}" because it has ended.`,
+        );
       }
     }
 

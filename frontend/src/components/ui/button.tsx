@@ -16,7 +16,7 @@ const buttonVariants = cva(
         outline:
           "border border-[rgba(var(--brand-color-rgb,227,83,54),0.22)] bg-[rgba(var(--brand-color-rgb,227,83,54),0.14)] text-sm font-semibold text-[var(--brand-color,#e35336)] shadow-sm hover:bg-[rgba(var(--brand-color-rgb,227,83,54),0.2)] hover:text-[var(--brand-color,#e35336)]",
         secondary:
-          "border border-slate-200 bg-slate-100 text-slate-700 shadow-sm hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700",
+          "border border-slate-200 bg-slate-100 text-slate-700 shadow-sm hover:bg-slate-200 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-slate-200 dark:hover:bg-[#222222]",
         ghost:
           "text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb,227,83,54),0.14)] hover:text-[var(--brand-color,#e35336)]",
         link: "font-semibold text-[var(--brand-color,#e35336)] underline-offset-4 hover:underline",

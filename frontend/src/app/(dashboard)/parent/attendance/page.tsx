@@ -48,12 +48,12 @@ interface ParentAttendanceMessages {
 }
 
 const AttendanceSkeleton = () => (
-  <div className="p-6 space-y-6 dark:bg-[#0F172A] min-h-screen">
+  <div className="p-6 space-y-6 dark:bg-[#111111] min-h-screen">
     <Skeleton className="h-8 w-48" />
     <Skeleton className="h-12 w-full max-w-md" />
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map((i) => (
-        <Card key={i} className="dark:bg-slate-800 dark:border-slate-700">
+        <Card key={i} className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
           <CardContent className="p-6">
             <Skeleton className="h-4 w-24 mb-2" />
             <Skeleton className="h-8 w-16" />
@@ -61,7 +61,7 @@ const AttendanceSkeleton = () => (
         </Card>
       ))}
     </div>
-    <Card className="dark:bg-slate-800 dark:border-slate-700">
+    <Card className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
       <CardContent className="p-6">
         <Skeleton className="h-6 w-32 mb-4" />
         <Skeleton className="h-64 w-full" />
@@ -339,7 +339,7 @@ export default function ParentAttendancePage() {
   }
 
   return (
-    <div className="p-4 md:p-6 dark:bg-[#0F172A] min-h-screen">
+    <div className="p-4 md:p-6 dark:bg-[#111111] min-h-screen">
       <div>
         {/* Header */}
         <div className="mb-6">
@@ -358,10 +358,10 @@ export default function ParentAttendancePage() {
                 setSelectedChild(child || null);
               }}
             >
-              <SelectTrigger className="w-full dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+              <SelectTrigger className="w-full dark:bg-[#1A1A1A] dark:border-[#2A2A2A] dark:text-white">
                 <SelectValue placeholder="Select a child" />
               </SelectTrigger>
-              <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+              <SelectContent className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                 {children.map((child) => (
                   <SelectItem key={child.id} value={child.id}>
                     {child.name} - {child.className} ({child.section})
@@ -376,10 +376,10 @@ export default function ParentAttendancePage() {
               value={selectedYear}
               onValueChange={setSelectedYear}
             >
-              <SelectTrigger className="w-full dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+              <SelectTrigger className="w-full dark:bg-[#1A1A1A] dark:border-[#2A2A2A] dark:text-white">
                 <SelectValue placeholder="Select year" />
               </SelectTrigger>
-              <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+              <SelectContent className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                 {academicYears.map((year) => (
                   <SelectItem key={year.id} value={year.id}>
                     {year.name}
@@ -403,31 +403,31 @@ export default function ParentAttendancePage() {
             {/* Summary Cards */}
             {displaySummary && (
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Attendance</p>
                     <p className="text-2xl font-bold" style={{ color: 'var(--brand-color, #e35336)' }}>{displaySummary.attendancePercentage}%</p>
                   </CardContent>
                 </Card>
-                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Total Days</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{displaySummary.totalDays}</p>
                   </CardContent>
                 </Card>
-                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Present</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">{displaySummary.present}</p>
                   </CardContent>
                 </Card>
-                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Absent</p>
                     <p className="text-2xl font-bold text-red-600 dark:text-red-400">{displaySummary.absent}</p>
                   </CardContent>
                 </Card>
-                <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
                   <CardContent className="pt-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400">Late</p>
                     <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{displaySummary.late}</p>
@@ -449,7 +449,7 @@ export default function ParentAttendancePage() {
               </Card>
             )}
 
-            <Card className="mb-6 dark:bg-slate-800 dark:border-slate-700">
+            <Card className="mb-6 dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
               <CardHeader>
                 <CardTitle>Attendance Calendar</CardTitle>
                 <CardDescription>
@@ -464,7 +464,7 @@ export default function ParentAttendancePage() {
                   height={620}
                 />
                 {dailyAttendance.length === 0 && !loading && (
-                  <div className="mt-4 rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center dark:border-slate-700 dark:bg-slate-900/50">
+                  <div className="mt-4 rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-center dark:border-[#2A2A2A] dark:bg-[#111111]/50">
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
                       {emptyAttendanceMessage}
                     </p>
@@ -478,7 +478,7 @@ export default function ParentAttendancePage() {
 
             {/* Attendance Records */}
             {loading ? (
-              <Card className="dark:bg-slate-800 dark:border-slate-700">
+              <Card className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                 <CardContent className="py-8 text-center">
                   <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin mx-auto" style={{ borderColor: 'var(--brand-color, #e35336)', borderTopColor: 'transparent' }}></div>
                 </CardContent>
@@ -487,14 +487,14 @@ export default function ParentAttendancePage() {
               null
             ) : (
               <>
-              <Card className="dark:bg-slate-800 dark:border-slate-700">
+              <Card className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                 <CardHeader>
                   <CardTitle>Attendance Details</CardTitle>
                   <CardDescription>One daily attendance mark for the selected period.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                   <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-slate-700">
+                    <thead className="bg-gray-50 dark:bg-[#2A2A2A]">
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-medium dark:text-gray-200">Date</th>
                         <th className="px-4 py-3 text-center text-sm font-medium dark:text-gray-200">Status</th>
@@ -503,7 +503,7 @@ export default function ParentAttendancePage() {
                     </thead>
                     <tbody>
                       {dailyAttendance.map((record) => (
-                        <tr key={record.id} className="border-t dark:border-slate-700">
+                        <tr key={record.id} className="border-t dark:border-[#2A2A2A]">
                           <td className="px-4 py-3 text-sm dark:text-gray-300">
                             <FormattedDate date={record.date} />
                           </td>

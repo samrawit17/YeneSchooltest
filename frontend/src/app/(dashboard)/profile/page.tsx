@@ -692,7 +692,7 @@ const ProfilePage = () => {
                 {/* Avatar Section */}
                 <div className="flex flex-col items-center gap-4">
                   <div className="relative">
-                    <Avatar className="w-32 h-32 border-4 border-white dark:border-slate-700 shadow-lg">
+                    <Avatar className="w-32 h-32 border-4 border-white dark:border-[#2A2A2A] shadow-lg">
                       {currentAvatarSrc ? (
                         <AvatarImage key={currentAvatarSrc} src={currentAvatarSrc} alt={user?.name || "Profile"} />
                       ) : (
@@ -945,7 +945,7 @@ const ProfilePage = () => {
                             <Card>
                               <CardContent className="pt-6">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                                  <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                     <BookOpen className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                                   </div>
                                   <div>
@@ -961,7 +961,7 @@ const ProfilePage = () => {
                             <Card>
                               <CardContent className="pt-6">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                                  <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                     <GraduationCap className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                                   </div>
                                   <div>
@@ -977,7 +977,7 @@ const ProfilePage = () => {
                             <Card>
                               <CardContent className="pt-6">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                                  <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                     <BookOpen className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                                   </div>
                                   <div>
@@ -994,12 +994,12 @@ const ProfilePage = () => {
                             <Card>
                               <CardContent className="pt-6">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                                  <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                     <GraduationCap className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-gray-500 dark:text-slate-400">Stream</p>
-                                    <p className="text-sm font-bold text-gray-900 dark:text-slate-100">
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Stream</p>
+                                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
                                       {formatStream(profileData.studentProfile.stream)}
                                     </p>
                                   </div>
@@ -1012,7 +1012,7 @@ const ProfilePage = () => {
                             <Card>
                               <CardContent className="pt-6">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                                  <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                     <MapPin className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                                   </div>
                                   <div>
@@ -1031,12 +1031,12 @@ const ProfilePage = () => {
                         <Card>
                           <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                              <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                 <User className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.fullName}</p>
-                                <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{user?.name || "-"}</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.info.fullName}</p>
+                                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{user?.name || "-"}</p>
                               </div>
                             </div>
                           </CardContent>
@@ -1045,12 +1045,12 @@ const ProfilePage = () => {
                         <Card>
                           <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                              <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                 <Mail className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.email}</p>
-                                <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{user?.email || "-"}</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.info.email}</p>
+                                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{user?.email || "-"}</p>
                               </div>
                             </div>
                           </CardContent>
@@ -1059,12 +1059,12 @@ const ProfilePage = () => {
                         <Card>
                           <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                              <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                 <Phone className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.phone}</p>
-                                <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{user?.phone || "-"}</p>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.info.phone}</p>
+                                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{user?.phone || "-"}</p>
                               </div>
                             </div>
                           </CardContent>
@@ -1073,12 +1073,12 @@ const ProfilePage = () => {
                         <Card>
                           <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                              <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                 <Shield className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.role}</p>
-                                <p className="text-sm font-bold text-gray-900 dark:text-slate-100">
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.info.role}</p>
+                                <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
                                   {user?.role ? (t.roles[user.role.toLowerCase().replace("_", "") as keyof typeof t.roles] ?? user.role) : "-"}
                                 </p>
                               </div>
@@ -1090,12 +1090,12 @@ const ProfilePage = () => {
                           <Card>
                             <CardContent className="pt-6">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                                <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                   <Building2 className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{t.info.schoolId}</p>
-                                  <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{user.schoolId}</p>
+                                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.info.schoolId}</p>
+                                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{user.schoolId}</p>
                                 </div>
                               </div>
                             </CardContent>
@@ -1105,7 +1105,7 @@ const ProfilePage = () => {
                         <Card>
                           <CardContent className="pt-6">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gray-100 dark:bg-slate-700 rounded-xl flex items-center justify-center">
+                              <div className="w-10 h-10 bg-gray-100 dark:bg-[#2A2A2A] rounded-xl flex items-center justify-center">
                                 <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                               </div>
                               <div>
@@ -1140,14 +1140,14 @@ const ProfilePage = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800/60 rounded-lg border border-gray-200 dark:border-slate-700">
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#1A1A1A]/60 rounded-lg border border-gray-200 dark:border-[#2A2A2A]">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gray-100 dark:bg-[#2A2A2A] rounded-full flex items-center justify-center">
                       <Calendar className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{t.activity.lastUpdated}</p>
-                      <p className="text-xs text-gray-600 dark:text-slate-400">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.activity.lastUpdated}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
                         {lastUpdatedAt ? formatDateTime(lastUpdatedAt) : '-'}
                       </p>
                     </div>
@@ -1155,29 +1155,29 @@ const ProfilePage = () => {
                   <Badge variant="outline">{t.activity.updated}</Badge>
                 </div>
                 
-                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800/60 rounded-lg border border-gray-200 dark:border-slate-700">
+                <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#1A1A1A]/60 rounded-lg border border-gray-200 dark:border-[#2A2A2A]">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gray-100 dark:bg-[#2A2A2A] rounded-full flex items-center justify-center">
                       <CheckCircle className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{t.activity.emailVerified}</p>
-                      <p className="text-xs text-gray-600 dark:text-slate-400">{t.activity.emailVerifiedDesc}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.activity.emailVerified}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{t.activity.emailVerifiedDesc}</p>
                     </div>
                   </div>
-                  <Badge variant="default" className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-300 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600">
+                  <Badge variant="default" className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-300 dark:bg-[#2A2A2A] dark:text-gray-200 dark:border-gray-600">
                     {t.activity.verified}
                   </Badge>
                 </div>
                 
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-lg border border-gray-200 dark:from-slate-800 dark:to-slate-700/50 dark:border-slate-700">
+                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-lg border border-gray-200 dark:from-[#1A1A1A] dark:to-[#2A2A2A]/50 dark:border-[#2A2A2A]">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
                       <CreditCard className="w-4 h-4 text-gray-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{t.activity.lastLogin}</p>
-                      <p className="text-xs text-gray-600 dark:text-slate-400">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t.activity.lastLogin}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
                         {formatDateTime(new Date().toISOString())}
                       </p>
                     </div>
@@ -1302,7 +1302,7 @@ const ProfilePage = () => {
                       )}
                     />
                   </div>
-                  <div className="text-xs md:text-sm text-gray-500 dark:text-slate-400">
+                  <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
                     {t.security.passwordHelp}
                   </div>
                   <div className="border-t pt-4">
@@ -1346,7 +1346,7 @@ const ProfilePage = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 md:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                   <div className="space-y-1">
                     <Label htmlFor="push-notifications" className="text-sm md:text-base">{t.notifications.push}</Label>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.notifications.pushDesc}</p>
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{t.notifications.pushDesc}</p>
                   </div>
                   <Switch
                     id="push-notifications"
@@ -1370,7 +1370,7 @@ const ProfilePage = () => {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 md:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                           <div className="space-y-1">
                             <Label htmlFor={item.id} className="text-sm md:text-base cursor-pointer">{item.label}</Label>
-                            <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{item.description}</p>
+                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
                           </div>
                           <Switch
                             id={item.id}
@@ -1413,7 +1413,7 @@ const ProfilePage = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
                     <Label className="text-sm md:text-base">{t.preferences.theme}</Label>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.preferences.themeDesc}</p>
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{t.preferences.themeDesc}</p>
                   </div>
 <div className="flex gap-2 mt-2 sm:mt-0">
                      <Button 
@@ -1448,7 +1448,7 @@ const ProfilePage = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
                     <Label className="text-sm md:text-base">{t.preferences.language}</Label>
-                    <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400">{t.preferences.languageDesc}</p>
+                    <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{t.preferences.languageDesc}</p>
                   </div>
                   <Select value={language} onValueChange={(value) => setLanguage(value as AppLanguage)}>
                     <SelectTrigger className="w-[180px]">

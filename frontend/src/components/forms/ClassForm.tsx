@@ -133,7 +133,7 @@ const ClassForm = ({ type, data, onSuccess, onCancel }: ClassFormProps) => {
     }
   };
 
-  const inputClass = "w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all";
+  const inputClass = "w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:border-transparent transition-all";
   const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
 
   return (
@@ -232,7 +232,7 @@ const ClassForm = ({ type, data, onSuccess, onCancel }: ClassFormProps) => {
         <button
           type="submit"
           disabled={loading || mutation.isPending || !formData.academicYearId}
-          className="px-6 py-2.5 text-white bg-[#e35336] rounded-lg hover:bg-[#d14830] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-6 py-2.5 text-white bg-[var(--brand-color,#e35336)] rounded-lg hover:opacity-90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {loading || mutation.isPending ? (
             <>

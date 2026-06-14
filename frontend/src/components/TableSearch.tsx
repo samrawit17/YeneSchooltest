@@ -39,8 +39,8 @@ const TableSearch = ({
     <div
       className={`${className} relative flex items-center gap-2 text-sm rounded-xl border-2 transition-all duration-200 ${
         isFocused
-          ? "border-[var(--brand-color,#e35336)] bg-white dark:bg-gray-800 shadow-sm"
-          : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-500"
+          ? "border-[var(--brand-color,#e35336)] bg-white dark:bg-[#1A1A1A] shadow-sm"
+          : "border-gray-200 dark:border-[#333333] bg-gray-50 dark:bg-[#222222] hover:border-gray-300 dark:hover:border-[#444444]"
       }`}
     >
       {/* Search Icon */}

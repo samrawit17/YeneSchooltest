@@ -466,7 +466,7 @@ const TeacherLessonsPage = () => {
 
   if (loading || isLoading) {
     return (
-      <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111]">
         <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
         <div className="h-4 w-72 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -489,7 +489,7 @@ const TeacherLessonsPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111]">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -586,8 +586,8 @@ const TeacherLessonsPage = () => {
       </div>
 
       {/* Lesson Calendar */}
-      <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-800">
+      <Card className="overflow-hidden border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
+        <CardHeader className="border-b border-gray-100 dark:border-[#2A2A2A]">
           <CardTitle className="text-lg">Lesson Calendar</CardTitle>
           <CardDescription>Weekly calendar view for lesson plans</CardDescription>
         </CardHeader>

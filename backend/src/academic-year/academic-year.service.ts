@@ -736,39 +736,27 @@ export class AcademicYearService {
   async deleteAcademicYear(id: string, schoolId?: string) {
     const academicYear = await this.getAcademicYearById(id, schoolId);
 
-    // Guard: Check for enrollments, enrollment requests, classes, and grades
-    const [enrollments, enrollmentRequests, classes, grades] =
-      await Promise.all([
-        this.prismaService.enrollment.count({
-          where: {
-            academicYear: academicYear.name,
-            schoolId: academicYear.schoolId,
-          },
-        }),
-        this.prismaService.enrollmentRequest.count({
-          where: { academicYearId: id },
-        }),
-        this.prismaService.class.count({
-          where: { academicYearId: id },
-        }),
-        this.prismaService.subjectGrade.count({
-          where: { term: { academicYearId: id } },
-        }),
-      ]);
+    return this.prismaService.$transaction(async (tx) => {
+      // Nullify timetable slots before deleting (optional relation, no cascade)
+      await tx.timetableSlot.updateMany({
+        where: { academicYearId: id },
+        data: { academicYearId: null },
+      });
 
-    if (
-      enrollments > 0 ||
-      enrollmentRequests > 0 ||
-      classes > 0 ||
-      grades > 0
-    ) {
-      throw new ForbiddenException(
-        'Cannot delete an academic year that has student enrollments, requests, classes, or grades.',
-      );
-    }
+      // Delete enrollments linked by name (no FK constraint)
+      await tx.enrollment.deleteMany({
+        where: {
+          academicYear: academicYear.name,
+          schoolId: academicYear.schoolId,
+        },
+      });
 
-    return this.prismaService.academicYear.delete({
-      where: { id },
+      // Delete the academic year.
+      // Prisma cascades: Term, Class, ClassSubject, Assessment,
+      // FeeStructure, StudentFee, EnrollmentRequest, Content
+      return tx.academicYear.delete({
+        where: { id },
+      });
     });
   }
 

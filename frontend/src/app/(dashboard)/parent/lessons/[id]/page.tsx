@@ -99,7 +99,7 @@ const ParentLessonDetailPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111]">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -111,7 +111,7 @@ const ParentLessonDetailPage = () => {
               <TranslatedText
                 as="h1"
                 text={lesson.title}
-                textClassName="text-2xl font-bold text-slate-900 dark:text-white"
+                textClassName="text-2xl font-bold text-gray-900 dark:text-white"
               />
               <Badge
                 variant={lesson.status === "PUBLISHED" ? "default" : "secondary"}

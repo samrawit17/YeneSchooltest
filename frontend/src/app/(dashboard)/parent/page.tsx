@@ -349,12 +349,12 @@ interface DashboardData {
 
 // Skeleton component for initial load
 const ParentDashboardSkeleton = () => (
-  <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+  <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
     <div className="p-4 md:p-6 space-y-6">
       <Skeleton className="h-8 w-48" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div key={i} className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <Skeleton className="h-3 w-20 mb-2" />
             <Skeleton className="h-8 w-16 mb-2" />
             <Skeleton className="h-3 w-24" />
@@ -362,25 +362,25 @@ const ParentDashboardSkeleton = () => (
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="lg:col-span-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
           <Skeleton className="h-5 w-32 mb-1" />
           <Skeleton className="h-3 w-16 mb-4" />
           <Skeleton className="h-64 w-full rounded-lg" />
         </div>
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
             <Skeleton className="h-5 w-28 mb-4" />
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-12 w-full mb-2" />
             ))}
           </div>
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
             <Skeleton className="h-5 w-24 mb-4" />
             <Skeleton className="h-16 w-full" />
           </div>
         </div>
       </div>
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+      <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
         <Skeleton className="h-5 w-32 mb-4" />
         <Skeleton className="h-32 w-full rounded-lg" />
       </div>
@@ -392,7 +392,7 @@ const ParentDashboardSkeleton = () => (
 const CustomTooltip = ({ active, payload, label, translation }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-3 shadow-sm">
+      <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg p-3 shadow-sm">
         <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
         <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
           {translation.percentAttendance.replace("{value}", String(payload[0].value))}
@@ -915,26 +915,26 @@ const ParentDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
       <Dialog open={showRankCongrats} onOpenChange={(open) => {
         if (!open) closeRankCongrats();
         else setShowRankCongrats(true);
       }}>
-        <DialogContent className="max-w-md border-[rgba(var(--brand-color-rgb),0.22)] bg-white text-center dark:border-[rgba(var(--brand-color-rgb),0.3)] dark:bg-slate-900" customCloseButton={false}>
+        <DialogContent className="max-w-md border-[rgba(var(--brand-color-rgb),0.22)] bg-white text-center dark:border-[rgba(var(--brand-color-rgb),0.3)] dark:bg-[#111111]" customCloseButton={false}>
           <DialogHeader className="items-center text-center">
             <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
               <Trophy className="h-9 w-9" />
             </div>
-            <DialogTitle className="text-2xl text-slate-900 dark:text-white">
+            <DialogTitle className="text-2xl text-gray-900 dark:text-white">
               {t.congratulations}
             </DialogTitle>
-            <DialogDescription className="text-base text-slate-600 dark:text-slate-300">
+            <DialogDescription className="text-base text-gray-600 dark:text-gray-300">
               {t.ranked.replace("{name}", topRankChild?.childName || t.yourChild).replace("{rank}", String(topRankChild?.rank)).replace("{term}", topRankChild?.term || t.latestResult)}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.06)] p-4 dark:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]">
-            <p className="text-sm text-slate-600 dark:text-slate-300">{t.overallResult}</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">
+            <p className="text-sm text-gray-600 dark:text-gray-300">{t.overallResult}</p>
+            <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
               {topRankChild?.percentage ?? "-"}%
             </p>
             <p className="mt-1 text-sm font-medium text-[var(--brand-color,#e35336)]">
@@ -972,15 +972,15 @@ const ParentDashboard = () => {
         {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {t.title}
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {t.description}
             </p>
           </div>
           {displayTermName ? (
-            <div className="text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg px-3 py-1.5">
               {displayTermName}
             </div>
           ) : null}
@@ -992,7 +992,7 @@ const ParentDashboard = () => {
             <div className="relative">
               <button
                 onClick={() => setStudentDropdownOpen(!studentDropdownOpen)}
-                className="flex items-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 hover:border-slate-300 dark:hover:border-slate-600 transition-colors min-w-[220px]"
+                className="flex items-center gap-3 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl px-4 py-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors min-w-[220px]"
               >
                 <Avatar className="w-9 h-9">
                   {selectedChildPhotoSrc ? (
@@ -1004,18 +1004,18 @@ const ParentDashboard = () => {
                   )}
                 </Avatar>
                 <div className="flex-1 text-left">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
                     {selectedChild?.name || t.selectStudent}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-gray-500">
                     {selectedChild?.className} &middot; {selectedChild?.section}
                   </p>
                 </div>
-                <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
               </button>
 
               {studentDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 w-72 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden">
+                <div className="absolute top-full left-0 mt-1 w-72 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-50 overflow-hidden">
                   {children.map((child) => (
                     (() => {
                       const childPhotoSrc = resolveAssetUrl(child.photoUrl || child.avatarUrl);
@@ -1029,23 +1029,23 @@ const ParentDashboard = () => {
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                         selectedChild?.id === child.id
                           ? "bg-[rgba(var(--brand-color-rgb),0.08)]"
-                          : "hover:bg-slate-50 dark:hover:bg-slate-700"
+                          : "hover:bg-gray-50 dark:hover:bg-[#2A2A2A]"
                       }`}
                     >
                       <Avatar className="w-9 h-9">
                         {childPhotoSrc ? (
                           <img src={childPhotoSrc} alt={child.name} className="h-full w-full rounded-full object-cover" />
                         ) : (
-                          <AvatarFallback className="text-sm bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200">
+                          <AvatarFallback className="text-sm bg-gray-200 dark:bg-[#333333] text-gray-700 dark:text-gray-200">
                             {child.name.charAt(0)}
                           </AvatarFallback>
                         )}
                       </Avatar>
                       <div>
-                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
                           {child.name}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-gray-500">
                           {child.className} &middot; {child.section}
                         </p>
                       </div>
@@ -1059,7 +1059,7 @@ const ParentDashboard = () => {
           )}
 
           {selectedChild && (
-            <div className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-3">
+            <div className="flex-1 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl px-5 py-3">
               <div className="flex items-center gap-4">
                 <Avatar className="w-12 h-12">
                   {selectedChildPhotoSrc ? (
@@ -1071,7 +1071,7 @@ const ParentDashboard = () => {
                   )}
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                  <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                     {selectedChild.name}
                     {discountPercent > 0 && (
                       <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-0 text-[10px] px-1.5 py-0">
@@ -1079,13 +1079,13 @@ const ParentDashboard = () => {
                       </Badge>
                     )}
                   </h3>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-gray-500">
                     {t.grade} {selectedChild.className} &middot; {t.section} {selectedChild.section}
                   </p>
                 </div>
                 <div className="ml-auto text-right">
-                  <p className="text-xs text-slate-400">{t.studentCode}</p>
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <p className="text-xs text-gray-400">{t.studentCode}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {selectedChild.studentCode}
                   </p>
                 </div>
@@ -1096,15 +1096,15 @@ const ParentDashboard = () => {
 
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.attendance}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{attendancePercentage}%</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.attendance}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">{attendancePercentage}%</p>
                 <div className="flex items-center gap-1 mt-1">
                   <TrendingUp className="w-3 h-3 text-emerald-500" />
                   <span className="text-xs text-emerald-600 dark:text-emerald-400">+2.5%</span>
-                  <span className="text-xs text-slate-400">{t.thisTerm}</span>
+                  <span className="text-xs text-gray-400">{t.thisTerm}</span>
                 </div>
               </div>
               <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30">
@@ -1113,14 +1113,14 @@ const ParentDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.gpa}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.gpa}</p>
                 {!parentGradesEnabled ? (
                   <>
-                    <p className="text-2xl font-bold text-slate-400 mt-1.5">Disabled</p>
-                    <span className="text-xs text-slate-400">{t.bySchoolAdmin}</span>
+                    <p className="text-2xl font-bold text-gray-400 mt-1.5">Disabled</p>
+                    <span className="text-xs text-gray-400">{t.bySchoolAdmin}</span>
                   </>
                 ) : gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />
@@ -1136,8 +1136,8 @@ const ParentDashboard = () => {
                   </>
                 ) : (
                   <>
-                    <p className="text-2xl font-bold text-slate-400 mt-1.5">{t.nA}</p>
-                    <span className="text-xs text-slate-400">{t.noGrades}</span>
+                    <p className="text-2xl font-bold text-gray-400 mt-1.5">{t.nA}</p>
+                    <span className="text-xs text-gray-400">{t.noGrades}</span>
                   </>
                 )}
               </div>
@@ -1147,25 +1147,25 @@ const ParentDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.avgScore}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.avgScore}</p>
                 {!parentGradesEnabled ? (
                   <>
-                    <p className="text-2xl font-bold text-slate-400 mt-1.5">Disabled</p>
-                    <p className="text-xs text-slate-400 mt-1">{t.bySchoolAdmin}</p>
+                    <p className="text-2xl font-bold text-gray-400 mt-1.5">Disabled</p>
+                    <p className="text-xs text-gray-400 mt-1">{t.bySchoolAdmin}</p>
                   </>
                 ) : gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />
                 ) : gradesLockedForPayment ? (
                   <p className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1.5">Not paid</p>
                 ) : hasGrades ? (
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{averageScore}%</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">{averageScore}%</p>
                 ) : (
-                  <p className="text-2xl font-bold text-slate-400 mt-1.5">{t.nA}</p>
+                  <p className="text-2xl font-bold text-gray-400 mt-1.5">{t.nA}</p>
                 )}
-                {parentGradesEnabled && <p className="text-xs text-slate-400 mt-1">{t.outOf100}</p>}
+                {parentGradesEnabled && <p className="text-xs text-gray-400 mt-1">{t.outOf100}</p>}
               </div>
               <div className="p-2.5 rounded-lg bg-purple-50 dark:bg-purple-900/30">
                 <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -1173,11 +1173,11 @@ const ParentDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.totalOutstandingBalance}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.totalOutstandingBalance}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">
                   {feeBalance.toLocaleString()} Br
                 </p>
                 <div className="flex items-center gap-1 mt-1">
@@ -1203,13 +1203,13 @@ const ParentDashboard = () => {
 
         {/* Chart + Notices + Fees */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t.attendanceTrend}</h3>
-            <p className="text-xs text-slate-500 mb-4">{t.thisTerm}</p>
+          <div className="lg:col-span-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{t.attendanceTrend}</h3>
+            <p className="text-xs text-gray-500 mb-4">{t.thisTerm}</p>
             {selectedChild?.attendanceTrend && (
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={selectedChild.attendanceTrend} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} className="dark:stroke-slate-700" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} className="dark:stroke-[#2A2A2A]" />
                   <XAxis dataKey="week" axisLine={false} tick={{ fill: "#64748B", fontSize: 12 }} tickLine={false} dy={8} />
                   <YAxis axisLine={false} tick={{ fill: "#64748B", fontSize: 12 }} tickLine={false} tickMargin={8} domain={[0, 100]} />
                   <Tooltip content={<CustomTooltip translation={t} />} />
@@ -1220,8 +1220,8 @@ const ParentDashboard = () => {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.recentNotices}</h3>
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">{t.recentNotices}</h3>
               <div className="space-y-3">
                 {dashboardData?.recentNotices?.length ? (
                   dashboardData.recentNotices.map((notice) => (
@@ -1240,32 +1240,32 @@ const ParentDashboard = () => {
                       <div className="min-w-0">
                         <TranslatedText
                           text={notice.title}
-                          textClassName="text-sm font-medium text-slate-900 dark:text-white truncate"
+                          textClassName="text-sm font-medium text-gray-900 dark:text-white truncate"
                           showControls={false}
                         />
                         {notice.description && (
                           <TranslatedText
                             text={notice.description}
-                            textClassName="text-xs text-slate-500 truncate"
+                            textClassName="text-xs text-gray-500 truncate"
                             showControls={false}
                           />
                         )}
-                        <p className="text-xs text-slate-400 mt-0.5">
+                        <p className="text-xs text-gray-400 mt-0.5">
                           {formatDate(notice.date)}
                         </p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-slate-400">{t.noRecentNotices}</p>
+                  <p className="text-sm text-gray-400">{t.noRecentNotices}</p>
                 )}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
               <div className="mb-4">
-                <h3 className="font-semibold text-slate-900 dark:text-white">{t.currentPeriodFeeSummary}</h3>
-                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                <h3 className="font-semibold text-gray-900 dark:text-white">{t.currentPeriodFeeSummary}</h3>
+                <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
                   {t.currentPeriodFeeSummaryHelp}
                 </p>
               </div>
@@ -1275,11 +1275,11 @@ const ParentDashboard = () => {
                     const periodPenalty = getPeriodPenalty(period.name, period.balance);
                     const amountDueNow = period.balance + periodPenalty.penalty;
                     return (
-                      <div key={`${period.id}-${index}`} className="border-b border-slate-100 dark:border-slate-700 pb-3 last:border-0 last:pb-0">
+                      <div key={`${period.id}-${index}`} className="border-b border-gray-100 dark:border-[#2A2A2A] pb-3 last:border-0 last:pb-0">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-slate-900 dark:text-white">{period.name}</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{period.name}</span>
                           <div className="text-right">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                               {t.dueNow}
                             </p>
                             <span className={`text-sm font-bold ${amountDueNow > 0 ? "text-amber-600" : "text-emerald-600"}`}>
@@ -1287,10 +1287,10 @@ const ParentDashboard = () => {
                             </span>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                          <span>{t.paidLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalPaid)}</strong></span>
-                          <span>{t.feeAmountLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.totalDue)}</strong></span>
-                          <span>{t.remainingLabel} <strong className="text-slate-700 dark:text-slate-300">{formatBirr(period.balance)}</strong></span>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                          <span>{t.paidLabel} <strong className="text-gray-700 dark:text-gray-300">{formatBirr(period.totalPaid)}</strong></span>
+                          <span>{t.feeAmountLabel} <strong className="text-gray-700 dark:text-gray-300">{formatBirr(period.totalDue)}</strong></span>
+                          <span>{t.remainingLabel} <strong className="text-gray-700 dark:text-gray-300">{formatBirr(period.balance)}</strong></span>
                           {periodPenalty.penalty > 0 && (
                             <span className="text-red-600 dark:text-red-400">
                               Penalty <strong>{formatBirr(periodPenalty.penalty)}</strong> ({periodPenalty.daysLate} days)
@@ -1315,7 +1315,7 @@ const ParentDashboard = () => {
                   })
                 ) : (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600 dark:text-slate-300">{t.balance}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{t.balance}</span>
                     <span className={`text-lg font-bold ${(selectedChild?.feeBalance || 0) > 0 ? "text-amber-600" : "text-emerald-600"}`}>
                       {formatBirr(selectedChild?.feeBalance || 0)}
                     </span>
@@ -1333,11 +1333,11 @@ const ParentDashboard = () => {
 
         {/* Grades Overview */}
         {parentGradesEnabled && (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white">{t.gradesOverview}</h3>
-                <p className="text-xs text-slate-500">{t.currentTermPerformance}</p>
+                <h3 className="font-semibold text-gray-900 dark:text-white">{t.gradesOverview}</h3>
+                <p className="text-xs text-gray-500">{t.currentTermPerformance}</p>
               </div>
               {hasGradeOverview && (
                 <Badge variant="outline" className="text-xs">{t.subjects.replace("{count}", String(gradeOverviewRows.length))}</Badge>
@@ -1351,24 +1351,24 @@ const ParentDashboard = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-700">
-                      <th className="text-left text-xs font-medium text-slate-500 pb-3">{t.subject}</th>
-                      <th className="w-56 text-left text-xs font-medium text-slate-500 pb-3">{t.progress}</th>
-                      <th className="text-left text-xs font-medium text-slate-500 pb-3">{t.status}</th>
+                    <tr className="border-b border-gray-100 dark:border-[#2A2A2A]">
+                      <th className="text-left text-xs font-medium text-gray-500 pb-3">{t.subject}</th>
+                      <th className="w-56 text-left text-xs font-medium text-gray-500 pb-3">{t.progress}</th>
+                      <th className="text-left text-xs font-medium text-gray-500 pb-3">{t.status}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {gradeOverviewRows.map((row) => {
                       const status = getGradeStatus(row.progress).text;
                       return (
-                        <tr key={row.id} className="border-b border-slate-50 dark:border-slate-700/50 last:border-0">
-                          <td className="py-3 text-sm font-medium text-slate-900 dark:text-slate-100">{row.subject}</td>
+                        <tr key={row.id} className="border-b border-gray-50 dark:border-[#2A2A2A]/50 last:border-0">
+                          <td className="py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{row.subject}</td>
                           <td className="py-3">
                             <div className="flex items-center gap-3">
-                              <div className="h-2 w-28 sm:w-36 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                              <div className="h-2 w-28 sm:w-36 bg-gray-200 dark:bg-[#2A2A2A] rounded-full overflow-hidden">
                                 <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${row.progress}%` }} />
                               </div>
-                              <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{row.progress}%</span>
+                              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{row.progress}%</span>
                             </div>
                           </td>
                           <td className="py-3">
@@ -1386,8 +1386,8 @@ const ParentDashboard = () => {
               </div>
             ) : (
               <div className="text-center py-8">
-                <BookOpen className="h-8 w-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                <p className="text-sm text-slate-500">{t.noGradesYet}</p>
+                <BookOpen className="h-8 w-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm text-gray-500">{t.noGradesYet}</p>
                 {canSelectedChildViewGrades ? (
                   <Button variant="link" asChild className="mt-2">
                     <a href="/parent/grades">{t.viewGrades}</a>
@@ -1403,13 +1403,13 @@ const ParentDashboard = () => {
         )}
 
         {/* Recent Activity */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.recentActivity}</h3>
+        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-4">{t.recentActivity}</h3>
           <div className="space-y-1">
             {dashboardData?.recentActivity?.length ? (
               dashboardData.recentActivity.map((activity, index) => (
                 <div key={activity.id} className={`flex items-start gap-4 py-3 ${
-                  index < dashboardData.recentActivity.length - 1 ? "border-b border-slate-100 dark:border-slate-700" : ""
+                  index < dashboardData.recentActivity.length - 1 ? "border-b border-gray-100 dark:border-[#2A2A2A]" : ""
                 }`}>
                   <div className="relative flex flex-col items-center">
                     <div className={`p-1.5 rounded-full ${
@@ -1424,19 +1424,19 @@ const ParentDashboard = () => {
                       {activity.type === "notice" && <Bell className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
                     </div>
                     {index < dashboardData.recentActivity.length - 1 && (
-                      <div className="w-px h-full absolute top-8 bg-slate-200 dark:bg-slate-700" />
+                      <div className="w-px h-full absolute top-8 bg-gray-200 dark:bg-[#2A2A2A]" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-900 dark:text-white">{activity.message}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-sm text-gray-900 dark:text-white">{activity.message}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
                       {formatDate(activity.date)}
                     </p>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-400 py-4">{t.noRecentActivity}</p>
+              <p className="text-sm text-gray-400 py-4">{t.noRecentActivity}</p>
             )}
           </div>
         </div>

@@ -277,7 +277,7 @@ const ChildResultsPage = () => {
   );
 
   const getGradeColor = (grade: string | null) => {
-    if (!grade) return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+    if (!grade) return "bg-gray-100 text-gray-600 dark:bg-[#1A1A1A] dark:text-gray-400";
     const firstChar = grade.charAt(0);
     switch (firstChar) {
       case "A":
@@ -291,7 +291,7 @@ const ChildResultsPage = () => {
       case "F":
         return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
       default:
-        return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+        return "bg-gray-100 text-gray-600 dark:bg-[#1A1A1A] dark:text-gray-400";
     }
   };
 
@@ -304,7 +304,7 @@ const ChildResultsPage = () => {
       case "needs improvement":
         return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800";
       default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700";
+        return "bg-gray-100 text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-400 border-gray-200 dark:border-[#2A2A2A]";
     }
   };
 
@@ -318,7 +318,7 @@ const ChildResultsPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
+      <div className="p-6 min-h-screen" className="min-h-screen bg-gray-50 dark:bg-[#111111]">
         <Skeleton className="h-8 w-48 mb-6" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
@@ -334,7 +334,7 @@ const ChildResultsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111] transition-colors">
       <div className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
@@ -344,7 +344,7 @@ const ChildResultsPage = () => {
                 variant="outline"
                 size="icon"
                 onClick={() => router.push(`/parent/children/${childId}`)}
-                className="dark:border-slate-700 dark:hover:bg-slate-800"
+                className="dark:border-[#2A2A2A] dark:hover:bg-[#1A1A1A]"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -363,7 +363,7 @@ const ChildResultsPage = () => {
               <select
                 value={selectedTerm}
                 onChange={(e) => setSelectedTerm(e.target.value)}
-                className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                className="px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
               >
                 <option value="all">All Terms</option>
                 {terms.map((term) => (
@@ -384,7 +384,7 @@ const ChildResultsPage = () => {
 
           {/* Summary Cards Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
@@ -400,7 +400,7 @@ const ChildResultsPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
@@ -416,7 +416,7 @@ const ChildResultsPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
@@ -432,7 +432,7 @@ const ChildResultsPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg">
@@ -460,7 +460,7 @@ const ChildResultsPage = () => {
           {/* Results Table and Chart */}
           {!paymentGate.blocked && <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Results Table */}
-            <Card className="lg:col-span-2 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="lg:col-span-2 shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                   {results?.termName} - {results?.academicYear}
@@ -478,7 +478,7 @@ const ChildResultsPage = () => {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                        <TableRow className="border-b border-gray-100 dark:border-[#2A2A2A]">
                           <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Subject</TableHead>
                           {assessmentColumns.map((column) => (
                             <TableHead key={column.title} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">
@@ -493,7 +493,7 @@ const ChildResultsPage = () => {
                       </TableHeader>
                       <TableBody>
                         {results?.results.map((subject) => (
-                          <TableRow key={subject.id} className="border-b border-gray-50 dark:border-slate-700/50 last:border-0">
+                          <TableRow key={subject.id} className="border-b border-gray-50 dark:border-[#2A2A2A]/50 last:border-0">
                             <TableCell className="py-3">
                               <div>
                                 <p className="text-sm font-medium text-gray-900 dark:text-white">{subject.subjectName}</p>
@@ -533,7 +533,7 @@ const ChildResultsPage = () => {
             </Card>
 
             {/* Radar Chart */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                   Performance Chart
@@ -545,7 +545,7 @@ const ChildResultsPage = () => {
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <RadarChart data={radarData}>
-                    <PolarGrid stroke="#E2E8F0" className="dark:stroke-slate-700" />
+                    <PolarGrid stroke="#E2E8F0" className="dark:stroke-[#2A2A2A]" />
                     <PolarAngleAxis 
                       dataKey="subject" 
                       tick={{ fill: "#64748B", fontSize: 11 }}
@@ -565,7 +565,7 @@ const ChildResultsPage = () => {
           </div>}
 
           {/* Grading Scale */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                 Grading Scale

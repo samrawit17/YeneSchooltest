@@ -94,7 +94,7 @@ const StudentLessonsPage = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="space-y-6 bg-[#F8FAFC] p-6 dark:bg-[#0F172A]">
+    <div className="space-y-6 bg-[#F8FAFC] p-6 dark:bg-[#111111]">
       <div>
         <h1 className="text-2xl font-bold text-[#e35336]">My Lessons</h1>
         <p className="text-gray-500 dark:text-gray-400">View your published lesson plans and materials</p>
@@ -122,8 +122,8 @@ const StudentLessonsPage = () => {
         </Select>
       </div>
 
-      <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-800">
+      <Card className="overflow-hidden border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
+        <CardHeader className="border-b border-gray-100 dark:border-[#2A2A2A]">
           <CardTitle className="text-lg">Lesson Calendar</CardTitle>
           <CardDescription>Weekly calendar view for your lessons</CardDescription>
         </CardHeader>

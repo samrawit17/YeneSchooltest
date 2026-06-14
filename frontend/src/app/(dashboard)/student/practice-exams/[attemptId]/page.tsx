@@ -185,15 +185,15 @@ export default function PracticeExamAttemptPage() {
       : Boolean(answers[question.id]?.selectedOption || question.selectedOption),
   ).length;
   const flaggedCount = Object.values(answers).filter((answer) => answer.isFlagged).length;
-  const timerClass = remainingSeconds <= 300 ? "text-red-600" : remainingSeconds <= 600 ? "text-amber-600" : "text-slate-950 dark:text-white";
+  const timerClass = remainingSeconds <= 300 ? "text-red-600" : remainingSeconds <= 600 ? "text-amber-600" : "text-gray-950 dark:text-white";
   const submitConfirmOverlay =
     showSubmitConfirm && typeof document !== "undefined"
       ? createPortal(
-          <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-slate-950/25 px-4 backdrop-blur-[1px]">
-            <div className="w-full max-w-[420px] rounded-xl border border-slate-200 bg-white p-5 text-slate-950 shadow-2xl dark:border-slate-800 dark:bg-slate-950 dark:text-white">
+          <div className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-gray-950/25 px-4 backdrop-blur-[1px]">
+            <div className="w-full max-w-[420px] rounded-xl border border-gray-200 bg-white p-5 text-gray-950 shadow-2xl dark:border-[#2A2A2A] dark:bg-[#111111] dark:text-white">
               <div className="space-y-2">
                 <p className="text-base font-semibold">Submit exam?</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   You cannot change your answers after final submission.
                 </p>
               </div>
@@ -266,20 +266,20 @@ export default function PracticeExamAttemptPage() {
     const isCorrect = showCorrectAnswer ? question.isCorrect === true : false;
     const statusClass = showCorrectAnswer
       ? isSkipped
-        ? "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200"
+        ? "border-gray-200 bg-gray-50 text-gray-700 dark:border-[#2A2A2A] dark:bg-[#111111]/60 dark:text-gray-200"
         : isCorrect
           ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
           : "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200"
       : isSkipped
-        ? "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200"
+        ? "border-gray-200 bg-gray-50 text-gray-700 dark:border-[#2A2A2A] dark:bg-[#111111]/60 dark:text-gray-200"
         : "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200";
 
     return (
-      <div key={question.id} className="rounded-lg border border-slate-200 p-4 text-sm dark:border-slate-800">
+      <div key={question.id} className="rounded-lg border border-gray-200 p-4 text-sm dark:border-[#2A2A2A]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <Badge variant="outline">{question.subject}</Badge>
-            <p className="mt-3 font-semibold text-slate-950 dark:text-white">
+            <p className="mt-3 font-semibold text-gray-950 dark:text-white">
               {index + 1}. {question.questionText}
             </p>
           </div>
@@ -289,11 +289,11 @@ export default function PracticeExamAttemptPage() {
         </div>
 
         {isShortAnswer ? (
-          <div className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
-            <p className="text-xs font-semibold uppercase text-slate-500">Your answer</p>
+          <div className="mt-4 rounded-lg border border-gray-200 bg-white px-3 py-2 text-gray-700 dark:border-[#2A2A2A] dark:bg-[#111111] dark:text-gray-200">
+            <p className="text-xs font-semibold uppercase text-gray-500">Your answer</p>
             <p className="mt-1 whitespace-pre-wrap">{textAnswer || "Not answered"}</p>
             {showCorrectAnswer ? (
-              <p className="mt-3 text-xs text-slate-500">Accepted answer: {question.correctText || "-"}</p>
+              <p className="mt-3 text-xs text-gray-500">Accepted answer: {question.correctText || "-"}</p>
             ) : null}
           </div>
         ) : (
@@ -308,7 +308,7 @@ export default function PracticeExamAttemptPage() {
                 ? showCorrectAnswer && !correct
                   ? "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/30 dark:text-red-100"
                   : "border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100"
-                : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200";
+                : "border-gray-200 bg-white text-gray-700 dark:border-[#2A2A2A] dark:bg-[#111111] dark:text-gray-200";
 
             return (
               <div key={option} className={`flex min-h-12 items-center gap-3 rounded-lg border px-3 py-2 ${optionClass}`}>
@@ -336,7 +336,7 @@ export default function PracticeExamAttemptPage() {
   }
 
   if (!attempt) {
-    return <div className="p-6"><Card><CardContent className="py-12 text-center text-sm text-slate-500">Online examination attempt not found.</CardContent></Card></div>;
+    return <div className="p-6"><Card><CardContent className="py-12 text-center text-sm text-gray-500">Online examination attempt not found.</CardContent></Card></div>;
   }
 
   if (!isOpen) {
@@ -347,16 +347,16 @@ export default function PracticeExamAttemptPage() {
       <div className="space-y-6 p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{attempt.exam.title}</h1>
-            <p className="text-sm text-slate-500">Online examination result for Grade {attempt.exam.grade}</p>
+            <h1 className="text-2xl font-bold text-gray-950 dark:text-white">{attempt.exam.title}</h1>
+            <p className="text-sm text-gray-500">Online examination result for Grade {attempt.exam.grade}</p>
           </div>
           <Button variant="outline" onClick={() => router.push("/student/practice-exams")}>Back to Online Examination</Button>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
-          <Card><CardContent className="p-5"><div className="text-sm text-slate-500">Score</div><div className="mt-2 text-3xl font-bold">{percentage}%</div></CardContent></Card>
-          <Card><CardContent className="p-5"><div className="text-sm text-slate-500">Correct</div><div className="mt-2 text-3xl font-bold text-emerald-600">{attempt.correctCount}</div></CardContent></Card>
-          <Card><CardContent className="p-5"><div className="text-sm text-slate-500">Wrong</div><div className="mt-2 text-3xl font-bold text-red-600">{attempt.wrongCount}</div></CardContent></Card>
-          <Card><CardContent className="p-5"><div className="text-sm text-slate-500">Skipped</div><div className="mt-2 text-3xl font-bold text-slate-600">{attempt.skippedCount}</div></CardContent></Card>
+          <Card><CardContent className="p-5"><div className="text-sm text-gray-500">Score</div><div className="mt-2 text-3xl font-bold">{percentage}%</div></CardContent></Card>
+          <Card><CardContent className="p-5"><div className="text-sm text-gray-500">Correct</div><div className="mt-2 text-3xl font-bold text-emerald-600">{attempt.correctCount}</div></CardContent></Card>
+          <Card><CardContent className="p-5"><div className="text-sm text-gray-500">Wrong</div><div className="mt-2 text-3xl font-bold text-red-600">{attempt.wrongCount}</div></CardContent></Card>
+          <Card><CardContent className="p-5"><div className="text-sm text-gray-500">Skipped</div><div className="mt-2 text-3xl font-bold text-gray-600">{attempt.skippedCount}</div></CardContent></Card>
         </div>
         <Card>
           <CardHeader>
@@ -375,12 +375,12 @@ export default function PracticeExamAttemptPage() {
 
   if (showReview) {
     return (
-      <div className="space-y-6 bg-slate-50 p-6 dark:bg-slate-950">
+      <div className="space-y-6 bg-gray-50 p-6 dark:bg-[#111111]">
         {submitConfirmOverlay}
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Review Answers</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="text-2xl font-bold text-gray-950 dark:text-white">Review Answers</h1>
+            <p className="text-sm text-gray-500">
               {attempt.exam.title} - {answeredQuestionCount} answered, {questions.length - answeredQuestionCount} not answered
             </p>
           </div>
@@ -407,14 +407,14 @@ export default function PracticeExamAttemptPage() {
   }
 
   return (
-    <div className="grid min-h-screen gap-6 bg-slate-50 p-6 dark:bg-slate-950 xl:grid-cols-[1fr_280px]">
+    <div className="grid min-h-screen gap-6 bg-gray-50 p-6 dark:bg-[#111111] xl:grid-cols-[1fr_280px]">
       <main className="space-y-6">
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <CardTitle>{attempt.exam.title}</CardTitle>
-                <p className="mt-1 text-sm text-slate-500">Question {currentIndex + 1} of {questions.length}</p>
+                <p className="mt-1 text-sm text-gray-500">Question {currentIndex + 1} of {questions.length}</p>
               </div>
               <div className={`inline-flex items-center gap-2 text-xl font-bold ${timerClass}`}>
                 <Clock className="h-5 w-5" /> {formatSeconds(remainingSeconds)}
@@ -429,7 +429,7 @@ export default function PracticeExamAttemptPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <Badge variant="outline">{currentQuestion.subject}</Badge>
-                  <h2 className="mt-4 text-xl font-semibold text-slate-950 dark:text-white">{currentQuestion.questionText}</h2>
+                  <h2 className="mt-4 text-xl font-semibold text-gray-950 dark:text-white">{currentQuestion.questionText}</h2>
                 </div>
                 <Button variant={answers[currentQuestion.id]?.isFlagged ? "default" : "outline"} onClick={() => toggleFlag(currentQuestion.id)}>
                   <Flag className="mr-2 h-4 w-4" /> Flag
@@ -442,7 +442,7 @@ export default function PracticeExamAttemptPage() {
                     onChange={(event) => setTextAnswer(currentQuestion.id, event.target.value)}
                     rows={6}
                     placeholder="Type your answer here"
-                    className="resize-y bg-white dark:bg-slate-900"
+                    className="resize-y bg-white dark:bg-[#111111]"
                   />
                 ) : (currentQuestion.questionType === "TRUE_FALSE" ? (["A", "B"] as PracticeExamOption[]) : options).map((option) => {
                   const selected = answers[currentQuestion.id]?.selectedOption === option;
@@ -453,8 +453,8 @@ export default function PracticeExamAttemptPage() {
                       onClick={() => setSelectedOption(currentQuestion.id, option)}
                       className={`flex min-h-14 items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm transition ${
                         selected
-                          ? "border-blue-500 bg-blue-50 text-slate-950 ring-2 ring-blue-200 dark:border-blue-400 dark:bg-blue-950/30 dark:text-white dark:ring-blue-900"
-                          : "border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
+                          ? "border-blue-500 bg-blue-50 text-gray-950 ring-2 ring-blue-200 dark:border-blue-400 dark:bg-blue-950/30 dark:text-white dark:ring-blue-900"
+                          : "border-gray-200 bg-white hover:bg-gray-50 dark:border-[#2A2A2A] dark:bg-[#111111]"
                       }`}
                     >
                       <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold ${
@@ -491,7 +491,7 @@ export default function PracticeExamAttemptPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card><CardContent className="py-12 text-center text-sm text-slate-500">No questions are available.</CardContent></Card>
+          <Card><CardContent className="py-12 text-center text-sm text-gray-500">No questions are available.</CardContent></Card>
         )}
       </main>
       <aside className="space-y-4">
@@ -499,9 +499,9 @@ export default function PracticeExamAttemptPage() {
           <CardHeader><CardTitle className="text-base">Progress</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-2 text-center text-sm">
-              <div className="rounded-lg bg-white p-3 dark:bg-slate-900"><div className="font-bold">{answeredQuestionCount}</div><div className="text-xs text-slate-500">Answered</div></div>
-              <div className="rounded-lg bg-white p-3 dark:bg-slate-900"><div className="font-bold">{questions.length - answeredQuestionCount}</div><div className="text-xs text-slate-500">Left</div></div>
-              <div className="rounded-lg bg-white p-3 dark:bg-slate-900"><div className="font-bold">{flaggedCount}</div><div className="text-xs text-slate-500">Flagged</div></div>
+              <div className="rounded-lg bg-white p-3 dark:bg-[#111111]"><div className="font-bold">{answeredQuestionCount}</div><div className="text-xs text-gray-500">Answered</div></div>
+              <div className="rounded-lg bg-white p-3 dark:bg-[#111111]"><div className="font-bold">{questions.length - answeredQuestionCount}</div><div className="text-xs text-gray-500">Left</div></div>
+              <div className="rounded-lg bg-white p-3 dark:bg-[#111111]"><div className="font-bold">{flaggedCount}</div><div className="text-xs text-gray-500">Flagged</div></div>
             </div>
             <div className="grid grid-cols-5 gap-2">
               {questions.map((question, index) => {
@@ -510,7 +510,7 @@ export default function PracticeExamAttemptPage() {
                 const answered = question.questionType === "SHORT_ANSWER" ? Boolean(state?.textAnswer?.trim()) : Boolean(state?.selectedOption);
                 const flagged = Boolean(state?.isFlagged);
                 return (
-                  <button key={question.id} onClick={() => setCurrentIndex(index)} className={`relative h-10 rounded-md border text-sm font-semibold ${active ? "border-blue-600 bg-blue-600 text-white" : answered ? "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100" : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"}`}>
+                  <button key={question.id} onClick={() => setCurrentIndex(index)} className={`relative h-10 rounded-md border text-sm font-semibold ${active ? "border-blue-600 bg-blue-600 text-white" : answered ? "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-100" : "border-gray-200 bg-white text-gray-700 dark:border-[#2A2A2A] dark:bg-[#111111] dark:text-gray-200"}`}>
                     {index + 1}
                     {flagged ? <AlertTriangle className="absolute -right-1 -top-1 h-3 w-3 text-amber-500" /> : null}
                   </button>

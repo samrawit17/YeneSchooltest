@@ -115,23 +115,23 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
   const uniqueSubjects = Array.from(new Set(teachingClasses.map((item: any) => item.subject?.name).filter(Boolean)));
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6">
+    <div className="min-h-screen bg-gray-50 p-4 dark:bg-[#111111] sm:p-6">
       <div className="w-full space-y-6">
-        <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <Card className="overflow-hidden border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
           <CardContent className="p-0">
-            <div className="flex flex-col gap-5 border-b border-slate-100 p-5 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex flex-col gap-5 border-b border-gray-100 p-5 dark:border-[#2A2A2A] lg:flex-row lg:items-start lg:justify-between">
               <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
-                <Avatar className="h-24 w-24 border-4 border-slate-100 shadow-sm dark:border-slate-800">
+                <Avatar className="h-24 w-24 border-4 border-gray-100 shadow-sm dark:border-[#2A2A2A]">
                   {staff.avatarUrl ? <AvatarImage src={resolveAssetUrl(staff.avatarUrl) || staff.avatarUrl} alt={staffName} /> : <AvatarFallback className="text-2xl font-bold">{getInitials(staffName)}</AvatarFallback>}
                 </Avatar>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="truncate text-2xl font-bold text-slate-900 dark:text-white">{staffName}</h1>
+                    <h1 className="truncate text-2xl font-bold text-gray-900 dark:text-white">{staffName}</h1>
                     <Badge className={isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}>{isActive ? "Active" : "Inactive"}</Badge>
                     <Badge variant="outline">{roleLabel}</Badge>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{displayUsername}</span>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="font-mono font-semibold text-gray-700 dark:text-gray-200">{displayUsername}</span>
                     {username !== displayUsername ? <span>Login: {username}</span> : null}
                     <span>{staff.email || "No email"}</span>
                     <span>{profile.designation || roleLabel}</span>
@@ -166,7 +166,7 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[390px_1fr]">
           <div className="space-y-6">
-            <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
               <CardHeader><CardTitle className="text-base">Staff Information</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <InfoRow icon={Shield} label="Username" value={displayUsername} />
@@ -179,7 +179,7 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
           </div>
 
           <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
-            <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
               <CardHeader><CardTitle className="text-base">Profile</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <InfoRow icon={Shield} label="Employee ID" value={profile.employeeId || "N/A"} />
@@ -190,7 +190,7 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
             </Card>
 
             {isTeacher ? (
-              <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
                 <CardHeader><CardTitle className="text-base">Teacher Summary</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <InfoRow icon={Users} label="Homeroom Sections" value={String(homeroomSections.length)} />
@@ -201,7 +201,7 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
             ) : null}
 
             {isTeacher ? (
-              <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 2xl:col-span-2">
+              <Card className="border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111] 2xl:col-span-2">
                 <CardHeader><CardTitle className="text-base">Teaching Classes</CardTitle></CardHeader>
                 <CardContent>
                   {teachingClasses.length === 0 ? (
@@ -209,9 +209,9 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
                   ) : (
                     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                       {teachingClasses.map((item: any) => (
-                        <div key={item.id} className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-                          <p className="truncate font-semibold text-slate-900 dark:text-white">{formatClassName(item.class)}{item.section?.name ? ` - ${item.section.name}` : ""}</p>
-                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{item.subject?.name || "No subject"} • {item.studentCount || 0} students</p>
+                        <div key={item.id} className="rounded-lg border border-gray-100 p-3 dark:border-[#2A2A2A]">
+                          <p className="truncate font-semibold text-gray-900 dark:text-white">{formatClassName(item.class)}{item.section?.name ? ` - ${item.section.name}` : ""}</p>
+                          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{item.subject?.name || "No subject"} • {item.studentCount || 0} students</p>
                         </div>
                       ))}
                     </div>
@@ -228,25 +228,25 @@ function StaffDetailContent({ staffId }: { staffId: string }) {
 
 function SummaryItem({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/70">
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-400"><Icon className="h-4 w-4" />{label}</div>
-      <p className="mt-2 truncate text-lg font-bold text-slate-900 dark:text-white">{value || "N/A"}</p>
+    <div className="rounded-xl bg-gray-50 p-4 dark:bg-[#1A1A1A]/70">
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-gray-400"><Icon className="h-4 w-4" />{label}</div>
+      <p className="mt-2 truncate text-lg font-bold text-gray-900 dark:text-white">{value || "N/A"}</p>
     </div>
   );
 }
 
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div className="flex min-w-0 items-start gap-3 rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+    <div className="flex min-w-0 items-start gap-3 rounded-lg border border-gray-100 p-3 dark:border-[#2A2A2A]">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
-        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{value || "N/A"}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">{value || "N/A"}</p>
       </div>
     </div>
   );
 }
 
 function EmptyState({ text }: { text: string }) {
-  return <div className="rounded-xl border border-dashed border-slate-200 py-8 text-center dark:border-slate-700"><p className="text-sm text-slate-500 dark:text-slate-400">{text}</p></div>;
+  return <div className="rounded-xl border border-dashed border-gray-200 py-8 text-center dark:border-[#2A2A2A]"><p className="text-sm text-gray-500 dark:text-gray-400">{text}</p></div>;
 }

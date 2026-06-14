@@ -106,35 +106,35 @@ export default function CertificateTemplatePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#111111]">
         <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       <div className="px-4 pt-4 sm:px-6">
         <button
           onClick={() => router.push("/admin/report-cards")}
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+          className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Report Cards
         </button>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">
               Certificate Settings
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Set the branding used by the system-generated report card certificate.
             </p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => setPreviewOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-gray-200"
             >
               <Eye className="h-4 w-4" />
               Preview
@@ -152,119 +152,119 @@ export default function CertificateTemplatePage() {
       </div>
 
       <div className="grid gap-4 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:p-6">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+        <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] sm:p-6">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <ShieldCheck className="h-4 w-4" />
             Branding
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 md:col-span-2">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Certificate Title</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Certificate Title</span>
               <input
                 value={form.title}
                 onChange={(e) => updateForm("title", e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#111111]"
               />
             </label>
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Theme Color</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Theme Color</span>
               <div className="flex gap-2">
                 <input
                   type="color"
                   value={form.themeColor}
                   onChange={(e) => updateForm("themeColor", e.target.value)}
-                  className="h-10 w-12 rounded border border-slate-300 bg-white p-1 dark:border-slate-600 dark:bg-slate-900"
+                  className="h-10 w-12 rounded border border-gray-300 bg-white p-1 dark:border-gray-600 dark:bg-[#111111]"
                 />
                 <input
                   value={form.themeColor}
                   onChange={(e) => updateForm("themeColor", e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#111111]"
                 />
               </div>
             </label>
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Principal Name</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Principal Name</span>
               <input
                 value={form.principalName}
                 onChange={(e) => updateForm("principalName", e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#111111]"
               />
             </label>
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">School Name</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">School Name</span>
               <input
                 value={form.schoolName}
                 onChange={(e) => updateForm("schoolName", e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#111111]"
               />
             </label>
             <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Phone</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Phone</span>
               <input
                 value={form.schoolPhone}
                 onChange={(e) => updateForm("schoolPhone", e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#111111]"
               />
             </label>
             <label className="space-y-1 md:col-span-2">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Address</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Address</span>
               <input
                 value={form.schoolAddress}
                 onChange={(e) => updateForm("schoolAddress", e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-[#111111]"
               />
             </label>
           </div>
 
-          <div className="grid gap-4 border-t border-slate-200 pt-4 dark:border-slate-700 md:grid-cols-2">
+          <div className="grid gap-4 border-t border-gray-200 pt-4 dark:border-[#2A2A2A] md:grid-cols-2">
             <div className="space-y-1">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">School Logo</span>
-              <p className="text-xs text-slate-500">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">School Logo</span>
+              <p className="text-xs text-gray-500">
                 The certificate uses the logo from school settings automatically.
               </p>
-              <p className="truncate text-xs text-slate-500">{form.schoolLogoUrl || "No school logo set"}</p>
+              <p className="truncate text-xs text-gray-500">{form.schoolLogoUrl || "No school logo set"}</p>
             </div>
           </div>
 
-          <div className="grid gap-3 border-t border-slate-200 pt-4 dark:border-slate-700 md:grid-cols-3">
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+          <div className="grid gap-3 border-t border-gray-200 pt-4 dark:border-[#2A2A2A] md:grid-cols-3">
+            <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-[#2A2A2A] dark:bg-[#111111]">
               <input
                 type="checkbox"
                 checked={form.showRank}
                 onChange={(e) => updateForm("showRank", e.target.checked)}
               />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Show rank</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Show rank</span>
             </label>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+            <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-[#2A2A2A] dark:bg-[#111111]">
               <input
                 type="checkbox"
                 checked={form.showAttendance}
                 onChange={(e) => updateForm("showAttendance", e.target.checked)}
               />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Show attendance</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Show attendance</span>
             </label>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+            <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-[#2A2A2A] dark:bg-[#111111]">
               <input
                 type="checkbox"
                 checked={form.showGPA}
                 onChange={(e) => updateForm("showGPA", e.target.checked)}
               />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Show GPA</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Show GPA</span>
             </label>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={form.useCustomBackground}
                 onChange={(e) => updateForm("useCustomBackground", e.target.checked)}
               />
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Use custom background image (Advanced)</span>
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">Use custom background image (Advanced)</span>
             </label>
             {form.useCustomBackground && (
               <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:bg-slate-800">
+                <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-gray-300 bg-white px-3 text-sm font-medium hover:bg-gray-50 dark:border-gray-600 dark:bg-[#111111] dark:hover:bg-[#1A1A1A]">
                   {uploadingWatermark ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                   Upload watermark
                   <input
@@ -275,7 +275,7 @@ export default function CertificateTemplatePage() {
                     className="hidden"
                   />
                 </label>
-                <span className="truncate text-xs text-slate-500">
+                <span className="truncate text-xs text-gray-500">
                   {form.customBackgroundUrl || "No watermark uploaded"}
                 </span>
               </div>
@@ -290,12 +290,12 @@ export default function CertificateTemplatePage() {
         createPortal(
           previewOpen ? (
             <div className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/50 p-4">
-              <div className="max-h-[92vh] w-full max-w-6xl overflow-auto rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+              <div className="max-h-[92vh] w-full max-w-6xl overflow-auto rounded-xl border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#111111]">
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">Certificate Preview</h3>
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white">Certificate Preview</h3>
                   <button
                     onClick={() => setPreviewOpen(false)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:hover:bg-[#1A1A1A]"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -327,13 +327,13 @@ function CertificatePreview({ form, large = false }: { form: CertificateSettings
     ? { width: "760px", height: "1075px" }
     : { width: "620px", height: "877px" };
   return (
-    <div className={`overflow-x-auto rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 ${large ? "" : "xl:sticky xl:top-4"}`}>
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+    <div className={`overflow-x-auto rounded-lg border border-gray-200 bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] ${large ? "" : "xl:sticky xl:top-4"}`}>
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
         <Palette className="h-4 w-4" />
         Official Result Certificate Layout
       </div>
       <div
-        className="relative shrink-0 overflow-hidden rounded-lg border border-slate-300 bg-white text-slate-900 shadow-sm"
+        className="relative shrink-0 overflow-hidden rounded-lg border border-gray-300 bg-white text-gray-900 shadow-sm"
         style={{ ...previewSize, marginInline: large ? "auto" : undefined }}
       >
         {watermarkSrc && (
@@ -345,9 +345,9 @@ function CertificatePreview({ form, large = false }: { form: CertificateSettings
           </div>
           <div className="min-w-0 flex-1 text-center">
             <div className="truncate text-base font-semibold" style={{ color: form.themeColor }}>{form.schoolName || "School Name"}</div>
-            <div className="truncate text-xs text-slate-500">{[form.schoolAddress, form.schoolPhone].filter(Boolean).join(" • ") || "Address • Phone"}</div>
+            <div className="truncate text-xs text-gray-500">{[form.schoolAddress, form.schoolPhone].filter(Boolean).join(" • ") || "Address • Phone"}</div>
           </div>
-          <div className="w-32 text-right text-[10px] leading-5 text-slate-600">
+          <div className="w-32 text-right text-[10px] leading-5 text-gray-600">
             <div>Year <b className="break-words" style={{ color: form.themeColor }}>{previewYear}</b></div>
             <div>Period <b className="break-words" style={{ color: form.themeColor }}>{previewPeriod}</b></div>
             <div>Issued <b style={{ color: form.themeColor }}>2026-05-26</b></div>
@@ -366,7 +366,7 @@ function CertificatePreview({ form, large = false }: { form: CertificateSettings
               ["Issue Date", "2026-05-26"],
             ].map(([label, value]) => (
               <div key={label} className="border-b border-r border-[#BDD7EE] p-2 even:border-r-0">
-                <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
+                <div className="text-[10px] uppercase tracking-wide text-gray-500">{label}</div>
                 <div className="break-words font-semibold">{value}</div>
               </div>
             ))}
@@ -379,7 +379,7 @@ function CertificatePreview({ form, large = false }: { form: CertificateSettings
               <span>#</span><span>Subject</span>{assessmentColumns.map((col) => <span key={col.code} className="text-center leading-tight">{col.name}</span>)}<span className="text-center">Total</span><span className="text-center">Grade</span>
             </div>
             {assessmentColumns.length === 0 ? (
-              <div className="px-2 py-3 text-center text-slate-500">
+              <div className="px-2 py-3 text-center text-gray-500">
                 Assessment columns load from admin-defined assessment weights.
               </div>
             ) : previewRows.map((row, index) => (
@@ -409,13 +409,13 @@ function CertificatePreview({ form, large = false }: { form: CertificateSettings
               <div>Principal: Promoted to the next level.</div>
             </div>
           </div>
-          <div className="mt-4 rounded border border-[#BDD7EE] bg-[#F8FBFD] p-2 text-center text-[10px] text-slate-600">
+          <div className="mt-4 rounded border border-[#BDD7EE] bg-[#F8FBFD] p-2 text-center text-[10px] text-gray-600">
             This certificate is valid only with the principal signature and official school stamp.
           </div>
           <div className="mt-6 grid grid-cols-3 gap-4 border-t-2 pt-4 text-center text-xs" style={{ borderColor: form.themeColor }}>
-            <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>Prepared By</b><div className="text-slate-500">Registrar / Class Teacher</div></div>
-            <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>{form.principalName || "Principal"}</b><div className="text-slate-500">Principal Signature</div></div>
-            <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>School Stamp</b><div className="text-slate-500">Official Seal</div></div>
+            <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>Prepared By</b><div className="text-gray-500">Registrar / Class Teacher</div></div>
+            <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>{form.principalName || "Principal"}</b><div className="text-gray-500">Principal Signature</div></div>
+            <div><div className="mx-2 mb-1 h-7 border-b" style={{ borderColor: form.themeColor }} /><b style={{ color: form.themeColor }}>School Stamp</b><div className="text-gray-500">Official Seal</div></div>
           </div>
         </div>
       </div>

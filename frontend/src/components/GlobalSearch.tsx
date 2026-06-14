@@ -405,7 +405,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
     if (isSuperAdmin) {
         return (
             <div ref={wrapperRef} className="relative z-[9998] w-full mx-auto flex items-center md:h-10 lg:h-10 font-sans">
-                <div className="flex items-center w-full h-9 sm:h-10 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#111827] overflow-hidden shadow-sm">
+                <div className="flex items-center w-full h-9 sm:h-10 rounded-full border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#161616] overflow-hidden shadow-sm">
                     <div className="pl-4 pr-2 text-gray-500 flex-shrink-0">
                         <Search className="h-4 w-4" />
                     </div>
@@ -426,7 +426,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                 shouldFilter={false}
             >
                 <div 
-                    className="flex items-center w-full h-9 sm:h-10 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#111827] overflow-hidden focus-within:border-[var(--brand-color,#e35336)] dark:focus-within:border-[var(--brand-color,#e35336)] shadow-sm transition-all duration-200 focus-within:shadow-inner" 
+                    className="flex items-center w-full h-9 sm:h-10 rounded-full border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#161616] overflow-hidden focus-within:border-[var(--brand-color,#e35336)] dark:focus-within:border-[var(--brand-color,#e35336)] shadow-sm transition-all duration-200 focus-within:shadow-inner" 
                     cmdk-input-wrapper=""
                 >
                     <div className="pl-4 pr-2 text-gray-500 flex-shrink-0 cursor-pointer" onClick={() => inputRef.current?.focus()}>
@@ -467,7 +467,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                 {open && mounted && createPortal(
                     <div
                         ref={dropdownRef}
-                        className="fixed left-0 right-0 mx-auto w-full max-w-2xl z-[9999] bg-white dark:bg-[#111827] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200"
+                        className="fixed left-0 right-0 mx-auto w-full max-w-2xl z-[9999] bg-white dark:bg-[#161616] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200"
                         style={{ top: '60px' }}
                     >
                         <CommandList className="max-h-[60vh] overflow-y-auto">
@@ -475,7 +475,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                             {!query && (
                                 <div className="py-2">
                                     {/* Search scope indicator */}
-                                    <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
+                                    <div className="px-4 py-2 border-b border-gray-100 dark:border-[#2A2A2A]">
                                         <div className="flex items-center gap-2 text-xs text-gray-500">
                                             <Shield className="h-3 w-3" />
                                             <span>{searchText("searchScopes", "Searching within your permissions")}</span>
@@ -494,7 +494,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                                                 <CommandItem
                                                     key={link.href}
                                                     onSelect={() => handleQuickLink(link.href)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors cursor-pointer border-none"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-50 dark:bg-[#1A1A1A] hover:bg-gray-100 dark:hover:bg-[#222222] rounded-full transition-colors cursor-pointer border-none"
                                                 >
                                                     {link.icon}
                                                     {navLabel(link.label)}
@@ -504,7 +504,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                                     </div>
 
                                     {/* Available search categories */}
-                                    <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800">
+                                    <div className="px-4 py-2 border-t border-gray-100 dark:border-[#2A2A2A]">
                                         <p className="text-xs font-semibold text-gray-400 mb-2">{searchText("youCanSearch", "You can search")}</p>
                                         <div className="flex flex-wrap gap-2">
                                             {allowedEntities.slice(0, 8).map((entity) => (
@@ -523,7 +523,7 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                             {/* Search results */}
                             {query && (
                                 <div>
-                                    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/40">
+                                    <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2A2A2A] bg-gray-50/80 dark:bg-[#1A1A1A]/40">
                                         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                                             <Search className="h-4 w-4 text-gray-500" />
                                             <span>{searchText("searchFor", "Search for")}</span>
@@ -546,14 +546,14 @@ export function GlobalSearch({ shortcut = "⌘K" }: GlobalSearchProps) {
                                         <CommandGroup>
                                             {Object.entries(groupedResults).map(([type, items]) => (
                                                 <div key={type}>
-                                                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 uppercase">
+                                                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-[#1A1A1A]/50 uppercase">
                                                         {type === 'navigation' ? searchText("actionsAndPages", "Actions & Pages") : navLabel(typeLabels[type] || type)}
                                                     </div>
                                                     {items.map((result) => (
                                                         <CommandItem
                                                             key={result.id}
                                                             onSelect={() => handleSelect(result)}
-                                                            className="w-full px-4 py-2 cursor-pointer text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-2 border-none data-[selected=true]:bg-gray-100 dark:data-[selected=true]:bg-gray-800"
+                                                            className="w-full px-4 py-2 cursor-pointer text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#222222] flex items-center gap-2 border-none data-[selected=true]:bg-gray-100 dark:data-[selected=true]:bg-gray-800"
                                                         >
                                                             {result.type === 'nav' ? result.icon : (typeIcons[result.type] || <Search className="h-4 w-4" />)}
                                                             <div className="flex flex-col">

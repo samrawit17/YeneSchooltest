@@ -1326,10 +1326,10 @@ export default function SchoolSettingsPage() {
             onValueChange={(val) => updateDraftSetting(setting.key, val === '__select__' ? '' : val)}
             disabled={isControlDisabled}
           >
-            <SelectTrigger className="w-48 bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white">
+            <SelectTrigger className="w-48 bg-white dark:bg-[#222222] border-gray-200 dark:border-[#333333] text-gray-900 dark:text-white">
               <SelectValue placeholder={actionText('selectOption', 'Select an option...')} />
             </SelectTrigger>
-            <SelectContent className="bg-white dark:bg-slate-800">
+            <SelectContent className="bg-white dark:bg-[#1A1A1A]">
               <SelectItem value="__select__">{actionText('selectOption', 'Select an option...')}</SelectItem>
               {options.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
@@ -1355,7 +1355,7 @@ export default function SchoolSettingsPage() {
         <div className="flex flex-col items-start gap-1.5">
           <div className="flex items-center gap-2">
             {isPenaltyAmount && (
-              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+              <span className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600 dark:border-[#333333] dark:bg-[#222222] dark:text-[#CCCCCC]">
                 ETB
               </span>
             )}
@@ -1382,12 +1382,12 @@ export default function SchoolSettingsPage() {
               className={isPenaltyAmount ? "w-32" : isDiscountPercent ? "w-24" : "w-24"}
             />
             {isDiscountPercent && (
-              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+              <span className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600 dark:border-[#333333] dark:bg-[#222222] dark:text-[#CCCCCC]">
                 %
               </span>
             )}
             {isPaymentDueDay && (
-              <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-xs font-semibold text-slate-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+              <span className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs font-semibold text-gray-600 dark:border-[#333333] dark:bg-[#222222] dark:text-[#CCCCCC]">
                 day
               </span>
             )}
@@ -1427,7 +1427,7 @@ export default function SchoolSettingsPage() {
               value={value || setting.systemDefault || '#e35336'}
               onChange={(e) => updateDraftSetting(setting.key, e.target.value)}
               disabled={isControlDisabled}
-              className="w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer disabled:opacity-50"
+              className="w-10 h-10 rounded-lg border border-gray-200 dark:border-[#333333] cursor-pointer disabled:opacity-50"
             />
           </div>
           <Input
@@ -1499,20 +1499,20 @@ export default function SchoolSettingsPage() {
   return (
     <div className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden p-3 sm:p-4 md:p-6">
       {/* Page Title */}
-      <h1 className="mb-1 text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
-      <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
+      <h1 className="mb-1 text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
+      <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
         Configure all school-specific settings below. Changes take effect immediately after saving.
       </p>
 
       {/* School Header */}
       {schoolInfo && (
-        <Card className="mb-6 overflow-hidden border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+        <Card className="mb-6 overflow-hidden border-gray-200 bg-white dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-4">
                 <div className="relative shrink-0">
                   {isEditingLogo ? (
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-slate-300 bg-slate-50 dark:bg-slate-700">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-gray-50 dark:bg-[#222222]">
                       <input
                         type="file"
                         accept="image/*"
@@ -1521,12 +1521,12 @@ export default function SchoolSettingsPage() {
                         id="logo-upload"
                       />
                       <label htmlFor="logo-upload" className="flex h-full w-full cursor-pointer flex-col items-center justify-center rounded-full text-center">
-                        <ImageIcon className="mb-0.5 h-4 w-4 text-slate-400" />
-                        <span className="text-[10px] text-slate-500">{actionText('upload', 'Upload')}</span>
+                        <ImageIcon className="mb-0.5 h-4 w-4 text-gray-400" />
+                        <span className="text-[10px] text-gray-500">{actionText('upload', 'Upload')}</span>
                       </label>
                     </div>
                   ) : schoolLogoSrc ? (
-                    <div className="group relative h-16 w-16 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-600 dark:bg-slate-700">
+                    <div className="group relative h-16 w-16 overflow-hidden rounded-full border border-gray-200 bg-gray-50 shadow-sm dark:border-[#333333] dark:bg-[#222222]">
                       <img
                         src={schoolLogoSrc}
                         alt={schoolInfo.name || "School Logo"}
@@ -1560,12 +1560,12 @@ export default function SchoolSettingsPage() {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h1 className="truncate text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
+                  <h1 className="truncate text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">
                     {schoolInfo.name}
                   </h1>
                   {!isSuperAdmin && (
                     <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.labels?.code ?? 'Code'}:</span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{t.labels?.code ?? 'Code'}:</span>
                       {isEditingCode ? (
                         <div className="flex flex-wrap items-center gap-1.5">
                           <Input
@@ -1599,7 +1599,7 @@ export default function SchoolSettingsPage() {
                         </div>
                       ) : schoolInfo.code ? (
                         <span
-                          className="cursor-pointer rounded bg-slate-100 px-2 py-0.5 font-mono text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                          className="cursor-pointer rounded bg-gray-100 px-2 py-0.5 font-mono text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-[#222222] dark:text-gray-300 dark:hover:bg-[#333333]"
                           onClick={() => setIsEditingCode(true)}
                           title={messageText('clickToEdit', 'Click to edit')}
                         >
@@ -1616,13 +1616,13 @@ export default function SchoolSettingsPage() {
                     </div>
                   )}
                   {isSuperAdmin && (
-                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#111111]/50">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                             Public School URL
                           </p>
-                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             Use these links when connecting this school&apos;s dedicated website to the management system.
                           </p>
                         </div>
@@ -1673,10 +1673,10 @@ export default function SchoolSettingsPage() {
                           {publicLinks.map((link) => (
                             <div
                               key={link.label}
-                              className="min-w-0 rounded-md border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800"
+                              className="min-w-0 rounded-md border border-gray-200 bg-white p-2 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]"
                             >
                               <div className="mb-1 flex items-center justify-between gap-2">
-                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
                                   {link.label}
                                 </span>
                                 <div className="flex items-center gap-1">
@@ -1704,7 +1704,7 @@ export default function SchoolSettingsPage() {
                                   </Button>
                                 </div>
                               </div>
-                              <p className="truncate font-mono text-xs text-slate-500 dark:text-slate-400">
+                              <p className="truncate font-mono text-xs text-gray-500 dark:text-gray-400">
                                 {link.url}
                               </p>
                             </div>
@@ -1752,15 +1752,15 @@ export default function SchoolSettingsPage() {
 
           return (
             <TabsContent key={category} value={category} className="mt-4 min-w-0 max-w-full">
-              <Card className="max-w-full overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+              <Card className="max-w-full overflow-hidden bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A]">
                 <CardHeader className="min-w-0">
                   <div className="flex min-w-0 items-start gap-2">
                     <div className="h-10 w-10 shrink-0 rounded-lg bg-[var(--brand-color,#e35336)]/10 flex items-center justify-center">
                       <Icon className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
                     </div>
                     <div className="min-w-0">
-                      <CardTitle className="break-words text-slate-900 dark:text-white">{categoryText(category)}</CardTitle>
-                      <CardDescription className="break-words text-slate-500 dark:text-slate-400">
+                      <CardTitle className="break-words text-gray-900 dark:text-white">{categoryText(category)}</CardTitle>
+                      <CardDescription className="break-words text-gray-500 dark:text-gray-400">
                         {t.configurePrefix} {categoryText(category).toLowerCase()} {t.configureSuffix}
                       </CardDescription>
                     </div>
@@ -1768,15 +1768,15 @@ export default function SchoolSettingsPage() {
                 </CardHeader>
                 <CardContent className="min-w-0 space-y-4">
                   {category === 'branding' && (
-                    <div className="flex flex-col gap-4 rounded-lg border bg-white p-4 dark:bg-slate-800/50 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col gap-4 rounded-lg border bg-white p-4 dark:bg-[#1A1A1A]/50 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1 sm:pr-4">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <h4 className="break-words font-medium text-slate-900 dark:text-white">Login Image</h4>
+                          <h4 className="break-words font-medium text-gray-900 dark:text-white">Login Image</h4>
                         </div>
-                        <p className="mt-0.5 break-words text-sm text-slate-500 dark:text-slate-400">
+                        <p className="mt-0.5 break-words text-sm text-gray-500 dark:text-gray-400">
                           Image shown on the left side of this school&apos;s login page.
                         </p>
-                        <div className="mt-3 h-32 w-full max-w-sm overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900">
+                        <div className="mt-3 h-32 w-full max-w-sm overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-[#2A2A2A] dark:bg-[#111111]">
                           {selectedLoginImagePreview ? (
                             <img
                               src={selectedLoginImagePreview}
@@ -1790,7 +1790,7 @@ export default function SchoolSettingsPage() {
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <div className="flex h-full w-full items-center justify-center text-sm text-slate-500">
+                            <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
                               Default login image
                             </div>
                           )}
@@ -1802,7 +1802,7 @@ export default function SchoolSettingsPage() {
                           accept="image/*"
                           onChange={handleLoginImageFileChange}
                           disabled={savingLoginImage}
-                          className="bg-white dark:bg-slate-700"
+                          className="bg-white dark:bg-[#222222]"
                         />
                         <div className="flex gap-2">
                           <Button
@@ -1832,27 +1832,27 @@ export default function SchoolSettingsPage() {
                       key={setting.key}
                       className={`flex flex-col gap-4 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between ${
                         !isSettingVisible(setting) 
-                          ? 'bg-slate-50 dark:bg-slate-700/50 opacity-60' 
-                          : 'bg-white dark:bg-slate-800/50'
+                          ? 'bg-gray-50 dark:bg-[#222222]/50 opacity-60' 
+                          : 'bg-white dark:bg-[#1A1A1A]/50'
                       }`}
                     >
                       <div className="min-w-0 flex-1 sm:pr-4">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <h4 className="break-words font-medium text-slate-900 dark:text-white">{settingText(setting.label)}</h4>
+                          <h4 className="break-words font-medium text-gray-900 dark:text-white">{settingText(setting.label)}</h4>
                           {setting.requiredTier && (
                             <Badge variant="outline" className="whitespace-normal break-words text-xs">
                               {setting.requiredTier}
                             </Badge>
                           )}
                         </div>
-                        <p className="mt-0.5 break-words text-sm text-slate-500 dark:text-slate-400">{settingText(setting.description)}</p>
+                        <p className="mt-0.5 break-words text-sm text-gray-500 dark:text-gray-400">{settingText(setting.description)}</p>
                         {isSettingLocked(setting.key) && (
                           <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                             {messageText('lockedAfterSetup', 'Locked after first setup to protect existing academic records.')}
                           </p>
                         )}
                         {!isSettingVisible(setting) && (
-                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                             {messageText('requires', 'Requires')} {setting.requiredFeature ? `${setting.requiredFeature} ${messageText('feature', 'feature')}` : `${setting.requiredTier} ${messageText('plan', 'plan')}`}
                           </p>
                         )}

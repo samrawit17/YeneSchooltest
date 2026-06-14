@@ -116,7 +116,7 @@ export class BulkUploadController {
   ) {
     try {
       const content = this.readValidatedCsvFile(file, MAX_STUDENT_BULK_UPLOAD_ROWS);
-      const records = this.bulkUploadService.parseCSV(content);
+      const records = this.bulkUploadService.parseCSV(content, true);
       this.assertRowLimit(records.length, MAX_STUDENT_BULK_UPLOAD_ROWS, 'student');
 
       const result =

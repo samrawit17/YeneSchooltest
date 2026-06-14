@@ -143,7 +143,7 @@ export default function TeacherDisciplinePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 space-y-6">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#111111] p-6 space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-5 w-72" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -197,12 +197,12 @@ export default function TeacherDisciplinePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       <div className="px-6 py-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Discipline Records</h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Discipline Records</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               View incidents for your homeroom students
             </p>
           </div>
@@ -210,9 +210,9 @@ export default function TeacherDisciplinePage() {
             <div className="flex items-center gap-2 shrink-0 mr-[30px]">
               {students.length > 1 && (
                 <>
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">Select Student</label>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Select Student</label>
                   <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                    <SelectTrigger className="w-full max-w-[200px] dark:bg-slate-800 dark:border-slate-700">
+                    <SelectTrigger className="w-full max-w-[200px] dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                       <SelectValue placeholder="All students" />
                     </SelectTrigger>
                     <SelectContent>
@@ -301,19 +301,19 @@ export default function TeacherDisciplinePage() {
 
       <div className="px-6 py-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-gray-500 dark:text-gray-400">Homeroom Students</p>
               <p className="text-xl font-bold dark:text-white">{students.length}</p>
             </CardContent>
           </Card>
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-gray-500 dark:text-gray-400">Open Incidents</p>
               <p className="text-xl font-bold text-orange-600">{openIncidents.length}</p>
             </CardContent>
           </Card>
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardContent className="pt-5 pb-4">
               <p className="text-xs text-gray-500 dark:text-gray-400">Resolved</p>
               <p className="text-xl font-bold text-green-600">{resolvedIncidents.length}</p>
@@ -322,14 +322,14 @@ export default function TeacherDisciplinePage() {
         </div>
 
         {filteredIncidents.length === 0 ? (
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Users className="w-10 h-10 text-gray-400 mb-4" />
               <p className="text-gray-500 dark:text-gray-400">No discipline records found for your students</p>
             </CardContent>
           </Card>
         ) : (
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardHeader>
               <CardTitle>Incident History</CardTitle>
             </CardHeader>
@@ -341,15 +341,15 @@ export default function TeacherDisciplinePage() {
                     <div key={incident.id} className="p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-                            <User className="h-5 w-5 text-slate-500" />
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-[#1A1A1A]">
+                            <User className="h-5 w-5 text-gray-500" />
                           </div>
                           <div>
                             <TranslatedText
                               text={incident.title}
                               textClassName="font-medium dark:text-white"
                             />
-                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                               {incident.childName} • {new Date(incident.incidentDate).toLocaleDateString()}
                             </p>
                             <TranslatedText
@@ -376,7 +376,7 @@ export default function TeacherDisciplinePage() {
                         </div>
                       </div>
                       {incident.outcome && (
-                        <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div className="mt-3 p-3 bg-gray-50 dark:bg-[#1A1A1A] rounded-lg">
                           <div className="text-sm text-gray-600 dark:text-gray-300">
                             <span className="font-medium">Outcome:</span>
                             <TranslatedText text={incident.outcome} className="mt-1" />

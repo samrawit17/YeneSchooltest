@@ -365,14 +365,14 @@ const AdminDashboardView = () => {
       case "low":
         return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
       default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
+        return "bg-gray-100 text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-400";
     }
   };
 
   // Loading skeleton
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen overflow-x-hidden bg-gray-50 p-3 dark:bg-slate-900 sm:p-4 md:p-6">
+      <div className="min-h-screen overflow-x-hidden bg-gray-50 p-3 dark:bg-[#111111] sm:p-4 md:p-6">
         <div className="w-full space-y-5 md:space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-72" />
@@ -402,7 +402,7 @@ const AdminDashboardView = () => {
   // Error state
   if (error && !dashboardData) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#111111] flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center space-y-4">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
@@ -432,7 +432,7 @@ const AdminDashboardView = () => {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gray-50 transition-colors dark:bg-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-gray-50 transition-colors dark:bg-[#111111]">
       <div className="p-3 sm:p-4 md:p-6">
         <div className="w-full space-y-5 md:space-y-6">
           {/* Header */}
@@ -496,7 +496,7 @@ const AdminDashboardView = () => {
                       size="icon"
                       onClick={() => dismissAlert(alert)}
                       aria-label="Close dashboard reminder"
-                      className="absolute right-2 top-2 h-8 w-8 shrink-0 rounded-full text-gray-500 hover:bg-white/70 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-slate-800/70 dark:hover:text-white sm:top-1/2 sm:-translate-y-1/2"
+                      className="absolute right-2 top-2 h-8 w-8 shrink-0 rounded-full text-gray-500 hover:bg-white/70 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#1A1A1A]/70 dark:hover:text-white sm:top-1/2 sm:-translate-y-1/2"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -509,7 +509,7 @@ const AdminDashboardView = () => {
           {/* KPI Row */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {/* Total Students */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -527,7 +527,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Total Teachers */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -545,7 +545,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Total Classes */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -565,7 +565,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Attendance Today */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -590,7 +590,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Pending Enrollments */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -614,7 +614,7 @@ const AdminDashboardView = () => {
             </Card>
 
             {/* Upcoming Exams */}
-            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 lg:max-w-[185px] lg:justify-self-center">
+            <Card className="min-w-0 w-full shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] lg:max-w-[185px] lg:justify-self-center">
               <CardContent className="p-2.5 sm:p-3 lg:p-2.5">
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -636,7 +636,7 @@ const AdminDashboardView = () => {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             {/* Weekly Attendance Chart */}
             {visibleCharts.attendance && (
-              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
                   {showCharts ? (
                     <DynamicChart chartData={visibleCharts.attendance} height={240} />
@@ -649,7 +649,7 @@ const AdminDashboardView = () => {
 
             {/* Users by Role Distribution */}
             {visibleCharts.userDistribution && (
-              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
                   {showCharts ? (
                     <DynamicChart chartData={visibleCharts.userDistribution} height={240} />
@@ -663,7 +663,7 @@ const AdminDashboardView = () => {
 
           {/* Sections per Class - Full Width */}
           {visibleCharts.classDistribution && (
-            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
               <CardContent className="p-3 sm:p-4">
                 {showCharts ? (
                   <DynamicChart chartData={visibleCharts.classDistribution} height={240} />
@@ -678,7 +678,7 @@ const AdminDashboardView = () => {
           <div className="grid grid-cols-1 gap-6">
             {/* School Overview Pie Chart */}
             {visibleCharts.overview && (
-              <Card className="min-w-0 overflow-hidden lg:col-span-2 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800" style={{ contain: 'layout style paint' }}>
+              <Card className="min-w-0 overflow-hidden lg:col-span-2 shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
                   {showCharts ? (
                     <DynamicChart chartData={visibleCharts.overview} height={260} />

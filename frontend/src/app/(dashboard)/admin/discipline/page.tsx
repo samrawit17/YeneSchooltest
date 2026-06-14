@@ -124,7 +124,7 @@ export default function DisciplinePage() {
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-[#111111]">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
@@ -133,8 +133,8 @@ export default function DisciplinePage() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
+      <div className="border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111]">
         <div className="mx-auto max-w-7xl px-6 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
@@ -145,7 +145,7 @@ export default function DisciplinePage() {
                 <h1 className="text-2xl font-bold text-[#e35336]">
                   Discipline Records
                 </h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   Track and manage student disciplinary incidents
                 </p>
               </div>
@@ -178,7 +178,7 @@ export default function DisciplinePage() {
               value: incidents.filter((i) => i.status === "RESOLVED").length,
             },
           ].map((stat) => (
-            <Card key={stat.label} className="dark:bg-slate-900 dark:border-slate-800">
+            <Card key={stat.label} className="dark:bg-[#111111] dark:border-[#2A2A2A]">
               <CardContent className="pt-5 pb-4">
                 <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
                 <p className="text-xl font-bold dark:text-white">{stat.value}</p>
@@ -187,7 +187,7 @@ export default function DisciplinePage() {
           ))}
         </div>
 
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
+        <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Filter className="w-4 h-4" /> Filters
@@ -203,14 +203,14 @@ export default function DisciplinePage() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Search by title or student..."
-                    className="pl-9 dark:bg-slate-800 dark:border-slate-700"
+                    className="pl-9 dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                   />
                 </div>
               </div>
               <div className="w-full md:w-40">
                 <Label className="text-xs text-gray-500 mb-1 block">Severity</Label>
                 <Select value={filterSeverity} onValueChange={setFilterSeverity}>
-                  <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700">
+                  <SelectTrigger className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
@@ -225,7 +225,7 @@ export default function DisciplinePage() {
               <div className="w-full md:w-40">
                 <Label className="text-xs text-gray-500 mb-1 block">Status</Label>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700">
+                  <SelectTrigger className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
@@ -242,14 +242,14 @@ export default function DisciplinePage() {
         </Card>
 
         {loading ? (
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Loader2 className="w-10 h-10 animate-spin text-[var(--brand-color,#e35336)] mb-4" />
               <p className="text-gray-500">Loading incidents...</p>
             </CardContent>
           </Card>
         ) : filteredIncidents.length === 0 ? (
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardContent className="flex flex-col items-center justify-center py-16">
               <AlertTriangle className="w-10 h-10 text-gray-400 mb-4" />
               <p className="text-gray-500">No discipline incidents found</p>
@@ -263,7 +263,7 @@ export default function DisciplinePage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardContent className="p-0">
               <div className="divide-y divide-gray-200 dark:divide-gray-800">
                 {filteredIncidents.map((incident) => {
@@ -274,11 +274,11 @@ export default function DisciplinePage() {
                       onClick={() =>
                         router.push(`/admin/discipline/${incident.id}`)
                       }
-                      className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                      className="flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#1A1A1A] cursor-pointer transition-colors"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-                          <User className="h-5 w-5 text-slate-500" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-[#1A1A1A]">
+                          <User className="h-5 w-5 text-gray-500" />
                         </div>
                         <div>
                           <TranslatedText
@@ -286,7 +286,7 @@ export default function DisciplinePage() {
                             textClassName="font-medium dark:text-white"
                             showControls={false}
                           />
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             {incident.student.user.name} •{" "}
                             {incident.student.studentCode} •{" "}
                             {new Date(incident.incidentDate).toLocaleDateString()}

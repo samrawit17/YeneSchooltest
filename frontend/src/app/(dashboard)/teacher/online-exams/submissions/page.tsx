@@ -53,7 +53,7 @@ export default function TeacherOnlineExamSubmissionsPage() {
   const submissions = submissionsQuery.data || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 p-6 dark:bg-[#111111]">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <Button variant="outline" size="icon" asChild>
@@ -62,8 +62,8 @@ export default function TeacherOnlineExamSubmissionsPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Submitted Exams</h1>
-            <p className="text-sm text-slate-500">Student submissions for your assigned classes and subjects.</p>
+            <h1 className="text-2xl font-bold text-gray-950 dark:text-white">Submitted Exams</h1>
+            <p className="text-sm text-gray-500">Student submissions for your assigned classes and subjects.</p>
           </div>
         </div>
         <Button asChild>
@@ -80,12 +80,12 @@ export default function TeacherOnlineExamSubmissionsPage() {
         </CardHeader>
         <CardContent className="p-0">
           {submissionsQuery.isLoading ? (
-            <div className="flex items-center justify-center py-16 text-sm text-slate-500">
+            <div className="flex items-center justify-center py-16 text-sm text-gray-500">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Loading submissions...
             </div>
           ) : submissions.length === 0 ? (
-            <div className="py-16 text-center text-sm text-slate-500">
+            <div className="py-16 text-center text-sm text-gray-500">
               No submitted online exams yet.
             </div>
           ) : (

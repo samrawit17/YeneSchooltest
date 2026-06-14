@@ -295,11 +295,11 @@ export default function ParentPresentationReportPage() {
   if (isLoading || !isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 p-6 dark:bg-[#111111]">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 dark:text-white">{briefTitle}</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-2xl font-bold text-gray-950 dark:text-white">{briefTitle}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Compare published report-card results across {periodLabelPlural.toLowerCase()} and export a boardroom-ready parent meeting brief.
           </p>
         </div>
@@ -319,7 +319,7 @@ export default function ParentPresentationReportPage() {
         </div>
       </div>
 
-      <Card className="mb-6 dark:border-slate-800 dark:bg-slate-900">
+      <Card className="mb-6 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
         <CardContent className="grid gap-3 pt-6 md:grid-cols-5">
           <Select value={selectedYear} onValueChange={setSelectedYear}>
             <SelectTrigger><SelectValue placeholder="Academic year" /></SelectTrigger>
@@ -370,10 +370,10 @@ export default function ParentPresentationReportPage() {
           {[1, 2, 3].map((item) => <Skeleton key={item} className="h-32 rounded-xl" />)}
         </div>
       ) : !report ? (
-        <Card className="border-dashed dark:border-slate-800 dark:bg-slate-900">
+        <Card className="border-dashed dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <FileText className="mb-3 h-10 w-10 text-slate-300" />
-            <p className="text-sm text-slate-500">Select an academic year and two terms to generate the report.</p>
+            <FileText className="mb-3 h-10 w-10 text-gray-300" />
+            <p className="text-sm text-gray-500">Select an academic year and two terms to generate the report.</p>
           </CardContent>
         </Card>
       ) : (
@@ -412,7 +412,7 @@ export default function ParentPresentationReportPage() {
             <InsightCard title="Weak Subjects" icon={<AlertTriangle className="h-5 w-5 text-amber-500" />} rows={report.insights.weakSubjects.map((row) => `${row.subjectName}: ${formatPercent(row.toAverage)}`)} />
           </div>
 
-          <Card className="dark:border-slate-800 dark:bg-slate-900">
+          <Card className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
             <CardHeader>
               <CardTitle>Class Comparison</CardTitle>
               <CardDescription>Sorted by largest decline first for faster review.</CardDescription>
@@ -420,7 +420,7 @@ export default function ParentPresentationReportPage() {
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-xs uppercase text-slate-500 dark:border-slate-800">
+                  <tr className="border-b text-left text-xs uppercase text-gray-500 dark:border-[#2A2A2A]">
                     <th className="py-2">Class</th>
                     <th className="py-2">{report.fromTerm.name}</th>
                     <th className="py-2">{report.toTerm.name}</th>
@@ -432,12 +432,12 @@ export default function ParentPresentationReportPage() {
                 <tbody>
                   {sortedClassSummaries.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-sm text-slate-500">
+                      <td colSpan={6} className="py-8 text-center text-sm text-gray-500">
                         No class comparison rows for this selection.
                       </td>
                     </tr>
                   ) : sortedClassSummaries.map((row) => (
-                    <tr key={row.classId} className="border-b last:border-0 dark:border-slate-800">
+                    <tr key={row.classId} className="border-b last:border-0 dark:border-[#2A2A2A]">
                       <td className="py-3 font-medium dark:text-white">{classLabel(row)}</td>
                       <td>{formatPercent(row.fromAverage)}</td>
                       <td>{formatPercent(row.toAverage)}</td>
@@ -451,7 +451,7 @@ export default function ParentPresentationReportPage() {
             </CardContent>
           </Card>
 
-          <Card className="dark:border-slate-800 dark:bg-slate-900">
+          <Card className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
             <CardHeader>
               <CardTitle>Subject Comparison</CardTitle>
               <CardDescription>Lowest current averages are listed first.</CardDescription>
@@ -459,7 +459,7 @@ export default function ParentPresentationReportPage() {
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-xs uppercase text-slate-500 dark:border-slate-800">
+                  <tr className="border-b text-left text-xs uppercase text-gray-500 dark:border-[#2A2A2A]">
                     <th className="py-2">Subject</th>
                     <th className="py-2">{report.fromTerm.name}</th>
                     <th className="py-2">{report.toTerm.name}</th>
@@ -469,12 +469,12 @@ export default function ParentPresentationReportPage() {
                 <tbody>
                   {sortedSubjectSummaries.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-sm text-slate-500">
+                      <td colSpan={4} className="py-8 text-center text-sm text-gray-500">
                         No subject rows for this selection.
                       </td>
                     </tr>
                   ) : sortedSubjectSummaries.map((row) => (
-                    <tr key={row.subjectId} className="border-b last:border-0 dark:border-slate-800">
+                    <tr key={row.subjectId} className="border-b last:border-0 dark:border-[#2A2A2A]">
                       <td className="py-3 font-medium dark:text-white">{row.subjectName}</td>
                       <td>{formatPercent(row.fromAverage)}</td>
                       <td>{formatPercent(row.toAverage)}</td>
@@ -493,11 +493,11 @@ export default function ParentPresentationReportPage() {
 
 function SummaryTile({ title, value, detail }: { title: string; value: string; detail: string }) {
   return (
-    <Card className="dark:border-slate-800 dark:bg-slate-900">
+    <Card className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
       <CardContent className="pt-6">
-        <p className="text-xs font-semibold uppercase text-slate-500">{title}</p>
-        <p className="mt-2 truncate text-lg font-semibold text-slate-950 dark:text-white">{value}</p>
-        <p className="mt-1 text-xs text-slate-500">{detail}</p>
+        <p className="text-xs font-semibold uppercase text-gray-500">{title}</p>
+        <p className="mt-2 truncate text-lg font-semibold text-gray-950 dark:text-white">{value}</p>
+        <p className="mt-1 text-xs text-gray-500">{detail}</p>
       </CardContent>
     </Card>
   );
@@ -505,11 +505,11 @@ function SummaryTile({ title, value, detail }: { title: string; value: string; d
 
 function Metric({ title, from, to, change }: { title: string; from: number | null; to: number | null; change?: number | null }) {
   return (
-    <Card className="dark:border-slate-800 dark:bg-slate-900">
+    <Card className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
       <CardContent className="pt-6">
-        <p className="text-sm text-slate-500">{title}</p>
+        <p className="text-sm text-gray-500">{title}</p>
         <p className="mt-2 text-2xl font-semibold dark:text-white">{formatPercent(to)}</p>
-        <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+        <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
           <span>Previous {formatPercent(from)}</span>
           {change !== undefined ? <ChangeBadge value={change} /> : null}
         </div>
@@ -527,17 +527,17 @@ function ChangeBadge({ value }: { value: number | null | undefined }) {
 
 function InsightCard({ title, icon, rows }: { title: string; icon: ReactNode; rows: string[] }) {
   return (
-    <Card className="dark:border-slate-800 dark:bg-slate-900">
+    <Card className="dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">{icon}{title}</CardTitle>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-500">No data available.</p>
+          <p className="text-sm text-gray-500">No data available.</p>
         ) : (
           <ul className="space-y-2">
             {rows.map((row) => (
-              <li key={row} className="text-sm text-slate-700 dark:text-slate-200">{row}</li>
+              <li key={row} className="text-sm text-gray-700 dark:text-gray-200">{row}</li>
             ))}
           </ul>
         )}

@@ -128,7 +128,7 @@ export default function IncidentDetailPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-[#111111]">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
@@ -137,8 +137,8 @@ export default function IncidentDetailPage() {
   if (!isAuthenticated || !incident) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
+      <div className="border-b border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#111111]">
         <div className="mx-auto max-w-3xl px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -154,7 +154,7 @@ export default function IncidentDetailPage() {
                 </h1>
                 <TranslatedText
                   text={incident.title}
-                  textClassName="mt-1 text-sm text-slate-500 dark:text-slate-400"
+                  textClassName="mt-1 text-sm text-gray-500 dark:text-gray-400"
                 />
               </div>
             </div>
@@ -166,7 +166,7 @@ export default function IncidentDetailPage() {
       </div>
 
       <div className="mx-auto max-w-3xl px-6 py-6 space-y-6">
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
+        <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
           <CardHeader>
             <CardTitle>Incident Information</CardTitle>
           </CardHeader>
@@ -225,7 +225,7 @@ export default function IncidentDetailPage() {
         </Card>
 
         {user?.role === "ADMIN" && (
-          <Card className="dark:bg-slate-900 dark:border-slate-800">
+          <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
             <CardHeader>
               <CardTitle>Update Incident</CardTitle>
             </CardHeader>
@@ -238,7 +238,7 @@ export default function IncidentDetailPage() {
                     setUpdateData({ ...updateData, status: value })
                   }
                 >
-                  <SelectTrigger className="dark:bg-slate-800 dark:border-slate-700">
+                  <SelectTrigger className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -259,7 +259,7 @@ export default function IncidentDetailPage() {
                   }
                   placeholder="What action was taken?"
                   rows={3}
-                  className="dark:bg-slate-800 dark:border-slate-700"
+                  className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 />
               </div>
 
@@ -272,7 +272,7 @@ export default function IncidentDetailPage() {
                   }
                   placeholder="What was the outcome?"
                   rows={3}
-                  className="dark:bg-slate-800 dark:border-slate-700"
+                  className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 />
               </div>
 

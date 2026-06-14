@@ -174,7 +174,7 @@ const ParentListPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
+      <div className="p-6 min-h-screen bg-gray-50 dark:bg-[#111111]">
         <div className="w-full">
           <Skeleton className="h-8 w-48 mb-6" />
           <Card>
@@ -191,19 +191,19 @@ const ParentListPage = () => {
   const endItem = Math.min(currentPage * limit, total);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111] transition-colors w-full">
       <div className="p-4 md:p-6 w-full min-w-0 max-w-full">
         <div className="space-y-6 w-full min-w-0">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 w-full min-w-0">
             <div>
               <h1 className="text-2xl font-bold text-black dark:text-white">{t.titles.parents}</h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 {t.subtitles.parents}
               </p>
             </div>
           </div>
 
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 w-full">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] w-full">
             <CardContent className="p-3 sm:p-4">
               <div className="flex flex-row flex-wrap items-center gap-3">
                 <div className="flex-1 min-w-[160px]">
@@ -219,7 +219,7 @@ const ParentListPage = () => {
                   <select
                     value={statusFilter}
                     onChange={(e) => updateStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                    className="px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#111111] text-gray-900 dark:text-white"
                   >
                     <option value="">{t.filters.allStatus}</option>
                     <option value="Active">{t.status.active}</option>
@@ -229,7 +229,7 @@ const ParentListPage = () => {
                   <select
                     value={childrenFilter}
                     onChange={(e) => updateChildrenFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                    className="px-3 py-2 border border-gray-200 dark:border-[#2A2A2A] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-[#111111] text-gray-900 dark:text-white"
                   >
                     <option value="">{t.filters.allParents}</option>
                     <option value="With Children">{t.filters.withChildren}</option>
@@ -240,7 +240,7 @@ const ParentListPage = () => {
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden w-full">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] overflow-hidden w-full">
             <div className="overflow-x-auto w-full">
               {parents.length === 0 ? (
                 <div className="p-8 text-center">
@@ -256,8 +256,8 @@ const ParentListPage = () => {
                 </div>
               ) : (
                 <Table className="w-full">
-                  <TableHeader className="bg-gray-50 dark:bg-slate-900/50 sticky top-0">
-                    <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                  <TableHeader className="bg-gray-50 dark:bg-[#111111]/50 sticky top-0">
+                    <TableRow className="border-b border-gray-100 dark:border-[#2A2A2A]">
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.photo}</TableHead>
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.parentName}</TableHead>
                       <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 px-4 py-3">{t.table.phone}</TableHead>
@@ -271,7 +271,7 @@ const ParentListPage = () => {
                     {parents.map((parent) => (
                       <TableRow
                         key={parent.id}
-                        className="border-b border-gray-100 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
+                        className="border-b border-gray-100 dark:border-[#2A2A2A]/50 hover:bg-gray-50 dark:hover:bg-[#2A2A2A]/30 transition-colors cursor-pointer"
                         onClick={() => router.push(`/list/parents/${parent.id}`)}
                       >
                         <TableCell className="px-4 py-3">

@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export default function FinanceLoading() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       {/* Header */}
-      <div className="border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+      <div className="border-b border-gray-200 dark:border-[#2A2A2A] px-6 py-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <Skeleton className="h-8 w-48" />
@@ -16,9 +16,9 @@ export default function FinanceLoading() {
             <Skeleton className="h-8 w-[100px]" />
             <Skeleton className="h-8 w-[140px]" />
             <Skeleton className="h-8 w-[140px]" />
-            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1" />
+            <div className="h-5 w-px bg-gray-300 dark:bg-[#333333] mx-1" />
             <Skeleton className="h-8 w-24" />
-            <div className="h-5 w-px bg-slate-300 dark:bg-slate-600 mx-1" />
+            <div className="h-5 w-px bg-gray-300 dark:bg-[#333333] mx-1" />
             <Skeleton className="h-8 w-36" />
           </div>
         </div>

@@ -223,7 +223,7 @@ const ChildFeesPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
+      <div className="p-6 min-h-screen" className="min-h-screen bg-gray-50 dark:bg-[#111111]">
         <Skeleton className="h-8 w-48 mb-6" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
@@ -239,7 +239,7 @@ const ChildFeesPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111] transition-colors">
       <div className="p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
@@ -249,7 +249,7 @@ const ChildFeesPage = () => {
                 variant="outline"
                 size="icon"
                 onClick={() => router.push(`/parent/children/${childId}`)}
-                className="dark:border-slate-700 dark:hover:bg-slate-800"
+                className="dark:border-[#2A2A2A] dark:hover:bg-[#1A1A1A]"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -266,7 +266,7 @@ const ChildFeesPage = () => {
 
           {/* Top Summary Section - Three Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
@@ -282,7 +282,7 @@ const ChildFeesPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
@@ -298,7 +298,7 @@ const ChildFeesPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-lg">
@@ -318,7 +318,7 @@ const ChildFeesPage = () => {
           {/* Main Section - Fee Breakdown Table and Payment Summary */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Fee Breakdown Table */}
-            <Card className="lg:col-span-2 shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="lg:col-span-2 shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                   Fee Breakdown
@@ -331,7 +331,7 @@ const ChildFeesPage = () => {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-b border-gray-100 dark:border-slate-700">
+                      <TableRow className="border-b border-gray-100 dark:border-[#2A2A2A]">
                         <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Fee Type</TableHead>
                         <TableHead className="text-left text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Term</TableHead>
                         <TableHead className="text-right text-xs font-medium text-gray-500 dark:text-gray-400 pb-3">Amount</TableHead>
@@ -342,7 +342,7 @@ const ChildFeesPage = () => {
                     </TableHeader>
                     <TableBody>
                       {feeItems.map((item) => (
-                        <TableRow key={item.id} className="border-b border-gray-50 dark:border-slate-700/50 last:border-0">
+                        <TableRow key={item.id} className="border-b border-gray-50 dark:border-[#2A2A2A]/50 last:border-0">
                           <TableCell className="py-3">
                             <p className="text-sm font-medium text-gray-900 dark:text-white">{cleanFeeTypeName(item.name)}</p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">{formatPeriodLabel(item)}</p>
@@ -371,7 +371,7 @@ const ChildFeesPage = () => {
             </Card>
 
             {/* Right Side Panel - Payment Summary Card */}
-            <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                   Payment Summary
@@ -379,7 +379,7 @@ const ChildFeesPage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Next Due Date */}
-                <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                <div className="p-4 bg-gray-50 dark:bg-[#2A2A2A]/50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                     <div>
@@ -395,15 +395,15 @@ const ChildFeesPage = () => {
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Payment Methods</p>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#2A2A2A]/50 rounded-lg">
                       <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">Card Payment</span>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#2A2A2A]/50 rounded-lg">
                       <Building className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">Bank Transfer</span>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#2A2A2A]/50 rounded-lg">
                       <Smartphone className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">Mobile Money</span>
                     </div>
@@ -420,7 +420,7 @@ const ChildFeesPage = () => {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full dark:border-slate-700 dark:hover:bg-slate-800"
+                    className="w-full dark:border-[#2A2A2A] dark:hover:bg-[#1A1A1A]"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download Invoice
@@ -431,7 +431,7 @@ const ChildFeesPage = () => {
           </div>
 
           {/* Bottom Section - Payment History Timeline */}
-          <Card className="shadow-sm border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold text-gray-900 dark:text-white">
                 Payment History
@@ -447,7 +447,7 @@ const ChildFeesPage = () => {
                     key={payment.id}
                     className={`flex items-start gap-4 py-4 ${
                       index !== payments.length - 1
-                        ? "border-b border-gray-100 dark:border-slate-700"
+                        ? "border-b border-gray-100 dark:border-[#2A2A2A]"
                         : ""
                     }`}
                   >
@@ -456,7 +456,7 @@ const ChildFeesPage = () => {
                         <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       {index !== payments.length - 1 && (
-                        <div className="w-px h-full absolute top-10 bg-gray-200 dark:bg-slate-700" />
+                        <div className="w-px h-full absolute top-10 bg-gray-200 dark:bg-[#2A2A2A]" />
                       )}
                     </div>
                     <div className="flex-1 pb-4">
@@ -474,7 +474,7 @@ const ChildFeesPage = () => {
                           <p className="text-sm font-bold text-gray-900 dark:text-white">
                             {formatCurrency(payment.amount)}
                           </p>
-                          <Button variant="ghost" size="sm" className="dark:hover:bg-slate-800">
+                          <Button variant="ghost" size="sm" className="dark:hover:bg-[#1A1A1A]">
                             <Receipt className="w-4 h-4 mr-1" />
                             <span className="text-xs">Receipt</span>
                           </Button>

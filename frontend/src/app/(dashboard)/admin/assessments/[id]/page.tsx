@@ -58,7 +58,7 @@ const statusMeta: Record<AssessmentStatus, { label: string; className: string; i
   },
   LOCKED: {
     label: "Locked",
-    className: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+    className: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-[#1A1A1A] dark:text-[#CCCCCC] dark:border-[#2A2A2A]",
     icon: <Lock className="h-3.5 w-3.5" />,
   },
   COMPLETED: {
@@ -298,7 +298,7 @@ export default function AssessmentDetailPage() {
                   }}
                   disabled={isLocked}
                   placeholder="Select start date"
-                  className="mt-1 bg-white text-gray-900 border-gray-200 focus-visible:ring-[var(--brand-color,#e35336)] dark:bg-slate-800 dark:border-slate-700 dark:text-gray-100"
+                  className="mt-1 bg-white text-gray-900 border-gray-200 focus-visible:ring-[var(--brand-color,#e35336)] dark:bg-[#1A1A1A] dark:border-[#2A2A2A] dark:text-[#F2F2F2]"
                 />
               </div>
 
@@ -314,12 +314,12 @@ export default function AssessmentDetailPage() {
                   }
                   disabled={isLocked}
                   placeholder="Select end date"
-                  className="mt-1 bg-white text-gray-900 border-gray-200 focus-visible:ring-[var(--brand-color,#e35336)] dark:bg-slate-800 dark:border-slate-700 dark:text-gray-100"
+                  className="mt-1 bg-white text-gray-900 border-gray-200 focus-visible:ring-[var(--brand-color,#e35336)] dark:bg-[#1A1A1A] dark:border-[#2A2A2A] dark:text-[#F2F2F2]"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-md border border-gray-200 p-3 dark:border-slate-700">
+            <div className="flex items-center justify-between rounded-md border border-gray-200 p-3 dark:border-[#2A2A2A]">
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">Show on school calendar</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -361,7 +361,7 @@ export default function AssessmentDetailPage() {
               </div>
             </div>
             {assessment.creator?.name && (
-              <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-600 dark:bg-slate-800 dark:text-gray-300">
+              <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-600 dark:bg-[#1A1A1A] dark:text-gray-300">
                 Created by {assessment.creator.name}
               </div>
             )}
@@ -380,7 +380,7 @@ export default function AssessmentDetailPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-slate-700">
+                  <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-[#2A2A2A]">
                     <th className="px-3 py-2 font-medium">Subject</th>
                     <th className="px-3 py-2 font-medium">Class</th>
                     <th className="px-3 py-2 font-medium">Section</th>
@@ -391,7 +391,7 @@ export default function AssessmentDetailPage() {
                 </thead>
                 <tbody>
                   {assessment.subjects.map((subject) => (
-                    <tr key={subject.id} className="border-b border-gray-100 last:border-0 dark:border-slate-800">
+                    <tr key={subject.id} className="border-b border-gray-100 last:border-0 dark:border-[#2A2A2A]">
                       <td className="px-3 py-3 text-gray-900 dark:text-white">{subject.subject.name}</td>
                       <td className="px-3 py-3 text-gray-600 dark:text-gray-300">{subject.class.name}</td>
                       <td className="px-3 py-3 text-gray-600 dark:text-gray-300">{subject.section?.name ?? "-"}</td>

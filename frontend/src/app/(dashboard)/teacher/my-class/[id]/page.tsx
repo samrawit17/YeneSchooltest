@@ -186,7 +186,7 @@ const ClassStudentsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       <div className="p-5 space-y-4">
         {/* Header + Stats row */}
         <div className="flex items-center justify-between">
@@ -227,8 +227,8 @@ const ClassStudentsPage = () => {
         </div>
 
         {/* Students Table */}
-        <Card className="dark:bg-slate-900 dark:border-slate-800">
-          <CardHeader className="py-3 px-5 border-b dark:border-slate-800">
+        <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
+          <CardHeader className="py-3 px-5 border-b dark:border-[#2A2A2A]">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold">
                 Students ({filteredStudents.length})
@@ -276,7 +276,7 @@ const ClassStudentsPage = () => {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-b dark:border-slate-800">
+                    <TableRow className="border-b dark:border-[#2A2A2A]">
                       <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3">Roll</TableHead>
                       <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3">Student</TableHead>
                       <TableHead className="text-sm font-semibold text-gray-500 px-4 py-3 hidden sm:table-cell">Code</TableHead>
@@ -289,7 +289,7 @@ const ClassStudentsPage = () => {
                     {filteredStudents.map((student) => (
                       <TableRow
                         key={student.id}
-                        className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+                        className="border-b dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#1A1A1A]/50 transition-colors cursor-pointer"
                         onClick={() => router.push(`/list/students/${student.id}`)}
                       >
                         <TableCell className="px-4 py-3">
@@ -312,13 +312,13 @@ const ClassStudentsPage = () => {
                           </div>
                         </TableCell>
                         <TableCell className="px-4 py-3 hidden sm:table-cell">
-                          <span className="text-sm font-mono bg-gray-100 dark:bg-slate-800 px-2.5 py-1 rounded">
+                          <span className="text-sm font-mono bg-gray-100 dark:bg-[#1A1A1A] px-2.5 py-1 rounded">
                             {student.studentCode || "-"}
                           </span>
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           {student.gender ? (
-                            <Badge variant="outline" className="border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-400 text-xs px-2.5 py-1 min-w-[60px] justify-center">
+                            <Badge variant="outline" className="border-gray-200 text-gray-600 dark:border-[#2A2A2A] dark:text-gray-400 text-xs px-2.5 py-1 min-w-[60px] justify-center">
                               {student.gender === 'MALE' ? 'Male' : student.gender === 'FEMALE' ? 'Female' : student.gender}
                             </Badge>
                           ) : (

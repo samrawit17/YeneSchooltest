@@ -144,12 +144,12 @@ const formatMessage = (template: string, values: Record<string, string | number>
   Object.entries(values).reduce((message, [key, value]) => message.replaceAll(`{${key}}`, String(value)), template);
 
 const StudentDashboardSkeleton = () => (
-  <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+  <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
     <div className="p-4 md:p-6 space-y-6">
       <Skeleton className="h-8 w-48" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div key={i} className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <Skeleton className="h-3 w-20 mb-2" />
             <Skeleton className="h-8 w-16 mb-2" />
             <Skeleton className="h-3 w-24" />
@@ -157,12 +157,12 @@ const StudentDashboardSkeleton = () => (
         ))}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
           <Skeleton className="h-5 w-32 mb-1" />
           <Skeleton className="h-3 w-16 mb-4" />
           <Skeleton className="h-64 w-full rounded-lg" />
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
           <Skeleton className="h-5 w-32 mb-1" />
           <Skeleton className="h-3 w-16 mb-4" />
           <Skeleton className="h-64 w-full rounded-lg" />
@@ -175,7 +175,7 @@ const StudentDashboardSkeleton = () => (
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-3 shadow-sm">
+      <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg p-3 shadow-sm">
         <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
         {payload.map((entry: any, idx: number) => (
           <p key={idx} className={`text-sm font-semibold`} style={{ color: entry.color }}>
@@ -317,26 +317,26 @@ const StudentPage = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
       <Dialog open={showRankCongrats} onOpenChange={(open) => {
         if (!open) closeRankCongrats();
         else setShowRankCongrats(true);
       }}>
-        <DialogContent className="max-w-md border-[rgba(var(--brand-color-rgb),0.22)] bg-white text-center dark:border-[rgba(var(--brand-color-rgb),0.3)] dark:bg-slate-900" customCloseButton={false}>
+        <DialogContent className="max-w-md border-[rgba(var(--brand-color-rgb),0.22)] bg-white text-center dark:border-[rgba(var(--brand-color-rgb),0.3)] dark:bg-[#111111]" customCloseButton={false}>
           <DialogHeader className="items-center text-center">
             <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
               <Trophy className="h-9 w-9" />
             </div>
-            <DialogTitle className="text-2xl text-slate-900 dark:text-white">
+            <DialogTitle className="text-2xl text-gray-900 dark:text-white">
               {formatMessage(t.student.congratulations, { name: user?.name || t.common.student })}
             </DialogTitle>
-            <DialogDescription className="text-base text-slate-600 dark:text-slate-300">
+            <DialogDescription className="text-base text-gray-600 dark:text-gray-300">
               {formatMessage(t.student.ranked, { rank: topRankCard?.rankInClass || "-", term: topRankCard?.term || t.student.latestResult })}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.06)] p-4 dark:border-[rgba(var(--brand-color-rgb),0.28)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]">
-            <p className="text-sm text-slate-600 dark:text-slate-300">{t.student.overallResult}</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900 dark:text-white">
+            <p className="text-sm text-gray-600 dark:text-gray-300">{t.student.overallResult}</p>
+            <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
               {topRankCard?.percentage ?? "-"}%
             </p>
             <p className="mt-1 text-sm font-medium text-[var(--brand-color,#e35336)]">
@@ -359,10 +359,10 @@ const StudentPage = () => {
         {/* Header */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {t.student.title}
             </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {formatMessage(t.student.welcome, { name: user?.name || t.common.student })}
             </p>
           </div>
@@ -375,7 +375,7 @@ const StudentPage = () => {
         </div>
 
         {/* Profile Card */}
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-4">
+        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl px-5 py-4">
           <div className="flex items-center gap-4">
             <Avatar className="w-12 h-12">
               <AvatarFallback className="text-base bg-[var(--brand-color,#e35336)] text-white">
@@ -383,14 +383,14 @@ const StudentPage = () => {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h3 className="font-semibold text-slate-900 dark:text-white">
+              <h3 className="font-semibold text-gray-900 dark:text-white">
                 {user?.name || t.common.student}
               </h3>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-gray-500">
                 {user?.email}
               </p>
             </div>
-            <div className="hidden md:flex items-center gap-2 text-sm text-slate-500">
+            <div className="hidden md:flex items-center gap-2 text-sm text-gray-500">
               <CalendarDays className="w-4 h-4" />
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
@@ -404,15 +404,15 @@ const StudentPage = () => {
 
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.attendance}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{stats.attendance}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.student.attendance}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">{stats.attendance}</p>
                 <div className="flex items-center gap-1 mt-1">
                   <TrendingUp className="w-3 h-3 text-emerald-500" />
                   <span className="text-xs text-emerald-600 dark:text-emerald-400">+2.5%</span>
-                  <span className="text-xs text-slate-400">{t.student.thisTerm}</span>
+                  <span className="text-xs text-gray-400">{t.student.thisTerm}</span>
                 </div>
               </div>
               <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30">
@@ -421,14 +421,14 @@ const StudentPage = () => {
             </div>
             <Progress
               value={attendancePercent}
-              className="h-1.5 mt-3 bg-slate-100 dark:bg-slate-700"
+              className="h-1.5 mt-3 bg-gray-100 dark:bg-[#2A2A2A]"
             />
           </div>
 
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.gpa}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.student.gpa}</p>
                 {gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />
                 ) : hasGrades ? (
@@ -438,8 +438,8 @@ const StudentPage = () => {
                   </>
                 ) : (
                   <>
-                    <p className="text-2xl font-bold text-slate-400 mt-1.5">N/A</p>
-                    <span className="text-xs text-slate-400">{t.student.noGrades}</span>
+                    <p className="text-2xl font-bold text-gray-400 mt-1.5">N/A</p>
+                    <span className="text-xs text-gray-400">{t.student.noGrades}</span>
                   </>
                 )}
               </div>
@@ -449,18 +449,18 @@ const StudentPage = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.avgScore}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.student.avgScore}</p>
                 {gradesLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)] mt-1.5" />
                 ) : hasGrades ? (
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{averageScore}%</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">{averageScore}%</p>
                 ) : (
-                  <p className="text-2xl font-bold text-slate-400 mt-1.5">N/A</p>
+                  <p className="text-2xl font-bold text-gray-400 mt-1.5">N/A</p>
                 )}
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   {formatMessage(t.student.subjectsPassed, { passed: passedSubjects, total: grades.length || stats.totalSubjects })}
                 </p>
               </div>
@@ -470,12 +470,12 @@ const StudentPage = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t.student.exams}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">{stats.upcomingExams}</p>
-                <p className="text-xs text-slate-400 mt-1">{t.student.upcoming}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t.student.exams}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1.5">{stats.upcomingExams}</p>
+                <p className="text-xs text-gray-400 mt-1">{t.student.upcoming}</p>
               </div>
               <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/30">
                 <ClipboardCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />
@@ -487,13 +487,13 @@ const StudentPage = () => {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Attendance Trend */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t.student.attendanceTrend}</h3>
-            <p className="text-xs text-slate-500 mb-4">{t.student.thisTerm}</p>
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{t.student.attendanceTrend}</h3>
+            <p className="text-xs text-gray-500 mb-4">{t.student.thisTerm}</p>
             {attendanceTrendSeries.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={attendanceTrendSeries} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} className="dark:stroke-slate-700" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} className="dark:stroke-[#2A2A2A]" />
                   <XAxis dataKey="week" axisLine={false} tick={{ fill: "#64748B", fontSize: 12 }} tickLine={false} dy={8} />
                   <YAxis axisLine={false} tick={{ fill: "#64748B", fontSize: 12 }} tickLine={false} tickMargin={8} domain={[0, 100]} />
                   <RechartsTooltip content={<CustomTooltip />} />
@@ -501,16 +501,16 @@ const StudentPage = () => {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[260px] flex items-center justify-center text-sm text-slate-400">
+              <div className="h-[260px] flex items-center justify-center text-sm text-gray-400">
                 {t.student.noAttendanceData}
               </div>
             )}
           </div>
 
           {/* Subject Performance */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">{t.student.subjectPerformance}</h3>
-            <p className="text-xs text-slate-500 mb-4">{t.student.currentTerm}</p>
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{t.student.subjectPerformance}</h3>
+            <p className="text-xs text-gray-500 mb-4">{t.student.currentTerm}</p>
             {gradesLoading ? (
               <div className="h-[260px] flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-[var(--brand-color,#e35336)]" />
@@ -518,7 +518,7 @@ const StudentPage = () => {
             ) : displaySubjectPerformance.length > 0 ? (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={displaySubjectPerformance} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} className="dark:stroke-slate-700" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} className="dark:stroke-[#2A2A2A]" />
                   <XAxis dataKey="subject" axisLine={false} tick={{ fill: "#64748B", fontSize: 11 }} tickLine={false} dy={8} />
                   <YAxis axisLine={false} tick={{ fill: "#64748B", fontSize: 12 }} tickLine={false} tickMargin={8} domain={[0, 100]} />
                   <RechartsTooltip />
@@ -528,7 +528,7 @@ const StudentPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[260px] flex items-center justify-center text-sm text-slate-400">
+              <div className="h-[260px] flex items-center justify-center text-sm text-gray-400">
                 {t.student.noSubjectData}
               </div>
             )}
@@ -538,11 +538,11 @@ const StudentPage = () => {
         {/* Recent Grades + Upcoming Events */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Grades */}
-          <div className="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+          <div className="lg:col-span-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-semibold text-slate-900 dark:text-white">{t.student.recentGrades}</h3>
-                <p className="text-xs text-slate-500">{t.student.latestScores}</p>
+                <h3 className="font-semibold text-gray-900 dark:text-white">{t.student.recentGrades}</h3>
+                <p className="text-xs text-gray-500">{t.student.latestScores}</p>
               </div>
               {hasGrades && (
                 <Badge variant="outline" className="text-xs">{grades.length} {t.student.subjects}</Badge>
@@ -555,7 +555,7 @@ const StudentPage = () => {
             ) : displayRecentGrades.length > 0 ? (
               <div className="space-y-2">
                 {displayRecentGrades.map((grade, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#2A2A2A]/50 transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                         grade.percentage >= 90 ? "bg-emerald-50 dark:bg-emerald-900/30" :
@@ -574,13 +574,13 @@ const StudentPage = () => {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{grade.subject}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{grade.subject}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{grade.percentage}%</p>
-                        <div className="w-20 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mt-0.5">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{grade.percentage}%</p>
+                        <div className="w-20 h-1.5 bg-gray-200 dark:bg-[#2A2A2A] rounded-full overflow-hidden mt-0.5">
                           <div
                             className={`h-full rounded-full ${
                               grade.percentage >= 90 ? "bg-emerald-500" :
@@ -597,7 +597,7 @@ const StudentPage = () => {
                         grade.grade === "C" || grade.grade === "C+" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0" :
                         grade.grade === "D" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border-0" :
                         grade.grade === "F" ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 border-0" :
-                        "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border-0"
+                        "bg-gray-100 text-gray-700 dark:bg-[#2A2A2A] dark:text-gray-300 border-0"
                       }`}>
                         {grade.grade}
                       </Badge>
@@ -607,8 +607,8 @@ const StudentPage = () => {
               </div>
             ) : (
               <div className="text-center py-8">
-                <Award className="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                <p className="text-sm text-slate-500">{t.student.noGradesYet}</p>
+                <Award className="w-10 h-10 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm text-gray-500">{t.student.noGradesYet}</p>
               </div>
             )}
             {hasGrades && (
@@ -623,8 +623,8 @@ const StudentPage = () => {
           <div className="space-y-6">
             {/* Quick Actions */}
             {quickActions?.length > 0 && (
-              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-                <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.student.quickActions}</h3>
+              <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">{t.student.quickActions}</h3>
                 <div className="space-y-2">
                   {quickActions.slice(0, 4).map((action: any) => (
                     <button
@@ -636,7 +636,7 @@ const StudentPage = () => {
                         }
                         router.push(action.url);
                       }}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors text-left"
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#2A2A2A]/50 transition-colors text-left"
                     >
                       <div className="w-8 h-8 rounded-lg bg-[rgba(var(--brand-color-rgb),0.1)] flex items-center justify-center shrink-0">
                         {action.icon === "file" || action.icon === "FileText" ? (
@@ -650,12 +650,12 @@ const StudentPage = () => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{action.label}</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{action.label}</p>
                         {action.description && (
-                          <p className="text-xs text-slate-500 truncate">{action.description}</p>
+                          <p className="text-xs text-gray-500 truncate">{action.description}</p>
                         )}
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -663,8 +663,8 @@ const StudentPage = () => {
             )}
 
             {/* Upcoming Events */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-              <h3 className="font-semibold text-slate-900 dark:text-white mb-4">{t.student.upcomingEvents}</h3>
+            <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">{t.student.upcomingEvents}</h3>
               {upcomingEvents.length > 0 ? (
                 <div className="space-y-3">
                   {upcomingEvents.slice(0, 3).map((event: any, index: number) => (
@@ -680,13 +680,13 @@ const StudentPage = () => {
                       <div className="min-w-0">
                         <TranslatedText
                           text={event.title}
-                          textClassName="text-sm font-medium text-slate-900 dark:text-white truncate"
+                          textClassName="text-sm font-medium text-gray-900 dark:text-white truncate"
                           showControls={false}
                         />
                         {event.description && (
                           <TranslatedText
                             text={event.description}
-                            textClassName="text-xs text-slate-500 truncate"
+                            textClassName="text-xs text-gray-500 truncate"
                             showControls={false}
                           />
                         )}
@@ -699,8 +699,8 @@ const StudentPage = () => {
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <CalendarDays className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                  <p className="text-sm text-slate-500">{t.student.noUpcomingEvents}</p>
+                  <CalendarDays className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                  <p className="text-sm text-gray-500">{t.student.noUpcomingEvents}</p>
                 </div>
               )}
               <Button variant="outline" size="sm" className="w-full mt-3 gap-1" onClick={() => router.push("/list/calendar")}>

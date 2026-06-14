@@ -296,7 +296,7 @@ const TeacherAssignmentPage = () => {
         <div className="flex h-[80vh] items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-[var(--brand-color,#e35336)]" />
-          <p className="text-gray-500 dark:text-slate-400 font-medium">{t.loading}</p>
+          <p className="text-gray-500 dark:text-gray-400 font-medium">{t.loading}</p>
         </div>
       </div>
     );
@@ -322,7 +322,7 @@ const TeacherAssignmentPage = () => {
             
             {t.title}
           </h1>
-          <p className="text-slate-500 mt-1">{t.description}</p>
+          <p className="text-gray-500 mt-1">{t.description}</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -338,8 +338,8 @@ const TeacherAssignmentPage = () => {
       </div>
 
       {/* MATRIX GRID VIEW */}
-      <Card className="border-none bg-white dark:bg-slate-800 overflow-hidden">
-        <CardHeader className="border-b bg-slate-50/50 dark:bg-slate-700/50">
+      <Card className="border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] overflow-hidden">
+        <CardHeader className="border-b bg-gray-50/50 dark:bg-[#2A2A2A]/50">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <CardTitle className="text-lg dark:text-white">{t.matrixTitle}</CardTitle>
             <div className="flex items-center gap-3">
@@ -349,11 +349,11 @@ const TeacherAssignmentPage = () => {
                   placeholder={t.searchPlaceholder}
                   value={selectedSearch}
                   onChange={(e) => setSelectedSearch(e.target.value)}
-                  className="pl-9 h-8 w-[500px] max-w-full dark:bg-slate-800 dark:border-slate-700"
+                  className="pl-9 h-8 w-[500px] max-w-full dark:bg-[#1A1A1A] dark:border-[#2A2A2A]"
                 />
               </div>
               <Select value={selectedYear} onValueChange={setSelectedYear}>
-                <SelectTrigger className="h-8 w-[160px] dark:bg-slate-800 dark:border-slate-700">
+                <SelectTrigger className="h-8 w-[160px] dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
                   <SelectValue placeholder={t.academicYear} />
                 </SelectTrigger>
                 <SelectContent>
@@ -371,17 +371,17 @@ const TeacherAssignmentPage = () => {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-700 border-b">
-                  <th className="sticky left-0 z-20 bg-slate-50 dark:bg-slate-700 p-4 text-left font-semibold text-slate-700 dark:text-slate-300 border-r dark:border-slate-600 min-w-[220px]">
+                <tr className="bg-gray-50 dark:bg-[#2A2A2A] border-b">
+                  <th className="sticky left-0 z-20 bg-gray-50 dark:bg-[#2A2A2A] p-4 text-left font-semibold text-gray-700 dark:text-gray-300 border-r dark:border-gray-600 min-w-[220px]">
                     {t.sectionClass}
                   </th>
-                  <th className="p-4 text-center font-semibold text-slate-700 dark:text-slate-300 border-r min-w-[180px] bg-amber-50/30 dark:bg-amber-900/20">
+                  <th className="p-4 text-center font-semibold text-gray-700 dark:text-gray-300 border-r min-w-[180px] bg-amber-50/30 dark:bg-amber-900/20">
                     {t.homeroomTeacher}
                   </th>
                   {matrixSubjects.map((sub: any) => (
-                    <th key={sub.id} className="p-4 text-center font-semibold text-slate-700 dark:text-slate-300 border-r dark:border-slate-700 min-w-[160px]">
+                    <th key={sub.id} className="p-4 text-center font-semibold text-gray-700 dark:text-gray-300 border-r dark:border-[#2A2A2A] min-w-[160px]">
                       {sub.name}
-                      {sub.code && <span className="block text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{sub.code}</span>}
+                      {sub.code && <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{sub.code}</span>}
                     </th>
                   ))}
                 </tr>
@@ -389,13 +389,13 @@ const TeacherAssignmentPage = () => {
               <tbody>
                 {filteredSections.map((section: any) => (
                   <tr key={section.id} className="group border-b transition-colors hover:bg-[rgba(var(--brand-color-rgb),0.06)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.1)]">
-                    <td className="sticky left-0 z-10 border-r bg-white p-4 dark:border-slate-700 dark:bg-slate-800 group-hover:bg-[rgba(var(--brand-color-rgb),0.06)] dark:group-hover:bg-[rgba(var(--brand-color-rgb),0.1)]">
+                    <td className="sticky left-0 z-10 border-r bg-white p-4 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] group-hover:bg-[rgba(var(--brand-color-rgb),0.06)] dark:group-hover:bg-[rgba(var(--brand-color-rgb),0.1)]">
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-800 dark:text-white">
+                        <span className="font-bold text-gray-800 dark:text-white">
                           {section.class?.grade != null ? `${t.grade} ${section.class.grade}` : section.class?.name || section.name}
                           {!section.isVirtual && section.name ? ` - ${section.name}` : ""}
                         </span>
-                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {section.isVirtual
                             ? t.noSectionYet
                             : `${t.cap}: ${section.capacity} | ${t.room}: ${section.roomNumber || t.nA}`}
@@ -418,7 +418,7 @@ const TeacherAssignmentPage = () => {
                             <span className="text-[10px] text-amber-600/70">{t.homeroom}</span>
                           </>
                         ) : (
-                          <span className="text-xs text-slate-400 italic">{t.noHomeroom}</span>
+                          <span className="text-xs text-gray-400 italic">{t.noHomeroom}</span>
                         )}
                       </button>
                     </td>
@@ -435,7 +435,7 @@ const TeacherAssignmentPage = () => {
                           <button 
                             type="button"
                             onClick={() => openAssignModal(section.id, sub.id, teacher?.id)}
-                            className={`w-full h-full min-h-[50px] flex flex-col items-center justify-center p-2 rounded-lg transition-all border cursor-pointer ${teacher ? 'bg-[rgba(var(--brand-color-rgb),0.08)] border-[rgba(var(--brand-color-rgb),0.18)] hover:bg-[rgba(var(--brand-color-rgb),0.14)] hover:border-[rgba(var(--brand-color-rgb),0.28)]' : 'border-dashed border-slate-200 hover:border-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.04)]'}`}
+                            className={`w-full h-full min-h-[50px] flex flex-col items-center justify-center p-2 rounded-lg transition-all border cursor-pointer ${teacher ? 'bg-[rgba(var(--brand-color-rgb),0.08)] border-[rgba(var(--brand-color-rgb),0.18)] hover:bg-[rgba(var(--brand-color-rgb),0.14)] hover:border-[rgba(var(--brand-color-rgb),0.28)]' : 'border-dashed border-gray-200 hover:border-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.04)]'}`}
                           >
                             {teacher ? (
                               <>
@@ -443,7 +443,7 @@ const TeacherAssignmentPage = () => {
                                 <span className="text-[10px] text-[var(--brand-color,#e35336)]/80 truncate max-w-[120px]">{t.assigned}</span>
                               </>
                             ) : (
-                              <Plus className="h-4 w-4 text-slate-300 group-hover:text-[var(--brand-color,#e35336)]" />
+                              <Plus className="h-4 w-4 text-gray-300 group-hover:text-[var(--brand-color,#e35336)]" />
                             )}
                           </button>
                         </td>
@@ -459,17 +459,17 @@ const TeacherAssignmentPage = () => {
 
       {/* ASSIGNMENT MODAL */}
       <Dialog open={showAssignModal} onOpenChange={(open) => { setShowAssignModal(open); if (!open) setSelectedCell(null); }}>
-        <DialogContent className="max-w-md bg-white dark:bg-slate-800 z-[100]">
+        <DialogContent className="max-w-md bg-white dark:bg-[#1A1A1A] z-[100]">
           <DialogHeader>
             <DialogTitle className="dark:text-white">{t.assignSubject}</DialogTitle>
-            <DialogDescription className="dark:text-slate-400">
+            <DialogDescription className="dark:text-gray-400">
               {t.assignSubjectDesc.replace("{target}", selectedCell?.isVirtual ? t.thisClass : t.thisSection)}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 pt-4">
             <Select value={selectedSubjectTeacherId} onValueChange={setSelectedSubjectTeacherId}>
-              <SelectTrigger className="w-full h-12 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+              <SelectTrigger className="w-full h-12 dark:bg-[#2A2A2A] dark:border-gray-600 dark:text-white">
                 <SelectValue placeholder={t.selectTeacher} />
               </SelectTrigger>
               <SelectContent className="z-[200]">
@@ -482,7 +482,7 @@ const TeacherAssignmentPage = () => {
           </div>
 
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setShowAssignModal(false)} disabled={saving} className="dark:border-slate-600 dark:text-white">{t.cancel}</Button>
+            <Button variant="outline" onClick={() => setShowAssignModal(false)} disabled={saving} className="dark:border-gray-600 dark:text-white">{t.cancel}</Button>
             <Button onClick={handleSaveAssignment} disabled={saving} className="min-w-[100px]">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t.save}
             </Button>
@@ -492,17 +492,17 @@ const TeacherAssignmentPage = () => {
 
       {/* HOMEROOM ASSIGNMENT MODAL */}
       <Dialog open={showHomeroomModal} onOpenChange={(open) => { setShowHomeroomModal(open); if (!open) setSelectedHomeroomTarget(null); }}>
-        <DialogContent className="max-w-md bg-white dark:bg-slate-800">
+        <DialogContent className="max-w-md bg-white dark:bg-[#1A1A1A]">
           <DialogHeader>
             <DialogTitle className="dark:text-white">{t.assignHomeroom}</DialogTitle>
-            <DialogDescription className="dark:text-slate-400">
+            <DialogDescription className="dark:text-gray-400">
               {t.assignHomeroomDesc.replace("{label}", selectedHomeroomTarget?.label || "").replace("{suffix}", selectedHomeroomTarget?.isVirtual ? t.classLevel : "")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 pt-4">
             <Select value={selectedHomeroomTeacherId} onValueChange={setSelectedHomeroomTeacherId}>
-              <SelectTrigger className="w-full h-12 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+              <SelectTrigger className="w-full h-12 dark:bg-[#2A2A2A] dark:border-gray-600 dark:text-white">
                 <SelectValue placeholder={t.selectTeacher} />
               </SelectTrigger>
               <SelectContent>
@@ -515,7 +515,7 @@ const TeacherAssignmentPage = () => {
           </div>
 
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setShowHomeroomModal(false)} disabled={saving} className="dark:border-slate-600 dark:text-white">{t.cancel}</Button>
+            <Button variant="outline" onClick={() => setShowHomeroomModal(false)} disabled={saving} className="dark:border-gray-600 dark:text-white">{t.cancel}</Button>
             <Button onClick={handleSaveHomeroomAssignment} disabled={saving} className="bg-amber-600 hover:bg-amber-700 min-w-[120px]">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t.saveHomeroom}
             </Button>
@@ -525,33 +525,33 @@ const TeacherAssignmentPage = () => {
 
       {/* BULK ASSIGN MODAL */}
       <Dialog open={showBulkModal} onOpenChange={setShowBulkModal}>
-        <DialogContent className="max-w-6xl bg-white dark:bg-slate-800">
+        <DialogContent className="max-w-6xl bg-white dark:bg-[#1A1A1A]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 dark:text-white">
               <Grid className="h-5 w-5 text-[var(--brand-color,#e35336)]" />
               {t.bulkTitle}
             </DialogTitle>
-            <DialogDescription className="dark:text-slate-400">{t.bulkDescription}</DialogDescription>
+            <DialogDescription className="dark:text-gray-400">{t.bulkDescription}</DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-6 py-4">
             <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-slate-900 dark:text-white border-b pb-2">{t.selectSections}</h4>
-              <ScrollArea className="h-[250px] rounded-md border p-2 dark:border-slate-600">
+              <h4 className="font-semibold text-sm text-gray-900 dark:text-white border-b pb-2">{t.selectSections}</h4>
+              <ScrollArea className="h-[250px] rounded-md border p-2 dark:border-gray-600">
                 {filteredSections.map((s: any) => (
                   <div 
                     key={s.id} 
                     className={`flex items-center p-2 rounded cursor-pointer mb-1 text-sm ${
-                      selectedSections.includes(s.id) ? 'bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.18)] text-[var(--brand-color,#e35336)]' : 'hover:bg-slate-50 dark:hover:bg-slate-700'
+                      selectedSections.includes(s.id) ? 'bg-[rgba(var(--brand-color-rgb),0.1)] dark:bg-[rgba(var(--brand-color-rgb),0.18)] text-[var(--brand-color,#e35336)]' : 'hover:bg-gray-50 dark:hover:bg-[#2A2A2A]'
                     }`}
                     onClick={() => toggleSection(s.id)}
                   >
                     <div className={`w-4 h-4 rounded border mr-2 flex items-center justify-center ${
-                      selectedSections.includes(s.id) ? 'bg-[var(--brand-color,#e35336)] border-[var(--brand-color,#e35336)]' : 'border-slate-300 dark:border-slate-500'
+                      selectedSections.includes(s.id) ? 'bg-[var(--brand-color,#e35336)] border-[var(--brand-color,#e35336)]' : 'border-gray-300 dark:border-gray-500'
                     }`}>
                       {selectedSections.includes(s.id) && <Check className="h-3 w-3 text-white" />}
                     </div>
-                    <span className="dark:text-slate-200">{s.class?.name || s.name}{s.isVirtual ? "" : ` - ${s.name}`}</span>
+                    <span className="dark:text-gray-200">{s.class?.name || s.name}{s.isVirtual ? "" : ` - ${s.name}`}</span>
                   </div>
                 ))}
               </ScrollArea>
@@ -562,22 +562,22 @@ const TeacherAssignmentPage = () => {
             </div>
 
             <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-slate-900 dark:text-white border-b pb-2">{t.selectSubjects}</h4>
-              <ScrollArea className="h-[250px] rounded-md border p-2 dark:border-slate-600">
+              <h4 className="font-semibold text-sm text-gray-900 dark:text-white border-b pb-2">{t.selectSubjects}</h4>
+              <ScrollArea className="h-[250px] rounded-md border p-2 dark:border-gray-600">
                 {matrixSubjects.map((sub: any) => (
                   <div 
                     key={sub.id} 
                     className={`flex items-center p-2 rounded cursor-pointer mb-1 text-sm ${
-                      selectedSubjects.includes(sub.id) ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'hover:bg-slate-50 dark:hover:bg-slate-700'
+                      selectedSubjects.includes(sub.id) ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' : 'hover:bg-gray-50 dark:hover:bg-[#2A2A2A]'
                     }`}
                     onClick={() => toggleSubject(sub.id)}
                   >
                     <div className={`w-4 h-4 rounded border mr-2 flex items-center justify-center ${
-                      selectedSubjects.includes(sub.id) ? 'bg-purple-600 border-purple-600' : 'border-slate-300 dark:border-slate-500'
+                      selectedSubjects.includes(sub.id) ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-gray-500'
                     }`}>
                       {selectedSubjects.includes(sub.id) && <Check className="h-3 w-3 text-white" />}
                     </div>
-                    <span className="dark:text-slate-200">{sub.name}</span>
+                    <span className="dark:text-gray-200">{sub.name}</span>
                   </div>
                 ))}
               </ScrollArea>
@@ -589,9 +589,9 @@ const TeacherAssignmentPage = () => {
           </div>
 
           <div className="space-y-3 mt-2">
-            <h4 className="font-semibold text-sm text-slate-900 dark:text-white">{t.chooseTeacher}</h4>
+            <h4 className="font-semibold text-sm text-gray-900 dark:text-white">{t.chooseTeacher}</h4>
             <Select value={selectedBulkTeacherId} onValueChange={setSelectedBulkTeacherId}>
-              <SelectTrigger className="w-full h-12 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+              <SelectTrigger className="w-full h-12 dark:bg-[#2A2A2A] dark:border-gray-600 dark:text-white">
                 <SelectValue placeholder={t.selectTeacher} />
               </SelectTrigger>
               <SelectContent>
@@ -602,7 +602,7 @@ const TeacherAssignmentPage = () => {
             </Select>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t dark:border-slate-600">
+          <div className="flex justify-end gap-3 pt-4 border-t dark:border-gray-600">
             <Button variant="ghost" onClick={() => setShowBulkModal(false)} disabled={saving}>{t.cancel}</Button>
             <Button 
               onClick={handleBulkAssign} 

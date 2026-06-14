@@ -47,6 +47,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
           code: formData.code || undefined,
           isActive: formData.isActive,
           description: formData.description || undefined,
+          academicYearId: data?.academicYearId,
         });
       } else {
         return subjectsAPI.update(data.id, {
@@ -98,7 +99,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
               placeholder="e.g., Mathematics, Science"
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:border-transparent transition-all"
             />
           </div>
 
@@ -113,7 +114,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                 placeholder="e.g., MATH, SCI"
-                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:border-transparent transition-all"
               />
             </div>
             <div>
@@ -143,7 +144,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Enter subject description (optional)"
               rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all resize-none"
+              className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:border-transparent transition-all resize-none"
             />
           </div>
 
@@ -156,7 +157,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
               <select
                 value={formData.grade}
                 onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:border-transparent transition-all"
               >
                 <option value="">Select grade range</option>
                 <option value="1-5">Grades 1-5</option>
@@ -170,7 +171,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Credits
+                Credits <span className="text-gray-400 font-normal">(Optional)</span>
               </label>
               <input
                 type="number"
@@ -179,7 +180,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
                 placeholder="e.g., 3, 4"
                 min={0}
                 step={0.5}
-                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#e35336] focus:border-transparent transition-all"
+                className="w-full px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:border-transparent transition-all"
               />
             </div>
           </div>
@@ -197,7 +198,7 @@ const SubjectForm = ({ type, data, onSuccess, onCancel }: SubjectFormProps) => {
           <button
             type="submit"
             disabled={loading || mutation.isPending}
-            className="px-6 py-2.5 text-white bg-[#e35336] rounded-lg hover:bg-[#d14830] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-2.5 text-white bg-[var(--brand-color,#e35336)] rounded-lg hover:opacity-90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loading || mutation.isPending ? (
               <>

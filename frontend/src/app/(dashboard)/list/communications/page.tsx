@@ -248,13 +248,13 @@ function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelet
   return (
     <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[75%] group relative ${isMe ? "order-2" : "order-1"}`}>
-        <div className={`rounded-lg border px-3 py-2 text-sm ${isMe ? "border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.10)] text-[var(--brand-color,#e35336)] dark:border-[rgba(var(--brand-color-rgb),0.24)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "border-gray-200 bg-gray-100 text-gray-900 dark:border-slate-700 dark:bg-slate-700 dark:text-white"}`}>
+        <div className={`rounded-lg border px-3 py-2 text-sm ${isMe ? "border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.10)] text-[var(--brand-color,#e35336)] dark:border-[rgba(var(--brand-color-rgb),0.24)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "border-gray-200 bg-gray-100 text-gray-900 dark:border-[#2A2A2A] dark:bg-[#2A2A2A] dark:text-white"}`}>
           <TranslatedText
             text={message}
             textClassName={isMe ? "text-[var(--brand-color,#e35336)] dark:text-white/90" : "text-gray-900 dark:text-white"}
           />
           <div className={`mt-2 flex items-center gap-1 ${isMe ? "justify-end" : "justify-start"}`}>
-            <span className={`text-xs ${isMe ? "text-[rgba(var(--brand-color-rgb),0.75)] dark:text-white/60" : "text-slate-400 dark:text-slate-500"}`}>
+            <span className={`text-xs ${isMe ? "text-[rgba(var(--brand-color-rgb),0.75)] dark:text-white/60" : "text-gray-400 dark:text-gray-500"}`}>
               {formatTime(timestamp)}
             </span>
           </div>
@@ -263,12 +263,12 @@ function MessageCard({ message, senderName, senderRole, timestamp, isMe, onDelet
           <div className={`absolute top-1/2 -translate-y-1/2 ${isMe ? "-left-12" : "-right-12"} opacity-0 group-hover:opacity-100 transition-opacity`}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className={`p-1.5 rounded-full ${isMe ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-500"}`}
+              className={`p-1.5 rounded-full ${isMe ? "bg-gray-700 text-white hover:bg-gray-600" : "bg-gray-200 dark:bg-[#333333] text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500"}`}
             >
               <MoreVertical className="w-4 h-4" />
             </button>
             {showMenu && (
-              <div className={`absolute top-full mt-1 ${isMe ? "right-0" : "left-0"} bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 min-w-[100px] z-20`}>
+              <div className={`absolute top-full mt-1 ${isMe ? "right-0" : "left-0"} bg-white dark:bg-[#1A1A1A] rounded-lg shadow-xl border border-gray-200 dark:border-[#2A2A2A] py-1 min-w-[100px] z-20`}>
                 <button
                   onClick={() => { onDelete?.(); setShowMenu(false); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -333,8 +333,8 @@ function ConversationList({ conversations, loading, error, selectedId, onSelect,
               <button
                 key={conv.id}
                 onClick={() => onSelect(conv)}
-                className={`w-full border-b p-2 text-left transition-colors hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-700/40 md:p-4 ${
-                  active ? "bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "bg-white dark:bg-slate-800"
+                className={`w-full border-b p-2 text-left transition-colors hover:bg-gray-50 dark:border-[#2A2A2A] dark:hover:bg-[#2A2A2A]/40 md:p-4 ${
+                  active ? "bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "bg-white dark:bg-[#1A1A1A]"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -442,7 +442,7 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
                   </Button>
                 )}
                 {isAdmin && (
-                  <button onClick={onDelete} className="rounded p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20">
+                  <button onClick={onDelete} className="rounded p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20">
                     <Trash className="h-4 w-4" />
                   </button>
                 )}
@@ -476,27 +476,27 @@ function ChatPanel({ conversation, isAdmin, isTeacher, currentUserId, onSendMess
             <div className="relative">
               <button
                 onClick={() => setShowQuickReplies(!showQuickReplies)}
-                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-gray-100 hover:text-[var(--brand-color,#e35336)] dark:hover:bg-slate-700"
+                className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-[var(--brand-color,#e35336)] dark:hover:bg-[#2A2A2A]"
                 title={t.quick.title}
               >
                 <Zap className="h-4.5 w-4.5" />
               </button>
               {showQuickReplies && (isAdmin || isTeacher) && (
-                <div className="absolute bottom-full left-0 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
-                  <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.quick.title}</p>
+                <div className="absolute bottom-full left-0 z-20 mb-2 w-80 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-[#2A2A2A] dark:bg-[#1A1A1A]">
+                  <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]/50">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{t.quick.title}</p>
                   </div>
                   <div className="max-h-64 overflow-y-auto">
                     {QUICK_REPLY_TEMPLATES.map((tpl) => (
                       <button
                         key={tpl.id}
                         onClick={() => { setMessageInput(tpl.message); setShowQuickReplies(false); }}
-                        className="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-slate-700/50 dark:hover:bg-slate-700/50 last:border-b-0"
+                        className="flex w-full items-start gap-3 border-b border-gray-100 px-4 py-3 text-left hover:bg-gray-50 dark:border-[#2A2A2A]/50 dark:hover:bg-[#2A2A2A]/50 last:border-b-0"
                       >
                         <span className="mt-0.5 text-[var(--brand-color,#e35336)]">{tpl.icon}</span>
                         <div>
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white">{tpl.label}</p>
-                          <p className="mt-0.5 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{tpl.message}</p>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">{tpl.label}</p>
+                          <p className="mt-0.5 line-clamp-2 text-xs text-gray-500 dark:text-gray-400">{tpl.message}</p>
                         </div>
                       </button>
                     ))}
@@ -821,7 +821,7 @@ function CommunicationsContent() {
 export default function CommunicationBookPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-[#111111]">
         <Loader2 className="h-10 w-10 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     }>

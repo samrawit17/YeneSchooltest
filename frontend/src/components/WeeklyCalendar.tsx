@@ -125,7 +125,7 @@ export default function WeeklyCalendar({ events = [], onEventClick }: WeeklyCale
       case 'SPORTS':
         return 'bg-[rgba(var(--brand-color-rgb),0.1)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)] dark:text-[var(--brand-color,#e35336)] border-l-2 border-[var(--brand-color,#e35336)]';
       default:
-        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-l-2 border-gray-300';
+        return 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 border-l-2 border-gray-300';
     }
   };
 
@@ -183,7 +183,7 @@ export default function WeeklyCalendar({ events = [], onEventClick }: WeeklyCale
                 min-h-[60px] min-w-0 p-1 rounded border text-center cursor-pointer transition-all
                 ${today 
                   ? 'border-[var(--brand-color,#e35336)] bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[rgba(var(--brand-color-rgb),0.1)]' 
-                  : 'border-gray-200 dark:border-gray-700 hover:border-[var(--brand-color,#e35336)] dark:hover:border-[var(--brand-color,#e35336)]'
+                  : 'border-gray-200 dark:border-[#2A2A2A] hover:border-[var(--brand-color,#e35336)] dark:hover:border-[var(--brand-color,#e35336)]'
                 }
               `}
               onClick={() => onEventClick && onEventClick(dayEvents[0])}
@@ -212,7 +212,7 @@ export default function WeeklyCalendar({ events = [], onEventClick }: WeeklyCale
       </div>
 
       {/* Calendar link for selected day */}
-      <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+      <div className="mt-3 pt-2 border-t border-gray-200 dark:border-[#2A2A2A]">
         <button
           onClick={() => window.location.href = '/list/calendar'}
           className="w-full text-center text-xs text-[var(--brand-color,#e35336)] hover:text-[#c74428] hover:underline transition-colors"

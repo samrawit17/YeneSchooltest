@@ -286,7 +286,7 @@ export default function DashboardLayout({
   // Show loading state while checking auth
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="flex items-center justify-center h-screen bg-[#F8FAFC] dark:bg-[#111111]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 dark:text-gray-400">Loading...</p>
@@ -298,7 +298,7 @@ export default function DashboardLayout({
   // Don't render anything if not authenticated
   if (!user && !isAuthenticated) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-slate-900">
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-[#111111]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 dark:text-gray-400">Redirecting...</p>
@@ -309,7 +309,7 @@ export default function DashboardLayout({
 
   if (isPlatformFlagsLoading && user?.role !== "SUPER_ADMIN") {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="flex items-center justify-center h-screen bg-[#F8FAFC] dark:bg-[#111111]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 dark:text-gray-400">Checking platform status...</p>
@@ -320,26 +320,26 @@ export default function DashboardLayout({
 
   if (isMaintenanceMode && user?.role !== "SUPER_ADMIN") {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] px-4 py-8 dark:bg-[#0F172A]">
+      <div className="min-h-screen bg-[#F8FAFC] px-4 py-8 dark:bg-[#111111]">
         <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-xl flex-col items-center justify-center text-center">
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-[rgba(var(--brand-color-rgb),0.12)] text-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.2)]">
             <Wrench className="h-10 w-10" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Platform Under Maintenance
           </h1>
-          <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300">
+          <p className="mt-3 text-base leading-7 text-gray-600 dark:text-gray-300">
             The school portal is temporarily unavailable while maintenance is in progress.
             Please check back later.
           </p>
           <button
             type="button"
             onClick={handleLogout}
-            className="mt-8 inline-flex h-10 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] px-5 text-sm font-medium text-white transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:ring-offset-2 dark:focus:ring-offset-[#0F172A]"
+            className="mt-8 inline-flex h-10 items-center justify-center rounded-md bg-[var(--brand-color,#e35336)] px-5 text-sm font-medium text-white transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)] focus:ring-offset-2 dark:focus:ring-offset-[#111111]"
           >
             Sign out
           </button>
-          <div className="mt-8 rounded-lg border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+          <div className="mt-8 rounded-lg border border-gray-200 bg-white px-5 py-4 text-sm text-gray-500 shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111] dark:text-gray-400">
             Signed in as {user?.name || "User"}
           </div>
         </div>
@@ -350,20 +350,20 @@ export default function DashboardLayout({
   const textDirection = language === "ar" ? "rtl" : "ltr";
 
   return (
-    <div className="flex h-screen max-w-full overflow-x-hidden bg-[#F8FAFC] dark:bg-[#0F172A]" dir={textDirection}>
+    <div className="flex h-screen max-w-full overflow-x-hidden bg-[#F8FAFC] dark:bg-[#111111]" dir={textDirection}>
       {/* Desktop Sidebar */}
       <div className="relative hidden shrink-0 md:block md:w-16">
         <aside
           onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseLeave={() => setIsSidebarHovered(false)}
-          className={`dashboard-sidebar-flyout absolute inset-y-0 ${language === "ar" ? "right-0" : "left-0"} z-[60] flex h-full flex-col shadow-sm dark:bg-[#111827] dark:border-[#334155] transition-[width] duration-200 ease-out will-change-transform ${
+          className={`dashboard-sidebar-flyout absolute inset-y-0 ${language === "ar" ? "right-0" : "left-0"} z-[60] flex h-full flex-col shadow-sm dark:bg-[#161616] dark:border-[#2A2A2A] transition-[width] duration-200 ease-out will-change-transform ${
             brandNavigationEnabled
               ? `bg-[var(--brand-color,#e35336)] ${language === "ar" ? "border-l" : "border-r"} border-[var(--brand-color,#e35336)]`
               : `bg-[#F1F5F9] ${language === "ar" ? "border-l" : "border-r"} border-gray-200`
           } ${isSidebarHovered ? 'w-64' : 'w-16'} group/sidebar`}
         >
         {/* Logo */}
-        <div className={`flex h-14 sm:h-16 md:h-18 items-center justify-center border-b dark:border-[#334155] shrink-0 ${
+        <div className={`flex h-14 sm:h-16 md:h-18 items-center justify-center border-b dark:border-[#2A2A2A] shrink-0 ${
           brandNavigationEnabled
             ? 'border-white/25'
             : 'border-gray-200'
@@ -388,7 +388,7 @@ export default function DashboardLayout({
                   </span>
                 </div>
               )}
-              <span className={`text-base font-bold ${brandNavigationEnabled ? "text-white" : "text-slate-900 dark:text-white"} ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`}>
+              <span className={`text-base font-bold ${brandNavigationEnabled ? "text-white" : "text-gray-900 dark:text-white"} ${revealTextClass(isSidebarHovered, "max-w-[180px]")}`}>
                 {formatPortalLabel(t.portal, school?.name, t.defaultPortal)}
               </span>
             </div>
@@ -420,14 +420,14 @@ export default function DashboardLayout({
         <Breadcrumb />
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-0 bg-[#F8FAFC] dark:bg-[#0F172A] contain-content">
+        <div className="flex-1 overflow-y-auto p-0 bg-[#F8FAFC] dark:bg-[#111111] contain-content">
           <div className="w-full overflow-visible">
             {children}
           </div>
         </div>
 
         {/* Footer */}
-        <footer className="border-t border-gray-200 dark:border-[#334155] bg-[#F1F5F9] dark:bg-[#111827] px-3 sm:px-4 py-2 sm:py-3">
+        <footer className="border-t border-gray-200 dark:border-[#2A2A2A] bg-[#F1F5F9] dark:bg-[#161616] px-3 sm:px-4 py-2 sm:py-3">
           <div className="flex flex-row items-center justify-between gap-1 sm:gap-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
             <div className="flex items-center gap-1 sm:gap-2">
               <span className="font-medium">{school?.name ? t.portal.replace("{school}", school.name) : t.defaultPortal}</span>

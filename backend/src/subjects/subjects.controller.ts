@@ -28,7 +28,7 @@ export class SubjectsController {
   @Permissions('class:create')
   async create(
     @Request() req,
-    @Body() body: { name: string; code?: string; isActive?: boolean },
+    @Body() body: { name: string; code?: string; isActive?: boolean; academicYearId?: string },
   ) {
     const schoolId = req.user.schoolId;
 

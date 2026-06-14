@@ -50,20 +50,20 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
   // Dark mode tooltip style
   const getTooltipStyle = () => ({
     borderRadius: "8px",
-    borderColor: isDark ? "#334155" : "#e5e7eb",
+    borderColor: isDark ? "#2A2A2A" : "#e5e7eb",
     boxShadow: isDark ? "0 4px 6px -1px rgba(0, 0, 0, 0.5)" : "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-    background: isDark ? "#1E293B" : "white",
-    color: isDark ? "#f1f5f9" : "#1f2937",
+    background: isDark ? "#1A1A1A" : "white",
+    color: isDark ? "#F2F2F2" : "#1f2937",
   });
 
-  const axisTickStyle = { fill: isDark ? "#94a3b8" : "#9ca3af", fontSize: 12 };
-  const gridStroke = isDark ? "#334155" : "#e5e7eb";
-  const titleColor = isDark ? "#f8fafc" : "#1f2937";
+  const axisTickStyle = { fill: isDark ? "#888888" : "#9ca3af", fontSize: 12 };
+  const gridStroke = isDark ? "#2A2A2A" : "#e5e7eb";
+  const titleColor = isDark ? "#F2F2F2" : "#1f2937";
 
   // Handle undefined or null chartData
   if (!chartData) {
     return (
-      <div className="bg-white dark:bg-[#1E293B] rounded-xl p-4 h-full shadow-sm border border-gray-100 dark:border-[#334155]">
+      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl p-4 h-full shadow-sm border border-gray-100 dark:border-[#2A2A2A]">
         <div className="flex items-center justify-center h-full min-h-[200px] text-gray-500 dark:text-gray-400">
           <p>No chart data available</p>
         </div>
@@ -76,7 +76,7 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
   // Handle empty data
   if (!labels || !datasets || labels.length === 0 || datasets.length === 0) {
     return (
-      <div className="bg-white dark:bg-[#1E293B] rounded-xl p-4 h-full shadow-sm border border-gray-100 dark:border-[#334155]">
+      <div className="bg-white dark:bg-[#1A1A1A] rounded-xl p-4 h-full shadow-sm border border-gray-100 dark:border-[#2A2A2A]">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{title || 'Chart'}</h3>
         </div>
@@ -116,13 +116,13 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
               />
               <Tooltip
                 contentStyle={getTooltipStyle()}
-                itemStyle={{ color: isDark ? "#f1f5f9" : "#1f2937" }}
-                labelStyle={{ color: isDark ? "#94a3b8" : "#6b7280" }}
+                itemStyle={{ color: isDark ? "#F2F2F2" : "#1f2937" }}
+                labelStyle={{ color: isDark ? "#888888" : "#6b7280" }}
               />
               <Legend
                 align="left"
                 verticalAlign="top"
-                wrapperStyle={{ paddingTop: "10px", paddingBottom: "20px", color: isDark ? "#cbd5e1" : "#374151" }}
+                wrapperStyle={{ paddingTop: "10px", paddingBottom: "20px", color: isDark ? "#CCCCCC" : "#374151" }}
               />
               {datasets.map((dataset, index) => {
                   const baseColor = typeof dataset.backgroundColor === "string"
@@ -166,13 +166,13 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
               />
               <Tooltip
                 contentStyle={getTooltipStyle()}
-                itemStyle={{ color: isDark ? "#f1f5f9" : "#1f2937" }}
-                labelStyle={{ color: isDark ? "#94a3b8" : "#6b7280" }}
+                itemStyle={{ color: isDark ? "#F2F2F2" : "#1f2937" }}
+                labelStyle={{ color: isDark ? "#888888" : "#6b7280" }}
               />
               <Legend
                 align="center"
                 verticalAlign="top"
-                wrapperStyle={{ paddingTop: "10px", paddingBottom: "20px", color: isDark ? "#cbd5e1" : "#374151" }}
+                wrapperStyle={{ paddingTop: "10px", paddingBottom: "20px", color: isDark ? "#CCCCCC" : "#374151" }}
               />
               {datasets.map((dataset, index) => (
                 <Line
@@ -182,7 +182,7 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
                   stroke={dataset.borderColor || COLORS[index % COLORS.length]}
                   strokeWidth={isDark ? 2.5 : 3}
                   dot={{ fill: dataset.borderColor || COLORS[index % COLORS.length], strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 7, stroke: isDark ? "#1E293B" : "#fff", strokeWidth: 2, fill: dataset.borderColor || COLORS[index % COLORS.length] }}
+                  activeDot={{ r: 7, stroke: isDark ? "#1A1A1A" : "#fff", strokeWidth: 2, fill: dataset.borderColor || COLORS[index % COLORS.length] }}
                   isAnimationActive={false}
                 />
               ))}
@@ -218,7 +218,7 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
                   <Cell 
                     key={`cell-${index}`} 
                     fill={pieColors[index % pieColors.length]}
-                    stroke={isDark ? "#1E293B" : "#fff"}
+                    stroke={isDark ? "#1A1A1A" : "#fff"}
                     strokeWidth={2}
                     className="transition-all duration-200"
                     style={{
@@ -230,13 +230,13 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
               </Pie>
               <Tooltip
                 contentStyle={getTooltipStyle()}
-                itemStyle={{ color: isDark ? "#f1f5f9" : "#1f2937" }}
-                labelStyle={{ color: isDark ? "#94a3b8" : "#6b7280" }}
+                itemStyle={{ color: isDark ? "#F2F2F2" : "#1f2937" }}
+                labelStyle={{ color: isDark ? "#888888" : "#6b7280" }}
               />
               <Legend
                 align="center"
                 verticalAlign="bottom"
-                wrapperStyle={{ paddingTop: "20px", color: isDark ? "#cbd5e1" : "#374151" }}
+                wrapperStyle={{ paddingTop: "20px", color: isDark ? "#CCCCCC" : "#374151" }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -270,7 +270,7 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
                   <Cell 
                     key={`cell-${index}`} 
                     fill={doughnutColors[index % doughnutColors.length]}
-                    stroke={isDark ? "#1E293B" : "#fff"}
+                    stroke={isDark ? "#1A1A1A" : "#fff"}
                     strokeWidth={2}
                     className="transition-all duration-200"
                     style={{
@@ -282,13 +282,13 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
               </Pie>
               <Tooltip
                 contentStyle={getTooltipStyle()}
-                itemStyle={{ color: isDark ? "#f1f5f9" : "#1f2937" }}
-                labelStyle={{ color: isDark ? "#94a3b8" : "#6b7280" }}
+                itemStyle={{ color: isDark ? "#F2F2F2" : "#1f2937" }}
+                labelStyle={{ color: isDark ? "#888888" : "#6b7280" }}
               />
               <Legend
                 align="center"
                 verticalAlign="bottom"
-                wrapperStyle={{ paddingTop: "20px", color: isDark ? "#cbd5e1" : "#374151" }}
+                wrapperStyle={{ paddingTop: "20px", color: isDark ? "#CCCCCC" : "#374151" }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -300,7 +300,7 @@ const DynamicChart = ({ chartData, height = 300 }: DynamicChartProps) => {
   };
 
   return (
-    <div className="bg-white dark:bg-[#1E293B] rounded-xl p-4 h-full shadow-sm border border-gray-100 dark:border-[#334155]">
+    <div className="bg-white dark:bg-[#1A1A1A] rounded-xl p-4 h-full shadow-sm border border-gray-100 dark:border-[#2A2A2A]">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{title}</h3>
         <MoreHorizontal

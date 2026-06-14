@@ -24,6 +24,7 @@ import {
 
 // Shadcn/ui Components
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -160,8 +161,48 @@ const ParentLessonsPage = () => {
 
   if (loading || isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-12 h-12 border-4 border-[var(--brand-color,#e35336)] border-t-transparent rounded-full animate-spin"></div>
+      <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111]">
+        <div>
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+
+        <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-5 w-5" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-[200px]" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((n) => (
+            <Card key={n} className="dark:bg-[#111111] dark:border-[#2A2A2A]">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-5 w-5" />
+                  <div>
+                    <Skeleton className="h-3 w-20 mb-1" />
+                    <Skeleton className="h-6 w-8" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-[180px]" />
+        </div>
+
+        <Card className="dark:bg-[#111111] dark:border-[#2A2A2A]">
+          <CardContent className="p-4">
+            <Skeleton className="h-[640px] w-full rounded-lg" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -171,14 +212,14 @@ const ParentLessonsPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111]">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Children's Lessons
           </h1>
-          <p className="text-slate-500 dark:text-slate-400">
+          <p className="text-gray-500 dark:text-gray-400">
             View lesson plans and materials for your children
           </p>
         </div>
@@ -288,8 +329,8 @@ const ParentLessonsPage = () => {
       </div>
 
       {/* Lesson Calendar */}
-      <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-800">
+      <Card className="overflow-hidden border-gray-200 bg-white shadow-sm dark:border-[#2A2A2A] dark:bg-[#111111]">
+        <CardHeader className="border-b border-gray-100 dark:border-[#2A2A2A]">
           <CardTitle className="text-lg">Lesson Calendar</CardTitle>
           <CardDescription>Weekly calendar view for your children's lessons</CardDescription>
         </CardHeader>

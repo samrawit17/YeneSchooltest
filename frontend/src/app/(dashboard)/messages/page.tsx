@@ -475,7 +475,7 @@ export default function MessagesPage() {
                       type="button"
                       onClick={() => router.push(`/messages?conversationId=${c.conversationId}`)}
                       className={`w-full p-2 md:p-4 border-b text-left hover:bg-gray-50 transition-colors ${
-                        active ? "bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "bg-white"
+                        active ? "bg-[rgba(var(--brand-color-rgb),0.06)] dark:bg-[rgba(var(--brand-color-rgb),0.12)]" : "bg-white dark:bg-[#111111]"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -548,7 +548,7 @@ export default function MessagesPage() {
                             className={`max-w-[75%] rounded-lg border px-3 py-2 text-sm ${
                               mine
                                 ? "border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.10)] text-[var(--brand-color,#e35336)] dark:border-[rgba(var(--brand-color-rgb),0.24)] dark:bg-[rgba(var(--brand-color-rgb),0.12)] dark:text-white/90"
-                                : "border-gray-200 bg-gray-100 text-gray-900 dark:border-slate-700 dark:bg-slate-700 dark:text-white"
+                                : "border-gray-200 bg-gray-100 text-gray-900 dark:border-[#2A2A2A] dark:bg-[#2A2A2A] dark:text-white"
                             }`}
                           >
                             {!mine && (

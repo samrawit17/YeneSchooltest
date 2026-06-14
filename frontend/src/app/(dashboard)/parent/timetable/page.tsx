@@ -130,7 +130,7 @@ export default function ParentTimetablePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
         <div className="px-4 py-6 md:px-6 space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-5 w-72" />
@@ -142,29 +142,29 @@ export default function ParentTimetablePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A]">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
       <div className="px-4 py-6 md:px-6 space-y-6">
 
         {/* Header */}
         <div>
           <div className="mb-1">
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">{t.title}</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {t.subtitle}
           </p>
         </div>
 
         {/* Child Selector + Quick Info */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="md:col-span-2 bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-center gap-3">
+          <div className="md:col-span-2 bg-white dark:bg-[#1A1A1A]/80 border border-gray-200 dark:border-[#2A2A2A] rounded-xl px-4 py-3.5 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[rgba(var(--brand-color-rgb),0.1)] flex items-center justify-center shrink-0">
               <Users className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
             </div>
             <div className="flex-1">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t.selectChild}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t.selectChild}</p>
               <Select value={selectedChildId} onValueChange={setSelectedChildId}>
-                <SelectTrigger className="w-full h-9 border-slate-200 dark:border-slate-700">
+                <SelectTrigger className="w-full h-9 border-gray-200 dark:border-[#2A2A2A]">
                   <SelectValue placeholder={t.chooseChild} />
                 </SelectTrigger>
                 <SelectContent>
@@ -183,25 +183,25 @@ export default function ParentTimetablePage() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-center gap-3">
+          <div className="bg-white dark:bg-[#1A1A1A]/80 border border-gray-200 dark:border-[#2A2A2A] rounded-xl px-4 py-3.5 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[rgba(var(--brand-color-rgb),0.1)] flex items-center justify-center shrink-0">
               <GraduationCap className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t.child}</p>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[120px]">
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.child}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[120px]">
                 {selectedChild?.name || "N/A"}
               </p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 flex items-center gap-3">
+          <div className="bg-white dark:bg-[#1A1A1A]/80 border border-gray-200 dark:border-[#2A2A2A] rounded-xl px-4 py-3.5 flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[rgba(var(--brand-color-rgb),0.1)] flex items-center justify-center shrink-0">
               <BookText className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t.class}</p>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-[120px]">
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t.class}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[120px]">
                 {selectedChild?.className || selectedChild?.section
                   ? `${translatedClassName || "N/A"}${selectedChild.section ? ` - ${selectedChild.section}` : ""}`
                   : "N/A"}
@@ -211,12 +211,12 @@ export default function ParentTimetablePage() {
         </div>
 
         {children.length === 0 && (
-          <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl py-12 text-center">
-            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mx-auto mb-4">
-              <School className="w-7 h-7 text-slate-400" />
+          <div className="bg-white dark:bg-[#1A1A1A]/80 border border-gray-200 dark:border-[#2A2A2A] rounded-xl py-12 text-center">
+            <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-[#2A2A2A] flex items-center justify-center mx-auto mb-4">
+              <School className="w-7 h-7 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{t.noChildren}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t.noChildren}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {t.noChildrenDesc}
             </p>
           </div>

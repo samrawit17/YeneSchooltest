@@ -482,12 +482,12 @@ export default function ReportCardsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       <div className="px-4 sm:px-6 pt-4">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Report Cards</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Report Cards</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Generate, publish, and manage student report cards
             </p>
           </div>
@@ -497,8 +497,8 @@ export default function ReportCardsPage() {
       <div className="p-4 sm:p-6 space-y-6">
 
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="bg-white dark:bg-[#1A1A1A] rounded-xl border border-gray-200 dark:border-[#2A2A2A]">
+          <div className="p-4 border-b border-gray-200 dark:border-[#2A2A2A]">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex flex-1 gap-3">
                 <select
@@ -509,7 +509,7 @@ export default function ReportCardsPage() {
                     setSelectedTerm("");
                     setSelectedCards(new Set());
                   }}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                  className="px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   {academicYears.length === 0 ? (
                     <option value="">Academic Year</option>
@@ -524,7 +524,7 @@ export default function ReportCardsPage() {
                 <select
                   value={selectedClass}
                   onChange={(e) => setSelectedClass(e.target.value)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                  className="px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   <option value="">All Classes</option>
                   {classes.map((cls) => (
@@ -536,7 +536,7 @@ export default function ReportCardsPage() {
                 <select
                   value={selectedTerm}
                   onChange={(e) => setSelectedTerm(e.target.value)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                  className="px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   <option value="">All Terms</option>
                   {terms.map((term) => (
@@ -548,7 +548,7 @@ export default function ReportCardsPage() {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value as any)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-700 border-0 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
+                  className="px-3 py-2 bg-gray-100 dark:bg-[#2A2A2A] border-0 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--brand-color,#e35336)]"
                 >
                   <option value="all">All Status</option>
                   <option value="DRAFT">Draft</option>
@@ -559,7 +559,7 @@ export default function ReportCardsPage() {
                 {canManageReportCards && filteredCards.length > 0 && (
                   <button
                     onClick={handleBulkDownloadReportCards}
-                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                    className="flex items-center gap-2 px-3 py-2 bg-[var(--brand-color)] text-white rounded-lg text-sm hover:opacity-90"
                   >
                     <Download className="w-4 h-4" />
                     Download Report Cards ({selectedCards.size > 0 ? selectedCards.size : filteredCards.length})
@@ -594,7 +594,7 @@ export default function ReportCardsPage() {
                 </button>
                 <button
                   onClick={fetchReportCards}
-                  className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#2A2A2A] rounded-lg"
                 >
                   <RefreshCw className="w-5 h-5" />
                 </button>
@@ -605,7 +605,7 @@ export default function ReportCardsPage() {
           <div className="overflow-x-auto">
             <Table className="w-full">
               <TableHeader>
-                <TableRow className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                <TableRow className="bg-gray-50 dark:bg-[#1A1A1A]/50 border-b border-gray-200 dark:border-[#2A2A2A]">
                   <TableHead className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
@@ -614,19 +614,19 @@ export default function ReportCardsPage() {
                         selectedVisibleCardIds.every((id) => selectedCards.has(id))
                       }
                       onChange={handleSelectAll}
-                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-[var(--brand-color,#e35336)] focus:ring-[var(--brand-color,#e35336)]"
+                      className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-[var(--brand-color,#e35336)] focus:ring-[var(--brand-color,#e35336)]"
                     />
                   </TableHead>
-                  <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Student</TableHead>
-                  <TableHead className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Class</TableHead>
-                  <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Grade</TableHead>
-                  <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Rank</TableHead>
-                  <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Attendance</TableHead>
-                  <TableHead className="px-4 py-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Status</TableHead>
-                  <TableHead className="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Actions</TableHead>
+                  <TableHead className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Student</TableHead>
+                  <TableHead className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Class</TableHead>
+                  <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Grade</TableHead>
+                  <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Rank</TableHead>
+                  <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Attendance</TableHead>
+                  <TableHead className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Status</TableHead>
+                  <TableHead className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-slate-100 dark:divide-slate-700">
+              <TableBody className="divide-y divide-gray-100 dark:divide-[#2A2A2A]">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
@@ -652,8 +652,8 @@ export default function ReportCardsPage() {
                 ) : filteredCards.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="px-4 py-12 text-center">
-                      <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">No report cards found</p>
+                      <FileText className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">No report cards found</p>
                       {canManageReportCards && (
                         <button
                           onClick={handleBulkGenerate}
@@ -667,13 +667,13 @@ export default function ReportCardsPage() {
                   </TableRow>
                 ) : (
                   filteredCards.map((card) => (
-                    <TableRow key={card.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <TableRow key={card.id} className="hover:bg-gray-50 dark:hover:bg-[#1A1A1A]">
                       <TableCell className="px-4 py-3">
                         <input
                           type="checkbox"
                           checked={selectedCards.has(card.id)}
                           onChange={() => handleSelect(card.id)}
-                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-[var(--brand-color,#e35336)] focus:ring-[var(--brand-color,#e35336)]"
+                          className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-[var(--brand-color,#e35336)] focus:ring-[var(--brand-color,#e35336)]"
                         />
                       </TableCell>
                       <TableCell className="px-4 py-3">
@@ -681,21 +681,21 @@ export default function ReportCardsPage() {
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--brand-color,#e35336)] to-[var(--brand-color,#e35336)] flex items-center justify-center text-white text-sm font-medium">
                             {card.student?.name?.charAt(0) || "?"}
                           </div>
-                          <span className="font-medium text-slate-900 dark:text-white text-sm">
+                          <span className="font-medium text-gray-900 dark:text-white text-sm">
                             {card.student?.name || "Unknown"}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                      <TableCell className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                         {card.class?.name || "-"}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-center">
                         <GradeBadge grade={card.overallGrade} />
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-center text-sm font-medium text-slate-900 dark:text-white">
+                      <TableCell className="px-4 py-3 text-center text-sm font-medium text-gray-900 dark:text-white">
                         {card.rank ?? card.rankInClass ?? "-"}
                       </TableCell>
-                      <TableCell className="px-4 py-3 text-center text-sm text-slate-600 dark:text-slate-400">
+                      <TableCell className="px-4 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
                         {card.attendancePercentage?.toFixed(1) || "0"}%
                       </TableCell>
                       <TableCell className="px-4 py-3 text-center">
@@ -705,14 +705,14 @@ export default function ReportCardsPage() {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleDownloadCertificate(card)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                            className="p-1.5 text-gray-400 hover:text-[var(--brand-color)] hover:bg-gray-100 dark:hover:bg-[#2A2A2A] rounded-lg"
                             title="Download Certificate"
                           >
                             <Download className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => router.push(`/admin/report-cards/${card.id}`)}
-                            className="p-1.5 text-slate-400 hover:text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.12)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.18)] rounded-lg"
+                            className="p-1.5 text-gray-400 hover:text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.12)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.18)] rounded-lg"
                             title="View"
                           >
                             <Eye className="w-4 h-4" />
@@ -720,7 +720,7 @@ export default function ReportCardsPage() {
                           {canManageReportCards && card.status === "DRAFT" && (
                             <button
                               onClick={() => handleDelete(card.id)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
                               title="Delete"
                             >
                               <Trash2 className="w-4 h-4" />

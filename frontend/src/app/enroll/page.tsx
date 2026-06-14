@@ -84,7 +84,7 @@ const STEP_LABELS: Record<FormStep, string> = {
 const STEPS: FormStep[] = ['school', 'student', 'guardian', 'review'];
 
 const accentControlClassName =
-  'border bg-white/90 text-slate-700 shadow-sm transition-colors hover:bg-white focus:ring-2 focus:ring-offset-2 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-900';
+  'border bg-white/90 text-slate-700 shadow-sm transition-colors hover:bg-white focus:ring-2 focus:ring-offset-2 dark:bg-[#111111]/80 dark:text-[#CCCCCC] dark:hover:bg-[#111111]';
 
 const accentControlStyle: CSSProperties = {
   borderColor: 'rgba(var(--enroll-brand-rgb), 0.45)',
@@ -92,10 +92,10 @@ const accentControlStyle: CSSProperties = {
 } as CSSProperties;
 
 const brandedFieldClassName =
-  'border-slate-200 bg-white transition-colors focus:border-[var(--enroll-brand)] focus-visible:ring-2 focus-visible:ring-[rgba(var(--enroll-brand-rgb),0.28)] dark:border-slate-600 dark:bg-slate-800';
+  'border-slate-200 bg-white transition-colors focus:border-[var(--enroll-brand)] focus-visible:ring-2 focus-visible:ring-[rgba(var(--enroll-brand-rgb),0.28)] dark:border-[#333333] dark:bg-[#1A1A1A]';
 
 const brandedFieldTriggerClassName = `h-11 ${brandedFieldClassName}`;
-const brandedDatePickerClassName = `${brandedFieldTriggerClassName} text-slate-900 hover:border-[var(--enroll-brand)] hover:bg-white focus-visible:border-[var(--enroll-brand)] dark:text-slate-100 dark:hover:bg-slate-800 [&_svg]:text-[var(--enroll-brand)]`;
+const brandedDatePickerClassName = `${brandedFieldTriggerClassName} text-slate-900 hover:border-[var(--enroll-brand)] hover:bg-white focus-visible:border-[var(--enroll-brand)] dark:text-[#F2F2F2] dark:hover:bg-[#1A1A1A] [&_svg]:text-[var(--enroll-brand)]`;
 
 const parseDateValue = (value?: string) => {
   if (!value) return undefined;
@@ -407,11 +407,11 @@ export default function EnrollmentPage() {
   if (submitted) {
     return (
       <div
-        className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center p-4"
+        className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-[#111111] dark:to-[#161616] flex items-center justify-center p-4"
         style={pageStyle}
       >
         <div className="w-full max-w-md">
-          <Card className="border-0 shadow-xl shadow-slate-200/60 dark:shadow-slate-900/80 overflow-hidden dark:bg-slate-800">
+          <Card className="border-0 shadow-xl shadow-slate-200/60 dark:shadow-[#111111]/80 overflow-hidden dark:bg-[#1A1A1A]">
             <div
               className="h-2 w-full"
               style={{ background: `linear-gradient(90deg, ${brandColor}, ${brandColor}88)` }}
@@ -428,17 +428,17 @@ export default function EnrollmentPage() {
                   <Check className="w-7 h-7" />
                 </div>
               </div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">{t.submittedTitle}</h1>
-              <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-[#F2F2F2] mb-2">{t.submittedTitle}</h1>
+              <p className="text-slate-500 dark:text-[#888888] mb-8 text-sm leading-relaxed">
                 {t.submittedDesc}
               </p>
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 p-5 mb-8">
-                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">{t.referenceNumber}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 font-mono tracking-tight">{referenceNumber}</p>
+              <div className="rounded-xl border border-slate-200 dark:border-[#2A2A2A] bg-slate-50 dark:bg-[#1A1A1A]/80 p-5 mb-8">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-[#888888] mb-1">{t.referenceNumber}</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-[#F2F2F2] font-mono tracking-tight">{referenceNumber}</p>
               </div>
               <Button
                 onClick={() => router.push(schoolSignInHref)}
-                className="w-full h-11 text-white shadow-lg shadow-slate-200/80 dark:shadow-slate-900/80"
+                className="w-full h-11 text-white shadow-lg shadow-slate-200/80 dark:shadow-[#111111]/80"
                 style={{ backgroundColor: 'var(--enroll-brand)' }}
               >
                 <ArrowRight className="w-4 h-4 mr-2" />
@@ -453,7 +453,7 @@ export default function EnrollmentPage() {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 ${resolvedTheme === 'dark' ? 'dark' : ''} relative`}
+      className={`min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-[#111111] dark:via-[#161616] dark:to-[#111111] ${resolvedTheme === 'dark' ? 'dark' : ''} relative`}
       style={pageStyle}
     >
       {/* Top Right Controls */}
@@ -512,13 +512,13 @@ export default function EnrollmentPage() {
               </div>
             )}
             <div className="text-left">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">{t.title}</p>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-[#888888]">{t.title}</p>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-[#F2F2F2]">
                 {selectedSchool?.name || t.titleFallback}
               </h1>
             </div>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+          <p className="text-sm text-slate-500 dark:text-[#888888] max-w-md mx-auto">
             {t.subtitle}
           </p>
         </div>
@@ -538,11 +538,11 @@ export default function EnrollmentPage() {
                           ? 'border-transparent text-white shadow-md'
                           : active
                             ? 'border-current shadow-md'
-                            : 'border-slate-200 dark:border-slate-600 text-slate-300 dark:text-slate-600'
+                            : 'border-slate-200 dark:border-[#333333] text-slate-300 dark:text-[#666666]'
                       }`}
                       style={{
-                        backgroundColor: completed ? 'var(--enroll-brand)' : active ? 'white' : undefined,
-                        color: active ? 'var(--enroll-brand)' : undefined,
+                        backgroundColor: completed ? 'var(--enroll-brand)' : active ? 'var(--enroll-brand)' : undefined,
+                        color: active ? 'white' : undefined,
                         borderColor: active ? 'var(--enroll-brand)' : undefined,
                       }}
                     >
@@ -550,7 +550,7 @@ export default function EnrollmentPage() {
                     </div>
                     <span
                       className={`mt-2 text-xs font-medium hidden sm:block ${
-                        active ? 'text-slate-900 dark:text-slate-100' : completed ? 'text-slate-500 dark:text-slate-400' : 'text-slate-300 dark:text-slate-600'
+                        active ? 'text-slate-900 dark:text-[#F2F2F2]' : completed ? 'text-slate-500 dark:text-[#888888]' : 'text-slate-300 dark:text-[#666666]'
                       }`}
                       style={{ color: active ? 'var(--enroll-brand)' : undefined }}
                     >
@@ -577,7 +577,7 @@ export default function EnrollmentPage() {
 
         {/* Form Card */}
         <div className="transition-opacity duration-200">
-          <Card className="border border-slate-200/80 dark:border-slate-700/80 shadow-lg shadow-slate-200/40 dark:shadow-slate-900/60 overflow-hidden dark:bg-slate-800">
+          <Card className="border border-slate-200/80 dark:border-[#2A2A2A]/80 shadow-lg shadow-slate-200/40 dark:shadow-[#111111]/60 overflow-hidden dark:bg-[#1A1A1A]">
               <div
                 className="h-1 w-full"
                 style={{ background: `linear-gradient(90deg, ${brandColor}, ${brandColor}44)` }}
@@ -592,10 +592,10 @@ export default function EnrollmentPage() {
                     {STEP_ICONS[currentStep]}
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-[#888888]">
                       {t.stepOf.replace('{step}', String(stepIndex + 1)).replace('{total}', String(STEPS.length))}
                     </p>
-                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{STEP_LABELS[currentStep]}</h2>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-[#F2F2F2]">{STEP_LABELS[currentStep]}</h2>
                   </div>
                 </div>
 
@@ -633,7 +633,7 @@ export default function EnrollmentPage() {
 
                         {enrollmentStatus?.isOpen && (
                           <>
-                            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+                            <div className="rounded-xl border border-slate-200 dark:border-[#2A2A2A] bg-slate-50 dark:bg-[#1A1A1A]/50 p-4">
                               <div className="flex items-center gap-3">
                                 <div
                                   className="flex h-9 w-9 items-center justify-center rounded-lg"
@@ -642,8 +642,8 @@ export default function EnrollmentPage() {
                                   <Calendar className="w-4 h-4" style={{ color: 'var(--enroll-brand)' }} />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t.academicYear}</p>
-                                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                  <p className="text-xs font-medium text-slate-500 dark:text-[#888888]">{t.academicYear}</p>
+                                  <p className="text-sm font-semibold text-slate-900 dark:text-[#F2F2F2]">
                                     {selectedSchoolData?.academicYearName || t.loading}
                                   </p>
                                 </div>
@@ -651,7 +651,7 @@ export default function EnrollmentPage() {
                             </div>
 
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t.gradeApplying}</Label>
+                              <Label className="text-sm font-semibold text-slate-700 dark:text-[#CCCCCC]">{t.gradeApplying}</Label>
                               <Select
                                 value={String(formData.requestedGrade)}
                                 onValueChange={(v) => updateFormData('requestedGrade', parseInt(v))}
@@ -667,11 +667,11 @@ export default function EnrollmentPage() {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <p className="text-xs text-slate-400 dark:text-slate-500">{t.sectionsAvailability}</p>
+                              <p className="text-xs text-slate-400 dark:text-[#888888]">{t.sectionsAvailability}</p>
                             </div>
                             {[11, 12].includes(formData.requestedGrade) && (
                               <div className="space-y-2">
-                                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t.stream}</Label>
+                                <Label className="text-sm font-semibold text-slate-700 dark:text-[#CCCCCC]">{t.stream}</Label>
                                 <Select
                                   value={formData.requestedStream}
                                   onValueChange={(v) => updateFormData('requestedStream', v)}
@@ -762,7 +762,7 @@ export default function EnrollmentPage() {
                         pattern="[0-9]{12}"
                         className={brandedFieldTriggerClassName}
                       />
-                      <p className="text-xs text-slate-400 dark:text-slate-500">{t.faydaHint}</p>
+                      <p className="text-xs text-slate-400 dark:text-[#888888]">{t.faydaHint}</p>
                     </Field>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -808,9 +808,9 @@ export default function EnrollmentPage() {
                       />
                     </Field>
 
-                    <div className="border-t border-slate-100 dark:border-slate-700 pt-6">
-                      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                    <div className="border-t border-slate-100 dark:border-[#2A2A2A] pt-6">
+                      <h3 className="text-sm font-semibold text-slate-700 dark:text-[#CCCCCC] mb-4 flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-slate-400 dark:text-[#888888]" />
                         {t.previousSchool}
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -847,7 +847,7 @@ export default function EnrollmentPage() {
                 {/* ===== Guardian Information ===== */}
                 {currentStep === 'guardian' && (
                   <div className="space-y-5">
-                    <p className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700">
+                    <p className="text-sm text-slate-500 dark:text-[#888888] bg-slate-50 dark:bg-[#1A1A1A]/50 rounded-lg p-3 border border-slate-100 dark:border-[#2A2A2A]">
                       {t.guardianInfo}
                     </p>
 
@@ -924,8 +924,8 @@ export default function EnrollmentPage() {
                     >
                       <Sparkles className="w-5 h-5 shrink-0 mt-0.5" style={{ color: 'var(--enroll-brand)' }} />
                       <div>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t.reviewTitle}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-[#F2F2F2]">{t.reviewTitle}</p>
+                        <p className="text-xs text-slate-500 dark:text-[#888888] mt-0.5">
                           {t.reviewDesc}
                         </p>
                       </div>
@@ -974,12 +974,12 @@ export default function EnrollmentPage() {
                 )}
 
                 {/* Navigation */}
-                <div className="flex items-center justify-between pt-8 mt-8 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex items-center justify-between pt-8 mt-8 border-t border-slate-100 dark:border-[#2A2A2A]">
                   <Button
                     variant="outline"
                     onClick={prevStep}
                     disabled={stepIndex === 0}
-                    className="rounded-lg h-11 px-5 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300"
+                    className="rounded-lg h-11 px-5 border-slate-200 dark:border-[#333333] text-slate-600 dark:text-[#CCCCCC]"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     {t.back}
@@ -1027,7 +1027,7 @@ export default function EnrollmentPage() {
           </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-slate-400 dark:text-slate-600 mt-8">
+        <p className="text-center text-xs text-slate-400 dark:text-[#666666] mt-8">
           {t.footer}
         </p>
       </div>
@@ -1042,11 +1042,11 @@ function Field({ children }: { children: ReactNode }) {
 function ReviewSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
     <div>
-      <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-        <span className="text-slate-400 dark:text-slate-500">{icon}</span>
+      <h4 className="text-sm font-semibold text-slate-700 dark:text-[#CCCCCC] mb-3 flex items-center gap-2">
+        <span className="text-slate-400 dark:text-[#888888]">{icon}</span>
         {title}
       </h4>
-      <div className="rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 divide-y divide-slate-100 dark:divide-slate-700">
+      <div className="rounded-xl border border-slate-100 dark:border-[#2A2A2A] bg-slate-50/50 dark:bg-[#1A1A1A]/30 divide-y divide-slate-100 dark:divide-[#2A2A2A]">
         {children}
       </div>
     </div>
@@ -1056,8 +1056,8 @@ function ReviewSection({ icon, title, children }: { icon: ReactNode; title: stri
 function ReviewRow({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex items-center justify-between px-4 py-2.5">
-      <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="text-sm font-medium text-slate-900 dark:text-slate-100 text-right">{value || '—'}</span>
+      <span className="text-sm text-slate-500 dark:text-[#888888]">{label}</span>
+      <span className="text-sm font-medium text-slate-900 dark:text-[#F2F2F2] text-right">{value || '—'}</span>
     </div>
   );
 }

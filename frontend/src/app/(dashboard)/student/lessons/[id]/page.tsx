@@ -95,7 +95,7 @@ export default function StudentLessonDetailPage() {
   }
 
   return (
-    <div className="space-y-6 bg-[#F8FAFC] p-6 dark:bg-[#0F172A]">
+    <div className="space-y-6 bg-[#F8FAFC] p-6 dark:bg-[#111111]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>

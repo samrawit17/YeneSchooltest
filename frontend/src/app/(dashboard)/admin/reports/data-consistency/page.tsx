@@ -26,7 +26,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 const severityStyles: Record<DataQualitySeverity, string> = {
   high: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
-  low: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  low: "bg-gray-100 text-gray-700 dark:bg-[#1A1A1A] dark:text-[#CCCCCC]",
 };
 
 const formatIssueType = (type: string) =>
@@ -154,7 +154,7 @@ export default function DataConsistencyReportPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 dark:bg-[#0F172A] min-h-screen">
+    <div className="p-4 md:p-6 space-y-6 dark:bg-[#111111] min-h-screen">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">School Data Health</h1>
@@ -196,7 +196,7 @@ export default function DataConsistencyReportPage() {
           )}
 
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            <Card className="dark:bg-slate-800 dark:border-slate-700">
+            <Card className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-gray-500 dark:text-gray-400">Students Checked</p>
@@ -208,13 +208,13 @@ export default function DataConsistencyReportPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="dark:bg-slate-800 dark:border-slate-700">
+            <Card className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
               <CardContent className="p-3">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Total Issues</p>
                 <p className="mt-1 text-lg font-semibold dark:text-white">{data?.summary.total || 0}</p>
               </CardContent>
             </Card>
-            <Card className="dark:bg-slate-800 dark:border-slate-700">
+            <Card className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
               <CardContent className="p-3">
                 <p className="text-xs text-gray-500 dark:text-gray-400">High Severity</p>
                 <p className="mt-1 text-lg font-semibold text-red-600 dark:text-red-400">
@@ -222,7 +222,7 @@ export default function DataConsistencyReportPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="dark:bg-slate-800 dark:border-slate-700">
+            <Card className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
               <CardContent className="p-3">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
                 <div className="mt-1 flex items-center gap-1.5">
@@ -249,7 +249,7 @@ export default function DataConsistencyReportPage() {
                   key={issueType}
                   type="button"
                   onClick={() => setType(issueType)}
-                  className="rounded-md border bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-800 dark:hover:bg-slate-800/80"
+                  className="rounded-md border bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:hover:border-blue-800 dark:hover:bg-[#1A1A1A]"
                 >
                   <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Common issue
@@ -265,7 +265,7 @@ export default function DataConsistencyReportPage() {
             </div>
           )}
 
-          <Card className="dark:bg-slate-800 dark:border-slate-700">
+          <Card className="dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
             <CardHeader>
               <CardTitle>Student Issues</CardTitle>
               <CardDescription>
@@ -313,11 +313,11 @@ export default function DataConsistencyReportPage() {
               </div>
 
               {filteredIssues.length === 0 ? (
-                <div className="rounded-md border border-dashed px-4 py-10 text-center text-sm text-gray-500 dark:border-slate-700 dark:text-gray-400">
+                <div className="rounded-md border border-dashed px-4 py-10 text-center text-sm text-gray-500 dark:border-[#2A2A2A] dark:text-gray-400">
                   No data consistency issues match the current filters.
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-md border dark:border-slate-700">
+                <div className="overflow-x-auto rounded-md border dark:border-[#2A2A2A]">
                   <Table>
                     <TableHeader>
                       <TableRow>

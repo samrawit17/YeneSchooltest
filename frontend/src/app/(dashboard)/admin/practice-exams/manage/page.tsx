@@ -35,7 +35,7 @@ import {
 import { practiceExamsAPI, type PracticeExam, type PracticeExamStatus } from "@/lib/api";
 
 const statusTone: Record<PracticeExamStatus, string> = {
-  DRAFT: "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300",
+  DRAFT: "border-gray-200 text-gray-600 dark:border-[#2A2A2A] dark:text-gray-300",
   READY: "border-sky-200 text-sky-700 dark:border-sky-900 dark:text-sky-300",
   ACTIVE: "border-emerald-200 text-emerald-700 dark:border-emerald-900 dark:text-emerald-300",
   ARCHIVED: "border-amber-200 text-amber-700 dark:border-amber-900 dark:text-amber-300",
@@ -120,7 +120,7 @@ export default function ManageOnlineExamsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 dark:bg-slate-950">
+    <div className="min-h-screen bg-gray-50 p-6 dark:bg-[#111111]">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <Button variant="outline" size="icon" asChild>
@@ -129,8 +129,8 @@ export default function ManageOnlineExamsPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Manage Exams</h1>
-            <p className="text-sm text-slate-500">All created online examinations.</p>
+            <h1 className="text-2xl font-bold text-gray-950 dark:text-white">Manage Exams</h1>
+            <p className="text-sm text-gray-500">All created online examinations.</p>
           </div>
         </div>
         <Button asChild>
@@ -147,12 +147,12 @@ export default function ManageOnlineExamsPage() {
         </CardHeader>
         <CardContent className="p-0">
           {examsQuery.isLoading ? (
-            <div className="flex items-center justify-center py-16 text-sm text-slate-500">
+            <div className="flex items-center justify-center py-16 text-sm text-gray-500">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Loading exams...
             </div>
           ) : exams.length === 0 ? (
-            <div className="py-16 text-center text-sm text-slate-500">
+            <div className="py-16 text-center text-sm text-gray-500">
               No online exams have been created yet.
             </div>
           ) : (
@@ -244,7 +244,7 @@ export default function ManageOnlineExamsPage() {
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
               <div>
                 <CardTitle className="text-lg">Edit Exam</CardTitle>
-                <p className="mt-1 text-sm text-slate-500">{editingExam.title}</p>
+                <p className="mt-1 text-sm text-gray-500">{editingExam.title}</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setEditingExam(null)}>
                 <X className="h-4 w-4" />
@@ -322,7 +322,7 @@ export default function ManageOnlineExamsPage() {
           <Card className="w-full max-w-sm">
             <CardHeader>
               <CardTitle className="text-lg">Delete Exam?</CardTitle>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-gray-500">
                 This will delete {deleteConfirmExam.title} and its questions.
               </p>
             </CardHeader>

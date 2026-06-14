@@ -111,8 +111,8 @@ interface PayrollRunDetail extends PayrollRun {
 }
 
 const statusTone: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  PENDING: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  DRAFT: "bg-gray-100 text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-300",
+  PENDING: "bg-gray-100 text-gray-700 dark:bg-[#1A1A1A] dark:text-gray-300",
   APPROVED: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
   PAID: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
   HELD: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
@@ -453,10 +453,6 @@ export default function PayrollPage() {
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Button onClick={createRun} disabled={saving || activeSalaryCount === 0}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-            Create Run
-          </Button>
         </div>
       </div>
 
@@ -506,7 +502,7 @@ export default function PayrollPage() {
       </div>
 
       <Tabs defaultValue="runs" className="space-y-4">
-        <div className="border-b border-slate-200 dark:border-slate-800">
+        <div className="border-b border-gray-200 dark:border-[#2A2A2A]">
           <TabsList className="inline-flex h-auto w-max min-w-0 flex-nowrap bg-transparent p-0 shadow-none border-0">
             <TabsTrigger
               value="runs"
@@ -525,11 +521,8 @@ export default function PayrollPage() {
 
         <TabsContent value="runs" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Create Monthly Run</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-6">
-              <div className="md:col-span-2">
+            <CardContent className="grid gap-3 md:grid-cols-5 pt-6">
+              <div>
                 <Label>Salary Month</Label>
                 <CalendarDatePicker
                   value={salaryMonthDate}
@@ -539,7 +532,7 @@ export default function PayrollPage() {
                   placeholder="Select salary month"
                 />
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <Label>Payment Date</Label>
                 <CalendarDatePicker
                   value={paymentDate}
@@ -549,13 +542,19 @@ export default function PayrollPage() {
                   placeholder="Select payment date"
                 />
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <Label>Title</Label>
                 <Input value={runForm.title} placeholder="Optional" onChange={(event) => setRunForm((prev) => ({ ...prev, title: event.target.value }))} />
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <Label>Notes</Label>
                 <Input value={runForm.notes} placeholder="Optional" onChange={(event) => setRunForm((prev) => ({ ...prev, notes: event.target.value }))} />
+              </div>
+              <div className="flex items-end">
+                <Button onClick={createRun} disabled={saving || activeSalaryCount === 0} className="w-full bg-[var(--brand-color,#e35336)] text-white hover:opacity-90">
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Create Run
+                </Button>
               </div>
             </CardContent>
           </Card>
