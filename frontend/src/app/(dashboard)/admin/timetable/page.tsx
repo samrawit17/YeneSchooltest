@@ -1100,6 +1100,22 @@ const AdminTimetablePage = () => {
     return null;
   }
 
+  if (!currentAcademicYear) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-[#111111] dark:to-[#111111] p-2 md:p-4 space-y-3">
+        <Card className="border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Calendar className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Active Academic Year</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md">
+              You need an active academic year to create or manage timetables. Please create or activate an academic year first.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-[#111111] dark:to-[#111111] p-2 md:p-4 space-y-3">
@@ -1203,9 +1219,6 @@ const AdminTimetablePage = () => {
               <CardHeader className="relative border-b bg-gray-50/50 dark:bg-[#1A1A1A]/50">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-color,#e35336)]/10 dark:bg-[var(--brand-color,#e35336)]/20">
-                      <Sparkles className="w-5 h-5 text-[var(--brand-color,#e35336)]" />
-                    </div>
                     <div>
                       <CardTitle className="text-base dark:text-white">
                         Auto Generate
@@ -1242,31 +1255,16 @@ const AdminTimetablePage = () => {
             <CardContent className="grid gap-3 p-3 lg:grid-cols-[1.15fr_0.85fr]">
               <div className="space-y-3">
                 <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-[#1A1A1A] p-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/50">
-                        <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Available / week</div>
-                    </div>
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-3">
+                    <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Available / week</div>
                     <div className="mt-1 text-xl font-bold text-blue-700 dark:text-blue-400">{periodCount * SCHOOL_WEEK_DAYS.length}</div>
                   </div>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-[#1A1A1A] p-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50">
-                        <BarChart3 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Requested</div>
-                    </div>
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-3">
+                    <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Requested</div>
                     <div className="mt-1 text-xl font-bold text-amber-700 dark:text-amber-400">{totalRequestedPeriods}</div>
                   </div>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-[#1A1A1A] p-3">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50">
-                        <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Subjects</div>
-                    </div>
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-3">
+                    <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Subjects</div>
                     <div className="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-400">{classSubjects.length}</div>
                   </div>
                 </div>
