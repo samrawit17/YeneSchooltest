@@ -105,7 +105,10 @@ export class TeacherController {
    */
   @Get('me/assignments')
   @Permissions('teacher:read')
-  async getMyAssignments(@Request() req) {
+  async getMyAssignments(
+    @Request() req,
+    @Query('academicYear') academicYear?: string,
+  ) {
     try {
       if (!req.user.schoolId) {
         throw new HttpException(
@@ -117,6 +120,7 @@ export class TeacherController {
       return this.teacherService.getMyAssignments(
         req.user.id,
         req.user.schoolId,
+        academicYear,
       );
     } catch (error) {
       if (error instanceof HttpException) {

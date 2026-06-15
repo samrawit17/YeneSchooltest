@@ -54,6 +54,9 @@ interface ChildDetail {
   className: string;
   section: string;
   enrollmentStatus: string;
+  isPromoted?: boolean;
+  promotedToGrade?: string | null;
+  promotedAt?: string | null;
   dateOfBirth: string;
   gender: string;
   bloodGroup: string | null;
@@ -374,6 +377,15 @@ const ChildDetailPage = () => {
             date: absence.date,
             icon: "alert",
           })),
+          ...((childData?.isPromoted && childData?.promotedToGrade)
+            ? [{
+                id: "promotion",
+                type: "promotion",
+                message: `Student promoted to ${childData.promotedToGrade}`,
+                date: childData.promotedAt || new Date().toISOString(),
+                icon: "award",
+              }]
+            : []),
           ...(dashboardChild?.reportCard?.publishedAt
             ? [{
                 id: "report-card",
@@ -516,6 +528,14 @@ const ChildDetailPage = () => {
                       >
                         {child.enrollmentStatus === "ACTIVE" ? "Active" : child.enrollmentStatus}
                       </Badge>
+                      {child.isPromoted && (
+                        <Badge 
+                          variant="outline" 
+                          className="bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800"
+                        >
+                          Promoted
+                        </Badge>
+                      )}
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         Student Code: {child.studentCode}
                       </span>
@@ -754,8 +774,10 @@ const ChildDetailPage = () => {
                             ? "bg-emerald-100 dark:bg-emerald-900/50"
                             : activity.type === "grade"
                             ? "bg-blue-100 dark:bg-blue-900/50"
-                            : activity.type === "attendance"
+                            :                             activity.type === "attendance"
                             ? "bg-purple-100 dark:bg-purple-900/50"
+                            : activity.type === "promotion"
+                            ? "bg-emerald-100 dark:bg-emerald-900/50"
                             : "bg-amber-100 dark:bg-amber-900/50"
                         }`}
                       >
@@ -770,6 +792,12 @@ const ChildDetailPage = () => {
                         )}
                         {activity.type === "notice" && (
                           <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        )}
+                        {activity.type === "report" && (
+                          <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        )}
+                        {activity.type === "promotion" && (
+                          <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         )}
                       </div>
                       {index !== recentActivity.length - 1 && (

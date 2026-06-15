@@ -338,7 +338,7 @@ export const teachersAPI = {
   }) => api.get("/teachers", { params }),
   getById: (id: string) => api.get(`/teachers/${id}`),
   getAssignments: (id: string) => api.get(`/teachers/${id}/assignments`),
-  getMyAssignments: () => api.get("/teachers/me/assignments"),
+  getMyAssignments: (academicYear?: string) => api.get("/teachers/me/assignments", { params: { academicYear } }),
   update: (
     id: string,
     data: { name?: string; phone?: string; address?: string },

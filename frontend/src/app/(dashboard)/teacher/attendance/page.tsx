@@ -911,7 +911,7 @@ export default function TeacherAttendancePage() {
     <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-[#111111]">
       <div className="mx-auto w-full min-w-0 px-3 sm:px-6 lg:p-6">
         {/* Top Header */}
-        <div className="mb-4 min-w-0 rounded-lg border border-[rgba(var(--brand-color-rgb),0.16)] bg-white p-3 shadow-sm dark:border-[#334155] dark:bg-[#1E293B] sm:mb-6 sm:p-6">
+        <div className="mb-4 min-w-0 rounded-lg border border-[rgba(var(--brand-color-rgb),0.16)] bg-white p-3 shadow-sm dark:border-[#334155] dark:bg-[#1C1C1C] sm:mb-6 sm:p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             {/* Title */}
             <div className="min-w-0 order-1">
@@ -998,7 +998,7 @@ export default function TeacherAttendancePage() {
                 <SelectTrigger className="w-full border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#111111] dark:text-white sm:w-[180px]">
                   <SelectValue placeholder={isLoadingClasses ? "Loading..." : "Class"} className="truncate" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-[#1E293B] dark:border-[#334155] max-h-[300px] overflow-y-auto">
+                <SelectContent className="dark:bg-[#1C1C1C] dark:border-[#334155] max-h-[300px] overflow-y-auto">
                   {classOptions.map(cls => (
                     <SelectItem key={cls.key} value={cls.key} className="dark:text-white dark:focus:bg-[#334155]">
                       {cls.name} - Section {cls.sectionName} {cls.type === 'homeroom' ? '(Homeroom)' : ''}
@@ -1013,7 +1013,7 @@ export default function TeacherAttendancePage() {
         </div>
 
         {/* Main Body - Student Attendance Table */}
-        <Card className="mb-6 min-w-0 overflow-hidden border-[rgba(var(--brand-color-rgb),0.16)] shadow-sm dark:border-[#334155] dark:bg-[#1E293B]">
+        <Card className="mb-6 min-w-0 overflow-hidden border-[rgba(var(--brand-color-rgb),0.16)] shadow-sm dark:border-[#334155] dark:bg-[#1C1C1C]">
           <CardHeader className="border-b border-[rgba(var(--brand-color-rgb),0.14)] dark:border-[#334155] pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1177,7 +1177,7 @@ export default function TeacherAttendancePage() {
         </Card>
 
         {/* Sticky Action Bar */}
-        <div className="sticky bottom-4 sm:bottom-6 bg-white dark:bg-[#1E293B] border border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] rounded-lg p-3 sm:p-4 shadow-lg">
+        <div className="sticky bottom-4 sm:bottom-6 bg-white dark:bg-[#1C1C1C] border border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] rounded-lg p-3 sm:p-4 shadow-lg">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Button

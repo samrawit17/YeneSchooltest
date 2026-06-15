@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class DisciplineService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+  ) {}
 
   async verifyParentChild(
     parentId: string,
@@ -55,14 +59,20 @@ export class DisciplineService {
           { studentCode: data.studentId },
         ],
       },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
 
     if (!studentProfile) {
       throw new NotFoundException(`Student profile not found for identifier: ${data.studentId}`);
     }
 
-    return this.prisma.disciplineIncident.create({
+    // Find parents linked to this student
+    const parentLinks = await this.prisma.parentStudent.findMany({
+      where: { studentId: studentProfile.id, schoolId: data.schoolId },
+      include: { parent: { select: { userId: true } } },
+    });
+
+    const incident = await this.prisma.disciplineIncident.create({
       data: {
         schoolId: data.schoolId,
         studentId: studentProfile.id,
@@ -87,6 +97,32 @@ export class DisciplineService {
         },
       },
     });
+
+    // Notify all parents linked to this student
+    const parentUserIds = parentLinks
+      .map((link) => link.parent.userId)
+      .filter(Boolean);
+
+    if (parentUserIds.length > 0) {
+      const studentName = incident.student?.user?.name || 'Student';
+      const severityLabel = incident.severity.toLowerCase();
+      await this.notificationService.createBulkNotifications({
+        schoolId: data.schoolId,
+        userIds: parentUserIds,
+        title: 'Discipline Record',
+        message: `A ${severityLabel} severity incident "${incident.title}" has been recorded for ${studentName}.`,
+        type: 'DISCIPLINE_INCIDENT_CREATED',
+        actionUrl: '/parent/discipline',
+        metadata: {
+          incidentId: incident.id,
+          studentName,
+          severity: incident.severity,
+          title: incident.title,
+        },
+      });
+    }
+
+    return incident;
   }
 
   async getIncidents(schoolId: string, filters?: {

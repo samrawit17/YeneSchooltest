@@ -189,7 +189,7 @@ const TeacherTimetablePage = () => {
   if (loading || isLoading) {
     return (
       <div className="w-full max-w-full space-y-4 bg-[#F8FAFC] p-3 dark:bg-[#111111] sm:p-4 md:space-y-6 md:p-6 overflow-x-hidden">
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#334155] dark:bg-[#111827] sm:rounded-3xl">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#334155] dark:bg-[#1C1C1C] sm:rounded-3xl">
           <div className="p-4 sm:p-6 space-y-3">
             <Skeleton className="h-7 w-40" />
             <Skeleton className="h-4 w-72" />
@@ -224,7 +224,7 @@ const TeacherTimetablePage = () => {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-4 dark:bg-[#1E293B] sm:p-6 space-y-4">
+        <div className="rounded-xl bg-white p-4 dark:bg-[#1C1C1C] sm:p-6 space-y-4">
           <Skeleton className="h-6 w-40" />
           <Skeleton className="h-4 w-56" />
           {Array.from({ length: 2 }).map((_, i) => (
@@ -242,7 +242,7 @@ const TeacherTimetablePage = () => {
   return (
     <div className="w-full max-w-full space-y-4 bg-[#F8FAFC] p-3 dark:bg-[#111111] sm:p-4 md:space-y-6 md:p-6 overflow-x-hidden">
       {/* Header */}
-      <div className="overflow-hidden rounded-2xl border border-[rgba(var(--brand-color-rgb),0.12)] bg-white shadow-sm dark:border-[#334155] dark:bg-[#111827] sm:rounded-3xl">
+      <div className="overflow-hidden rounded-2xl border border-[rgba(var(--brand-color-rgb),0.12)] bg-white shadow-sm dark:border-[#334155] dark:bg-[#1C1C1C] sm:rounded-3xl">
         <div className="p-4 sm:p-6">
           <div className="space-y-3">
             <div>
@@ -280,7 +280,7 @@ const TeacherTimetablePage = () => {
                 className={`flex min-w-[100px] flex-col rounded-2xl border p-3 text-left transition-all ${
                   isActive
                     ? "border-[var(--brand-color,#e35336)] bg-[var(--brand-color,#e35336)] text-white shadow-lg shadow-[rgba(var(--brand-color-rgb),0.2)]"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-[rgba(var(--brand-color-rgb),0.5)] dark:border-[#334155] dark:bg-[#1E293B] dark:text-gray-300"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-[rgba(var(--brand-color-rgb),0.5)] dark:border-[#334155] dark:bg-[#1C1C1C] dark:text-gray-300"
                 }`}
               >
                 <span className={`text-xs font-medium ${isActive ? "text-white/80" : "text-gray-500 dark:text-gray-400"}`}>
@@ -300,7 +300,7 @@ const TeacherTimetablePage = () => {
             {selectedMobileSlots.map((slot) => (
               <div
                 key={slot.id}
-                className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 transition-all hover:border-[rgba(var(--brand-color-rgb),0.3)] hover:shadow-md dark:border-[#334155] dark:bg-[#1E293B]"
+                className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 transition-all hover:border-[rgba(var(--brand-color-rgb),0.3)] hover:shadow-md dark:border-[#334155] dark:bg-[#1C1C1C]"
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -346,8 +346,8 @@ const TeacherTimetablePage = () => {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 py-12 text-center dark:border-[#334155] dark:bg-[#1E293B]/50">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-[#1E293B]">
+          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 py-12 text-center dark:border-[#334155] dark:bg-[#1C1C1C]/50">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-[#1C1C1C]">
               <Calendar className="h-6 w-6 text-gray-400" />
             </div>
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -358,7 +358,7 @@ const TeacherTimetablePage = () => {
       </Card>
 
       {/* Weekly Timetable Grid */}
-      <Card className="hidden overflow-hidden dark:bg-[#1E293B] dark:border-[#334155] lg:block">
+      <Card className="hidden overflow-hidden dark:bg-[#1C1C1C] dark:border-[#334155] lg:block">
         <CardHeader className="border-b dark:border-[#334155]">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-xl dark:text-white">
@@ -404,7 +404,7 @@ const TeacherTimetablePage = () => {
               <tbody className="divide-y divide-gray-100 dark:divide-[#334155]">
                 {uniqueSlotRanges.map((slot) => (
                   <tr key={`${slot.start}-${slot.end}`} className="group hover:bg-gray-50/50 dark:hover:bg-[#111111]/50">
-                    <td className="sticky left-0 z-10 bg-white p-4 dark:bg-[#1E293B]">
+                    <td className="sticky left-0 z-10 bg-white p-4 dark:bg-[#1C1C1C]">
                       <div className="text-sm font-bold text-gray-900 dark:text-white">{slot.label}</div>
                       <div className="text-[10px] text-gray-500 dark:text-gray-400">{formatTimeRange(slot.start, slot.end)}</div>
                     </td>

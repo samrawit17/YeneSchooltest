@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
-import { teachersAPI } from "@/lib/api";
+import { academicYearsAPI, teachersAPI } from "@/lib/api";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -106,9 +106,20 @@ const MyClassesPage = () => {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      
-      // Fetch teacher's assignments (both homeroom and teaching)
-      const response = await teachersAPI.getMyAssignments();
+
+      let activeYear = "";
+      try {
+        const resp = await academicYearsAPI.getActive();
+        const active = resp.data?.data || resp.data;
+        activeYear = active?.name || "";
+      } catch {
+        // fallback — fetch all and take the first
+        const allResp = await academicYearsAPI.getAll();
+        const years = allResp.data?.data || allResp.data || [];
+        if (Array.isArray(years) && years.length > 0) activeYear = years[0]?.name || "";
+      }
+
+      const response = await teachersAPI.getMyAssignments(activeYear || undefined);
       const { homeroomClasses, homeroomSections, teachingAssignments, teachingClasses } = response.data || {
         homeroomClasses: [],
         homeroomSections: [],

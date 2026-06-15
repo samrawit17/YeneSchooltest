@@ -3919,6 +3919,38 @@ export class ReportCardService {
 
     results.promoted = orderedEligible.length;
     results.retained = sourceEnrollments.length - orderedEligible.length;
+
+    if (results.promoted > 0) {
+      try {
+        const promotedStudentIds = orderedEligible.map((e) => e.studentId);
+        const studentProfiles = await this.prisma.studentProfile.findMany({
+          where: { userId: { in: promotedStudentIds }, schoolId },
+          select: { id: true },
+        });
+        const profileIds = studentProfiles.map((sp) => sp.id);
+        const parentRelations = await this.prisma.parentStudent.findMany({
+          where: { studentId: { in: profileIds } },
+          select: { parent: { select: { userId: true } } },
+        });
+        const parentUserIds = [
+          ...new Set(parentRelations.map((pr) => pr.parent.userId)),
+        ];
+        if (parentUserIds.length > 0) {
+          await this.notificationService.createBulkNotifications({
+            schoolId,
+            userIds: parentUserIds,
+            title: 'Child Promoted',
+            message: `Your child has been promoted from ${fromAcademicYear} Grade ${fromGrade} to ${toAcademicYear} Grade ${toGrade}.`,
+            type: NotificationType.RESULT_PUBLISHED,
+            actionUrl: '/parent/children',
+            metadata: { fromGrade, toGrade, fromAcademicYear, toAcademicYear },
+          });
+        }
+      } catch (e) {
+        console.error('Failed to send promotion notifications to parents:', e);
+      }
+    }
+
     return results;
   }
 
