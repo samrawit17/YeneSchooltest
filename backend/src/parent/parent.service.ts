@@ -817,6 +817,18 @@ export class ParentService {
       }),
     );
 
+    const promotionRecords = await this.prismaService.promotionRecord.findMany({
+      where: { studentId: { in: studentUserIds }, schoolId },
+      include: { toClass: { select: { name: true } } },
+    });
+    const promotedStudentIds = new Set(promotionRecords.map((pr) => pr.studentId));
+    const promotedToGradeMap = new Map(
+      promotionRecords.map((pr) => [pr.studentId, pr.toClass?.name || null]),
+    );
+    const promotedAtMap = new Map(
+      promotionRecords.map((pr) => [pr.studentId, pr.promotedAt]),
+    );
+
     const childrenWithFees = await Promise.all(children.map(async (child: any) => {
       const studentId = child.student.userId;
       const studentFeeItems = studentFees.filter(
@@ -1094,6 +1106,9 @@ export class ParentService {
 
       return {
         ...child,
+        isPromoted: promotedStudentIds.has(child.student.userId),
+        promotedToGrade: promotedToGradeMap.get(child.student.userId) || null,
+        promotedAt: promotedAtMap.get(child.student.userId)?.toISOString() || null,
         name: child.student.user?.name || 'Unknown',
         photoUrl: child.student.user?.avatarUrl || null,
         avatarUrl: child.student.user?.avatarUrl || null,

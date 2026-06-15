@@ -178,16 +178,22 @@ export default function TeacherDisciplinePage() {
         actionTaken: form.actionTaken,
       });
       
+      const newIncident: DisciplineIncident = {
+        id: `temp-${Date.now()}`,
+        title: form.title,
+        description: form.description,
+        severity: form.severity,
+        status: "OPEN",
+        incidentDate: new Date().toISOString(),
+        actionTaken: form.actionTaken || undefined,
+        childName: selectedStudent.name,
+        childId: selectedStudent.id,
+      };
+
       toast.success("Discipline incident logged successfully");
       setDialogOpen(false);
       setForm({ title: "", description: "", severity: "LOW", actionTaken: "" });
-      
-      // Instead of reload, we can just trigger a data refresh or add it to the state
-      // For simplicity in this specific setup, we'll trigger the reload after a short delay
-      // so the user can see the toast
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      setIncidents((prev) => [newIncident, ...prev]);
     } catch (error: any) {
       console.error("Failed to create incident:", error);
       toast.error(error.response?.data?.message || "Failed to create incident");

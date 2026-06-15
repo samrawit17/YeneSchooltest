@@ -21,6 +21,7 @@ interface Child {
   classId: string;
   relation: string;
   isPrimary: boolean;
+  isPromoted?: boolean;
   userId: string;
   username?: string;
   parentPhone?: string;
@@ -260,7 +261,14 @@ const ParentChildrenPage = () => {
                   <div className="my-5 grid grid-cols-2 gap-x-4 gap-y-4 border-y border-gray-200 dark:border-[#2A2A2A] py-5">
                     <div className="flex flex-col">
                       <span className="text-xs text-gray-500 dark:text-gray-400">Class</span>
-                      <span className="mt-1 text-sm font-medium text-gray-900 dark:text-white">{child.className}{child.section && child.section !== "N/A" ? ` - ${child.section}` : ""}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="mt-1 text-sm font-medium text-gray-900 dark:text-white">{child.className}{child.section && child.section !== "N/A" ? ` - ${child.section}` : ""}</span>
+                        {child.isPromoted && (
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                            Promoted
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs text-gray-500 dark:text-gray-400">Attendance</span>

@@ -187,7 +187,7 @@ export class TeacherService {
   /**
    * Get assigned classes and sections for a teacher (homeroom assignments)
    */
-  async getMyAssignments(teacherId: string, schoolId: string) {
+  async getMyAssignments(teacherId: string, schoolId: string, academicYear?: string) {
     const teacher = await this.prisma.user.findFirst({
       where: {
         id: teacherId,
@@ -201,12 +201,23 @@ export class TeacherService {
       throw new NotFoundException('Teacher not found');
     }
 
+    // Resolve academic year ID if name provided
+    let academicYearId: string | undefined;
+    if (academicYear) {
+      const year = await this.prisma.academicYear.findFirst({
+        where: { schoolId, name: academicYear },
+        select: { id: true },
+      });
+      academicYearId = year?.id;
+    }
+
     // Homeroom classes are no longer directly linked, we get them via sections
     const homeroomSections = await this.prisma.section.findMany({
       where: {
         homeroomTeacherId: teacherId,
         class: {
           schoolId,
+          ...(academicYearId ? { academicYearId } : {}),
         },
       },
       select: {
@@ -236,7 +247,9 @@ export class TeacherService {
         teacherId,
         class: {
           schoolId,
+          ...(academicYearId ? { academicYearId } : {}),
         },
+        ...(academicYear ? { academicYear } : {}),
       },
       select: {
         id: true,
@@ -274,6 +287,7 @@ export class TeacherService {
     const timetableSlots = await this.prisma.timetableSlot.findMany({
       where: {
         schoolId,
+        ...(academicYearId ? { academicYearId } : {}),
         OR: [
           { teacherId },
           { classId: { in: classIds }, sectionId: { in: sectionIds } },

@@ -128,6 +128,10 @@ export const notificationMessages: Record<NotificationLanguage, NotificationMess
       title: 'Class Bell',
       message: `${sirenLabel} bell has rung for your timetable.`,
     }),
+    disciplineIncident: (studentName: string, title: string, severity: string) => ({
+      title: 'Discipline Record',
+      message: `A ${severity} severity incident "${title}" has been recorded for ${studentName}.`,
+    }),
     schoolBell: {
       title: 'School Bell',
       message: 'The school bell has been triggered.',
@@ -250,6 +254,10 @@ export const notificationMessages: Record<NotificationLanguage, NotificationMess
     classBell: (sirenLabel: string) => ({
       title: 'የክፍል ደወል',
       message: `የ${sirenLabel} ደወል ለጊዜ ሰሌዳዎ ተመቷል።`,
+    }),
+    disciplineIncident: (studentName: string, title: string, severity: string) => ({
+      title: 'የዲሲፕሊን መዝገብ',
+      message: `ለ${studentName} ደረጃ ${severity} ክስተት "${title}" ተመዝግቧል።`,
     }),
     schoolBell: {
       title: 'የትምህርት ቤት ደወል',
@@ -374,6 +382,10 @@ export const notificationMessages: Record<NotificationLanguage, NotificationMess
       title: 'جرس الحصة',
       message: `رن جرس ${sirenLabel} لجدولك.`,
     }),
+    disciplineIncident: (studentName: string, title: string, severity: string) => ({
+      title: 'سجل الانضباط',
+      message: `تم تسجيل حادثة "${title}" بخطورة ${severity} لـ ${studentName}.`,
+    }),
     schoolBell: {
       title: 'جرس المدرسة',
       message: 'تم تشغيل جرس المدرسة.',
@@ -497,6 +509,10 @@ export const notificationMessages: Record<NotificationLanguage, NotificationMess
       title: 'Bellii Kutaa',
       message: `Bellii ${sirenLabel} sagantaa yeroo keessaniif rukutameera.`,
     }),
+    disciplineIncident: (studentName: string, title: string, severity: string) => ({
+      title: 'Galmee Adaba',
+      message: `Rakkinni "${title}" sadarkaa ${severity} ${studentName} wabii galmaa\'eera.`,
+    }),
     schoolBell: {
       title: 'Bellii Mana Barumsaa',
       message: 'Bellii mana barumsaa hojii irra ooleera.',
@@ -619,6 +635,10 @@ export const notificationMessages: Record<NotificationLanguage, NotificationMess
     classBell: (sirenLabel: string) => ({
       title: 'Geeska Fasalka',
       message: `Geeska ${sirenLabel} ayaa loo tumay jadwalkaaga.`,
+    }),
+    disciplineIncident: (studentName: string, title: string, severity: string) => ({
+      title: 'Diiwaanka Anshaxa',
+      message: `Dhacdo "${title}" oo daran ${severity} ayaa loo diiwaangaliyay ${studentName}.`,
     }),
     schoolBell: {
       title: 'Geeska Dugsiga',

@@ -54,6 +54,9 @@ export enum NotificationType {
   TIMETABLE_UPDATED = 'TIMETABLE_UPDATED',
   PICKUP_REMINDER = 'PICKUP_REMINDER',
 
+  // Discipline notifications
+  DISCIPLINE_INCIDENT_CREATED = 'DISCIPLINE_INCIDENT_CREATED',
+
   // Communication notifications
   MESSAGE_RECEIVED = 'MESSAGE_RECEIVED',
   ANNOUNCEMENT = 'ANNOUNCEMENT',
@@ -305,7 +308,10 @@ export class NotificationService {
       return 'attendanceEnabled';
     }
 
-    if (type === NotificationType.ANNOUNCEMENT) {
+    if (
+      type === NotificationType.ANNOUNCEMENT ||
+      type === NotificationType.DISCIPLINE_INCIDENT_CREATED
+    ) {
       return 'announcementsEnabled';
     }
 
