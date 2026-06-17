@@ -2634,3 +2634,36 @@ model ContentResource {
 
   @@index([contentId])
 }
+
+model SyncConflict {
+  id            String   @id @default(cuid())
+  schoolId      String
+  entity        String
+  entityId      String
+  conflictType  String
+  localData     Json?
+  serverData    Json?
+  status        String   @default("pending")
+  detectedAt    DateTime @default(now())
+  resolvedAt    DateTime?
+  resolution    String?
+  resolvedBy    String?
+
+  @@index([schoolId, status])
+  @@index([entity, entityId])
+}
+
+model SyncLog {
+  id         String   @id @default(cuid())
+  schoolId   String
+  entity     String
+  entityId   String
+  operation  String
+  status     String
+  deviceId   String?
+  userId     String?
+  message    String?
+  createdAt  DateTime @default(now())
+
+  @@index([schoolId, createdAt])
+}

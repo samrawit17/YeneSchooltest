@@ -160,7 +160,17 @@ export class SyncService {
       const localModifiedTime = new Date(data.localModified).getTime();
 
       if (existingModified > localModifiedTime) {
-        // Server has newer version - return conflict
+        // Server has newer version - record conflict
+        await this.recordConflict(
+          data.schoolId,
+          'attendance',
+          `${data.studentId}_${data.date}`,
+          'update_update',
+          data as unknown as Record<string, unknown>,
+          existing as unknown as Record<string, unknown>,
+          data.deviceId,
+        );
+
         return {
           success: false,
           serverId: existing.id,
@@ -246,7 +256,17 @@ export class SyncService {
     const localModifiedTime = new Date(data.localModified).getTime();
 
     if (existingModified > localModifiedTime) {
-      // Server has newer version
+      // Server has newer version - record conflict
+      await this.recordConflict(
+        data.schoolId,
+        'attendance',
+        data.entityId,
+        'update_update',
+        data as unknown as Record<string, unknown>,
+        existing as unknown as Record<string, unknown>,
+        data.deviceId,
+      );
+
       return {
         success: false,
         serverId: existing.id,
@@ -399,9 +419,9 @@ export class SyncService {
   /**
    * Get unresolved conflicts
    */
-  async getConflicts(): Promise<
+  async getConflicts(schoolId: string): Promise<
     Array<{
-      id: number;
+      id: string;
       entity: string;
       entityId: string;
       conflictType: string;
@@ -410,20 +430,76 @@ export class SyncService {
       serverData: Record<string, unknown>;
     }>
   > {
-    // This would need a conflicts table in the database
-    // For now, return empty array
-    return [];
+    const conflicts = await this.prisma.syncConflict.findMany({
+      where: { schoolId, status: 'pending' },
+      orderBy: { detectedAt: 'desc' },
+    });
+
+    return conflicts.map((c) => ({
+      id: c.id,
+      entity: c.entity,
+      entityId: c.entityId,
+      conflictType: c.conflictType,
+      detectedAt: c.detectedAt.toISOString(),
+      localData: (c.localData as Record<string, unknown>) || {},
+      serverData: (c.serverData as Record<string, unknown>) || {},
+    }));
+  }
+
+  /**
+   * Record a conflict
+   */
+  async recordConflict(
+    schoolId: string,
+    entity: string,
+    entityId: string,
+    conflictType: string,
+    localData: Record<string, unknown>,
+    serverData: Record<string, unknown>,
+    deviceId?: string,
+  ): Promise<string> {
+    const conflict = await this.prisma.syncConflict.create({
+      data: {
+        schoolId,
+        entity,
+        entityId,
+        conflictType,
+        localData: localData as unknown as object,
+        serverData: serverData as unknown as object,
+        status: 'pending',
+        detectedAt: new Date(),
+      },
+    });
+    return conflict.id;
   }
 
   /**
    * Resolve a conflict
    */
   async resolveConflict(
-    id: number,
+    id: string,
     resolution: 'local_wins' | 'server_wins' | 'merged',
     data?: Record<string, unknown>,
+    resolvedBy?: string,
   ): Promise<{ success: boolean }> {
-    // This would need implementation with a conflicts table
+    const conflict = await this.prisma.syncConflict.findUnique({
+      where: { id },
+    });
+
+    if (!conflict) {
+      throw new BadRequestException('Conflict not found');
+    }
+
+    await this.prisma.syncConflict.update({
+      where: { id },
+      data: {
+        status: 'resolved',
+        resolution,
+        resolvedAt: new Date(),
+        resolvedBy,
+      },
+    });
+
     return { success: true };
   }
 
@@ -434,16 +510,19 @@ export class SyncService {
   /**
    * Get sync status
    */
-  async getSyncStatus(): Promise<{
+  async getSyncStatus(schoolId: string): Promise<{
     pendingCount: number;
     lastSyncAt: string;
     conflicts: number;
   }> {
-    // This would track pending syncs in a table
+    const conflictCount = await this.prisma.syncConflict.count({
+      where: { schoolId, status: 'pending' },
+    });
+
     return {
       pendingCount: 0,
       lastSyncAt: new Date().toISOString(),
-      conflicts: 0,
+      conflicts: conflictCount,
     };
   }
 }

@@ -193,14 +193,16 @@ export const db = new SMSDatabase();
  * Clear all data from the database
  */
 export async function clearDatabase(): Promise<void> {
-  await db.students.clear();
-  await db.timetables.clear();
-  await db.attendance.clear();
-  await db.attendanceSessions.clear();
-  await db.formDrafts.clear();
-  await db.syncQueue.clear();
-  await db.syncMetadata.clear();
-  await db.conflicts.clear();
+  await Promise.all([
+    db.students.clear(),
+    db.timetables.clear(),
+    db.attendance.clear(),
+    db.attendanceSessions.clear(),
+    db.formDrafts.clear(),
+    db.syncQueue.clear(),
+    db.syncMetadata.clear(),
+    db.conflicts.clear(),
+  ]);
 }
 
 /**
@@ -250,17 +252,39 @@ export async function exportDatabase(): Promise<Record<string, unknown>> {
  * Import database from backup
  */
 export async function importDatabase(backup: Record<string, unknown>): Promise<void> {
+  if (!backup.data || typeof backup.data !== 'object') {
+    throw new Error('Invalid backup format: missing or invalid "data" field');
+  }
+
   const data = backup.data as Record<string, unknown[]>;
   
+  // Validate table names
+  const validTables = ['students', 'timetables', 'attendance', 'attendanceSessions', 'formDrafts', 'syncQueue', 'conflicts'];
+  for (const key of Object.keys(data)) {
+    if (!validTables.includes(key)) {
+      throw new Error(`Unknown table in backup: "${key}"`);
+    }
+    if (!Array.isArray(data[key])) {
+      throw new Error(`Invalid data for table "${key}": expected array`);
+    }
+  }
+
+  // Handle legacy export where 'attendanceSessions' was renamed to 'sessions'
+  if (data.sessions && !data.attendanceSessions) {
+    data.attendanceSessions = data.sessions as OfflineAttendanceSession[];
+  }
+
   await clearDatabase();
   
-  if (data.students) await db.students.bulkAdd(data.students as CachedStudent[]);
-  if (data.timetables) await db.timetables.bulkAdd(data.timetables as CachedTimetable[]);
-  if (data.attendance) await db.attendance.bulkAdd(data.attendance as OfflineAttendance[]);
-  if (data.attendanceSessions) await db.attendanceSessions.bulkAdd(data.attendanceSessions as OfflineAttendanceSession[]);
-  if (data.formDrafts) await db.formDrafts.bulkAdd(data.formDrafts as FormDraft[]);
-  if (data.syncQueue) await db.syncQueue.bulkAdd(data.syncQueue as SyncQueueItem[]);
-  if (data.conflicts) await db.conflicts.bulkAdd(data.conflicts as ConflictRecord[]);
+  const imports: Promise<unknown>[] = [];
+  if (data.students) imports.push(db.students.bulkAdd(data.students as CachedStudent[]));
+  if (data.timetables) imports.push(db.timetables.bulkAdd(data.timetables as CachedTimetable[]));
+  if (data.attendance) imports.push(db.attendance.bulkAdd(data.attendance as OfflineAttendance[]));
+  if (data.attendanceSessions) imports.push(db.attendanceSessions.bulkAdd(data.attendanceSessions as OfflineAttendanceSession[]));
+  if (data.formDrafts) imports.push(db.formDrafts.bulkAdd(data.formDrafts as FormDraft[]));
+  if (data.syncQueue) imports.push(db.syncQueue.bulkAdd(data.syncQueue as SyncQueueItem[]));
+  if (data.conflicts) imports.push(db.conflicts.bulkAdd(data.conflicts as ConflictRecord[]));
+  await Promise.all(imports);
 }
 
 export default db;

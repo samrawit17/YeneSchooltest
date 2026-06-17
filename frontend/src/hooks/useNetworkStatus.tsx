@@ -21,7 +21,7 @@ interface NetworkInformation {
 interface NetworkStatus {
   isOnline: boolean;
   wasOffline: boolean;
-  connectionType?: 'wifi' | '4g' | '3g' | 'slow_2g' | 'offline' | undefined;
+  connectionType?: 'wifi' | '4g' | '3g' | '2g' | 'slow-2g' | 'offline' | undefined;
   effectiveType?: '4g' | '3g' | '2g' | 'slow-2g';
   downlink?: number;
   rtt?: number;
@@ -88,32 +88,30 @@ export function useNetworkStatus(): NetworkStatus {
     window.addEventListener('offline', handleOffline);
 
     // Listen for connection changes
+    let connection: NetworkInformation | undefined;
+    const handleConnectionChange = () => {
+      setStatus(prev => ({
+        ...prev,
+        ...getConnectionInfo()
+      }));
+    };
+
     if ('connection' in navigator) {
-      const connection = (navigator as Navigator & { 
+      connection = (navigator as Navigator & { 
         connection?: NetworkInformation 
       }).connection;
       
-      if (connection && connection.addEventListener) {
-        const handleConnectionChange = () => {
-          setStatus(prev => ({
-            ...prev,
-            ...getConnectionInfo()
-          }));
-        };
-        
+      if (connection?.addEventListener) {
         connection.addEventListener('change', handleConnectionChange);
-        
-        return () => {
-          if (connection.removeEventListener) {
-            connection.removeEventListener('change', handleConnectionChange);
-          }
-        };
       }
     }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if (connection?.removeEventListener) {
+        connection.removeEventListener('change', handleConnectionChange);
+      }
     };
   }, []);
 
@@ -171,7 +169,7 @@ export function useOnlineCallback<T extends (...args: unknown[]) => unknown>(
     }
 
     return callback(...args);
-  }, [callback, status.isOnline, status.connectionType, requireWifi, onOffline]) as T;
+  }, [callback, status.isOnline, status.connectionType, requireWifi, onOffline]) as unknown as T;
 }
 
 /**

@@ -743,6 +743,12 @@ export class AcademicYearService {
   async deleteAcademicYear(id: string, schoolId?: string) {
     const academicYear = await this.getAcademicYearById(id, schoolId);
 
+    if (academicYear.endDate < new Date()) {
+      throw new ForbiddenException(
+        'Cannot delete a past academic year. Past academic years are locked to preserve historical records.',
+      );
+    }
+
     return this.prismaService.$transaction(async (tx) => {
       // Nullify timetable slots before deleting (optional relation, no cascade)
       await tx.timetableSlot.updateMany({

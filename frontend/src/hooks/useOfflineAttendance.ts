@@ -21,6 +21,7 @@ import { studentsAPI } from '@/lib/api/students';
 interface UseOfflineAttendanceOptions {
   classId?: string;
   date?: string;
+  userId?: string;
   autoSync?: boolean;
 }
 
@@ -41,7 +42,7 @@ interface SyncStatus {
 // ============================================
 
 export function useOfflineAttendance(options: UseOfflineAttendanceOptions = {}) {
-  const { classId, date, autoSync = true } = options;
+  const { classId, date, userId, autoSync = true } = options;
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -208,16 +209,16 @@ export function useOfflineAttendance(options: UseOfflineAttendanceOptions = {}) 
     const record: Omit<OfflineAttendance, 'id' | 'isSynced' | 'localId'> = {
       studentId,
       sessionId,
-      date: new Date().toISOString(),
+      date: new Date().toISOString().split('T')[0],
       status,
       remarks,
-      recordedBy: 'current-user-id', // Should come from auth context
+      recordedBy: userId || 'unknown',
       recordedAt: new Date().toISOString(),
       lastModified: new Date().toISOString()
     };
     
     return syncService.saveAttendanceOffline(record);
-  }, []);
+  }, [userId]);
 
   /**
    * Update attendance record
@@ -226,21 +227,41 @@ export function useOfflineAttendance(options: UseOfflineAttendanceOptions = {}) 
     localId: string,
     updates: Partial<Pick<OfflineAttendance, 'status' | 'remarks'>>
   ): Promise<void> => {
-    await db.attendance
+    // Get the current full record to send complete payload
+    const existing = await db.attendance
       .where('localId')
       .equals(localId)
-      .modify({
-        ...updates,
-        lastModified: new Date().toISOString(),
-        isSynced: false
-      });
+      .first();
+
+    if (!existing) {
+      throw new Error(`Attendance record ${localId} not found for update`);
+    }
+
+    const now = new Date().toISOString();
+    const updatedRecord = {
+      ...existing,
+      ...updates,
+      lastModified: now,
+      isSynced: false,
+    };
+
+    await db.transaction('rw', db.attendance, async () => {
+      await db.attendance
+        .where('localId')
+        .equals(localId)
+        .modify({
+          ...updates,
+          lastModified: now,
+          isSynced: false,
+        });
+    });
     
-    // Re-queue for sync
+    // Re-queue for sync with full payload
     await syncService.addToQueue(
       'update',
       'attendance',
       localId,
-      updates,
+      updatedRecord as unknown as Record<string, unknown>,
       8
     );
   }, []);
@@ -265,7 +286,7 @@ export function useOfflineAttendance(options: UseOfflineAttendanceOptions = {}) 
       subjectName,
       date: now.toISOString().split('T')[0],
       startTime: now.toTimeString().slice(0, 5),
-      recordedBy: 'current-user-id',
+      recordedBy: userId || 'unknown',
       isSynced: false,
       totalStudents: 0,
       presentCount: 0,
@@ -308,10 +329,8 @@ export function useOfflineAttendance(options: UseOfflineAttendanceOptions = {}) 
    * Get unsynced records count
    */
   const getUnsyncedCount = useCallback(async (): Promise<number> => {
-    return db.attendance
-      .where('isSynced')
-      .equals(0)
-      .count();
+    const all = await db.attendance.toArray();
+    return all.filter((r) => r.isSynced === false).length;
   }, []);
 
   /**
