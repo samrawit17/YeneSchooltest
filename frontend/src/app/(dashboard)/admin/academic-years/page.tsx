@@ -170,6 +170,9 @@ export default function AcademicYearsPage() {
     ["ADMIN", "IT_MANAGER"].includes(user.role) &&
     hasPermission("academic_year:delete");
   const usesCustomPeriodWeights = selectedYear?.curriculumType === "CUSTOM";
+  const isPastAcademicYear = selectedYear
+    ? new Date(selectedYear.endDate) < new Date(new Date().toDateString())
+    : false;
 
   const needsNewAcademicYear =
     canCreateAcademicYear &&
@@ -1011,7 +1014,7 @@ export default function AcademicYearsPage() {
           )}
 
           {/* Delete Academic Year */}
-          {canDeleteAcademicYear && (
+          {canDeleteAcademicYear && !isPastAcademicYear && (
             <div className="bg-white dark:bg-[#111111] rounded-lg shadow p-6 border border-red-200 dark:border-red-900/60">
               <h3 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-2">
                 Delete Academic Year
@@ -1025,6 +1028,24 @@ export default function AcademicYearsPage() {
                 onClick={() => setYearPendingDelete(selectedYear)}
                 disabled={saving}
                 className="rounded-lg bg-red-600 px-6 py-2 text-white transition-all hover:bg-red-700 disabled:opacity-50"
+              >
+                Delete This Academic Year
+              </button>
+            </div>
+          )}
+
+          {canDeleteAcademicYear && isPastAcademicYear && (
+            <div className="bg-white dark:bg-[#111111] rounded-lg shadow p-6 border border-gray-200 dark:border-[#2A2A2A]">
+              <h3 className="text-lg font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                Past Academic Year
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-500 mb-2">
+                This academic year has ended. Past academic years cannot be
+                deleted to preserve historical records.
+              </p>
+              <button
+                disabled
+                className="rounded-lg bg-gray-400 px-6 py-2 text-white cursor-not-allowed"
               >
                 Delete This Academic Year
               </button>

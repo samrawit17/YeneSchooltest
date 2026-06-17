@@ -206,9 +206,9 @@ export class SyncController {
 
   @Get('conflicts')
   @Permissions('attendance:read')
-  async getConflicts(): Promise<
+  async getConflicts(@Request() req: any): Promise<
     Array<{
-      id: number;
+      id: string;
       entity: string;
       entityId: string;
       conflictType: string;
@@ -217,7 +217,7 @@ export class SyncController {
       serverData: Record<string, unknown>;
     }>
   > {
-    return this.syncService.getConflicts();
+    return this.syncService.getConflicts(req.user?.schoolId);
   }
 
   @Post('conflicts/:id/resolve')
@@ -230,8 +230,9 @@ export class SyncController {
       resolution: 'local_wins' | 'server_wins' | 'merged';
       data?: Record<string, unknown>;
     },
+    @Request() req: any,
   ): Promise<{ success: boolean }> {
-    return this.syncService.resolveConflict(+id, body.resolution, body.data);
+    return this.syncService.resolveConflict(id, body.resolution, body.data, req.user?.id);
   }
 
   // ============================================
@@ -240,8 +241,8 @@ export class SyncController {
 
   @Get('status')
   @Permissions('attendance:read')
-  async getSyncStatus(): Promise<SyncStatusDto> {
-    return this.syncService.getSyncStatus();
+  async getSyncStatus(@Request() req: any): Promise<SyncStatusDto> {
+    return this.syncService.getSyncStatus(req.user?.schoolId);
   }
 
   // ============================================

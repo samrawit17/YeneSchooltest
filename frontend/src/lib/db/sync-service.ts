@@ -56,6 +56,7 @@ class SyncService {
   private syncInterval: NodeJS.Timeout | null = null;
   private eventListeners: Map<SyncEventType, SyncEventListener[]> = new Map();
   private deviceId: string;
+  private autoSyncRefCount: number = 0;
 
   constructor(config: Partial<SyncConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -322,8 +323,7 @@ class SyncService {
    */
   async getPendingAttendance(): Promise<OfflineAttendance[]> {
     return db.attendance
-      .where('isSynced')
-      .equals(0)
+      .filter((r) => r.isSynced === false)
       .toArray();
   }
 
@@ -471,10 +471,8 @@ class SyncService {
    * Get unresolved conflicts
    */
   async getConflicts(): Promise<ConflictRecord[]> {
-    return db.conflicts
-      .where('resolvedAt')
-      .equals('')
-      .toArray();
+    const all = await db.conflicts.toArray();
+    return all.filter((c) => !c.resolvedAt);
   }
 
   // ============================================
@@ -500,18 +498,24 @@ class SyncService {
       const pendingItems = await this.getPendingItems();
       
       for (const item of pendingItems) {
+        if (!item.id) continue;
+
         try {
-          // Mark as in progress
-          await db.syncQueue.update(item.id!, {
-            status: 'in_progress',
-            lastAttempt: new Date().toISOString()
+          // Mark as in progress (within a transaction)
+          await db.transaction('rw', db.syncQueue, async () => {
+            await db.syncQueue.update(item.id!, {
+              status: 'in_progress',
+              lastAttempt: new Date().toISOString()
+            });
           });
 
           // Attempt sync
           await this.syncItem(item);
           
-          // Mark as completed
-          await db.syncQueue.update(item.id!, { status: 'completed' });
+          // Mark as completed (within a transaction)
+          await db.transaction('rw', db.syncQueue, async () => {
+            await db.syncQueue.update(item.id!, { status: 'completed' });
+          });
           synced++;
           
           this.emitEvent({ 
@@ -525,11 +529,15 @@ class SyncService {
           const newRetryCount = item.retryCount + 1;
           const newStatus = newRetryCount >= item.maxRetries ? 'failed' : 'pending';
           
-          await db.syncQueue.update(item.id!, {
-            retryCount: newRetryCount,
-            status: newStatus,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
+          if (item.id) {
+            await db.transaction('rw', db.syncQueue, async () => {
+              await db.syncQueue.update(item.id!, {
+                retryCount: newRetryCount,
+                status: newStatus,
+                error: error instanceof Error ? error.message : 'Unknown error'
+              });
+            });
+          }
           
           failed++;
         }
@@ -558,8 +566,11 @@ class SyncService {
    * Sync individual item
    */
   private async syncItem(item: SyncQueueItem): Promise<void> {
+    const headers = { 'X-Device-ID': this.deviceId };
+
     if (item.entity === 'grade') {
       await api.post('/grading/teacher/grades/bulk', item.payload, {
+        headers,
         skipAuthErrorRedirect: true,
       } as any);
       return;
@@ -572,6 +583,7 @@ class SyncService {
         throw new Error('conversationId and content are required to sync message drafts');
       }
       await api.post(`/messages/${conversationId}`, { content }, {
+        headers,
         skipAuthErrorRedirect: true,
       } as any);
       return;
@@ -580,6 +592,7 @@ class SyncService {
     if (item.entity === 'announcement') {
       const { localId, userId, ...data } = item.payload;
       await api.post('/announcements', data, {
+        headers,
         skipAuthErrorRedirect: true,
       } as any);
       return;
@@ -590,7 +603,10 @@ class SyncService {
       {
         operation: item.operation,
         entityId: item.entityId,
-        payload: item.payload,
+        payload: {
+          ...item.payload,
+          deviceId: this.deviceId,
+        },
         localModified: item.createdAt
       },
       {
@@ -620,6 +636,7 @@ class SyncService {
    * Start automatic sync interval
    */
   startAutoSync(): void {
+    this.autoSyncRefCount++;
     if (this.syncInterval) return;
     
     this.syncInterval = setInterval(() => {
@@ -636,6 +653,9 @@ class SyncService {
    * Stop automatic sync
    */
   stopAutoSync(): void {
+    this.autoSyncRefCount--;
+    if (this.autoSyncRefCount > 0) return;
+    
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
@@ -651,7 +671,9 @@ class SyncService {
       .equals('failed')
       .toArray();
     
-    const idsToDelete = failedItems.filter((i: SyncQueueItem) => i.id !== undefined).map((i: SyncQueueItem) => i.id!);
+    const idsToDelete = failedItems
+      .map((i: SyncQueueItem) => i.id)
+      .filter((id): id is number => id !== undefined);
     await db.syncQueue.bulkDelete(idsToDelete);
     return failedItems.length;
   }

@@ -69,20 +69,13 @@ export function useFormDrafts<T extends Record<string, unknown>>(
 
   // Restore draft on load
   useEffect(() => {
-    if (draft && onDraftRestored) {
-      onDraftRestored(draft.formData as T);
+    if (draft) {
       setCurrentDraftId(draft.id || null);
+      if (onDraftRestored) {
+        onDraftRestored(draft.formData as T);
+      }
     }
   }, [draft, onDraftRestored]);
-
-  // Clear auto-save timer on unmount
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearInterval(autoSaveTimerRef.current);
-      }
-    };
-  }, []);
 
   /**
    * Save draft to IndexedDB
@@ -107,25 +100,40 @@ export function useFormDrafts<T extends Record<string, unknown>>(
           isAutoSaved: true
         });
       } else {
-        // Create new draft
-        const newDraft: Omit<FormDraft, 'id'> = {
-          formType,
-          formId,
-          formData: data,
-          userId,
-          createdAt: now,
-          updatedAt: now,
-          isAutoSaved: true
-        };
-        
-        const id = await db.formDrafts.add(newDraft as FormDraft);
-        setCurrentDraftId(id);
+        // Check for existing draft that may not be in currentDraftId state yet
+        const existing = await db.formDrafts
+          .where('formType')
+          .equals(formType)
+          .and(d => d.formId === formId && d.userId === userId)
+          .first();
+
+        if (existing) {
+          await db.formDrafts.update(existing.id!, {
+            formData: data,
+            updatedAt: now,
+            isAutoSaved: true
+          });
+          setCurrentDraftId(existing.id!);
+        } else {
+          // Create new draft
+          const newDraft: Omit<FormDraft, 'id'> = {
+            formType,
+            formId,
+            formData: data,
+            userId,
+            createdAt: now,
+            updatedAt: now,
+            isAutoSaved: true
+          };
+          
+          const id = await db.formDrafts.add(newDraft as FormDraft);
+          setCurrentDraftId(id);
+        }
       }
       
       previousDataRef.current = dataString;
       setLastSavedAt(now);
     } catch (error) {
-      console.error('Failed to save draft:', error);
       throw error;
     } finally {
       setIsSaving(false);
@@ -147,11 +155,16 @@ export function useFormDrafts<T extends Record<string, unknown>>(
   /**
    * Set up auto-save
    */
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+
   useEffect(() => {
     if (autoSaveInterval > 0) {
       autoSaveTimerRef.current = setInterval(() => {
-        // This will be triggered by the component passing data
-        // The actual auto-save logic is handled by the component
+        const currentDraft = draftRef.current;
+        if (currentDraft) {
+          saveDraft(currentDraft.formData as T);
+        }
       }, autoSaveInterval);
     }
     
@@ -160,11 +173,11 @@ export function useFormDrafts<T extends Record<string, unknown>>(
         clearInterval(autoSaveTimerRef.current);
       }
     };
-  }, [autoSaveInterval]);
+  }, [autoSaveInterval, saveDraft]);
 
   return {
     draft: draft?.formData as T | null,
-    isLoading: !draft && currentDraftId === null,
+    isLoading: currentDraftId === null && draft === undefined,
     isSaving,
     lastSavedAt,
     saveDraft,
