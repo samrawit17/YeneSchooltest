@@ -59,9 +59,7 @@ function applySecurityHeaders(app: NestExpressApplication) {
     res.setHeader('X-Download-Options', 'noopen');
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
 
-    if (process.env.NODE_ENV === 'production') {
-      res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
-    }
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
 
     next();
   });
