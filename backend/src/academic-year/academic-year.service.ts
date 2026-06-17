@@ -714,7 +714,7 @@ export class AcademicYearService {
         data: { isActive: false },
       });
 
-      return tx.academicYear.update({
+      const updated = await tx.academicYear.update({
         where: { id },
         data: { isActive: true },
         include: {
@@ -723,6 +723,13 @@ export class AcademicYearService {
           },
         },
       });
+
+      await tx.schoolSettings.update({
+        where: { schoolId: academicYear.schoolId },
+        data: { defaultAcademicYearId: id },
+      });
+
+      return updated;
     });
 
     await this.schoolSettingsService.ensureDefaultClassesForAcademicYear(

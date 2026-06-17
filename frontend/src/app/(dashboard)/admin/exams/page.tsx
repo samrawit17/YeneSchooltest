@@ -289,13 +289,13 @@ function SubjectRow({
 
 
   return (
-    <div className="grid grid-cols-12 gap-2 items-end p-3 bg-gray-50 dark:bg-[#111111]/50 rounded-lg border border-gray-200 dark:border-[#2A2A2A]">
-      <div className="col-span-1 text-center">
-        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{index + 1}</span>
+    <div className="flex flex-col sm:grid sm:grid-cols-12 gap-2 sm:gap-2 items-stretch sm:items-end p-3 bg-gray-50 dark:bg-[#111111]/50 rounded-lg border border-gray-200 dark:border-[#2A2A2A]">
+      <div className="hidden sm:col-span-1 sm:flex sm:justify-center">
+        <span className="text-xs font-medium text-gray-400 dark:text-gray-500 self-end pb-1.5">{index + 1}</span>
       </div>
 
       {/* Subject */}
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.subject}</Label>
         <Select
           value={entry.subjectId}
@@ -315,7 +315,7 @@ function SubjectRow({
       </div>
 
       {/* Class */}
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.class}</Label>
         <Select
           value={entry.classId}
@@ -338,7 +338,7 @@ function SubjectRow({
       </div>
 
       {/* Section */}
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.section}</Label>
         <Select
           value={entry.sectionId}
@@ -359,7 +359,7 @@ function SubjectRow({
       </div>
 
       {/* Teacher */}
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.teacher}</Label>
         <Select
           value={entry.teacherId}
@@ -379,7 +379,7 @@ function SubjectRow({
       </div>
 
       {/* Max Score */}
-      <div className="col-span-1">
+      <div className="sm:col-span-1">
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.max}</Label>
         <Input
           type="number"
@@ -392,7 +392,7 @@ function SubjectRow({
       </div>
 
       {/* Pass Mark */}
-      <div className="col-span-1">
+      <div className="sm:col-span-1">
         <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">{t.subjectRow.pass}</Label>
         <Input
           type="number"
@@ -405,7 +405,7 @@ function SubjectRow({
       </div>
 
       {/* Remove */}
-      <div className="col-span-1 flex justify-center">
+      <div className="sm:col-span-1 flex sm:justify-center">
         <button
           type="button"
           onClick={() => onRemove(entry.id)}
@@ -437,37 +437,37 @@ function AssessmentCard({
 
   return (
     <Card className="overflow-hidden transition-shadow hover:shadow-md bg-white dark:bg-[#111111] border-gray-200 dark:border-[#2A2A2A]">
-      <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-[#111111]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-3 sm:py-5 bg-white dark:bg-[#111111] gap-2">
         <Link
           href={`/admin/assessments/${assessment.id}`}
           className="min-w-0 flex flex-1 items-center rounded-md outline-none transition-colors hover:text-[var(--brand-color)] focus-visible:ring-2 focus-visible:ring-[var(--brand-color,#e35336)]"
         >
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="truncate font-semibold text-base text-gray-900 dark:text-white">
+                <span className="truncate font-semibold text-sm sm:text-base text-gray-900 dark:text-white">
                   {assessment.title}
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                <span className="text-sm text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
-                  <CalendarDays className="w-4 h-4" />
+                <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500 flex items-center gap-1.5">
+                  <CalendarDays className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   {new Date(assessment.startDate).toLocaleDateString()} –{" "}
                   {new Date(assessment.endDate).toLocaleDateString()}
                 </span>
                 {assessment.term && (
-                  <span className="text-sm text-gray-400 dark:text-gray-500">{assessment.term.name}</span>
+                  <span className="text-xs sm:text-sm text-gray-400 dark:text-gray-500">{assessment.term.name}</span>
                 )}
               </div>
             </div>
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="hidden sm:flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
             <span>{assessment.subjects.length} {t.assessmentCard.subjects}</span>
             <span className="text-gray-300 dark:text-gray-600">·</span>
             <span>{totalScored} {t.assessmentCard.scoresEntered}</span>
           </div>
-          <div className={`flex items-center gap-1.5 text-sm font-medium ${status.color}`}>
+          <div className={`flex items-center gap-1.5 text-xs sm:text-sm font-medium whitespace-nowrap ${status.color}`}>
             {status.icon}
             {t.filters[assessment.status.toLowerCase()] ?? assessment.status}
           </div>
@@ -499,14 +499,14 @@ function AssessmentCard({
       </div>
 
       {expanded && (
-        <div className="border-t border-gray-100 dark:border-[#2A2A2A] px-6 py-4 bg-gray-50 dark:bg-[#1A1A1A]/50">
+        <div className="border-t border-gray-100 dark:border-[#2A2A2A] px-4 sm:px-6 py-4 bg-gray-50 dark:bg-[#1A1A1A]/50">
           {assessment.subjects.length === 0 ? (
             <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-2">
               {t.assessmentCard.noSubjects}
             </p>
           ) : (
             <div className="space-y-2">
-              <div className="grid grid-cols-5 gap-2 px-2">
+              <div className="hidden sm:grid grid-cols-5 gap-2 px-2">
                 <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t.assessmentCard.colSubject}</span>
                 <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t.assessmentCard.colClass}</span>
                 <span className="text-xs font-medium text-gray-400 dark:text-gray-500">{t.assessmentCard.colSection}</span>
@@ -516,19 +516,35 @@ function AssessmentCard({
               {assessment.subjects.map((sub) => (
                 <div
                   key={sub.id}
-                  className="grid grid-cols-5 gap-2 px-2 py-1.5 rounded bg-gray-50 dark:bg-[#1A1A1A]"
+                  className="grid grid-cols-1 sm:grid-cols-5 gap-1 sm:gap-2 px-2 sm:px-2 py-2 sm:py-1.5 rounded bg-gray-50 dark:bg-[#1A1A1A]"
                 >
-                  <span className="text-xs text-gray-700 dark:text-gray-300">
-                    {sub.subject.name}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{sub.class.name}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <div className="flex sm:block items-center justify-between sm:justify-normal">
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300 sm:font-normal">
+                      {sub.subject.name}
+                    </span>
+                    <span className="sm:hidden text-xs text-gray-400">{sub.class.name}</span>
+                  </div>
+                  <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400">{sub.class.name}</span>
+                  <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400">
                     {sub.section?.name ?? <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400">
                     {sub.teacher?.name ?? <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </span>
-                  <div className="flex items-center justify-end gap-1.5">
+                  <div className="flex sm:hidden items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    <span>
+                      {sub.section?.name ?? "—"} · {sub.teacher?.name ?? "—"}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span>{sub._count.scores}</span>
+                      {sub._count.scores > 0 ? (
+                        <CheckCircle2 className="w-3 h-3 text-[var(--brand-color)]" />
+                      ) : (
+                        <AlertCircle className="w-3 h-3 text-[rgba(var(--brand-color-rgb),0.72)]" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="hidden sm:flex items-center justify-end gap-1.5">
                     <span className="text-xs text-gray-500 dark:text-gray-400">{sub._count.scores}</span>
                     {sub._count.scores > 0 ? (
                       <CheckCircle2 className="w-3 h-3 text-[var(--brand-color)]" />
@@ -1075,7 +1091,7 @@ export default function AssessmentManagementPage() {
   if (pathname === "/admin/exams") return null;
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-[#111111] min-h-screen">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-[#F8FAFC] dark:bg-[#111111] min-h-screen">
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -1089,27 +1105,30 @@ export default function AssessmentManagementPage() {
             variant="outline"
             onClick={confirmClearAssessments}
             disabled={assessments.length === 0 || clearing}
-            className="self-start border-red-200 bg-white text-red-700 shadow-sm hover:bg-red-50 hover:text-red-800 md:self-auto dark:border-red-900 dark:bg-[#1A1A1A] dark:text-red-300 dark:hover:bg-red-950/30"
+            className="border-red-200 bg-white text-red-700 shadow-sm hover:bg-red-50 hover:text-red-800 dark:border-red-900 dark:bg-[#1A1A1A] dark:text-red-300 dark:hover:bg-red-950/30"
           >
-            {clearing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
-            Clear All
+            {clearing ? <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-1 sm:mr-2" />}
+            <span className="hidden sm:inline">Clear All</span>
+            <span className="sm:hidden">Clear</span>
           </Button>
           <Button
             variant="outline"
             onClick={() => setWeightsOpen(true)}
-            className="self-start bg-white shadow-sm hover:opacity-90 md:self-auto dark:bg-[#1A1A1A]"
+            className="bg-white shadow-sm hover:opacity-90 dark:bg-[#1A1A1A]"
             style={brandSoftStyle}
           >
-            <Pencil className="w-4 h-4 mr-2" />
-            {t.actions.editWeight}
+            <Pencil className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">{t.actions.editWeight}</span>
+            <span className="sm:hidden">Weights</span>
           </Button>
           <Button
             onClick={() => setModalOpen(true)}
-            className="self-start text-white shadow-sm hover:opacity-90 md:self-auto"
+            className="text-white shadow-sm hover:opacity-90"
             style={brandSolidStyle}
           >
-            <Plus className="w-4 h-4 mr-2" />
-            {t.actions.newAssessment}
+            <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">{t.actions.newAssessment}</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </div>
       </div>
@@ -1117,42 +1136,44 @@ export default function AssessmentManagementPage() {
 
 
       {/* ── Type pills ── */}
-      <div className="flex flex-wrap gap-3 pt-2">
-        <button
-          onClick={() => setFilterType("ALL")}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${
-            filterType === "ALL"
-              ? "text-white"
-              : "bg-white dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#333333]"
-          }`}
-          style={filterType === "ALL" ? brandSolidStyle : undefined}
-        >
-          {t.filters.allTypes}
-        </button>
-        {configuredAssessmentTypes.map((at) => {
-          const m = getTypeMeta(at);
-          const active = filterType === at;
-          return (
-            <button
-              key={at}
-              onClick={() => setFilterType(at)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all border flex items-center gap-1.5 ${
-                active
-                  ? ""
-                  : "bg-white dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#333333]"
-              }`}
-              style={active ? brandSoftStyle : undefined}
-            >
-              {m.icon}
-              {(t.assessmentType[at]?.label) ?? at}
-              <span className="opacity-60">{getWeightValue(at)}%</span>
-            </button>
-          );
-        })}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 pt-2">
+        <div className="flex overflow-x-auto flex-nowrap gap-3 pb-1 sm:flex-wrap sm:overflow-visible no-scrollbar">
+          <button
+            onClick={() => setFilterType("ALL")}
+            className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all border ${
+              filterType === "ALL"
+                ? "text-white"
+                : "bg-white dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#333333]"
+            }`}
+            style={filterType === "ALL" ? brandSolidStyle : undefined}
+          >
+            {t.filters.allTypes}
+          </button>
+          {configuredAssessmentTypes.map((at) => {
+            const m = getTypeMeta(at);
+            const active = filterType === at;
+            return (
+              <button
+                key={at}
+                onClick={() => setFilterType(at)}
+                className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all border flex items-center gap-1.5 ${
+                  active
+                    ? ""
+                    : "bg-white dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#333333]"
+                }`}
+                style={active ? brandSoftStyle : undefined}
+              >
+                {m.icon}
+                {(t.assessmentType[at]?.label) ?? at}
+                <span className="opacity-60 shrink-0">{getWeightValue(at)}%</span>
+              </button>
+            );
+          })}
+        </div>
 
-        <div className="ml-auto">
+        <div className="w-full sm:w-auto sm:ml-auto sm:shrink-0">
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-8 w-32 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-xs dark:bg-[#1A1A1A] dark:border-[rgba(var(--brand-color-rgb),0.22)]">
+            <SelectTrigger className="h-8 w-full sm:w-32 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-xs dark:bg-[#1A1A1A] dark:border-[rgba(var(--brand-color-rgb),0.22)]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1361,7 +1382,7 @@ export default function AssessmentManagementPage() {
                   <Label className="text-sm text-gray-700 dark:text-gray-300">
                     {t.newAssessmentModal.assessmentType} <span className="text-red-400">*</span>
                   </Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
                     {configuredAssessmentTypes.map((at) => {
                       const m = getTypeMeta(at);
                       const selected = formData.type === at;
@@ -1465,7 +1486,7 @@ export default function AssessmentManagementPage() {
               </div>
 
               {/* Dates */}
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <div>
                   <Label htmlFor="startDate" className="text-sm text-gray-700 dark:text-gray-300">
                     {t.newAssessmentModal.startDate} <span className="text-red-400">*</span>
