@@ -319,14 +319,10 @@ Here is what happens next — we take it from here:
 2. **You see YeneSchool working with your actual numbers** — not a generic walkthrough.
 3. **We prepare a detailed implementation plan** with exact dates.
 4. **We begin setup** — and train your team.
-5. **Your school is live within 5 weeks.**
+5. **Your school is live within 3 weeks.**
 
 You don't need to prepare anything. Just having received this proposal is enough.
 
-**While you wait:**
-- Try the live demo now: **[yeneschool.me/demo](https://www.yeneschool.me/demo)**
-- Email us: **yeneschool@gmail.com**
-- Call / WhatsApp: **+251966074050**
 
 ምንም ዓይነት ቅድመ ዝግጅት ማድረግ አያስፈልግዎትም። ይህንን የውሳኔ ሐሳብ መቀበልዎ ብቻ በቂ ነው። ከዚህ በኋላ ያሉትን ተግባራት እኛ እንመራዋለን፡
 
@@ -334,22 +330,19 @@ You don't need to prepare anything. Just having received this proposal is enough
 2. **YeneSchool በትክክለኛው የተማሪ ቁጥርና መረጃዎ እንዴት እንደሚሠራ በተግባር ያያሉ** — አጠቃላይ ማብራሪያ ብቻ ሳይሆን።
 3. **ትክክለኛ ቀናትን ያካተተ ዝርዝር የትግበራ ዕቅድ** እናዘጋጃለን።
 4. **የመዋቅር ዝግጅት እንጀምራለን** — እንዲሁም የሥራ ቡድንዎን እናሰለጥናለን።
-5. **ትምህርት ቤትዎ በ5 ሳምንታት ውስጥ ሙሉ በሙሉ ወደ ዲጂታል አሠራር ይሸጋገራል።**
+5. **ትምህርት ቤትዎ በ3 ሳምንታት ውስጥ ሙሉ በሙሉ ወደ ዲጂታል አሠራር ይሸጋገራል።**
 
 **እስከዚያው ድረስ:**
 - የቀጥታ ማሳያውን አሁኑኑ ይሞክሩ: **[yeneschool.me/demo](https://www.yeneschool.me/demo)**
 - ኢሜይል ይጻፉልን: **yeneschool@gmail.com**
-- በስልክ / በዋትስአፕ ያግኙን: **+251966074050**
+- በስልክ / በዋትስአፕ ያግኙን: **+251983355598**
 
 ---
 
 <div align="center">
 
-**YeneSchool by HUMAN Tech PLC**
-
-[Your Name]  
-[Your Title]  
-Phone: +251966074050  
+**YeneSchool by afro digital: www.afrodigital.dev**
+Phone: +251983355598  
 Email: yeneschool@gmail.com  
 Web: www.yeneschool.me
 
