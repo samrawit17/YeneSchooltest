@@ -66,6 +66,7 @@ services:
       WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
       WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-akmPXo7n_zVhuXGjPB_GsS_G_mkzqc-WC9OF2d8mzLg}
       WEB_PUSH_CONTACT_EMAIL: ${WEB_PUSH_CONTACT_EMAIL:-mailto:admin@school管理系统.com}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
       RATE_LIMIT_MAX: 120
       RATE_LIMIT_WINDOW_SEC: 60
       TRUST_PROXY: 1
@@ -132,6 +133,24 @@ services:
       - -lc
       - npm run dev -- --hostname 0.0.0.0
       - npm install --legacy-peer-deps --no-audit --loglevel=error --ignore-scripts && npm install --no-save @next/swc-linux-arm64-gnu@14.2.5 --no-audit --loglevel=error && npm run dev -- --hostname 0.0.0.0
+    networks:
+      - sms_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: sms_nginx_dev
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     networks:
       - sms_network
 
