@@ -627,10 +627,15 @@ export default function AssessmentManagementPage() {
   // ── Initial data load
   useEffect(() => {
     if (!isAuthenticated) return;
-    loadAssessments();
     loadLookups();
     loadWeights();
   }, [isAuthenticated]);
+
+  // ── Load assessments when academic year changes
+  useEffect(() => {
+    if (!isAuthenticated || !formData.academicYearId) return;
+    loadAssessments();
+  }, [isAuthenticated, formData.academicYearId]);
 
   // ── Load terms when year changes
   useEffect(() => {
@@ -669,7 +674,9 @@ export default function AssessmentManagementPage() {
   const loadAssessments = async () => {
     setListLoading(true);
     try {
-      const res = await assessmentsAPI.list({});
+      const res = await assessmentsAPI.list({
+        academicYearId: formData.academicYearId || undefined,
+      });
       const data = Array.isArray(res.data) ? res.data : res.data.data ?? [];
       setAssessments(data);
     } catch {
@@ -925,15 +932,15 @@ export default function AssessmentManagementPage() {
   };
 
   const resetForm = () => {
-    setFormData({
+    setFormData((prev) => ({
       title: "",
       type: "",
-      academicYearId: "",
+      academicYearId: prev.academicYearId,
       termId: "",
       startDate: "",
       endDate: "",
       addToCalendar: false,
-    });
+    }));
     setSelectedGrades([]);
     setSelectedSubjectIds([]);
     setCreateStep("basic");
@@ -1171,7 +1178,7 @@ export default function AssessmentManagementPage() {
           })}
         </div>
 
-        <div className="w-full sm:w-auto sm:ml-auto sm:shrink-0">
+        <div className="flex gap-2 w-full sm:w-auto sm:ml-auto sm:shrink-0">
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="h-8 w-full sm:w-32 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-xs dark:bg-[#1A1A1A] dark:border-[rgba(var(--brand-color-rgb),0.22)]">
               <SelectValue />
@@ -1182,6 +1189,21 @@ export default function AssessmentManagementPage() {
               <SelectItem value="LOCKED" className="text-xs">{t.filters.locked}</SelectItem>
               <SelectItem value="DRAFT" className="text-xs">{t.filters.draft}</SelectItem>
               <SelectItem value="COMPLETED" className="text-xs">{t.filters.completed}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={formData.academicYearId}
+            onValueChange={(v) => setFormData((prev) => ({ ...prev, academicYearId: v, termId: "" }))}
+          >
+            <SelectTrigger className="h-8 w-full sm:w-40 border-[rgba(var(--brand-color-rgb),0.2)] bg-white text-xs dark:bg-[#1A1A1A] dark:border-[rgba(var(--brand-color-rgb),0.22)]">
+              <SelectValue placeholder="Academic Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {academicYears.map((y) => (
+                <SelectItem key={y.id} value={y.id} className="text-xs">
+                  {y.name} {y.isActive ? "(Active)" : ""}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

@@ -56,8 +56,8 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { classesAPI, sectionsAPI, academicYearsAPI } from "@/lib/api/academics";
-import { authAPI } from "@/lib/api/auth";
+import { classesAPI, sectionsAPI, academicYearsAPI } from "@/lib/api";
+import { authAPI } from "@/lib/api";
 import { classSubjectsAPI } from "@/lib/api/admin";
 import { Filters, useFilters } from "@/components/filters/Filters";
 

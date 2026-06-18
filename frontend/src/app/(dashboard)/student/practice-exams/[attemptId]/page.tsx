@@ -158,26 +158,31 @@ export default function PracticeExamAttemptPage() {
     },
   });
 
+  const submitAttemptRef = useRef(submitAttempt);
+  submitAttemptRef.current = submitAttempt;
+  const autosaveRef = useRef(autosave);
+  autosaveRef.current = autosave;
+
   useEffect(() => {
     if (!attempt?.expiresAt || !isOpen) return;
     const tick = () => {
       const next = Math.ceil((new Date(attempt.expiresAt).getTime() - Date.now()) / 1000);
       setRemainingSeconds(Math.max(0, next));
-      if (next <= 0 && !submittedRef.current && !submitAttempt.isPending) {
+      if (next <= 0 && !submittedRef.current && !submitAttemptRef.current.isPending) {
         submittedRef.current = true;
-        submitAttempt.mutate();
+        submitAttemptRef.current.mutate();
       }
     };
     tick();
     const timer = window.setInterval(tick, 1000);
     return () => window.clearInterval(timer);
-  }, [attempt?.expiresAt, isOpen, submitAttempt]);
+  }, [attempt?.expiresAt, isOpen]);
 
   useEffect(() => {
     if (!isOpen || !questions.length) return;
-    const interval = window.setInterval(() => autosave.mutate(), 20000);
+    const interval = window.setInterval(() => autosaveRef.current.mutate(), 20000);
     return () => window.clearInterval(interval);
-  }, [isOpen, questions.length, autosave]);
+  }, [isOpen, questions.length]);
 
   const answeredQuestionCount = questions.filter((question) =>
     question.questionType === "SHORT_ANSWER"

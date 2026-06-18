@@ -110,11 +110,15 @@ export default function PushNotificationManager() {
       syncingRef.current = true;
 
       try {
-        const registration = await registerNotificationServiceWorker();
+        let registration = await registerNotificationServiceWorker();
 
-        // Force-check for an updated SW and wait for it to activate
         if (registration) {
-          await registration.update();
+          try {
+            await registration.update();
+          } catch {
+            // Registration was uninstalled (e.g. via DevTools), re-register
+            registration = await navigator.serviceWorker.register("/sw.js");
+          }
         }
 
         if (getBrowserNotificationPermission() === "granted") {

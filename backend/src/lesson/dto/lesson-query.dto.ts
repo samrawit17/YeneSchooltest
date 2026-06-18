@@ -44,6 +44,10 @@ export class LessonQueryDto {
 
   @IsOptional()
   @IsString()
+  academicYearId?: string;
+
+  @IsOptional()
+  @IsString()
   studentId?: string;
 
   @IsOptional()

@@ -115,6 +115,7 @@ export class TimetableSlotController {
   async findByTeacher(
     @Request() req: AuthenticatedRequest,
     @Param('teacherId') targetTeacherId: string,
+    @Query('academicYearId') academicYearId?: string,
   ) {
     const schoolId = req.user.schoolId;
 
@@ -131,6 +132,7 @@ export class TimetableSlotController {
     const result = await this.timetableSlotService.findByTeacher(
       schoolId,
       resolvedTeacherId,
+      academicYearId,
     );
     return result;
   }

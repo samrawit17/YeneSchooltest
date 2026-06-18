@@ -355,14 +355,14 @@ export default function MessagesPage() {
 
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-700">{t.fields.subjectOptional}</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.fields.subjectOptional}</label>
                 <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} placeholder={t.placeholders.subjectExample} />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700">{t.fields.addParticipants}</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.fields.addParticipants}</label>
                 <div className="flex items-center gap-2 mt-2">
-                  <Search className="w-4 h-4 text-gray-400" />
+                  <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   <Input
                     value={staffSearch}
                     onChange={(e) => setStaffSearch(e.target.value)}
@@ -371,7 +371,7 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              <ScrollArea className="h-64 border rounded-md">
+              <ScrollArea className="h-64 border rounded-md dark:border-[#334155]">
                 <div className="p-2">
                   {isLoadingStaff ? (
                     <div className="flex items-center gap-2 text-sm text-gray-500 p-2">
@@ -393,7 +393,7 @@ export default function MessagesPage() {
                         key={s.id}
                         type="button"
                         onClick={() => toggleStaff(s)}
-                        className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 text-left"
+                        className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-gray-50 dark:hover:bg-[#2A2A2A] text-left"
                       >
                         <Checkbox checked={selectedStaffIds.includes(s.id)} />
                         <div className="flex-1 min-w-0">
@@ -412,7 +412,7 @@ export default function MessagesPage() {
               </ScrollArea>
 
               {selectedStaffIds.length > 0 && (
-                <div className="text-xs text-gray-600">{t.states.selected}: {selectedStaffIds.length} staff</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">{t.states.selected}: {selectedStaffIds.length} staff</div>
               )}
             </div>
 

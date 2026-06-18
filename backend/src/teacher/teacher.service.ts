@@ -201,15 +201,40 @@ export class TeacherService {
       throw new NotFoundException('Teacher not found');
     }
 
-    // Resolve academic year ID if name provided
-    let academicYearId: string | undefined;
+    // Resolve academic year ID — accepts either name or ID
+    let resolvedAcademicYear: any;
     if (academicYear) {
-      const year = await this.prisma.academicYear.findFirst({
-        where: { schoolId, name: academicYear },
-        select: { id: true },
+      resolvedAcademicYear = await this.prisma.academicYear.findFirst({
+        where: {
+          schoolId,
+          OR: [
+            { id: academicYear },
+            { name: academicYear },
+          ],
+        },
       });
-      academicYearId = year?.id;
+      
+      if (!resolvedAcademicYear && academicYear) {
+        // If it looks like a CUID but wasn't found, we should still try to use it as an ID
+        // or return empty if we want to be strict. Let's return empty result.
+        return {
+          homeroomClasses: [],
+          homeroomSections: [],
+          teachingAssignments: [],
+          teachingClasses: [],
+        };
+      }
     }
+
+    // Default to active year ONLY if no academicYear was provided at all
+    if (!resolvedAcademicYear && !academicYear) {
+      resolvedAcademicYear = await this.prisma.academicYear.findFirst({
+        where: { schoolId, isActive: true },
+      });
+    }
+
+    const academicYearId = resolvedAcademicYear?.id;
+    const academicYearName = resolvedAcademicYear?.name;
 
     // Homeroom classes are no longer directly linked, we get them via sections
     const homeroomSections = await this.prisma.section.findMany({
@@ -249,7 +274,7 @@ export class TeacherService {
           schoolId,
           ...(academicYearId ? { academicYearId } : {}),
         },
-        ...(academicYear ? { academicYear } : {}),
+        ...(academicYearId ? { academicYear: academicYearId } : {}),
       },
       select: {
         id: true,
@@ -330,6 +355,7 @@ export class TeacherService {
             schoolId,
             classId: section.class.id,
             sectionId: section.id,
+            ...(academicYearName ? { academicYear: academicYearName } : {}),
           },
         });
 
@@ -382,6 +408,7 @@ export class TeacherService {
             schoolId,
             classId: assignment.classId,
             sectionId: assignment.sectionId,
+            ...(academicYearName ? { academicYear: academicYearName } : {}),
           },
         });
 
@@ -431,6 +458,7 @@ export class TeacherService {
               schoolId,
               classId: slot.class.id,
               sectionId: slot.section.id,
+              ...(academicYearName ? { academicYear: academicYearName } : {}),
             },
           })
         : 0;

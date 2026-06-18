@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { announcementsAPI, CreateAnnouncementDto } from "@/lib/api/content";
 import { syncService } from "@/lib/db/sync-service";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { academicYearsAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +27,8 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
   const { t } = useTranslations<any>("announcements");
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { currentAcademicYear } = useAcademicYear();
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
   const [formData, setFormData] = useState<CreateAnnouncementDto>({
     title: "",
     content: "",
@@ -33,7 +37,16 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
     startDate: new Date().toISOString().split("T")[0],
     priority: "MEDIUM",
     location: "",
+    academicYearId: currentAcademicYear?.id || undefined,
   });
+  useEffect(() => {
+    if (!user?.schoolId) return;
+    academicYearsAPI.getAll({ schoolId: user.schoolId }).then((res) => {
+      const years = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+      setAcademicYears(years);
+    }).catch(() => {});
+  }, [user?.schoolId]);
+
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [postImmediately, setPostImmediately] = useState(true);
   const [scheduleDateValue, setScheduleDateValue] = useState<Date | undefined>(new Date());
@@ -88,6 +101,7 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
       isPublic: showOnLoginPage,
       priority: formData.priority as "LOW" | "MEDIUM" | "HIGH",
       location: formData.location || undefined,
+      academicYearId: formData.academicYearId || undefined,
     };
     
     // Only include endDate if it has a value
@@ -145,6 +159,30 @@ const CreateAnnouncementForm = ({ onSuccess, onCancel }: CreateAnnouncementFormP
                 <SelectItem value="LOW">{t.normal}</SelectItem>
                 <SelectItem value="MEDIUM">{t.important}</SelectItem>
                 <SelectItem value="HIGH">{t.urgent}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Academic Year</Label>
+            <Select
+              value={formData.academicYearId || "none"}
+              onValueChange={(value) =>
+                setFormData({
+                  ...formData,
+                  academicYearId: value === "none" ? undefined : value,
+                })
+              }
+            >
+              <SelectTrigger className="bg-white dark:bg-gray-800 dark:border-gray-600">
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {academicYears.map((year) => (
+                  <SelectItem key={year.id} value={year.id}>
+                    {year.name} {year.isActive ? "(Active)" : ""}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

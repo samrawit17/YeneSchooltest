@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle, Clock, Plus, Shield, User, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { disciplineAPI } from "@/lib/api/people";
 import { studentsAPI } from "@/lib/api/students";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,6 +56,7 @@ const statusIcons = {
 
 export default function TeacherDisciplinePage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { currentAcademicYear } = useAcademicYear();
   const router = useRouter();
   const [students, setStudents] = useState<HomeroomStudent[]>([]);
   const [incidents, setIncidents] = useState<DisciplineIncident[]>([]);
@@ -78,6 +80,7 @@ export default function TeacherDisciplinePage() {
   useEffect(() => {
     const loadData = async () => {
       if (!isAuthenticated || user?.role !== "TEACHER") return;
+      if (!currentAcademicYear?.id) return;
 
       setLoading(true);
       try {
@@ -104,7 +107,7 @@ export default function TeacherDisciplinePage() {
         const aggregated = await Promise.all(
           homeroomStudents.map(async (student) => {
             try {
-              const resp = await disciplineAPI.getStudentIncidents(student.id);
+              const resp = await disciplineAPI.getStudentIncidents(student.id, currentAcademicYear?.id);
               const studentIncidents = Array.isArray(resp.data) ? resp.data : resp.data?.data || [];
               return studentIncidents.map((incident: any) => ({
                 id: incident.id,
@@ -134,7 +137,7 @@ export default function TeacherDisciplinePage() {
     };
 
     loadData();
-  }, [isAuthenticated, user?.role]);
+  }, [isAuthenticated, user?.role, currentAcademicYear?.id]);
 
   const filteredIncidents = useMemo(() => {
     if (selectedStudentId === "all") return incidents;

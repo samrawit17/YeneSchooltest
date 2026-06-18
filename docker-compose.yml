@@ -18,6 +18,16 @@ services:
       retries: 10
     networks:
       - sms_network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
@@ -25,7 +35,7 @@ services:
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-lemari_redis_password}
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-lemari_redis_password}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-lemari_redis_password} --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     expose:
@@ -37,6 +47,16 @@ services:
       retries: 10
     networks:
       - sms_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     build:
@@ -75,8 +95,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "${BACKEND_PORT:-8001}:8001"
     volumes:
       - ./backend/public/uploads:/app/public/uploads
     dns:
@@ -90,29 +108,31 @@ services:
       start_period: 60s
     networks:
       - sms_network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: development
+      target: production
     container_name: sms_frontend
     restart: unless-stopped
     environment:
-      NODE_ENV: development
-      HOSTNAME: 0.0.0.0
-      WATCHPACK_POLLING: "true"
-      CHOKIDAR_USEPOLLING: "true"
+      NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/proxy}
       BACKEND_URL: http://backend:8001
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
       - ./backend/public/uploads:/app/public/uploads:ro
-    ports:
-      - "${FRONTEND_PORT:-8000}:8000"
     depends_on:
       backend:
         condition: service_healthy
@@ -122,12 +142,18 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
-    command:
-      - sh
-      - -lc
-      - npm run dev -- --hostname 0.0.0.0
     networks:
       - sms_network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   nginx:
     image: nginx:alpine
@@ -144,8 +170,23 @@ services:
         condition: service_healthy
       backend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     networks:
       - sms_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   sms_network:

@@ -293,6 +293,12 @@ const AnnouncementPage = ({ params }: AnnouncementPageProps) => {
                       {statusInfo.label}
                     </p>
                   </div>
+                  {announcement.academicYear && (
+                    <div>
+                      <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Academic Year</label>
+                      <p className="mt-1 text-gray-900 dark:text-white">{announcement.academicYear.name}</p>
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Audience</label>
                     <p className="mt-1 text-gray-900 dark:text-white">{getAudienceBadge(announcement.visibleTo)}</p>

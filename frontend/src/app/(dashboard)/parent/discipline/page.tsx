@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { disciplineAPI, parentsAPI } from "@/lib/api/people";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,6 +40,7 @@ const statusIcons = {
 
 export default function ParentDisciplinePage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { currentAcademicYear } = useAcademicYear();
   const router = useRouter();
 
   const [incidents, setIncidents] = useState<ChildDiscipline[]>([]);
@@ -56,10 +58,10 @@ export default function ParentDisciplinePage() {
   }, [isAuthenticated, authLoading, router]);
 
   useEffect(() => {
-    if (isAuthenticated && user?.id) {
+    if (isAuthenticated && user?.id && currentAcademicYear?.id) {
       loadChildIncidents();
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, currentAcademicYear?.id]);
 
   async function loadChildIncidents() {
     setLoading(true);
@@ -75,7 +77,7 @@ export default function ParentDisciplinePage() {
           const studentId =
             child.studentId || child.student?.id || child.student?.userId;
           if (!studentId) continue;
-          const incidentResp = await disciplineAPI.getStudentIncidents(studentId);
+          const incidentResp = await disciplineAPI.getStudentIncidents(studentId, currentAcademicYear?.id);
           const childIncidents = (incidentResp.data || []).map((i: any) => ({
             ...i,
             childName:

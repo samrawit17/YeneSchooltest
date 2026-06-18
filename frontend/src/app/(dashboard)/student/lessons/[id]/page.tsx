@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { lessonsAPI, Lesson } from "@/lib/api/content";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -142,7 +143,7 @@ export default function StudentLessonDetailPage() {
                 <div
                   className="prose max-w-none dark:prose-invert"
                   dangerouslySetInnerHTML={{
-                    __html: lesson.lessonContent || "<p>No content added yet.</p>",
+                    __html: sanitizeHtml(lesson.lessonContent || "") || "<p>No content added yet.</p>",
                   }}
                 />
               </div>

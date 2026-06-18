@@ -41,6 +41,7 @@ export class AttendanceController {
     return this.attendanceService.getTodayTimetable(
       req.user as RequestUser,
       query.date,
+      query.academicYearId,
     );
   }
 
@@ -75,6 +76,7 @@ export class AttendanceController {
     @Query('className') className: string | undefined,
     @Query('section') section: string | undefined,
     @Query('date') date?: string,
+    @Query('academicYearId') academicYearId?: string,
   ) {
     return this.attendanceService.getStudentsForAttendance(
       req.user as RequestUser,
@@ -83,6 +85,7 @@ export class AttendanceController {
       date,
       classId,
       sectionId,
+      academicYearId,
     );
   }
 
@@ -308,8 +311,14 @@ export class AttendanceController {
    */
   @Get('dashboard/teacher')
   @Permissions('attendance:take')
-  getTeacherDashboard(@Request() req: any) {
-    return this.attendanceService.getTeacherDashboard(req.user);
+  getTeacherDashboard(
+    @Request() req: any,
+    @Query('academicYearId') academicYearId?: string,
+  ) {
+    return this.attendanceService.getTeacherDashboard(
+      req.user as RequestUser,
+      academicYearId,
+    );
   }
 
   /**

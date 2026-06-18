@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
-import { DEFAULT_CACHE_TTL_SECONDS, CACHE_TTL } from '../infrastructure/cache/cache.constants';
+import { CACHE_TTL } from '../infrastructure/cache/cache.constants';
 
 @Injectable()
 export class PlatformSettingsService {

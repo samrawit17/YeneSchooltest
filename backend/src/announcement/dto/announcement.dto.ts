@@ -40,6 +40,10 @@ export class CreateAnnouncementDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  academicYearId?: string;
 }
 
 export class UpdateAnnouncementDto {
@@ -74,4 +78,8 @@ export class UpdateAnnouncementDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  academicYearId?: string;
 }

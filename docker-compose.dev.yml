@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-lemari_redis_password}
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-lemari_redis_password}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-lemari_redis_password} --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data_dev:/data
     ports:

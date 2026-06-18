@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
-import { DEFAULT_CACHE_TTL_SECONDS, CACHE_TTL } from '../infrastructure/cache/cache.constants';
+import { CACHE_TTL } from '../infrastructure/cache/cache.constants';
 import { CredentialService } from '../credential/credential.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { AuditRequestContext, AuditService, type AuditActor } from '../audit/audit.service';

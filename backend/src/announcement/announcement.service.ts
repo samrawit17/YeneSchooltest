@@ -144,6 +144,7 @@ export class AnnouncementService {
         endDate: data.endDate ? new Date(data.endDate) : null,
         priority: data.priority || 'MEDIUM',
         location: data.location || null,
+        academicYearId: data.academicYearId || null,
         createdById: userId,
         schoolId,
       },
@@ -214,9 +215,16 @@ export class AnnouncementService {
             name: true,
           },
         },
+        academicYear: {
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+          },
+        },
       },
       orderBy: [
-        { priority: 'desc' }, // HIGH first
+        { priority: 'desc' },
         { createdAt: 'desc' },
       ],
     });
@@ -281,6 +289,13 @@ export class AnnouncementService {
             name: true,
           },
         },
+        academicYear: {
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+          },
+        },
       },
     });
 
@@ -334,6 +349,7 @@ export class AnnouncementService {
         }),
         ...(data.priority && { priority: data.priority }),
         ...(data.location !== undefined && { location: data.location || null }),
+        ...(data.academicYearId !== undefined && { academicYearId: data.academicYearId || null }),
       },
       include: {
         createdBy: {
@@ -347,6 +363,13 @@ export class AnnouncementService {
           select: {
             id: true,
             name: true,
+          },
+        },
+        academicYear: {
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
           },
         },
       },

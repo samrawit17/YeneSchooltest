@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { RedisService } from './redis.service';
 
 interface MemoryCacheEntry {
@@ -6,13 +6,27 @@ interface MemoryCacheEntry {
   expiresAt: number;
 }
 
+const MAX_MEMORY_ENTRIES = 500;
+const CLEANUP_INTERVAL_MS = 60_000;
+
 @Injectable()
-export class CacheService {
+export class CacheService implements OnModuleDestroy {
   private readonly logger = new Logger(CacheService.name);
   private readonly memoryCache = new Map<string, MemoryCacheEntry>();
   private readonly memoryVersions = new Map<string, number>();
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(private readonly redisService: RedisService) {
+    this.cleanupTimer = setInterval(() => this.cleanup(), CLEANUP_INTERVAL_MS);
+    this.cleanupTimer.unref();
+  }
+
+  onModuleDestroy(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+  }
 
   async get<T>(key: string): Promise<T | null> {
     const redisValue = await this.redisService.get(key);
@@ -25,9 +39,7 @@ export class CacheService {
     }
 
     const entry = this.memoryCache.get(key);
-    if (!entry) {
-      return null;
-    }
+    if (!entry) return null;
 
     if (entry.expiresAt <= Date.now()) {
       this.memoryCache.delete(key);
@@ -37,9 +49,7 @@ export class CacheService {
     try {
       return JSON.parse(entry.value) as T;
     } catch (error) {
-      this.logger.warn(
-        `Failed to parse cached value for key "${key}": ${error}`,
-      );
+      this.logger.warn(`Failed to parse cached value for key "${key}": ${error}`);
       this.memoryCache.delete(key);
       return null;
     }
@@ -59,18 +69,13 @@ export class CacheService {
 
     const serializedValue = JSON.stringify(value);
 
-    this.memoryCache.set(key, {
-      value: serializedValue,
-      expiresAt: Date.now() + ttlSeconds * 1000,
-    });
+    this.setMemory(key, serializedValue, ttlSeconds);
 
     await this.redisService.set(key, serializedValue, ttlSeconds);
   }
 
   async del(...keys: string[]): Promise<void> {
-    if (keys.length === 0) {
-      return;
-    }
+    if (keys.length === 0) return;
 
     for (const key of keys) {
       this.memoryCache.delete(key);
@@ -86,9 +91,7 @@ export class CacheService {
     schoolId?: string,
   ): Promise<T> {
     const cachedValue = await this.get<T>(key);
-    if (cachedValue !== null) {
-      return cachedValue;
-    }
+    if (cachedValue !== null) return cachedValue;
 
     const value = await factory();
     await this.set(key, value, ttlSeconds, schoolId);
@@ -131,6 +134,29 @@ export class CacheService {
       factory,
       schoolId,
     );
+  }
+
+  private setMemory(key: string, value: string, ttlSeconds: number): void {
+    if (this.memoryCache.size >= MAX_MEMORY_ENTRIES) {
+      const oldestKey = this.memoryCache.keys().next();
+      if (!oldestKey.done) {
+        this.memoryCache.delete(oldestKey.value);
+      }
+    }
+
+    this.memoryCache.set(key, {
+      value,
+      expiresAt: Date.now() + ttlSeconds * 1000,
+    });
+  }
+
+  private cleanup(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.memoryCache) {
+      if (entry.expiresAt <= now) {
+        this.memoryCache.delete(key);
+      }
+    }
   }
 
   private getVersionKey(namespace: string): string {

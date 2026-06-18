@@ -26,6 +26,7 @@ import { Role } from '../auth/types/role.enum';
 import { EnrollmentRequestStatus } from '@prisma/client';
 import { RequiresFeature } from '../subscription/decorators/subscription.decorator';
 import { SubscriptionGuard } from '../subscription/guards/subscription.guard';
+import { RateLimit } from '../infrastructure/rate-limit/rate-limit.decorator';
 
 @Controller('enrollment')
 export class EnrollmentRequestController {
@@ -76,6 +77,7 @@ export class EnrollmentRequestController {
    * POST /enrollment/request
    */
   @Post('request')
+  @RateLimit({ limit: 5, windowSec: 600 })
   @HttpCode(HttpStatus.CREATED)
   async createEnrollmentRequest(@Body() dto: CreateEnrollmentRequestDto) {
     const enrollment =

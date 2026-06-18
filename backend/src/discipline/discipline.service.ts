@@ -232,7 +232,7 @@ export class DisciplineService {
     });
   }
 
-  async getStudentIncidents(studentId: string, schoolId: string) {
+  async getStudentIncidents(studentId: string, schoolId: string, academicYearId?: string) {
     const studentProfile = await this.prisma.studentProfile.findFirst({
       where: {
         schoolId,
@@ -248,8 +248,23 @@ export class DisciplineService {
 
     if (!studentProfile) return [];
 
+    const where: any = { studentId: studentProfile.id, schoolId };
+
+    if (academicYearId) {
+      const year = await this.prisma.academicYear.findUnique({
+        where: { id: academicYearId },
+        select: { startDate: true, endDate: true },
+      });
+      if (year) {
+        where.createdAt = {
+          gte: year.startDate,
+          lte: year.endDate,
+        };
+      }
+    }
+
     return this.prisma.disciplineIncident.findMany({
-      where: { studentId: studentProfile.id, schoolId },
+      where,
       orderBy: { incidentDate: 'desc' },
       include: {
         reporter: {

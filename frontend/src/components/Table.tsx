@@ -1,3 +1,5 @@
+import React from 'react';
+
 const Table = ({
   columns,
   renderRow,
@@ -45,7 +47,7 @@ const Table = ({
           ))}
         </tr>
       </thead>
-      <tbody>{tableData.map((item) => renderRow(item))}</tbody>
+      <tbody>{tableData.map((item, index) => <React.Fragment key={(item as any)?.id || index}>{renderRow(item)}</React.Fragment>)}</tbody>
     </table>
   );
 };

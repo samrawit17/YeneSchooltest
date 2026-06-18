@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { assessmentsAPI } from "@/lib/api";
 import {
   Card,
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function StudentAssessmentsPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { currentAcademicYear } = useAcademicYear();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [upcoming, setUpcoming] = useState<any[]>([]);
@@ -27,17 +29,17 @@ export default function StudentAssessmentsPage() {
   }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated && user?.role === "STUDENT") {
+    if (!isLoading && isAuthenticated && user?.role === "STUDENT" && currentAcademicYear?.id) {
       loadData();
     }
-  }, [isLoading, isAuthenticated, user?.role]);
+  }, [isLoading, isAuthenticated, user?.role, currentAcademicYear?.id]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       const [upcomingRes, resultsRes] = await Promise.all([
-        assessmentsAPI.getStudentUpcoming(),
-        assessmentsAPI.getStudentResults(),
+        assessmentsAPI.getStudentUpcoming({ academicYearId: currentAcademicYear?.id }),
+        assessmentsAPI.getStudentResults({ academicYearId: currentAcademicYear?.id }),
       ]);
       setUpcoming(upcomingRes.data || []);
       setResults(resultsRes.data || []);

@@ -17,6 +17,7 @@ export function SirenListener() {
   const { user } = useAuth();
   const wsRef = useRef<WebSocket | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const audioEnabledRef = useRef(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("sirenAudioEnabled");
@@ -27,6 +28,7 @@ export function SirenListener() {
     try {
       await unlockSirenAudio();
       setAudioEnabled(true);
+      audioEnabledRef.current = true;
       localStorage.setItem("sirenAudioEnabled", "true");
       toast.success("Audio enabled successfully");
     } catch {
@@ -89,7 +91,7 @@ export function SirenListener() {
         : event.type;
 
     // Play audio notification
-    if (audioEnabled) {
+    if (audioEnabledRef.current) {
       try {
         await playSirenAudio();
       } catch (error) {

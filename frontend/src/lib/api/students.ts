@@ -1,11 +1,6 @@
 import api from './core';
-
-type RequestOptions = {
-  skipAuthErrorRedirect?: boolean;
-};
-
-const requestOptions = (options?: RequestOptions) =>
-  options?.skipAuthErrorRedirect ? { skipAuthErrorRedirect: true } : {};
+import type { RequestOptions } from './types';
+import { requestOptions } from './types';
 
 export const studentsAPI = {
   create: (data: any) => api.post('/students', data),

@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { lessonsAPI, Lesson } from "@/lib/api/content";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -150,7 +151,7 @@ const ParentLessonDetailPage = () => {
               )}
               <div 
                 className="prose dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: lesson.lessonContent || "<p>No content added yet.</p>" }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.lessonContent || "") || "<p>No content added yet.</p>" }}
               />
             </CardContent>
           </Card>

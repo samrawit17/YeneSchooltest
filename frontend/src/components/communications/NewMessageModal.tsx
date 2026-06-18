@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle, Loader2, Send, X } from "lucide-react";
+import { CheckCircle, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { parentsAPI, studentsAPI } from "@/lib/api";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -207,45 +207,29 @@ export default function NewMessageModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-800">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-6 py-4 dark:border-slate-700 dark:from-slate-800 dark:to-slate-800/50">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--brand-color,#e35336)]">
-              <Send className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t.actions.newMessage}</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isParent
-                  ? "Send a message to your child's teacher"
-                  : isTeacher
-                    ? "Send a message about a student to their parent"
-                    : "Send a message to a parent"}
-              </p>
-            </div>
-          </div>
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-[#1C1C1C]">
+        <div className="flex items-center justify-between px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t.actions.newMessage}</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-[#2A2A2A] dark:hover:text-gray-300"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="max-h-[calc(90vh-180px)] overflow-y-auto p-6">
-          <div ref={dropdownRef} className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+        <div className="max-h-[calc(90vh-180px)] overflow-y-auto p-6 space-y-5">
+          <div ref={dropdownRef}>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               {isParent ? t.fields.selectTeacher : t.fields.selectStudent} <span className="text-red-500">*</span>
             </label>
             {preselectedStudentId ? (
-              <div className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm dark:bg-slate-700">
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {preselectedStudentName || t.states.studentSelected}
-                </span>
+              <div className="w-full rounded-md border bg-gray-50 px-3 py-2.5 text-sm dark:border-[#334155] dark:bg-[#111111] dark:text-white">
+                {preselectedStudentName || t.states.studentSelected}
               </div>
             ) : (
               <div
-                className="relative cursor-pointer"
+                className="relative"
                 onMouseEnter={() => {
                   if (isTeacher && allStudents.length > 0) setShowDropdown(true);
                 }}
@@ -283,47 +267,44 @@ export default function NewMessageModal({
                       setStudents(allStudents);
                     }
                   }}
-                  className="w-full cursor-pointer rounded-xl border-0 bg-slate-100 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:bg-slate-700 dark:text-white"
+                  className="w-full rounded-md border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:border-[#334155] dark:bg-[#111111] dark:text-white"
                 />
                 {loadingStudents && (
                   <Loader2 className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-[var(--brand-color,#e35336)]" />
                 )}
                 {!loadingStudents && isTeacher && allStudents.length > 0 && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-400 dark:bg-slate-600">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-500 dark:bg-[#2A2A2A] dark:text-gray-400">
                     {allStudents.length} students
                   </span>
                 )}
                 {showDropdown && students.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full z-10 mt-2 max-h-64 overflow-y-auto overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
-                    <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/50">
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border bg-white shadow-lg dark:border-[#334155] dark:bg-[#1C1C1C]">
+                    <div className="border-b px-3 py-2 dark:border-[#334155]">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
                         {isTeacher ? t.states.assignedStudents : t.states.searchResults}
                       </p>
                     </div>
-                    {students.map((student) => (
-                      <button
-                        key={student.id}
-                        onClick={() => {
-                          setStudentId(student.id);
-                          setSearchQuery(student.name);
-                          setShowDropdown(false);
-                        }}
-                        className={`flex w-full items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 ${
-                          studentId === student.id ? "bg-[rgba(var(--brand-color-rgb),0.08)]" : ""
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-color,#e35336)] text-sm font-medium text-white">
-                            {student.name.charAt(0)}
-                          </div>
-                          <div>
-                            <span className="block font-medium text-slate-900 dark:text-white">{student.name}</span>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                    <div className="max-h-56 overflow-y-auto">
+                      {students.map((student) => (
+                        <button
+                          key={student.id}
+                          onClick={() => {
+                            setStudentId(student.id);
+                            setSearchQuery(student.name);
+                            setShowDropdown(false);
+                          }}
+                          className={`flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-[#2A2A2A]/50 ${
+                            studentId === student.id ? "bg-[rgba(var(--brand-color-rgb),0.08)]" : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="font-medium text-gray-900 dark:text-white truncate">{student.name}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
                               {student.className && student.section
-                                ? `${student.className} - Section ${student.section}`
+                                ? `${student.className} - Sec ${student.section}`
                                 : student.childName || ""}
                               {!student.className && student.subjectNames?.length
-                                ? `${student.childName ? " • " : ""}${student.subjectNames.join(", ")}`
+                                ? `${student.childName ? ` - ${student.childName}` : ""}`
                                 : ""}
                               {student.className && student.subjectNames?.length
                                 ? ` • ${student.subjectNames.join(", ")}`
@@ -333,20 +314,20 @@ export default function NewMessageModal({
                                 : ""}
                             </span>
                           </div>
-                        </div>
-                        {studentId === student.id && <CheckCircle className="h-5 w-5 text-[var(--brand-color,#e35336)]" />}
-                      </button>
-                    ))}
+                          {studentId === student.id && <CheckCircle className="h-4 w-4 shrink-0 text-[var(--brand-color,#e35336)]" />}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {!loadingStudents && students.length === 0 && allStudents.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full z-10 mt-2 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-800">
-                    <p className="text-center text-sm text-slate-500 dark:text-slate-400">{t.states.noMatches}</p>
+                  <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border bg-white p-4 shadow-lg dark:border-[#334155] dark:bg-[#1C1C1C]">
+                    <p className="text-center text-sm text-gray-500 dark:text-gray-400">{t.states.noMatches}</p>
                   </div>
                 )}
                 {!loadingStudents && isTeacher && allStudents.length === 0 && (
-                  <div className="absolute left-0 right-0 top-full z-10 mt-2 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-800">
-                    <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+                  <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border bg-white p-4 shadow-lg dark:border-[#334155] dark:bg-[#1C1C1C]">
+                    <p className="text-center text-sm text-gray-500 dark:text-gray-400">
                       You don't have any students in your assigned classes
                     </p>
                   </div>
@@ -361,8 +342,8 @@ export default function NewMessageModal({
             )}
           </div>
 
-          <div className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               {t.fields.subject} <span className="text-red-500">*</span>
             </label>
             <input
@@ -370,12 +351,12 @@ export default function NewMessageModal({
               placeholder={t.placeholders.enterSubject}
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
-              className="w-full rounded-xl border-0 bg-slate-100 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:bg-slate-700 dark:text-white"
+              className="w-full rounded-md border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:border-[#334155] dark:bg-[#111111] dark:text-white"
             />
           </div>
 
-          <div className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               {t.fields.message} <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -383,29 +364,22 @@ export default function NewMessageModal({
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               rows={6}
-              className="w-full resize-none rounded-xl border-0 bg-slate-100 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:bg-slate-700 dark:text-white"
+              className="w-full resize-none rounded-md border px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--brand-color,#e35336)]/40 dark:border-[#334155] dark:bg-[#111111] dark:text-white"
             />
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/50">
-          <button
-            onClick={onClose}
-            className="rounded-xl px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
-          >
-            {t.actions.cancel}
-          </button>
+        <div className="flex justify-end px-6 py-4">
           <button
             onClick={handleSubmit}
             disabled={isSending || !studentId || !subject.trim() || !message.trim()}
-            className="flex items-center gap-2 rounded-xl bg-[var(--brand-color,#e35336)] px-6 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 hover:shadow-lg hover:shadow-[var(--brand-color,#e35336)]/20 disabled:opacity-50"
+            className="rounded-md bg-[var(--brand-color,#e35336)] px-4 py-2 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
           >
-            <Send className="h-4 w-4" />
             {isSending ? "Sending..." : "Send Message"}
           </button>
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
