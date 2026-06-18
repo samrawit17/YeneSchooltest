@@ -1125,7 +1125,7 @@ const Menu = ({
                 const collapsedItemClasses = `flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
                   isActive && !parentWithSameChild
                     ? useBrandNavigation
-                      ? "bg-[rgba(227,83,54,0.10)] text-[#e35336] font-semibold border-l-[3px] border-[#e35336] dark:bg-[rgba(227,83,54,0.15)] dark:text-[#e35336]"
+                      ? "bg-[rgba(var(--brand-color-rgb),0.10)] text-[var(--brand-color,#e35336)] font-semibold border-l-[3px] border-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.15)] dark:text-[var(--brand-color,#e35336)]"
                       : "bg-slate-200 text-slate-900 shadow-sm dark:bg-[#1A1A1A] dark:text-white"
                     : useBrandNavigation
                       ? "text-slate-800 hover:bg-white/55 dark:text-gray-200 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
@@ -1174,7 +1174,7 @@ const Menu = ({
                   <div
                     className={`relative flex items-center justify-start gap-3 rounded-lg transition-colors ${isActive && !parentWithSameChild
                       ? useBrandNavigation
-                        ? "bg-[rgba(227,83,54,0.10)] text-[#e35336] font-semibold border-l-[3px] border-[#e35336] dark:bg-[rgba(227,83,54,0.15)] dark:text-[#e35336]"
+                        ? "bg-[rgba(var(--brand-color-rgb),0.10)] text-[var(--brand-color,#e35336)] font-semibold border-l-[3px] border-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.15)] dark:text-[var(--brand-color,#e35336)]"
                         : "bg-slate-200 text-slate-900 font-medium shadow-sm dark:bg-[#1A1A1A] dark:text-white"
                       : useBrandNavigation
                         ? "text-slate-800 dark:text-gray-200 hover:bg-white/55 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"
@@ -1265,7 +1265,7 @@ const Menu = ({
                             className={`flex min-h-10 items-center gap-3 rounded-lg px-4 py-2 transition-colors ${
                               isChildActive
                                 ? useBrandNavigation
-                                  ? "bg-[rgba(227,83,54,0.10)] text-[#e35336] font-semibold border-l-[3px] border-[#e35336] dark:bg-[rgba(227,83,54,0.15)] dark:text-[#e35336]"
+                                  ? "bg-[rgba(var(--brand-color-rgb),0.10)] text-[var(--brand-color,#e35336)] font-semibold border-l-[3px] border-[var(--brand-color,#e35336)] dark:bg-[rgba(var(--brand-color-rgb),0.15)] dark:text-[var(--brand-color,#e35336)]"
                                   : "bg-slate-200 text-slate-900 font-medium shadow-sm dark:bg-[#1A1A1A] dark:text-white"
                                 : useBrandNavigation
                                   ? "text-slate-600 dark:text-gray-300 hover:bg-white/55 dark:hover:bg-[rgba(var(--brand-color-rgb),0.2)]"

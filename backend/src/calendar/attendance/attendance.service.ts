@@ -332,7 +332,7 @@ export class AttendanceService {
    * Teachers can ONLY take attendance for classes where they are the homeroom teacher.
    * Checks both class-level and section-level homeroom teacher assignments.
    */
-  async getTodayTimetable(user: RequestUser, date?: string) {
+  async getTodayTimetable(user: RequestUser, date?: string, academicYearId?: string) {
     const targetDate = date ? new Date(date) : new Date();
     const jsDay = targetDate.getDay();
     const dayOfWeek = jsDay === 0 ? 7 : jsDay;
@@ -344,13 +344,20 @@ export class AttendanceService {
       return { dateInfo, slots: [] };
     }
 
+    // Resolve academic year if not provided
+    let targetYearId = academicYearId;
+    if (!targetYearId) {
+      const ay = await this.findAcademicYearByDate(user.schoolId, targetDate);
+      targetYearId = ay?.id;
+    }
+
     // Get homeroom classes at class level
     const classLevelHomeroomClasses = await this.prisma.class.findMany({
       where: {
         homeroomTeacherId: user.id,
-        academicYear: {
-          isActive: true,
-        },
+        ...(targetYearId
+          ? { academicYearId: targetYearId }
+          : { academicYear: { isActive: true } }),
       },
       include: {
         sections: true,
@@ -362,9 +369,9 @@ export class AttendanceService {
       where: {
         homeroomTeacherId: user.id,
         class: {
-          academicYear: {
-            isActive: true,
-          },
+          ...(targetYearId
+            ? { academicYearId: targetYearId }
+            : { academicYear: { isActive: true } }),
         },
       },
       include: {
@@ -556,18 +563,28 @@ export class AttendanceService {
     date?: string,
     classId?: string,
     sectionId?: string,
+    academicYearId?: string,
   ) {
     const targetDate = date ? new Date(date) : new Date();
 
-    // Find the relevant academic year for this date
-    const academicYear = await this.findAcademicYearByDate(
-      user.schoolId,
-      targetDate,
-    );
+    // Find the relevant academic year — prefer explicitly passed ID, then date-based
+    let academicYear: any = null;
+    if (academicYearId) {
+      academicYear = await this.prisma.academicYear.findUnique({
+        where: { id: academicYearId },
+      });
+    }
+
+    if (!academicYear) {
+      academicYear = await this.findAcademicYearByDate(
+        user.schoolId,
+        targetDate,
+      );
+    }
 
     if (!academicYear) {
       throw new BadRequestException(
-        'No suitable academic year found for this date',
+        'No suitable academic year found',
       );
     }
 
@@ -579,7 +596,7 @@ export class AttendanceService {
         section?.toLowerCase?.(),
       ].filter((v): v is string => typeof v === 'string' && v.length > 0);
 
-      // Get the class and its academic year directly (not filtering by findAcademicYearByDate)
+      // Get the class and its academic year directly
       const classDataById = await this.prisma.class.findFirst({
         where: {
           id: classId,
@@ -590,9 +607,11 @@ export class AttendanceService {
           academicYear: true,
         },
       });
+
       if (classDataById && classDataById.academicYear) {
         // Use the academic year from the class record directly
         const classAcademicYearId = classDataById.academicYearId;
+        const classAcademicYearName = classDataById.academicYear.name;
 
         let resolvedSectionId: string | undefined = sectionId || undefined;
 
@@ -609,14 +628,14 @@ export class AttendanceService {
         const studentClassWhere: any = {
           schoolId: user.schoolId,
           classId: classDataById.id,
-          // FIXED: Remove strict academicYear filter (matches ClassService.getStudentsByClass)
+          academicYear: classAcademicYearName,
         };
 
         if (resolvedSectionId) {
           studentClassWhere.sectionId = resolvedSectionId;
         }
 
-        let studentClasses = await this.prisma.studentClass.findMany({
+        const studentClasses = await this.prisma.studentClass.findMany({
           where: studentClassWhere,
           include: {
             student: {
@@ -627,30 +646,7 @@ export class AttendanceService {
           },
         });
 
-        if (studentClasses.length === 0) {
-          const relaxedWhere: any = {
-            schoolId: user.schoolId,
-            classId: classDataById.id,
-          };
-
-          if (resolvedSectionId) {
-            relaxedWhere.sectionId = resolvedSectionId;
-          }
-
-          studentClasses = await this.prisma.studentClass.findMany({
-            where: relaxedWhere,
-            include: {
-              student: {
-                include: {
-                  studentProfile: true,
-                },
-              },
-            },
-          });
-        }
-
         const studentIds = studentClasses.map((sc) => sc.studentId);
-        // Note: Enrollment table stores academic year as ID string (e.g., "cmmv56pes0013yvrc1v7bog0g")
         const approvedEnrollments =
           studentIds.length > 0
             ? await this.prisma.enrollment.findMany({
@@ -688,9 +684,9 @@ export class AttendanceService {
             return aRoll - bRoll || a.name.localeCompare(b.name);
           });
 
-        if (students.length > 0) {
-          return students;
-        }
+        // If classId was provided, we strictly return its students (or empty list)
+        // rather than falling back to name-based matching in other years.
+        return students;
       }
     }
 
@@ -713,10 +709,11 @@ export class AttendanceService {
       section?.toLowerCase?.(),
     ].filter((v): v is string => typeof v === 'string' && v.length > 0);
 
-    // Prefer the concrete class record regardless of the currently active year.
+    // Prefer the concrete class record for the target academic year.
     let classData = await this.prisma.class.findFirst({
       where: {
         schoolId: user.schoolId,
+        academicYearId: academicYear.id,
         name: { in: possibleClassNames },
         OR: [
           { section: { in: possibleSections } },
@@ -736,6 +733,7 @@ export class AttendanceService {
       classData = await this.prisma.class.findFirst({
         where: {
           schoolId: user.schoolId,
+          academicYearId: academicYear.id,
           name: { in: possibleClassNames },
         },
         include: {
@@ -761,7 +759,7 @@ export class AttendanceService {
       const studentClassWhere: any = {
         schoolId: user.schoolId,
         classId: classData.id,
-        // FIXED: Remove strict academicYear filter (matches ClassService.getStudentsByClass)
+        academicYear: academicYear.name,
       };
 
       if (sectionMatch) {
@@ -1191,6 +1189,7 @@ export class AttendanceService {
         where: {
           schoolId,
           enrollmentStatus: 'APPROVED',
+          academicYear: academicYearId,
           className: { in: possibleClassNames },
           section: { in: possibleSections },
         },
@@ -1583,6 +1582,7 @@ export class AttendanceService {
         where: {
           schoolId: session.schoolId,
           enrollmentStatus: 'APPROVED',
+          academicYear: session.class?.academicYear?.name || session.timetableSlot?.academicYear?.name,
           className: { in: possibleClassNames },
           section: { in: possibleSections },
         },
@@ -2510,7 +2510,7 @@ export class AttendanceService {
   /**
    * Get teacher dashboard attendance data
    */
-  async getTeacherDashboard(user: RequestUser) {
+  async getTeacherDashboard(user: RequestUser, academicYearId?: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -2523,9 +2523,9 @@ export class AttendanceService {
         teacherId: user.id,
         schoolId: user.schoolId,
         dayOfWeek,
-        academicYear: {
-          isActive: true,
-        },
+        ...(academicYearId
+          ? { academicYearId }
+          : { academicYear: { isActive: true } }),
       },
       include: {
         class: true,

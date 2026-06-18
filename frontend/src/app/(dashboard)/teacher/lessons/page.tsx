@@ -161,7 +161,7 @@ const TeacherLessonsPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const { setItems } = useBreadcrumb();
-  const { schoolCalendarType } = useAcademicYear();
+  const { currentAcademicYear, schoolCalendarType } = useAcademicYear();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [periodTimes, setPeriodTimes] = useState<Record<number, { start: string; end: string }>>({});
   const [configuredPeriodOptions, setConfiguredPeriodOptions] = useState<PeriodOption[]>([]);
@@ -207,7 +207,7 @@ const TeacherLessonsPage = () => {
       fetchFormData();
       fetchPeriodTimes();
     }
-  }, [isAuthenticated, isLoading, schoolCalendarType, user?.schoolId]);
+  }, [isAuthenticated, isLoading, schoolCalendarType, user?.schoolId, currentAcademicYear?.id]);
 
   useEffect(() => {
     if (createModalOpen && formDataResponse) {
@@ -267,7 +267,7 @@ const TeacherLessonsPage = () => {
     try {
       setLoading(true);
       // Use /lessons endpoint - backend automatically filters by teacherId for TEACHER role
-      const response = await lessonsAPI.listForTeacher();
+      const response = await lessonsAPI.listForTeacher({ academicYearId: currentAcademicYear?.id });
       setLessons((response.data.data || response.data) as unknown as Lesson[]);
     } catch (error: any) {
       console.error('Failed to fetch lessons:', error);

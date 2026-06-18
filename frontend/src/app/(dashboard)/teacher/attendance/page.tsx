@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { syncService } from "@/lib/db/sync-service";
 import { toast } from "sonner";
-import { attendanceAPI, timetableSlotsAPI, teachersAPI } from "@/lib/api";
+import { attendanceAPI, timetableSlotsAPI, teachersAPI, academicYearsAPI } from "@/lib/api";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { formatEthiopianDate } from "@/lib/calendar-utils";
 import { useTranslations } from "@/hooks/useTranslations";
 import {
@@ -131,6 +132,11 @@ export default function TeacherAttendancePage() {
   const { isOnline, wasOffline } = useNetworkStatus();
   const { setItems } = useBreadcrumb();
   const { language } = useTranslations("navigation");
+  const { currentAcademicYear } = useAcademicYear();
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("");
+
+  const isFetchingClasses = useRef(false);
 
   const getFallbackEthiopianDate = useCallback(
     () => formatEthiopianDate(new Date(), language),
@@ -195,10 +201,16 @@ export default function TeacherAttendancePage() {
 
   // Fetch teacher's assigned classes and subjects
   const fetchTeacherClasses = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || !selectedAcademicYear) return;
+    if (isFetchingClasses.current) return;
+    isFetchingClasses.current = true;
 
     try {
       setIsLoadingClasses(true);
+      setClassOptions([]);
+      setSelectedClass("");
+      setStudents([]);
+      setHasChanges(false);
 
       // First try to get assignments from the new endpoint
       let slots: TimetableSlot[] = [];
@@ -206,7 +218,7 @@ export default function TeacherAttendancePage() {
 
       try {
         // Use the new endpoint and keep attendance classes homeroom-only.
-        const assignmentsResponse = await teachersAPI.getMyAssignments();
+        const assignmentsResponse = await teachersAPI.getMyAssignments(selectedAcademicYear);
         const assignments = assignmentsResponse.data;
         const homeroomSections = assignments.homeroomSections || [];
 
@@ -234,7 +246,7 @@ export default function TeacherAttendancePage() {
 
       } catch (assignError) {
         // Fallback to slot list and keep homeroom-only.
-        const response = await timetableSlotsAPI.getByTeacher(user.id);
+        const response = await timetableSlotsAPI.getByTeacher(user.id, { academicYearId: selectedAcademicYear });
         slots = response.data;
 
         // Extract only homeroom classes from slots.
@@ -286,6 +298,10 @@ export default function TeacherAttendancePage() {
         } else if (!selectedStillExists && !requestedClassId) {
           setSelectedClass(classOptionsData[0].key);
         }
+      } else {
+        setSelectedClass("");
+        setStudents([]);
+        setHasChanges(false);
       }
 
       const homeroomSubject = [{ id: "homeroom", name: "Homeroom Attendance" }];
@@ -298,9 +314,10 @@ export default function TeacherAttendancePage() {
       console.error('Error fetching teacher classes:', error);
       toast.error('Failed to load your assigned classes', { dismissible: true });
     } finally {
+      isFetchingClasses.current = false;
       setIsLoadingClasses(false);
     }
-  }, [user?.id, selectedClass, selectedSubject, requestedClassId, requestedSectionId]);
+  }, [user?.id, requestedClassId, requestedSectionId, selectedAcademicYear]);
 
   // Fetch students for selected class
   const fetchStudents = useCallback(async () => {
@@ -343,6 +360,7 @@ export default function TeacherAttendancePage() {
             sectName,
             selectedDate,
             sectId,
+            selectedAcademicYear
           );
           const rawStudents = response.data;
 
@@ -461,13 +479,13 @@ export default function TeacherAttendancePage() {
       setIsLoadingStudents(false);
     }
 
-  }, [selectedClass, classOptions, selectedDate]);
+  }, [selectedClass, classOptions, selectedDate, selectedAcademicYear]);
 
   // Fetch analytics data from teacher dashboard
   const fetchAnalytics = useCallback(async () => {
     try {
       setIsLoadingAnalytics(true);
-      const response = await attendanceAPI.getTeacherDashboard();
+      const response = await attendanceAPI.getTeacherDashboard({ academicYearId: selectedAcademicYear });
       const data = response.data;
 
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -536,15 +554,31 @@ export default function TeacherAttendancePage() {
     } finally {
       setIsLoadingAnalytics(false);
     }
-  }, []);
+  }, [selectedAcademicYear]);
 
-  // Initial fetch of teacher's classes
+  // Fetch academic years and set default
   useEffect(() => {
-    if (user?.id && !isLoading) {
-      fetchTeacherClasses();
-      fetchAnalytics();
-    }
-  }, [user?.id, isLoading, fetchTeacherClasses, fetchAnalytics]);
+    if (!user?.schoolId) return;
+    academicYearsAPI.getAll({ schoolId: user.schoolId }).then((res) => {
+      const years = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+      console.log('[Attendance] Available years:', years.map((y: any) => ({ id: y.id, name: y.name, active: y.isActive })));
+      setAcademicYears(years);
+      if (currentAcademicYear && !selectedAcademicYear) {
+        setSelectedAcademicYear(currentAcademicYear.id);
+      }
+    }).catch(() => {});
+  }, [user?.schoolId, currentAcademicYear]);
+
+  // Fetch teacher's classes when year/auth is ready
+  useEffect(() => {
+    if (!user?.id || isLoading || !selectedAcademicYear) return;
+    fetchTeacherClasses();
+  }, [user?.id, isLoading, selectedAcademicYear, fetchTeacherClasses]);
+
+  // Fetch analytics (runs independently, whenever selectedAcademicYear changes)
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   // Handle network status changes
   useEffect(() => {
@@ -578,12 +612,12 @@ export default function TeacherAttendancePage() {
     }
   }, [isOnline, hasChanges, students]);
 
-  // Fetch students when class or date changes
+  // Fetch students when class, date, or academic year changes
   useEffect(() => {
     if (selectedClass && classOptions.length > 0) {
       fetchStudents();
     }
-  }, [selectedClass, fetchStudents, classOptions.length, selectedDate]);
+  }, [selectedClass, fetchStudents, classOptions.length, selectedDate, selectedAcademicYear]);
 
   const isWeekendDate = (dateString: string) => {
     const day = new Date(`${dateString}T00:00:00`).getDay();
@@ -832,10 +866,10 @@ export default function TeacherAttendancePage() {
     disabled?: boolean;
   }) => {
     const statusConfig = {
-      PRESENT: { label: 'Present', color: 'bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] border-[rgba(var(--brand-color-rgb),0.18)] hover:bg-[rgba(var(--brand-color-rgb),0.18)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.3)]', selectedColor: 'bg-[var(--brand-color,#e35336)] text-white border-[var(--brand-color,#e35336)]' },
-      ABSENT: { label: 'Absent', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/50', selectedColor: 'bg-red-600 text-white border-red-600' },
-      LATE: { label: 'Late', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800 hover:bg-orange-200 dark:hover:bg-orange-900/50', selectedColor: 'bg-orange-500 text-white border-orange-500' },
-      UNMARKED: { label: 'Unmarked', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800 hover:bg-yellow-200 dark:hover:bg-yellow-900/50', selectedColor: 'bg-yellow-500 text-white border-yellow-500' },
+      PRESENT: { label: 'Present', color: 'bg-[rgba(var(--brand-color-rgb),0.12)] dark:bg-[rgba(var(--brand-color-rgb),0.22)] text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)] dark:hover:bg-[rgba(var(--brand-color-rgb),0.3)]', selectedColor: 'bg-[var(--brand-color,#e35336)] text-white' },
+      ABSENT: { label: 'Absent', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50', selectedColor: 'bg-red-600 text-white' },
+      LATE: { label: 'Late', color: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/50', selectedColor: 'bg-orange-500 text-white' },
+      UNMARKED: { label: 'Unmarked', color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/50', selectedColor: 'bg-yellow-500 text-white' },
     };
 
     return (
@@ -846,9 +880,9 @@ export default function TeacherAttendancePage() {
             type="button"
             disabled={disabled}
             onClick={() => onChange(s)}
-            className={`px-2 sm:px-3 py-1 text-xs font-medium rounded-full border transition-all duration-200 ${status === s
+            className={`px-2 sm:px-3 py-1 text-xs font-medium rounded-full transition-all duration-200 ${status === s
                 ? statusConfig[s].selectedColor
-                : `${statusConfig[s].color} border-transparent`
+                : statusConfig[s].color
               } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           >
             {statusConfig[s].label}
@@ -911,7 +945,7 @@ export default function TeacherAttendancePage() {
     <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-[#111111]">
       <div className="mx-auto w-full min-w-0 px-3 sm:px-6 lg:p-6">
         {/* Top Header */}
-        <div className="mb-4 min-w-0 rounded-lg border border-[rgba(var(--brand-color-rgb),0.16)] bg-white p-3 shadow-sm dark:border-[#334155] dark:bg-[#1C1C1C] sm:mb-6 sm:p-6">
+        <div className="mb-4 min-w-0 bg-white p-3 shadow-sm dark:bg-[#1C1C1C] sm:mb-6 sm:p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             {/* Title */}
             <div className="min-w-0 order-1">
@@ -956,7 +990,7 @@ export default function TeacherAttendancePage() {
               </div>
 
               {/* Date Picker - Ethiopian Calendar Only */}
-              <div className="flex min-w-0 items-center justify-between gap-0.5 rounded-lg border border-[rgba(var(--brand-color-rgb),0.2)] bg-[rgba(var(--brand-color-rgb),0.08)] p-0.5 dark:border-[rgba(var(--brand-color-rgb),0.3)] dark:bg-[rgba(var(--brand-color-rgb),0.16)] sm:gap-1 sm:p-1">
+              <div className="flex min-w-0 items-center justify-between gap-0.5 rounded-lg bg-[rgba(var(--brand-color-rgb),0.08)] p-0.5 dark:bg-[rgba(var(--brand-color-rgb),0.16)] sm:gap-1 sm:p-1">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -989,16 +1023,36 @@ export default function TeacherAttendancePage() {
                 </Button>
               </div>
 
+              {/* Academic Year */}
+              <Select
+                value={selectedAcademicYear}
+                onValueChange={(val) => { 
+                  console.log('[Attendance] User selected year:', val, 'name:', academicYears.find(y => y.id === val)?.name);
+                  setSelectedAcademicYear(val); setSelectedClass(""); setStudents([]); setHasChanges(false); 
+                }}
+              >
+                <SelectTrigger className="w-full border-0 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white sm:w-[150px]">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-[#1C1C1C]">
+                  {academicYears.map((year) => (
+                    <SelectItem key={year.id} value={year.id} className="dark:text-white dark:focus:bg-[#334155]">
+                      {year.name} {year.isActive ? "(Active)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               {/* Class (Teacher can only view assigned class) */}
               <Select
                 value={selectedClass}
                 onValueChange={setSelectedClass}
                 disabled={isLoadingClasses}
               >
-                <SelectTrigger className="w-full border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#111111] dark:text-white sm:w-[180px]">
+                <SelectTrigger className="w-full border-0 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white sm:w-[180px]">
                   <SelectValue placeholder={isLoadingClasses ? "Loading..." : "Class"} className="truncate" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-[#1C1C1C] dark:border-[#334155] max-h-[300px] overflow-y-auto">
+                <SelectContent className="dark:bg-[#1C1C1C] max-h-[300px] overflow-y-auto">
                   {classOptions.map(cls => (
                     <SelectItem key={cls.key} value={cls.key} className="dark:text-white dark:focus:bg-[#334155]">
                       {cls.name} - Section {cls.sectionName} {cls.type === 'homeroom' ? '(Homeroom)' : ''}
@@ -1007,14 +1061,13 @@ export default function TeacherAttendancePage() {
                 </SelectContent>
               </Select>
 
-
             </div>
           </div>
         </div>
 
         {/* Main Body - Student Attendance Table */}
-        <Card className="mb-6 min-w-0 overflow-hidden border-[rgba(var(--brand-color-rgb),0.16)] shadow-sm dark:border-[#334155] dark:bg-[#1C1C1C]">
-          <CardHeader className="border-b border-[rgba(var(--brand-color-rgb),0.14)] dark:border-[#334155] pb-4">
+        <Card className="mb-6 min-w-0 overflow-hidden shadow-sm dark:bg-[#1C1C1C]">
+          <CardHeader className="pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
                 <span className="hidden sm:inline">Student Attendance - {selectedClassLabel}</span>
@@ -1027,7 +1080,7 @@ export default function TeacherAttendancePage() {
                   placeholder="Search students..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#111111] dark:text-white"
+                  className="pl-9 border-0 hover:bg-[rgba(var(--brand-color-rgb),0.04)] dark:hover:bg-[#222222] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white"
                 />
               </div>
             </div>
@@ -1039,16 +1092,21 @@ export default function TeacherAttendancePage() {
                 <Loader2 className="w-5 h-5 animate-spin text-[var(--brand-color,#e35336)]" />
                 <span className="text-sm text-gray-500 dark:text-gray-400">Loading students...</span>
               </div>
+            ) : !selectedClassMeta ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <Users className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">No class selected</p>
+              </div>
             ) : filteredStudents.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-8 text-center">
                 <Users className="w-10 h-10 text-gray-300 dark:text-gray-600" />
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {!selectedClass ? "No class selected" : searchTerm.trim().length > 0 ? "No students found" : `No students found for ${selectedClassLabel}.`}
+                  {searchTerm.trim().length > 0 ? "No students found" : `No students found for ${selectedClassLabel}.`}
                 </p>
               </div>
             ) : (
               filteredStudents.map((student) => (
-                <div key={student.id} className="rounded-lg border border-[#E2E8F0] bg-white p-3 dark:border-[#334155] dark:bg-[#111111]">
+                <div key={student.id} className="rounded-lg bg-white p-3 dark:bg-[#111111]">
                   <div className="flex items-start gap-3">
                     <Avatar className="h-9 w-9 shrink-0">
                       <AvatarFallback className="text-xs">
@@ -1072,7 +1130,7 @@ export default function TeacherAttendancePage() {
                     value={student.remark}
                     onChange={(e) => handleRemarkChange(student.id, e.target.value)}
                     disabled={!canEdit()}
-                    className="mt-3 h-9 border-[rgba(var(--brand-color-rgb),0.18)] text-xs focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#111111] dark:text-white"
+                    className="mt-3 h-9 border-0 hover:bg-[rgba(var(--brand-color-rgb),0.04)] dark:hover:bg-[#222222] text-xs focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white"
                   />
                 </div>
               ))
@@ -1082,7 +1140,7 @@ export default function TeacherAttendancePage() {
           {/* Table */}
           <div className="hidden overflow-x-auto sm:block">
             <table className="w-full min-w-[700px] sm:min-w-full">
-              <thead className="bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[#111111] border-b border-[rgba(var(--brand-color-rgb),0.14)] dark:border-[#334155]">
+              <thead className="bg-[rgba(var(--brand-color-rgb),0.05)] dark:bg-[#111111]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Roll Number</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Student Name</th>
@@ -1092,7 +1150,7 @@ export default function TeacherAttendancePage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Updated</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#334155]">
+              <tbody>
                 {isLoadingStudents ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center">
@@ -1102,12 +1160,12 @@ export default function TeacherAttendancePage() {
                       </div>
                     </td>
                   </tr>
-                ) : filteredStudents.length === 0 ? (
+                ) : filteredStudents.length === 0 || !selectedClassMeta ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <Users className="w-10 h-10 text-gray-300 dark:text-gray-600" />
-                        {!selectedClass ? (
+                        {!selectedClass || !selectedClassMeta ? (
                           <>
                             <p className="text-gray-500 dark:text-gray-400">No class selected</p>
                             <p className="text-gray-400 dark:text-gray-500 text-sm">
@@ -1162,7 +1220,7 @@ export default function TeacherAttendancePage() {
                           value={student.remark}
                           onChange={(e) => handleRemarkChange(student.id, e.target.value)}
                           disabled={!canEdit()}
-                          className="w-full sm:w-32 lg:w-48 h-8 border-[rgba(var(--brand-color-rgb),0.18)] focus:ring-[var(--brand-color,#e35336)] dark:border-[#334155] dark:bg-[#111111] dark:text-white text-xs sm:text-sm"
+                          className="w-full sm:w-32 lg:w-48 h-8 border-0 hover:bg-[rgba(var(--brand-color-rgb),0.04)] dark:hover:bg-[#222222] focus:ring-[var(--brand-color,#e35336)] dark:bg-[#111111] dark:text-white text-xs sm:text-sm"
                         />
                       </td>
                       <td className="px-2 sm:px-4 py-3 text-xs text-gray-500 dark:text-gray-400 hidden md:table-cell">
@@ -1177,14 +1235,14 @@ export default function TeacherAttendancePage() {
         </Card>
 
         {/* Sticky Action Bar */}
-        <div className="sticky bottom-4 sm:bottom-6 bg-white dark:bg-[#1C1C1C] border border-[rgba(var(--brand-color-rgb),0.16)] dark:border-[#334155] rounded-lg p-3 sm:p-4 shadow-lg">
+        <div className="sticky bottom-4 sm:bottom-6 bg-white dark:bg-[#1C1C1C] rounded-lg p-3 sm:p-4 shadow-lg">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Button
                 onClick={handleMarkAllPresent}
                 variant="outline"
                 disabled={!canEdit()}
-                className="border-[rgba(var(--brand-color-rgb),0.18)] dark:border-[#334155] text-gray-700 dark:text-gray-300 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] text-xs sm:text-sm"
+                className="border-0 text-gray-700 dark:text-gray-300 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] text-xs sm:text-sm"
               >
                 <CheckCircle className="w-4 h-4 mr-1 sm:mr-2" />
                 <span className="hidden sm:inline">Mark All Present</span>
@@ -1194,7 +1252,7 @@ export default function TeacherAttendancePage() {
                 onClick={handleReset}
                 variant="outline"
                 disabled={!canEdit() || !hasChanges}
-                className="border-[rgba(var(--brand-color-rgb),0.18)] dark:border-[#334155] text-gray-700 dark:text-gray-300 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] text-xs sm:text-sm"
+                className="border-0 text-gray-700 dark:text-gray-300 hover:bg-[rgba(var(--brand-color-rgb),0.08)] dark:hover:bg-[#334155] text-xs sm:text-sm"
               >
                 <RotateCcw className="w-4 h-4 mr-1 sm:mr-2" />
                 Reset
@@ -1231,7 +1289,7 @@ export default function TeacherAttendancePage() {
                 onClick={handleSync}
                 disabled={isSyncing}
                 variant="outline"
-                className="border-[rgba(var(--brand-color-rgb),0.35)] text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.08)]"
+                className="border-0 text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.08)]"
               >
                 {isSyncing ? (
                   <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" />

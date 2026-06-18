@@ -122,7 +122,7 @@ const formatDateLocal = (dateString: string | Date) => {
 const TeacherDashboard = () => {
   const { t } = useTranslations<any>("roleDashboard");
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { formattedYearLabel, displayTermName, periodLabel } = useAcademicYear();
+  const { currentAcademicYear, formattedYearLabel, displayTermName, periodLabel } = useAcademicYear();
   const router = useRouter();
   const [upcomingClasses, setUpcomingClasses] = useState<UpcomingClass[]>([]);
   const [recentLessons, setRecentLessons] = useState<RecentLesson[]>([]);
@@ -139,14 +139,14 @@ const TeacherDashboard = () => {
     if (isAuthenticated && !isLoading) {
       fetchDashboardData();
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, currentAcademicYear?.id]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
 
       try {
-        const lessonsResponse = await lessonsAPI.getAll({ limit: 5 });
+        const lessonsResponse = await lessonsAPI.getAll({ limit: 5, academicYearId: currentAcademicYear?.id });
         if (lessonsResponse.data?.data) {
           const lessonsData: RecentLesson[] = lessonsResponse.data.data.map((lesson: any) => ({
             id: lesson.id,
@@ -160,7 +160,9 @@ const TeacherDashboard = () => {
           setRecentLessons(lessonsData);
         }
       } catch (lessonError) {
-        console.log('No lessons found');
+        if (lessonError instanceof Error && lessonError.message !== 'No data') {
+          console.warn('Failed to load lessons:', lessonError);
+        }
       }
 
       try {
@@ -180,7 +182,7 @@ const TeacherDashboard = () => {
           setAnnouncements(announcementsData.slice(0, 3));
         }
       } catch (announcementError) {
-        console.log('Teacher announcements unavailable');
+        console.warn('Failed to load announcements:', announcementError);
       }
 
       try {
@@ -200,7 +202,7 @@ const TeacherDashboard = () => {
           setUpcomingClasses(scheduleData);
         }
       } catch (attendanceError) {
-        console.log('No schedule found');
+        console.warn('Failed to load schedule:', attendanceError);
       }
 
     } catch (error: any) {

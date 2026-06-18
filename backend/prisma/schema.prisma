@@ -690,6 +690,7 @@ model AcademicYear {
   timetableSlots      TimetableSlot[]
   contents            Content[]
   subjects            Subject[]
+  announcements       Announcement[]
 
   @@unique([schoolId, name])
   @@index([schoolId])
@@ -1730,28 +1731,31 @@ model AttendanceRecord {
 }
 
 model Announcement {
-  id          String    @id @default(cuid())
-  schoolId    String
-  title       String
-  content     String
-  visibleTo   String?
-  isPublic    Boolean   @default(false)
-  startDate   DateTime
-  endDate     DateTime?
-  priority    String?
-  location    String?
-  attachments String?
-  createdById String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  createdBy   User      @relation(map: "createdById_fk_118", fields: [createdById], references: [id])
-  school      School    @relation(map: "schoolId_fk_119", fields: [schoolId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  schoolId       String
+  title          String
+  content        String
+  visibleTo      String?
+  isPublic       Boolean      @default(false)
+  startDate      DateTime
+  endDate        DateTime?
+  priority       String?
+  location       String?
+  attachments    String?
+  academicYearId String?
+  createdById    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      User         @relation(map: "createdById_fk_118", fields: [createdById], references: [id])
+  school         School       @relation(map: "schoolId_fk_119", fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
 
   @@index([schoolId, startDate])
   @@index([schoolId, createdAt])
   @@index([isPublic, startDate, endDate])
   @@index([priority])
   @@index([createdById], map: "Announcement_createdById_fkey")
+  @@index([academicYearId])
 }
 
 model Notification {

@@ -43,9 +43,7 @@ export class RateLimitGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (skip) {
-      return true;
-    }
+    if (skip) return true;
 
     const request = context
       .switchToHttp()
@@ -92,19 +90,32 @@ export class RateLimitGuard implements CanActivate {
     key: string,
     windowSec: number,
   ): Promise<{ count: number; resetInSec: number }> {
-    const redisCount = await this.redisService.incr(key);
-    if (redisCount !== null) {
-      if (redisCount === 1) {
-        await this.redisService.expire(key, windowSec);
+    // Use atomic SET NX for first hit to avoid race with EXPIRE
+    const client = this.redisService.getRawClient();
+    if (client && client.status === 'ready') {
+      // Atomic: SET key 1 EX windowSec NX (creates only if key doesn't exist)
+      const created = await client.set(key, '1', 'EX', windowSec, 'NX');
+      if (created === 'OK') {
+        return { count: 1, resetInSec: windowSec };
       }
 
-      const ttl = await this.redisService.ttl(key);
+      // Key already exists — increment atomically
+      const count = await client.incr(key);
+      const ttl = await client.ttl(key);
       return {
-        count: redisCount,
+        count: count ?? 1,
         resetInSec: ttl && ttl > 0 ? ttl : windowSec,
       };
     }
 
+    // Fallback to in-memory when Redis is unavailable
+    return this.incrementMemory(key, windowSec);
+  }
+
+  private incrementMemory(
+    key: string,
+    windowSec: number,
+  ): { count: number; resetInSec: number } {
     const now = Date.now();
     const existing = this.memoryStore.get(key);
     if (!existing || existing.expiresAt <= now) {

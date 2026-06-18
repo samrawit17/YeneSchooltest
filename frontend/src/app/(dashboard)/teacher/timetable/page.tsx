@@ -63,7 +63,7 @@ interface TimeSlot {
 
 const TeacherTimetablePage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { schoolCalendarType, formatDate } = useAcademicYear();
+  const { currentAcademicYear, schoolCalendarType, formatDate } = useAcademicYear();
   const router = useRouter();
   const { setItems } = useBreadcrumb();
   const [timetable, setTimetable] = useState<TimeSlot[]>([]);
@@ -109,7 +109,7 @@ const TeacherTimetablePage = () => {
       setLoading(true);
       // Use the teacher-specific endpoint
       const [timetableResponse, schoolSettingsResponse] = await Promise.all([
-        timetableSlotsAPI.getByTeacher(user?.id || ''),
+        timetableSlotsAPI.getByTeacher(user?.id || '', { academicYearId: currentAcademicYear?.id }),
         user?.schoolId ? schoolSettingsAPI.getAll(user.schoolId) : Promise.resolve({ data: {} }),
       ]);
       setTimetable(timetableResponse.data || []);
@@ -133,7 +133,7 @@ const TeacherTimetablePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, user?.schoolId]);
+  }, [user?.id, user?.schoolId, currentAcademicYear?.id]);
 
   useEffect(() => {
     if (isAuthenticated && !isLoading && user?.id) {

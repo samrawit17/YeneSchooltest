@@ -504,7 +504,7 @@ export class TimetableSlotService {
     });
   }
 
-  async findByTeacher(schoolId: string, teacherId: string) {
+  async findByTeacher(schoolId: string, teacherId: string, academicYearId?: string) {
     // Get sections where teacher is homeroom teacher
     const homeroomSections = await this.prisma.section.findMany({
       where: { homeroomTeacherId: teacherId },
@@ -535,6 +535,7 @@ export class TimetableSlotService {
     return this.prisma.timetableSlot.findMany({
       where: {
         schoolId,
+        ...(academicYearId ? { academicYearId } : {}),
         OR: orConditions,
       },
       include: {

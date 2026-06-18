@@ -56,7 +56,11 @@ export class DisciplineController {
 
   @Get('student/:studentId')
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.PARENT)
-  async getStudentIncidents(@Request() req: any, @Param('studentId') studentId: string) {
+  async getStudentIncidents(
+    @Request() req: any,
+    @Param('studentId') studentId: string,
+    @Query('academicYearId') academicYearId?: string,
+  ) {
     if (req.user.role === Role.PARENT) {
       const allowed = await this.disciplineService.verifyParentChild(
         req.user.id,
@@ -69,7 +73,7 @@ export class DisciplineController {
         );
       }
     }
-    return this.disciplineService.getStudentIncidents(studentId, req.user.schoolId);
+    return this.disciplineService.getStudentIncidents(studentId, req.user.schoolId, academicYearId);
   }
 
   @Get(':id')

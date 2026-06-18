@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const StudentLessonsPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { schoolCalendarType } = useAcademicYear();
+  const { currentAcademicYear, schoolCalendarType } = useAcademicYear();
   const router = useRouter();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [periodTimes, setPeriodTimes] = useState<Record<number, string>>({});
@@ -35,7 +35,7 @@ const StudentLessonsPage = () => {
       void fetchLessons();
       void fetchPeriodTimes();
     }
-  }, [isAuthenticated, isLoading, user, schoolCalendarType]);
+  }, [isAuthenticated, isLoading, user, schoolCalendarType, currentAcademicYear?.id]);
 
   const fetchPeriodTimes = async () => {
     if (!user?.schoolId) return;
@@ -54,7 +54,7 @@ const StudentLessonsPage = () => {
   const fetchLessons = async () => {
     try {
       setLoading(true);
-      const response = await lessonsAPI.getForStudent();
+      const response = await lessonsAPI.getForStudent({ academicYearId: currentAcademicYear?.id });
       setLessons(response.data?.data || []);
     } catch (error) {
       console.error("Failed to fetch lessons:", error);

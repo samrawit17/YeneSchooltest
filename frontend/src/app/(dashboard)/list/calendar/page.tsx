@@ -305,14 +305,14 @@ const EventListPage = () => {
                 />
               </div>
               <aside className="max-h-[520px] space-y-2 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-[#2A2A2A] dark:bg-[#111111]/50">
-                {monthEvents.length ? monthEvents.map((event) => renderEventCard(event, true)) : renderEmptyState()}
+                {monthEvents.length ? monthEvents.map((event) => <div key={event.id}>{renderEventCard(event, true)}</div>) : renderEmptyState()}
               </aside>
             </div>
           </TabsContent>
 
           <TabsContent value="today" className="mt-0">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="space-y-2">{todayEvents.length ? todayEvents.map((event) => renderEventCard(event)) : renderEmptyState()}</div>
+              <div className="space-y-2">{todayEvents.length ? todayEvents.map((event) => <div key={event.id}>{renderEventCard(event)}</div>) : renderEmptyState()}</div>
               <aside className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]/50">
                 {selectedEvent ? renderEventCard(selectedEvent, true) : renderEmptyState()}
               </aside>
@@ -321,7 +321,7 @@ const EventListPage = () => {
 
           <TabsContent value="upcoming" className="mt-0">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="space-y-2">{upcomingEvents.length ? upcomingEvents.map((event) => renderEventCard(event)) : renderEmptyState()}</div>
+              <div className="space-y-2">{upcomingEvents.length ? upcomingEvents.map((event) => <div key={event.id}>{renderEventCard(event)}</div>) : renderEmptyState()}</div>
               <aside className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-[#2A2A2A] dark:bg-[#111111]/50">
                 {selectedEvent ? renderEventCard(selectedEvent, true) : renderEmptyState()}
               </aside>

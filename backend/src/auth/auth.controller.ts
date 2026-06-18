@@ -271,6 +271,7 @@ export class AuthController {
 
   // STUDENT self-registration and enrollment
   @Post('register/student-self')
+  @RateLimit({ limit: 5, windowSec: 600 })
   @UseInterceptors(
     FilesInterceptor('files', 10, {
       limits: {
@@ -758,6 +759,7 @@ export class AuthController {
    * POST /auth/request-password-reset
    */
   @Post('request-password-reset')
+  @RateLimit({ limit: 3, windowSec: 60 })
   async requestPasswordReset(@Body() body: { username: string }) {
     try {
       const { username } = body;
@@ -788,6 +790,7 @@ export class AuthController {
    * POST /auth/reset-password
    */
   @Post('reset-password')
+  @RateLimit({ limit: 3, windowSec: 60 })
   async resetPassword(
     @Body()
     body: {

@@ -1,5 +1,3 @@
-export const DEFAULT_CACHE_TTL_SECONDS = 300;
-
 export const CACHE_TTL = {
   GRADES_SCHOOL: 300,
   GRADES_TEACHER: 300,

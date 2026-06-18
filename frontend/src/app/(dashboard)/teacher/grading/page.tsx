@@ -320,11 +320,8 @@ export default function TeacherGradingPage() {
       // Use centralized context to get academic years
       let years = (await getAllAcademicYears()) as AcademicYear[];
 
-      // Set display name - if ethiopianYear field exists, use it; otherwise use name directly
-      years = years.map((year: AcademicYear) => ({
-        ...year,
-        name: year.ethiopianYear ? `${year.ethiopianYear}` : year.name,
-      })).sort((a: AcademicYear, b: AcademicYear) => {
+      // Keep original name from DB (already unique per school)
+      years = years.sort((a: AcademicYear, b: AcademicYear) => {
         // Sort by year descending if both are numbers
         const aNum = parseInt(a.name, 10);
         const bNum = parseInt(b.name, 10);
@@ -1094,14 +1091,14 @@ export default function TeacherGradingPage() {
 
   if (authLoading || initialLoad) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-[400px] bg-gray-50 dark:bg-[#111111]">
         <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color,#e35336)]" />
       </div>
     );
   }
 
   return (
-    <div className="w-full min-w-0 max-w-full overflow-x-hidden space-y-5 bg-gray-50 px-3 py-4 dark:bg-gray-900 sm:px-4 sm:py-6 md:space-y-6 md:px-6 lg:px-8">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden space-y-5 bg-gray-50 px-3 py-4 dark:bg-[#111111] sm:px-4 sm:py-6 md:space-y-6 md:px-6 lg:px-8">
       {/* Header */}
       <div className="min-w-0">
         <div className="min-w-0">
@@ -1115,18 +1112,18 @@ export default function TeacherGradingPage() {
       </div>
 
       {/* Filters */}
-      <Card className="w-full min-w-0 max-w-full overflow-hidden dark:bg-gray-800">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden dark:bg-[#1C1C1C]">
         <CardContent className="px-4 pb-4 pt-4 sm:px-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div>
               <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">Academic Year</label>
               <Select value={selectedYear} onValueChange={(val) => { setSelectedYear(val); setSelectedSubjectId(""); setSelectedClassSectionId(""); }}>
-                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                <SelectTrigger className="w-full dark:bg-[#111111] dark:text-white dark:border-[#334155]">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                <SelectContent className="dark:bg-[#1C1C1C] dark:border-[#334155]">
                   {academicYears.map(year => (
-                    <SelectItem key={year.id} value={year.id} className="dark:text-white dark:focus:bg-gray-700">
+                    <SelectItem key={year.id} value={year.id} className="dark:text-white dark:focus:bg-[#2A2A2A]">
                       {year.name} {year.isActive && "(Active)"}
                     </SelectItem>
                   ))}
@@ -1137,12 +1134,12 @@ export default function TeacherGradingPage() {
             <div>
               <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">Term</label>
               <Select value={selectedTerm} onValueChange={(val) => { setSelectedTerm(val); setSelectedClassSectionId(""); }}>
-                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                <SelectTrigger className="w-full dark:bg-[#111111] dark:text-white dark:border-[#334155]">
                   <SelectValue placeholder="Select term" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                <SelectContent className="dark:bg-[#1C1C1C] dark:border-[#334155]">
                   {terms.map(term => (
-                    <SelectItem key={term.id} value={term.id} className="dark:text-white dark:focus:bg-gray-700">
+                    <SelectItem key={term.id} value={term.id} className="dark:text-white dark:focus:bg-[#2A2A2A]">
                       {term.name}
                     </SelectItem>
                   ))}
@@ -1154,12 +1151,12 @@ export default function TeacherGradingPage() {
             <div>
               <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">Subject</label>
               <Select value={selectedSubjectId} onValueChange={(val) => { setSelectedSubjectId(val); setSelectedClassSectionId(""); }}>
-                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                <SelectTrigger className="w-full dark:bg-[#111111] dark:text-white dark:border-[#334155]">
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                <SelectContent className="dark:bg-[#1C1C1C] dark:border-[#334155]">
                   {subjectOptions.map(subject => (
-                    <SelectItem key={subject.id} value={subject.id} className="dark:text-white dark:focus:bg-gray-700">
+                    <SelectItem key={subject.id} value={subject.id} className="dark:text-white dark:focus:bg-[#2A2A2A]">
                       {subject.name}
                     </SelectItem>
                   ))}
@@ -1170,12 +1167,12 @@ export default function TeacherGradingPage() {
             <div>
               <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">Class - Section</label>
               <Select value={selectedClassSectionId} onValueChange={setSelectedClassSectionId} disabled={!selectedSubjectId}>
-                <SelectTrigger className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                <SelectTrigger className="w-full dark:bg-[#111111] dark:text-white dark:border-[#334155]">
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                <SelectContent className="dark:bg-[#1C1C1C] dark:border-[#334155]">
                   {classSectionOptions.map(cls => (
-                    <SelectItem key={cls.id} value={cls.id} className="dark:text-white dark:focus:bg-gray-700">
+                    <SelectItem key={cls.id} value={cls.id} className="dark:text-white dark:focus:bg-[#2A2A2A]">
                       {cls.class?.name || "Unknown Class"} - Section {cls.section?.name || "Unknown Section"}
                     </SelectItem>
                   ))}
@@ -1207,7 +1204,7 @@ export default function TeacherGradingPage() {
                 variant="outline" 
                 onClick={handleSaveDraft} 
                 disabled={saving || isTermLocked || !hasEditableAssessment || isStaffReadOnly}
-                className="w-full dark:bg-gray-700 dark:text-white dark:border-gray-600 sm:w-auto"
+                className="w-full dark:bg-[#111111] dark:text-white dark:border-[#334155] sm:w-auto"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                 Save Draft
@@ -1254,12 +1251,12 @@ export default function TeacherGradingPage() {
               <>
                 <div className="space-y-3 px-4 pb-4 sm:hidden">
                   {students.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-gray-200 py-8 text-center text-sm text-muted-foreground dark:border-gray-700 dark:text-gray-400">
+                    <div className="rounded-lg border border-dashed border-gray-200 py-8 text-center text-sm text-muted-foreground dark:border-[#334155] dark:text-gray-400">
                       No students found for the selected criteria
                     </div>
                   ) : (
                     students.map((student, index) => (
-                      <div key={student.studentId} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                      <div key={student.studentId} className="rounded-lg border border-gray-200 bg-white p-3 dark:border-[#334155] dark:bg-[#111111]">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-gray-800 dark:text-white">
@@ -1280,7 +1277,7 @@ export default function TeacherGradingPage() {
                               </span>
                               <Input
                                 type="number"
-                                className="h-9 w-full px-1 text-center text-xs dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                                className="h-9 w-full px-1 text-center text-xs dark:bg-[#111111] dark:text-white dark:border-[#334155]"
                                 min="0"
                                 max={getComponentMaxScore(col.code)}
                                 value={student.componentScores?.[col.code.toUpperCase()] ?? ""}
@@ -1311,7 +1308,7 @@ export default function TeacherGradingPage() {
                         <div className="mt-3">
                           <label className="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400">Internal Note (Private)</label>
                           <Input
-                            className="h-8 w-full text-xs dark:bg-gray-700 dark:text-white"
+                            className="h-8 w-full text-xs dark:bg-[#111111] dark:text-white"
                             placeholder="Staff-only notes..."
                             value={student.internalNote || ""}
                             onChange={(e) => handleInternalNoteChange(student.studentId, e.target.value)}
@@ -1319,7 +1316,7 @@ export default function TeacherGradingPage() {
                           />
                         </div>
 
-                        <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-sm dark:border-gray-700">
+                        <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 text-sm dark:border-[#334155]">
                           <span className="font-medium text-gray-700 dark:text-gray-300">Total: {student.totalScore ?? "-"}</span>
                           <span className={`inline-flex min-w-8 justify-center rounded-full px-2 py-1 text-xs font-semibold ${getGradeColor(student.gradeLetter)}`}>
                             {student.gradeLetter || "-"}
@@ -1365,7 +1362,7 @@ export default function TeacherGradingPage() {
                           <TableCell key={col.code} className="px-2 py-3 text-center">
                             <Input
                               type="number"
-                              className="h-8 w-full min-w-0 border-gray-200 px-1 text-center text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                              className="h-8 w-full min-w-0 border-gray-200 px-1 text-center text-xs dark:border-[#334155] dark:bg-[#111111] dark:text-white"
                               min="0"
                               max={getComponentMaxScore(col.code)}
                               value={student.componentScores?.[col.code.toUpperCase()] ?? ""}
@@ -1401,7 +1398,7 @@ export default function TeacherGradingPage() {
                         </TableCell>
                         <TableCell className="px-3 py-3">
                            <Input
-                              className="h-8 w-full border-gray-200 px-2 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                               className="h-8 w-full border-gray-200 px-2 text-xs dark:border-[#334155] dark:bg-[#111111] dark:text-white"
                               placeholder="Private note..."
                               value={student.internalNote || ""}
                               onChange={(e) => handleInternalNoteChange(student.studentId, e.target.value)}

@@ -94,5 +94,9 @@ export class AttendanceQueryDto {
 
   @IsOptional()
   @IsString()
+  academicYearId?: string;
+
+  @IsOptional()
+  @IsString()
   status?: 'NOT_SUBMITTED' | 'SUBMITTED';
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from "@/hooks/useTranslations";
 import { useAcademicYear } from "@/context/AcademicYearContext";
 import { formatUserDisplayCode } from "@/lib/student-code";
@@ -122,10 +122,13 @@ export default function CredentialsPage() {
     }
   };
 
+  const loadDataRef = useRef(loadData);
+  loadDataRef.current = loadData;
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setCurrentPage(1);
-      loadData(false);
+      loadDataRef.current(false);
     }, 400);
     return () => clearTimeout(timer);
   }, [searchTerm]);

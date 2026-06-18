@@ -1172,6 +1172,7 @@ export class LessonService {
       if (query.grade) where.grade = query.grade;
       if (query.section) where.sectionName = query.section;
     }
+    if (query.academicYearId) where.academicYearId = query.academicYearId;
     if (query.semesterId) where.semesterId = query.semesterId;
     if (query.subjectId) where.subjectId = query.subjectId;
     if (query.status) where.status = query.status;

@@ -7,6 +7,8 @@ import { syncService } from "@/lib/db/sync-service";
 import { schoolSettingsAPI } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { academicYearsAPI } from "@/lib/api";
 import Pagination from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +65,7 @@ type StatusFilter = "all" | "active" | "scheduled" | "expired";
 const AnnouncementListPage = () => {
   const { t } = useTranslations<any>("announcements");
   const { user } = useAuth();
+  const { currentAcademicYear } = useAcademicYear();
   const userRole = user?.role?.toUpperCase();
   const isAdmin = userRole === 'ADMIN' || userRole === 'IT_MANAGER' || userRole === 'REGISTRAR';
   
@@ -71,12 +74,25 @@ const AnnouncementListPage = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; isActive: boolean }[]>([]);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("all");
   const itemsPerPage = 10;
 
   useEffect(() => {
     syncService.startAutoSync();
     return () => syncService.stopAutoSync();
   }, []);
+
+  useEffect(() => {
+    if (!user?.schoolId) return;
+    academicYearsAPI.getAll({ schoolId: user.schoolId }).then((res) => {
+      const years = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+      setAcademicYears(years);
+      if (currentAcademicYear && !selectedAcademicYear) {
+        setSelectedAcademicYear(currentAcademicYear.id);
+      }
+    }).catch(() => {});
+  }, [user?.schoolId, currentAcademicYear]);
 
   const { data: announcements, isLoading, isError, error } = useQuery({
     queryKey: queryKeys.announcements.list(userRole),
@@ -123,6 +139,11 @@ const AnnouncementListPage = () => {
           announcement.visibleTo?.some(v => v.toLowerCase().includes(aud))
         );
         if (!hasMatch) return false;
+      }
+
+      // Academic year filter
+      if (selectedAcademicYear !== "all" && announcement.academicYearId !== selectedAcademicYear) {
+        return false;
       }
 
       // Status filter
@@ -177,10 +198,11 @@ const AnnouncementListPage = () => {
     setSearchQuery("");
     setAudienceFilter("all");
     setStatusFilter("all");
+    setSelectedAcademicYear("all");
     setCurrentPage(1);
   };
 
-  const hasActiveFilters = searchQuery || audienceFilter !== "all" || statusFilter !== "all";
+  const hasActiveFilters = searchQuery || audienceFilter !== "all" || statusFilter !== "all" || selectedAcademicYear !== "all";
 
   return (
     <div className="p-4 md:p-6 w-full">
@@ -270,6 +292,26 @@ const AnnouncementListPage = () => {
             <SelectItem value="active">{t.active}</SelectItem>
             <SelectItem value="scheduled">{t.scheduled}</SelectItem>
             <SelectItem value="expired">{t.expired}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={selectedAcademicYear}
+          onValueChange={(value: string) => {
+            setSelectedAcademicYear(value);
+            setCurrentPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[140px] sm:w-40">
+            <SelectValue placeholder="Academic Year" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Years</SelectItem>
+            {academicYears.map((year) => (
+              <SelectItem key={year.id} value={year.id}>
+                {year.name} {year.isActive ? "(Active)" : ""}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

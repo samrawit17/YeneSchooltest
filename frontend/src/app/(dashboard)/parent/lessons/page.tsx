@@ -54,7 +54,7 @@ const getStudentName = (lesson: Lesson) => {
 
 const ParentLessonsPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { schoolCalendarType } = useAcademicYear();
+  const { currentAcademicYear, schoolCalendarType } = useAcademicYear();
   const router = useRouter();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [periodTimes, setPeriodTimes] = useState<Record<number, string>>({});
@@ -77,7 +77,7 @@ const ParentLessonsPage = () => {
       fetchLessons();
       fetchPeriodTimes();
     }
-  }, [isAuthenticated, isLoading, user, page, filterSubject, filterChild, schoolCalendarType]);
+  }, [isAuthenticated, isLoading, user, page, filterSubject, filterChild, schoolCalendarType, currentAcademicYear?.id]);
 
   const fetchPeriodTimes = async () => {
     if (!user?.schoolId) return;
@@ -97,7 +97,7 @@ const ParentLessonsPage = () => {
     try {
       setLoading(true);
       const studentId = filterChild !== "all" ? filterChild : undefined;
-      const response = await lessonsAPI.getForParent(studentId);
+      const response = await lessonsAPI.getForParent(studentId, { academicYearId: currentAcademicYear?.id });
       const { data, meta } = response.data;
       
       setLessons(data || []);

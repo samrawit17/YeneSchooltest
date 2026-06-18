@@ -75,7 +75,8 @@ export const disciplineAPI = {
     severity?: string;
     status?: string;
   }) => api.get("/discipline", { params }),
-  getStudentIncidents: (studentId: string) => api.get(`/discipline/student/${studentId}`),
+  getStudentIncidents: (studentId: string, academicYearId?: string) =>
+    api.get(`/discipline/student/${studentId}`, { params: { academicYearId } }),
   getIncident: (id: string) => api.get(`/discipline/${id}`),
   updateIncident: (
     id: string,

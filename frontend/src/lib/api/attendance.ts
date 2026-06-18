@@ -64,11 +64,12 @@ export const attendanceAPI = {
     className: string,
     section: string,
     date?: string,
-    sectionId?: string
+    sectionId?: string,
+    academicYearId?: string
   ) => api.get('/attendance/students', {
-    params: { classId, className, sectionId, section, date },
+    params: { classId, className, sectionId, section, date, academicYearId },
   }),
-  getTeacherDashboard: () => api.get('/attendance/dashboard/teacher'),
+  getTeacherDashboard: (params?: { academicYearId?: string }) => api.get('/attendance/dashboard/teacher', { params }),
   getMyAttendance: (params?: { startDate?: string; endDate?: string; month?: string }) =>
     api.get('/attendance/me', { params }),
   getMySummary: (params?: { startDate?: string; endDate?: string }) =>

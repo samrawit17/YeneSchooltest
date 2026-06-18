@@ -13,6 +13,8 @@ export interface Announcement {
   createdById: string;
   createdBy?: { id: string; name: string; email: string };
   school?: { id: string; name: string };
+  academicYearId?: string;
+  academicYear?: { id: string; name: string; isActive: boolean };
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +28,7 @@ export interface CreateAnnouncementDto {
   endDate?: string;
   priority?: "HIGH" | "MEDIUM" | "LOW";
   location?: string;
+  academicYearId?: string;
 }
 
 export interface UpdateAnnouncementDto {
@@ -37,12 +40,13 @@ export interface UpdateAnnouncementDto {
   endDate?: string;
   priority?: "HIGH" | "MEDIUM" | "LOW";
   location?: string;
+  academicYearId?: string;
 }
 
 export const announcementsAPI = {
   create: (data: CreateAnnouncementDto) => api.post("/announcements", data),
   getAll: (
-    params?: { role?: string },
+    params?: { role?: string; academicYearId?: string },
     options?: { skipAuthErrorRedirect?: boolean }
   ) =>
     api.get<Announcement[]>("/announcements", {
@@ -255,6 +259,7 @@ export const lessonsAPI = {
   getAll: (params?: {
     grade?: number;
     section?: string;
+    academicYearId?: string;
     semesterId?: string;
     subjectId?: string;
     startDate?: string;
@@ -282,8 +287,10 @@ export const lessonsAPI = {
       teacherSubjects: Array<{ id: string; name: string; code?: string; assignmentId?: string; source?: string; grade?: number; section?: string; sectionId?: string; classId?: string; academicYearId?: string; academicYearName?: string; isActiveAcademicYear?: boolean }>;
       periods: Array<{ value: number; label: string; startTime?: string; endTime?: string }>;
     }>("/lessons/form-data"),
-  getForStudent: () => api.get<{ data: Lesson[]; meta: any }>("/lessons"),
-  getForParent: (studentId?: string) =>
-    api.get<{ data: Lesson[]; meta: any }>("/lessons", { params: { studentId } }),
-  listForTeacher: () => api.get<{ data: Lesson[]; meta: any }>("/lessons"),
+  getForStudent: (params?: { academicYearId?: string }) =>
+    api.get<{ data: Lesson[]; meta: any }>("/lessons", { params }),
+  getForParent: (studentId?: string, params?: { academicYearId?: string }) =>
+    api.get<{ data: Lesson[]; meta: any }>("/lessons", { params: { ...params, studentId } }),
+  listForTeacher: (params?: { academicYearId?: string }) =>
+    api.get<{ data: Lesson[]; meta: any }>("/lessons", { params }),
 };
