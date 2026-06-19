@@ -98,6 +98,8 @@ export const SCHOOL_SETTING_KEYS = {
   PARENT_PORTAL_ACCESS: 'PARENT_PORTAL_ACCESS',
   FINANCE_PORTAL_ACCESS: 'FINANCE_PORTAL_ACCESS',
   REGISTRAR_PORTAL_ACCESS: 'REGISTRAR_PORTAL_ACCESS',
+  SCHOOL_STARTS_AT: 'SCHOOL_STARTS_AT',
+  REGISTRATION_STARTS_AT: 'REGISTRATION_STARTS_AT',
 } as const;
 
 const SCHOOL_SETTING_KEY_ALIASES: Record<string, string> = {
@@ -177,6 +179,8 @@ export class SchoolSettingsService {
     SCHOOL_SETTING_KEYS.CUSTOM_BRANDING,
     'PARENT_VIEW_ATTENDANCE',
     'SELF_ENROLLMENT_ACTIVE',
+    SCHOOL_SETTING_KEYS.SCHOOL_STARTS_AT,
+    SCHOOL_SETTING_KEYS.REGISTRATION_STARTS_AT,
   ]);
 
   private readonly tierLevels: Record<PlanTier, number> = {
@@ -441,6 +445,20 @@ export class SchoolSettingsService {
       if (!isValidTime) {
         throw new BadRequestException(
           `${key} must be in 24-hour HH:mm format`,
+        );
+      }
+      return normalizedValue;
+    }
+
+    if (
+      key === SCHOOL_SETTING_KEYS.SCHOOL_STARTS_AT ||
+      key === SCHOOL_SETTING_KEYS.REGISTRATION_STARTS_AT
+    ) {
+      const normalizedValue = String(value || '').trim();
+      const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(normalizedValue);
+      if (!isValidDate) {
+        throw new BadRequestException(
+          `${key} must be a valid date in YYYY-MM-DD format`,
         );
       }
       return normalizedValue;

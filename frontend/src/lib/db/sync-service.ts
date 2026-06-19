@@ -58,6 +58,10 @@ class SyncService {
   private deviceId: string;
   private autoSyncRefCount: number = 0;
 
+  private handleOnline: (() => void) | null = null;
+  private handleOffline: (() => void) | null = null;
+  private handleConnectionChange: (() => void) | null = null;
+
   constructor(config: Partial<SyncConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.deviceId = this.generateDeviceId();
@@ -74,27 +78,56 @@ class SyncService {
       return;
     }
 
-    window.addEventListener('online', () => {
+    this.handleOnline = () => {
       this.isOnline = true;
       console.log('[SyncService] Network online - starting sync');
       this.emitEvent({ type: 'sync_started', timestamp: new Date().toISOString() });
       this.syncNow();
-    });
+    };
 
-    window.addEventListener('offline', () => {
+    this.handleOffline = () => {
       this.isOnline = false;
       console.log('[SyncService] Network offline - queuing operations');
-    });
+    };
+
+    window.addEventListener('online', this.handleOnline);
+    window.addEventListener('offline', this.handleOffline);
 
     // Check connection type if available
     if ('connection' in navigator) {
       const connection = (navigator as Navigator & { connection?: { addEventListener: (type: string, cb: () => void) => void } }).connection;
       if (connection) {
-        connection.addEventListener('change', () => {
+        this.handleConnectionChange = () => {
           this.isOnline = navigator.onLine;
-        });
+        };
+        connection.addEventListener('change', this.handleConnectionChange);
       }
     }
+  }
+
+  /**
+   * Clean up all listeners and intervals. Call when the service is no longer needed
+   * (e.g., on module cleanup / hot reload).
+   */
+  destroy(): void {
+    this.stopAutoSync();
+
+    if (typeof window !== 'undefined') {
+      if (this.handleOnline) window.removeEventListener('online', this.handleOnline);
+      if (this.handleOffline) window.removeEventListener('offline', this.handleOffline);
+
+      if (this.handleConnectionChange && 'connection' in navigator) {
+        const connection = (navigator as Navigator & { connection?: { removeEventListener: (type: string, cb: () => void) => void } }).connection;
+        if (connection) {
+          connection.removeEventListener('change', this.handleConnectionChange);
+        }
+      }
+    }
+
+    this.handleOnline = null;
+    this.handleOffline = null;
+    this.handleConnectionChange = null;
+    this.eventListeners.clear();
   }
 
   private generateDeviceId(): string {
@@ -411,6 +444,11 @@ class SyncService {
           resolution = 'server_wins';
           resolvedData = conflict.serverVersion;
         }
+        console.warn(
+          `[SyncService] Conflict auto-resolved (latest_wins): ${conflict.entity}/${conflict.entityId}`,
+          `→ ${resolution}, discarded version:`,
+          resolution === 'local_wins' ? conflict.serverVersion : conflict.localVersion,
+        );
         break;
         
       case 'server_wins':

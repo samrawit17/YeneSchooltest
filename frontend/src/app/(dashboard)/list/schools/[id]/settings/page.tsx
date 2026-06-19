@@ -38,6 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimePicker } from '@/components/ui/TimePicker';
+import { CalendarDatePicker } from '@/components/ui/CalendarDatePicker';
 import { useTranslations } from '@/hooks/useTranslations';
 import { 
   Select,
@@ -59,7 +60,7 @@ interface SettingItem {
   key: string;
   label: string;
   description: string;
-  type: 'boolean' | 'string' | 'number' | 'select' | 'time' | 'color';
+  type: 'boolean' | 'string' | 'number' | 'select' | 'time' | 'color' | 'date';
   category: string;
   systemDefault?: any;
   options?: { value: string; label: string }[] | string[];
@@ -130,6 +131,22 @@ const SETTINGS_CONFIG: SettingItem[] = [
       { value: 'PRE-K-12', label: 'Pre-K to Grade 12' },
       { value: '9-12', label: 'Grades 9-12 (High School)' },
     ],
+  },
+  {
+    key: 'SCHOOL_STARTS_AT',
+    label: 'School Starts Date',
+    description: 'The date the academic year begins. Shown as a countdown on the public landing page.',
+    type: 'date',
+    category: 'academic',
+    systemDefault: '',
+  },
+  {
+    key: 'REGISTRATION_STARTS_AT',
+    label: 'Registration Starts Date',
+    description: 'The date enrollment/registration opens. Shown as a countdown on the public landing page.',
+    type: 'date',
+    category: 'academic',
+    systemDefault: '',
   },
 
   // Attendance Settings
@@ -1395,6 +1412,28 @@ export default function SchoolSettingsPage() {
             {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
           </div>
 
+        </div>
+      );
+    }
+
+    if (setting.type === 'date') {
+      const dateValue = typeof value === 'string' && value ? new Date(value + 'T00:00:00') : undefined;
+      return (
+        <div className="flex items-center gap-2">
+          <CalendarDatePicker
+            value={dateValue}
+            onChange={(date) => {
+              const str = date
+                ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+                : '';
+              updateDraftSetting(setting.key, str);
+            }}
+            disabled={isControlDisabled}
+            placeholder="Month Day, Year"
+            className="w-56"
+          />
+          {isLocked && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
+          {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
         </div>
       );
     }

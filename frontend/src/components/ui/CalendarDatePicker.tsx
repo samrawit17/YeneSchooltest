@@ -51,7 +51,7 @@ const mergeDateAndTime = (date: Date, existingDate: Date | undefined, includeTim
 };
 
 const brandedSelectTriggerClassName =
-  "h-8 text-xs border-gray-300 focus:border-gray-500 focus:ring-2 focus:ring-gray-300 data-[state=open]:border-gray-500 dark:border-gray-600 dark:focus:border-gray-400 dark:focus:ring-gray-700 dark:data-[state=open]:border-gray-400";
+  "h-8 text-xs border-gray-300 focus:border-gray-500 focus:ring-2 focus:ring-gray-300 data-[state=open]:border-gray-500 dark:border-[#2A2A2A] dark:focus:border-[#555555] dark:focus:ring-[#333333] dark:data-[state=open]:border-[#555555]";
 
 export function CalendarDatePicker({
   value,
@@ -66,9 +66,7 @@ export function CalendarDatePicker({
 }: CalendarDatePickerProps) {
   const { user } = useAuth();
   const { t, language } = useTranslations<any>("calendar");
-  const displayPlaceholder = placeholder === "Select Date"
-    ? t.picker.selectDate
-    : placeholder;
+  const displayPlaceholder = placeholder;
   const calendarType = user?.calendarType || "ETHIOPIAN";
   const [open, setOpen] = useState(false);
   const selectedTime = toTimeValue(value);
@@ -116,7 +114,7 @@ export function CalendarDatePicker({
           <Button
             variant={"outline"}
             className={cn(
-              "w-full justify-start text-left font-normal border-gray-300 dark:border-gray-700 dark:bg-gray-800",
+              "w-full justify-start text-left font-normal border-gray-300 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]",
               !value && "text-muted-foreground",
               className
             )}
@@ -137,7 +135,7 @@ export function CalendarDatePicker({
             initialFocus
           />
           {includeTime ? (
-            <div className="border-t border-slate-100 pt-3 dark:border-slate-700">
+            <div className="border-t border-gray-100 pt-3 dark:border-[#2A2A2A]">
               <TimePicker value={selectedTime} onChange={updateTime} />
               <Button className="mt-3 h-9 w-full text-sm" onClick={() => setOpen(false)}>
                 {t.picker.done}
@@ -205,7 +203,7 @@ export function CalendarDatePicker({
         <Button
           variant={"outline"}
           className={cn(
-            "w-full justify-start text-left font-normal border-gray-300 dark:border-gray-700 dark:bg-gray-800",
+            "w-full justify-start text-left font-normal border-gray-300 dark:border-[#2A2A2A] dark:bg-[#1A1A1A]",
             !value && "text-muted-foreground",
             className
           )}
@@ -216,18 +214,18 @@ export function CalendarDatePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[320px] border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+        className="w-[320px] border-gray-200 bg-white p-4 shadow-lg dark:border-[#2A2A2A] dark:bg-[#1A1A1A]"
         align="start"
         style={brandStyle}
       >
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <div className="flex items-center justify-between text-sm font-semibold text-gray-900 dark:text-white">
             <span>{t.picker.ethiopianCalendar}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">{t.picker.month}</label>
+              <label className="text-xs font-medium text-gray-700 dark:text-[#CCCCCC]">{t.picker.month}</label>
               <Select
                 value={ethMonth.toString()}
                 onValueChange={(v) => handleEthChange("month", parseInt(v))}
@@ -246,7 +244,7 @@ export function CalendarDatePicker({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">{t.picker.day}</label>
+              <label className="text-xs font-medium text-gray-700 dark:text-[#CCCCCC]">{t.picker.day}</label>
               <Select
                 value={ethDay.toString()}
                 onValueChange={(v) => handleEthChange("day", parseInt(v))}
@@ -265,7 +263,7 @@ export function CalendarDatePicker({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700 dark:text-slate-300">{t.picker.year}</label>
+              <label className="text-xs font-medium text-gray-700 dark:text-[#CCCCCC]">{t.picker.year}</label>
               <Select
                 value={ethYear.toString()}
                 onValueChange={(v) => handleEthChange("year", parseInt(v))}
@@ -285,14 +283,14 @@ export function CalendarDatePicker({
           </div>
 
           {value && (
-            <div className="pt-2 mt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-center text-muted-foreground">
+            <div className="pt-2 mt-2 border-t border-gray-100 dark:border-[#2A2A2A] text-xs text-center text-muted-foreground">
               {t.picker.gregorianEquivalent}:<br />
               <span className="font-medium">{format(value, includeTime ? "PPP p" : "PPP")}</span>
             </div>
           )}
 
           {includeTime ? (
-            <div className="space-y-2 border-t border-gray-100 pt-3 dark:border-gray-700">
+            <div className="space-y-2 border-t border-gray-100 pt-3 dark:border-[#2A2A2A]">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Clock className="h-4 w-4" />
                 {t.picker.ethiopianTime}
@@ -302,7 +300,7 @@ export function CalendarDatePicker({
                 onChange={updateTime}
                 placeholder={t.time.selectTime}
               />
-              <div className="rounded-md bg-slate-50 px-3 py-2 text-center text-sm font-medium text-slate-700 dark:bg-slate-700/60 dark:text-slate-200">
+              <div className="rounded-md bg-gray-50 px-3 py-2 text-center text-sm font-medium text-gray-700 dark:bg-[#2A2A2A]/60 dark:text-[#CCCCCC]">
                 {formatTimeByCalendarType(selectedTime, "ETHIOPIAN")}
               </div>
             </div>

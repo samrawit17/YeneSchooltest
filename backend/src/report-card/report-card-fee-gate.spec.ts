@@ -61,7 +61,6 @@ describe('ReportCardService parent fee gate', () => {
       service: new ReportCardService(
         prisma as any,
         {} as any,
-        {} as any,
       ),
     };
   };

@@ -36,6 +36,7 @@ interface DisciplineIncident {
   status: "OPEN" | "INVESTIGATING" | "RESOLVED" | "ESCALATED";
   incidentDate: string;
   outcome?: string;
+  actionTaken?: string;
   childName: string;
   childId?: string;
 }

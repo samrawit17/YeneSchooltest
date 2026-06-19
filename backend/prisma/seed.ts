@@ -86,7 +86,7 @@ async function main() {
     }
   }
 
-  const password = await bcrypt.hash(SUPERADMIN_PASSWORD, 12);
+  const password = await bcrypt.hash(SUPERADMIN_PASSWORD!, 12);
 
   const user = await prisma.user.upsert({
     where: { email: SUPERADMIN_EMAIL },

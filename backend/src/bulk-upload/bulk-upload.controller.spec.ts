@@ -7,7 +7,7 @@ describe('BulkUploadController', () => {
       parseCSV: jest.fn(),
       processBulkStudentsWithAssignment: jest.fn(),
     };
-    const controller = new BulkUploadController(service as any);
+    const controller = new BulkUploadController(service as any, {} as any);
     return { controller, service };
   };
 

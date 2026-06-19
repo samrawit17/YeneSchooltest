@@ -175,6 +175,10 @@ export class SMSDatabase extends Dexie {
 
     this.version(2).stores({
       timetables: 'id, ownerType, ownerId, cachedAt',
+    }).upgrade(async () => {
+      // v2 adds timetables table — existing v1 tables are unchanged,
+      // so no data migration is needed. The upgrade handler prevents
+      // Dexie from silently clearing the database on schema version bump.
     });
   }
 }

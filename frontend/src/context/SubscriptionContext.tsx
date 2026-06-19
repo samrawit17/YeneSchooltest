@@ -11,6 +11,12 @@ interface Plan {
   features: string[];
 }
 
+const normalizeFeatureKey = (feature?: string | null) =>
+  (feature || "").trim().toUpperCase();
+
+const normalizeFeatureList = (features?: string[]) =>
+  Array.from(new Set((features || []).map(normalizeFeatureKey).filter(Boolean)));
+
 interface SubscriptionContextType {
   plan: Plan | null;
   loading: boolean;
@@ -74,7 +80,8 @@ export function SubscriptionProvider({
 
   const hasFeature = (feature: string): boolean => {
     if (!plan) return false;
-    return plan.features?.includes(feature) ?? false;
+    const normalizedFeatures = normalizeFeatureList(plan.features);
+    return normalizedFeatures.includes(normalizeFeatureKey(feature));
   };
 
   const hasTier = (tier: PlanTier): boolean => {

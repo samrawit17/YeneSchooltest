@@ -75,7 +75,8 @@ export function getLocalizedEthiopianEraLabel(language: AppLanguage = 'en'): str
 /**
  * Convert a Gregorian date to Ethiopian date
  */
-export function convertToEthiopian(date: Date | string): { year: number; month: number; day: number; monthName: string } {
+export function convertToEthiopian(date: Date | string | undefined | null): { year: number; month: number; day: number; monthName: string } {
+    if (!date) date = new Date();
     const d = typeof date === 'string' ? new Date(date) : date;
     const result = toEthiopian(d.getFullYear(), d.getMonth() + 1, d.getDate());
     return {

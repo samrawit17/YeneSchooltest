@@ -28,14 +28,13 @@ function describeDatabaseTarget(databaseUrl?: string) {
 
 function requireProductionSecrets() {
   const jwtSecret = process.env.JWT_SECRET;
-  const isProduction = process.env.NODE_ENV === 'production';
 
   if (!jwtSecret) {
     throw new Error('JWT_SECRET is required');
   }
 
-  if (isProduction && (jwtSecret.length < 32 || INSECURE_JWT_SECRETS.has(jwtSecret))) {
-    throw new Error('Refusing to start with an insecure JWT_SECRET in production');
+  if (jwtSecret.length < 32 || INSECURE_JWT_SECRETS.has(jwtSecret)) {
+    throw new Error('Refusing to start with an insecure JWT_SECRET');
   }
 }
 
