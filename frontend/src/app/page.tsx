@@ -34,6 +34,8 @@ interface SchoolDetail {
   address: string | null;
   isActive: boolean;
   accentColor: string | null;
+  schoolStartsAt?: string | null;
+  registrationStartsAt?: string | null;
 }
 
 interface Program {
@@ -134,6 +136,58 @@ const CountUp = ({ value, suffix, duration = 2 }: { value: number; suffix: strin
     <span ref={ref}>
       {count.toLocaleString()}{suffix}
     </span>
+  );
+};
+
+const CountdownTimer = ({ targetDate, label }: { targetDate: string; label: string }) => {
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+
+  useEffect(() => {
+    const update = () => {
+      const diff = new Date(targetDate).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft(null);
+        return;
+      }
+      setTimeLeft({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000),
+      });
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (!timeLeft) return null;
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-xs font-semibold uppercase tracking-wider text-white/70">{label}</span>
+      <div className="flex items-center gap-2 text-white">
+        <div className="text-center">
+          <div className="text-2xl md:text-3xl font-bold leading-tight">{timeLeft.days}</div>
+          <div className="text-[10px] uppercase tracking-wider text-white/60">Days</div>
+        </div>
+        <span className="text-xl font-bold text-white/40 pt-1">:</span>
+        <div className="text-center">
+          <div className="text-2xl md:text-3xl font-bold leading-tight">{String(timeLeft.hours).padStart(2, "0")}</div>
+          <div className="text-[10px] uppercase tracking-wider text-white/60">Hrs</div>
+        </div>
+        <span className="text-xl font-bold text-white/40 pt-1">:</span>
+        <div className="text-center">
+          <div className="text-2xl md:text-3xl font-bold leading-tight">{String(timeLeft.minutes).padStart(2, "0")}</div>
+          <div className="text-[10px] uppercase tracking-wider text-white/60">Min</div>
+        </div>
+        <span className="text-xl font-bold text-white/40 pt-1">:</span>
+        <div className="text-center">
+          <div className="text-2xl md:text-3xl font-bold leading-tight">{String(timeLeft.seconds).padStart(2, "0")}</div>
+          <div className="text-[10px] uppercase tracking-wider text-white/60">Sec</div>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -693,6 +747,16 @@ const Homepage = () => {
                   Explore Programs
                 </Button>
               </div>
+              {(school.schoolStartsAt || school.registrationStartsAt) && (
+                <div className="flex flex-wrap gap-6 mt-8 pt-6 border-t border-white/20">
+                  {school.schoolStartsAt && (
+                    <CountdownTimer targetDate={school.schoolStartsAt} label="School Starts In" />
+                  )}
+                  {school.registrationStartsAt && (
+                    <CountdownTimer targetDate={school.registrationStartsAt} label="Registration Starts In" />
+                  )}
+                </div>
+              )}
             </motion.div>
 
             <motion.div

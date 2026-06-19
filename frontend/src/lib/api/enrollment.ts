@@ -87,6 +87,8 @@ export interface PublicEnrollmentSchool {
   logoUrl?: string | null;
   accentColor?: string | null;
   loginImageUrl?: string | null;
+  schoolStartsAt?: string | null;
+  registrationStartsAt?: string | null;
 }
 
 export interface EnrollmentLandingResponse {

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { schoolSettingsAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -11,47 +11,6 @@ import {
   normalizeCalendarType,
   type CalendarType,
 } from "@/lib/calendar-utils";
-
-declare global {
-  interface Window {
-    __SMS_ACTIVE_CALENDAR_TYPE__?: CalendarType;
-  }
-}
-
-const originalToLocaleDateString = Date.prototype.toLocaleDateString;
-const originalToLocaleString = Date.prototype.toLocaleString;
-
-let formatterShimInstalled = false;
-
-const installCalendarFormatterShim = () => {
-  if (formatterShimInstalled || typeof window === "undefined") {
-    return;
-  }
-
-  Date.prototype.toLocaleDateString = function toLocaleDateStringPatched(
-    locales?: Intl.LocalesArgument,
-    options?: Intl.DateTimeFormatOptions,
-  ) {
-    const activeCalendar = window.__SMS_ACTIVE_CALENDAR_TYPE__ || "ETHIOPIAN";
-    if (activeCalendar === "ETHIOPIAN") {
-      return formatDateByCalendarType(this, activeCalendar);
-    }
-    return originalToLocaleDateString.call(this, locales, options);
-  };
-
-  Date.prototype.toLocaleString = function toLocaleStringPatched(
-    locales?: Intl.LocalesArgument,
-    options?: Intl.DateTimeFormatOptions,
-  ) {
-    const activeCalendar = window.__SMS_ACTIVE_CALENDAR_TYPE__ || "ETHIOPIAN";
-    if (activeCalendar === "ETHIOPIAN") {
-      return formatDateTimeByCalendarType(this, activeCalendar);
-    }
-    return originalToLocaleString.call(this, locales, options);
-  };
-
-  formatterShimInstalled = true;
-};
 
 interface CalendarContextValue {
   calendarType: CalendarType;
@@ -80,11 +39,39 @@ export const CalendarProvider = ({ children }: { children: ReactNode }) => {
   const calendarType = normalizeCalendarType(settings?.calendar_type);
   const isLocked = settings?.calendar_type !== undefined && settings?.calendar_type !== null;
 
+  const originalsRef = useRef<{
+    toLocaleDateString: typeof Date.prototype.toLocaleDateString;
+    toLocaleString: typeof Date.prototype.toLocaleString;
+  } | null>(null);
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.__SMS_ACTIVE_CALENDAR_TYPE__ = calendarType;
-      installCalendarFormatterShim();
+    if (!originalsRef.current) {
+      originalsRef.current = {
+        toLocaleDateString: Date.prototype.toLocaleDateString,
+        toLocaleString: Date.prototype.toLocaleString,
+      };
     }
+
+    if (calendarType === 'GREGORIAN') {
+      Date.prototype.toLocaleDateString = originalsRef.current.toLocaleDateString;
+      Date.prototype.toLocaleString = originalsRef.current.toLocaleString;
+      return;
+    }
+
+    const etFormatDate = (date: Date, ...args: any[]) =>
+      formatDateByCalendarType(date, 'ETHIOPIAN');
+    const etFormatDateTime = (date: Date, ...args: any[]) =>
+      formatDateTimeByCalendarType(date, 'ETHIOPIAN');
+
+    Date.prototype.toLocaleDateString = etFormatDate as typeof Date.prototype.toLocaleDateString;
+    Date.prototype.toLocaleString = etFormatDateTime as typeof Date.prototype.toLocaleString;
+
+    return () => {
+      if (originalsRef.current) {
+        Date.prototype.toLocaleDateString = originalsRef.current.toLocaleDateString;
+        Date.prototype.toLocaleString = originalsRef.current.toLocaleString;
+      }
+    };
   }, [calendarType]);
 
   const value = useMemo<CalendarContextValue>(

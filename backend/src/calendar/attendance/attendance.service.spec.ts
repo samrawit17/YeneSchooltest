@@ -32,7 +32,7 @@ describe('AttendanceService ownership guards', () => {
 
     await expect(
       service.getStudentAttendanceSummary(
-        { id: 'parent-user-1', role: Role.PARENT, schoolId: 'school-1' },
+        { id: 'parent-user-1', role: Role.PARENT, schoolId: 'school-1', name: 'Parent User' },
         'student-user-1',
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -66,7 +66,7 @@ describe('AttendanceService ownership guards', () => {
     const service = createService(prisma);
 
     await service.getMyAttendance(
-      { id: 'student-user-1', role: Role.STUDENT, schoolId: 'school-1' },
+      { id: 'student-user-1', role: Role.STUDENT, schoolId: 'school-1', name: 'Student User' },
       {},
     );
 

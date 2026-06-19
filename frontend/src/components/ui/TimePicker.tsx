@@ -174,27 +174,27 @@ export function TimePicker({
           variant="outline"
           disabled={disabled}
           className={cn(
-            "h-10 w-full justify-start border-slate-200 bg-white text-left font-normal text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white",
+            "h-10 w-full justify-start border-gray-200 bg-white text-left font-normal text-gray-900 dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-white",
             !value && "text-muted-foreground",
             className
           )}
         >
-          <Clock className="mr-2 h-4 w-4 shrink-0 text-slate-500" />
+          <Clock className="mr-2 h-4 w-4 shrink-0 text-gray-500" />
           <span className="min-w-0 truncate">{displayValue}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 bg-white p-4 dark:bg-slate-800" align="start">
+      <PopoverContent className="w-64 bg-white p-4 dark:bg-[#1A1A1A]" align="start">
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.time.selectTime}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.time.selectTime}</p>
+            <p className="text-xs text-gray-500 dark:text-[#CCCCCC]">
               {isEthiopian ? t.time.ethiopianHint : t.time.gregorianHint}
             </p>
           </div>
 
           <div className={cn("grid gap-3", isEthiopian ? "grid-cols-3" : "grid-cols-2")}>
             <div className="space-y-1">
-              <label className="text-xs text-slate-500 dark:text-slate-400">{t.time.hour}</label>
+              <label className="text-xs text-gray-500 dark:text-[#CCCCCC]">{t.time.hour}</label>
               <Select
                 value={isEthiopian ? selectedHourForPeriod : normalized.hour}
                 onValueChange={(hour) => {
@@ -205,7 +205,7 @@ export function TimePicker({
                   updateTime(hour, normalized.minute);
                 }}
               >
-                <SelectTrigger className="h-9 bg-white dark:bg-slate-700">
+                <SelectTrigger className="h-9 bg-white dark:bg-[#1A1A1A]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -220,14 +220,14 @@ export function TimePicker({
 
             {isEthiopian ? (
               <div className="space-y-1">
-                <label className="text-xs text-slate-500 dark:text-slate-400">{t.time.block}</label>
+                <label className="text-xs text-gray-500 dark:text-[#CCCCCC]">{t.time.block}</label>
                 <Select
                   value={selectedEthiopianPeriod}
                   onValueChange={(period) =>
                     updateEthiopianTime(normalizeHourForPeriod(ethiopianTime.hour12, period as EthiopianPeriod), period as EthiopianPeriod, normalized.minute)
                   }
                 >
-                  <SelectTrigger className="h-9 bg-white dark:bg-slate-700">
+                  <SelectTrigger className="h-9 bg-white dark:bg-[#1A1A1A]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -242,7 +242,7 @@ export function TimePicker({
             ) : null}
 
             <div className="space-y-1">
-              <label className="text-xs text-slate-500 dark:text-slate-400">{t.time.minute}</label>
+              <label className="text-xs text-gray-500 dark:text-[#CCCCCC]">{t.time.minute}</label>
               <Select
                 value={normalized.minute}
                 onValueChange={(minute) => {
@@ -253,7 +253,7 @@ export function TimePicker({
                   updateTime(normalized.hour, minute);
                 }}
               >
-                <SelectTrigger className="h-9 bg-white dark:bg-slate-700">
+                <SelectTrigger className="h-9 bg-white dark:bg-[#1A1A1A]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -267,7 +267,7 @@ export function TimePicker({
             </div>
           </div>
 
-          <div className="rounded-md bg-slate-50 px-3 py-2 text-center text-sm font-medium text-slate-700 dark:bg-slate-700/60 dark:text-slate-200">
+          <div className="rounded-md bg-gray-50 px-3 py-2 text-center text-sm font-medium text-gray-700 dark:bg-[#2A2A2A]/60 dark:text-[#CCCCCC]">
             {showCalendarLabel
               ? isEthiopian
                 ? `${formatTimeByCalendarType(`${normalized.hour}:${normalized.minute}`, activeCalendarType)} ${selectedPeriodLabel}`

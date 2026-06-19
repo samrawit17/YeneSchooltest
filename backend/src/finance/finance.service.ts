@@ -5,6 +5,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+
+const CHUNK_SIZE = 50;
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, Prisma } from '@prisma/client';
 import { Role } from '../auth/types/role.enum';
@@ -1805,7 +1807,10 @@ export class FinanceService {
       .filter(Boolean);
 
     if (reconcileUpdates.length > 0) {
-      await Promise.all(reconcileUpdates);
+      for (let i = 0; i < reconcileUpdates.length; i += CHUNK_SIZE) {
+        const chunk = reconcileUpdates.slice(i, i + CHUNK_SIZE);
+        await Promise.all(chunk);
+      }
     }
 
     const updated = await this.recalculateFamilyDiscountsForExistingFees({

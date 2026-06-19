@@ -67,7 +67,7 @@ export class EnrollmentRequestService {
         logoUrl: true,
         schoolSettings: {
           where: {
-            key: { in: ['theme_color', 'login_image_url'] },
+            key: { in: ['theme_color', 'login_image_url', 'SCHOOL_STARTS_AT', 'REGISTRATION_STARTS_AT'] },
           },
           select: {
             key: true,
@@ -91,6 +91,14 @@ export class EnrollmentRequestService {
         school.schoolSettings.find(
           (setting) => setting.key === 'login_image_url',
         )?.value || null,
+      schoolStartsAt:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'SCHOOL_STARTS_AT',
+        )?.value || null,
+      registrationStartsAt:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'REGISTRATION_STARTS_AT',
+        )?.value || null,
     }));
   }
 
@@ -108,7 +116,7 @@ export class EnrollmentRequestService {
         address: true,
         isActive: true,
         schoolSettings: {
-          where: { key: { in: ['theme_color', 'login_image_url'] } },
+          where: { key: { in: ['theme_color', 'login_image_url', 'SCHOOL_STARTS_AT', 'REGISTRATION_STARTS_AT'] } },
           select: { key: true, value: true },
         },
       },
@@ -131,6 +139,14 @@ export class EnrollmentRequestService {
         school.schoolSettings.find(
           (setting) => setting.key === 'login_image_url',
         )?.value || null,
+      schoolStartsAt:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'SCHOOL_STARTS_AT',
+        )?.value || null,
+      registrationStartsAt:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'REGISTRATION_STARTS_AT',
+        )?.value || null,
     };
   }
 
@@ -148,7 +164,7 @@ export class EnrollmentRequestService {
         address: true,
         isActive: true,
         schoolSettings: {
-          where: { key: { in: ['theme_color', 'login_image_url'] } },
+          where: { key: { in: ['theme_color', 'login_image_url', 'SCHOOL_STARTS_AT', 'REGISTRATION_STARTS_AT'] } },
           select: { key: true, value: true },
         },
       },
@@ -170,6 +186,14 @@ export class EnrollmentRequestService {
       loginImageUrl:
         school.schoolSettings.find(
           (setting) => setting.key === 'login_image_url',
+        )?.value || null,
+      schoolStartsAt:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'SCHOOL_STARTS_AT',
+        )?.value || null,
+      registrationStartsAt:
+        school.schoolSettings.find(
+          (setting) => setting.key === 'REGISTRATION_STARTS_AT',
         )?.value || null,
     };
   }

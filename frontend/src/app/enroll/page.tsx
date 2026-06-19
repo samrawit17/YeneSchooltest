@@ -97,6 +97,20 @@ const brandedFieldClassName =
 const brandedFieldTriggerClassName = `h-11 ${brandedFieldClassName}`;
 const brandedDatePickerClassName = `${brandedFieldTriggerClassName} text-slate-900 hover:border-[var(--enroll-brand)] hover:bg-white focus-visible:border-[var(--enroll-brand)] dark:text-[#F2F2F2] dark:hover:bg-[#1A1A1A] [&_svg]:text-[var(--enroll-brand)]`;
 
+const stripHtml = (value: string): string => value.replace(/<[^>]*>/g, '').trim();
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const PHONE_RE = /^\+?[\d\s\-()]{7,15}$/;
+const NAME_MIN_LENGTH = 2;
+
+const isReasonableSchoolAge = (dateOfBirth: string): boolean => {
+  if (!dateOfBirth) return false;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return false;
+  const age = (Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  return age >= 3 && age <= 25;
+};
+
 const parseDateValue = (value?: string) => {
   if (!value) return undefined;
   const date = new Date(value);
@@ -333,10 +347,24 @@ export default function EnrollmentPage() {
           availableGrades.some((grade) => grade.grade === formData.requestedGrade) &&
           (![11, 12].includes(formData.requestedGrade) || formData.requestedStream)
         );
-      case 'student':
-        return formData.firstName && formData.lastName && formData.dateOfBirth && formData.gender && /^\d{12}$/.test(formData.faydaNumber.replace(/\D/g, '')) && formData.phone;
-      case 'guardian':
-        return formData.parentFirstName && formData.parentLastName && formData.parentPhone && formData.parentRelation;
+      case 'student': {
+        if (!formData.firstName || stripHtml(formData.firstName).length < NAME_MIN_LENGTH) return false;
+        if (!formData.lastName || stripHtml(formData.lastName).length < NAME_MIN_LENGTH) return false;
+        if (!formData.dateOfBirth || !isReasonableSchoolAge(formData.dateOfBirth)) return false;
+        if (!formData.gender) return false;
+        if (!formData.faydaNumber || !/^\d{12}$/.test(formData.faydaNumber.replace(/\D/g, ''))) return false;
+        if (!formData.phone || !PHONE_RE.test(formData.phone)) return false;
+        if (formData.email && !EMAIL_RE.test(formData.email)) return false;
+        return true;
+      }
+      case 'guardian': {
+        if (!formData.parentFirstName || stripHtml(formData.parentFirstName).length < NAME_MIN_LENGTH) return false;
+        if (!formData.parentLastName || stripHtml(formData.parentLastName).length < NAME_MIN_LENGTH) return false;
+        if (!formData.parentPhone || !PHONE_RE.test(formData.parentPhone)) return false;
+        if (!formData.parentRelation) return false;
+        if (formData.parentEmail && !EMAIL_RE.test(formData.parentEmail)) return false;
+        return true;
+      }
       case 'review':
         return true;
       default:
@@ -360,6 +388,11 @@ export default function EnrollmentPage() {
     }
   };
 
+  const sanitize = (value: string | undefined): string | undefined => {
+    const s = value ? stripHtml(value) : '';
+    return s || undefined;
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
@@ -369,29 +402,35 @@ export default function EnrollmentPage() {
         return;
       }
 
+      if (!canProceed()) {
+        toast.error('Please fix the form errors before submitting.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const response = await enrollmentAPI.submitRequest({
         schoolId: formData.schoolId,
         academicYearId: selectedSchoolData.academicYearId,
-        firstName: formData.firstName,
-        middleName: formData.middleName || undefined,
-        lastName: formData.lastName,
+        firstName: sanitize(formData.firstName)!,
+        middleName: sanitize(formData.middleName),
+        lastName: sanitize(formData.lastName)!,
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender.toUpperCase(),
         faydaNumber: formData.faydaNumber.replace(/\D/g, ''),
-        nationality: formData.nationality || undefined,
-        email: formData.email || undefined,
-        phone: formData.phone || undefined,
-        address: formData.address || undefined,
-        previousSchool: formData.previousSchool || undefined,
+        nationality: sanitize(formData.nationality),
+        email: formData.email ? formData.email.trim() : undefined,
+        phone: formData.phone.trim(),
+        address: sanitize(formData.address),
+        previousSchool: sanitize(formData.previousSchool),
         previousGrade: formData.previousGrade,
         transferCertificate: formData.transferCertificate,
-        parentFirstName: formData.parentFirstName,
-        parentLastName: formData.parentLastName,
-        parentPhone: formData.parentPhone,
-        parentEmail: formData.parentEmail || undefined,
-        parentRelation: formData.parentRelation,
+        parentFirstName: sanitize(formData.parentFirstName)!,
+        parentLastName: sanitize(formData.parentLastName)!,
+        parentPhone: formData.parentPhone.trim(),
+        parentEmail: formData.parentEmail ? formData.parentEmail.trim() : undefined,
+        parentRelation: sanitize(formData.parentRelation)!,
         requestedGrade: formData.requestedGrade,
-        requestedStream: formData.requestedStream || undefined,
+        requestedStream: sanitize(formData.requestedStream),
       });
 
       setSubmitted(true);

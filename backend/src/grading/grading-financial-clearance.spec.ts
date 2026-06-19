@@ -10,6 +10,7 @@ describe('GradingService financial clearance', () => {
         getOrSetVersioned: jest.fn(),
         invalidateNamespace: jest.fn(),
       } as any,
+      {} as any,
     );
 
   it('blocks selected-term grades when an annual fee was paid for a different term only', async () => {

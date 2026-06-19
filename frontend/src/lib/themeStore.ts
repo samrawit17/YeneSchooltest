@@ -1,11 +1,12 @@
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 
 type Theme = 'light' | 'dark' | 'system';
 
 interface ThemeState {
   theme: Theme;
-  setTheme: (theme: Theme, userId?: string | null) => void;
   resolvedTheme: 'light' | 'dark';
+  setTheme: (theme: Theme, userId?: string | null) => void;
   initializeTheme: (userId?: string | null) => void;
 }
 
@@ -38,15 +39,14 @@ const parseTheme = (raw: string | null): Theme | null => {
   return null;
 };
 
-const getCurrentUserId = () => {
+const getCurrentUserId = (): string | null => {
   if (!isClient) return null;
 
-  const sources = [localStorage, sessionStorage];
+  const sources = [localStorage, sessionStorage] as const;
   for (const storage of sources) {
-    const rawUser = storage.getItem('user');
-    if (!rawUser) continue;
-
     try {
+      const rawUser = storage.getItem('user');
+      if (!rawUser) continue;
       const user = JSON.parse(rawUser) as { id?: string };
       if (user.id) return user.id;
     } catch {
@@ -57,53 +57,47 @@ const getCurrentUserId = () => {
   return null;
 };
 
-const getScopedThemeKey = (explicitUserId?: string | null) => {
-  const userId = explicitUserId ?? getCurrentUserId();
-  return userId ? `theme-storage:${userId}` : GUEST_THEME_KEY;
-};
-
-const applyResolvedTheme = (resolvedTheme: 'light' | 'dark') => {
-  if (!isClient) return;
-
-  const root = window.document.documentElement;
-  root.classList.remove('light', 'dark');
-  root.classList.add(resolvedTheme);
+const getScopedThemeKey = (userId?: string | null): string => {
+  const uid = userId ?? getCurrentUserId();
+  return uid ? `theme-storage:${uid}` : GUEST_THEME_KEY;
 };
 
 const readStoredTheme = (userId?: string | null): Theme => {
   if (!isClient) return DEFAULT_THEME;
 
-  const effectiveUserId = userId ?? getCurrentUserId();
-  const scopedTheme = parseTheme(localStorage.getItem(getScopedThemeKey(effectiveUserId)));
-  if (scopedTheme) return scopedTheme;
+  const uid = userId ?? getCurrentUserId();
+  const scoped = parseTheme(localStorage.getItem(getScopedThemeKey(uid)));
+  if (scoped) return scoped;
 
-  if (!effectiveUserId) {
-    const guestTheme = parseTheme(localStorage.getItem(GUEST_THEME_KEY));
-    if (guestTheme) return guestTheme;
+  if (!uid) {
+    const guest = parseTheme(localStorage.getItem(GUEST_THEME_KEY));
+    if (guest) return guest;
   }
 
   return DEFAULT_THEME;
 };
 
-export const useThemeStore = create<ThemeState>((set) => ({
-  theme: DEFAULT_THEME,
-  resolvedTheme: 'light',
+export const useThemeStore = create<ThemeState>()(
+  devtools(
+    (set) => ({
+      theme: DEFAULT_THEME,
+      resolvedTheme: 'light',
 
-  setTheme: (theme, userId) => {
-    const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
-    set({ theme, resolvedTheme });
+      setTheme: (theme, userId) => {
+        const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
+        set({ theme, resolvedTheme });
 
-    if (isClient) {
-      localStorage.setItem(getScopedThemeKey(userId), JSON.stringify({ theme }));
-    }
+        if (isClient) {
+          localStorage.setItem(getScopedThemeKey(userId), JSON.stringify({ theme }));
+        }
+      },
 
-    applyResolvedTheme(resolvedTheme);
-  },
-
-  initializeTheme: (userId) => {
-    const theme = readStoredTheme(userId);
-    const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
-    set({ theme, resolvedTheme });
-    applyResolvedTheme(resolvedTheme);
-  },
-}));
+      initializeTheme: (userId) => {
+        const theme = readStoredTheme(userId);
+        const resolvedTheme = theme === 'system' ? getSystemTheme() : theme;
+        set({ theme, resolvedTheme });
+      },
+    }),
+    { name: 'theme-store' },
+  ),
+);
