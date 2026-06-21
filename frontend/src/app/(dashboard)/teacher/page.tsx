@@ -186,7 +186,7 @@ const TeacherDashboard = () => {
       }
 
       try {
-        const attendanceResponse = await attendanceAPI.getTeacherDashboard();
+        const attendanceResponse = await attendanceAPI.getTeacherDashboard({ academicYearId: currentAcademicYear?.id });
         if (attendanceResponse.data?.todaySchedule) {
           const scheduleData = attendanceResponse.data.todaySchedule.map((slot: any, index: number) => ({
             id: slot.id || `slot-${index}`,

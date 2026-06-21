@@ -31,6 +31,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   getSchoolTimeBounds,
   getUniqueSlotRanges,
   SCHOOL_WEEK_DAYS,
@@ -63,7 +70,7 @@ interface TimeSlot {
 
 const TeacherTimetablePage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { currentAcademicYear, schoolCalendarType, formatDate } = useAcademicYear();
+  const { currentAcademicYear, schoolCalendarType, formatDate, getAllAcademicYears } = useAcademicYear();
   const router = useRouter();
   const { setItems } = useBreadcrumb();
   const [timetable, setTimetable] = useState<TimeSlot[]>([]);
@@ -71,6 +78,20 @@ const TeacherTimetablePage = () => {
   const [loading, setLoading] = useState(true);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(new Date());
   const [selectedMobileDay, setSelectedMobileDay] = useState<number>(1);
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [selectedYearId, setSelectedYearId] = useState<string>("");
+
+  useEffect(() => {
+    const fetchYears = async () => {
+      const years = await getAllAcademicYears();
+      setAcademicYears(years);
+      if (currentAcademicYear && !selectedYearId) {
+        setSelectedYearId(currentAcademicYear.id);
+      }
+    };
+    fetchYears();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentAcademicYear, getAllAcademicYears]);
 
   const weekdays = SCHOOL_WEEK_DAYS;
   const teachingSlots = timetable
@@ -109,7 +130,7 @@ const TeacherTimetablePage = () => {
       setLoading(true);
       // Use the teacher-specific endpoint
       const [timetableResponse, schoolSettingsResponse] = await Promise.all([
-        timetableSlotsAPI.getByTeacher(user?.id || '', { academicYearId: currentAcademicYear?.id }),
+        timetableSlotsAPI.getByTeacher(user?.id || '', { academicYearId: selectedYearId || currentAcademicYear?.id }),
         user?.schoolId ? schoolSettingsAPI.getAll(user.schoolId) : Promise.resolve({ data: {} }),
       ]);
       setTimetable(timetableResponse.data || []);
@@ -133,7 +154,7 @@ const TeacherTimetablePage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, user?.schoolId, currentAcademicYear?.id]);
+  }, [user?.id, user?.schoolId, selectedYearId, currentAcademicYear?.id]);
 
   useEffect(() => {
     if (isAuthenticated && !isLoading && user?.id) {
@@ -242,9 +263,9 @@ const TeacherTimetablePage = () => {
   return (
     <div className="w-full max-w-full space-y-4 bg-[#F8FAFC] p-3 dark:bg-[#111111] sm:p-4 md:space-y-6 md:p-6 overflow-x-hidden">
       {/* Header */}
-      <div className="overflow-hidden rounded-2xl border border-[rgba(var(--brand-color-rgb),0.12)] bg-white shadow-sm dark:border-[#334155] dark:bg-[#1C1C1C] sm:rounded-3xl">
+      <div>
         <div className="p-4 sm:p-6">
-          <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-xl font-bold text-gray-950 dark:text-white sm:text-2xl">
                 My Timetable
@@ -253,7 +274,23 @@ const TeacherTimetablePage = () => {
                 Clean daily teaching view for phone use, with a full weekly grid available on larger screens.
               </p>
             </div>
-
+            <div className="flex items-center gap-2">
+              <Select
+                value={selectedYearId}
+                onValueChange={setSelectedYearId}
+              >
+                <SelectTrigger className="w-[180px] bg-white dark:bg-[#111111] border-gray-200 dark:border-[#334155] dark:text-white">
+                  <SelectValue placeholder="Academic Year" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-[#1C1C1C]">
+                  {academicYears.map((year) => (
+                    <SelectItem key={year.id} value={year.id} className="dark:text-white">
+                      {year.name} {year.isActive ? "(Active)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </div>

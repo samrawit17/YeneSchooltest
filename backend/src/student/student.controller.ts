@@ -277,7 +277,10 @@ export class StudentController {
   @Get('homeroom/me')
   @Roles(Role.TEACHER, Role.ADMIN, Role.IT_MANAGER)
   @Permissions('student:read')
-  async getMyHomeroomStudents(@Request() req) {
+  async getMyHomeroomStudents(
+    @Request() req,
+    @Query('academicYearId') academicYearId?: string,
+  ) {
     const schoolId = this.requireSchoolContext(req);
     const teacherId = req.user.id;
     const requesterRole = req.user.role;
@@ -285,6 +288,7 @@ export class StudentController {
       schoolId,
       teacherId,
       requesterRole,
+      academicYearId,
     );
   }
 

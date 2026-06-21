@@ -1,6 +1,8 @@
 # YeneSchool — Full Architecture Context File
 
 > **Purpose**: Single source of truth for AI agents working on this codebase. Read this first before making any changes.
+>
+> **AI agent onboarding**: After this file, read `AGENTS.md` for the first-read protocol, task routing, and documentation index.
 
 ---
 

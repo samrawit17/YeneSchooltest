@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
@@ -25,6 +25,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -82,6 +90,22 @@ const MyClassesPage = () => {
   const { setItems } = useBreadcrumb();
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [loading, setLoading] = useState(true);
+  const { currentAcademicYear, getAllAcademicYears } = useAcademicYear();
+  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [selectedYearId, setSelectedYearId] = useState<string>("");
+
+  useEffect(() => {
+    const fetchYears = async () => {
+      const years = await getAllAcademicYears();
+      setAcademicYears(years);
+      if (currentAcademicYear) {
+        setSelectedYearId(currentAcademicYear.id);
+      } else if (years.length > 0) {
+        setSelectedYearId(years[0].id);
+      }
+    };
+    fetchYears();
+  }, [currentAcademicYear, getAllAcademicYears]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -89,35 +113,13 @@ const MyClassesPage = () => {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  useEffect(() => {
-    if (isAuthenticated && !isLoading && user?.id) {
-      fetchClasses();
-    }
-  }, [isAuthenticated, isLoading, user?.id]);
-
-  useEffect(() => {
-    setItems([
-      { label: "Dashboard", href: "/dashboard", isCurrent: false },
-      { label: "My Classes", isCurrent: true },
-    ]);
-    return () => setItems(null);
-  }, [setItems]);
-
-  const fetchClasses = async () => {
+  const fetchClasses = useCallback(async () => {
     try {
       setLoading(true);
 
-      let activeYear = "";
-      try {
-        const resp = await academicYearsAPI.getActive();
-        const active = resp.data?.data || resp.data;
-        activeYear = active?.name || "";
-      } catch {
-        // fallback — fetch all and take the first
-        const allResp = await academicYearsAPI.getAll();
-        const years = allResp.data?.data || allResp.data || [];
-        if (Array.isArray(years) && years.length > 0) activeYear = years[0]?.name || "";
-      }
+      const targetYearId = selectedYearId || currentAcademicYear?.id;
+      const yearObj = academicYears.find(y => y.id === targetYearId);
+      const activeYear = yearObj?.name || "";
 
       const response = await teachersAPI.getMyAssignments(activeYear || undefined);
       const { homeroomClasses, homeroomSections, teachingAssignments, teachingClasses } = response.data || {
@@ -167,38 +169,38 @@ const MyClassesPage = () => {
         }
       } else {
         for (const hc of homeroomClasses) {
-        // Get schedule from timetable slots for this homeroom class
-        let schedule = 'Not scheduled';
-        let room = 'TBD';
-        
-        // Find teaching assignments for this class
-        const classTeachingAssignments = teachingAssignments.filter(
-          (ta: any) => ta.class?.id === hc.id
-        );
-        
-        if (classTeachingAssignments.length > 0) {
-          const slotStrs = classTeachingAssignments.map((s: any) => 
-            `${DAYS[s.dayOfWeek]} ${s.startTime}-${s.endTime}`
+          // Get schedule from timetable slots for this homeroom class
+          let schedule = 'Not scheduled';
+          let room = 'TBD';
+          
+          // Find teaching assignments for this class
+          const classTeachingAssignments = teachingAssignments.filter(
+            (ta: any) => ta.class?.id === hc.id
           );
-          schedule = slotStrs.join(', ');
-          room = classTeachingAssignments[0].room || 'TBD';
+          
+          if (classTeachingAssignments.length > 0) {
+            const slotStrs = classTeachingAssignments.map((s: any) => 
+              `${DAYS[s.dayOfWeek]} ${s.startTime}-${s.endTime}`
+            );
+            schedule = slotStrs.join(', ');
+            room = classTeachingAssignments[0].room || 'TBD';
+          }
+          
+          classesWithSchedule.push({
+            id: hc.id,
+            sectionId: undefined,
+            classSubjectId: '',
+            name: hc.name,
+            grade: hc.grade,
+            section: hc.section || 'All',
+            subject: 'Homeroom',
+            subjectCode: undefined,
+            studentCount: hc.studentCount || 0,
+            schedule,
+            room,
+            type: 'homeroom'
+          });
         }
-        
-        classesWithSchedule.push({
-          id: hc.id,
-          sectionId: undefined,
-          classSubjectId: '',
-          name: hc.name,
-          grade: hc.grade,
-          section: hc.section || 'All',
-          subject: 'Homeroom',
-          subjectCode: undefined,
-          studentCount: hc.studentCount || 0,
-          schedule,
-          room,
-          type: 'homeroom'
-        });
-      }
       }
       
       // Process normalized teaching assignments from backend.
@@ -235,7 +237,21 @@ const MyClassesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedYearId, currentAcademicYear?.id, academicYears]);
+
+  useEffect(() => {
+    if (isAuthenticated && !isLoading && user?.id) {
+      fetchClasses();
+    }
+  }, [isAuthenticated, isLoading, user?.id, fetchClasses]);
+
+  useEffect(() => {
+    setItems([
+      { label: "Dashboard", href: "/dashboard", isCurrent: false },
+      { label: "My Classes", isCurrent: true },
+    ]);
+    return () => setItems(null);
+  }, [setItems]);
 
   if (loading || isLoading) {
     return (
@@ -257,13 +273,30 @@ const MyClassesPage = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-black">My Classes</h1>
-          <p className="text-gray-500">Manage your assigned classes and subjects</p>
+          <h1 className="text-2xl font-bold text-black dark:text-white">My Classes</h1>
+          <p className="text-gray-500 dark:text-gray-400">Manage your assigned classes and subjects</p>
         </div>
-        <Button onClick={() => router.push('/teacher/timetable')}>
-          <Calendar className="w-4 h-4 mr-2" />
-          View Timetable
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select
+            value={selectedYearId}
+            onValueChange={setSelectedYearId}
+          >
+            <SelectTrigger className="w-[180px] bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] dark:text-white">
+              <SelectValue placeholder="Academic Year" />
+            </SelectTrigger>
+            <SelectContent className="dark:bg-[#1C1C1C]">
+              {academicYears.map((year) => (
+                <SelectItem key={year.id} value={year.id} className="dark:text-white">
+                  {year.name} {year.isActive ? "(Active)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => router.push('/teacher/timetable')}>
+            <Calendar className="w-4 h-4 mr-2" />
+            View Timetable
+          </Button>
+        </div>
       </div>
 
       {/* Classes Grid */}

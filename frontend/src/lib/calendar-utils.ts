@@ -223,11 +223,13 @@ export function getCalendarTypeDisplayName(calendarType: CalendarType): string {
  * Ethiopian mode keeps time in Gregorian clock while switching date representation.
  */
 export function formatDateTimeByCalendarType(
-    date: Date | string,
+    date: Date | string | null | undefined,
     calendarType: CalendarType,
     locale: string = DEFAULT_GREGORIAN_LOCALE,
 ): string {
+    if (!date) return '';
     const d = typeof date === 'string' ? new Date(date) : date;
+    if (isNaN(d.getTime())) return '';
     const timePart = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
     const datePart = formatDateByCalendarType(d, calendarType);
     return `${datePart} ${timePart}`;

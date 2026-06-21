@@ -85,7 +85,7 @@ export default function TeacherDisciplinePage() {
 
       setLoading(true);
       try {
-        const studentsResponse = await studentsAPI.getHomeroomStudents();
+        const studentsResponse = await studentsAPI.getHomeroomStudents({ academicYearId: currentAcademicYear?.id });
         const rows = studentsResponse.data?.data || studentsResponse.data?.students || studentsResponse.data || [];
         const homeroomStudents: HomeroomStudent[] = Array.isArray(rows)
           ? rows.map((student: any) => ({
