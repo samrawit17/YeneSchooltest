@@ -19,7 +19,7 @@ export const studentsAPI = {
   }, options?: RequestOptions) =>
     api.get('/students', { params, ...requestOptions(options) }),
 
-  getHomeroomStudents: () => api.get('/students/homeroom/me'),
+  getHomeroomStudents: (params?: { academicYearId?: string }) => api.get('/students/homeroom/me', { params }),
   getMyClass: () => api.get('/students/me/class'),
 
   getById: (id: string) => api.get(`/students/${id}`),

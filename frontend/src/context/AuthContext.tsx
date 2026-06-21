@@ -65,31 +65,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
        return;
      }
      
-     const checkAuth = async () => {
-       try {
-         localStorage.removeItem('user');
-         const response = await userAPI.getProfile({ skipAuthErrorRedirect: true });
-         const profile = response.data;
-          if (profile) {
-            setUser(profile);
-            sessionStorage.setItem('user', getSessionUser(profile));
-            const userTheme = (profile.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
-           useThemeStore.getState().setTheme(userTheme, profile.id);
+      const checkAuth = async () => {
+        try {
+          localStorage.removeItem('user');
+          const response = await userAPI.getProfile({ skipAuthErrorRedirect: true });
+          const profile = response.data;
+           if (profile) {
+             setUser(profile);
+             sessionStorage.setItem('user', getSessionUser(profile));
+             const userTheme = (profile.theme || 'LIGHT').toLowerCase() as 'light' | 'dark' | 'system';
+            useThemeStore.getState().setTheme(userTheme, profile.id);
+            return;
          }
-       } catch (error: any) {
-         const isCanceledRequest =
-           error?.code === 'ERR_CANCELED' ||
-           error?.name === 'CanceledError' ||
-           error?.message === 'Request aborted';
-         if (error?.response?.status !== 401 && !isCanceledRequest) {
-           console.error('Failed to restore authenticated session:', error);
-         }
-         setUser(null);
-         sessionStorage.removeItem('user');
-       } finally {
-         setIsLoading(false);
-       }
-     };
+        } catch (error: any) {
+          const isCanceledRequest =
+            error?.code === 'ERR_CANCELED' ||
+            error?.name === 'CanceledError' ||
+            error?.message === 'Request aborted';
+          const isNetworkError = !error?.response && error?.message !== 'Request aborted';
+          if (isNetworkError) {
+            const cached = sessionStorage.getItem('user');
+            if (cached) {
+              try {
+                const parsed = JSON.parse(cached);
+                if (parsed.id && parsed.role) {
+                  setUser(parsed as User);
+                  setIsLoading(false);
+                  return;
+                }
+              } catch {}
+            }
+          }
+          if (error?.response?.status !== 401 && !isCanceledRequest && !isNetworkError) {
+            console.error('Failed to restore authenticated session:', error);
+          }
+          setUser(null);
+          sessionStorage.removeItem('user');
+        } finally {
+          setIsLoading(false);
+        }
+      };
 
      checkAuth();
      

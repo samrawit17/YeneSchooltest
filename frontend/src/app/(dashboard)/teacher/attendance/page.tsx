@@ -945,7 +945,7 @@ export default function TeacherAttendancePage() {
     <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-[#111111]">
       <div className="mx-auto w-full min-w-0 px-3 sm:px-6 lg:p-6">
         {/* Top Header */}
-        <div className="mb-4 min-w-0 bg-white p-3 shadow-sm dark:bg-[#1C1C1C] sm:mb-6 sm:p-6">
+        <div className="mb-4 min-w-0 sm:mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             {/* Title */}
             <div className="min-w-0 order-1">

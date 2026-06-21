@@ -1,4 +1,7 @@
-# SMS - School Management System
+# YeneSchool - School Management System
+
+> **AI agents**: Start at `docs/AGENTS.md` for first-read protocol and task-specific instructions.
+> All documentation lives under `docs/`. Begin with `docs/ARCHITECTURE.md` then `docs/AGENTS.md`.
 
 A full-stack School Management System built with **Next.js** and **NestJS**. Supports multi-tenant schools with role-based access, offline-first attendance, and multi-language support (English, Amharic, Arabic, Oromo, Somali).
 

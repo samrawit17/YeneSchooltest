@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { gradingAPI, practiceExamsAPI, schoolSettingsAPI, type PracticeExam, type PracticeExamQuestion } from "@/lib/api";
 import { getGradeNumbersFromSystem } from "@/lib/grade-system";
 
@@ -54,6 +55,7 @@ const extractGrade = (value?: string | null) => {
 export default function TeacherOnlineExamsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { currentAcademicYear } = useAcademicYear();
   const searchParams = useSearchParams();
   const examIdFromUrl = searchParams.get("examId") || "";
   const [selectedExamId, setSelectedExamId] = useState("");
@@ -76,8 +78,12 @@ export default function TeacherOnlineExamsPage() {
   const [csv, setCsv] = useState("");
 
   const assignmentsQuery = useQuery({
-    queryKey: ["teacher-online-exam-assignments"],
-    queryFn: async () => normalizeAssignments((await gradingAPI.getTeacherAssignments()).data),
+    queryKey: ["teacher-online-exam-assignments", currentAcademicYear?.id],
+    queryFn: async () =>
+      normalizeAssignments(
+        (await gradingAPI.getTeacherAssignments({ academicYear: currentAcademicYear?.id })).data,
+      ),
+    enabled: !!currentAcademicYear?.id,
   });
   const schoolSettingsQuery = useQuery({
     queryKey: ["school-settings", user?.schoolId, "teacher-online-exam-grades"],

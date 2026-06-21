@@ -1925,7 +1925,27 @@ export class StudentService {
     schoolId: string,
     teacherId: string,
     requesterRole: string,
+    academicYearId?: string,
   ) {
+    let resolvedAcademicYear: any;
+    if (academicYearId) {
+      resolvedAcademicYear = await this.prismaService.academicYear.findFirst({
+        where: {
+          schoolId,
+          OR: [
+            { id: academicYearId },
+            { name: academicYearId },
+          ],
+        },
+      });
+    } else {
+      resolvedAcademicYear = await this.prismaService.academicYear.findFirst({
+        where: { schoolId, isActive: true },
+      });
+    }
+
+    const resolvedAcademicYearId = resolvedAcademicYear?.id;
+
     const [homeroomSections, classSubjectAssignments, timetableAssignments] =
       await Promise.all([
         this.prismaService.section.findMany({
@@ -1933,6 +1953,7 @@ export class StudentService {
             homeroomTeacherId: teacherId,
             class: {
               schoolId,
+              ...(resolvedAcademicYearId ? { academicYearId: resolvedAcademicYearId } : {}),
             },
           },
           select: {
@@ -1952,6 +1973,7 @@ export class StudentService {
             teacherId,
             class: {
               schoolId,
+              ...(resolvedAcademicYearId ? { academicYearId: resolvedAcademicYearId } : {}),
             },
           },
           select: {
@@ -1977,6 +1999,7 @@ export class StudentService {
             teacherId,
             class: {
               schoolId,
+              ...(resolvedAcademicYearId ? { academicYearId: resolvedAcademicYearId } : {}),
             },
           },
           select: {
@@ -2051,6 +2074,7 @@ export class StudentService {
       await this.prismaService.studentClass.findMany({
         where: {
           schoolId,
+          ...(resolvedAcademicYear?.name ? { academicYear: resolvedAcademicYear.name } : {}),
           OR: assignedSections.map((section) => ({
             classId: section.classId,
             sectionId: section.sectionId,
