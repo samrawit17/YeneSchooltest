@@ -40,7 +40,7 @@ const statusIcons = {
 
 export default function ParentDisciplinePage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { currentAcademicYear } = useAcademicYear();
+  const { currentAcademicYear, allAcademicYears, setSelectedAcademicYearId } = useAcademicYear();
   const router = useRouter();
 
   const [incidents, setIncidents] = useState<ChildDiscipline[]>([]);
@@ -156,7 +156,7 @@ export default function ParentDisciplinePage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#111111]">
       <div className="px-6 py-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Discipline Records
@@ -165,24 +165,41 @@ export default function ParentDisciplinePage() {
               View your children's disciplinary records
             </p>
           </div>
-          {children.length > 1 && (
-            <div className="flex items-center gap-2 shrink-0 mr-[30px]">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Select Child</label>
-              <Select value={selectedChildId} onValueChange={setSelectedChildId}>
-                <SelectTrigger className="w-full max-w-[200px] dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
-                  <SelectValue placeholder="All children" />
+          <div className="flex flex-wrap items-center gap-4 shrink-0 mr-[30px]">
+            {children.length > 1 && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Select Child</label>
+                <Select value={selectedChildId} onValueChange={setSelectedChildId}>
+                  <SelectTrigger className="w-[180px] dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
+                    <SelectValue placeholder="All children" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All children</SelectItem>
+                    {children.map((child: any) => (
+                      <SelectItem key={child.id} value={child.id}>
+                        {child.name || child.student?.user?.name || "Unknown"} — {child.className || child.student?.className || "N/A"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Academic Year</label>
+              <Select value={currentAcademicYear?.id || ""} onValueChange={setSelectedAcademicYearId}>
+                <SelectTrigger className="w-[180px] dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
+                  <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All children</SelectItem>
-                  {children.map((child: any) => (
-                    <SelectItem key={child.id} value={child.id}>
-                      {child.name || child.student?.user?.name || "Unknown"} — {child.className || child.student?.className || "N/A"}
+                  {allAcademicYears.map((year) => (
+                    <SelectItem key={year.id} value={year.id}>
+                      {year.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
+          </div>
         </div>
       </div>
 

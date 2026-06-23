@@ -15,14 +15,28 @@ export default function AccessDenied({ type = '403' }: AccessDeniedProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { logout, user: currentUser } = useAuth();
-  const handleLogout = () => {
+  const handleLogout = async () => {
     let redirectTo = '/sign-in';
     const cached = currentUser?.schoolId
       ? readCachedSchoolLoginContext({ schoolId: currentUser.schoolId })
       : undefined;
     const normalizedRole = currentUser?.role?.toUpperCase();
-    if (normalizedRole !== 'SUPER_ADMIN' && cached?.publicUrlSlug) {
-      redirectTo = `/schools/${encodeURIComponent(cached.publicUrlSlug)}/login`;
+
+    let slug = cached?.publicUrlSlug;
+
+    if (normalizedRole !== 'SUPER_ADMIN' && !slug && currentUser?.schoolId) {
+      try {
+        const { schoolsAPI } = await import('@/lib/api/schools');
+        const res = await schoolsAPI.getById(currentUser.schoolId);
+        const school = res.data?.data || res.data;
+        slug = school?.publicUrlSlug;
+      } catch {
+        // fall through
+      }
+    }
+
+    if (normalizedRole !== 'SUPER_ADMIN' && slug) {
+      redirectTo = `/schools/${encodeURIComponent(slug)}/login`;
     } else if (currentUser?.schoolId) {
       redirectTo = `/sign-in?schoolId=${encodeURIComponent(currentUser.schoolId)}`;
     }

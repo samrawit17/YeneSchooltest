@@ -61,7 +61,7 @@ export class TimetableSlotService {
       throw new ForbiddenException('Parent profile not found');
     }
 
-    const linkedStudent = await this.prisma.parentStudent.findFirst({
+    const linkedStudents = await this.prisma.parentStudent.findMany({
       where: {
         schoolId,
         parentId: parentProfile.id,
@@ -71,31 +71,32 @@ export class TimetableSlotService {
       },
     });
 
-    if (!linkedStudent) {
+    if (linkedStudents.length === 0) {
       throw new ForbiddenException('No linked child found for this parent');
     }
 
-    const studentProfile = await this.prisma.studentProfile.findFirst({
-      where: { id: linkedStudent.studentId, schoolId },
+    const studentProfiles = await this.prisma.studentProfile.findMany({
+      where: { id: { in: linkedStudents.map(ls => ls.studentId) }, schoolId },
       select: { userId: true },
     });
 
-    if (!studentProfile?.userId) {
+    const studentUserIds = studentProfiles.map(sp => sp.userId).filter(Boolean);
+
+    if (studentUserIds.length === 0) {
       throw new ForbiddenException('Linked child profile is incomplete');
     }
 
-    const studentAssignments = await this.prisma.studentClass.findMany({
+    const studentAssignments = await this.prisma.studentClass.findFirst({
       where: {
         schoolId,
-        studentId: studentProfile.userId,
+        studentId: { in: studentUserIds },
         classId,
         ...(sectionId ? { sectionId } : {}),
       },
       select: { id: true },
-      take: 1,
     });
 
-    if (studentAssignments.length === 0) {
+    if (!studentAssignments) {
       throw new ForbiddenException(
         'You can only view the timetable for your linked child',
       );

@@ -52,6 +52,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Recharts for charts
 import {
@@ -507,7 +514,7 @@ const ParentDashboard = () => {
     };
     return map[statusText] || statusText;
   };
-  const { currentTerm, displayTermName, periodLabel, formatDate, schoolCalendarType } = useAcademicYear();
+  const { currentAcademicYear, allAcademicYears, setSelectedAcademicYearId, currentTerm, displayTermName, periodLabel, formatDate, schoolCalendarType } = useAcademicYear();
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -518,8 +525,6 @@ const ParentDashboard = () => {
   const [dailyPenaltyAmount, setDailyPenaltyAmount] = useState(0);
   
   // Grade-related state
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [selectedYear, setSelectedYear] = useState<string>("");
   const [childGrades, setChildGrades] = useState<Record<string, SubjectGrade[]>>({});
   const [gradesLoading, setGradesLoading] = useState(false);
   const [topRankChild, setTopRankChild] = useState<TopRankChild | null>(null);
@@ -536,39 +541,8 @@ const ParentDashboard = () => {
         const response = await parentDashboardAPI.getGeneralDashboard();
         const data = response.data;
 
-        // Fetch academic years
-        let years: AcademicYear[] = [];
-        let activeYearId = "";
-        
-        try {
-          const yearsRes = await academicYearsAPI.getAll();
-          years = Array.isArray(yearsRes.data) ? yearsRes.data : (yearsRes.data?.data || []);
-          setAcademicYears(years);
-        } catch (yearError) {
-          console.warn("Could not fetch academic years:", yearError);
-        }
-        
-        // Try to get active academic year
-        try {
-          const activeYearRes = await academicYearsAPI.getActive();
-          const activeYear = activeYearRes.data?.data || activeYearRes.data;
-          if (activeYear?.id) {
-            activeYearId = activeYear.id;
-            if (years.length === 0) {
-              years = [{ id: activeYear.id, name: activeYear.name }];
-              setAcademicYears(years);
-            }
-          }
-        } catch (activeError) {
-          console.warn("Could not fetch active academic year:", activeError);
-        }
-        
-        if (years.length > 0 && !activeYearId) {
-          activeYearId = years[0].id;
-        }
-        setSelectedYear(activeYearId);
-        const activeYearName =
-          years.find((year: any) => year.id === activeYearId)?.name || "";
+        const activeYearId = currentAcademicYear?.id || "";
+        const activeYearName = currentAcademicYear?.name || "";
         const dashboardSchoolId =
           data?.metadata?.schoolId ||
           (data.stats?.children || []).find((child: Child) => (child as any).schoolId)?.schoolId;
@@ -629,7 +603,7 @@ const ParentDashboard = () => {
                 const discountedItem = feeItems.find((item: any) => Number(item.discount) > 0);
                 discountPercent = Number(discountedItem?.discountPercent) || 0;
                 discountLabel = discountedItem?.discountLabel || null;
-                const childAcademicYear = years.find((year: any) => year.id === academicYearId);
+                const childAcademicYear = allAcademicYears.find((year: any) => year.id === academicYearId);
                 feePeriods = buildFeePeriodSummary(feeData, schoolCalendarType, currentTerm, childAcademicYear);
               } catch (feeError) {
                 console.error("Could not fetch fee data for child:", child.id, feeError);
@@ -767,7 +741,7 @@ const ParentDashboard = () => {
 
     if (parentGradesSettingLoading) return;
     fetchDashboard();
-  }, [parentGradesEnabled, parentGradesSettingLoading, currentTerm?.id]);
+  }, [parentGradesEnabled, parentGradesSettingLoading, currentAcademicYear?.id, allAcademicYears, currentTerm?.id]);
 
   const closeRankCongrats = () => {
     if (topRankChild && typeof window !== "undefined") {
@@ -814,7 +788,7 @@ const ParentDashboard = () => {
   const discountLabel = selectedChild?.discountLabel || "Family discount";
   const upcomingExams = selectedChild?.upcomingExams || 0;
   const selectedChildPhotoSrc = resolveAssetUrl(selectedChild?.photoUrl || selectedChild?.avatarUrl);
-  const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear);
+  const selectedAcademicYear = currentAcademicYear || undefined;
 
   const buildDueDateFromPeriodStart = (periodStart: Date) => {
     if (Number.isNaN(periodStart.getTime())) return null;
@@ -970,7 +944,7 @@ const ParentDashboard = () => {
       <div className="p-4 md:p-6 space-y-6">
 
         {/* Header */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {t.title}
@@ -979,11 +953,32 @@ const ParentDashboard = () => {
               {t.description}
             </p>
           </div>
-          {displayTermName ? (
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg px-3 py-1.5">
-              {displayTermName}
+          <div className="flex flex-wrap items-center gap-3">
+            {displayTermName ? (
+              <div className="text-sm font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-lg px-3 py-1.5">
+                {displayTermName}
+              </div>
+            ) : null}
+            <div className="w-[180px]">
+              <Select
+                value={currentAcademicYear?.id || ""}
+                onValueChange={(value) => {
+                  setSelectedAcademicYearId(value);
+                }}
+              >
+                <SelectTrigger className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white">
+                  <SelectValue placeholder="Academic Year" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A]">
+                  {allAcademicYears.map((year) => (
+                    <SelectItem key={year.id} value={year.id} className="text-gray-900 dark:text-white">
+                      {year.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ) : null}
+          </div>
         </div>
 
         {/* Student Selector + Profile */}

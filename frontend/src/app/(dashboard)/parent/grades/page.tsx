@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { academicYearsAPI, gradingAPI, reportCardsAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
 import { useSchoolFeatureSetting } from "@/hooks/useSchoolFeatureSetting";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,6 +109,7 @@ const calculateGradePoint = (average: number) => {
 export default function ParentGradesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const { currentAcademicYear, allAcademicYears, setSelectedAcademicYearId } = useAcademicYear();
   const {
     enabled: parentGradesEnabled,
     isLoading: parentGradesSettingLoading,
@@ -115,8 +117,6 @@ export default function ParentGradesPage() {
 
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [selectedYear, setSelectedYear] = useState("");
   const [terms, setTerms] = useState<TermOption[]>([]);
   const [selectedTerm, setSelectedTerm] = useState("all");
   const [periodLabel, setPeriodLabel] = useState("Curriculum Period");
@@ -127,55 +127,30 @@ export default function ParentGradesPage() {
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
 
+  const selectedYear = currentAcademicYear?.id || "";
+  const academicYears = allAcademicYears;
+
   const fetchInitialData = useCallback(async () => {
     try {
-      const [childrenResult, yearsResult] = await Promise.allSettled([
-        parentDashboardAPI.getChildren(),
-        academicYearsAPI.getAll(),
-      ]);
+      const childrenResult = await parentDashboardAPI.getChildren();
 
-      if (childrenResult.status === "fulfilled") {
-        const childrenData = childrenResult.value?.data?.children || [];
-        const normalizedChildren = Array.isArray(childrenData)
-          ? childrenData.map((child: any) => ({
-              id: child.studentId || child.id,
-              profileId: child.studentId || child.id,
-              userId: child.student?.userId || child.student?.id || child.userId,
-              name: child.name || child.student?.user?.name || "Unknown",
-              studentCode: child.student?.studentCode || child.studentCode || "",
-              className: child.className || child.student?.className || "N/A",
-              section: child.section || child.student?.section || "N/A",
-            }))
-          : [];
+      const childrenData = childrenResult.data?.children || childrenResult.data || [];
+      const normalizedChildren = Array.isArray(childrenData)
+        ? childrenData.map((child: any) => ({
+            id: child.studentId || child.id,
+            profileId: child.studentId || child.id,
+            userId: child.student?.userId || child.student?.id || child.userId,
+            name: child.name || child.student?.user?.name || "Unknown",
+            studentCode: child.student?.studentCode || child.studentCode || "",
+            className: child.className || child.student?.className || "N/A",
+            section: child.section || child.student?.section || "N/A",
+          }))
+        : [];
 
-        setChildren(normalizedChildren);
-        if (normalizedChildren.length > 0) {
-          const firstChild = normalizedChildren[0];
-          setSelectedChildId(firstChild.profileId || firstChild.userId || firstChild.id);
-        }
-      }
-
-      let years: AcademicYear[] = [];
-      if (yearsResult.status === "fulfilled") {
-        years = Array.isArray(yearsResult.value.data)
-          ? yearsResult.value.data
-          : (yearsResult.value.data?.data || []);
-        setAcademicYears(years);
-      }
-
-      try {
-        const activeYearRes = await academicYearsAPI.getActive();
-        const activeYear = activeYearRes.data?.data || activeYearRes.data;
-        if (activeYear?.id) {
-          setSelectedYear(activeYear.id);
-          if (years.length === 0) {
-            setAcademicYears([{ id: activeYear.id, name: activeYear.name }]);
-          }
-        } else if (years.length > 0) {
-          setSelectedYear(years[0].id);
-        }
-      } catch {
-        if (years.length > 0) setSelectedYear(years[0].id);
+      setChildren(normalizedChildren);
+      if (normalizedChildren.length > 0) {
+        const firstChild = normalizedChildren[0];
+        setSelectedChildId(firstChild.profileId || firstChild.userId || firstChild.id);
       }
 
       try {
@@ -539,7 +514,7 @@ export default function ParentGradesPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">Academic Year</label>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <Select value={selectedYear} onValueChange={setSelectedAcademicYearId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select academic year" />
                 </SelectTrigger>

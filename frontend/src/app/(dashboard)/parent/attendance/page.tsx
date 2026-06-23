@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { academicYearsAPI } from "@/lib/api";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 
 interface ParentAttendanceMessages {
   title: string;
@@ -135,6 +136,7 @@ const normalizeAttendanceStatus = (status?: string) =>
 export default function ParentAttendancePage() {
   const { t } = useTranslations<ParentAttendanceMessages>("parentAttendance");
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { currentAcademicYear, allAcademicYears, setSelectedAcademicYearId } = useAcademicYear();
   const router = useRouter();
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
@@ -143,20 +145,16 @@ export default function ParentAttendancePage() {
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string>("");
-  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; startDate?: string; endDate?: string }[]>([]);
-  const [selectedYear, setSelectedYear] = useState<string>("");
+
+  const selectedYear = currentAcademicYear?.id || "";
+  const academicYears = allAcademicYears;
 
   const fetchChildren = useCallback(async () => {
     try {
       setLoading(true);
-      const [childrenRes, yearsRes] = await Promise.allSettled([
-        parentsAPI.getChildren(),
-        academicYearsAPI.getAll(),
-      ]);
+      const childrenRes = await parentsAPI.getChildren();
 
-      const childrenData = childrenRes.status === "fulfilled" 
-        ? (childrenRes.value.data?.children || childrenRes.value.data || [])
-        : [];
+      const childrenData = childrenRes.data?.children || childrenRes.data || [];
       const normalizedChildren = Array.isArray(childrenData)
         ? childrenData.map((child: any) => ({
             id: child.studentId || child.id,
@@ -172,27 +170,6 @@ export default function ParentAttendancePage() {
       if (normalizedChildren.length > 0) {
         setSelectedChild(normalizedChildren[0]);
       }
-
-      let years: { id: string; name: string; startDate?: string; endDate?: string }[] = [];
-      if (yearsRes.status === "fulfilled") {
-        years = Array.isArray(yearsRes.value.data)
-          ? yearsRes.value.data
-          : (yearsRes.value.data?.data || []);
-        setAcademicYears(years);
-      }
-
-      try {
-        const activeYearRes = await academicYearsAPI.getActive();
-        const activeYear = activeYearRes.data?.data || activeYearRes.data;
-        if (activeYear?.id) {
-          setSelectedYear(activeYear.id);
-          if (years.length === 0) {
-            setAcademicYears([{ id: activeYear.id, name: activeYear.name, startDate: activeYear.startDate, endDate: activeYear.endDate }]);
-          }
-        } else if (years.length > 0) {
-          setSelectedYear(years[0].id);
-        }
-      } catch (error) {}
     } catch (err: any) {
       console.error("Error fetching children:", err);
     } finally {
@@ -374,7 +351,7 @@ export default function ParentAttendancePage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Academic Year</label>
             <Select
               value={selectedYear}
-              onValueChange={setSelectedYear}
+              onValueChange={setSelectedAcademicYearId}
             >
               <SelectTrigger className="w-full dark:bg-[#1A1A1A] dark:border-[#2A2A2A] dark:text-white">
                 <SelectValue placeholder="Select year" />
