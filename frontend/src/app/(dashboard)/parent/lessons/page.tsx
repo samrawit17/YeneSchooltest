@@ -54,7 +54,7 @@ const getStudentName = (lesson: Lesson) => {
 
 const ParentLessonsPage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { currentAcademicYear, schoolCalendarType } = useAcademicYear();
+  const { currentAcademicYear, allAcademicYears, setSelectedAcademicYearId, schoolCalendarType } = useAcademicYear();
   const router = useRouter();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [periodTimes, setPeriodTimes] = useState<Record<number, string>>({});
@@ -222,6 +222,23 @@ const ParentLessonsPage = () => {
           <p className="text-gray-500 dark:text-gray-400">
             View lesson plans and materials for your children
           </p>
+        </div>
+        <div className="w-[180px]">
+          <Select
+            value={currentAcademicYear?.id || ""}
+            onValueChange={setSelectedAcademicYearId}
+          >
+            <SelectTrigger className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white">
+              <SelectValue placeholder="Academic Year" />
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A]">
+              {allAcademicYears.map((year) => (
+                <SelectItem key={year.id} value={year.id} className="text-gray-900 dark:text-white">
+                  {year.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

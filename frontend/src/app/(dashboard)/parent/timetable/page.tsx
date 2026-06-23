@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { studentsAPI } from "@/lib/api";
 import { parentDashboardAPI } from "@/lib/api/parent";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import ClassProgramView from "@/components/timetable/ClassProgramView";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

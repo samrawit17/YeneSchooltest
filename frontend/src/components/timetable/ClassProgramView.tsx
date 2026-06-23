@@ -232,9 +232,9 @@ export default function ClassProgramView({
     <div className="bg-[#F8FAFC] dark:bg-[#0F172A]">
       <Card className="overflow-hidden dark:bg-[#1E293B] dark:border-[#334155]">
         <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">{t.weeklyProgram}</CardTitle>
+          <CardTitle className="text-gray-900 dark:text-white">{title || t.weeklyProgram}</CardTitle>
           <CardDescription>
-            {t.programDesc}
+            {subtitle}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">

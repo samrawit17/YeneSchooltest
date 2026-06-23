@@ -356,7 +356,7 @@ const buildPeriodPaymentHistory = (
 };
 
 const ParentFeesPage = () => {
-  const { currentAcademicYear, currentTerm, getAllAcademicYears, curriculumType, periodLabel, formatDate, schoolCalendarType } = useAcademicYear();
+  const { currentAcademicYear, allAcademicYears, setSelectedAcademicYearId, currentTerm, getAllAcademicYears, curriculumType, periodLabel, formatDate, schoolCalendarType } = useAcademicYear();
   const { t } = useTranslations<ParentFeesMessages>("parentFees");
   const [children, setChildren] = useState<Child[]>([]);
   const [feeDeadlineDay, setFeeDeadlineDay] = useState(15);
@@ -364,13 +364,14 @@ const ParentFeesPage = () => {
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
-  const [selectedYear, setSelectedYear] = useState<string>("");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
   const [selectedChildId, setSelectedChildId] = useState<string>("");
   const [periodTouched, setPeriodTouched] = useState(false);
 
-  const selectedAcademicYear = academicYears.find((year) => year.id === selectedYear) || currentAcademicYear || undefined;
+  const selectedYear = currentAcademicYear?.id || "";
+  const academicYears = allAcademicYears;
+
+  const selectedAcademicYear = currentAcademicYear || undefined;
   const periodTitles = getInstallmentPeriodTitles(
     normalizeCurriculumType(curriculumType || "SEMESTER"),
     selectedAcademicYear,
@@ -408,10 +409,8 @@ const ParentFeesPage = () => {
         const childrenRes = await parentsAPI.getChildren();
         if (childrenRes.status === 200) {
           const childrenData = childrenRes.data.children || childrenRes.data || [];
-          const years = await getAllAcademicYears();
-          setAcademicYears(years);
-          const effectiveYearId = selectedYear || currentAcademicYear?.id || years[0]?.id || "";
-          if (effectiveYearId) setSelectedYear(effectiveYearId);
+          const years = allAcademicYears;
+          const effectiveYearId = selectedYear;
           const firstSchoolId =
             childrenData[0]?.schoolId || childrenData[0]?.student?.schoolId || "";
           if (firstSchoolId) {
@@ -993,7 +992,7 @@ const ParentFeesPage = () => {
                         <Select
                           value={selectedYear}
                           onValueChange={(value) => {
-                            setSelectedYear(value);
+                            setSelectedAcademicYearId(value);
                             setPeriodTouched(false);
                           }}
                         >

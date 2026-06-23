@@ -7392,6 +7392,9 @@ const getLegacyModule = (language: AppLanguage, module: MessageModule) => {
   if (module === "parentAttendance") {
     return parentAttendanceMessages[language as keyof typeof parentAttendanceMessages] ?? parentAttendanceMessages.en;
   }
+  if (module === "parentTimetable") {
+    return parentTimetableMessages[language as keyof typeof parentTimetableMessages] ?? parentTimetableMessages.en;
+  }
   if (module === "timetable") {
     return timetableMessages[language as keyof typeof timetableMessages] ?? timetableMessages.en;
   }

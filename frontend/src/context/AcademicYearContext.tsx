@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useMemo, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useMemo, useCallback, useState, useEffect, ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { schoolSettingsAPI, academicYearsAPI, termsAPI } from "@/lib/api";
@@ -49,6 +49,9 @@ interface AcademicYearContextValue {
   getAllAcademicYears: () => Promise<AcademicYear[]>;
   getTermsForYear: (academicYearId: string) => Promise<AcademicTerm[]>;
   getCurrentAcademicYearId: () => string | null;
+  // Parent toggling support
+  setSelectedAcademicYearId: (id: string) => void;
+  allAcademicYears: AcademicYear[];
 }
 
 const AcademicYearContext = createContext<AcademicYearContextValue | undefined>(undefined);
@@ -217,7 +220,39 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
   const periodLabel = getDefaultPeriodLabel(curriculumType);
   const periodLabelPlural = curriculumType === "QUARTER" ? "Quarters" : curriculumType === "TERM" ? "Terms" : "Semesters";
 
-  const currentAcademicYear: AcademicYear | null = academicYearData || currentTermData?.academicYear || null;
+  const activeAcademicYear: AcademicYear | null = academicYearData || currentTermData?.academicYear || null;
+
+  // Selected year state for parents
+  const [selectedAcademicYearId, setSelectedAcademicYearIdState] = useState<string | null>(null);
+
+  // Initialize selected year from localStorage or active academic year
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("parentSelectedAcademicYearId");
+      if (saved) {
+        setSelectedAcademicYearIdState(saved);
+      } else if (activeAcademicYear?.id) {
+        setSelectedAcademicYearIdState(activeAcademicYear.id);
+      }
+    }
+  }, [activeAcademicYear]);
+
+  const setSelectedAcademicYearId = useCallback((id: string) => {
+    setSelectedAcademicYearIdState(id);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("parentSelectedAcademicYearId", id);
+    }
+  }, []);
+
+  const currentAcademicYear = useMemo(() => {
+    if (user?.role !== "PARENT") {
+      return activeAcademicYear;
+    }
+    if (!selectedAcademicYearId || !allAcademicYearsData) {
+      return activeAcademicYear;
+    }
+    return allAcademicYearsData.find((year) => year.id === selectedAcademicYearId) || activeAcademicYear;
+  }, [user?.role, selectedAcademicYearId, allAcademicYearsData, activeAcademicYear]);
   const currentTerm = useMemo<AcademicTerm | null>(() => {
     const now = new Date();
     const activeYearId = currentAcademicYear?.id;
@@ -332,6 +367,8 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
     getAllAcademicYears,
     getTermsForYear,
     getCurrentAcademicYearId,
+    setSelectedAcademicYearId,
+    allAcademicYears: allAcademicYearsData || [],
   }), [
     currentAcademicYear,
     currentTerm,
@@ -346,6 +383,8 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
     getAllAcademicYears,
     getTermsForYear,
     getCurrentAcademicYearId,
+    setSelectedAcademicYearId,
+    allAcademicYearsData,
   ]);
 
   return (
