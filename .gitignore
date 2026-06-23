@@ -40,3 +40,4 @@ coverage/
 backend/prisma/*.db
 backend/prisma/*.db-journal
 *.tsbuildinfog
+.aider*

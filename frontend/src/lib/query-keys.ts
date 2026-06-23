@@ -28,10 +28,10 @@ export const queryKeys = {
       ["class-subjects", classId, sectionId] as const,
   },
   messages: {
-    conversations: (userId?: string, schoolId?: string) =>
-      ["messaging-conversations", userId, schoolId] as const,
-    conversationMessages: (conversationId?: string | null, userId?: string) =>
-      ["messaging-messages", conversationId, userId] as const,
+    conversations: (userId?: string, schoolId?: string, academicYearId?: string | null) =>
+      ["messaging-conversations", userId, schoolId, academicYearId] as const,
+    conversationMessages: (conversationId?: string | null, userId?: string, academicYearId?: string | null) =>
+      ["messaging-messages", conversationId, userId, academicYearId] as const,
     messagesRoot: ["messaging-messages"] as const,
     conversationsRoot: ["messaging-conversations"] as const,
     staff: (

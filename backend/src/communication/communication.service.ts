@@ -25,6 +25,29 @@ export class CommunicationService {
     private notificationService: NotificationService,
   ) {}
 
+  private async getAcademicYearDateRange(
+    schoolId: string,
+    academicYearId?: string,
+  ): Promise<{ gte: Date; lte: Date } | null> {
+    if (!academicYearId) {
+      return null;
+    }
+
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: academicYearId, schoolId },
+      select: { startDate: true, endDate: true },
+    });
+
+    if (!academicYear) {
+      throw new NotFoundException('Academic year not found');
+    }
+
+    return {
+      gte: academicYear.startDate,
+      lte: academicYear.endDate,
+    };
+  }
+
   // ==================== COMMUNICATION CRUD ====================
 
   /**
@@ -345,6 +368,13 @@ export class CommunicationService {
       userId,
       userRole,
     );
+    const academicYearDateRange = await this.getAcademicYearDateRange(
+      schoolId,
+      query.academicYearId,
+    );
+    if (academicYearDateRange) {
+      whereClause.createdAt = academicYearDateRange;
+    }
 
     // Apply filters
     if (query.studentId) {
@@ -488,7 +518,12 @@ export class CommunicationService {
     userId: string,
     userRole: string,
     communicationId: string,
+    academicYearId?: string,
   ) {
+    const academicYearDateRange = await this.getAcademicYearDateRange(
+      schoolId,
+      academicYearId,
+    );
     const communication = await this.prisma.communication.findUnique({
       where: { id: communicationId },
       include: {
@@ -521,6 +556,14 @@ export class CommunicationService {
 
     if (communication.schoolId !== schoolId) {
       throw new ForbiddenException('Access denied');
+    }
+
+    if (
+      academicYearDateRange &&
+      (communication.createdAt < academicYearDateRange.gte ||
+        communication.createdAt > academicYearDateRange.lte)
+    ) {
+      throw new NotFoundException('Communication not found');
     }
 
     await this.verifyAccess(communication, userId, userRole);

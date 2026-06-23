@@ -96,12 +96,17 @@ export class CommunicationController {
    * Get a single communication by ID
    */
   @Get(':id')
-  async getCommunicationById(@Request() req: any, @Param('id') id: string) {
+  async getCommunicationById(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Query('academicYearId') academicYearId?: string,
+  ) {
     return this.communicationService.getCommunicationById(
       req.user.schoolId,
       req.user.id,
       req.user.role,
       id,
+      academicYearId,
     );
   }
 

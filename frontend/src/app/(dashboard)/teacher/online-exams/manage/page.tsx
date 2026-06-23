@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Edit, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -15,7 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { practiceExamsAPI, type PracticeExam, type PracticeExamStatus } from "@/lib/api";
+import { useAcademicYear } from "@/context/AcademicYearContext";
+import { academicYearsAPI, practiceExamsAPI, type PracticeExam, type PracticeExamStatus } from "@/lib/api";
 
 const statusTone: Record<PracticeExamStatus, string> = {
   DRAFT: "border-gray-200 text-gray-600 dark:border-[#2A2A2A] dark:text-gray-300",
@@ -23,6 +32,17 @@ const statusTone: Record<PracticeExamStatus, string> = {
   ACTIVE: "border-emerald-200 text-emerald-700 dark:border-emerald-900 dark:text-emerald-300",
   ARCHIVED: "border-amber-200 text-amber-700 dark:border-amber-900 dark:text-amber-300",
 };
+
+interface AcademicYear {
+  id: string;
+  name?: string;
+  label?: string;
+  ethiopianYear?: number | null;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  curriculumType?: string;
+}
 
 function formatStream(stream?: string | null) {
   if (stream === "NATURAL") return "Natural";
@@ -32,10 +52,35 @@ function formatStream(stream?: string | null) {
 
 export default function TeacherManageOnlineExamsPage() {
   const queryClient = useQueryClient();
+  const { currentAcademicYear } = useAcademicYear();
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>("");
+
+  useEffect(() => {
+    const fetchYears = async () => {
+      try {
+        const res = await academicYearsAPI.getAll();
+        const years = (res.data || []) as AcademicYear[];
+        const sorted = years.sort((a, b) => {
+          const aNum = parseInt(a.name, 10);
+          const bNum = parseInt(b.name, 10);
+          if (!isNaN(aNum) && !isNaN(bNum)) return bNum - aNum;
+          return b.name.localeCompare(a.name);
+        });
+        setAcademicYears(sorted);
+        if (currentAcademicYear && !selectedAcademicYear) {
+          setSelectedAcademicYear(currentAcademicYear.id);
+        }
+      } catch {}
+    };
+    fetchYears();
+  }, [currentAcademicYear]);
 
   const examsQuery = useQuery({
-    queryKey: ["teacher-online-exams"],
-    queryFn: async () => (await practiceExamsAPI.listAdmin()).data,
+    queryKey: ["teacher-online-exams", selectedAcademicYear],
+    queryFn: async () =>
+      (await practiceExamsAPI.listAdmin({ academicYearId: selectedAcademicYear || undefined })).data,
+    enabled: !!selectedAcademicYear,
   });
 
   const deleteExam = useMutation({
@@ -70,6 +115,21 @@ export default function TeacherManageOnlineExamsPage() {
             Create Exam
           </Link>
         </Button>
+      </div>
+
+      <div className="mb-4">
+        <Select value={selectedAcademicYear} onValueChange={setSelectedAcademicYear}>
+          <SelectTrigger className="w-[220px] bg-white dark:bg-[#111111] border-gray-200 dark:border-[#334155] dark:text-white">
+            <SelectValue placeholder="Academic Year" />
+          </SelectTrigger>
+          <SelectContent className="dark:bg-[#1C1C1C] dark:border-[#334155]">
+            {academicYears.map((year) => (
+              <SelectItem key={year.id} value={year.id} className="dark:text-white dark:focus:bg-[#2A2A2A]">
+                {year.name} {year.isActive ? "(Active)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>

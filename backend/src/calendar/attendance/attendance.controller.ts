@@ -358,6 +358,7 @@ export class AttendanceController {
     @Query('grade') grade?: string,
     @Query('section') section?: string,
     @Query('range') range?: string,
+    @Query('academicYearId') academicYearId?: string,
   ) {
     return this.attendanceService.getAdminDashboard(
       req.user,
@@ -367,6 +368,7 @@ export class AttendanceController {
       grade,
       section,
       range,
+      academicYearId,
     );
   }
 }

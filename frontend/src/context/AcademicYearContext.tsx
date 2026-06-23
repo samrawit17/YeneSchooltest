@@ -165,7 +165,8 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
       }
     },
     enabled: !!user?.schoolId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
   // Query for all academic years
@@ -181,7 +182,8 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
       }
     },
     enabled: !!user?.schoolId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
   const { data: currentTermData, isLoading: isLoadingCurrentTerm } = useQuery({
@@ -196,7 +198,8 @@ export const AcademicYearProvider = ({ children }: { children: ReactNode }) => {
       }
     },
     enabled: !!user?.schoolId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
   const schoolCalendarType: CalendarType = 

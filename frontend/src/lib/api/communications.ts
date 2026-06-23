@@ -65,6 +65,7 @@ export interface UpdateCommunicationStatusDto {
 }
 
 export interface CommunicationQueryParams {
+  academicYearId?: string;
   studentId?: string;
   classId?: string;
   status?: CommunicationStatus;
@@ -101,7 +102,8 @@ export const communicationsAPI = {
       params: { status },
       ...config,
     }),
-  getById: (id: string) => api.get<Communication>(`/communications/${id}`),
+  getById: (id: string, params?: Pick<CommunicationQueryParams, "academicYearId">) =>
+    api.get<Communication>(`/communications/${id}`, { params }),
   updateStatus: (id: string, data: UpdateCommunicationStatusDto) =>
     api.put<Communication>(`/communications/${id}/status`, data),
   delete: (id: string) => api.delete(`/communications/${id}`),
@@ -146,8 +148,10 @@ export const messagingAPI = {
   listStaff: (params?: { search?: string }) => api.get<MessagingParticipant[]>("/messages/staff", { params }),
   createConversation: (data: { subject?: string; participants: string[] }) =>
     api.post("/messages/conversation", data),
-  listConversations: () => api.get<MessagingConversationListItem[]>("/messages"),
-  getMessages: (conversationId: string) => api.get<MessagingMessage[]>(`/messages/${conversationId}`),
+  listConversations: (params?: { academicYearId?: string }) =>
+    api.get<MessagingConversationListItem[]>("/messages", { params }),
+  getMessages: (conversationId: string, params?: { academicYearId?: string }) =>
+    api.get<MessagingMessage[]>(`/messages/${conversationId}`, { params }),
   sendMessage: (conversationId: string, data: { content: string }) =>
     api.post(`/messages/${conversationId}`, data),
   markRead: (messageId: string) => api.patch(`/messages/read/${messageId}`),
