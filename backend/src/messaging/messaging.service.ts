@@ -32,6 +32,29 @@ export class MessagingService {
     return schoolId;
   }
 
+  private async getAcademicYearDateRange(
+    schoolId: string,
+    academicYearId?: string,
+  ): Promise<{ gte: Date; lte: Date } | null> {
+    if (!academicYearId) {
+      return null;
+    }
+
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { id: academicYearId, schoolId },
+      select: { startDate: true, endDate: true },
+    });
+
+    if (!academicYear) {
+      throw new NotFoundException('Academic year not found');
+    }
+
+    return {
+      gte: academicYear.startDate,
+      lte: academicYear.endDate,
+    };
+  }
+
   async createConversation(
     user: { id: string; schoolId?: string },
     dto: CreateConversationDto,
@@ -128,13 +151,28 @@ export class MessagingService {
     return conversation;
   }
 
-  async listConversations(user: { id: string; schoolId?: string }) {
+  async listConversations(
+    user: { id: string; schoolId?: string },
+    academicYearId?: string,
+  ) {
     const schoolId = this.ensureSchoolId(user.schoolId);
+    const academicYearDateRange = await this.getAcademicYearDateRange(
+      schoolId,
+      academicYearId,
+    );
 
     const conversations = await this.prisma.conversation.findMany({
       where: {
         schoolId,
         participants: { some: { userId: user.id } },
+        ...(academicYearDateRange
+          ? {
+              OR: [
+                { createdAt: academicYearDateRange },
+                { messages: { some: { createdAt: academicYearDateRange } } },
+              ],
+            }
+          : {}),
       },
       orderBy: { updatedAt: 'desc' },
       include: {
@@ -146,6 +184,9 @@ export class MessagingService {
           },
         },
         messages: {
+          where: academicYearDateRange
+            ? { createdAt: academicYearDateRange }
+            : undefined,
           orderBy: { createdAt: 'desc' },
           take: 1,
           select: {
@@ -161,6 +202,9 @@ export class MessagingService {
               where: {
                 senderId: { not: user.id },
                 reads: { none: { userId: user.id } },
+                ...(academicYearDateRange
+                  ? { createdAt: academicYearDateRange }
+                  : {}),
               },
             },
           },
@@ -221,8 +265,13 @@ export class MessagingService {
   async getConversationMessages(
     user: { id: string; schoolId?: string },
     conversationId: string,
+    academicYearId?: string,
   ) {
     const schoolId = this.ensureSchoolId(user.schoolId);
+    const academicYearDateRange = await this.getAcademicYearDateRange(
+      schoolId,
+      academicYearId,
+    );
 
     const conversation = await this.prisma.conversation.findFirst({
       where: {
@@ -238,7 +287,10 @@ export class MessagingService {
     }
 
     const messages = await this.prisma.message.findMany({
-      where: { conversationId },
+      where: {
+        conversationId,
+        ...(academicYearDateRange ? { createdAt: academicYearDateRange } : {}),
+      },
       orderBy: { createdAt: 'asc' },
       include: {
         sender: {

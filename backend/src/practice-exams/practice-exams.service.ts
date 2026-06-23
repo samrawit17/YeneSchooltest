@@ -245,6 +245,7 @@ export class PracticeExamsService {
     if (!this.isAdminRole(role)) where.createdById = userId;
     if (query.grade) where.grade = Number(query.grade);
     if (query.status) where.status = String(query.status).toUpperCase();
+    if (query.academicYearId) where.academicYearId = query.academicYearId;
     return this.prisma.practiceExam.findMany({
       where,
       include: {
@@ -389,15 +390,25 @@ export class PracticeExamsService {
     if (status === 'ACTIVE') {
       throw new BadRequestException('Create the online exam as draft or ready, add questions, then activate it');
     }
+    const classId = teacherAssignment?.classId || body.classId || null;
+    let academicYearId: string | null = null;
+    if (classId) {
+      const examClass = await this.prisma.class.findUnique({
+        where: { id: classId },
+        select: { academicYearId: true },
+      });
+      academicYearId = examClass?.academicYearId || null;
+    }
     return this.prisma.practiceExam.create({
       data: {
         schoolId,
+        academicYearId,
         createdById,
         title,
         description: body.description || null,
         grade,
         stream,
-        classId: teacherAssignment?.classId || body.classId || null,
+        classId,
         sectionId: teacherAssignment?.sectionId || body.sectionId || null,
         subjectId: teacherAssignment?.subjectId || body.subjectId || null,
         accessCode: this.normalizeAccessCode(body.accessCode) || this.generateAccessCode(),

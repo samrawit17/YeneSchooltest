@@ -465,6 +465,7 @@ export default function AttendanceManagementPage() {
         grade: gradeParam,
         section: selectedSection !== "all" ? selectedSection : undefined,
         range: timeRange,
+        academicYearId: selectedAcademicYear !== "all" ? selectedAcademicYear : undefined,
       });
       if (requestSeq !== dashboardRequestSeqRef.current) return;
       setDashboardData(response.data);
@@ -498,7 +499,7 @@ export default function AttendanceManagementPage() {
       }
       setRefreshing(false);
     }
-  }, [isAuthenticated, isAdmin, selectedDate, selectedGrade, selectedSection, timeRange, viewMode, visibleStartDate, visibleEndDate]);
+  }, [isAuthenticated, isAdmin, selectedDate, selectedGrade, selectedSection, timeRange, viewMode, visibleStartDate, visibleEndDate, selectedAcademicYear]);
 
   // Fetch academic years and periods
   useEffect(() => {
@@ -838,7 +839,7 @@ export default function AttendanceManagementPage() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gray-50 transition-colors dark:bg-[#111111]">
+    <div className="overflow-x-hidden transition-colors">
       <div className="p-3 sm:p-4 md:p-6">
         <div className="w-full space-y-5 md:space-y-6">
           {/* Header */}

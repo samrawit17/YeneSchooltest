@@ -74,6 +74,10 @@ export class UpdateCommunicationStatusDto {
 export class CommunicationQueryDto {
   @IsString()
   @IsOptional()
+  academicYearId?: string;
+
+  @IsString()
+  @IsOptional()
   studentId?: string;
 
   @IsString()

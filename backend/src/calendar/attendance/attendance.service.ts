@@ -2995,6 +2995,7 @@ export class AttendanceService {
     grade?: string,
     section?: string,
     range?: string,
+    academicYearId?: string,
   ) {
     const hasExplicitRange = Boolean(startDate && endDate);
     const targetDateStr = date || startDate || this.getDateString(new Date());
@@ -3024,28 +3025,35 @@ export class AttendanceService {
 
     // Get attendance sessions for the target date
     // Only filter by class when grade/section is explicitly provided
-    const targetSessions = await this.prisma.attendanceSession.findMany({
-      where: {
-        schoolId: user.schoolId,
-        date: {
-          gte: targetDateStart,
-          lte: targetDateEnd,
-        },
-        ...(hasGradeFilter || hasSectionFilter
-          ? {
-              OR: [
-                {
-                  timetableSlot: {
-                    class: classFilter,
-                  },
-                },
-                {
-                  class: classFilter,
-                },
-              ],
-            }
-          : {}),
+    const sessionWhere: any = {
+      schoolId: user.schoolId,
+      date: {
+        gte: targetDateStart,
+        lte: targetDateEnd,
       },
+    };
+    const sessionAndConditions: any[] = [];
+    if (hasGradeFilter || hasSectionFilter) {
+      sessionAndConditions.push({
+        OR: [
+          { timetableSlot: { class: classFilter } },
+          { class: classFilter },
+        ],
+      });
+    }
+    if (academicYearId) {
+      sessionAndConditions.push({
+        OR: [
+          { timetableSlot: { academicYearId } },
+          { class: { academicYearId } },
+        ],
+      });
+    }
+    if (sessionAndConditions.length) {
+      sessionWhere.AND = sessionAndConditions;
+    }
+    const targetSessions = await this.prisma.attendanceSession.findMany({
+      where: sessionWhere,
       include: {
         attendanceRecords: true,
         timetableSlot: {
@@ -3093,9 +3101,9 @@ export class AttendanceService {
         dayOfWeek,
         ...(hasGradeFilter ? { class: { grade: parseInt(grade) } } : {}),
         ...(hasSectionFilter ? { section: { name: section } } : {}),
-        academicYear: {
-          isActive: true,
-        },
+        ...(academicYearId
+          ? { academicYearId }
+          : { academicYear: { isActive: true } }),
       },
       include: {
         class: true,
@@ -3147,30 +3155,37 @@ export class AttendanceService {
 
     // Get recent absences
     // Only filter by grade/section when explicitly provided
+    const absenceSessionWhere: any = {
+      date: {
+        gte: targetDateStart,
+        lte: targetDateEnd,
+      },
+    };
+    const absenceAndConditions: any[] = [];
+    if (hasGradeFilter || hasSectionFilter) {
+      absenceAndConditions.push({
+        OR: [
+          { timetableSlot: { class: classFilter } },
+          { class: classFilter },
+        ],
+      });
+    }
+    if (academicYearId) {
+      absenceAndConditions.push({
+        OR: [
+          { timetableSlot: { academicYearId } },
+          { class: { academicYearId } },
+        ],
+      });
+    }
+    if (absenceAndConditions.length) {
+      absenceSessionWhere.AND = absenceAndConditions;
+    }
     const recentAbsences = await this.prisma.attendanceRecord.findMany({
       where: {
         schoolId: user.schoolId,
         status: 'ABSENT',
-        session: {
-          date: {
-            gte: targetDateStart,
-            lte: targetDateEnd,
-          },
-          ...(hasGradeFilter || hasSectionFilter
-            ? {
-                OR: [
-                  {
-                    timetableSlot: {
-                      class: classFilter,
-                    },
-                  },
-                  {
-                    class: classFilter,
-                  },
-                ],
-              }
-            : {}),
-        },
+        session: absenceSessionWhere,
       },
       include: {
         student: {

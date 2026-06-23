@@ -42,8 +42,11 @@ export class MessagingController {
 
   @Get()
   @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR, Role.TEACHER, Role.FINANCE)
-  async listConversations(@Request() req: any) {
-    return this.messagingService.listConversations(req.user);
+  async listConversations(
+    @Request() req: any,
+    @Query('academicYearId') academicYearId?: string,
+  ) {
+    return this.messagingService.listConversations(req.user, academicYearId);
   }
 
   @Get(':conversationId')
@@ -51,10 +54,12 @@ export class MessagingController {
   async getConversationMessages(
     @Request() req: any,
     @Param('conversationId') conversationId: string,
+    @Query('academicYearId') academicYearId?: string,
   ) {
     return this.messagingService.getConversationMessages(
       req.user,
       conversationId,
+      academicYearId,
     );
   }
 

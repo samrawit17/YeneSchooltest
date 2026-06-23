@@ -33,6 +33,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Zap,
+  CalendarDays,
 } from "lucide-react";
 import {
   Communication,
@@ -42,9 +43,11 @@ import {
   communicationsAPI,
 } from "@/lib/api/communications";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import NewMessageModal from "@/components/communications/NewMessageModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslations } from "@/hooks/useTranslations";
@@ -546,6 +549,13 @@ function CommunicationsContent() {
   const preselectedStudentId = searchParams ? searchParams.get("studentId") : null;
   const conversationId = searchParams ? searchParams.get("conversationId") : null;
   const { user } = useAuth();
+  const {
+    currentAcademicYear,
+    formattedYearLabel,
+    displayTermName,
+    isLoading: isAcademicYearLoading,
+  } = useAcademicYear();
+  const academicYearId = currentAcademicYear?.id;
   
   const [conversations, setConversations] = useState<ConversationWithParent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -573,14 +583,18 @@ function CommunicationsContent() {
     if (preselectedStudentId && !showNewMessageModal) {
       setShowNewMessageModal(true);
     }
-  }, [preselectedStudentId]);
+  }, [preselectedStudentId, showNewMessageModal]);
 
   const fetchCommunications = useCallback(async (page: number = 1) => {
+    if (isAcademicYearLoading) {
+      return;
+    }
+
     try {
       setLoading(page === 1);
       setError(null);
       setSelectionError(null);
-      const response = await communicationsAPI.getAll({ page, limit: 20 });
+      const response = await communicationsAPI.getAll({ page, limit: 20, academicYearId });
       const data = response.data.data || [];
       const meta = response.data.meta || { totalPages: 1, page: 1 };
       setTotalPages(meta.totalPages);
@@ -593,7 +607,7 @@ function CommunicationsContent() {
           setSelectedConversation(found);
         } else {
           try {
-            const selectedResponse = await communicationsAPI.getById(conversationId);
+            const selectedResponse = await communicationsAPI.getById(conversationId, { academicYearId });
             const selected = toConversationWithParent(selectedResponse.data);
             transformed = [selected, ...transformed.filter((conversation) => conversation.id !== selected.id)];
             setSelectedConversation(selected);
@@ -620,7 +634,7 @@ function CommunicationsContent() {
     } finally {
       setLoading(false);
     }
-  }, [conversationId]);
+  }, [academicYearId, conversationId, isAcademicYearLoading]);
 
   useEffect(() => { fetchCommunications(); }, [fetchCommunications]);
 
@@ -736,6 +750,17 @@ function CommunicationsContent() {
         <div>
           <h1 className="text-2xl font-bold text-black">{t.title.communicationBook}</h1>
           <p className="hidden text-xs text-gray-500 sm:block md:text-sm">{t.subtitle.book}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <Badge variant="outline" className="gap-1 border-gray-300 text-xs dark:border-[#334155]">
+              <CalendarDays className="h-3 w-3" />
+              {formattedYearLabel}
+            </Badge>
+            {displayTermName && (
+              <Badge variant="secondary" className="text-xs">
+                {displayTermName}
+              </Badge>
+            )}
+          </div>
         </div>
         <Button onClick={() => setShowNewMessageModal(true)} className="border border-[rgba(var(--brand-color-rgb),0.18)] bg-[rgba(var(--brand-color-rgb),0.12)] text-sm text-[var(--brand-color,#e35336)] hover:bg-[rgba(var(--brand-color-rgb),0.18)]">
           <Plus className="mr-1 h-4 w-4 md:mr-2" />

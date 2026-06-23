@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import {
   messagingAPI,
   MessagingConversationListItem,
@@ -20,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Plus, Search, Send } from "lucide-react";
+import { CalendarDays, Loader2, Plus, Search, Send } from "lucide-react";
 import { useTranslations } from "@/hooks/useTranslations";
 import { TranslatedText } from "@/components/translation/TranslatedText";
 
@@ -38,6 +39,12 @@ function getApiErrorMessage(error: unknown, fallback: string) {
 
 export default function MessagesPage() {
   const { user } = useAuth();
+  const {
+    currentAcademicYear,
+    formattedYearLabel,
+    displayTermName,
+    isLoading: isAcademicYearLoading,
+  } = useAcademicYear();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -58,6 +65,7 @@ export default function MessagesPage() {
   const autoCreateHandledRef = useRef<string | null>(null);
 
   const isStaffUser = !!user?.role && STAFF_ROLES.has(user.role.toUpperCase());
+  const academicYearId = currentAcademicYear?.id;
 
   useEffect(() => {
     syncService.startAutoSync();
@@ -65,8 +73,8 @@ export default function MessagesPage() {
   }, []);
 
   const conversationsQueryKey = useMemo(
-    () => queryKeys.messages.conversations(user?.id, user?.schoolId),
-    [user?.id, user?.schoolId]
+    () => queryKeys.messages.conversations(user?.id, user?.schoolId, academicYearId),
+    [academicYearId, user?.id, user?.schoolId]
   );
 
   const {
@@ -76,8 +84,8 @@ export default function MessagesPage() {
     refetch: refetchConversations,
   } = useQuery({
     queryKey: conversationsQueryKey,
-    queryFn: async () => (await messagingAPI.listConversations()).data,
-    enabled: !!user?.id && !!user?.schoolId && isStaffUser,
+    queryFn: async () => (await messagingAPI.listConversations({ academicYearId })).data,
+    enabled: !!user?.id && !!user?.schoolId && isStaffUser && !isAcademicYearLoading,
     staleTime: 5_000,
     refetchInterval: 10_000,
     retry: 1,
@@ -101,9 +109,9 @@ export default function MessagesPage() {
     error: messagesError,
     refetch: refetchMessages,
   } = useQuery({
-    queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
-    queryFn: async () => (await messagingAPI.getMessages(selectedConversationId!)).data,
-    enabled: !!user?.id && !!user?.schoolId && !!selectedConversationId && isStaffUser,
+    queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id, academicYearId),
+    queryFn: async () => (await messagingAPI.getMessages(selectedConversationId!, { academicYearId })).data,
+    enabled: !!user?.id && !!user?.schoolId && !!selectedConversationId && isStaffUser && !isAcademicYearLoading,
     staleTime: 0,
     refetchInterval: (query) => (query.state.status === "error" ? false : 3_000),
     retry: false,
@@ -148,14 +156,14 @@ export default function MessagesPage() {
     mutationFn: async (content: string) => messagingAPI.sendMessage(selectedConversationId!, { content }),
     onMutate: async (newContent: string) => {
       await queryClient.cancelQueries({
-        queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+        queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id, academicYearId),
       });
       const previousMessages = queryClient.getQueryData(
-        queryKeys.messages.conversationMessages(selectedConversationId, user?.id)
+        queryKeys.messages.conversationMessages(selectedConversationId, user?.id, academicYearId)
       );
 
       queryClient.setQueryData(
-        queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+        queryKeys.messages.conversationMessages(selectedConversationId, user?.id, academicYearId),
         (old: any) => {
         const newMessage = {
           id: `temp-${Date.now()}`,
@@ -175,7 +183,7 @@ export default function MessagesPage() {
       if (context?.newContent) setDraft(context.newContent);
       if (context?.previousMessages) {
         queryClient.setQueryData(
-          queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+          queryKeys.messages.conversationMessages(selectedConversationId, user?.id, academicYearId),
           context.previousMessages
         );
       }
@@ -203,7 +211,7 @@ export default function MessagesPage() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+        queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id, academicYearId),
       });
     },
   });
@@ -274,13 +282,13 @@ export default function MessagesPage() {
       .then(() => {
         queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
         queryClient.invalidateQueries({
-          queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id),
+          queryKey: queryKeys.messages.conversationMessages(selectedConversationId, user?.id, academicYearId),
         });
       })
       .catch((error) => {
         console.warn("Failed to mark messages as read", error);
       });
-  }, [messages, selectedConversationId, user?.id, queryClient, conversationsQueryKey]);
+  }, [academicYearId, messages, selectedConversationId, user?.id, queryClient, conversationsQueryKey]);
 
   const getConversationTitle = (c: MessagingConversationListItem) => {
     if (c.subject) return c.subject;
@@ -338,6 +346,17 @@ export default function MessagesPage() {
         <div>
           <h1 className="text-2xl font-bold text-black">{t.title.messages}</h1>
           <p className="text-xs md:text-sm text-gray-500 hidden sm:block">{t.subtitle.internal}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="outline" className="text-xs gap-1 border-gray-300 dark:border-[#334155]">
+              <CalendarDays className="h-3 w-3" />
+              {formattedYearLabel}
+            </Badge>
+            {displayTermName && (
+              <Badge variant="secondary" className="text-xs">
+                {displayTermName}
+              </Badge>
+            )}
+          </div>
         </div>
 
         <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>

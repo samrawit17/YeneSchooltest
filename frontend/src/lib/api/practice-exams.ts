@@ -10,6 +10,7 @@ export interface PracticeExam {
   description?: string | null;
   grade: number;
   stream?: string | null;
+  academicYearId?: string | null;
   classId?: string | null;
   sectionId?: string | null;
   subjectId?: string | null;
@@ -90,7 +91,7 @@ export interface PracticeExamSubmission {
 }
 
 export const practiceExamsAPI = {
-  listAdmin: (params?: { grade?: string; status?: string }) => api.get<PracticeExam[]>("/practice-exams", { params }),
+  listAdmin: (params?: { grade?: string; status?: string; academicYearId?: string }) => api.get<PracticeExam[]>("/practice-exams", { params }),
   create: (data: Partial<PracticeExam>) => api.post<PracticeExam>("/practice-exams", data),
   get: (id: string) => api.get<PracticeExam & { questions: PracticeExamQuestion[] }>(`/practice-exams/${id}`),
   update: (id: string, data: Partial<PracticeExam>) => api.patch<PracticeExam>(`/practice-exams/${id}`, data),
