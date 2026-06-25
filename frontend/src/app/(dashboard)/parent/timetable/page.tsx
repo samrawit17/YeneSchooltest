@@ -241,6 +241,7 @@ export default function ParentTimetablePage() {
               ? t.noProgramDescNoChild
               : t.noProgramDescNoTimetable
           }
+          academicYearId={currentAcademicYear?.id}
         />
       </div>
     </div>

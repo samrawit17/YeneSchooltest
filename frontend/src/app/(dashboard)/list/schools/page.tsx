@@ -182,7 +182,7 @@ const SchoolsPage = () => {
     return (
       <tr
         key={item.id}
-        className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        className="border-b border-gray-200 dark:border-[#444444] hover:bg-gray-50 dark:hover:bg-[#3a3a3a] transition-colors"
       >
       <td className="p-4">
         <div className="flex items-center gap-3">
@@ -190,24 +190,24 @@ const SchoolsPage = () => {
             <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <p className="font-semibold text-gray-900 dark:text-white">{item.name}</p>
+            <p className="font-semibold text-black dark:text-white">{item.name}</p>
             <div className="flex items-center gap-2 mt-1">
               <Hash className="w-3 h-3 text-gray-400" />
-              <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">ID: {item.id.slice(0, 8)}...</span>
+              <span className="text-xs text-black dark:text-gray-400 font-medium">ID: {item.id.slice(0, 8)}...</span>
             </div>
             {loginUrl && (
               <div className="mt-2 flex items-center gap-1 xl:hidden">
                 <Globe className="h-3.5 w-3.5 text-gray-400" />
-                <span className="max-w-[220px] truncate font-mono text-xs text-gray-600 dark:text-gray-400">
+                <span className="max-w-[220px] truncate font-mono text-xs text-black dark:text-gray-400">
                   {loginUrl}
                 </span>
                 <button
                   type="button"
                   onClick={() => copyLink("School login", loginUrl)}
-                  className="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="rounded p-1 hover:bg-gray-100 dark:hover:bg-[#3a3a3a]"
                   title="Copy school login link"
                 >
-                  <Copy className="h-3.5 w-3.5 text-gray-500" />
+                  <Copy className="h-3.5 w-3.5 text-black" />
                 </button>
               </div>
             )}
@@ -215,7 +215,7 @@ const SchoolsPage = () => {
         </div>
       </td>
       <td className="hidden md:table-cell p-4">
-        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+        <div className="flex items-center gap-2 text-black dark:text-gray-300">
           <Mail className="w-4 h-4" />
           <span className="font-medium truncate max-w-[180px]">{item.email}</span>
         </div>
@@ -225,7 +225,7 @@ const SchoolsPage = () => {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-gray-400" />
-              <span className="max-w-[220px] truncate font-mono text-xs text-gray-700 dark:text-gray-300">
+              <span className="max-w-[220px] truncate font-mono text-xs text-black dark:text-gray-300">
                 {loginUrl}
               </span>
             </div>
@@ -233,7 +233,7 @@ const SchoolsPage = () => {
               <button
                 type="button"
                 onClick={() => copyLink("School login", loginUrl)}
-                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-black hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
               >
                 <Copy className="h-3.5 w-3.5" />
                 Login
@@ -254,19 +254,19 @@ const SchoolsPage = () => {
         )}
       </td>
       <td className="hidden lg:table-cell p-4">
-        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+        <div className="flex items-center gap-2 text-black dark:text-gray-300">
           <Users className="w-4 h-4" />
           <span className="font-semibold">{item.studentCount ?? 0}</span>
         </div>
       </td>
       <td className="hidden 2xl:table-cell p-4">
-        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+        <div className="flex items-center gap-2 text-black dark:text-gray-300">
           <Phone className="w-4 h-4" />
           <span className="font-medium">{item.phone || "-"}</span>
         </div>
       </td>
       <td className="hidden 2xl:table-cell p-4">
-        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+        <div className="flex items-center gap-2 text-black dark:text-gray-300">
           <MapPin className="w-4 h-4" />
           <span className="font-medium truncate max-w-[200px]">{item.address || "-"}</span>
         </div>
@@ -316,13 +316,13 @@ const SchoolsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 space-y-6 font-sans">
+    <div className="min-h-screen bg-gray-100 dark:bg-[#2a2a2a] p-4 md:p-6 space-y-6 font-sans">
       <div>
         {/* Header */}
         <div className="flex flex-row flex-wrap items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-[#e35336]">Schools Management</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1 font-medium">Manage all educational institutions in the system</p>
+            <p className="text-black dark:text-gray-400 mt-1 font-medium">Manage all educational institutions in the system</p>
           </div>
           <button
             onClick={() => {
@@ -343,7 +343,7 @@ const SchoolsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Schools</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{totalSchools}</p>
+                <p className="text-2xl font-bold text-black dark:text-white mt-1">{totalSchools}</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-700 rounded-lg flex items-center justify-center">
                 <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -354,7 +354,7 @@ const SchoolsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-700 dark:text-green-300">Active Institutions</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{activeSchools}</p>
+                <p className="text-2xl font-bold text-black dark:text-white mt-1">{activeSchools}</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-800 dark:to-green-700 rounded-lg flex items-center justify-center">
                 <SchoolIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -365,7 +365,7 @@ const SchoolsPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Registered Students</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{totalStudents}</p>
+                <p className="text-2xl font-bold text-black dark:text-white mt-1">{totalStudents}</p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-800 dark:to-purple-700 rounded-lg flex items-center justify-center">
                 <Users className="w-6 h-6 text-purple-600 dark:text-purple-400" />
@@ -375,30 +375,30 @@ const SchoolsPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 mb-6">
+        <div className="bg-white dark:bg-[#333333] rounded-xl shadow-sm border border-gray-200 dark:border-[#444444] p-5 mb-6">
           <div className="flex flex-wrap gap-4 items-center">
             <TableSearch />
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-white dark:bg-[#333333] rounded-xl shadow-sm border border-gray-200 dark:border-[#444444] overflow-hidden">
           {isLoading ? (
             <div className="p-8 text-center">
               <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
-              <p className="text-gray-600 dark:text-gray-400 mt-4 font-semibold">Loading schools data...</p>
+              <p className="text-black dark:text-gray-400 mt-4 font-semibold">Loading schools data...</p>
             </div>
           ) : error ? (
             <div className="p-8 text-center">
               <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
               <p className="text-red-600 dark:text-red-400 font-semibold">Error loading schools</p>
-              <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">Please check your connection and try again</p>
+              <p className="text-black dark:text-gray-400 mt-2 text-sm">Please check your connection and try again</p>
             </div>
           ) : schools.length === 0 ? (
             <div className="p-8 text-center">
-              <Building2 className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400 font-semibold">No schools found in the system</p>
-              <p className="text-gray-500 dark:text-gray-500 text-sm mt-2">Start by adding your first educational institution</p>
+              <Building2 className="w-16 h-16 text-gray-400 dark:text-black mx-auto mb-4" />
+              <p className="text-black dark:text-gray-400 font-semibold">No schools found in the system</p>
+              <p className="text-black dark:text-black text-sm mt-2">Start by adding your first educational institution</p>
               <button
                 onClick={() => {
                   setSelectedSchool(null);
@@ -445,20 +445,20 @@ const SchoolsPage = () => {
                 <div className="w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 rounded-full flex items-center justify-center mx-auto mb-4">
                   <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
                 </div>
-                <p className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                <p className="text-xl font-bold text-black dark:text-white mb-2">
                   Delete School?
                 </p>
-                <p className="text-gray-600 dark:text-gray-400 font-medium">
-                  Are you sure you want to delete <span className="font-bold text-gray-900 dark:text-white">{selectedSchool.name}</span>?
+                <p className="text-black dark:text-gray-400 font-medium">
+                  Are you sure you want to delete <span className="font-bold text-black dark:text-white">{selectedSchool.name}</span>?
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+                <p className="text-sm text-black dark:text-black mt-2">
                   This action will permanently remove all associated data including users, students, and records.
                 </p>
               </div>
               <div className="flex justify-center gap-4 mt-4">
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-semibold"
+                  className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-black dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-semibold"
                 >
                   Cancel
                 </button>

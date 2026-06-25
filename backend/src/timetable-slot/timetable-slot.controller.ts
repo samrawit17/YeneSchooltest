@@ -219,15 +219,6 @@ export class TimetableSlotController {
       return { success: false, message: 'School ID is required' };
     }
 
-    if (req.user.role === Role.PARENT) {
-      await this.timetableSlotService.assertParentCanViewClassTimetable(
-        schoolId,
-        req.user.id,
-        classId,
-        sectionId,
-      );
-    }
-
     return this.timetableSlotService.getTimetableGrid(
       schoolId,
       classId,

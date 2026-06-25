@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { studentsAPI } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useAcademicYear } from "@/context/AcademicYearContext";
 import { useBreadcrumb } from "@/context/BreadcrumbContext";
 import ClassProgramView from "@/components/timetable/ClassProgramView";
 
@@ -17,6 +18,7 @@ interface EnrollmentInfo {
 export default function StudentTimetablePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { currentAcademicYear } = useAcademicYear();
   const { setItems } = useBreadcrumb();
   const [enrollment, setEnrollment] = useState<EnrollmentInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,6 @@ export default function StudentTimetablePage() {
     try {
       setLoading(true);
 
-      // Student class assignment (StudentClass) for the active academic year
       const response = await studentsAPI.getMyClass();
       const assignment = response.data;
 
@@ -79,7 +80,7 @@ export default function StudentTimetablePage() {
   }, [setItems]);
 
   if (isLoading || loading) {
-    return <ClassProgramView title="My Timetable" subtitle="Loading class program..." ownerName="Student" emptyTitle="" emptyDescription="" />;
+    return <ClassProgramView title="My Timetable" subtitle="Loading class program..." ownerName="Student" emptyTitle="" emptyDescription="" academicYearId={currentAcademicYear?.id} />;
   }
 
   return (
@@ -96,6 +97,7 @@ export default function StudentTimetablePage() {
       }
       emptyTitle="No Class Assigned"
       emptyDescription="Your class program will appear here after the school assigns you to a class and publishes the timetable."
+      academicYearId={currentAcademicYear?.id}
     />
   );
 }

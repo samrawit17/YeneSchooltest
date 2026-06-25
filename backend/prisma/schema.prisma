@@ -694,6 +694,7 @@ model AcademicYear {
   contents            Content[]
   subjects            Subject[]
   announcements       Announcement[]
+  practiceExams       PracticeExam[]
 
   @@unique([schoolId, name])
   @@index([schoolId])

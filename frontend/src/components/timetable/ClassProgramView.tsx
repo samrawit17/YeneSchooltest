@@ -48,6 +48,7 @@ interface ClassProgramViewProps {
   schoolId?: string;
   classId?: string;
   sectionId?: string;
+  academicYearId?: string;
   ownerName: string;
   subtitle: string;
   title: string;
@@ -105,6 +106,7 @@ export default function ClassProgramView({
   schoolId,
   classId,
   sectionId,
+  academicYearId,
   ownerName,
   subtitle,
   title,
@@ -145,8 +147,7 @@ export default function ClassProgramView({
         schoolSettingsAPI.getAll(schoolId),
         timetableSlotsAPI.getGrid(
           classId,
-          sectionId,
-          currentAcademicYear?.id,
+          sectionId ? { sectionId, academicYearId } : { academicYearId },
         ),
       ]);
 
@@ -159,7 +160,7 @@ export default function ClassProgramView({
     } finally {
       setLoading(false);
     }
-  }, [classId, currentAcademicYear?.id, schoolId, sectionId]);
+  }, [classId, academicYearId, schoolId, sectionId]);
 
   useEffect(() => {
     loadProgram();
