@@ -49,9 +49,10 @@ services:
     container_name: sms_backend_dev
     restart: unless-stopped
     environment:
+      HOME: /app
       NODE_ENV: development
       PORT: 8001
-      PRISMA_SCHEMA_SYNC: ${PRISMA_SCHEMA_SYNC:-push}
+      PRISMA_SCHEMA_SYNC: ${PRISMA_SCHEMA_SYNC:-migrate}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
       PRISMA_SKIP_SEED: ${PRISMA_SKIP_SEED:-1}
       DATABASE_URL: postgresql://${DB_USER:-lemari}:${DB_PASSWORD:-lemari_password}@postgres:5432/${DB_NAME:-lemarisms}
@@ -72,7 +73,6 @@ services:
       TRUST_PROXY: 1
     volumes:
       - ./backend:/app
-      - /app/node_modules
       - /app/.next
     ports:
       - "8001:8001"
@@ -93,8 +93,9 @@ services:
       # The dev entrypoint runs Prisma sync and seeding before Nest binds :8001.
       # First boot can exceed a minute on a fresh database, so give it more time.
       start_period: 180s
+    user: root
     entrypoint: /app/docker-entrypoint.sh
-    command: npm run start:dev
+    command: npm run start:prod
     networks:
       - sms_network
 

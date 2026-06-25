@@ -593,12 +593,6 @@ export class ParentService {
       YEAR: 'YEARLY',
     };
     const curriculumType = curriculumTypeMap[rawType] || rawType;
-    console.log(
-      'Returning curriculumType:',
-      curriculumType,
-      'from rawType:',
-      rawType,
-    );
 
     const terms = await this.prismaService.term.findMany({
       where: academicYear
