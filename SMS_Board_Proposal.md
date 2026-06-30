@@ -1,6 +1,6 @@
 <div align="center">
 
-  <h1 style="margin-top:0.5em;">YeneSchool — School Board Proposal / የትምህርት ቦርድ የውሳኔ ሐሳብ ማሳሰቢያ</h1>
+  <h1 style="margin-top:0.5em;">YeneSchool — A Proposal for the School Board / ለትምህርት ቦርድ የቀረበ ሐሳብ</h1>
   <p style="font-size:1.2em;margin-top:0.5em;"><strong>Prepared for: <span style="color:#5371ff;text-decoration:underline;">[School Name]</span></strong> / <strong>የተዘጋጀው ለ: <span style="color:#5371ff;text-decoration:underline;">[የትምህርት ቤቱ ስም]</span></strong></p>
 </div>
 
@@ -8,9 +8,9 @@
 
 ## Executive Summary / ማጠቃለያ
 
-Every term, your school generates fees it never collects, sends report cards days late, and answers the same 50 parent phone calls — while a competitor school down the road is doing all of this automatically. This proposal shows exactly how to close that gap in 5 weeks.
+Every term, your school generates fees it never collects, sends report cards days late, and answers the same 50 parent phone calls — while a competitor school down the road is doing all of this automatically. This proposal shows exactly how to close that gap in 3 weeks.
 
-በየወረዳው/በየሰሚስተሩ ትምህርት ቤትዎ ሊሰበሰብ የሚገባውን ገቢ ሳያገኝ ይቀራል፣ የውጤት ካርዶችን ያዘገያል፣ እንዲሁም ከተመሳሳይ ወላጆች ለሚነሱ ተደጋጋሚ ጥሪዎች ምላሽ በመስጠት ጊዜ ያጠፋል፤ በአቅራቢያዎ የሚገኝ ተፎካካሪ ትምህርት ቤት ግን ይህንን ሁሉ በራስ-ሰር (automatically) እያከናወነ ይገኛል። ይህ የውሳኔ ሐሳብ ይህንን ክፍተት በ5 ሳምንታት ውስጥ እንዴት ሙሉ በሙሉ መዝጋት እንደሚቻል ያሳያል።
+በየወረዳው/በየሰሚስተሩ ትምህርት ቤትዎ ሊሰበሰብ የሚገባውን ገቢ ሳያገኝ ይቀራል፣ የውጤት ካርዶችን ያዘገያል፣ እንዲሁም ከተመሳሳይ ወላጆች ለሚነሱ ተደጋጋሚ ጥሪዎች ምላሽ በመስጠት ጊዜ ያጠፋል፤ በአቅራቢያዎ የሚገኝ ተፎካካሪ ትምህርት ቤት ግን ይህንን ሁሉ በራስ-ሰር (automatically) እያከናወነ ይገኛል። ይህ የውሳኔ ሐሳብ ይህንን ክፍተት በ3 ሳምንታት ውስጥ እንዴት ሙሉ በሙሉ መዝጋት እንደሚቻል ያሳያል።
 
 > Pilot program currently underway with 6 schools in Addis Ababa — reference available on request.
 > የሙከራ ትግበራው በአሁኑ ወቅት በአዲስ አበባ ውስጥ ከ6 ትምህርት ቤቶች ጋር በመካሄድ ላይ ይገኛል — ማጣቀሻ በጥያቄ ማቅረብ ይቻላል።
@@ -152,11 +152,11 @@ Parents **apply online from any device** — phone, tablet, or computer. They fi
 
 ---
 
-### Attendance — Works Without Internet / ተማሪዎችን መቆጣጠር — ያለ ኢንተርኔትም ይሠራል
+### Offline-First — Attendance, Grade Entry & More Without Internet / ያለ ኢንተርኔት መሥራት — መቅረት፣ ውጤት እና ሌሎችም ያለ ኢንተርኔት ይሠራሉ
 
-YeneSchool's attendance works **offline-first**. Teachers mark attendance on their phone or tablet even when there is no internet. The data stores locally and **syncs automatically** when the connection returns. No duplicate entries, no data loss. Daily and per-period attendance with instant reports.
+YeneSchool is built **offline-first**. Teachers mark attendance **and enter grades** on their phone or tablet even when there is no internet. All data stores locally and **syncs automatically** when the connection returns. No duplicate entries, no data loss. Daily and per-period attendance with instant reports. Grade entry, lesson notes, and other key tasks all work without a connection.
 
-የYeneSchool የቅድምና መቅረት መቆጣጠሪያ **ያለ ኢንተርኔትም (offline-first) እንዲሠራ** ተደርጎ የተገነባ ነው። መምህራን ኢንተርኔት በሌለበት ሰዓት እንኳ በስልካቸው ወይም በታብሌታቸው መቅረታቸውን መመዝገብ ይችላሉ። መረጃው በጊዜያዊነት ስልካቸው ላይ የሚቀመጥ ሲሆን ኢንተርኔት ሲመለስ **በራሱ ከዋናው ሰርቨር ጋር ይገናኛል (syncs)**። ምንም ዓይነት የመረጃ መጥፋት ወይም መደራረብ አይኖርም።
+YeneSchool **ያለ ኢንተርኔትም (offline-first) እንዲሠራ** ተደርጎ የተገነባ ነው። መምህራን ኢንተርኔት በሌለበት ሰዓት እንኳ መቅረትን መመዝገብ **እና ውጤትን ማስገባት** በስልካቸው ወይም በታብሌታቸው ይችላሉ። ሁሉም መረጃዎች በጊዜያዊነት ስልካቸው ላይ የሚቀመጡ ሲሆን ኢንተርኔት ሲመለስ **በራሳቸው ከዋናው ሰርቨር ጋር ይገናኛሉ (sync)**። ውጤት ማስገባት፣ የትምህርት ማስታወሻዎች እና ሌሎች ቁልፍ ተግባራት ሁሉ ያለ ኢንተርኔት ይሠራሉ። ምንም ዓይነት የመረጃ መጥፋት ወይም መደራረብ አይኖርም።
 
 ---
 
@@ -229,11 +229,10 @@ Each role sees **only what they need** — a teacher cannot see financial data, 
 
 | Phase / ደረጃ | Timeline / ጊዜ | Deliverables / የሚጠበቁ ውጤቶች |
 |:---|:---|:---|
-| **1. Setup** / ዝግጅት | Week 1 / 1ኛ ሳምንት | Server setup, data import, user roles / የሰርቨር ዝግጅት፣ የነባር መረጃዎች ማስገባት፣ የተጠቃሚዎች ምደባ |
-| **2. Training** / ስልጠና | Week 2 / 2ኛ ሳምንት | Role-based training sessions / እንደየሥራ መደቡ የተዘጋጁ ተግባራዊ ስልጠናዎች |
-| **3. Go-Live (Pilot)** / መጀመር (ሙከራ) | Week 3 / 3ኛ ሳምንት | One grade live — attendance + fees / በአንድ የክፍል ደረጃ ላይ መቅረትና ክፍያን በተግባር ማስጀመር |
-| **4. Full Rollout** / ሙሉ ትግበራ | Week 4–5 / ከ4-5 ሳምንት | All grades live, parent portal open / በሁሉም ክፍሎች ላይ ሥራ መጀመር፣ የወላጅ ገጽ ክፍት ማድረግ |
-| **5. Support** / ድጋፍ | Ongoing / ቀጣይነት ያለው | Documentation, priority support / ሰነዶች፣ መመሪያዎችና የቅድሚያ ድጋፍ |
+| **1. Setup & Training** / ዝግጅት እና ስልጠና | Week 1 / 1ኛ ሳምንት | Server setup, data import, user roles, role-based training / የሰርቨር ዝግጅት፣ የነባር መረጃዎች ማስገባት፣ የተጠቃሚዎች ምደባ፣ ተግባራዊ ስልጠና |
+| **2. Go-Live (Pilot)** / መጀመር (ሙከራ) | Week 2 / 2ኛ ሳምንት | One grade live — attendance, grades & fees / በአንድ የክፍል ደረጃ ላይ መቅረት፣ ውጤትና ክፍያን በተግባር ማስጀመር |
+| **3. Full Rollout** / ሙሉ ትግበራ | Week 3 / 3ኛ ሳምንት | All grades live, parent portal open / በሁሉም ክፍሎች ላይ ሥራ መጀመር፣ የወላጅ ገጽ ክፍት ማድረግ |
+| **4. Support** / ድጋፍ | Ongoing / ቀጣይነት ያለው | Documentation, priority support / ሰነዶች፣ መመሪያዎችና የቅድሚያ ድጋፍ |
 
 ---
 
@@ -298,14 +297,14 @@ Includes full setup, training, data migration, and 1 year of priority support. N
 
 ይህ ዋጋ ሙሉ ዝግጅትን፣ ስልጠናን፣ የውሂብ ማዛወርን እና የ1 ዓመት የቅድሚያ ቴክኒካዊ ድጋፍን ያጠቃልላል። ምንም ዓይነት የተደበቀ ክፍያ የለም።
 
-For full pricing details, visit **www.yeneschool.me/pricing**.
-ለሙሉ የዋጋ ዝርዝር መረጃ፣ **www.yeneschool.me/pricing** ይጎብኙ።
+For full pricing details, visit **www.yeneschool.me**.
+ለሙሉ የዋጋ ዝርዝር መረጃ፣ **www.yeneschool.me** ይጎብኙ።
 
 ---
 
 ## Our Guarantee / ዋስትናችን
 
-- **If the system isn't fully operational within 5 weeks, we extend support at no charge.** / ሥርዓቱ በ5 ሳምንታት ውስጥ ሙሉ በሙሉ መሥራት ካልጀመረ፣ ያለ ተጨማሪ ክፍያ የቴክኒክ ድጋፍ ጊዜውን እናራዝማለን።
+- **If the system isn't fully operational within 3 weeks, we extend support at no charge.** / ሥርዓቱ በ3 ሳምንታት ውስጥ ሙሉ በሙሉ መሥራት ካልጀመረ፣ ያለ ተጨማሪ ክፍያ የቴክኒክ ድጋፍ ጊዜውን እናራዝማለን።
 - **Free data export at any time — your data is never held hostage.** / በማንኛውም ጊዜ ውሂብዎን (Data) በነጻ ወደ ውጭ መላክ (Export) ማድረግ ይችላሉ — ውሂብዎ በፍጹም በእኛ አይታገድም።
 - **Not satisfied after the first term? We'll refund the setup fee.** / ከመጀመሪያው ሰሚስተር በኋላ በአገልግሎታችን ካልረኩ፣ የቅንብር (Setup) ክፍያውን ሙሉ በሙሉ እንመልሳለን።
 
@@ -335,14 +334,15 @@ You don't need to prepare anything. Just having received this proposal is enough
 **እስከዚያው ድረስ:**
 - የቀጥታ ማሳያውን አሁኑኑ ይሞክሩ: **[yeneschool.me/demo](https://www.yeneschool.me/demo)**
 - ኢሜይል ይጻፉልን: **yeneschool@gmail.com**
-- በስልክ / በዋትስአፕ ያግኙን: **+251983355598**
+- በስልክ **+251983355598**
+- በስልክ **+251983355598**
+- በስልክ **+251983355598**
 
 ---
 
 <div align="center">
 
 **YeneSchool by afro digital: www.afrodigital.dev**
-Phone: +251983355598  
 Email: yeneschool@gmail.com  
 Web: www.yeneschool.me
 

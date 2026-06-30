@@ -214,6 +214,8 @@ export default function TeacherGradingPage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const [selectedClassSectionId, setSelectedClassSectionId] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
 
   const normalizedRole = (user?.role || "").toUpperCase();
   const isTeacherUser = normalizedRole === "TEACHER";
@@ -636,6 +638,18 @@ export default function TeacherGradingPage() {
     return () => syncService.stopAutoSync();
   }, [isTeacherUser]);
 
+  useEffect(() => {
+    const refreshSyncStatus = async () => {
+      const status = await syncService.getSyncStatus();
+      setPendingSyncCount(status.pendingCount + status.failedCount);
+      setIsOnline(status.isOnline);
+    };
+
+    refreshSyncStatus();
+    const interval = window.setInterval(refreshSyncStatus, 5000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   function calculateTotal(componentScores?: Record<string, number | null>, ca?: number | null, mid?: number | null, final?: number | null): number | null {
     if (componentScores && Object.keys(componentScores).length > 0) {
       const values = Object.values(componentScores).filter((value) => value !== null && value !== undefined) as number[];
@@ -913,6 +927,38 @@ export default function TeacherGradingPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  const buildGradesToSave = useCallback((assignment: TeacherAssignment) => {
+    return students
+      .filter((student) => isStudentDraftEditable(student))
+      .filter((student) => {
+        const componentValues = assessmentColumns
+          .filter((col) => canEditComponent(col.code))
+          .map((col) => student.componentScores?.[col.code.toUpperCase()]);
+        return componentValues.some((value) => value !== null && value !== undefined);
+      })
+      .map((student) => ({
+        studentId: student.studentId,
+        subjectId: assignment.subject.id,
+        classId: assignment.class.id,
+        sectionId: assignment.section.id,
+        academicYear: selectedYear,
+        termId: selectedTerm,
+        caScore: student.caScore,
+        midScore: student.midScore,
+        finalScore: student.finalScore,
+        componentScores: assessmentColumns
+          .filter((col) => canEditComponent(col.code))
+          .map((col) => ({
+            code: col.code,
+            score: student.componentScores?.[col.code.toUpperCase()] ?? null,
+            assessmentSubjectId:
+              componentAvailability[col.code.toUpperCase()]?.assessmentSubjectId,
+          })),
+        remark: student.remark,
+        internalNote: student.internalNote,
+      }));
+  }, [students, assessmentColumns, selectedYear, selectedTerm, componentAvailability]);
+
   const handleSaveDraft = async () => {
     if (!isTeacherUser) {
       toast.error("Only teachers can save grade drafts");
@@ -920,58 +966,39 @@ export default function TeacherGradingPage() {
     }
 
     setSaving(true);
-    let offlinePayload: Record<string, unknown> | null = null;
+    let draftPayload: Record<string, unknown> | null = null;
     try {
       const assignment = assignments.find((a) => a.id === selectedClassSectionId);
-      if (!assignment) return;
-
-      // Filter students with at least one score entered
-      const gradesToSave = students
-        .filter((student) => isStudentDraftEditable(student))
-        .filter(s => {
-          const componentValues = assessmentColumns
-            .filter((col) => canEditComponent(col.code))
-            .map((col) => s.componentScores?.[col.code.toUpperCase()]);
-          if (componentValues.some(value => value !== null && value !== undefined)) {
-            return true;
-          }
-          return false;
-        })
-        .map(student => ({
-          studentId: student.studentId,
-          subjectId: assignment.subject.id,
-          classId: assignment.class.id,
-          sectionId: assignment.section.id,
-          academicYear: selectedYear,
-          termId: selectedTerm,
-          caScore: student.caScore,
-          midScore: student.midScore,
-          finalScore: student.finalScore,
-          componentScores: assessmentColumns
-            .filter((col) => canEditComponent(col.code))
-            .map(col => ({
-              code: col.code,
-              score: student.componentScores?.[col.code.toUpperCase()] ?? null,
-              assessmentSubjectId:
-                componentAvailability[col.code.toUpperCase()]?.assessmentSubjectId,
-            })),
-          remark: student.remark,
-          internalNote: student.internalNote,
-        }));
-
-      if (gradesToSave.length === 0) {
-        toast.error("No editable draft grades to save");
-        setSaving(false);
+      if (!assignment) {
+        toast.error("Please select an assignment");
         return;
       }
 
-      offlinePayload = {
+      const gradesToSave = buildGradesToSave(assignment);
+
+      if (gradesToSave.length === 0) {
+        toast.error("No editable draft grades to save");
+        return;
+      }
+
+      draftPayload = {
         grades: gradesToSave,
         userId: user?.id,
         contextKey: `${selectedClassSectionId}:${selectedYear}:${selectedTerm}`,
+        academicYear: selectedYear,
+        termId: selectedTerm,
+        classId: assignment.class.id,
+        sectionId: assignment.section.id,
+        subjectId: assignment.subject.id,
       };
 
-      // Use bulk API for better performance
+      if (!navigator.onLine) {
+        await syncService.saveGradeDraftOffline(draftPayload);
+        toast.success("Grades saved offline. They will sync when online.");
+        setHasUnsavedChanges(false);
+        return;
+      }
+
       const res = await gradingAPI.bulkEnterGrades({ grades: gradesToSave });
       const data = res.data;
 
@@ -993,8 +1020,8 @@ export default function TeacherGradingPage() {
     } catch (error: any) {
       console.error("Error saving draft:", error);
       const isNetworkError = !navigator.onLine || !error?.response;
-      if (isNetworkError && offlinePayload) {
-        await syncService.saveGradeDraftOffline(offlinePayload);
+      if (isNetworkError && draftPayload) {
+        await syncService.saveGradeDraftOffline(draftPayload);
         toast.success("Grades saved offline. They will sync when online.");
         setHasUnsavedChanges(false);
       } else {
@@ -1009,6 +1036,17 @@ export default function TeacherGradingPage() {
       setSaving(false);
     }
   };
+
+  const buildSubmissionPayload = useCallback((assignment: TeacherAssignment) => ({
+    academicYear: selectedYear,
+    termId: selectedTerm,
+    classId: assignment.class.id,
+    sectionId: assignment.section.id,
+    subjectId: assignment.subject.id,
+    userId: user?.id,
+    contextKey: `${selectedClassSectionId}:${selectedYear}:${selectedTerm}`,
+    grades: buildGradesToSave(assignment),
+  }), [buildGradesToSave, selectedClassSectionId, selectedYear, selectedTerm, user?.id]);
 
   const handleSubmitToRegistrar = async () => {
     if (!isTeacherUser) {
@@ -1036,13 +1074,26 @@ export default function TeacherGradingPage() {
         toast.error("No draft grades available to submit");
         return;
       }
-      
+      const submitPayload = buildSubmissionPayload(assignment);
+
+      if (submitPayload.grades.length === 0) {
+        toast.error("No editable draft grades to submit");
+        return;
+      }
+
+      if (!navigator.onLine) {
+        await syncService.queueGradeSubmissionOffline(submitPayload);
+        toast.success("Submission queued offline. It will submit when online.");
+        setHasUnsavedChanges(false);
+        return;
+      }
+
       const res = await gradingAPI.submitAllGrades({
-        academicYear: selectedYear,
-        termId: selectedTerm,
-        classId: assignment.class.id,
-        sectionId: assignment.section.id,
-        subjectId: assignment.subject.id,
+        academicYear: submitPayload.academicYear,
+        termId: submitPayload.termId,
+        classId: submitPayload.classId,
+        sectionId: submitPayload.sectionId,
+        subjectId: submitPayload.subjectId,
       });
       const data = res.data;
       
@@ -1056,6 +1107,18 @@ export default function TeacherGradingPage() {
       }
     } catch (error: any) {
       console.error("Error submitting grades:", error);
+      const isNetworkError = !navigator.onLine || !error?.response;
+      if (isNetworkError) {
+        try {
+          const submitPayload = buildSubmissionPayload(assignment);
+          await syncService.queueGradeSubmissionOffline(submitPayload);
+          toast.success("Submission queued offline. It will submit when online.");
+          setHasUnsavedChanges(false);
+          return;
+        } catch (offlineError) {
+          console.error("Failed to queue offline submission:", offlineError);
+        }
+      }
       toast.error(error?.response?.data?.message || "Failed to submit grades");
     } finally {
       setSaving(false);
@@ -1109,6 +1172,16 @@ export default function TeacherGradingPage() {
             Enter and manage student marks for your assigned subjects
           </p>
         </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+        <Badge variant={isOnline ? "outline" : "destructive"} className="h-7 px-2">
+          {isOnline ? "Online" : "Offline"}
+        </Badge>
+        {pendingSyncCount > 0 && (
+          <Badge variant="outline" className="h-7 px-2 border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+            {pendingSyncCount} pending sync
+          </Badge>
+        )}
       </div>
 
       {/* Filters */}

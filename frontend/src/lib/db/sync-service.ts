@@ -310,9 +310,10 @@ class SyncService {
   }
 
   async saveGradeDraftOffline(payload: Record<string, unknown>): Promise<number> {
+    const contextKey = String(payload.contextKey || payload.localId || Date.now());
     await db.formDrafts.put({
       formType: 'grading',
-      formId: String(payload.contextKey || payload.localId || Date.now()),
+      formId: contextKey,
       formData: payload,
       userId: String(payload.userId || ''),
       createdAt: new Date().toISOString(),
@@ -320,7 +321,30 @@ class SyncService {
       isAutoSaved: false,
     });
 
-    return this.addToQueue('create', 'grade', String(payload.contextKey || Date.now()), payload, 7);
+    return this.addToQueue('create', 'grade', contextKey, {
+      ...payload,
+      action: 'save-draft',
+      contextKey,
+    }, 7);
+  }
+
+  async queueGradeSubmissionOffline(payload: Record<string, unknown>): Promise<number> {
+    const contextKey = String(payload.contextKey || payload.localId || Date.now());
+    await db.formDrafts.put({
+      formType: 'grading',
+      formId: `${contextKey}:submit`,
+      formData: payload,
+      userId: String(payload.userId || ''),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isAutoSaved: false,
+    });
+
+    return this.addToQueue('create', 'grade', contextKey, {
+      ...payload,
+      action: 'submit-all',
+      contextKey,
+    }, 9);
   }
 
   async saveMessageDraftOffline(payload: Record<string, unknown>): Promise<number> {
@@ -607,6 +631,21 @@ class SyncService {
     const headers = { 'X-Device-ID': this.deviceId };
 
     if (item.entity === 'grade') {
+      const action = String(item.payload.action || 'save-draft');
+      if (action === 'submit-all') {
+        const { action: _action, grades, contextKey, userId, ...params } = item.payload;
+        await api.post('/grading/teacher/grades/bulk', { grades }, {
+          headers,
+          skipAuthErrorRedirect: true,
+        } as any);
+        await api.post('/grading/teacher/grades/submit-all', null, {
+          headers,
+          params,
+          skipAuthErrorRedirect: true,
+        } as any);
+        return;
+      }
+
       await api.post('/grading/teacher/grades/bulk', item.payload, {
         headers,
         skipAuthErrorRedirect: true,

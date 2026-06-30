@@ -75,7 +75,8 @@ export default function SchoolAdminForm({
     const fetchSchools = async () => {
       try {
         const response = await schoolsAPI.getAll();
-        setSchools(response.data || []);
+        const data = response.data;
+        setSchools(Array.isArray(data) ? data : data?.data || []);
       } catch (error) {
         console.error("Failed to fetch schools:", error);
       } finally {
@@ -165,7 +166,7 @@ export default function SchoolAdminForm({
       className="p-6"
     >
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200 dark:border-[#2A2A2A]">
         <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 rounded-lg flex items-center justify-center">
           <UserPlus className="w-5 h-5 text-purple-600 dark:text-purple-400" />
         </div>
@@ -195,7 +196,7 @@ export default function SchoolAdminForm({
             <Input
               {...activeForm.register("name")}
               placeholder="Enter full name"
-              className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="pl-10 dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white"
             />
           </div>
           {activeForm.formState.errors.name && (
@@ -216,7 +217,7 @@ export default function SchoolAdminForm({
               {...activeForm.register("email")}
               type="email"
               placeholder="Enter email address"
-              className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="pl-10 dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white"
             />
           </div>
           {activeForm.formState.errors.email && (
@@ -235,7 +236,7 @@ export default function SchoolAdminForm({
               {...activeForm.register("phone")}
               type="tel"
               placeholder="Enter phone number"
-              className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="pl-10 dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white"
             />
           </div>
         </div>
@@ -254,10 +255,10 @@ export default function SchoolAdminForm({
                 value={createForm.watch("schoolId")}
                 onValueChange={(value) => createForm.setValue("schoolId", value)}
               >
-                <SelectTrigger className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                <SelectTrigger className="pl-10 dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white">
                   <SelectValue placeholder="Select a school" />
                 </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                <SelectContent className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
                   {loadingSchools ? (
                     <div className="p-4 text-center">
                       <Loader2 className="w-4 h-4 animate-spin mx-auto" />
@@ -296,7 +297,7 @@ export default function SchoolAdminForm({
                 {...createForm.register("password")}
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter password"
-                className="pl-10 pr-10 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="pl-10 pr-10 dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white"
               />
               <button
                 type="button"
@@ -334,12 +335,12 @@ export default function SchoolAdminForm({
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-200 dark:border-[#2A2A2A]">
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
-          className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+          className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-gray-200"
         >
           <X className="w-4 h-4 mr-2" />
           Cancel
