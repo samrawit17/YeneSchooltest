@@ -343,7 +343,8 @@ export class AuthController {
 
   @Get('users')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles(Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
+  @AllowSuperAdminMixedRole()
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.IT_MANAGER, Role.REGISTRAR)
   @Permissions('user:read')
   async getUsers(@Request() req, @Query('role') role?: Role) {
     try {
@@ -358,6 +359,14 @@ export class AuthController {
       const search = req.query?.search
         ? String(req.query.search)
         : undefined;
+
+      if (req.user.role === Role.SUPER_ADMIN) {
+        return this.authService.getUsers(role, roles, {
+          page,
+          limit,
+          search,
+        });
+      }
 
       if (!req.user.schoolId) {
         throw new HttpException(

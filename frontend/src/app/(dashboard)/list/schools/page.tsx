@@ -182,7 +182,7 @@ const SchoolsPage = () => {
     return (
       <tr
         key={item.id}
-        className="border-b border-gray-200 dark:border-[#444444] hover:bg-gray-50 dark:hover:bg-[#3a3a3a] transition-colors"
+        className="border-b border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#3a3a3a] transition-colors"
       >
       <td className="p-4">
         <div className="flex items-center gap-3">
@@ -192,12 +192,12 @@ const SchoolsPage = () => {
           <div>
             <p className="font-semibold text-black dark:text-white">{item.name}</p>
             <div className="flex items-center gap-2 mt-1">
-              <Hash className="w-3 h-3 text-gray-400" />
+              <Hash className="w-3 h-3 text-gray-400 dark:text-gray-500" />
               <span className="text-xs text-black dark:text-gray-400 font-medium">ID: {item.id.slice(0, 8)}...</span>
             </div>
             {loginUrl && (
               <div className="mt-2 flex items-center gap-1 xl:hidden">
-                <Globe className="h-3.5 w-3.5 text-gray-400" />
+                <Globe className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                 <span className="max-w-[220px] truncate font-mono text-xs text-black dark:text-gray-400">
                   {loginUrl}
                 </span>
@@ -207,7 +207,7 @@ const SchoolsPage = () => {
                   className="rounded p-1 hover:bg-gray-100 dark:hover:bg-[#3a3a3a]"
                   title="Copy school login link"
                 >
-                  <Copy className="h-3.5 w-3.5 text-black" />
+                  <Copy className="h-3.5 w-3.5 text-black dark:text-gray-400" />
                 </button>
               </div>
             )}
@@ -250,7 +250,7 @@ const SchoolsPage = () => {
             </div>
           </div>
         ) : (
-          <span className="text-sm text-gray-400">Run migration</span>
+          <span className="text-sm text-gray-400 dark:text-gray-500">Run migration</span>
         )}
       </td>
       <td className="hidden lg:table-cell p-4">
@@ -316,7 +316,7 @@ const SchoolsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-[#2a2a2a] p-4 md:p-6 space-y-6 font-sans">
+    <div className="min-h-screen bg-gray-100 dark:bg-[#1A1A1A] p-4 md:p-6 space-y-6 font-sans">
       <div>
         {/* Header */}
         <div className="flex flex-row flex-wrap items-center justify-between gap-3 mb-6">
@@ -339,35 +339,35 @@ const SchoolsPage = () => {
 
         {/* Stats Card */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl border border-blue-200 dark:border-blue-800 p-5">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:bg-none dark:bg-[#2A2A2A] rounded-xl border border-blue-200 dark:border-[#2A2A2A] p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Total Schools</p>
                 <p className="text-2xl font-bold text-black dark:text-white mt-1">{totalSchools}</p>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-700 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 dark:bg-none dark:bg-[#1A1A1A] rounded-lg flex items-center justify-center">
                 <Building2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 rounded-xl border border-green-200 dark:border-green-800 p-5">
+          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:bg-none dark:bg-[#2A2A2A] rounded-xl border border-green-200 dark:border-[#2A2A2A] p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-700 dark:text-green-300">Active Institutions</p>
                 <p className="text-2xl font-bold text-black dark:text-white mt-1">{activeSchools}</p>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-800 dark:to-green-700 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 dark:bg-none dark:bg-[#1A1A1A] rounded-lg flex items-center justify-center">
                 <SchoolIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30 rounded-xl border border-purple-200 dark:border-purple-800 p-5">
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:bg-none dark:bg-[#2A2A2A] rounded-xl border border-purple-200 dark:border-[#2A2A2A] p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Registered Students</p>
                 <p className="text-2xl font-bold text-black dark:text-white mt-1">{totalStudents}</p>
               </div>
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-800 dark:to-purple-700 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 dark:bg-none dark:bg-[#1A1A1A] rounded-lg flex items-center justify-center">
                 <Users className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
@@ -375,14 +375,14 @@ const SchoolsPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white dark:bg-[#333333] rounded-xl shadow-sm border border-gray-200 dark:border-[#444444] p-5 mb-6">
+        <div className="bg-white dark:bg-[#2A2A2A] rounded-xl shadow-sm border border-gray-200 dark:border-[#2A2A2A] p-5 mb-6">
           <div className="flex flex-wrap gap-4 items-center">
             <TableSearch />
           </div>
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-[#333333] rounded-xl shadow-sm border border-gray-200 dark:border-[#444444] overflow-hidden">
+        <div className="bg-white dark:bg-[#2A2A2A] rounded-xl shadow-sm border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
           {isLoading ? (
             <div className="p-8 text-center">
               <Loader2 className="w-8 h-8 animate-spin text-[var(--brand-color,#e35336)] mx-auto" />
@@ -396,9 +396,9 @@ const SchoolsPage = () => {
             </div>
           ) : schools.length === 0 ? (
             <div className="p-8 text-center">
-              <Building2 className="w-16 h-16 text-gray-400 dark:text-black mx-auto mb-4" />
+              <Building2 className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
               <p className="text-black dark:text-gray-400 font-semibold">No schools found in the system</p>
-              <p className="text-black dark:text-black text-sm mt-2">Start by adding your first educational institution</p>
+              <p className="text-black dark:text-gray-400 text-sm mt-2">Start by adding your first educational institution</p>
               <button
                 onClick={() => {
                   setSelectedSchool(null);
@@ -451,7 +451,7 @@ const SchoolsPage = () => {
                 <p className="text-black dark:text-gray-400 font-medium">
                   Are you sure you want to delete <span className="font-bold text-black dark:text-white">{selectedSchool.name}</span>?
                 </p>
-                <p className="text-sm text-black dark:text-black mt-2">
+                <p className="text-sm text-black dark:text-gray-400 mt-2">
                   This action will permanently remove all associated data including users, students, and records.
                 </p>
               </div>

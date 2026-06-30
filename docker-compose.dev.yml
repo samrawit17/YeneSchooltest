@@ -71,6 +71,7 @@ services:
       RATE_LIMIT_MAX: 120
       RATE_LIMIT_WINDOW_SEC: 60
       TRUST_PROXY: 1
+      SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:-admin123}
     volumes:
       - ./backend:/app
       - /app/.next

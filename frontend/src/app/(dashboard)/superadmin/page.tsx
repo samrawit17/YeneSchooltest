@@ -173,7 +173,7 @@ const SuperAdminPage = () => {
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-white p-6">
+      <div className="min-h-screen bg-white dark:bg-[#1A1A1A] p-6">
         <div className="w-full space-y-6">
           <Skeleton className="h-44 w-full rounded-2xl" />
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
@@ -191,7 +191,7 @@ const SuperAdminPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-[#1A1A1A]">
       <div className="w-full">
         <motion.div
           initial="hidden"
@@ -201,23 +201,23 @@ const SuperAdminPage = () => {
         >
           {/* Header */}
           <motion.div variants={itemVariants}>
-            <Card className="border-0 overflow-hidden rounded-2xl">
+            <Card className="border-0 overflow-hidden rounded-2xl dark:bg-[#1A1A1A] dark:border-[#2A2A2A]">
               <div>
                 <CardContent className="p-6 md:p-8">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-5">
                       <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                           Super Admin
                         </h1>
-                        <p className="text-gray-500 text-sm mt-1">
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                           Platform Management Dashboard
                         </p>
                         <div className="flex items-center gap-2 mt-2">
-                          <Badge className="bg-gray-100 text-gray-700 border-0 text-xs">
+                          <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-0 text-xs">
                             Full Access
                           </Badge>
-                          <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">
+                          <Badge className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-0 text-xs">
                             Live
                           </Badge>
                         </div>
@@ -235,7 +235,7 @@ const SuperAdminPage = () => {
                     </div>
                   </div>
 
-                  <Separator className="my-5" />
+                  <Separator className="my-5 dark:bg-gray-700" />
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
@@ -244,11 +244,11 @@ const SuperAdminPage = () => {
                       { label: "Monthly Revenue", value: `Birr ${stats?.monthlyRevenue?.toLocaleString() ?? 0}` },
                       { label: "Active Rate", value: stats?.totalSchools ? `${Math.round((stats.activeSchools / stats.totalSchools) * 100)}%` : "0%" },
                     ].map((item, i) => (
-                      <div key={i} className="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-100">
-                        <div className="text-gray-500 text-xs font-medium uppercase tracking-wider mb-2">
+                      <div key={i} className="rounded-xl bg-gray-50 dark:bg-[#2A2A2A] p-4 ring-1 ring-gray-100 dark:ring-[#333]">
+                        <div className="text-gray-500 dark:text-gray-400 text-xs font-medium uppercase tracking-wider mb-2">
                           {item.label}
                         </div>
-                        <div className="text-xl md:text-2xl font-bold text-gray-900">
+                        <div className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                           {item.value}
                         </div>
                       </div>
@@ -270,7 +270,7 @@ const SuperAdminPage = () => {
               const s = stats!;
               return (
                 <motion.div key={index} variants={itemVariants}>
-                  <Card className="group relative overflow-hidden rounded-2xl border-0 bg-white shadow-sm hover:shadow-md transition-all duration-300">
+                  <Card className="group relative overflow-hidden rounded-2xl border-0 bg-white dark:bg-[#1A1A1A] dark:border-[#2A2A2A] shadow-sm hover:shadow-md transition-all duration-300">
                     <CardContent className="p-5">
                       <div className="space-y-1">
                         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -291,7 +291,7 @@ const SuperAdminPage = () => {
                           </div>
                           <Progress
                             value={card.progress(s)}
-                            className="h-2 bg-gray-100"
+                            className="h-2 bg-gray-100 dark:bg-gray-700"
                           />
                         </div>
                       )}

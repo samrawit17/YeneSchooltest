@@ -192,9 +192,9 @@ const forms: {
     // @ts-expect-error - Type mismatch expected for form props
     <EnrollmentForm type={type} data={data} />
   ),
-  school: (type, data) => (
+  school: (type, data, onClose) => (
     // @ts-expect-error - Type mismatch expected for form props
-    <SchoolForm type={type} data={data} />
+    <SchoolForm type={type} data={data} onSuccess={onClose} />
   ),
   user: (type, data, onClose) => {
     if (type === "create") {
