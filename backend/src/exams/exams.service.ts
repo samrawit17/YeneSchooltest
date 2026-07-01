@@ -12,10 +12,14 @@ import {
   GetExamsFilterDto,
 } from './dto/exams.dto';
 import { ExamType, Role } from '@prisma/client';
+import { EventBusService } from '../core/events/event-bus.service';
 
 @Injectable()
 export class ExamsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventBus: EventBusService,
+  ) {}
 
   async createExam(schoolId: string, dto: CreateExamDto) {
     // Validate subject assignment or existence
@@ -42,9 +46,20 @@ export class ExamsService {
       data.sectionId = dto.sectionId;
     }
 
-    return this.prisma.exam.create({
+    const exam = await this.prisma.exam.create({
       data,
     });
+
+    this.eventBus.emit('exam.created', {
+      schoolId,
+      examId: exam.id,
+      classId: dto.classId,
+      subjectId: dto.subjectId,
+      type: dto.type,
+      maxMarks: dto.maxMarks,
+    });
+
+    return exam;
   }
 
   async getExams(schoolId: string, query: GetExamsFilterDto) {
@@ -103,10 +118,18 @@ export class ExamsService {
     const updateData: any = { ...dto };
     if (dto.date) updateData.date = new Date(dto.date);
 
-    return this.prisma.exam.update({
+    const updated = await this.prisma.exam.update({
       where: { id: examId },
       data: updateData,
     });
+
+    this.eventBus.emit('exam.updated', {
+      schoolId,
+      examId,
+      changes: Object.keys(dto),
+    });
+
+    return updated;
   }
 
   async deleteExam(schoolId: string, examId: string) {
@@ -316,6 +339,14 @@ export class ExamsService {
     });
 
     await this.prisma.$transaction(operations);
+
+    this.eventBus.emit('exam.results.entered', {
+      schoolId,
+      examId,
+      studentCount: results.length,
+      enteredBy: userId,
+    });
+
     return { success: true, message: 'Results updated successfully' };
   }
 
@@ -458,6 +489,13 @@ export class ExamsService {
         },
       },
       data: { published: true },
+    });
+
+    this.eventBus.emit('exam.results.published', {
+      schoolId,
+      classId: body.classId,
+      termId: body.termId,
+      examCount: exams.length,
     });
 
     return {

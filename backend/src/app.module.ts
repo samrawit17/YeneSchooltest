@@ -48,6 +48,8 @@ import { PracticeExamsModule } from './practice-exams/practice-exams.module';
 import { BackupModule } from './backup/backup.module';
 import { AuditModule } from './audit/audit.module';
 import { TranslationModule } from './translation/translation.module';
+import { EventsModule } from './core/events/events.module';
+import { AutomationEngineModule } from './automation-engine/automation-engine.module';
 
 @Module({
   imports: [
@@ -98,6 +100,8 @@ import { TranslationModule } from './translation/translation.module';
     PracticeExamsModule,
     BackupModule,
     TranslationModule,
+    EventsModule,
+    AutomationEngineModule,
   ],
   controllers: [AppController],
   providers: [AppService],

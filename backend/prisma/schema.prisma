@@ -87,6 +87,7 @@ model School {
   sirenHardwareConfig       SirenHardwareConfig?
   templates                 Template[]
   practiceExams             PracticeExam[]
+  automationRules           AutomationRule[]
   practiceExamQuestions     PracticeExamQuestion[]
   practiceExamAttempts      PracticeExamAttempt[]
   practiceExamAnswers       PracticeExamAnswer[]
@@ -2641,6 +2642,53 @@ model ContentResource {
   school       School       @relation(map: "schoolId_fk_182", fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([contentId])
+}
+
+enum AutomationActionType {
+  SEND_SMS
+  SEND_EMAIL
+  PUSH_NOTIFICATION
+  CREATE_ALERT
+  UPDATE_DATABASE_FIELD
+}
+
+model AutomationRule {
+  id           String               @id @default(cuid())
+  schoolId     String
+  name         String
+  description  String?
+  eventTrigger String               // e.g. "attendance.marked", "fee.overdue"
+  conditions   Json?                 // JSON logic conditions
+  actions      Json                  // Array of action configs
+  isActive     Boolean              @default(true)
+  createdById  String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  school       School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  executionLogs AutomationExecutionLog[]
+
+  @@index([schoolId, eventTrigger])
+  @@index([schoolId, isActive])
+}
+
+model AutomationExecutionLog {
+  id               String    @id @default(cuid())
+  schoolId         String
+  ruleId           String
+  ruleName         String?
+  eventType        String
+  eventPayload     Json?
+  status           String    // "success" | "failed"
+  executedActions  Json?     // Array of action results
+  errorMessage     String?
+  executionTimeMs  Int?
+  triggeredAt      DateTime  @default(now())
+
+  rule             AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, triggeredAt])
+  @@index([ruleId, triggeredAt])
 }
 
 model SyncConflict {

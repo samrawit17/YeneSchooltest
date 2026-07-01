@@ -260,34 +260,7 @@ export class AttendanceController {
    * POST /attendance/missing/notify
    * Notify homeroom teachers about missing attendance (Admin only)
    */
-  @Post('missing/notify')
-  @Permissions('attendance:update')
-  notifyMissing(
-    @Request() req: any,
-    @Query('date') date?: string,
-    @Query('grade') grade?: string,
-    @Query('section') section?: string,
-  ) {
-    const targetDate = date || new Date().toISOString().split('T')[0];
-    return this.attendanceService.notifyMissingAttendance(
-      req.user,
-      targetDate,
-      grade,
-      section,
-    );
-  }
 
-  /**
-   * POST /attendance/check-reminders
-   * Manually trigger the attendance reminder check (for testing)
-   */
-  @Post('check-reminders')
-  @Permissions('attendance:update')
-  async triggerReminderCheck() {
-    // Call the scheduled task directly
-    await this.attendanceService.handleAttendanceReminder();
-    return { message: 'Attendance reminder check completed' };
-  }
 
   /**
    * PUT /attendance/record/:id

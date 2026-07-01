@@ -39,3 +39,4 @@ export { superadminAPI } from './superadmin';
 export { templatesAPI } from './templates';
 export { adminTimetableAPI } from './timetable';
 export { translationAPI } from './translation';
+export { automationAPI, type AutomationRule, type AutomationExecutionLog } from './automation';

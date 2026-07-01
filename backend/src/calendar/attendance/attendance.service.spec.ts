@@ -9,8 +9,8 @@ describe('AttendanceService ownership guards', () => {
   ) =>
     new AttendanceService(
       prisma as any,
-      {} as any,
       { getSetting: jest.fn().mockResolvedValue(null), ...schoolSettings } as any,
+      { emit: jest.fn() } as any,
     );
 
   it('requires parent-child attendance access to stay inside the parent school', async () => {

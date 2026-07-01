@@ -4,13 +4,11 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   SCHOOL_SETTING_KEYS,
   SchoolSettingsService,
 } from '../../school-settings/school-settings.service';
-import { formatSchoolDate } from '../../common/date.util';
 import {
   CreateAttendanceSessionDto,
   BulkMarkAttendanceDto,
@@ -20,24 +18,23 @@ import {
 } from './dto';
 import { Role } from '../../auth/types/role.enum';
 import { AttendanceRecordStatus } from '@prisma/client';
-import { NotificationService } from '../../notification/notification.service';
 import {
   RequestUser,
   AttendanceRecordInput,
-  SessionContext,
 } from './interfaces/attendance.interfaces';
 import {
   getEthiopianDate,
   formatEthiopianDate,
   getEthiopianYear,
 } from './utils/date.utils';
+import { EventBusService } from '../../core/events/event-bus.service';
 
 @Injectable()
 export class AttendanceService {
   constructor(
     private prisma: PrismaService,
-    private notificationService: NotificationService,
     private schoolSettings: SchoolSettingsService,
+    private eventBus: EventBusService,
   ) {}
 
   private isAdmin(user: RequestUser): boolean {
@@ -1215,6 +1212,15 @@ export class AttendanceService {
     // Don't create records automatically - let the teacher mark them manually
     // This prevents all students from appearing as PRESENT by default
 
+    this.eventBus.emit('attendance.session.opened', {
+      schoolId: session.schoolId,
+      sessionId: session.id,
+      classId: classId ?? 'unknown',
+      sectionId: sectionId ?? undefined,
+      date: session.date.toISOString(),
+      openedBy: user.id,
+    });
+
     // Return updated session with records (empty initially)
     return this.getSession(session.id, user);
   }
@@ -1632,6 +1638,15 @@ export class AttendanceService {
       data: recordsToCreate,
     });
 
+    for (const record of records) {
+      this.eventBus.emit('attendance.marked', {
+        schoolId: session.schoolId,
+        sessionId: sessionId,
+        studentId: record.studentId,
+        status: record.status as string,
+      });
+    }
+
     return { success: true, message: 'Attendance marked successfully' };
   }
 
@@ -1724,151 +1739,17 @@ export class AttendanceService {
       },
     });
 
-    // Send notifications to parents of absent/late students
-    await this.sendAbsenceNotifications(sessionId, session);
+    this.eventBus.emit('attendance.session.submitted', {
+      schoolId: session.schoolId,
+      sessionId: session.id,
+      classId: classId,
+      sectionId: sectionId,
+      date: session.date.toISOString(),
+      totalStudents: recordsCount,
+      submittedBy: user.id,
+    });
 
     return updatedSession;
-  }
-
-  /**
-   * Send notifications to parents of absent/late students
-   * OPTIMIZED: Batch database queries and use Promise.all for concurrent notifications
-   */
-  private async sendAbsenceNotifications(
-    sessionId: string,
-    session: SessionContext,
-  ) {
-    try {
-      // Get all attendance records with ABSENT or LATE status
-      const absentRecords = await this.prisma.attendanceRecord.findMany({
-        where: {
-          attendanceSessionId: sessionId,
-          status: { in: ['ABSENT', 'LATE'] },
-        },
-        include: {
-          student: {
-            select: {
-              id: true,
-              name: true,
-              studentProfile: {
-                select: {
-                  id: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (absentRecords.length === 0) return;
-
-      // Get class name for the notification
-      let className = '';
-      if (session.classId && session.class) {
-        className = session.class.name || `Grade ${session.class.grade}`;
-      } else if (session.timetableSlot) {
-        className =
-          session.timetableSlot.class?.name ||
-          `Grade ${session.timetableSlot.class?.grade}`;
-        if (session.timetableSlot.section) {
-          className += ` - ${session.timetableSlot.section.name}`;
-        }
-      }
-
-      // Resolve student profile ids reliably from attendance records saved against user ids.
-      const absentStudentUserIds = absentRecords.map((r) => r.student.id);
-      const absentStudentProfiles = await this.prisma.studentProfile.findMany({
-        where: { userId: { in: absentStudentUserIds } },
-        select: { id: true, userId: true },
-      });
-      const studentProfileIdByUserId = new Map(
-        absentStudentProfiles.map((profile) => [profile.userId, profile.id]),
-      );
-      const absentStudentProfileIds = absentStudentProfiles.map(
-        (profile) => profile.id,
-      );
-
-      const allParentRelations = await this.prisma.parentStudent.findMany({
-        where: { studentId: { in: absentStudentProfileIds } },
-        include: {
-          parent: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      // Create a map for quick lookup
-      const parentRelationsByStudent = new Map<
-        string,
-        typeof allParentRelations
-      >();
-      for (const relation of allParentRelations) {
-        const existing = parentRelationsByStudent.get(relation.studentId) || [];
-        existing.push(relation);
-        parentRelationsByStudent.set(relation.studentId, existing);
-      }
-
-      const calendarType =
-        (await this.schoolSettings.getSetting(
-          session.schoolId,
-          SCHOOL_SETTING_KEYS.CALENDAR_TYPE,
-        )) || 'ETHIOPIAN';
-      const sessionDate =
-        session.date instanceof Date ? session.date : new Date(session.date);
-      const dateStr = formatSchoolDate(sessionDate, {
-        calendarType: calendarType === 'GREGORIAN' ? 'GREGORIAN' : 'ETHIOPIAN',
-      });
-
-      // Build notification promises
-      const notificationPromises: Promise<unknown>[] = [];
-
-      for (const record of absentRecords) {
-        const studentName = record.student.name;
-        const studentProfileId = studentProfileIdByUserId.get(record.student.id);
-        if (!studentProfileId) continue;
-
-        // Get parents for this specific student from the batched result
-        const parents = parentRelationsByStudent.get(studentProfileId) || [];
-
-        for (const parentRelation of parents) {
-          if (record.status === 'ABSENT') {
-            notificationPromises.push(
-              this.notificationService.notifyParentOfAbsence(
-                session.schoolId,
-                parentRelation.parent.user.id,
-                studentName,
-                dateStr,
-                className,
-              ),
-            );
-          } else if (record.status === 'LATE') {
-            notificationPromises.push(
-              this.notificationService.notifyParentOfLate(
-                session.schoolId,
-                parentRelation.parent.user.id,
-                studentName,
-                dateStr,
-                className,
-              ),
-            );
-          }
-        }
-      }
-
-      // Execute all notifications concurrently
-      if (notificationPromises.length > 0) {
-        await Promise.allSettled(notificationPromises);
-      }
-    } catch (error) {
-      // Log error but don't fail the submission
-      // Logging removed for production
-    }
   }
 
   /**
@@ -2456,7 +2337,7 @@ export class AttendanceService {
     }
 
     // Log original status for audit trail
-    return this.prisma.attendanceRecord.update({
+    const updated = await this.prisma.attendanceRecord.update({
       where: { id: recordId },
       data: {
         status: dto.status,
@@ -2467,6 +2348,18 @@ export class AttendanceService {
         overrideReason: dto.overrideReason,
       },
     });
+
+    this.eventBus.emit('attendance.overridden', {
+      schoolId: user.schoolId,
+      recordId: record.id,
+      studentId: record.studentId,
+      previousStatus: record.status,
+      newStatus: dto.status,
+      overriddenBy: user.id,
+      reason: dto.overrideReason,
+    });
+
+    return updated;
   }
 
   /**
@@ -2927,66 +2820,6 @@ export class AttendanceService {
     }));
   }
 
-  /**
-   * Notify homeroom teachers about missing attendance
-   */
-  async notifyMissingAttendance(
-    user: any,
-    date: string,
-    grade?: string,
-    section?: string,
-  ) {
-    if (!this.isAdmin(user)) {
-      throw new ForbiddenException('Only admins can access this endpoint');
-    }
-
-    const targetDateStr = this.getDateString(this.getLocalDayRange(date).start);
-    const missingEntries = await this.getMissingAttendanceEntries(
-      user,
-      date,
-      grade,
-      section,
-    );
-
-    // Send notifications to homeroom teachers
-    const notifications: Array<{
-      teacherId: string;
-      teacherName: string | undefined;
-      className: string;
-      grade: number;
-      section: string;
-    }> = [];
-    for (const entry of missingEntries) {
-      if (!entry.teacherId || entry.grade === null) {
-        continue;
-      }
-
-      const created =
-        await this.notificationService.notifyHomeroomMissingAttendance(
-          user.schoolId,
-          entry.teacherId,
-          entry.className,
-          entry.grade,
-          entry.sectionName,
-          targetDateStr,
-        );
-      if (created) {
-        notifications.push({
-          teacherId: entry.teacherId,
-          teacherName: entry.teacherName,
-          className: entry.className,
-          grade: entry.grade,
-          section: entry.sectionName,
-        });
-      }
-    }
-
-    return {
-      message: `Sent ${notifications.length} notifications to homeroom teachers`,
-      notifications,
-    };
-  }
-
   async getAdminDashboard(
     user: any,
     date?: string,
@@ -3322,321 +3155,4 @@ export class AttendanceService {
     };
   }
 
-  // ==================== SCHEDULED TASKS ====================
-
-  /**
-   * Scheduled task to check for missed attendance and send notifications
-   * Runs every hour to check for classes where attendance time has expired
-   * Can also be called manually via POST /attendance/check-reminders
-   */
-  @Cron(CronExpression.EVERY_HOUR)
-  public async handleAttendanceReminder() {
-    console.log(
-      '[Attendance] Running scheduled task to check for missed attendance...',
-    );
-
-    try {
-      const now = new Date();
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const currentDayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
-
-      // Skip weekends
-      if (currentDayOfWeek === 0 || currentDayOfWeek === 6) {
-        console.log('[Attendance] Skipping - it is weekend');
-        return;
-      }
-
-      // Get all schools with active academic years
-      const schools = await this.prisma.school.findMany({
-        where: {
-          isActive: true,
-        },
-        select: {
-          id: true,
-          name: true,
-        },
-      });
-
-      console.log(
-        `[Attendance] Found ${schools.length} active schools to check`,
-      );
-
-      // Process each school separately
-      for (const school of schools) {
-        await this.processSchoolAttendanceReminder(
-          school.id,
-          school.name,
-          now,
-          today,
-        );
-      }
-
-      console.log(
-        '[Attendance] Completed scheduled attendance check for all schools',
-      );
-    } catch (error) {
-      console.error('[Attendance] Error in scheduled attendance check:', error);
-    }
-  }
-
-  /**
-   * Process attendance reminders for a specific school
-   * This ensures proper school context for notifications
-   */
-  private async processSchoolAttendanceReminder(
-    schoolId: string,
-    schoolName: string,
-    now: Date,
-    today: Date,
-  ) {
-    console.log(`[Attendance] Processing school: ${schoolName} (${schoolId})`);
-
-    try {
-      // Get active academic year for this school
-      const activeAcademicYear = await this.prisma.academicYear.findFirst({
-        where: {
-          schoolId: schoolId,
-          isActive: true,
-        },
-      });
-
-      if (!activeAcademicYear) {
-        console.log(
-          `[Attendance] No active academic year found for school: ${schoolName}`,
-        );
-        return;
-      }
-
-      const cutoff = await this.getSchoolAttendanceCutoff(schoolId);
-
-      const cutoffTime = new Date(today);
-      cutoffTime.setHours(cutoff.hour, cutoff.minute, 0, 0);
-
-      // Only send reminders if the cutoff time has passed
-      if (now < cutoffTime) {
-        console.log(
-          `[Attendance] Cutoff time (${cutoff.formatted}) not reached yet for school: ${schoolName}`,
-        );
-        return;
-      }
-
-      console.log(
-        `[Attendance] Cutoff time passed for school: ${schoolName}. Checking homeroom attendance...`,
-      );
-
-      // Get all homeroom classes for this school
-      const homeroomClasses = await this.prisma.class.findMany({
-        where: {
-          schoolId: schoolId,
-          academicYearId: activeAcademicYear.id,
-        },
-        include: {
-          homeroomTeacher: true,
-          sections: {
-            include: {
-              homeroomTeacher: true,
-            },
-          },
-        },
-      });
-
-      console.log(
-        `[Attendance] Checking ${homeroomClasses.length} homeroom classes for school: ${schoolName}`,
-      );
-
-      const todayStart = new Date(today);
-      const todayEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-      const todayDateStr = this.getDateString(today);
-      let notificationCount = 0;
-      const missingClassesForAdmins: Array<{
-        id: string;
-        name: string;
-        section: string;
-      }> = [];
-
-      for (const cls of homeroomClasses) {
-        // Check if attendance was submitted for this class today
-        const existingSession = await this.prisma.attendanceSession.findFirst({
-          where: {
-            schoolId: schoolId,
-            classId: cls.id,
-            date: {
-              gte: todayStart,
-              lt: todayEnd,
-            },
-            status: 'SUBMITTED',
-          },
-        });
-
-        // If no submitted session exists, notify the homeroom teacher (only once per class/day)
-        if (!existingSession) {
-          const classSections =
-            cls.sections.length > 0
-              ? cls.sections
-              : [
-                  {
-                    name: cls.section || 'A',
-                    homeroomTeacherId: null,
-                    homeroomTeacher: null,
-                  },
-                ];
-
-          for (const sec of classSections) {
-            const sectionName = sec.name || cls.section || 'A';
-            const recipientTeacherId = sec.homeroomTeacherId || cls.homeroomTeacherId;
-            const recipientTeacherName =
-              sec.homeroomTeacher?.name || cls.homeroomTeacher?.name;
-
-            if (!recipientTeacherId) continue;
-
-            missingClassesForAdmins.push({
-              id: cls.id,
-              name: cls.name,
-              section: sectionName,
-            });
-
-            try {
-              const existingReminder = await this.prisma.notification.findFirst({
-                where: {
-                  schoolId,
-                  userId: recipientTeacherId,
-                  type: 'ATTENDANCE_SESSION_OPENED',
-                  title: 'Attendance Cutoff Reached',
-                  createdAt: {
-                    gte: todayStart,
-                    lt: todayEnd,
-                  },
-                },
-              });
-
-              if (existingReminder) {
-                const metadata =
-                  typeof existingReminder.metadata === 'string'
-                    ? JSON.parse(existingReminder.metadata)
-                    : existingReminder.metadata;
-                if (!metadata || (metadata.classId === cls.id && metadata.section === sectionName)) {
-                  continue;
-                }
-              }
-
-              await this.notificationService.createNotification({
-                schoolId: schoolId,
-                userId: recipientTeacherId,
-                title: 'Attendance Cutoff Reached',
-                message: `The attendance cutoff time (${cutoff.formatted}) has passed. Please submit attendance for ${cls.name} (Section ${sectionName}) immediately.`,
-                type: 'ATTENDANCE_SESSION_OPENED' as any,
-                actionUrl: '/teacher/attendance',
-                metadata: {
-                  classId: cls.id,
-                  section: sectionName,
-                  date: todayDateStr,
-                  isHomeroom: true,
-                  schoolId: schoolId,
-                  cutoffTime: cutoff.formatted,
-                },
-              });
-
-              notificationCount++;
-              console.log(
-                `[Attendance] Sent cutoff notification to teacher ${recipientTeacherName || recipientTeacherId} for class ${cls.name} section ${sectionName}`,
-              );
-            } catch (error) {
-              console.error(
-                `[Attendance] Failed to send notification for class ${cls.name} section ${sectionName}:`,
-                error,
-              );
-            }
-          }
-        }
-      }
-
-      await this.notifyAdminsOfMissingAttendance(
-        schoolId,
-        todayStart,
-        todayEnd,
-        todayDateStr,
-        cutoff.formatted,
-        missingClassesForAdmins,
-      );
-
-      console.log(
-        `[Attendance] Sent ${notificationCount} cutoff notifications for school: ${schoolName}`,
-      );
-    } catch (error) {
-      console.error(
-        `[Attendance] Error processing school ${schoolName}:`,
-        error,
-      );
-    }
-  }
-
-  private async notifyAdminsOfMissingAttendance(
-    schoolId: string,
-    todayStart: Date,
-    todayEnd: Date,
-    date: string,
-    cutoffTime: string,
-    missingClasses: Array<{ id: string; name: string; section: string }>,
-  ) {
-    if (missingClasses.length === 0) return;
-
-    const admins = await this.prisma.user.findMany({
-      where: {
-        schoolId,
-        role: {
-          in: [Role.ADMIN, Role.IT_MANAGER],
-        },
-      },
-      select: { id: true },
-    });
-
-    if (admins.length === 0) return;
-
-    const classPreview = missingClasses
-      .slice(0, 4)
-      .map((c) => `${c.name} (${c.section})`)
-      .join(', ');
-
-    const message =
-      missingClasses.length > 4
-        ? `${missingClasses.length} classes missed attendance after cutoff (${cutoffTime}). Examples: ${classPreview}.`
-        : `${missingClasses.length} classes missed attendance after cutoff (${cutoffTime}): ${classPreview}.`;
-
-    for (const admin of admins) {
-      // Check if notification was already sent today for this admin
-      const existingAdminAlert = await this.prisma.notification.findFirst({
-        where: {
-          schoolId,
-          userId: admin.id,
-          title: 'Missing Attendance Alert',
-          type: 'WARNING',
-          createdAt: {
-            gte: todayStart,
-            lt: todayEnd,
-          },
-        },
-      });
-
-      if (existingAdminAlert) {
-        continue;
-      }
-
-      await this.notificationService.createNotification({
-        schoolId,
-        userId: admin.id,
-        title: 'Missing Attendance Alert',
-        message,
-        type: 'WARNING',
-        actionUrl: '/admin/attendance',
-        metadata: {
-          date,
-          cutoffTime,
-          missingClassCount: missingClasses.length,
-          classes: missingClasses,
-        },
-      });
-    }
-  }
 }
