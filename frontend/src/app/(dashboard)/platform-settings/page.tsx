@@ -293,7 +293,7 @@ export default function PlatformSettingsPage() {
             onChange={(e) => handleDraftChange(setting.key, e.target.value)}
             placeholder={setting.placeholder}
             disabled={isSaving}
-            className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+            className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white"
           />
           {fieldErrors[setting.key] ? (
             <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors[setting.key]}</p>
@@ -321,7 +321,7 @@ export default function PlatformSettingsPage() {
             onChange={(e) => handleDraftChange(setting.key, e.target.value)}
             disabled={isSaving}
             rows={4}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2.5 font-mono text-sm dark:bg-gray-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-gray-100"
+            className="w-full rounded-lg border border-gray-300 dark:border-[#2A2A2A] px-4 py-2.5 font-mono text-sm dark:bg-[#2A2A2A] dark:text-white focus:border-gray-500 focus:ring-2 focus:ring-gray-500 focus:outline-none disabled:bg-gray-100"
           />
           {fieldErrors[setting.key] ? (
             <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors[setting.key]}</p>
@@ -348,7 +348,7 @@ export default function PlatformSettingsPage() {
           value={draftValue}
           onChange={(e) => handleDraftChange(setting.key, e.target.value)}
           disabled={isSaving}
-          className="dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white"
         />
         <div className="flex justify-end">
           <Button
@@ -367,13 +367,13 @@ export default function PlatformSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-        <div>
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
+        <div className="p-4 md:p-6 space-y-6">
           <div className="animate-pulse space-y-6">
-            <div className="h-32 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+            <div className="h-32 bg-gray-200 dark:bg-[#2A2A2A] rounded-xl"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="h-48 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
-              <div className="h-48 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+              <div className="h-48 bg-gray-200 dark:bg-[#2A2A2A] rounded-xl"></div>
+              <div className="h-48 bg-gray-200 dark:bg-[#2A2A2A] rounded-xl"></div>
             </div>
           </div>
         </div>
@@ -382,27 +382,23 @@ export default function PlatformSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
-      <div className="space-y-6">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#111111]">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
-        <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Settings className="w-8 h-8 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-white">Platform Settings</h1>
-                  <p className="text-blue-100 text-sm">Global configuration for the entire platform</p>
-                </div>
-              </div>
-              <Badge className="bg-white/20 text-white border-0">
-                Super Admin Only
-              </Badge>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-[var(--brand-color,#e35336)]/10 rounded-xl flex items-center justify-center">
+              <Settings className="w-8 h-8 text-[var(--brand-color,#e35336)]" />
             </div>
-          </CardContent>
-        </Card>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Platform Settings</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Global configuration for the entire platform</p>
+            </div>
+          </div>
+          <Badge className="bg-[var(--brand-color,#e35336)]/10 text-[var(--brand-color,#e35336)] border-0">
+            Super Admin Only
+          </Badge>
+        </div>
 
         {/* Error Alert */}
         {error && (
@@ -424,7 +420,7 @@ export default function PlatformSettingsPage() {
         )}
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 dark:border-gray-700">
+        <div className="border-b border-gray-200 dark:border-[#2A2A2A]">
           <nav className="flex gap-1 overflow-x-auto -mb-px">
             {CATEGORIES.map((category) => (
               <button
@@ -432,7 +428,7 @@ export default function PlatformSettingsPage() {
                 onClick={() => setActiveTab(category.id)}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === category.id
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                    ? 'border-gray-900 text-gray-900 dark:text-gray-300 dark:border-gray-300'
                     : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                 }`}
               >
@@ -446,23 +442,23 @@ export default function PlatformSettingsPage() {
         {/* Settings Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredSettings.map((setting) => (
-            <Card key={setting.key} className="dark:bg-gray-800 dark:border-gray-700">
+            <Card key={setting.key} className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-600 dark:text-blue-400">{setting.icon}</span>
+                      <div className="w-10 h-10 bg-[var(--brand-color,#e35336)]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-[var(--brand-color,#e35336)]">{setting.icon}</span>
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-white">{setting.label}</h3>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{setting.description}</p>
-                      <code className="inline-block mt-2 text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">
+                      <code className="inline-block mt-2 text-xs bg-gray-100 dark:bg-[#2A2A2A] px-2 py-1 rounded text-gray-600 dark:text-gray-300">
                         {setting.key}
                       </code>
                     </div>
                   </div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#2A2A2A]">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                       {setting.type}
@@ -478,9 +474,9 @@ export default function PlatformSettingsPage() {
         </div>
 
         {filteredSettings.length === 0 && (
-          <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <Card className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl">
             <CardContent className="p-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-[#2A2A2A] rounded-full flex items-center justify-center mx-auto mb-4">
                 <Settings className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">No Settings</h3>
@@ -490,7 +486,7 @@ export default function PlatformSettingsPage() {
         )}
 
         {/* Footer */}
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
+        <Card className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <AlertCircle className="w-4 h-4" />

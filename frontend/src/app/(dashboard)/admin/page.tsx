@@ -429,9 +429,10 @@ const AdminDashboardView = () => {
 
   const visibleCharts = {
     attendance: translateChart(charts.attendance),
-    userDistribution: toBarChart(translateChart(charts.userDistribution)),
+    finance: translateChart(charts.finance),
+    userDistribution: translateChart(charts.userDistribution),
     classDistribution: toBarChart(translateChart(charts.classDistribution)),
-    overview: toBarChart(translateChart(charts.overview)),
+    overview: translateChart(charts.overview),
   };
 
   return (
@@ -635,9 +636,8 @@ const AdminDashboardView = () => {
             </Card>
           </div>
 
-          {/* Charts Section */}
+          {/* Charts Section - Row 1: Attendance + Finance */}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-            {/* Weekly Attendance Chart */}
             {visibleCharts.attendance && (
               <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
@@ -650,7 +650,21 @@ const AdminDashboardView = () => {
               </Card>
             )}
 
-            {/* Users by Role Distribution */}
+            {visibleCharts.finance && (
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
+                <CardContent className="p-3 sm:p-4">
+                  {showCharts ? (
+                    <DynamicChart chartData={visibleCharts.finance} height={240} />
+                  ) : (
+                    <Skeleton className="h-[240px] w-full" />
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Charts Section - Row 2: User Distribution + Class Distribution */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
             {visibleCharts.userDistribution && (
               <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
@@ -662,36 +676,111 @@ const AdminDashboardView = () => {
                 </CardContent>
               </Card>
             )}
-          </div>
 
-          {/* Sections per Class - Full Width */}
-          {visibleCharts.classDistribution && (
-            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
-              <CardContent className="p-3 sm:p-4">
-                {showCharts ? (
-                  <DynamicChart chartData={visibleCharts.classDistribution} height={240} />
-                ) : (
-                  <Skeleton className="h-[240px] w-full" />
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Bottom Section - School Overview */}
-          <div className="grid grid-cols-1 gap-3">
-            {/* School Overview Pie Chart */}
-            {visibleCharts.overview && (
-              <Card className="min-w-0 overflow-hidden lg:col-span-2 shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
+            {visibleCharts.classDistribution && (
+              <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
                 <CardContent className="p-3 sm:p-4">
                   {showCharts ? (
-                    <DynamicChart chartData={visibleCharts.overview} height={260} />
+                    <DynamicChart chartData={visibleCharts.classDistribution} height={240} />
                   ) : (
-                    <Skeleton className="h-[260px] w-full" />
+                    <Skeleton className="h-[240px] w-full" />
                   )}
                 </CardContent>
               </Card>
             )}
           </div>
+
+          {/* Charts Section - Row 3: School Overview */}
+          {visibleCharts.overview && (
+            <Card className="min-w-0 overflow-hidden shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]" style={{ contain: 'layout style paint' }}>
+              <CardContent className="p-3 sm:p-4">
+                {showCharts ? (
+                  <DynamicChart chartData={visibleCharts.overview} height={260} />
+                ) : (
+                  <Skeleton className="h-[260px] w-full" />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Teacher Leaderboard */}
+          {metadata?.teacherLeaderboard && metadata.teacherLeaderboard.length > 0 && (
+            <Card className="shadow-sm border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">Teacher Leaderboard (Top 10)</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 dark:border-[#2A2A2A] text-xs text-gray-500 dark:text-gray-400">
+                        <th className="text-left py-3 px-4 font-medium">Rank</th>
+                        <th className="text-left py-3 px-4 font-medium">Teacher</th>
+                        <th className="text-center py-3 px-4 font-medium">Grading</th>
+                        <th className="text-center py-3 px-4 font-medium">Attendance</th>
+                        <th className="text-center py-3 px-4 font-medium">Lesson Plans</th>
+                        <th className="text-center py-3 px-4 font-medium">Overall</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metadata.teacherLeaderboard.map((entry) => (
+                        <tr
+                          key={entry.teacherId}
+                          className="border-b border-gray-100 dark:border-[#2A2A2A]/50 hover:bg-gray-50 dark:hover:bg-[#222]"
+                        >
+                          <td className="py-3 px-4">
+                            <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                              entry.rank <= 3
+                                ? entry.rank === 1
+                                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                  : entry.rank === 2
+                                    ? "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                : "bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400"
+                            }`}>
+                              {entry.rank}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 font-medium text-gray-900 dark:text-white">
+                            {entry.teacherName}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-gray-900 dark:text-white">{entry.gradingScore.toFixed(1)}</span>
+                              <span className="text-xs text-gray-400">{entry.gradingSubmitted}/{entry.gradingOnTime} on time</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-gray-900 dark:text-white">{entry.attendanceScore.toFixed(1)}</span>
+                              <span className="text-xs text-gray-400">{entry.attendanceSubmitted} submitted</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-gray-900 dark:text-white">{entry.lessonPlanScore.toFixed(1)}</span>
+                              <span className="text-xs text-gray-400">{entry.lessonPlans} plans</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${
+                              entry.overallScore >= 80
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                : entry.overallScore >= 60
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                            }`}>
+                              {entry.overallScore.toFixed(1)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

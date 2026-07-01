@@ -235,127 +235,127 @@ const SchoolSubscriptionPage = () => {
   }
 
   return (
-    <div className="flex-1 p-4 md:p-6">
+    <div className="flex-1 p-4 md:p-6 dark:bg-[#1A1A1A]">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">School Subscriptions</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">School Subscriptions</h1>
+          <p className="text-gray-600 dark:text-gray-400">
             Manage subscription plans for all schools
           </p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <Card>
+          <Card className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-gray-600" />
+                <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Schools</p>
-                  <p className="text-xl font-bold">{stats.total}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Schools</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Crown className="w-5 h-5 text-purple-600" />
+                <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-[#1A1A1A] flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Ultimate</p>
-                  <p className="text-xl font-bold">{stats.ultimate}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Ultimate</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.ultimate}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Star className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-[#1A1A1A] flex items-center justify-center">
+                  <Star className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Standard</p>
-                  <p className="text-xl font-bold">{stats.standard}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Standard</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.standard}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-gray-600" />
+                <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Core</p>
-                  <p className="text-xl font-bold">{stats.core}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Core</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.core}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5 text-yellow-600" />
+                <div className="w-10 h-10 rounded-lg bg-yellow-100 dark:bg-[#1A1A1A] flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">No Plan</p>
-                  <p className="text-xl font-bold">{stats.noPlan}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">No Plan</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{stats.noPlan}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
+        <Card className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
           <CardHeader>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <CardTitle>Schools</CardTitle>
-                <CardDescription>
+                <CardTitle className="dark:text-white">Schools</CardTitle>
+                <CardDescription className="dark:text-gray-400">
                   {filteredSchools.length} school
                   {filteredSchools.length !== 1 ? 's' : ''} found
                 </CardDescription>
               </div>
               <div className="flex flex-col md:flex-row gap-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
                   <Input
                     placeholder="Search schools..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 w-64"
+                    className="pl-9 w-64 dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white"
                   />
                 </div>
                 <Select value={filterTier} onValueChange={setFilterTier}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-40 dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white">
                     <Filter className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Tier" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Tiers</SelectItem>
-                    <SelectItem value="CORE">Core</SelectItem>
-                    <SelectItem value="STANDARD">Standard</SelectItem>
-                    <SelectItem value="ULTIMATE">Ultimate</SelectItem>
+                  <SelectContent className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
+                    <SelectItem value="all" className="dark:text-gray-200">All Tiers</SelectItem>
+                    <SelectItem value="CORE" className="dark:text-gray-200">Core</SelectItem>
+                    <SelectItem value="STANDARD" className="dark:text-gray-200">Standard</SelectItem>
+                    <SelectItem value="ULTIMATE" className="dark:text-gray-200">Ultimate</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-36">
+                  <SelectTrigger className="w-36 dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectContent className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
+                    <SelectItem value="all" className="dark:text-gray-200">All Status</SelectItem>
+                    <SelectItem value="active" className="dark:text-gray-200">Active</SelectItem>
+                    <SelectItem value="inactive" className="dark:text-gray-200">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -376,8 +376,8 @@ const SchoolSubscriptionPage = () => {
                 {filteredSchools.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8">
-                      <Building2 className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-600">No schools found</p>
+                      <Building2 className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+                      <p className="text-gray-600 dark:text-gray-400">No schools found</p>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -385,12 +385,12 @@ const SchoolSubscriptionPage = () => {
                     <TableRow key={school.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                            <Building2 className="w-5 h-5 text-purple-600" />
+                          <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-[#1A1A1A] flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                           </div>
                           <div>
-                            <p className="font-medium">{school.name}</p>
-                            <p className="text-sm text-gray-500">{school.email}</p>
+                            <p className="font-medium text-gray-900 dark:text-white">{school.name}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{school.email}</p>
                           </div>
                         </div>
                       </TableCell>
@@ -434,12 +434,12 @@ const SchoolSubscriptionPage = () => {
                       </TableCell>
                       <TableCell>
                         {school.planAssignedAt ? (
-                          <div className="flex items-center gap-1 text-sm text-gray-500">
+                          <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
                             <Calendar className="w-4 h-4" />
                             {new Date(school.planAssignedAt).toLocaleDateString()}
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400">Never</span>
+                          <span className="text-sm text-gray-400 dark:text-gray-500">Never</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -449,10 +449,10 @@ const SchoolSubscriptionPage = () => {
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
                             <DropdownMenuItem
                               onClick={() => openAssignDialog(school)}
-                              className="gap-2"
+                              className="gap-2 dark:text-gray-200"
                             >
                               <Edit className="w-4 h-4" />
                               Assign Plan
@@ -469,17 +469,17 @@ const SchoolSubscriptionPage = () => {
         </Card>
 
         <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-          <DialogContent>
+          <DialogContent className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
             <DialogHeader>
-              <DialogTitle>Assign Plan to School</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="dark:text-white">Assign Plan to School</DialogTitle>
+              <DialogDescription className="dark:text-gray-400">
                 {selectedSchool?.name} - Assign a subscription plan
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Current Plan</label>
-                <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="p-3 bg-gray-50 dark:bg-[#1A1A1A] rounded-lg">
                   {selectedSchool?.plan ? (
                     <div className="flex items-center gap-2">
                       <Badge

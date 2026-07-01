@@ -9,10 +9,9 @@ import {
   AssessmentStatus,
   Prisma,
 } from '@prisma/client';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationService } from '../notification/notification.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import {
   AddAssessmentSubjectsDto,
   CreateAssessmentDto,
@@ -45,8 +44,8 @@ const CALENDAR_DEFAULT_ASSESSMENT_TYPES = new Set([
 export class AssessmentsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notificationService: NotificationService,
     private readonly cacheService: CacheService,
+    private readonly eventBus: EventBusService,
   ) {}
 
   private getTeacherGradesNamespace(schoolId: string, teacherId: string) {
@@ -223,99 +222,6 @@ export class AssessmentsService {
       .split('_')
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ');
-  }
-
-  private async notifyTeachersForAssessmentStart(
-    schoolId: string,
-    assessment: {
-      id: string;
-      title: string;
-      type: string;
-      startDate: Date;
-    },
-    subjects: Array<{
-      id: string;
-      teacherId: string | null;
-      className: string;
-      subjectName: string;
-    }>,
-  ) {
-    if (!this.isAssessmentDue(assessment.startDate)) {
-      return;
-    }
-
-    for (const item of subjects) {
-      if (!item.teacherId) continue;
-
-      const existing = await this.prisma.notification.findFirst({
-        where: {
-          schoolId,
-          userId: item.teacherId,
-          type: 'ASSESSMENT_CREATED',
-          metadata: {
-            contains: `"assessmentSubjectId":"${item.id}"`,
-          },
-        },
-        select: { id: true },
-      });
-
-      if (existing) continue;
-
-      await this.notificationService.notifyAssessmentStarted(
-        schoolId,
-        [item.teacherId],
-        assessment.title,
-        assessment.type,
-        item.className,
-        item.subjectName,
-        {
-          assessmentId: assessment.id,
-          assessmentSubjectId: item.id,
-          startDate: assessment.startDate.toISOString(),
-        },
-      );
-    }
-  }
-
-  @Cron(CronExpression.EVERY_HOUR)
-  async notifyDueAssessmentStarts() {
-    const dueSubjects = await this.prisma.assessmentSubject.findMany({
-      where: {
-        teacherId: { not: null },
-        assessment: {
-          status: AssessmentStatus.ACTIVE,
-          startDate: { lte: new Date() },
-        },
-      },
-      include: {
-        assessment: {
-          select: {
-            id: true,
-            schoolId: true,
-            title: true,
-            type: true,
-            startDate: true,
-          },
-        },
-        class: { select: { name: true } },
-        subject: { select: { name: true } },
-      },
-    });
-
-    for (const item of dueSubjects) {
-      await this.notifyTeachersForAssessmentStart(
-        item.assessment.schoolId,
-        item.assessment,
-        [
-          {
-            id: item.id,
-            teacherId: item.teacherId,
-            className: item.class.name,
-            subjectName: item.subject.name,
-          },
-        ],
-      );
-    }
   }
 
   private computeWeightedAssessmentSummary(
@@ -1135,7 +1041,6 @@ if (
         role,
       );
 
-      await this.notifyTeachersForAssessmentStart(schoolId, assessment, createdSubjects);
       const affectedTeacherIds = await this.getAssessmentAffectedTeacherIds(
         schoolId,
         assessment.id,
@@ -1147,6 +1052,15 @@ if (
     } else {
       await this.invalidateAssessmentGradeCaches(schoolId);
     }
+
+    this.eventBus.emit('assessment.created', {
+      schoolId,
+      assessmentId: assessment.id,
+      type: assessment.type,
+      title: assessment.title,
+      subjectIds: dto.subjects?.map((s) => s.subjectId) ?? [],
+      createdBy: userId,
+    });
 
     return this.getAssessmentById(schoolId, assessment.id);
   }
@@ -1172,7 +1086,6 @@ if (
       role,
     );
 
-    await this.notifyTeachersForAssessmentStart(schoolId, assessment, createdSubjects);
     const affectedTeacherIds = await this.getAssessmentAffectedTeacherIds(
       schoolId,
       assessment.id,
@@ -1319,6 +1232,13 @@ if (
       updated.id,
     );
     await this.invalidateAssessmentGradeCaches(schoolId, affectedTeacherIds);
+
+    this.eventBus.emit('assessment.updated', {
+      schoolId,
+      assessmentId: id,
+      changes: Object.keys(data),
+      updatedBy: userId,
+    });
 
     return this.getAssessmentById(schoolId, id);
   }
@@ -1721,6 +1641,17 @@ if (
       )
     );
 
+    for (const row of dto.scores) {
+      this.eventBus.emit('assessment.scored', {
+        schoolId,
+        assessmentSubjectId,
+        studentId: row.studentId,
+        score: row.score ?? null,
+        isAbsent: row.isAbsent ?? false,
+        scoredBy: userId,
+      });
+    }
+
     return this.getScoreEntry(userId, role, schoolId, assessmentSubjectId);
   }
 
@@ -1746,6 +1677,12 @@ if (
       },
     });
     await this.invalidateAssessmentGradeCaches(schoolId, teacherIds);
+
+    this.eventBus.emit('assessment.locked', {
+      schoolId,
+      assessmentId: updated.id,
+    });
+
     return updated;
   }
 

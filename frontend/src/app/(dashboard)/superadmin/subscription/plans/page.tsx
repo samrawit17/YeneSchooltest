@@ -23,6 +23,7 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  Save,
 } from 'lucide-react';
 import {
   Card,
@@ -86,6 +87,8 @@ const SubscriptionPlansPage = () => {
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('plans');
+  const [draftChanges, setDraftChanges] = useState<Record<string, string>>({});
+  const [isSavingPlans, setIsSavingPlans] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -115,6 +118,7 @@ const SubscriptionPlansPage = () => {
       setLoadingSchools(true);
       const response = await subscriptionAPI.getSchools();
       setSchools(response.data);
+      setDraftChanges({});
     } catch (error) {
       console.error('Failed to fetch schools:', error);
       toast.error('Failed to load schools');
@@ -127,6 +131,9 @@ const SubscriptionPlansPage = () => {
   useEffect(() => {
     if (activeTab === 'schools' && !schoolsLoaded && !loadingSchools) {
       void fetchSchools();
+    }
+    if (activeTab !== 'schools') {
+      setDraftChanges({});
     }
   }, [activeTab, fetchSchools, loadingSchools, schoolsLoaded]);
 
@@ -234,7 +241,7 @@ const SubscriptionPlansPage = () => {
 
   if (loading || authLoading) {
     return (
-    <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+    <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-[#1A1A1A]">
       <div>
           <div className="mb-6">
             <Skeleton className="h-10 w-64 mb-2" />
@@ -259,8 +266,8 @@ const SubscriptionPlansPage = () => {
 
   if (error) {
     return (
-      <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
-        <Card className="max-w-2xl dark:bg-gray-800 dark:border-gray-700">
+      <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-[#1A1A1A]">
+        <Card className="max-w-2xl dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
               <AlertCircle className="h-5 w-5 text-red-600" />
@@ -280,7 +287,7 @@ const SubscriptionPlansPage = () => {
   }
 
   return (
-    <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+    <div className="flex-1 p-4 md:p-6 bg-gray-50 dark:bg-[#1A1A1A]">
       <div>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -301,7 +308,7 @@ const SubscriptionPlansPage = () => {
                     Create Plan
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
                   <DialogHeader>
                     <DialogTitle className="dark:text-white">
                       {editingPlan ? 'Edit Plan' : 'Create New Plan'}
@@ -334,7 +341,7 @@ const SubscriptionPlansPage = () => {
                           <SelectTrigger>
                             <SelectValue placeholder="Select tier" />
                           </SelectTrigger>
-                          <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
+                          <SelectContent className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
                             <SelectItem value="CORE">
                               <div className="flex items-center gap-2">
                                 <Shield className="w-4 h-4" />
@@ -371,7 +378,7 @@ const SubscriptionPlansPage = () => {
                     </div>
                     <div className="space-y-2">
                       <Label className="dark:text-gray-300">Features</Label>
-                      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto border rounded-lg p-3 dark:border-gray-700">
+                      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto border rounded-lg p-3 dark:border-[#2A2A2A]">
                         {FEATURE_LIST.map((feature) => (
                           <div
                             key={feature.key}
@@ -422,7 +429,7 @@ const SubscriptionPlansPage = () => {
           <TabsContent value="plans" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {plans.length === 0 ? (
-                <Card className="col-span-full dark:bg-gray-800 dark:border-gray-700">
+                <Card className="col-span-full dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
                   <CardContent className="py-12 text-center">
                     <Shield className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -441,9 +448,9 @@ const SubscriptionPlansPage = () => {
                 plans.map((plan) => (
                   <Card
                     key={plan.id}
-                    className={`relative overflow-hidden dark:bg-gray-800 ${
+                    className={`relative overflow-hidden dark:bg-[#2A2A2A] ${
                       plan.tier === 'CORE'
-                        ? 'border-gray-200 dark:border-gray-700'
+                        ? 'border-gray-200 dark:border-[#2A2A2A]'
                         : plan.tier === 'STANDARD'
                         ? 'border-blue-200 dark:border-blue-800'
                         : 'border-purple-200 dark:border-purple-800'
@@ -486,7 +493,7 @@ const SubscriptionPlansPage = () => {
                               <Settings className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
+                          <DropdownMenuContent align="end" className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
                             <DropdownMenuItem
                               onClick={() => handleOpenDialog(plan)}
                               className="gap-2 dark:focus:bg-gray-700"
@@ -541,7 +548,7 @@ const SubscriptionPlansPage = () => {
                         </div>
                       </div>
                     </CardContent>
-                    <CardFooter className="bg-gray-50 dark:bg-gray-800/80 border-t dark:border-gray-700">
+                    <CardFooter className="bg-gray-50 dark:bg-[#2A2A2A]/80 border-t dark:border-[#2A2A2A]">
                       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <Building2 className="w-4 h-4" />
                         {getSchoolsCountForPlan(plan.id)} schools subscribed
@@ -554,12 +561,48 @@ const SubscriptionPlansPage = () => {
           </TabsContent>
 
           <TabsContent value="schools" className="mt-0">
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <Card className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
               <CardHeader>
-                <CardTitle className="dark:text-white">Schools</CardTitle>
-                <CardDescription className="dark:text-gray-400">
-                  Assign subscription plans to schools
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="dark:text-white">Schools</CardTitle>
+                    <CardDescription className="dark:text-gray-400">
+                      Assign subscription plans to schools
+                    </CardDescription>
+                  </div>
+                  {Object.keys(draftChanges).length > 0 && (
+                    <Button
+                      onClick={async () => {
+                        setIsSavingPlans(true);
+                        try {
+                          const entries = Object.entries(draftChanges);
+                          for (const [schoolId, planId] of entries) {
+                            await subscriptionAPI.assignPlan(
+                              schoolId,
+                              planId === 'none' ? null : planId
+                            );
+                          }
+                          setDraftChanges({});
+                          toast.success(`Saved ${entries.length} change${entries.length > 1 ? 's' : ''}`);
+                          await fetchSchools();
+                        } catch (error: any) {
+                          toast.error(error.response?.data?.message || 'Failed to save changes');
+                        } finally {
+                          setIsSavingPlans(false);
+                        }
+                      }}
+                      disabled={isSavingPlans}
+                      className="gap-2"
+                    >
+                      {isSavingPlans ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      Save Changes
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {loadingSchools ? (
@@ -575,10 +618,15 @@ const SubscriptionPlansPage = () => {
                   <div className="space-y-4">
                     {schools.map((school: any) => {
                       const schoolPlan = school.plan;
+                      const originalId = schoolPlan?.id || 'none';
+                      const draftId = draftChanges[school.id] ?? originalId;
+                      const isDirty = draftId !== originalId;
                       return (
                         <div
                           key={school.id}
-                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 dark:border-gray-700 dark:bg-gray-800/50"
+                          className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 dark:border-[#2A2A2A] ${
+                            isDirty ? 'dark:bg-yellow-900/10 bg-yellow-50/50' : 'dark:bg-[#2A2A2A]/50'
+                          }`}
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
@@ -616,21 +664,20 @@ const SubscriptionPlansPage = () => {
                               </Badge>
                             )}
                             <Select
-                              value={schoolPlan?.id || 'none'}
-                              onValueChange={async (value) => {
-                                try {
-                                  await subscriptionAPI.assignPlan(
-                                    school.id,
-                                    value === 'none' ? null : value
-                                  );
-                                  toast.success('Plan assigned successfully');
-                                  await fetchSchools();
-                                } catch (error: any) {
-                                  toast.error(error.response?.data?.message || 'Failed to assign plan');
-                                }
+                              value={draftId}
+                              onValueChange={(value) => {
+                                setDraftChanges((prev) => {
+                                  const next = { ...prev };
+                                  if (value === originalId) {
+                                    delete next[school.id];
+                                  } else {
+                                    next[school.id] = value;
+                                  }
+                                  return next;
+                                });
                               }}
                             >
-                              <SelectTrigger className="w-40">
+                              <SelectTrigger className={`w-40 ${isDirty ? 'border-yellow-400 dark:border-yellow-600' : ''}`}>
                                 <SelectValue placeholder="Assign Plan" />
                               </SelectTrigger>
                               <SelectContent>
@@ -653,7 +700,7 @@ const SubscriptionPlansPage = () => {
           </TabsContent>
 
           <TabsContent value="features" className="mt-0">
-            <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <Card className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A]">
               <CardHeader>
                 <CardTitle className="dark:text-white">Feature Matrix</CardTitle>
                 <CardDescription className="dark:text-gray-400">
@@ -664,7 +711,7 @@ const SubscriptionPlansPage = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b dark:border-gray-700">
+                      <tr className="border-b dark:border-[#2A2A2A]">
                         <th className="text-left py-3 px-4 font-medium dark:text-white">Feature</th>
                         <th className="text-center py-3 px-4 font-medium dark:text-white">
                           <div className="flex items-center justify-center gap-1">
@@ -691,7 +738,7 @@ const SubscriptionPlansPage = () => {
                     </thead>
                     <tbody>
                       {FEATURE_LIST.map((feature) => (
-                        <tr key={feature.key} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <tr key={feature.key} className="border-b dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           <td className="py-3 px-4">
                             <div>
                               <p className="font-medium dark:text-white">{feature.name}</p>

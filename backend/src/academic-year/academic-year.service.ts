@@ -724,9 +724,13 @@ export class AcademicYearService {
         },
       });
 
-      await tx.schoolSettings.update({
+      await tx.schoolSettings.upsert({
         where: { schoolId: academicYear.schoolId },
-        data: { defaultAcademicYearId: id },
+        update: { defaultAcademicYearId: id },
+        create: {
+          schoolId: academicYear.schoolId,
+          defaultAcademicYearId: id,
+        },
       });
 
       return updated;

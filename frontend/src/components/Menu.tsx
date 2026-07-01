@@ -59,6 +59,7 @@ import {
   ShieldCheck,
   HelpCircle,
   FileSpreadsheet,
+  Zap,
 } from "lucide-react";
 
 // Helper function to get dashboard path based on role
@@ -334,6 +335,12 @@ const menuItems: MenuSection[] = [
         href: "/admin/siren-management",
         visible: ["admin", "it_manager"],
         subscriptionFeature: "SIREN_ALERT",
+      },
+      {
+        icon: <Zap className="w-5 h-5" />,
+        label: "Automation",
+        href: "/automation",
+        visible: ["admin", "it_manager", "super_admin"],
       },
       {
         icon: <Clock className="w-5 h-5" />,

@@ -1,6 +1,7 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomInt } from 'crypto';
-import { PracticeExamAttemptStatus, PracticeExamOption, PracticeExamQuestionType, PracticeExamStatus } from '@prisma/client';
+import { Prisma, PracticeExamAttemptStatus, PracticeExamOption, PracticeExamQuestionType, PracticeExamStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 type AnswerInput = {
@@ -667,7 +668,10 @@ export class PracticeExamsService {
     const answerMap = new Map(attempt.answers.map((answer) => [answer.questionId, answer]));
     const questions = [...attempt.exam.questions];
     if (attempt.exam.shuffleQuestions) {
-      questions.sort((a, b) => a.id.localeCompare(b.id));
+      for (let i = questions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [questions[i], questions[j]] = [questions[j], questions[i]];
+      }
     }
     return {
       ...attempt,
@@ -714,7 +718,8 @@ export class PracticeExamsService {
     return attempt.status === 'IN_PROGRESS' && new Date() >= attempt.expiresAt;
   }
 
-  private async saveAnswers(attempt: any, answers: AnswerInput[], gradeNow: boolean) {
+  private async saveAnswers(attempt: any, answers: AnswerInput[], gradeNow: boolean, tx?: Prisma.TransactionClient) {
+    const client = tx || this.prisma;
     const questionIds = new Set(attempt.exam.questions.map((q: any) => q.id));
     for (const answer of answers) {
       if (!questionIds.has(answer.questionId)) continue;
@@ -722,7 +727,7 @@ export class PracticeExamsService {
       const textAnswer = answer.textAnswer !== undefined && answer.textAnswer !== null ? this.normalizeTextAnswer(answer.textAnswer) : null;
       const question = attempt.exam.questions.find((q: any) => q.id === answer.questionId);
       const answerForGrading = { selectedOption, textAnswer };
-      await this.prisma.practiceExamAnswer.upsert({
+      await client.practiceExamAnswer.upsert({
         where: { attemptId_questionId: { attemptId: attempt.id, questionId: answer.questionId } },
         create: {
           attemptId: attempt.id,
@@ -746,24 +751,27 @@ export class PracticeExamsService {
   }
 
   async submitAttempt(schoolId: string, studentId: string, attemptId: string, answers: AnswerInput[]) {
-    const attempt = await this.prisma.practiceExamAttempt.findFirst({
-      where: { id: attemptId, schoolId, studentId },
-      include: { exam: { include: { questions: { where: { isActive: true } } } } },
+    await this.prisma.$transaction(async (tx) => {
+      const attempt = await tx.practiceExamAttempt.findFirst({
+        where: { id: attemptId, schoolId, studentId },
+        include: { exam: { include: { questions: { where: { isActive: true } } } } },
+      });
+      if (!attempt) throw new NotFoundException('Attempt not found');
+      if (attempt.status !== 'IN_PROGRESS') throw new BadRequestException('Attempt is already submitted');
+      const status = new Date() >= attempt.expiresAt ? 'EXPIRED' : 'SUBMITTED';
+      await this.finalizeAttempt(attempt, answers, status, true, tx);
     });
-    if (!attempt) throw new NotFoundException('Attempt not found');
-    if (attempt.status !== 'IN_PROGRESS') throw new BadRequestException('Attempt is already submitted');
-    const status = new Date() >= attempt.expiresAt ? 'EXPIRED' : 'SUBMITTED';
-    await this.finalizeAttempt(attempt, answers, status, true);
     return this.getAttemptForStudent(schoolId, studentId, attemptId);
   }
 
-  private async finalizeAttempt(attempt: any, answers: AnswerInput[], status: PracticeExamAttemptStatus, saveIncomingAnswers: boolean) {
+  private async finalizeAttempt(attempt: any, answers: AnswerInput[], status: PracticeExamAttemptStatus, saveIncomingAnswers: boolean, tx?: Prisma.TransactionClient) {
+    const client = tx || this.prisma;
     if (saveIncomingAnswers) {
-      await this.saveAnswers(attempt, answers, true);
+      await this.saveAnswers(attempt, answers, true, tx);
     } else {
-      await this.gradeSavedAnswers(attempt);
+      await this.gradeSavedAnswers(attempt, tx);
     }
-    const saved = await this.prisma.practiceExamAnswer.findMany({ where: { attemptId: attempt.id } });
+    const saved = await client.practiceExamAnswer.findMany({ where: { attemptId: attempt.id } });
     const answerMap = new Map(saved.map((answer) => [answer.questionId, answer]));
     let correctCount = 0;
     let wrongCount = 0;
@@ -778,7 +786,7 @@ export class PracticeExamsService {
     }
     const total = attempt.exam.questions.length;
     const percentage = total ? Math.round((correctCount / total) * 1000) / 10 : 0;
-    await this.prisma.practiceExamAttempt.update({
+    await client.practiceExamAttempt.update({
       where: { id: attempt.id },
       data: {
         status,
@@ -790,7 +798,7 @@ export class PracticeExamsService {
         skippedCount,
       },
     });
-    return this.prisma.practiceExamAttempt.findUniqueOrThrow({
+    return client.practiceExamAttempt.findUniqueOrThrow({
       where: { id: attempt.id },
       include: {
         exam: {
@@ -804,16 +812,41 @@ export class PracticeExamsService {
     });
   }
 
-  private async gradeSavedAnswers(attempt: any) {
-    const saved = await this.prisma.practiceExamAnswer.findMany({ where: { attemptId: attempt.id } });
+  private async gradeSavedAnswers(attempt: any, tx?: Prisma.TransactionClient) {
+    const client = tx || this.prisma;
+    const saved = await client.practiceExamAnswer.findMany({ where: { attemptId: attempt.id } });
     const questionById = new Map(attempt.exam.questions.map((question: any) => [question.id, question]));
     for (const answer of saved) {
       const question = questionById.get(answer.questionId) as any;
       if (!question) continue;
-      await this.prisma.practiceExamAnswer.update({
+      await client.practiceExamAnswer.update({
         where: { id: answer.id },
         data: { isCorrect: this.isAnswerCorrect(question, answer) },
       });
+    }
+  }
+
+  private readonly logger = new Logger(PracticeExamsService.name);
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async expireStaleAttempts() {
+    const now = new Date();
+    const stale = await this.prisma.practiceExamAttempt.findMany({
+      where: {
+        status: 'IN_PROGRESS',
+        expiresAt: { lte: now },
+      },
+      include: {
+        exam: { include: { questions: { where: { isActive: true } } } },
+      },
+    });
+    for (const attempt of stale) {
+      try {
+        await this.finalizeAttempt(attempt, [], 'EXPIRED', false);
+        this.logger.log(`Auto-expired attempt ${attempt.id}`);
+      } catch (error: any) {
+        this.logger.error(`Failed to expire attempt ${attempt.id}: ${error.message}`);
+      }
     }
   }
 

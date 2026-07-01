@@ -118,7 +118,7 @@ export default function SuperAdminBackupsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 dark:bg-gray-900 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-4 dark:bg-[#1A1A1A] md:p-6">
       <div className="w-full space-y-6">
         <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">School Backups</h1>
@@ -127,7 +127,7 @@ export default function SuperAdminBackupsPage() {
           </p>
         </div>
 
-        <Card className="dark:border-gray-700 dark:bg-gray-800">
+        <Card className="dark:border-[#2A2A2A] dark:bg-[#2A2A2A]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg text-gray-900 dark:text-white">
               <FileArchive className="h-5 w-5 text-purple-600" />
@@ -139,7 +139,7 @@ export default function SuperAdminBackupsPage() {
               <label className="space-y-2">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">School</span>
                 <select
-                  className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                  className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:border-[#2A2A2A] dark:bg-[#2A2A2A] dark:text-white"
                   value={schoolId}
                   onChange={(event) => setSchoolId(event.target.value)}
                   disabled={loading || downloading}
@@ -161,7 +161,7 @@ export default function SuperAdminBackupsPage() {
               <label className="space-y-2">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Backup Type</span>
                 <select
-                  className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                  className="h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:border-[#2A2A2A] dark:bg-[#2A2A2A] dark:text-white"
                   value={backupType}
                   onChange={(event) => setBackupType(event.target.value)}
                   disabled={loading || downloading}
@@ -182,7 +182,7 @@ export default function SuperAdminBackupsPage() {
             </div>
 
             {loadError ? (
-              <div className="flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-[#2A2A2A] dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
                 <span className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4" />
                   {loadError}
@@ -194,7 +194,7 @@ export default function SuperAdminBackupsPage() {
               </div>
             ) : null}
 
-            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-[#2A2A2A] dark:bg-[#2A2A2A] dark:text-gray-300">
               {selectedSchool ? (
                 <span>
                   Selected: <strong>{selectedSchool.name}</strong>. The download will be a zip containing JSON files for the selected backup type.
