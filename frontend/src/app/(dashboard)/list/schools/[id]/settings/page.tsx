@@ -25,6 +25,7 @@ import {
   Settings as SettingsIcon,
   BookOpen,
   MessageSquare,
+  Bell,
   RefreshCw,
   Copy,
   ExternalLink,
@@ -60,7 +61,7 @@ interface SettingItem {
   key: string;
   label: string;
   description: string;
-  type: 'boolean' | 'string' | 'number' | 'select' | 'time' | 'color' | 'date';
+  type: 'boolean' | 'string' | 'number' | 'select' | 'time' | 'color' | 'date' | 'json';
   category: string;
   systemDefault?: any;
   options?: { value: string; label: string }[] | string[];
@@ -414,6 +415,32 @@ const SETTINGS_CONFIG: SettingItem[] = [
     category: 'advanced',
     systemDefault: false,
   },
+
+  // Notification Provider Settings
+  {
+    key: 'IN_APP_NOTIFICATIONS_ENABLED',
+    label: 'App Notifications',
+    description: 'Show in-app notifications to parents, teachers, and staff',
+    type: 'boolean',
+    category: 'notifications',
+    systemDefault: true,
+  },
+  {
+    key: 'EMAIL_NOTIFICATIONS_ENABLED',
+    label: 'Email Notifications',
+    description: 'Send email notifications to parents, teachers, and staff',
+    type: 'boolean',
+    category: 'notifications',
+    systemDefault: false,
+  },
+  {
+    key: 'SMS_NOTIFICATIONS_ENABLED',
+    label: 'SMS Notifications',
+    description: 'Send SMS notifications to parents, teachers, and staff',
+    type: 'boolean',
+    category: 'notifications',
+    systemDefault: false,
+  },
 ];
 
 const CATEGORY_CONFIG = {
@@ -482,6 +509,12 @@ const CATEGORY_CONFIG = {
     icon: SettingsIcon,
     color: 'text-pink-600',
     bgColor: 'bg-pink-100',
+  },
+  notifications: {
+    label: 'Notifications',
+    icon: Bell,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-100',
   },
 };
 
@@ -1068,6 +1101,9 @@ export default function SchoolSettingsPage() {
     if (setting.type === 'number') {
       return setting.systemDefault ?? '';
     }
+    if (setting.type === 'json') {
+      return setting.systemDefault ?? null;
+    }
     return '';
   };
 
@@ -1077,6 +1113,9 @@ export default function SchoolSettingsPage() {
     }
     if (setting.type === 'boolean') {
       return Boolean(left) === Boolean(right);
+    }
+    if (setting.type === 'json') {
+      return JSON.stringify(left) === JSON.stringify(right);
     }
     return String(left ?? '') === String(right ?? '');
   };
@@ -1461,6 +1500,22 @@ export default function SchoolSettingsPage() {
           />
           {isLocked && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('locked', 'Locked')}</Badge>}
           {hasSettingChanged(setting) && <Badge variant="outline" className="text-xs whitespace-nowrap">{badgeText('unsaved', 'Unsaved')}</Badge>}
+        </div>
+      );
+    }
+
+    if (setting.type === 'json') {
+      const rawValue = getEffectiveSettingValue(draftSettings, setting.key, setting);
+      const config: Record<string, string> =
+        typeof rawValue === 'object' && rawValue !== null ? rawValue : {};
+
+      if (setting.key === 'EMAIL_PROVIDER' || setting.key === 'SMS_PROVIDER') {
+        return null;
+      }
+
+      return (
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          Unknown JSON setting
         </div>
       );
     }
@@ -1929,4 +1984,6 @@ export default function SchoolSettingsPage() {
 
     </div>
   );
+
 }
+
