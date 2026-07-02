@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -8,7 +9,10 @@ export class TemplatesService {
   private schemaReady = false;
   private schemaInitPromise: Promise<void> | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+  ) {}
 
   private async ensureTemplateSchema() {
     if (this.schemaReady) return;
@@ -109,37 +113,16 @@ export class TemplatesService {
   ) {
     await this.ensureTemplateSchema();
     const folderName = input.type === 'CERTIFICATE' ? 'certificate-templates' : 'id-card-templates';
-    const backendPublicDir = path.join(process.cwd(), 'public', 'uploads', folderName);
-    
-    if (!fs.existsSync(backendPublicDir)) {
-      fs.mkdirSync(backendPublicDir, { recursive: true });
-    }
-
     const fileName = `${schoolId}-${Date.now()}${path.extname(file.originalname)}`;
-    const backendFilePath = path.join(backendPublicDir, fileName);
-    
-    // Save to backend
-    fs.writeFileSync(backendFilePath, file.buffer);
 
-    // Try to sync to frontend public dir if it exists (for local development without shared volumes)
-    const frontendPublicDir = path.join(process.cwd(), '..', 'frontend', 'public', 'uploads', folderName);
-    
-    try {
-      const isDocker = process.cwd() === '/app' || fs.existsSync('/.dockerenv');
-      const parentDir = path.join(process.cwd(), '..');
+    const storedFile = await this.storageService.upload(
+      file.buffer,
+      fileName,
+      file.mimetype,
+      { schoolId, folder: folderName, generateName: false },
+    );
 
-      if (!isDocker && fs.existsSync(parentDir)) {
-        if (!fs.existsSync(frontendPublicDir)) {
-          fs.mkdirSync(frontendPublicDir, { recursive: true });
-        }
-        const frontendFilePath = path.join(frontendPublicDir, fileName);
-        fs.copyFileSync(backendFilePath, frontendFilePath);
-      }
-    } catch (error) {
-      console.warn(`Failed to sync ${input.type} template to frontend directory:`, error.message);
-    }
-
-    const backgroundUrl = `/uploads/${folderName}/${fileName}`;
+    const backgroundUrl = storedFile.url;
 
     return this.prisma.template.create({
       data: {

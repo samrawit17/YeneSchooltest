@@ -149,6 +149,33 @@ const SETTINGS_CONFIG: SettingItem[] = [
     category: 'academic',
     systemDefault: '',
   },
+  {
+    key: 'PROMOTION_MIN_AVERAGE_GRADE',
+    label: 'Promotion Min Average Grade',
+    description: 'Minimum average grade (0-100) a student needs to be promoted',
+    type: 'number',
+    category: 'academic',
+    systemDefault: 50,
+    validation: { min: 0, max: 100 },
+  },
+  {
+    key: 'PROMOTION_MIN_ATTENDANCE',
+    label: 'Promotion Min Attendance',
+    description: 'Minimum attendance percentage (0-100) required for promotion',
+    type: 'number',
+    category: 'academic',
+    systemDefault: 75,
+    validation: { min: 0, max: 100 },
+  },
+  {
+    key: 'PROMOTION_ALLOW_FAILED_SUBJECTS',
+    label: 'Promotion Allow Failed Subjects',
+    description: 'Maximum number of failed subjects a student can still be promoted with',
+    type: 'number',
+    category: 'academic',
+    systemDefault: 2,
+    validation: { min: 0, max: 20 },
+  },
 
   // Attendance Settings
   {

@@ -10,8 +10,6 @@ import type { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import { Role } from './types/role.enum';
 import { EnrollmentStatus, Prisma } from '@prisma/client';
 import { CredentialService } from '../credential/credential.service';
@@ -24,6 +22,7 @@ import {
   DEFAULT_ROLE_PERMISSIONS,
   IT_MANAGER_FORBIDDEN_PERMISSIONS,
 } from './constants/default-permissions.constant';
+import { StorageService } from '../storage/storage.service';
 
 // Cookie name constant
 export const JWT_COOKIE_NAME = 'Authentication';
@@ -53,6 +52,7 @@ export class AuthService {
     private credentialService: CredentialService,
     private notificationService: NotificationService,
     private eventBus: EventBusService,
+    private storageService: StorageService,
   ) {}
 
   private normalizeUsername(username: string) {
@@ -999,20 +999,20 @@ export class AuthService {
       throw new ForbiddenException('You cannot update this user photo');
     }
 
-    const schoolSegment = targetUser.schoolId || 'platform';
-    const relativeDir = path.join('uploads', 'schools', schoolSegment, 'avatars');
-    const publicDir = path.join(process.cwd(), 'public', relativeDir);
-    const fileName = `${targetUser.id}-${Date.now()}${extension}`;
-    const filePath = path.join(publicDir, fileName);
-
-    await fs.mkdir(publicDir, { recursive: true });
-    await fs.writeFile(filePath, file.buffer);
-
-    const avatarUrl = `/${relativeDir.split(path.sep).join('/')}/${fileName}`;
+    const storedFile = await this.storageService.upload(
+      file.buffer,
+      targetUserId + extension,
+      file.mimetype,
+      {
+        schoolId: targetUser.schoolId || undefined,
+        folder: 'avatars',
+        generateName: false,
+      },
+    );
 
     return this.prismaService.user.update({
       where: { id: targetUser.id },
-      data: { avatarUrl },
+      data: { avatarUrl: storedFile.url },
       select: {
         id: true,
         name: true,

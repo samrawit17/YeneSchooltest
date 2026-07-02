@@ -13,6 +13,7 @@ import { generateEnrollmentKey } from '../common/utils/enrollment.util';
 import { Role } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { StorageService } from '../storage/storage.service';
 
 export interface CreateSchoolDto {
   name: string;
@@ -45,6 +46,7 @@ export class SchoolService {
     private subscriptionService: SubscriptionService,
     private auditService: AuditService,
     private eventBus: EventBusService,
+    private storageService: StorageService,
   ) {}
 
   async createSchool(createSchoolDto: CreateSchoolDto) {
@@ -332,18 +334,6 @@ export class SchoolService {
       throw new BadRequestException('Logo must be less than 2MB');
     }
 
-    const backendPublicDir = path.join(
-      process.cwd(),
-      'public',
-      'uploads',
-      'schools',
-    );
-
-    // Ensure backend directory exists
-    if (!fs.existsSync(backendPublicDir)) {
-      fs.mkdirSync(backendPublicDir, { recursive: true });
-    }
-
     const existing = await this.prismaService.school.findUnique({
       where: { id: schoolId },
       select: { logoUrl: true },
@@ -357,12 +347,15 @@ export class SchoolService {
           ? '.webp'
           : '.jpg';
     const fileName = `${schoolId}-${Date.now()}${extension}`;
-    const backendFilePath = path.join(backendPublicDir, fileName);
 
-    // Save to backend
-    fs.writeFileSync(backendFilePath, file.buffer);
+    const storedFile = await this.storageService.upload(
+      file.buffer,
+      fileName,
+      file.mimetype,
+      { schoolId, folder: 'logos', generateName: false },
+    );
 
-    const logoUrl = `/uploads/schools/${fileName}`;
+    const logoUrl = storedFile.url;
 
     await this.prismaService.school.update({
       where: { id: schoolId },

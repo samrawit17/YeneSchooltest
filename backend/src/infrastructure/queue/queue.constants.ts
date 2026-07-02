@@ -1,9 +1,9 @@
 export enum QueueName {
-  EMAIL = 'sms:email',
-  NOTIFICATION = 'sms:notification',
-  COMMUNICATION = 'sms:communication',
-  FILE_PROCESSING = 'sms:file-processing',
-  SYNC = 'sms:sync',
+  EMAIL = 'sms-email',
+  NOTIFICATION = 'sms-notification',
+  COMMUNICATION = 'sms-communication',
+  FILE_PROCESSING = 'sms-file-processing',
+  SYNC = 'sms-sync',
 }
 
 export enum QueuePriority {

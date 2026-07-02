@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PlatformSettingsModule } from '../platform-settings/platform-settings.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     PrismaModule,
     PlatformSettingsModule,
     SubscriptionModule,
+    StorageModule,
     MulterModule.register({
       limits: {
         fileSize: 2 * 1024 * 1024, // 2MB limit
