@@ -12,6 +12,7 @@ import {
   Mail,
   Wrench,
   Bell,
+  Cloud,
   Loader2,
   RefreshCw,
   Save,
@@ -21,16 +22,24 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface SettingItem {
   key: string;
   label: string;
   description: string;
-  type: 'boolean' | 'string' | 'number' | 'json';
+  type: 'boolean' | 'string' | 'number' | 'json' | 'select';
   category: string;
   icon: React.ReactNode;
   placeholder?: string;
   requiresConfirmation?: boolean;
+  options?: { value: string; label: string }[];
 }
 
 const PLATFORM_SETTINGS_CONFIG: SettingItem[] = [
@@ -70,11 +79,34 @@ const PLATFORM_SETTINGS_CONFIG: SettingItem[] = [
     category: 'integrations',
     icon: <Bell className="w-5 h-5" />,
   },
+  // Storage
+  {
+    key: 'STORAGE_TYPE',
+    label: 'Storage Type',
+    description: 'File storage backend (Local, S3, or MinIO)',
+    type: 'select',
+    category: 'storage',
+    icon: <Cloud className="w-5 h-5" />,
+    options: [
+      { value: 'local', label: 'Local Filesystem' },
+      { value: 's3', label: 'Amazon S3' },
+      { value: 'minio', label: 'MinIO' },
+    ],
+  },
+  {
+    key: 'STORAGE_CONFIG',
+    label: 'Storage Config',
+    description: 'Provider-specific configuration as JSON (bucket, region, keys, endpoint)',
+    type: 'json',
+    category: 'storage',
+    icon: <Cloud className="w-5 h-5" />,
+  },
 ];
 
 const CATEGORIES = [
   { id: 'platform', label: 'Platform', icon: <Settings className="w-4 h-4" /> },
   { id: 'integrations', label: 'Integrations', icon: <Settings className="w-4 h-4" /> },
+  { id: 'storage', label: 'Storage', icon: <Cloud className="w-4 h-4" /> },
 ];
 
 const formatDraftValue = (setting: SettingItem, value: unknown) => {
@@ -270,6 +302,43 @@ export default function PlatformSettingsPage() {
     const draftValue = drafts[setting.key] ?? formatDraftValue(setting, value);
     const savedDraftValue = formatDraftValue(setting, value);
     const isDirty = draftValue !== savedDraftValue;
+
+    if (setting.type === 'select') {
+      return (
+        <div className="space-y-2">
+          <Select
+            value={String(value || 'local')}
+            onValueChange={(newValue) => handleDraftChange(setting.key, newValue)}
+            disabled={isSaving}
+          >
+            <SelectTrigger className="dark:bg-[#2A2A2A] dark:border-[#2A2A2A] dark:text-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {setting.options?.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {fieldErrors[setting.key] ? (
+            <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors[setting.key]}</p>
+          ) : null}
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={() => handleSaveDraft(setting)}
+              disabled={isSaving || !isDirty}
+              className="gap-2"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save
+            </Button>
+          </div>
+        </div>
+      );
+    }
 
     if (setting.type === 'boolean') {
       return (

@@ -227,7 +227,25 @@ export class PlatformSettingsService {
       const normalized = String(value).trim().toLowerCase();
       if (!allowed.includes(normalized)) {
         throw new BadRequestException(
-          `storage_type must be one of: ${allowed.join(', ')}`,
+          `STORAGE_TYPE must be one of: ${allowed.join(', ')}`,
+        );
+      }
+      return normalized;
+    }
+
+    if (key === 'STORAGE_CONFIG') {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new BadRequestException('STORAGE_CONFIG must be a JSON object');
+      }
+      return value;
+    }
+
+    if (key === 'STORAGE_TYPE') {
+      const allowed = ['local', 's3', 'minio'];
+      const normalized = String(value).trim().toLowerCase();
+      if (!allowed.includes(normalized)) {
+        throw new BadRequestException(
+          `STORAGE_TYPE must be one of: ${allowed.join(', ')}`,
         );
       }
       return normalized;

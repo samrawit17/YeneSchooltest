@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import { StorageService } from '../storage/storage.service';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import * as QRCode from 'qrcode';
 import archiver from 'archiver';
@@ -120,8 +121,9 @@ export class StudentService {
   constructor(
     private prismaService: PrismaService,
     private credentialService: CredentialService,
-    private classService: ClassService, // Fixed param order
+    private classService: ClassService,
     private cacheService: CacheService,
+    private storageService: StorageService,
   ) {}
 
   private normalizeStudentStream(stream?: string | null, grade?: number | null) {
@@ -1163,12 +1165,14 @@ export class StudentService {
       file.mimetype === 'image/png' ? '.png' :
       file.mimetype === 'image/webp' ? '.webp' :
       '.jpg';
-    const relativeDir = path.join('uploads', 'id-card-watermarks');
-    const publicDir = path.join(process.cwd(), 'public', relativeDir);
     const fileName = `${schoolId}-${Date.now()}${extension}`;
-    await fs.promises.mkdir(publicDir, { recursive: true });
-    await fs.promises.writeFile(path.join(publicDir, fileName), file.buffer);
-    return `/${relativeDir.split(path.sep).join('/')}/${fileName}`;
+    const storedFile = await this.storageService.upload(
+      file.buffer,
+      fileName,
+      file.mimetype,
+      { schoolId, folder: 'id-card-watermarks', generateName: false },
+    );
+    return storedFile.url;
   }
 
   private normalizeHexColor(value: any, fallback: string) {
@@ -1874,13 +1878,14 @@ export class StudentService {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_|_$/g, '') || 'document';
-    const relativeDir = path.join('uploads', 'student-documents', schoolId, studentId);
-    const publicDir = path.join(process.cwd(), 'public', relativeDir);
-    const fileName = `${safeType}-${Date.now()}${extension}`;
-    await fs.promises.mkdir(publicDir, { recursive: true });
-    await fs.promises.writeFile(path.join(publicDir, fileName), file.buffer);
-
-    const fileUrl = `/${relativeDir.split(path.sep).join('/')}/${fileName}`;
+    const fileName = `${studentId}-${safeType}-${Date.now()}${extension}`;
+    const storedFile = await this.storageService.upload(
+      file.buffer,
+      fileName,
+      file.mimetype,
+      { schoolId, folder: 'student-documents', generateName: false },
+    );
+    const fileUrl = storedFile.url;
     const document = {
       id: `${safeType}-${Date.now()}`,
       type: safeType,

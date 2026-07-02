@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { RbacModule } from './rbac/rbac.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { SchoolInfoService } from './school-info.service';
 import { SchoolModule } from './school/school.module';
 import { StudentModule } from './student/student.module';
 import { RegistrarModule } from './registrar/registrar.module';

@@ -8,6 +8,7 @@ import { AuditRequestContext, AuditService, type AuditActor } from '../audit/aud
 import { PlanTier } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { StorageService } from '../storage/storage.service';
 
 // Curriculum type enum
 type CurriculumType = 'SEMESTER' | 'QUARTER' | 'TERM' | 'CUSTOM';
@@ -101,6 +102,9 @@ export const SCHOOL_SETTING_KEYS = {
   SCHOOL_STARTS_AT: 'SCHOOL_STARTS_AT',
   REGISTRATION_STARTS_AT: 'REGISTRATION_STARTS_AT',
   MAINTENANCE_MODE: 'MAINTENANCE_MODE',
+  PROMOTION_MIN_AVERAGE_GRADE: 'PROMOTION_MIN_AVERAGE_GRADE',
+  PROMOTION_MIN_ATTENDANCE: 'PROMOTION_MIN_ATTENDANCE',
+  PROMOTION_ALLOW_FAILED_SUBJECTS: 'PROMOTION_ALLOW_FAILED_SUBJECTS',
 } as const;
 
 const SCHOOL_SETTING_KEY_ALIASES: Record<string, string> = {
@@ -121,6 +125,7 @@ export class SchoolSettingsService {
     private readonly credentialService: CredentialService,
     private readonly subscriptionService: SubscriptionService,
     private readonly auditService: AuditService,
+    private readonly storageService: StorageService,
   ) {}
 
   private readonly allowedCalendarTypes = ['GREGORIAN', 'ETHIOPIAN'] as const;
@@ -180,8 +185,6 @@ export class SchoolSettingsService {
     SCHOOL_SETTING_KEYS.CUSTOM_BRANDING,
     'PARENT_VIEW_ATTENDANCE',
     'SELF_ENROLLMENT_ACTIVE',
-    SCHOOL_SETTING_KEYS.SCHOOL_STARTS_AT,
-    SCHOOL_SETTING_KEYS.REGISTRATION_STARTS_AT,
     SCHOOL_SETTING_KEYS.MAINTENANCE_MODE,
   ]);
 
@@ -645,19 +648,17 @@ export class SchoolSettingsService {
         : file.mimetype === 'image/webp'
           ? '.webp'
           : '.jpg';
-    const relativeDir = path.join('uploads', 'schools', schoolId, 'branding');
-    const backendPublicDir = path.join(process.cwd(), 'public', relativeDir);
-
-    if (!fs.existsSync(backendPublicDir)) {
-      fs.mkdirSync(backendPublicDir, { recursive: true });
-    }
-
     const fileName = `login-${Date.now()}${extension}`;
-    const filePath = path.join(backendPublicDir, fileName);
-    fs.writeFileSync(filePath, file.buffer);
+
+    const storedFile = await this.storageService.upload(
+      file.buffer,
+      fileName,
+      file.mimetype,
+      { schoolId, folder: 'branding', generateName: false },
+    );
 
     const oldUrl = await this.getSetting(schoolId, SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL);
-    const url = `/${relativeDir.replace(/\\/g, '/')}/${fileName}`;
+    const url = storedFile.url;
     await this.setSetting(schoolId, SCHOOL_SETTING_KEYS.LOGIN_IMAGE_URL, url, {
       ...context,
       source: 'upload',

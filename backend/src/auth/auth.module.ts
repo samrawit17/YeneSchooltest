@@ -11,6 +11,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { CredentialService } from '../credential/credential.service';
 import { NotificationModule } from '../notification/notification.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { NotificationModule } from '../notification/notification.module';
       inject: [ConfigService],
     }),
     NotificationModule,
+    StorageModule,
   ],
   controllers: [AuthController],
   providers: [

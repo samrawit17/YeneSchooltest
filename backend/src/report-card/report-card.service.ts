@@ -8,12 +8,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { NotificationService, NotificationType } from '../notification/notification.service';
 import { SCHOOL_SETTING_KEYS } from '../school-settings/school-settings.service';
-import * as fs from 'fs';
-import * as path from 'path';
+import { StorageService } from '../storage/storage.service';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import PDFKitDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
 import sharp from 'sharp';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const { ZipArchive } = require('archiver');
 
@@ -96,6 +97,7 @@ export class ReportCardService {
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
+    private storageService: StorageService,
   ) {}
 
   private async resolveAcademicYearName(schoolId: string, academicYearId: string) {
@@ -618,6 +620,33 @@ export class ReportCardService {
     });
     const parsed = parseInt(String(setting?.value || ''), 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+  }
+
+  private async getPromotionMinAverageGrade(schoolId: string): Promise<number> {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: SCHOOL_SETTING_KEYS.PROMOTION_MIN_AVERAGE_GRADE } },
+      select: { value: true },
+    });
+    const parsed = parseFloat(String(setting?.value || ''));
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : 50;
+  }
+
+  private async getPromotionMinAttendance(schoolId: string): Promise<number> {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: SCHOOL_SETTING_KEYS.PROMOTION_MIN_ATTENDANCE } },
+      select: { value: true },
+    });
+    const parsed = parseFloat(String(setting?.value || ''));
+    return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100 ? parsed : 75;
+  }
+
+  private async getPromotionAllowFailedSubjects(schoolId: string): Promise<number> {
+    const setting = await this.prisma.schoolSetting.findUnique({
+      where: { schoolId_key: { schoolId, key: SCHOOL_SETTING_KEYS.PROMOTION_ALLOW_FAILED_SUBJECTS } },
+      select: { value: true },
+    });
+    const parsed = parseInt(String(setting?.value || ''), 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 2;
   }
 
   private async getSchoolGradeRange(schoolId: string) {
@@ -2132,12 +2161,17 @@ export class ReportCardService {
       file.mimetype === 'image/png' ? '.png' :
       file.mimetype === 'image/webp' ? '.webp' :
       '.jpg';
-    const relativeDir = path.join('uploads', 'certificate-watermarks');
-    const publicDir = path.join(process.cwd(), 'public', relativeDir);
-    const fileName = `${schoolId}-${Date.now()}${extension}`;
-    await fs.promises.mkdir(publicDir, { recursive: true });
-    await fs.promises.writeFile(path.join(publicDir, fileName), file.buffer);
-    return `/${relativeDir.split(path.sep).join('/')}/${fileName}`;
+    const storedFile = await this.storageService.upload(
+      file.buffer,
+      `${schoolId}-${Date.now()}${extension}`,
+      file.mimetype,
+      {
+        schoolId,
+        folder: 'certificate-watermarks',
+        generateName: false,
+      },
+    );
+    return storedFile.url;
   }
 
   async getCertificatePayload(reportCardId: string, schoolId: string) {
@@ -3329,17 +3363,19 @@ export class ReportCardService {
       orderBy: [{ publishedAt: 'desc' }, { updatedAt: 'desc' }],
     });
 
+    const [minAverageGrade, minAttendance, allowFailedSubjects] = await Promise.all([
+      this.getPromotionMinAverageGrade(schoolId),
+      this.getPromotionMinAttendance(schoolId),
+      this.getPromotionAllowFailedSubjects(schoolId),
+    ]);
+
     await this.ensurePromotionReadiness({
       schoolId,
       fromClassId,
       fromAcademicYear,
       studentIds: [studentId],
       promoteAll: false,
-      criteria: {
-        minAverageGrade: 50,
-        minAttendance: 75,
-        allowFailedSubjects: 2,
-      },
+      criteria: { minAverageGrade, minAttendance, allowFailedSubjects },
     });
 
     if (status === 'GRADUATED' || !toClassId) {
@@ -3393,6 +3429,7 @@ export class ReportCardService {
     });
 
     const sectionId = await this.getSectionIdForClass(
+      schoolId,
       toClassId,
       sourceEnrollment?.section?.name,
     );
@@ -3459,6 +3496,7 @@ export class ReportCardService {
   }
 
   private async getSectionIdForClass(
+    schoolId: string,
     classId: string,
     preferredSectionName?: string | null,
   ): Promise<string> {
@@ -3492,11 +3530,12 @@ export class ReportCardService {
         return classSection.id;
       }
 
+      const defaultCapacity = await this.getDefaultSectionCapacity(schoolId);
       const createdSection = await this.prisma.section.create({
         data: {
           classId: targetClass.id,
           name: targetClass.section,
-          capacity: 40,
+          capacity: defaultCapacity,
         },
       });
       return createdSection.id;
@@ -3507,11 +3546,12 @@ export class ReportCardService {
       return firstSection.id;
     }
 
+    const defaultCapacity = await this.getDefaultSectionCapacity(schoolId);
     const createdSection = await this.prisma.section.create({
       data: {
         classId: targetClass.id,
         name: 'A',
-        capacity: 40,
+        capacity: defaultCapacity,
       },
     });
     return createdSection.id;
@@ -3557,6 +3597,8 @@ export class ReportCardService {
       throw new BadRequestException('Source class is required');
     }
 
+    const allowFailedSubjects = await this.getPromotionAllowFailedSubjects(schoolId);
+
     await this.ensurePromotionReadiness({
       schoolId,
       fromClassId,
@@ -3566,7 +3608,7 @@ export class ReportCardService {
       criteria: {
         ...(minAverageGrade !== undefined ? { minAverageGrade } : {}),
         ...(minAttendance !== undefined ? { minAttendance } : {}),
-        allowFailedSubjects: 2,
+        allowFailedSubjects,
       },
     });
 
@@ -3692,10 +3734,14 @@ export class ReportCardService {
     if (!isGraduation && toGrade !== fromGrade + 1) {
       throw new BadRequestException('Destination grade must be the next grade level');
     }
+    const [defaultMinAvg, allowFailedSubjects] = await Promise.all([
+      this.getPromotionMinAverageGrade(schoolId),
+      this.getPromotionAllowFailedSubjects(schoolId),
+    ]);
     const criteria = {
-      minAverageGrade: minAverageGrade ?? 50,
+      minAverageGrade: minAverageGrade ?? defaultMinAvg,
       ...(minAttendance !== undefined ? { minAttendance } : {}),
-      allowFailedSubjects: 2,
+      allowFailedSubjects,
     };
     const candidateResponse = await this.getPromotionCandidatesByGrade(schoolId, fromGrade, fromAcademicYear, criteria);
     const candidateMap = new Map(candidateResponse.candidates.map((candidate) => [candidate.student.id, candidate]));
