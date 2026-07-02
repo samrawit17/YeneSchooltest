@@ -12,13 +12,14 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { AllowSuperAdminMixedRole, Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/types/role.enum';
 import { AutomationEngineService } from './automation-engine.service';
 import { CreateRuleDto, UpdateRuleDto, ToggleRuleDto, AutomationLogQueryDto } from './dto/automation-engine.dto';
 
 @Controller('automation')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@AllowSuperAdminMixedRole()
 export class AutomationEngineController {
   constructor(private readonly automationService: AutomationEngineService) {}
 

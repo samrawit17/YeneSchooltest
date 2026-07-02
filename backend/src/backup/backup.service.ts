@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventBusService } from '../core/events/event-bus.service';
 
 export type SchoolBackupType =
   | 'FULL_SCHOOL'
@@ -35,7 +36,10 @@ interface BackupArtifact {
 
 @Injectable()
 export class BackupService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventBus: EventBusService,
+  ) {}
 
   getSchoolBackupTypes() {
     return [
@@ -86,10 +90,16 @@ export class BackupService {
 
       await this.createZip(zipPath, dbDumpPath, manifestPath, uploadsPath.path, uploadsPath.exists);
 
+      const fileName = path.basename(zipPath);
+      void this.eventBus.emit('backup.downloaded', {
+        backupType: 'PLATFORM',
+        fileName,
+      });
+
       return {
         tempDir,
         zipPath,
-        fileName: path.basename(zipPath),
+        fileName,
       };
     } catch (error) {
       await this.cleanupBackup(tempDir);
@@ -137,7 +147,14 @@ export class BackupService {
         ...files,
       ]);
 
-      return { tempDir, zipPath, fileName: path.basename(zipPath) };
+      const fileName = path.basename(zipPath);
+      void this.eventBus.emit('backup.downloaded', {
+        schoolId,
+        backupType: type,
+        fileName,
+      });
+
+      return { tempDir, zipPath, fileName };
     } catch (error) {
       await this.cleanupBackup(tempDir);
       throw error;

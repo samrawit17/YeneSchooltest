@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SchoolSettingsService } from '../school-settings/school-settings.service';
-import { NotificationService } from '../notification/notification.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import { CredentialService } from '../credential/credential.service';
 import { EnrollmentRequestStatus } from '@prisma/client';
 import { Role } from '../auth/types/role.enum';
@@ -52,7 +52,7 @@ export class EnrollmentRequestService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly schoolSettings: SchoolSettingsService,
-    private readonly notificationService: NotificationService,
+    private readonly eventBus: EventBusService,
     private readonly credentialService: CredentialService,
   ) {}
 
@@ -67,7 +67,7 @@ export class EnrollmentRequestService {
         logoUrl: true,
         schoolSettings: {
           where: {
-            key: { in: ['theme_color', 'login_image_url', 'SCHOOL_STARTS_AT', 'REGISTRATION_STARTS_AT'] },
+            key: { in: ['theme_color', 'login_image_url', 'SCHOOL_STARTS_AT', 'REGISTRATION_STARTS_AT', 'MAINTENANCE_MODE'] },
           },
           select: {
             key: true,
@@ -99,6 +99,9 @@ export class EnrollmentRequestService {
         school.schoolSettings.find(
           (setting) => setting.key === 'REGISTRATION_STARTS_AT',
         )?.value || null,
+      isMaintenance:
+        school.schoolSettings.find((setting) => setting.key === 'MAINTENANCE_MODE')
+          ?.value === 'true',
     }));
   }
 
@@ -116,7 +119,7 @@ export class EnrollmentRequestService {
         address: true,
         isActive: true,
         schoolSettings: {
-          where: { key: { in: ['theme_color', 'login_image_url', 'SCHOOL_STARTS_AT', 'REGISTRATION_STARTS_AT'] } },
+          where: { key: { in: ['theme_color', 'login_image_url', 'SCHOOL_STARTS_AT', 'REGISTRATION_STARTS_AT', 'MAINTENANCE_MODE'] } },
           select: { key: true, value: true },
         },
       },
@@ -147,6 +150,9 @@ export class EnrollmentRequestService {
         school.schoolSettings.find(
           (setting) => setting.key === 'REGISTRATION_STARTS_AT',
         )?.value || null,
+      isMaintenance:
+        school.schoolSettings.find((setting) => setting.key === 'MAINTENANCE_MODE')
+          ?.value === 'true',
     };
   }
 
@@ -164,7 +170,7 @@ export class EnrollmentRequestService {
         address: true,
         isActive: true,
         schoolSettings: {
-          where: { key: { in: ['theme_color', 'login_image_url', 'SCHOOL_STARTS_AT', 'REGISTRATION_STARTS_AT'] } },
+          where: { key: { in: ['theme_color', 'login_image_url', 'SCHOOL_STARTS_AT', 'REGISTRATION_STARTS_AT', 'MAINTENANCE_MODE'] } },
           select: { key: true, value: true },
         },
       },
@@ -195,6 +201,9 @@ export class EnrollmentRequestService {
         school.schoolSettings.find(
           (setting) => setting.key === 'REGISTRATION_STARTS_AT',
         )?.value || null,
+      isMaintenance:
+        school.schoolSettings.find((setting) => setting.key === 'MAINTENANCE_MODE')
+          ?.value === 'true',
     };
   }
 
@@ -500,11 +509,11 @@ export class EnrollmentRequestService {
       },
     });
 
-    await this.notificationService.notifyAdminsOfNewEnrollment(
-      dto.schoolId,
-      `${enrollment.firstName} ${enrollment.lastName}`,
-      String(enrollment.requestedGrade),
-    );
+    void this.eventBus.emit('enrollment.created', {
+      schoolId: dto.schoolId,
+      studentId: `${enrollment.firstName} ${enrollment.lastName}`,
+      gradeId: String(enrollment.requestedGrade),
+    });
 
     return { ...enrollment, referenceNumber };
   }

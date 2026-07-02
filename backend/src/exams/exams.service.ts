@@ -50,7 +50,7 @@ export class ExamsService {
       data,
     });
 
-    this.eventBus.emit('exam.created', {
+    void this.eventBus.emit('exam.created', {
       schoolId,
       examId: exam.id,
       classId: dto.classId,
@@ -123,7 +123,7 @@ export class ExamsService {
       data: updateData,
     });
 
-    this.eventBus.emit('exam.updated', {
+    void this.eventBus.emit('exam.updated', {
       schoolId,
       examId,
       changes: Object.keys(dto),
@@ -340,7 +340,7 @@ export class ExamsService {
 
     await this.prisma.$transaction(operations);
 
-    this.eventBus.emit('exam.results.entered', {
+    void this.eventBus.emit('exam.results.entered', {
       schoolId,
       examId,
       studentCount: results.length,
@@ -491,7 +491,7 @@ export class ExamsService {
       data: { published: true },
     });
 
-    this.eventBus.emit('exam.results.published', {
+    void this.eventBus.emit('exam.results.published', {
       schoolId,
       classId: body.classId,
       termId: body.termId,

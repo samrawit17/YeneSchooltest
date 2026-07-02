@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventBusService } from '../core/events/event-bus.service';
 
 @Injectable()
 export class PermissionsService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private eventBus: EventBusService,
+  ) {}
 
   async createPermission(data: {
     name: string;
@@ -11,9 +15,17 @@ export class PermissionsService {
     module: string;
     action: string;
   }) {
-    return this.prismaService.permission.create({
+    const permission = await this.prismaService.permission.create({
       data,
     });
+
+    void this.eventBus.emit('permission.created', {
+      permissionId: permission.id,
+      name: permission.name,
+      module: permission.module,
+    });
+
+    return permission;
   }
 
   async getPermissions() {
@@ -41,16 +53,42 @@ export class PermissionsService {
       action?: string;
     },
   ) {
-    return this.prismaService.permission.update({
+    const oldPermission = await this.prismaService.permission.findUnique({
+      where: { id },
+      select: { name: true },
+    });
+
+    const permission = await this.prismaService.permission.update({
       where: { id },
       data,
     });
+
+    const changes = Object.keys(data).filter((key) => data[key as keyof typeof data] !== undefined);
+    void this.eventBus.emit('permission.updated', {
+      permissionId: permission.id,
+      name: permission.name,
+      changes,
+    });
+
+    return permission;
   }
 
   async deletePermission(id: string) {
-    return this.prismaService.permission.delete({
+    const permission = await this.prismaService.permission.findUnique({
+      where: { id },
+      select: { id: true, name: true },
+    });
+
+    await this.prismaService.permission.delete({
       where: { id },
     });
+
+    if (permission) {
+      void this.eventBus.emit('permission.deleted', {
+        permissionId: permission.id,
+        name: permission.name,
+      });
+    }
   }
 
   async getPermissionsByModule(module: string) {

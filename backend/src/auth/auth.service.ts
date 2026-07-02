@@ -15,6 +15,7 @@ import * as path from 'path';
 import { Role } from './types/role.enum';
 import { EnrollmentStatus, Prisma } from '@prisma/client';
 import { CredentialService } from '../credential/credential.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import {
   NotificationService,
   NotificationType,
@@ -51,6 +52,7 @@ export class AuthService {
     private jwtService: JwtService,
     private credentialService: CredentialService,
     private notificationService: NotificationService,
+    private eventBus: EventBusService,
   ) {}
 
   private normalizeUsername(username: string) {
@@ -402,7 +404,7 @@ export class AuthService {
       return { success: false, message: 'An account with this email already exists' };
     }
 
-    await this.prismaService.user.create({
+    const user = await this.prismaService.user.create({
       data: {
         email,
         password: hashedPassword,
@@ -410,6 +412,13 @@ export class AuthService {
         role: Role.ADMIN,
         schoolId,
       },
+    });
+
+    void this.eventBus.emit('admin.created', {
+      adminId: user.id,
+      email: user.email,
+      name: user.name,
+      schoolId: user.schoolId,
     });
 
     return { success: true, message: 'Admin created successfully' };
@@ -437,7 +446,7 @@ export class AuthService {
       return { success: false, message: 'An account with this email already exists' };
     }
 
-    await this.prismaService.user.create({
+    const user = await this.prismaService.user.create({
       data: {
         email,
         password: hashedPassword,
@@ -445,6 +454,13 @@ export class AuthService {
         role: Role.IT_MANAGER,
         schoolId,
       },
+    });
+
+    void this.eventBus.emit('it-manager.created', {
+      itManagerId: user.id,
+      email: user.email,
+      name: user.name,
+      schoolId: user.schoolId,
     });
 
     return { success: true, message: 'IT Manager created successfully' };
@@ -1009,9 +1025,24 @@ export class AuthService {
   }
 
   async deleteUser(id: string) {
-    return this.prismaService.user.delete({
+    const user = await this.prismaService.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, schoolId: true, role: true },
+    });
+
+    await this.prismaService.user.delete({
       where: { id },
     });
+
+    if (user?.role === Role.ADMIN) {
+      void this.eventBus.emit('admin.deleted', {
+        adminId: user.id,
+        email: user.email,
+        schoolId: user.schoolId || '',
+      });
+    }
+
+    return user;
   }
 
   // ==================== PASSWORD MANAGEMENT ====================

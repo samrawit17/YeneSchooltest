@@ -1212,7 +1212,7 @@ export class AttendanceService {
     // Don't create records automatically - let the teacher mark them manually
     // This prevents all students from appearing as PRESENT by default
 
-    this.eventBus.emit('attendance.session.opened', {
+    void this.eventBus.emit('attendance.session.opened', {
       schoolId: session.schoolId,
       sessionId: session.id,
       classId: classId ?? 'unknown',
@@ -1639,7 +1639,7 @@ export class AttendanceService {
     });
 
     for (const record of records) {
-      this.eventBus.emit('attendance.marked', {
+      void this.eventBus.emit('attendance.marked', {
         schoolId: session.schoolId,
         sessionId: sessionId,
         studentId: record.studentId,
@@ -1739,7 +1739,7 @@ export class AttendanceService {
       },
     });
 
-    this.eventBus.emit('attendance.session.submitted', {
+    void this.eventBus.emit('attendance.session.submitted', {
       schoolId: session.schoolId,
       sessionId: session.id,
       classId: classId,
@@ -2349,7 +2349,7 @@ export class AttendanceService {
       },
     });
 
-    this.eventBus.emit('attendance.overridden', {
+    void this.eventBus.emit('attendance.overridden', {
       schoolId: user.schoolId,
       recordId: record.id,
       studentId: record.studentId,
@@ -2818,6 +2818,45 @@ export class AttendanceService {
       grade: item.grade,
       section: item.sectionName,
     }));
+  }
+
+  async notifyMissing(
+    user: any,
+    date: string,
+    grade?: string,
+    section?: string,
+  ) {
+    if (!this.isAdmin(user)) {
+      throw new ForbiddenException('Only admins can access this endpoint');
+    }
+
+    const missingEntries = await this.getMissingAttendanceEntries(
+      user,
+      date,
+      grade,
+      section,
+    );
+
+    if (missingEntries.length > 0) {
+      void this.eventBus.emit('attendance.missing.detected', {
+        schoolId: user.schoolId,
+        date,
+        missingClasses: missingEntries,
+        detectedBy: user.id,
+      });
+    }
+
+    return {
+      detected: missingEntries.length,
+      classes: missingEntries.map((e) => ({
+        id: e.classId,
+        name: e.className,
+        grade: e.grade,
+        section: e.sectionName,
+        teacherId: e.teacherId,
+        teacherName: e.teacherName,
+      })),
+    };
   }
 
   async getAdminDashboard(

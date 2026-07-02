@@ -100,6 +100,7 @@ export const SCHOOL_SETTING_KEYS = {
   REGISTRAR_PORTAL_ACCESS: 'REGISTRAR_PORTAL_ACCESS',
   SCHOOL_STARTS_AT: 'SCHOOL_STARTS_AT',
   REGISTRATION_STARTS_AT: 'REGISTRATION_STARTS_AT',
+  MAINTENANCE_MODE: 'MAINTENANCE_MODE',
 } as const;
 
 const SCHOOL_SETTING_KEY_ALIASES: Record<string, string> = {
@@ -181,6 +182,7 @@ export class SchoolSettingsService {
     'SELF_ENROLLMENT_ACTIVE',
     SCHOOL_SETTING_KEYS.SCHOOL_STARTS_AT,
     SCHOOL_SETTING_KEYS.REGISTRATION_STARTS_AT,
+    SCHOOL_SETTING_KEYS.MAINTENANCE_MODE,
   ]);
 
   private readonly tierLevels: Record<PlanTier, number> = {
@@ -227,6 +229,7 @@ export class SchoolSettingsService {
     'ANNOUNCEMENTS_ENABLED',
     'PARENT_VIEW_ATTENDANCE',
     'SELF_ENROLLMENT_ACTIVE',
+    'MAINTENANCE_MODE',
   ]);
 
   private getSettingCacheKey(schoolId: string, key: string) {

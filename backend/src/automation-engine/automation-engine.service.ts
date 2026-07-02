@@ -140,6 +140,24 @@ export class AutomationEngineService {
       { value: 'discipline.created', label: 'Discipline Incident', description: 'When a discipline incident is recorded' },
       { value: 'enrollment.pending', label: 'Enrollment Pending', description: 'When a new enrollment request is submitted' },
       { value: 'enrollment.approved', label: 'Enrollment Approved', description: 'When an enrollment is approved' },
+      // Superadmin events
+      { value: 'school.created', label: 'School Created', description: 'When a new school is created by superadmin' },
+      { value: 'school.updated', label: 'School Updated', description: 'When a school is updated' },
+      { value: 'school.deleted', label: 'School Deleted', description: 'When a school is deleted/deactivated' },
+      { value: 'subscription.plan.created', label: 'Plan Created', description: 'When a subscription plan is created' },
+      { value: 'subscription.plan.updated', label: 'Plan Updated', description: 'When a subscription plan is updated' },
+      { value: 'subscription.plan.deleted', label: 'Plan Deleted', description: 'When a subscription plan is deleted' },
+      { value: 'subscription.assigned', label: 'Plan Assigned', description: 'When a plan is assigned to a school' },
+      { value: 'admin.created', label: 'Admin Created', description: 'When a superadmin creates an admin user' },
+      { value: 'admin.deleted', label: 'Admin Deleted', description: 'When an admin user is deleted' },
+      { value: 'it-manager.created', label: 'IT Manager Created', description: 'When a superadmin creates an IT manager' },
+      { value: 'platform.settings.updated', label: 'Platform Settings Updated', description: 'When platform settings are changed' },
+      { value: 'backup.downloaded', label: 'Backup Downloaded', description: 'When a platform or school backup is downloaded' },
+      { value: 'permission.created', label: 'Permission Created', description: 'When a new permission is created' },
+      { value: 'permission.updated', label: 'Permission Updated', description: 'When a permission is updated' },
+      { value: 'permission.deleted', label: 'Permission Deleted', description: 'When a permission is deleted' },
+      { value: 'role.permission.assigned', label: 'Role Permission Assigned', description: 'When a permission is assigned to a role' },
+      { value: 'role.permission.removed', label: 'Role Permission Removed', description: 'When a permission is removed from a role' },
     ];
   }
 

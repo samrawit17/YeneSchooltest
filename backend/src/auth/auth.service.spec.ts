@@ -21,12 +21,17 @@ describe('AuthService password reset workflow', () => {
     const notificationService = {
       createBulkNotifications: jest.fn(async () => ({ count: 2 })),
     };
+    const eventBus = {
+      emit: jest.fn(),
+      on: jest.fn(),
+    };
 
     const service = new AuthService(
       prisma as any,
       {} as any,
       credentialService as any,
       notificationService as any,
+      eventBus as any,
     );
 
     return { service, prisma, credentialService, notificationService };

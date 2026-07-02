@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import { PlanTier } from '@prisma/client';
 
 @Injectable()
 export class SubscriptionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventBus: EventBusService,
+  ) {}
 
   private readonly tierHierarchy: Record<PlanTier, number> = {
     CORE: 1,
@@ -121,7 +125,7 @@ export class SubscriptionService {
     features: string[];
   }) {
     const features = this.mergeTierBaselineFeatures(data.tier, data.features);
-    return this.prisma.plan.create({
+    const plan = await this.prisma.plan.create({
       data: {
         name: data.name.trim(),
         tier: data.tier,
@@ -129,6 +133,14 @@ export class SubscriptionService {
         features,
       },
     });
+
+    void this.eventBus.emit('subscription.plan.created', {
+      planId: plan.id,
+      name: plan.name,
+      tier: plan.tier,
+    });
+
+    return plan;
   }
 
   async updatePlan(
@@ -161,10 +173,27 @@ export class SubscriptionService {
       where: { id },
       data,
     });
+
+    const changes = Object.keys(data).filter((key) => data[key as keyof typeof data] !== undefined);
+    void this.eventBus.emit('subscription.plan.updated', {
+      planId: plan.id,
+      name: plan.name,
+      tier: plan.tier,
+      changes,
+    });
+
     return this.withEffectivePlanFeatures(plan);
   }
 
   async deletePlan(id: string) {
+    const plan = await this.prisma.plan.findUnique({
+      where: { id },
+      select: { id: true, name: true, tier: true },
+    });
+    if (!plan) {
+      throw new NotFoundException('Plan not found');
+    }
+
     const schoolsWithPlan = await this.prisma.school.count({
       where: { planId: id },
     });
@@ -178,27 +207,35 @@ export class SubscriptionService {
       );
     }
 
-    return this.prisma.plan.delete({
+    await this.prisma.plan.delete({
       where: { id },
+    });
+
+    void this.eventBus.emit('subscription.plan.deleted', {
+      planId: plan.id,
+      name: plan.name,
+      tier: plan.tier,
     });
   }
 
   async assignPlanToSchool(schoolId: string, planId: string | null) {
     const school = await this.prisma.school.findUnique({
       where: { id: schoolId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
     if (!school) throw new NotFoundException('School not found');
 
+    let planName: string | null = null;
     if (planId) {
       const plan = await this.prisma.plan.findFirst({
         where: { id: planId, isActive: true },
-        select: { id: true },
+        select: { id: true, name: true },
       });
       if (!plan) throw new NotFoundException('Active plan not found');
+      planName = plan.name;
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       if (!planId) {
         await tx.subscription.deleteMany({ where: { schoolId } });
         return tx.school.update({
@@ -234,6 +271,15 @@ export class SubscriptionService {
         include: { plan: true },
       });
     });
+
+    void this.eventBus.emit('subscription.assigned', {
+      schoolId,
+      schoolName: school.name,
+      planId,
+      planName,
+    });
+
+    return result;
   }
 
   async getSchoolPlan(schoolId: string) {

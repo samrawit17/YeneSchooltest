@@ -258,9 +258,19 @@ export class AttendanceController {
 
   /**
    * POST /attendance/missing/notify
-   * Notify homeroom teachers about missing attendance (Admin only)
+   * Emit attendance.missing.detected event so automation rules can handle notifications
    */
-
+  @Post('missing/notify')
+  @Permissions('attendance:update')
+  async notifyMissing(
+    @Request() req: any,
+    @Query('date') date?: string,
+    @Query('grade') grade?: string,
+    @Query('section') section?: string,
+  ) {
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    return this.attendanceService.notifyMissing(req.user, targetDate, grade, section);
+  }
 
   /**
    * PUT /attendance/record/:id
