@@ -351,8 +351,11 @@ const LoginPage = () => {
                 onError={(e) => { if (mountedRef.current) e.currentTarget.style.display = 'none'; }}
               />
             )}
-            <h1 className="max-w-full truncate text-3xl font-bold tracking-wide md:text-4xl">
-              {displaySchoolName}
+            <h1 
+              className="max-w-full truncate text-5xl font-bold tracking-wide md:text-6xl"
+              style={{ fontFamily: '"C8aTajra", sans-serif', color: '#60a5fa' }}
+            >
+              {t.brand}
             </h1>
           </div>
         </div>
@@ -395,12 +398,7 @@ const LoginPage = () => {
             </>
           ) : (
             <>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-xl">
-                  <School className="w-8 h-8" />
-                </div>
-                <h1 className="text-3xl font-light tracking-tight">{t.brand}</h1>
-              </div>
+
               <p className="text-4xl font-bold leading-tight mb-4">
                 {t.heroTitle}
               </p>
@@ -454,7 +452,12 @@ const LoginPage = () => {
             <div className="rounded-xl bg-[var(--brand-color,#e35336)] p-2">
               <School className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-semibold text-gray-900 dark:text-white">{t.brand}</span>
+            <span 
+              className="text-2xl font-semibold text-blue-600 dark:text-blue-400"
+              style={{ fontFamily: '"C8aTajra", sans-serif' }}
+            >
+              {t.brand}
+            </span>
           </div>
 
           {/* Header */}

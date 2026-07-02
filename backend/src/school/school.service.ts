@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { PlatformSettingsService } from '../platform-settings/platform-settings.service';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import { AuditRequestContext, AuditService, type AuditActor } from '../audit/audit.service';
 import { generateEnrollmentKey } from '../common/utils/enrollment.util';
 import { Role } from '@prisma/client';
@@ -43,6 +44,7 @@ export class SchoolService {
     private platformSettingsService: PlatformSettingsService,
     private subscriptionService: SubscriptionService,
     private auditService: AuditService,
+    private eventBus: EventBusService,
   ) {}
 
   async createSchool(createSchoolDto: CreateSchoolDto) {
@@ -61,6 +63,12 @@ export class SchoolService {
         ...(address && { address }),
         ...(phone && { phone }),
       },
+    });
+
+    void this.eventBus.emit('school.created', {
+      schoolId: school.id,
+      schoolName: school.name,
+      email: school.email,
     });
 
     const corePlan = await this.subscriptionService.getPlanByTier('CORE');
@@ -269,6 +277,14 @@ export class SchoolService {
 
     await this.auditSchoolChange(id, existing, school, context);
 
+    const changedFields = Object.keys(data).filter((key) => data[key as keyof UpdateSchoolDto] !== undefined);
+    void this.eventBus.emit('school.updated', {
+      schoolId: id,
+      schoolName: school.name,
+      changes: changedFields,
+      updatedBy: context.actor?.id || null,
+    });
+
     if (
       data.logoUrl !== undefined &&
       existing.logoUrl &&
@@ -281,8 +297,21 @@ export class SchoolService {
   }
 
   async deleteSchool(id: string) {
-    return this.prismaService.school.delete({
+    const school = await this.prismaService.school.findUnique({
       where: { id },
+      select: { id: true, name: true },
+    });
+    if (!school) {
+      throw new HttpException('School not found', HttpStatus.NOT_FOUND);
+    }
+
+    await this.prismaService.school.delete({
+      where: { id },
+    });
+
+    void this.eventBus.emit('school.deleted', {
+      schoolId: school.id,
+      schoolName: school.name,
     });
   }
 

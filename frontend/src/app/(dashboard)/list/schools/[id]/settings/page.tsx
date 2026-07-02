@@ -406,6 +406,14 @@ const SETTINGS_CONFIG: SettingItem[] = [
     systemDefault: false,
     requiredFeature: 'CUSTOM_BRANDING',
   },
+  {
+    key: 'MAINTENANCE_MODE',
+    label: 'Maintenance Mode',
+    description: 'When enabled, only staff with bypass access or admins can access the school portal.',
+    type: 'boolean',
+    category: 'advanced',
+    systemDefault: false,
+  },
 ];
 
 const CATEGORY_CONFIG = {

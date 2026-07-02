@@ -1,13 +1,27 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import { AppEvent, EventHandler, EventMap } from './event.interface';
+import { QueueService } from '../../infrastructure/queue/queue.service';
+import { QueueName } from '../../infrastructure/queue/queue.constants';
+import { EventStoreService } from './event-store.service';
+import {
+  AppEvent,
+  EventHandler,
+  EventMap,
+  EmitOptions,
+  EventType,
+} from './event.interface';
 
 @Injectable()
 export class EventBusService {
   private readonly logger = new Logger(EventBusService.name);
   private handlers = new Map<string, Set<EventHandler>>();
 
-  on<E extends keyof EventMap>(
+  constructor(
+    private readonly queueService: QueueService,
+    private readonly eventStore: EventStoreService,
+  ) {}
+
+  on<E extends EventType>(
     eventType: E,
     handler: EventHandler<EventMap[E]>,
   ): void;
@@ -19,7 +33,7 @@ export class EventBusService {
     this.handlers.get(eventType)!.add(handler);
   }
 
-  off<E extends keyof EventMap>(
+  off<E extends EventType>(
     eventType: E,
     handler: EventHandler<EventMap[E]>,
   ): void;
@@ -33,34 +47,112 @@ export class EventBusService {
     }
   }
 
-  emit(eventType: string, payload: Record<string, any>): void {
+  async emit<E extends EventType>(
+    eventType: E,
+    payload: EventMap[E],
+    options?: EmitOptions,
+  ): Promise<string>;
+  async emit(
+    eventType: string,
+    payload: Record<string, any>,
+    options?: EmitOptions,
+  ): Promise<string>;
+  async emit(
+    eventType: string,
+    payload: Record<string, any>,
+    options?: EmitOptions,
+  ): Promise<string> {
+    const correlationId = randomUUID();
+    const eventId = randomUUID();
+
     const event: AppEvent = {
+      eventId,
       eventType,
       payload,
       timestamp: new Date(),
       metadata: {
-        correlationId: randomUUID(),
+        correlationId,
+        source: options?.actorId
+          ? `user:${options.actorId}`
+          : 'system',
+        schoolId: options?.schoolId,
+        actorId: options?.actorId,
       },
     };
 
-    const matchedListeners = this.getMatchedHandlers(eventType);
+    await this.eventStore.persist(event);
 
-    if (matchedListeners.length === 0) {
-      this.logger.debug(`No listeners for event "${eventType}"`);
-      return;
+    const matchedHandlers = this.getMatchedHandlers(eventType);
+    const syncHandlers: EventHandler[] = [];
+    const asyncHandlers: EventHandler[] = [];
+
+    for (const handler of matchedHandlers) {
+      if ((handler as any)._async) {
+        asyncHandlers.push(handler);
+      } else {
+        syncHandlers.push(handler);
+      }
     }
 
-    for (const handler of matchedListeners) {
+    if (syncHandlers.length === 0 && !options?.async) {
+      this.logger.debug(`No handlers for event "${eventType}"`);
+      return eventId;
+    }
+
+    for (const handler of syncHandlers) {
       Promise.resolve(handler(event)).catch((err) => {
         this.logger.error(
-          `Handler failed for event "${eventType}": ${err.message}`,
+          `Sync handler failed for event "${eventType}": ${err.message}`,
           err.stack,
         );
       });
     }
+
+    const shouldEnqueue = options?.async === true || asyncHandlers.length > 0;
+
+    if (shouldEnqueue) {
+      const queue = options?.queue || this.resolveQueue(eventType);
+      const queueInstance = this.queueService.getQueue(queue);
+
+      if (queueInstance) {
+        await queueInstance.add(
+          eventType,
+          {
+            eventType,
+            payload,
+            metadata: {
+              ...event.metadata,
+              eventId,
+            },
+          },
+          {
+            delay: options?.delay,
+            jobId: eventId,
+          },
+        ).catch((err) => {
+          this.logger.error(
+            `Failed to enqueue event "${eventType}" to "${queue}": ${err.message}`,
+          );
+        });
+      }
+    }
+
+    return eventId;
   }
 
-  private getMatchedHandlers(eventType: string): EventHandler[] {
+  listenerCount(eventType: string): number {
+    return this.getMatchedHandlers(eventType).length;
+  }
+
+  clear(): void {
+    this.handlers.clear();
+  }
+
+  registeredEventTypes(): string[] {
+    return Array.from(this.handlers.keys());
+  }
+
+  getMatchedHandlers(eventType: string): EventHandler[] {
     const results: EventHandler[] = [];
     const parts = eventType.split('.');
 
@@ -77,19 +169,22 @@ export class EventBusService {
       }
     }
 
-    // Also add exact match handlers (already covered by loop when i === parts.length)
     return results;
   }
 
-  listenerCount(eventType: string): number {
-    return this.getMatchedHandlers(eventType).length;
-  }
-
-  clear(): void {
-    this.handlers.clear();
-  }
-
-  registeredEventTypes(): string[] {
-    return Array.from(this.handlers.keys());
+  private resolveQueue(eventType: string): QueueName {
+    if (eventType.startsWith('email.') || eventType.includes('email')) {
+      return QueueName.EMAIL;
+    }
+    if (eventType.startsWith('communication.') || eventType.includes('sms') || eventType.includes('whatsapp')) {
+      return QueueName.COMMUNICATION;
+    }
+    if (eventType.startsWith('file.') || eventType.includes('upload') || eventType.includes('pdf') || eventType.includes('export')) {
+      return QueueName.FILE_PROCESSING;
+    }
+    if (eventType.startsWith('sync.') || eventType.includes('sync')) {
+      return QueueName.SYNC;
+    }
+    return QueueName.NOTIFICATION;
   }
 }

@@ -1053,7 +1053,7 @@ if (
       await this.invalidateAssessmentGradeCaches(schoolId);
     }
 
-    this.eventBus.emit('assessment.created', {
+    void this.eventBus.emit('assessment.created', {
       schoolId,
       assessmentId: assessment.id,
       type: assessment.type,
@@ -1233,7 +1233,7 @@ if (
     );
     await this.invalidateAssessmentGradeCaches(schoolId, affectedTeacherIds);
 
-    this.eventBus.emit('assessment.updated', {
+    void this.eventBus.emit('assessment.updated', {
       schoolId,
       assessmentId: id,
       changes: Object.keys(data),
@@ -1642,7 +1642,7 @@ if (
     );
 
     for (const row of dto.scores) {
-      this.eventBus.emit('assessment.scored', {
+      void this.eventBus.emit('assessment.scored', {
         schoolId,
         assessmentSubjectId,
         studentId: row.studentId,
@@ -1678,7 +1678,7 @@ if (
     });
     await this.invalidateAssessmentGradeCaches(schoolId, teacherIds);
 
-    this.eventBus.emit('assessment.locked', {
+    void this.eventBus.emit('assessment.locked', {
       schoolId,
       assessmentId: updated.id,
     });

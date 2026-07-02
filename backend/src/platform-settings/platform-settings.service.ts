@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { CACHE_TTL } from '../infrastructure/cache/cache.constants';
 
@@ -7,6 +8,7 @@ import { CACHE_TTL } from '../infrastructure/cache/cache.constants';
 export class PlatformSettingsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly eventBus: EventBusService,
     private readonly cacheService: CacheService,
   ) {}
 
@@ -74,6 +76,12 @@ export class PlatformSettingsService {
       create: { key, value: storedValue },
     });
     await this.invalidateCache(key);
+
+    void this.eventBus.emit('platform.settings.updated', {
+      settings: { [key]: normalizedValue },
+      keys: [key],
+    });
+
     return {
       ...setting,
       value: this.parseStoredValue(setting.value),
@@ -86,6 +94,12 @@ export class PlatformSettingsService {
       where: { key },
     });
     await this.invalidateCache(key);
+
+    void this.eventBus.emit('platform.settings.updated', {
+      settings: { [key]: null },
+      keys: [key],
+    });
+
     return { message: 'Setting deleted successfully' };
   }
 
@@ -118,6 +132,12 @@ export class PlatformSettingsService {
       ),
     );
     await this.invalidateCache(...Object.keys(normalizedSettings));
+
+    void this.eventBus.emit('platform.settings.updated', {
+      settings: normalizedSettings,
+      keys: Object.keys(normalizedSettings),
+    });
+
     return results.map((setting) => ({
       ...setting,
       value: this.parseStoredValue(setting.value),

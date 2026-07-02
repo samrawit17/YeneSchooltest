@@ -2723,3 +2723,44 @@ model SyncLog {
 
   @@index([schoolId, createdAt])
 }
+
+enum EventStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model EventStore {
+  id            String      @id @default(uuid())
+  eventType     String
+  source        String
+  correlationId String?
+  schoolId      String?
+  actorId       String?
+  payload       Json
+  metadata      Json?
+  status        EventStatus @default(PENDING)
+  createdAt     DateTime    @default(now())
+  processedAt   DateTime?
+
+  @@index([eventType, createdAt])
+  @@index([status, createdAt])
+  @@index([schoolId, createdAt])
+  @@index([createdAt])
+}
+
+model DeadLetterEvent {
+  id            String   @id @default(uuid())
+  originalQueue String
+  eventType     String
+  payload       Json
+  metadata      Json?
+  errorMessage  String?
+  errorStack    String?
+  failedAt      DateTime @default(now())
+  retryCount    Int      @default(0)
+
+  @@index([originalQueue, failedAt])
+  @@index([failedAt])
+}

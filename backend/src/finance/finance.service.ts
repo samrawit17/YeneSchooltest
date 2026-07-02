@@ -15,6 +15,7 @@ import {
   NotificationService,
   NotificationType,
 } from '../notification/notification.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import {
   CreateFeeStructureDto,
   UpdateFeeStructureDto,
@@ -66,6 +67,7 @@ export class FinanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
+    private readonly eventBus: EventBusService,
   ) {}
 
   async assertStudentFeeSummaryAccess(
@@ -2668,7 +2670,18 @@ export class FinanceService {
       };
     });
 
-    await this.notifyParentsOfRecordedPayment(dto.schoolId, result.payment);
+    void this.eventBus.emit('fee.paid', {
+        schoolId: dto.schoolId,
+        studentId: dto.studentId,
+        amount: dto.amountPaid,
+      });
+
+    await this.notificationService.notifyPaymentReceived(
+      dto.schoolId,
+      dto.studentId,
+      String(dto.amountPaid),
+      result.paymentReference,
+    );
 
     return result;
   }

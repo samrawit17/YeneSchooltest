@@ -125,18 +125,25 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: production
+      target: development
     container_name: sms_frontend
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
       NODE_ENV: development
+      HOSTNAME: 0.0.0.0
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
       NEXT_PUBLIC_API_URL: /api/proxy
       BACKEND_URL: http://backend:8001
       NEXT_PUBLIC_WEB_PUSH_KEY: ${WEB_PUSH_PUBLIC_KEY:-BMR9t5PPHg2Jko1VPZ2fDlmX9lEN303BH6Z-2bpKe7lf-7MxX3quJhCYYtKbJlho-CVzr2uW-aDELgUMW7rGiio}
     volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
       - ./backend/public/uploads:/app/public/uploads:ro
+    command: npm run dev -- --hostname 0.0.0.0
     depends_on:
       backend:
         condition: service_healthy

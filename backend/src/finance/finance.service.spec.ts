@@ -5,6 +5,11 @@ import { toGregorianDate } from '../common/date.util';
 describe('FinanceService critical payment flows', () => {
   const notificationService = {
     createNotification: jest.fn(),
+    notifyPaymentReceived: jest.fn(),
+  };
+  const eventBus = {
+    emit: jest.fn(),
+    on: jest.fn(),
   };
 
   const createService = (
@@ -30,7 +35,7 @@ describe('FinanceService critical payment flows', () => {
       ...prismaOverrides,
     };
     return {
-      service: new FinanceService(prisma, notificationService as any),
+      service: new FinanceService(prisma, notificationService as any, eventBus as any),
       prisma,
     };
   };

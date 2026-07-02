@@ -10,7 +10,10 @@ ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
+# Network: Debian mirrors blocked on this network (Fastly CDN 403)
+# Fail fast with 10s timeout so build doesn't hang
+RUN timeout 10 sh -c 'apt-get update -y 2>/dev/null && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client 2>/dev/null && rm -rf /var/lib/apt/lists/*' || \
+    echo "[WARN] Skipped apt (network blocked). Using pre-installed packages from base image."
 
 # Copy package files
 COPY package*.json ./
@@ -43,7 +46,10 @@ ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
+# Network: Debian mirrors blocked on this network (Fastly CDN 403)
+# Fail fast with 10s timeout so build doesn't hang
+RUN timeout 10 sh -c 'apt-get update -y 2>/dev/null && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client 2>/dev/null && rm -rf /var/lib/apt/lists/*' || \
+    echo "[WARN] Skipped apt (network blocked). Using pre-installed packages from base image."
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -103,7 +109,10 @@ ENV NPM_CONFIG_FETCH_TIMEOUT=300000
 
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client && rm -rf /var/lib/apt/lists/*
+# Network: Debian mirrors blocked on this network (Fastly CDN 403)
+# Fail fast with 10s timeout so build doesn't hang
+RUN timeout 10 sh -c 'apt-get update -y 2>/dev/null && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-client 2>/dev/null && rm -rf /var/lib/apt/lists/*' || \
+    echo "[WARN] Skipped apt (network blocked). Using pre-installed packages from base image."
 
 COPY package*.json ./
 

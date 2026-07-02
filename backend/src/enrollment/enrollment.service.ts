@@ -6,18 +6,18 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { SchoolService } from '../school/school.service';
 import { AcademicYearService } from '../academic-year/academic-year.service';
-import { NotificationService } from '../notification/notification.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import { EnrollmentStatus } from '@prisma/client';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class EnrollmentService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly schoolService: SchoolService,
-    private readonly academicYearService: AcademicYearService,
-    private readonly notificationService: NotificationService,
-  ) {}
+   constructor(
+     private readonly prisma: PrismaService,
+     private readonly schoolService: SchoolService,
+     private readonly academicYearService: AcademicYearService,
+     private readonly eventBus: EventBusService,
+   ) {}
 
   /**
    * Resolve school by enrollment key
@@ -206,31 +206,17 @@ export class EnrollmentService {
       data: { status: EnrollmentStatus.APPROVED },
     });
 
-    // Send notification to student
     const className = targetClass
       ? `${targetClass.name}${availableSection ? ` - ${availableSection.name}` : ''}`
       : enrollment.gradeLevel?.name || 'their class';
 
-    await this.notificationService.notifyEnrollmentApproval(
+    void this.eventBus.emit('enrollment.approved', {
       schoolId,
-      enrollment.studentId,
-      enrollment.student.name || 'Student',
+      studentId: enrollment.studentId,
+      studentName: enrollment.student.name || 'Student',
       className,
-    );
-
-    // Send notification to parents
-    if (enrollment.student.studentProfile?.parents) {
-      for (const parentRelation of enrollment.student.studentProfile.parents) {
-        if (parentRelation.parent.user) {
-          await this.notificationService.notifyEnrollmentApproval(
-            schoolId,
-            parentRelation.parent.user.id,
-            enrollment.student.name || 'Student',
-            className,
-          );
-        }
-      }
-    }
+      approvedBy: 'system',
+    });
 
     return updatedEnrollment;
   }
@@ -393,12 +379,11 @@ export class EnrollmentService {
       },
     });
 
-    // Notify admins of new enrollment
-    await this.notificationService.notifyAdminsOfNewEnrollment(
-      data.schoolId,
-      enrollment.student.name || 'A student',
-      enrollment.gradeLevel?.name || data.gradeId || 'Unknown grade',
-    );
+    void this.eventBus.emit('enrollment.created', {
+      schoolId: data.schoolId,
+      studentId: enrollment.studentId,
+      gradeId: enrollment.gradeLevel?.name || data.gradeId || 'Unknown grade',
+    });
 
     return enrollment;
   }
@@ -452,27 +437,13 @@ export class EnrollmentService {
       },
     });
 
-    // Send notification to student
-    await this.notificationService.notifyEnrollmentRejection(
+    void this.eventBus.emit('enrollment.rejected', {
       schoolId,
-      enrollment.studentId,
-      enrollment.student.name || 'Student',
+      studentId: enrollment.studentId,
+      studentName: enrollment.student.name || 'Student',
       reason,
-    );
-
-    // Send notification to parents
-    if (enrollment.student.studentProfile?.parents) {
-      for (const parentRelation of enrollment.student.studentProfile.parents) {
-        if (parentRelation.parent.user) {
-          await this.notificationService.notifyEnrollmentRejection(
-            schoolId,
-            parentRelation.parent.user.id,
-            enrollment.student.name || 'Student',
-            reason,
-          );
-        }
-      }
-    }
+      rejectedBy: 'system',
+    });
 
     return updatedEnrollment;
   }

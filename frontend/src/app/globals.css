@@ -74,6 +74,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "C8aTajra";
+  src: url("/fonts/C8aTajra.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 html,
 body {
   font-family: var(--font-sans), var(--font-ethiopic), var(--font-arabic), system-ui, sans-serif;
