@@ -155,6 +155,20 @@ export type EventMap = {
 
   // ── Communication ────────────────────────────────────────────
   'communication.sent': { schoolId: string; communicationId: string; type: string; channel: string; recipientCount: number; sentBy: string };
+  'communication.send-sms': {
+    schoolId: string;
+    userId: string;
+    to: string;
+    message: string;
+    title?: string;
+  };
+  'communication.send-bulk-sms': {
+    schoolId: string;
+    userIds: string[];
+    messages: Array<{ userId: string; to: string }>;
+    title?: string;
+    message: string;
+  };
 
   // ── Announcement ─────────────────────────────────────────────
   'announcement.created': { schoolId: string; announcementId: string; title: string; audience: string; createdBy: string };
@@ -202,6 +216,52 @@ export type EventMap = {
   'permission.deleted': { permissionId: string; name: string; deletedBy?: string | null };
   'role.permission.assigned': { role: string; permissionId: string; permissionName: string; assignedBy?: string | null };
   'role.permission.removed': { role: string; permissionId: string; permissionName: string; removedBy?: string | null };
+
+  // ── Academic Year / Term ─────────────────────────────────────
+  'academic-year.activated': { schoolId: string; academicYearId: string; name: string; activatedBy: string };
+  'academic-year.created': { schoolId: string; academicYearId: string; name: string; createdBy: string };
+  'term.activated': { schoolId: string; academicYearId: string; termId: string; name: string };
+  'term.ended': { schoolId: string; academicYearId: string; termId: string; name: string };
+
+  // ── Teacher Assignment ──────────────────────────────────────
+  'teacher.assigned': { schoolId: string; teacherId: string; teacherName: string; classId?: string; className?: string; subjectId?: string; subjectName?: string; role: 'homeroom' | 'subject'; assignedBy: string };
+  'teacher.unassigned': { schoolId: string; teacherId: string; teacherName: string; classId?: string; className?: string; subjectId?: string; subjectName?: string; role: 'homeroom' | 'subject'; unassignedBy: string };
+
+  // ── Parent Link ─────────────────────────────────────────────
+  'parent.linked': { schoolId: string; parentId: string; parentName: string; studentId: string; studentName: string; linkedBy: string };
+  'parent.unlinked': { schoolId: string; parentId: string; parentName: string; studentId: string; studentName: string; unlinkedBy: string };
+
+  // ── Class ───────────────────────────────────────────────────
+  'class.created': { schoolId: string; classId: string; name: string; grade: number; section: string; academicYearId: string; createdBy: string };
+  'class.updated': { schoolId: string; classId: string; name: string; grade: number; section: string; changes: string[]; updatedBy: string };
+  'class.deleted': { schoolId: string; classId: string; name: string; grade: number; section: string; deletedBy: string };
+
+  // ── Timetable ───────────────────────────────────────────────
+  'timetable.created': { schoolId: string; slotId: string; classId: string; sectionId?: string; subjectName: string; day: string; startTime: string; endTime: string; teacherId: string; createdBy: string };
+  'timetable.updated': { schoolId: string; slotId: string; classId: string; sectionId?: string; subjectName: string; changes: string[]; updatedBy: string };
+  'timetable.deleted': { schoolId: string; slotId: string; classId: string; sectionId?: string; subjectName: string; day: string; deletedBy: string };
+
+  // ── Sync (offline→server) ──────────────────────────────────
+  'sync.attendance.batch': {
+    schoolId: string;
+    items: Array<{ operation: string; entity: string; entityId: string; payload: Record<string, any>; localModified: string }>;
+    deviceId?: string;
+    actorId: string;
+  };
+  'sync.mark-entry.batch': {
+    schoolId: string;
+    items: Array<{ operation: string; entity: string; entityId: string; payload: Record<string, any>; localModified: string }>;
+    deviceId?: string;
+    actorId: string;
+  };
+  'sync.setting.changed': {
+    schoolId: string;
+    key: string;
+    value: any;
+    scope: string;
+    scopeId: string;
+    changedBy: string;
+  };
 };
 
 export type EventType = keyof EventMap;

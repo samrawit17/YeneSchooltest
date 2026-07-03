@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventBusService } from '../core/events/event-bus.service';
 import { CreateClassSubjectDto } from './dto/create-class-subject.dto';
 import { UpdateClassSubjectDto } from './dto/update-class-subject.dto';
 import { BulkAssignDto } from './dto/bulk-assign.dto';
@@ -12,7 +13,10 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ClassSubjectService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventBus: EventBusService,
+  ) {}
 
   private normalizeTeacherId(teacherId?: string | null): string | null {
     if (!teacherId) return null;
@@ -209,6 +213,20 @@ export class ClassSubjectService {
         schoolId: classData.schoolId,
       });
 
+      if (normalizedTeacherId) {
+        void this.eventBus.emit('teacher.assigned', {
+          schoolId: classData.schoolId,
+          teacherId: normalizedTeacherId,
+          teacherName: created.teacher?.name || 'Unknown',
+          classId: data.classId,
+          className: created.class?.name,
+          subjectId: data.subjectId,
+          subjectName: created.subject?.name,
+          role: 'subject',
+          assignedBy: 'system',
+        });
+      }
+
       return created;
     });
   }
@@ -388,6 +406,32 @@ export class ClassSubjectService {
           teacherId: normalizedTeacherId,
           schoolId: assignment.class.schoolId,
         });
+
+        if (normalizedTeacherId) {
+          void this.eventBus.emit('teacher.assigned', {
+            schoolId: assignment.class.schoolId,
+            teacherId: normalizedTeacherId,
+            teacherName: updated.teacher?.name || 'Unknown',
+            classId: assignment.classId,
+            className: updated.class?.name,
+            subjectId: assignment.subjectId,
+            subjectName: updated.subject?.name,
+            role: 'subject',
+            assignedBy: 'system',
+          });
+        } else {
+          void this.eventBus.emit('teacher.unassigned', {
+            schoolId: assignment.class.schoolId,
+            teacherId: assignment.teacherId || '',
+            teacherName: 'Unknown',
+            classId: assignment.classId,
+            className: updated.class?.name,
+            subjectId: assignment.subjectId,
+            subjectName: updated.subject?.name,
+            role: 'subject',
+            unassignedBy: 'system',
+          });
+        }
       }
 
       return updated;

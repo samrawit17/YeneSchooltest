@@ -30,6 +30,12 @@ import { EventModule } from './event/event.module';
 import { TeacherModule } from './teacher/teacher.module';
 import { LessonModule } from './lesson/lesson.module';
 import { FinanceModule } from './finance/finance.module';
+import { PayrollModule } from './payroll/payroll.module';
+import { FeeStructureModule } from './fee-structure/fee-structure.module';
+import { PaymentsModule } from './payments/payments.module';
+import { DiscountPolicyModule } from './discount-policy/discount-policy.module';
+import { ReportsModule } from './reports/reports.module';
+import { StudentFeeModule } from './student-fee/student-fee.module';
 import { GradingModule } from './grading/grading.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { MessagingModule } from './messaging/messaging.module';
@@ -84,6 +90,12 @@ import { AutomationEngineModule } from './automation-engine/automation-engine.mo
     TeacherModule,
     LessonModule,
     FinanceModule,
+    PayrollModule,
+    FeeStructureModule,
+    PaymentsModule,
+    DiscountPolicyModule,
+    ReportsModule,
+    StudentFeeModule,
     GradingModule,
     AssessmentsModule,
     CalendarModule,

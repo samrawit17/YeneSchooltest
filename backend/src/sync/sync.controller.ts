@@ -21,11 +21,13 @@ import {
   UseGuards,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { IsArray, IsIn, IsObject, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
+import { EventBusService } from '../core/events/event-bus.service';
 import { SyncService } from './sync.service';
 
 // ============================================
@@ -100,7 +102,12 @@ class SyncStatusDto {
 @Controller('api/sync')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class SyncController {
-  constructor(private readonly syncService: SyncService) {}
+  private readonly logger = new Logger(SyncController.name);
+
+  constructor(
+    private readonly syncService: SyncService,
+    private readonly eventBus: EventBusService,
+  ) {}
 
   // ============================================
   // ATTENDANCE SYNC
@@ -162,7 +169,51 @@ export class SyncController {
       }
     }
 
+    void this.eventBus.emit('sync.attendance.batch', {
+      schoolId: req.user.schoolId,
+      items: dto.items,
+      deviceId,
+      actorId: req.user.id,
+    });
+
     return { results, successful, failed };
+  }
+
+  @Post('queue')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Permissions('attendance:take')
+  async enqueueSync(
+    @Body() dto: BatchSyncDto,
+    @Request() req: any,
+    @Headers('x-device-id') deviceId?: string,
+  ): Promise<{ accepted: number; total: number }> {
+    const attendanceItems = dto.items.filter(i => i.entity === 'attendance');
+    const markItems = dto.items.filter(i => i.entity === 'mark_entry');
+    const settingItems = dto.items.filter(i => i.entity === 'setting');
+
+    if (attendanceItems.length > 0) {
+      void this.eventBus.emit('sync.attendance.batch', {
+        schoolId: req.user.schoolId,
+        items: attendanceItems,
+        deviceId,
+        actorId: req.user.id,
+      });
+    }
+
+    if (markItems.length > 0) {
+      void this.eventBus.emit('sync.mark-entry.batch', {
+        schoolId: req.user.schoolId,
+        items: markItems,
+        deviceId,
+        actorId: req.user.id,
+      });
+    }
+
+    this.logger.log(
+      `Enqueued ${dto.items.length} items for sync (attendance=${attendanceItems.length}, marks=${markItems.length}, settings=${settingItems.length})`,
+    );
+
+    return { accepted: dto.items.length, total: dto.items.length };
   }
 
   // ============================================

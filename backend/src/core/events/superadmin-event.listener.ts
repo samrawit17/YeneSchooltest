@@ -255,7 +255,7 @@ export class SuperadminEventListener {
   private handleBackupDownloaded = async (
     event: AppEvent & { payload: EventMap['backup.downloaded'] },
   ): Promise<void> => {
-    const { backupType, schoolId, fileName } = event.payload;
+    const { backupType, schoolId, fileName, downloadedBy } = event.payload;
 
     if (schoolId) {
       const school = await this.prisma.school.findUnique({
@@ -265,9 +265,26 @@ export class SuperadminEventListener {
       this.logger.log(
         `School backup downloaded: ${school?.name || schoolId} (${backupType}) - ${fileName}`,
       );
-    } else {
-      this.logger.log(`Platform backup downloaded: ${backupType} - ${fileName}`);
+
+      await this.notifySuperAdmins(
+        'School Backup Downloaded',
+        `Backup for "${school?.name || schoolId}" (${backupType}) was downloaded${downloadedBy ? ` by user ${downloadedBy}` : ''}.`,
+        NotificationType.INFO,
+        '/superadmin/backups',
+        { fileName, backupType, schoolId, downloadedBy },
+      );
+      return;
     }
+
+    this.logger.log(`Platform backup downloaded: ${backupType} - ${fileName}`);
+
+    await this.notifySuperAdmins(
+      'Platform Backup Downloaded',
+      `A full platform backup was downloaded${downloadedBy ? ` by user ${downloadedBy}` : ''}: ${fileName}.`,
+      NotificationType.INFO,
+      '/superadmin/backups',
+      { fileName, backupType, downloadedBy },
+    );
   };
 
   private handlePermissionCreated = async (

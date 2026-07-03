@@ -489,6 +489,10 @@ export class SubscriptionService {
     );
   }
 
+  getTierLevel(tier: PlanTier): number {
+    return this.tierHierarchy[tier];
+  }
+
   getFeatureTier(feature: string): PlanTier | null {
     const normalizedFeature = this.normalizeFeatureName(feature);
     return normalizedFeature ? this.featureTiers[normalizedFeature] || null : null;

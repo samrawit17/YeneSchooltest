@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, ParentProfile, EnrollmentStatus } from '@prisma/client';
 import { Role } from '../auth/types/role.enum';
 import { CredentialService } from '../credential/credential.service';
+import { EventBusService } from '../core/events/event-bus.service';
 
 export interface FeeBreakdown {
   feeId: string;
@@ -77,6 +78,7 @@ export class ParentService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly credentialService: CredentialService,
+    private readonly eventBus: EventBusService,
   ) {}
 
   async createParent(createParentDto: CreateParentDto, createdById: string) {
@@ -281,7 +283,7 @@ export class ParentService {
       throw new BadRequestException('Student already linked to this parent');
     }
 
-    return this.prismaService.parentStudent.create({
+    const link = await this.prismaService.parentStudent.create({
       data: {
         parentId: parentProfileId,
         studentId: studentProfileId,
@@ -291,6 +293,17 @@ export class ParentService {
         emergencyContact: emergencyContact ?? false,
       },
     });
+
+    void this.eventBus.emit('parent.linked', {
+      schoolId,
+      parentId: parent.userId || parentProfileId,
+      parentName: parentProfileId,
+      studentId: student.userId || studentProfileId,
+      studentName: studentProfileId,
+      linkedBy: 'system',
+    });
+
+    return link;
   }
 
   async unlinkParentFromStudent(
@@ -310,8 +323,27 @@ export class ParentService {
       throw new NotFoundException('Link not found');
     }
 
+    const parent = await this.prismaService.parentProfile.findFirst({
+      where: { id: parentId, schoolId },
+      select: { userId: true },
+    });
+
+    const student = await this.prismaService.studentProfile.findFirst({
+      where: { id: studentId },
+      select: { userId: true },
+    });
+
     await this.prismaService.parentStudent.delete({
       where: { id: link.id },
+    });
+
+    void this.eventBus.emit('parent.unlinked', {
+      schoolId,
+      parentId: parent?.userId || parentId,
+      parentName: parent?.userId || 'Unknown',
+      studentId: student?.userId || studentId,
+      studentName: student?.userId || 'Unknown',
+      unlinkedBy: 'system',
     });
 
     return { success: true };

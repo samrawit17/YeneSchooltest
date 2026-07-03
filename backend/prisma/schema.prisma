@@ -1745,6 +1745,8 @@ model Announcement {
   startDate      DateTime
   endDate        DateTime?
   priority       String?
+  isPinned       Boolean      @default(false)
+  pinnedAt       DateTime?
   location       String?
   attachments    String?
   academicYearId String?
